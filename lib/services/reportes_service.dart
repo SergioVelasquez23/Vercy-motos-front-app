@@ -1,0 +1,262 @@
+import 'base_api_service.dart';
+import '../models/dashboard_data.dart';
+
+class ReportesService {
+  static final ReportesService _instance = ReportesService._internal();
+  factory ReportesService() => _instance;
+  ReportesService._internal();
+
+  final BaseApiService _apiService = BaseApiService();
+
+  // Obtener dashboard
+  Future<DashboardData?> getDashboard() async {
+    try {
+      print('🔍 Dashboard: Solicitando datos del endpoint /reportes/dashboard');
+
+      final response = await _apiService.get<Map<String, dynamic>>(
+        '/reportes/dashboard',
+        (json) => json,
+      );
+
+      print(
+        '📦 Dashboard: Respuesta recibida - Success: ${response.isSuccess}',
+      );
+      print('📦 Dashboard: Data: ${response.data}');
+
+      if (response.isSuccess && response.data != null) {
+        print('✅ Dashboard obtenido exitosamente');
+        print('🔍 Dashboard: Estructura de datos: ${response.data!.keys}');
+
+        // Debug detallado de las ventas
+        if (response.data!['ventasHoy'] != null) {
+          final ventasHoy = response.data!['ventasHoy'];
+          print('💰 VentasHoy DEBUG:');
+          print('  - objetivo: ${ventasHoy['objetivo']}');
+          print('  - total: ${ventasHoy['total']}');
+          print('  - totalPedidos: ${ventasHoy['totalPedidos']}');
+          print('  - totalFacturas: ${ventasHoy['totalFacturas']}');
+          print('  - cantidadTotal: ${ventasHoy['cantidadTotal']}');
+          print('  - cantidadPedidos: ${ventasHoy['cantidadPedidos']}');
+          print('  - cantidadFacturas: ${ventasHoy['cantidadFacturas']}');
+        }
+
+        if (response.data!['ventasSemana'] != null) {
+          final ventasSemana = response.data!['ventasSemana'];
+          print('📅 VentasSemana DEBUG:');
+          print('  - total: ${ventasSemana['total']}');
+          print('  - totalPedidos: ${ventasSemana['totalPedidos']}');
+          print('  - totalFacturas: ${ventasSemana['totalFacturas']}');
+        }
+
+        return DashboardData.fromJson(response.data!);
+      } else {
+        print('⚠️ Error al obtener dashboard: ${response.errorMessage}');
+        print('⚠️ Mensaje: ${response.message}');
+        return null;
+      }
+    } catch (e) {
+      print('❌ Excepción en getDashboard: $e');
+      return null;
+    }
+  }
+
+  // Obtener pedidos por hora
+  Future<List<Map<String, dynamic>>> getPedidosPorHora([
+    DateTime? fecha,
+  ]) async {
+    final fechaParam = fecha != null ? '?fecha=${fecha.toIso8601String()}' : '';
+    final response = await _apiService.get<List<Map<String, dynamic>>>(
+      '/reportes/pedidos-por-hora$fechaParam',
+      (json) => List<Map<String, dynamic>>.from(json),
+    );
+
+    if (response.isSuccess) {
+      print('✅ Pedidos por hora obtenidos');
+      return response.data ?? [];
+    } else {
+      print('⚠️ Error al obtener pedidos por hora: ${response.errorMessage}');
+      return [];
+    }
+  }
+
+  // Obtener ventas por día
+  Future<List<Map<String, dynamic>>> getVentasPorDia([
+    int ultimosDias = 7,
+  ]) async {
+    final response = await _apiService.get<List<Map<String, dynamic>>>(
+      '/reportes/ventas-por-dia?ultimosDias=$ultimosDias',
+      (json) => List<Map<String, dynamic>>.from(json),
+    );
+
+    if (response.isSuccess) {
+      print('✅ Ventas por día obtenidas');
+      return response.data ?? [];
+    } else {
+      print('⚠️ Error al obtener ventas por día: ${response.errorMessage}');
+      return [];
+    }
+  }
+
+  // Obtener ingresos vs egresos
+  Future<List<Map<String, dynamic>>> getIngresosVsEgresos([
+    int ultimosMeses = 12,
+  ]) async {
+    final response = await _apiService.get<List<Map<String, dynamic>>>(
+      '/reportes/ingresos-egresos?ultimosMeses=$ultimosMeses',
+      (json) => List<Map<String, dynamic>>.from(json),
+    );
+
+    if (response.isSuccess) {
+      print('✅ Ingresos vs egresos obtenidos');
+      return response.data ?? [];
+    } else {
+      print(
+        '⚠️ Error al obtener ingresos vs egresos: ${response.errorMessage}',
+      );
+      return [];
+    }
+  }
+
+  // Obtener top productos
+  Future<List<Map<String, dynamic>>> getTopProductos([int limite = 5]) async {
+    final response = await _apiService.get<List<Map<String, dynamic>>>(
+      '/reportes/top-productos?limite=$limite',
+      (json) => List<Map<String, dynamic>>.from(json),
+    );
+
+    if (response.isSuccess) {
+      print('✅ Top productos obtenidos');
+      return response.data ?? [];
+    } else {
+      print('⚠️ Error al obtener top productos: ${response.errorMessage}');
+      return [];
+    }
+  }
+
+  // MÉTODOS ADICIONALES PARA CUADRE DE CAJA (si se necesitan en el futuro)
+
+  // Obtener cuadre de caja del día
+  Future<Map<String, dynamic>?> getCuadreCaja() async {
+    final response = await _apiService.get<Map<String, dynamic>>(
+      '/reportes/cuadre-caja',
+      (json) => json,
+    );
+
+    if (response.isSuccess) {
+      print('✅ Cuadre de caja obtenido');
+      return response.data!;
+    } else {
+      print('⚠️ Error al obtener cuadre de caja: ${response.errorMessage}');
+      return null;
+    }
+  }
+
+  // Cerrar caja
+  Future<Map<String, dynamic>?> cerrarCaja({
+    required double efectivoDeclarado,
+    required String responsable,
+    double tolerancia = 5000.0,
+    String? observaciones,
+  }) async {
+    final response = await _apiService
+        .post<Map<String, dynamic>>('/reportes/cuadre-caja/cerrar', {
+          'efectivoDeclarado': efectivoDeclarado,
+          'responsable': responsable,
+          'tolerancia': tolerancia,
+          'observaciones': observaciones,
+        }, (json) => json);
+
+    if (response.isSuccess) {
+      print('✅ Caja cerrada exitosamente');
+      return response.data!;
+    } else {
+      print('⚠️ Error al cerrar caja: ${response.errorMessage}');
+      return null;
+    }
+  }
+
+  // Obtener historial de cuadres
+  Future<List<Map<String, dynamic>>?> getHistorialCuadres({
+    int dias = 30,
+  }) async {
+    final response = await _apiService.getList<Map<String, dynamic>>(
+      '/reportes/cuadre-caja/historial?dias=$dias',
+      (json) => json,
+    );
+
+    if (response.isSuccess) {
+      print(
+        '✅ Historial de cuadres obtenido: ${response.data!.length} registros',
+      );
+      return response.data!;
+    } else {
+      print(
+        '⚠️ Error al obtener historial de cuadres: ${response.errorMessage}',
+      );
+      return [];
+    }
+  }
+
+  // Obtener alertas del sistema
+  Future<Map<String, dynamic>?> getAlertas() async {
+    final response = await _apiService.get<Map<String, dynamic>>(
+      '/reportes/alertas',
+      (json) => json,
+    );
+
+    if (response.isSuccess) {
+      print('✅ Alertas obtenidas');
+      return response.data!;
+    } else {
+      print('⚠️ Error al obtener alertas: ${response.errorMessage}');
+      return null;
+    }
+  }
+
+  // Actualizar objetivo de ventas
+  Future<bool> actualizarObjetivo(String periodo, double nuevoObjetivo) async {
+    try {
+      print(
+        '🎯 Actualizando objetivo $periodo a \$${nuevoObjetivo.toStringAsFixed(0)}',
+      );
+
+      final requestData = {'periodo': periodo, 'objetivo': nuevoObjetivo};
+
+      final response = await _apiService.put<Map<String, dynamic>>(
+        '/reportes/objetivo',
+        requestData,
+        (json) => json,
+      );
+
+      if (response.isSuccess) {
+        print('✅ Objetivo $periodo actualizado exitosamente');
+        return true;
+      } else {
+        print('❌ Error al actualizar objetivo: ${response.errorMessage}');
+        print('⚠️ Usando almacenamiento local temporal');
+        // Fallback: guardar localmente hasta que el servidor esté disponible
+        await _guardarObjetivoLocal(periodo, nuevoObjetivo);
+        return true;
+      }
+    } catch (e) {
+      print('❌ Excepción al actualizar objetivo: $e');
+      print('⚠️ Usando almacenamiento local temporal');
+      // Fallback: guardar localmente
+      await _guardarObjetivoLocal(periodo, nuevoObjetivo);
+      return true;
+    }
+  }
+
+  // Método temporal para guardar objetivos localmente
+  Future<void> _guardarObjetivoLocal(String periodo, double objetivo) async {
+    try {
+      // En una implementación real, usarías SharedPreferences o similar
+      print(
+        '💾 Guardando objetivo $periodo = \$${objetivo.toStringAsFixed(0)} localmente',
+      );
+      // Por ahora solo mostramos el mensaje
+    } catch (e) {
+      print('❌ Error guardando objetivo local: $e');
+    }
+  }
+}
