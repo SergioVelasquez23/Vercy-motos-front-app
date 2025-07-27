@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'dart:async';
 import '../models/mesa.dart';
 import '../models/pedido.dart';
 import '../services/pedido_service.dart';
 import '../services/mesa_service.dart';
 import '../services/notification_service.dart';
+import '../services/sincronizador_service.dart';
+import '../providers/user_provider.dart';
 import 'pedido_screen.dart';
 
 class MesasScreen extends StatefulWidget {
@@ -17,6 +20,7 @@ class MesasScreen extends StatefulWidget {
 class _MesasScreenState extends State<MesasScreen> {
   final MesaService _mesaService = MesaService();
   final PedidoService _pedidoService = PedidoService();
+  final SincronizadorService _sincronizadorService = SincronizadorService();
   List<Mesa> mesas = [];
   bool isLoading = true;
   String? errorMessage;
@@ -34,6 +38,14 @@ class _MesasScreenState extends State<MesasScreen> {
     super.initState();
     _loadMesas();
     _configurarWebSockets();
+    _iniciarSincronizacion();
+  }
+
+  void _iniciarSincronizacion() {
+    // Iniciar sincronización cada 2 minutos
+    _sincronizadorService.iniciarSincronizacionPeriodica(
+      periodo: Duration(minutes: 2),
+    );
   }
 
   @override
@@ -41,6 +53,7 @@ class _MesasScreenState extends State<MesasScreen> {
     // Limpiar subscripciones
     _pedidoCompletadoSubscription.cancel();
     _pedidoPagadoSubscription.cancel();
+    _sincronizadorService.detenerSincronizacionPeriodica();
     super.dispose();
   }
 
@@ -67,6 +80,10 @@ class _MesasScreenState extends State<MesasScreen> {
         errorMessage = null;
       });
 
+      // Primero realizar la sincronización
+      await _sincronizadorService.sincronizarEstadoMesasPedidos();
+
+      // Luego cargar las mesas ya sincronizadas
       final loadedMesas = await _mesaService.getMesas();
       setState(() {
         mesas = loadedMesas;
@@ -104,9 +121,208 @@ class _MesasScreenState extends State<MesasScreen> {
     }
   }
 
+  void _mostrarMenuMesa(Mesa mesa) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: _cardBg,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: EdgeInsets.symmetric(vertical: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Mesa ${mesa.nombre}',
+                style: TextStyle(
+                  color: _textLight,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              SizedBox(height: 20),
+              ListTile(
+                leading: Icon(Icons.sync, color: _primary),
+                title: Text(
+                  'Sincronizar estado con pedidos',
+                  style: TextStyle(color: _textLight),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _sincronizarMesa(mesa);
+                },
+              ),
+              if (mesa.ocupada) ...[
+                ListTile(
+                  leading: Icon(Icons.cleaning_services, color: _primary),
+                  title: Text(
+                    'Vaciar mesa manualmente',
+                    style: TextStyle(color: _textLight),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _vaciarMesaManualmente(mesa);
+                  },
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _mostrarDialogoForzarLimpieza() async {
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: _cardBg,
+        title: Text(
+          '¿Restaurar todas las mesas?',
+          style: TextStyle(color: _textLight),
+        ),
+        content: Text(
+          'Esta acción marcará TODAS las mesas como disponibles y eliminará todos los productos asociados. Esta operación es útil cuando se han eliminado manualmente los pedidos de la base de datos y las mesas han quedado desincronizadas.\n\n¿Desea continuar?',
+          style: TextStyle(color: _textLight),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: Text('Restaurar Todo'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmar == true) {
+      try {
+        setState(() {
+          isLoading = true;
+        });
+
+        // Limpiar todas las mesas de forma forzada
+        final mesasLimpiadas = await _sincronizadorService
+            .forzarLimpiezaCompletaMesas();
+
+        // Recargar las mesas
+        await _loadMesas();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '$mesasLimpiadas mesas han sido restauradas correctamente',
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al restaurar mesas: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        setState(() {
+          isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _vaciarMesaManualmente(Mesa mesa) async {
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: _cardBg,
+        title: Text('¿Vaciar mesa?', style: TextStyle(color: _textLight)),
+        content: Text(
+          'Esta acción marcará la mesa como disponible y eliminará todos los productos asociados. Esto NO afectará a los pedidos existentes en el sistema.',
+          style: TextStyle(color: _textLight),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: Text('Vaciar'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmar == true) {
+      try {
+        setState(() {
+          isLoading = true;
+        });
+
+        await _mesaService.vaciarMesa(mesa.id);
+        await _loadMesas();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Mesa ${mesa.nombre} vaciada correctamente'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al vaciar mesa: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        setState(() {
+          isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _sincronizarMesa(Mesa mesa) async {
+    try {
+      setState(() {
+        isLoading = true;
+      });
+
+      await _sincronizadorService.sincronizarMesa(mesa);
+      await _loadMesas(); // Recargar después de sincronizar
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Mesa ${mesa.nombre} sincronizada correctamente'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al sincronizar mesa: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
   Widget _buildMesaCard(Mesa mesa) {
     bool isOcupada = mesa.ocupada;
     Color statusColor = isOcupada ? Colors.red : Colors.green;
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    bool canProcessPayment =
+        userProvider.isAdmin && isOcupada && mesa.total > 0;
 
     return GestureDetector(
       onTap: () {
@@ -115,6 +331,7 @@ class _MesasScreenState extends State<MesasScreen> {
           MaterialPageRoute(builder: (context) => PedidoScreen(mesa: mesa)),
         );
       },
+      onLongPress: userProvider.isAdmin ? () => _mostrarMenuMesa(mesa) : null,
       child: Container(
         decoration: BoxDecoration(
           color: _cardBg,
@@ -128,89 +345,129 @@ class _MesasScreenState extends State<MesasScreen> {
             ),
           ],
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Línea de estado en la parte superior izquierda
-            Row(
-              children: [
-                Container(
-                  width: 4, // Aumentado de 3 a 4
-                  height: 16, // Aumentado de 12 a 16
-                  decoration: BoxDecoration(
-                    color: statusColor,
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(12),
-                      bottomRight: Radius.circular(4),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
+          child: Column(
+            mainAxisSize: MainAxisSize
+                .min, // Prevent overflow by allowing column to shrink
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              // Línea de estado en la parte superior izquierda
+              Row(
+                children: [
+                  Container(
+                    width: 4,
+                    height: 16,
+                    decoration: BoxDecoration(
+                      color: statusColor,
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(12),
+                        bottomRight: Radius.circular(4),
+                      ),
                     ),
                   ),
-                ),
-                Spacer(),
-              ],
-            ),
-
-            Spacer(),
-
-            // Icono de mesa
-            Container(
-              padding: EdgeInsets.all(6), // Aumentado de 4 a 6
-              decoration: BoxDecoration(
-                color: _primary.withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.table_restaurant,
-                color: _primary,
-                size: 16,
-              ), // Aumentado de 12 a 16
-            ),
-
-            SizedBox(height: 6), // Aumentado de 4 a 6
-            // Nombre de la mesa
-            Text(
-              mesa.nombre,
-              style: TextStyle(
-                fontSize: 12, // Aumentado de 10 a 12
-                fontWeight: FontWeight.bold,
-                color: _textLight,
-              ),
-              textAlign: TextAlign.center,
-            ),
-
-            SizedBox(height: 4), // Aumentado de 2 a 4
-            // Estado y total si existe
-            Column(
-              children: [
-                Text(
-                  isOcupada ? 'Ocupada' : 'Disponible',
-                  style: TextStyle(
-                    fontSize: 9, // Aumentado de 7 a 9
-                    color: statusColor,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                if (mesa.total > 0) ...[
-                  SizedBox(height: 2), // Aumentado de 1 a 2
-                  Text(
-                    '\$${mesa.total.toStringAsFixed(0)}',
-                    style: TextStyle(
-                      fontSize: 9, // Aumentado de 7 a 9
-                      color: _primary,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  SizedBox(width: 4),
                 ],
-              ],
-            ),
-
-            Spacer(),
-          ],
+              ),
+              // Icono de mesa
+              Container(
+                padding: EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: _primary.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.table_restaurant, color: _primary, size: 16),
+              ),
+              // Nombre de la mesa
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  mesa.nombre,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: _textLight,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              // Estado y total si existe
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    isOcupada ? 'Ocupada' : 'Disponible',
+                    style: TextStyle(
+                      fontSize: 9,
+                      color: statusColor,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  if (mesa.total > 0) ...[
+                    canProcessPayment
+                        ? GestureDetector(
+                            onTap: () async {
+                              // Solo para admins: procesar pago al tocar el precio
+                              final pedido = await _obtenerPedidoActivoDeMesa(
+                                mesa,
+                              );
+                              if (pedido != null) {
+                                _mostrarDialogoPago(mesa, pedido);
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      'No se encontró un pedido activo para esta mesa',
+                                    ),
+                                  ),
+                                );
+                              }
+                            },
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: _primary.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 4,
+                                vertical: 1,
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    '\$${mesa.total.toStringAsFixed(0)}',
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      color: _primary,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  SizedBox(width: 2),
+                                  Icon(Icons.payment, size: 8, color: _primary),
+                                ],
+                              ),
+                            ),
+                          )
+                        : Text(
+                            '\$${mesa.total.toStringAsFixed(0)}',
+                            style: TextStyle(
+                              fontSize: 9,
+                              color: _primary,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                  ],
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  void _mostrarDialogoCancelacion(Mesa mesa, Pedido pedido) async {
+  void _mostrarDialogoPago(Mesa mesa, Pedido pedido) async {
     String _medioPago = 'efectivo';
     bool _incluyePropina = false;
     TextEditingController _descuentoPorcentajeController =
@@ -466,7 +723,7 @@ class _MesasScreenState extends State<MesasScreen> {
           throw Exception('El ID del pedido es inválido');
         }
 
-        // Usar el nuevo método pagarPedido en lugar de cancelar
+        // Usar el método pagarPedido para marcar el pedido como pagado
         await _pedidoService.pagarPedido(
           pedido.id,
           formaPago: formResult['medioPago'],
@@ -474,12 +731,11 @@ class _MesasScreenState extends State<MesasScreen> {
           pagadoPor: 'Mesa', // TODO: Obtener del usuario logueado
         );
 
-        // Actualizar la mesa
-        mesa.ocupada = false;
-        mesa.total = 0;
-        mesa.productos = [];
-        mesa.pedidoActual = null;
-        await _mesaService.updateMesa(mesa);
+        // Actualizar el objeto pedido con el estado devuelto por el servidor
+        pedido.estado = EstadoPedido.pagado;
+
+        // Actualizar la mesa y sincronizar su estado con el pedido
+        await _sincronizadorService.sincronizarMesaConPedido(mesa, pedido);
 
         // Notificar el cambio para actualizar el dashboard
         NotificationService().notificarCambioPedido(pedido);
@@ -510,7 +766,59 @@ class _MesasScreenState extends State<MesasScreen> {
         backgroundColor: _cardBg,
         title: const Text('Mesas'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.sync),
+            tooltip: 'Sincronizar todas las mesas',
+            onPressed: () async {
+              try {
+                setState(() {
+                  isLoading = true;
+                });
+                await _sincronizadorService.sincronizarEstadoMesasPedidos();
+                await _loadMesas();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Mesas sincronizadas correctamente'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Error al sincronizar mesas: $e'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+                setState(() {
+                  isLoading = false;
+                });
+              }
+            },
+          ),
           IconButton(icon: const Icon(Icons.refresh), onPressed: _loadMesas),
+          // Solo para administradores: botón de restauración completa
+          if (Provider.of<UserProvider>(context, listen: false).isAdmin)
+            PopupMenuButton<String>(
+              tooltip: 'Más opciones',
+              icon: Icon(Icons.more_vert),
+              onSelected: (value) async {
+                if (value == 'forzar_limpieza') {
+                  _mostrarDialogoForzarLimpieza();
+                }
+              },
+              itemBuilder: (context) => [
+                PopupMenuItem(
+                  value: 'forzar_limpieza',
+                  child: Row(
+                    children: [
+                      Icon(Icons.cleaning_services, color: _primary, size: 18),
+                      SizedBox(width: 8),
+                      Text('Restaurar todas las mesas'),
+                    ],
+                  ),
+                ),
+              ],
+            ),
         ],
       ),
       body: Column(
@@ -641,6 +949,7 @@ class _MesasScreenState extends State<MesasScreen> {
               ],
             ),
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Container(
@@ -652,13 +961,19 @@ class _MesasScreenState extends State<MesasScreen> {
                   child: Icon(icono, color: _primary, size: iconSize),
                 ),
                 SizedBox(height: 4),
-                Text(
-                  nombre,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: _textLight,
-                    fontSize: fontSize,
-                    fontWeight: FontWeight.bold,
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 4),
+                    child: Text(
+                      nombre,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: _textLight,
+                        fontSize: fontSize,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ),
                 SizedBox(height: 2),
@@ -792,14 +1107,14 @@ class _MesasScreenState extends State<MesasScreen> {
 
   // Métodos helper para responsive design
   double _getResponsiveCardWidth(double screenWidth) {
-    if (screenWidth < 600) return 120; // Móvil
+    if (screenWidth < 600) return 110; // Móvil
     if (screenWidth < 900) return 140; // Tablet
     return 160; // Desktop
   }
 
   double _getResponsiveCardHeight(double screenWidth) {
-    if (screenWidth < 600) return 90; // Móvil
-    if (screenWidth < 900) return 100; // Tablet
+    if (screenWidth < 600) return 100; // Móvil (increased for content)
+    if (screenWidth < 900) return 110; // Tablet
     return 120; // Desktop
   }
 

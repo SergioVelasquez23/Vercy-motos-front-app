@@ -38,8 +38,14 @@ dependencies:
   http: ^1.4.0
   fl_chart: ^0.63.0
   image_picker: ^1.0.7
+  crypto: ^3.0.3
+  encrypt: ^5.0.3
+  ssl_pinning_plugin: ^2.0.0
+  http_certificate_pinning: ^2.1.1
   cached_network_image: ^3.3.1
   flutter_cache_manager: ^3.3.1
+  provider: ^6.1.1
+  shared_preferences: ^2.2.2
 
 dev_dependencies:
   flutter_test:

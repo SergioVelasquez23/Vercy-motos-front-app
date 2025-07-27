@@ -1,14 +1,21 @@
+import 'endpoints_config.dart';
+
 /// Configuración para facilitar la migración entre servicios antiguos y nuevos
 ///
 /// Para usar los nuevos servicios estandarizados, cambia [useV2Services] a true
 /// Para volver a los servicios antiguos, cambia [useV2Services] a false
 
 class ServiceConfig {
+  // Singleton
+  static final ServiceConfig _instance = ServiceConfig._internal();
+  factory ServiceConfig() => _instance;
+  ServiceConfig._internal();
+
   /// Controla si se usan los servicios V2 (estandarizados) o los antiguos
   static const bool useV2Services = true;
 
-  /// URL base del backend
-  static const String baseUrl = 'http://127.0.0.1:8081/api';
+  /// Obtiene la URL base del backend desde EndpointsConfig
+  String get baseUrl => EndpointsConfig().currentBaseUrl + '/api';
 
   /// Timeout por defecto para peticiones HTTP
   static const Duration defaultTimeout = Duration(seconds: 10);
@@ -18,6 +25,9 @@ class ServiceConfig {
 
   /// Habilitar fallbacks locales cuando no hay conexión
   static const bool enableLocalFallbacks = true;
+
+  /// Obtiene la instancia global de ServiceConfig
+  static ServiceConfig get instance => _instance;
 }
 
 /// Factory para obtener la instancia correcta del servicio según la configuración

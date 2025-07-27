@@ -7,6 +7,7 @@ import '../utils/pedido_helper.dart'; // Añadido import
 import '../services/producto_service.dart';
 import '../models/producto.dart';
 import '../models/item_pedido.dart';
+import '../config/api_config.dart';
 
 class PedidoService {
   static final PedidoService _instance = PedidoService._internal();
@@ -28,7 +29,7 @@ class PedidoService {
     _pedidoPagadoController.close();
   }
 
-  final String baseUrl = 'http://127.0.0.1:8081/api';
+  String get baseUrl => ApiConfig.instance.baseUrl;
   final storage = FlutterSecureStorage();
   final ProductoService _productoService = ProductoService();
 
@@ -88,7 +89,7 @@ class PedidoService {
     try {
       final headers = await _getHeaders();
       final response = await http.get(
-        Uri.parse('$baseUrl/pedidos'),
+        Uri.parse('$baseUrl/api/pedidos'),
         headers: headers,
       );
 
@@ -117,7 +118,9 @@ class PedidoService {
     try {
       final headers = await _getHeaders();
       final response = await http.get(
-        Uri.parse('$baseUrl/pedidos?tipo=${tipo.toString().split('.').last}'),
+        Uri.parse(
+          '$baseUrl/api/pedidos?tipo=${tipo.toString().split('.').last}',
+        ),
         headers: headers,
       );
 
@@ -140,7 +143,7 @@ class PedidoService {
       final headers = await _getHeaders();
       final response = await http.get(
         Uri.parse(
-          '$baseUrl/pedidos?estado=${estado.toString().split('.').last}',
+          '$baseUrl/api/pedidos?estado=${estado.toString().split('.').last}',
         ),
         headers: headers,
       );
@@ -163,7 +166,7 @@ class PedidoService {
     try {
       final headers = await _getHeaders();
       final response = await http.post(
-        Uri.parse('$baseUrl/pedidos'),
+        Uri.parse('$baseUrl/api/pedidos'),
         headers: headers,
         body: json.encode(pedido.toJson()),
       );
@@ -199,7 +202,7 @@ class PedidoService {
       print('📦 Creando pedido con datos: ${json.encode(pedidoJson)}');
 
       final response = await http.post(
-        Uri.parse('$baseUrl/pedidos'),
+        Uri.parse('$baseUrl/api/pedidos'),
         headers: headers,
         body: json.encode(pedidoJson),
       );
@@ -236,7 +239,7 @@ class PedidoService {
     try {
       final headers = await _getHeaders();
       final response = await http.delete(
-        Uri.parse('$baseUrl/pedidos/$id'),
+        Uri.parse('$baseUrl/api/pedidos/$id'),
         headers: headers,
       );
 
@@ -280,7 +283,7 @@ class PedidoService {
         queryParams['busqueda'] = busqueda;
 
       final uri = Uri.parse(
-        '$baseUrl/pedidos/filtrar',
+        '$baseUrl/api/pedidos/filtrar',
       ).replace(queryParameters: queryParams);
       final response = await http.get(uri, headers: headers);
 
@@ -300,7 +303,7 @@ class PedidoService {
     try {
       final headers = await _getHeaders();
       final response = await http.get(
-        Uri.parse('$baseUrl/pedidos/estadisticas'),
+        Uri.parse('$baseUrl/api/pedidos/estadisticas'),
         headers: headers,
       );
 
@@ -332,7 +335,7 @@ class PedidoService {
         queryParams['fechaFin'] = fechaFin.toIso8601String();
 
       final uri = Uri.parse(
-        '$baseUrl/pedidos/total-ventas',
+        '$baseUrl/api/pedidos/total-ventas',
       ).replace(queryParameters: queryParams);
 
       print(
@@ -402,7 +405,7 @@ class PedidoService {
     try {
       final headers = await _getHeaders();
       final response = await http.get(
-        Uri.parse('$baseUrl/pedidos/mesa/$nombreMesa'),
+        Uri.parse('$baseUrl/api/pedidos/mesa/$nombreMesa'),
         headers: headers,
       );
 
@@ -469,7 +472,7 @@ class PedidoService {
       final response = await http
           .put(
             Uri.parse(
-              '$baseUrl/pedidos/$pedidoId/estado/${nuevoEstado.toString().split('.').last}',
+              '$baseUrl/api/pedidos/$pedidoId/estado/${nuevoEstado.toString().split('.').last}',
             ),
             headers: headers,
           )
@@ -551,7 +554,7 @@ class PedidoService {
   }
 
   Future<void> cancelarPedido(String pedidoId, String motivo) async {
-    const url = 'http://localhost:3000/api/pedidos/cancelar';
+    final url = '$baseUrl/api/pedidos/cancelar';
     final secureStorage = FlutterSecureStorage();
     final token = await secureStorage.read(key: 'jwt_token');
 
@@ -594,7 +597,7 @@ class PedidoService {
       };
 
       final response = await http.put(
-        Uri.parse('$baseUrl/pedidos/$pedidoId/pagar'),
+        Uri.parse('$baseUrl/api/pedidos/$pedidoId/pagar'),
         headers: headers,
         body: json.encode(pagarData),
       );

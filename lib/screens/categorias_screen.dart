@@ -167,26 +167,33 @@ class _CategoriasScreenState extends State<CategoriasScreen> {
       return Icon(Icons.category, color: primary, size: 24);
     }
 
-    // Si es una URL web
-    if (imagenUrl.startsWith('http')) {
+    // Si es una URL web o una URL de datos
+    if (imagenUrl.startsWith('http') || imagenUrl.startsWith('data:')) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(8),
         child: Image.network(
           imagenUrl,
           fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) =>
-              Icon(Icons.category, color: primary, size: 24),
+          errorBuilder: (context, error, stackTrace) {
+            print('Error cargando imagen: $error, URL: $imagenUrl');
+            return Icon(Icons.category, color: primary, size: 24);
+          },
         ),
       );
     }
 
     // Si es un archivo local
     if (imagenUrl.startsWith('/')) {
-      // En Flutter Web, no podemos usar Image.file
+      // En Flutter Web, intentamos usar Image.network
       if (kIsWeb) {
         return ClipRRect(
           borderRadius: BorderRadius.circular(8),
-          child: Icon(Icons.category, color: primary, size: 24),
+          child: Image.network(
+            imagenUrl,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) =>
+                Icon(Icons.category, color: primary, size: 24),
+          ),
         );
       } else {
         return ClipRRect(
@@ -322,30 +329,39 @@ class _CategoriasScreenState extends State<CategoriasScreen> {
                             ? ClipRRect(
                                 borderRadius: BorderRadius.circular(10),
                                 child: kIsWeb
-                                    ? Container(
-                                        width: double.infinity,
-                                        height: double.infinity,
-                                        color: primary.withOpacity(0.1),
-                                        child: Column(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          children: [
-                                            Icon(
-                                              Icons.image_outlined,
-                                              color: primary,
-                                              size: 30,
+                                    ? Image.network(
+                                        tempImagePath!,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (context, error, stackTrace) {
+                                          print(
+                                            'Error mostrando imagen: $error, URL: ${tempImagePath!.length > 50 ? tempImagePath!.substring(0, 50) + '...' : tempImagePath}',
+                                          );
+                                          return Container(
+                                            width: double.infinity,
+                                            height: double.infinity,
+                                            color: primary.withOpacity(0.1),
+                                            child: Column(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Icon(
+                                                  Icons.broken_image_outlined,
+                                                  color: primary,
+                                                  size: 30,
+                                                ),
+                                                SizedBox(height: 4),
+                                                Text(
+                                                  'Error al cargar\nla imagen',
+                                                  style: TextStyle(
+                                                    color: primary,
+                                                    fontSize: 10,
+                                                  ),
+                                                  textAlign: TextAlign.center,
+                                                ),
+                                              ],
                                             ),
-                                            SizedBox(height: 4),
-                                            Text(
-                                              'Imagen\nseleccionada',
-                                              style: TextStyle(
-                                                color: primary,
-                                                fontSize: 10,
-                                              ),
-                                              textAlign: TextAlign.center,
-                                            ),
-                                          ],
-                                        ),
+                                          );
+                                        },
                                       )
                                     : Image.file(
                                         File(tempImagePath!),
@@ -413,7 +429,16 @@ class _CategoriasScreenState extends State<CategoriasScreen> {
                     // Obtener imagen final
                     String? finalImageUrl = selectedImageUrl;
                     if (tempImagePath != null) {
-                      finalImageUrl = tempImagePath;
+                      // Verificar si es una URL de datos (base64)
+                      if (tempImagePath!.startsWith('data:')) {
+                        finalImageUrl = tempImagePath;
+                        print(
+                          'Usando imagen base64, longitud: ${tempImagePath!.length}',
+                        );
+                      } else {
+                        finalImageUrl = tempImagePath;
+                        print('Usando ruta de imagen: $tempImagePath');
+                      }
                     }
 
                     try {

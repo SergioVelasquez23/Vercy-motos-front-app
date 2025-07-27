@@ -2,15 +2,24 @@ import 'dart:convert';
 
 class JwtUtils {
   static Map<String, dynamic> decodeToken(String token) {
-    final parts = token.split('.');
-    if (parts.length != 3) {
-      throw Exception('Invalid JWT');
-    }
+    try {
+      final parts = token.split('.');
+      if (parts.length != 3) {
+        throw Exception('Invalid JWT - Partes: ${parts.length}');
+      }
 
-    final payload = utf8.decode(
-      base64Url.decode(base64Url.normalize(parts[1])),
-    );
-    return jsonDecode(payload);
+      final normalized = base64Url.normalize(parts[1]);
+      final decoded = base64Url.decode(normalized);
+      final payload = utf8.decode(decoded);
+      final decodedPayload = jsonDecode(payload);
+
+      print('🔑 JWT decodificado correctamente');
+      return decodedPayload;
+    } catch (e) {
+      print('❌ Error decodificando JWT: $e');
+      print('🔖 Token: ${token.substring(0, 20)}...');
+      rethrow;
+    }
   }
 
   static bool isTokenExpired(String token) {
@@ -22,5 +31,36 @@ class JwtUtils {
 
     final expirationDate = DateTime.fromMillisecondsSinceEpoch(exp * 1000);
     return DateTime.now().isAfter(expirationDate);
+  }
+
+  static List<String> getRoles(String token) {
+    try {
+      final payload = decodeToken(token);
+      final roles = payload['roles'];
+
+      if (roles == null) {
+        return [];
+      }
+
+      return List<String>.from(roles);
+    } catch (e) {
+      print('Error getting roles from token: $e');
+      return [];
+    }
+  }
+
+  static bool hasRole(String token, String role) {
+    final roles = getRoles(token);
+    return roles.contains(role);
+  }
+
+  static bool hasAnyRole(String token, List<String> requiredRoles) {
+    final roles = getRoles(token);
+    for (var role in requiredRoles) {
+      if (roles.contains(role)) {
+        return true;
+      }
+    }
+    return false;
   }
 }

@@ -2,22 +2,76 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../models/api_response.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+// ignore: uri_does_not_exist
+import 'dart:html'
+    if (dart.library.io) 'package:serch_restapp/utils/html_stub.dart'
+    as html;
+import '../config/api_config.dart';
+import '../services/secure_http_client.dart';
+import '../utils/security_utils.dart';
 
 class BaseApiService {
   static final BaseApiService _instance = BaseApiService._internal();
   factory BaseApiService() => _instance;
-  BaseApiService._internal();
+  BaseApiService._internal() {
+    _initializeSecurityUtils();
+  }
 
-  final String baseUrl = 'http://127.0.0.1:8081/api';
+  // Método para forzar una reconexión
+  void resetConnection() {
+    _httpClient.close();
+    _httpClient = SecureHttpClient(
+      checkCertificate: ApiConfig.enableCertificatePinning,
+    );
+  }
+
+  String get baseUrl => ApiConfig.instance.baseUrl;
   final storage = FlutterSecureStorage();
+  // Using a non-final variable to allow reset
+  http.Client _httpClient = SecureHttpClient(
+    checkCertificate: ApiConfig.enableCertificatePinning,
+  );
 
-  // Headers con autenticación
+  // Inicializar las utilidades de seguridad
+  Future<void> _initializeSecurityUtils() async {
+    await SecurityUtils.initializeSecurity();
+  }
+
+  // Headers con autenticación y seguridad mejorada
   Future<Map<String, String>> _getHeaders() async {
-    final token = await storage.read(key: 'jwt_token');
-    return {
+    String? token;
+
+    // Try to get token from storage based on platform
+    try {
+      if (kIsWeb) {
+        // Para web, usamos localStorage
+        token = html.window.localStorage['jwt_token'];
+      } else {
+        // Para móvil, usamos FlutterSecureStorage
+        token = await storage.read(key: 'jwt_token');
+      }
+    } catch (e) {
+      // Error silencioso al leer token
+    }
+
+    // Obtener cabeceras de seguridad base
+    final baseHeaders = {
       'Content-Type': 'application/json',
       if (token != null) 'Authorization': 'Bearer $token',
     };
+
+    // Añadir cabeceras de seguridad adicionales
+    final secureHeaders = ApiConfig.instance.getSecureHeaders(token: token);
+    baseHeaders.addAll(secureHeaders);
+
+    // Añadir cabeceras de seguridad HTTP
+    baseHeaders.addAll({
+      'X-Content-Type-Options': 'nosniff',
+      'X-XSS-Protection': '1; mode=block',
+    });
+
+    return baseHeaders;
   }
 
   // Método GET genérico
@@ -28,8 +82,11 @@ class BaseApiService {
   }) async {
     try {
       final headers = await _getHeaders();
-      final response = await http
-          .get(Uri.parse('$baseUrl$endpoint'), headers: headers)
+      final url = '$baseUrl/api$endpoint';
+
+      // Usar cliente seguro
+      final response = await _httpClient
+          .get(Uri.parse(url), headers: headers)
           .timeout(timeout);
 
       return _handleResponse<T>(response, fromJson);
@@ -40,9 +97,8 @@ class BaseApiService {
         timestamp: DateTime.now().toIso8601String(),
       );
     }
-  }
+  } // Método GET para listas
 
-  // Método GET para listas
   Future<ApiResponse<List<T>>> getList<T>(
     String endpoint,
     T Function(Map<String, dynamic>) fromJson, {
@@ -50,8 +106,8 @@ class BaseApiService {
   }) async {
     try {
       final headers = await _getHeaders();
-      final response = await http
-          .get(Uri.parse('$baseUrl$endpoint'), headers: headers)
+      final response = await _httpClient
+          .get(Uri.parse('$baseUrl/api$endpoint'), headers: headers)
           .timeout(timeout);
 
       if (response.statusCode == 200) {
@@ -79,14 +135,22 @@ class BaseApiService {
     Map<String, dynamic> data,
     T Function(dynamic)? fromJson, {
     Duration timeout = const Duration(seconds: 10),
+    bool encryptSensitiveData = false,
   }) async {
     try {
       final headers = await _getHeaders();
-      final response = await http
+
+      // Procesar datos sensibles si es necesario
+      Map<String, dynamic> processedData = data;
+      if (encryptSensitiveData) {
+        processedData = await _processSensitiveData(data);
+      }
+
+      final response = await _httpClient
           .post(
-            Uri.parse('$baseUrl$endpoint'),
+            Uri.parse('$baseUrl/api$endpoint'),
             headers: headers,
-            body: json.encode(data),
+            body: json.encode(processedData),
           )
           .timeout(timeout);
 
@@ -100,20 +164,45 @@ class BaseApiService {
     }
   }
 
+  // Procesa datos sensibles para encriptarlos antes de enviar
+  Future<Map<String, dynamic>> _processSensitiveData(
+    Map<String, dynamic> data,
+  ) async {
+    final result = Map<String, dynamic>.from(data);
+
+    // Encriptar campos sensibles conocidos
+    if (result.containsKey('password')) {
+      result['password'] = await SecurityUtils.encryptData(result['password']);
+    }
+
+    // Añadir marcador de tiempo para prevenir ataques de repetición
+    result['_timestamp'] = DateTime.now().millisecondsSinceEpoch.toString();
+
+    return result;
+  }
+
   // Método PUT genérico
   Future<ApiResponse<T>> put<T>(
     String endpoint,
     Map<String, dynamic> data,
     T Function(dynamic)? fromJson, {
     Duration timeout = const Duration(seconds: 10),
+    bool encryptSensitiveData = false,
   }) async {
     try {
       final headers = await _getHeaders();
-      final response = await http
+
+      // Procesar datos sensibles si es necesario
+      Map<String, dynamic> processedData = data;
+      if (encryptSensitiveData) {
+        processedData = await _processSensitiveData(data);
+      }
+
+      final response = await _httpClient
           .put(
-            Uri.parse('$baseUrl$endpoint'),
+            Uri.parse('$baseUrl/api$endpoint'),
             headers: headers,
-            body: json.encode(data),
+            body: json.encode(processedData),
           )
           .timeout(timeout);
 
@@ -134,8 +223,13 @@ class BaseApiService {
   }) async {
     try {
       final headers = await _getHeaders();
-      final response = await http
-          .delete(Uri.parse('$baseUrl$endpoint'), headers: headers)
+
+      // Agregar encabezados de seguridad adicionales
+      final securityHeaders = ApiConfig.instance.getSecurityHeaders();
+      headers.addAll(securityHeaders);
+
+      final response = await _httpClient
+          .delete(Uri.parse('$baseUrl/api$endpoint'), headers: headers)
           .timeout(timeout);
 
       if (response.statusCode == 200) {

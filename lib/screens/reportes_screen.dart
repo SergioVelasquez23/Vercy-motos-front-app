@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import '../services/reportes_service.dart';
 
 class ReportesScreen extends StatefulWidget {
   final int initialReportIndex;
@@ -30,7 +31,12 @@ class _ReportesScreenState extends State<ReportesScreen>
   String? _selectedCliente;
   String? _selectedFormaPago;
 
-  // Datos simulados para los gráficos
+  // Estados de carga
+  bool _isLoading = false;
+  String? _errorMessage;
+  final ReportesService _reportesService = ReportesService();
+
+  // Datos para los gráficos (ya no simulados)
   List<Map<String, dynamic>> _ventasPorDia = [];
   List<Map<String, dynamic>> _ventasTopProductos = [];
   List<Map<String, dynamic>> _ventasCategoria = [];
@@ -43,52 +49,221 @@ class _ReportesScreenState extends State<ReportesScreen>
       vsync: this,
       initialIndex: widget.initialReportIndex,
     );
-    _generarDatosSimulados();
+
+    // Agregar listener para cargar datos cuando cambia la pestaña
+    _tabController.addListener(_handleTabChange);
+
+    // Cargar datos iniciales
+    _cargarDatos();
+  }
+
+  void _handleTabChange() {
+    // Solo cargar datos cuando el tab se establece, no cuando se está deslizando
+    if (_tabController.indexIsChanging) {
+      _cargarDatos();
+    }
   }
 
   @override
   void dispose() {
+    _tabController.removeListener(_handleTabChange);
     _tabController.dispose();
     super.dispose();
   }
 
-  void _generarDatosSimulados() {
-    // Generar datos de ventas por día para los últimos 7 días
-    final now = DateTime.now();
-    _ventasPorDia = List.generate(7, (index) {
-      final date = now.subtract(Duration(days: 6 - index));
-      // Valor entre 500,000 y 1,500,000
-      final ventasDia =
-          500000 +
-          (1000000 * (index / 10 + 0.5) * (index % 3 == 0 ? 1.2 : 0.9));
-      return {'fecha': date, 'ventas': ventasDia.round()};
+  Future<void> _cargarDatos() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
     });
 
-    // Top productos más vendidos
-    _ventasTopProductos = [
-      {
-        'nombre': 'Ejecutivo (Res a la plancha)',
-        'cantidad': 102,
-        'total': 1938000,
-      },
-      {'nombre': 'Asado Mixto', 'cantidad': 87, 'total': 2958000},
-      {'nombre': 'Coca Cola', 'cantidad': 236, 'total': 1062000},
-      {'nombre': 'Pechuga a la plancha', 'cantidad': 76, 'total': 1444000},
-      {'nombre': 'Patacón', 'cantidad': 114, 'total': 342000},
-    ];
+    try {
+      await Future.wait([
+        _cargarVentasPorDia(),
+        _cargarTopProductos(),
+        _cargarVentasPorCategoria(),
+      ]);
 
-    // Ventas por categoría
-    _ventasCategoria = [
-      {'categoria': 'Platos Fuertes', 'ventas': 5320000, 'porcentaje': 42},
-      {'categoria': 'Bebidas', 'ventas': 2180000, 'porcentaje': 17},
-      {'categoria': 'Entradas', 'ventas': 1845000, 'porcentaje': 15},
-      {'categoria': 'Postres', 'ventas': 985000, 'porcentaje': 8},
-      {'categoria': 'Otros', 'ventas': 2270000, 'porcentaje': 18},
-    ];
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('❌ Error cargando datos de reportes: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'Error al cargar datos: ${e.toString()}';
+        });
+      }
+    }
   }
 
-  String _formatearNumero(int valor) {
-    return '\$${valor.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}';
+  Future<void> _cargarVentasPorDia() async {
+    try {
+      // Determinar cuántos días cargar según el período seleccionado
+      int diasParaCargar = 7; // Por defecto, últimos 7 días
+
+      if (_periodoSeleccionado == 'Hoy') {
+        diasParaCargar = 1;
+      } else if (_periodoSeleccionado == 'Ayer') {
+        diasParaCargar = 1;
+      } else if (_periodoSeleccionado == 'Esta semana') {
+        // Calcular días desde el inicio de la semana
+        final hoy = DateTime.now();
+        diasParaCargar = hoy.weekday;
+      } else if (_periodoSeleccionado == 'Este mes') {
+        // Calcular días desde el inicio del mes
+        final hoy = DateTime.now();
+        diasParaCargar = hoy.day;
+      }
+
+      final ventas = await _reportesService.getVentasPorDia(diasParaCargar);
+
+      // Asegurarse de que los datos tienen el formato esperado
+      final ventasFormateadas = ventas.map((item) {
+        // Asegurar que siempre tenemos un campo 'ventas' aunque el backend envíe 'total'
+        final venta = {...item};
+        if (venta['total'] != null && venta['ventas'] == null) {
+          venta['ventas'] = venta['total'];
+        }
+        return venta;
+      }).toList();
+
+      if (mounted) {
+        setState(() {
+          _ventasPorDia = ventasFormateadas;
+        });
+      }
+    } catch (e) {
+      print('❌ Error cargando ventas por día: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> _cargarTopProductos() async {
+    try {
+      final productos = await _reportesService.getTopProductos(5);
+
+      if (mounted) {
+        setState(() {
+          _ventasTopProductos = productos;
+        });
+      }
+    } catch (e) {
+      print('❌ Error cargando top productos: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> _cargarVentasPorCategoria() async {
+    try {
+      // Intentar obtener datos del endpoint
+      try {
+        // Llamar al API para obtener ventas por categoría
+        final categorias = await _reportesService.getVentasPorCategoria();
+
+        if (mounted) {
+          setState(() {
+            _ventasCategoria = categorias;
+          });
+        }
+        return;
+      } catch (e) {
+        print('⚠️ Error al obtener ventas por categoría: $e');
+        print('⚠️ Usando datos de fallback temporales');
+      }
+
+      // Si el endpoint no está disponible, usamos datos temporales
+      final categorias = [
+        {'categoria': 'Platos Fuertes', 'ventas': 5320000, 'porcentaje': 42},
+        {'categoria': 'Bebidas', 'ventas': 2180000, 'porcentaje': 17},
+        {'categoria': 'Entradas', 'ventas': 1845000, 'porcentaje': 15},
+        {'categoria': 'Postres', 'ventas': 985000, 'porcentaje': 8},
+        {'categoria': 'Otros', 'ventas': 2270000, 'porcentaje': 18},
+      ];
+
+      if (mounted) {
+        setState(() {
+          _ventasCategoria = categorias;
+        });
+      }
+    } catch (e) {
+      print('❌ Error cargando ventas por categoría: $e');
+      rethrow;
+    }
+  }
+
+  String _formatearNumero(dynamic valor) {
+    if (valor == null) return '\$0';
+
+    // Asegurarse de que el valor sea un entero
+    int valorInt;
+    if (valor is int) {
+      valorInt = valor;
+    } else if (valor is double) {
+      valorInt = valor.round();
+    } else {
+      try {
+        valorInt = int.parse(valor.toString());
+      } catch (e) {
+        print('❌ Error convirtiendo valor a entero: $valor');
+        return '\$0';
+      }
+    }
+
+    return '\$${valorInt.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}';
+  }
+
+  // Formatear la fecha
+  String _formatFecha(dynamic fecha) {
+    if (fecha == null) return 'N/A';
+
+    try {
+      if (fecha is DateTime) {
+        return '${fecha.day}/${fecha.month}';
+      } else if (fecha is String) {
+        // Intentar parsear la fecha en formato ISO (yyyy-MM-dd)
+        if (fecha.contains('T')) {
+          // Formato ISO completo con hora
+          final dt = DateTime.tryParse(fecha);
+          if (dt != null) {
+            return '${dt.day}/${dt.month}';
+          }
+        }
+
+        final parts = fecha.split('-');
+        if (parts.length >= 3) {
+          // Mostrar día/mes
+          return '${int.parse(parts[2])}/${int.parse(parts[1])}';
+        }
+        return fecha;
+      }
+      return 'N/A';
+    } catch (e) {
+      print('❌ Error formateando fecha: $fecha');
+      return 'N/A';
+    }
+  }
+
+  // Extraer el valor de ventas de un mapa
+  double _getVentasValue(Map<String, dynamic> item) {
+    final ventasValue = item['ventas'] ?? item['total'] ?? 0;
+
+    if (ventasValue is int) {
+      return ventasValue.toDouble();
+    }
+    if (ventasValue is double) {
+      return ventasValue;
+    }
+
+    try {
+      return double.parse(ventasValue.toString());
+    } catch (e) {
+      print('❌ Error convirtiendo ventas a double: $ventasValue');
+      return 0.0;
+    }
   }
 
   @override
@@ -353,6 +528,8 @@ class _ReportesScreenState extends State<ReportesScreen>
                               break;
                           }
                         });
+                        // Recargar datos con el nuevo período seleccionado
+                        _cargarDatos();
                       }
                     },
                     items:
@@ -678,19 +855,6 @@ class _ReportesScreenState extends State<ReportesScreen>
   }
 
   Widget _buildDashboard() {
-    final totalVentas = _ventasPorDia.fold<int>(
-      0,
-      (sum, item) => sum + (item['ventas'] as int),
-    );
-
-    // Calcular el promedio diario
-    final promedioDiario = totalVentas / _ventasPorDia.length;
-
-    // Identificar el mejor día
-    final mejorDia = _ventasPorDia.reduce(
-      (a, b) => a['ventas'] > b['ventas'] ? a : b,
-    );
-
     return SingleChildScrollView(
       padding: EdgeInsets.all(16),
       child: Column(
@@ -700,119 +864,227 @@ class _ReportesScreenState extends State<ReportesScreen>
           SizedBox(height: 20),
 
           // Tarjetas de resumen
-          Wrap(
-            spacing: 16,
-            runSpacing: 16,
-            children: [
-              _buildSummaryCard(
-                title: 'Ventas del período',
-                value: _formatearNumero(totalVentas),
-                icon: Icons.attach_money,
-              ),
-              _buildSummaryCard(
-                title: 'Promedio diario',
-                value: _formatearNumero(promedioDiario.round()),
-                icon: Icons.show_chart,
-              ),
-              _buildSummaryCard(
-                title: 'Mejor día',
-                value: '${mejorDia['fecha'].day}/${mejorDia['fecha'].month}',
-                subtitle: _formatearNumero(mejorDia['ventas']),
-                icon: Icons.calendar_today,
-              ),
-              _buildSummaryCard(
-                title: 'Total pedidos',
-                value: '356',
-                icon: Icons.receipt_long,
-              ),
-            ],
-          ),
-          SizedBox(height: 20),
-
-          // Gráfico de ventas diarias
-          Card(
-            color: cardBg,
-            elevation: 4,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Padding(
-              padding: EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Ventas Diarias',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: textDark,
-                    ),
+          _isLoading
+              ? Center(child: CircularProgressIndicator(color: primary))
+              : _errorMessage != null
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.error_outline, color: Colors.red, size: 48),
+                      SizedBox(height: 16),
+                      Text(
+                        _errorMessage!,
+                        style: TextStyle(color: textDark),
+                        textAlign: TextAlign.center,
+                      ),
+                      SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: _cargarDatos,
+                        child: Text('Reintentar'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: primary,
+                        ),
+                      ),
+                    ],
                   ),
-                  SizedBox(height: 16),
-                  Container(height: 250, child: _buildBarChartVentas()),
-                ],
-              ),
-            ),
-          ),
-          SizedBox(height: 20),
-
-          // Productos más vendidos
-          Card(
-            color: cardBg,
-            elevation: 4,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Padding(
-              padding: EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Productos Más Vendidos',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: textDark,
-                    ),
+                )
+              : _ventasPorDia.isEmpty
+              ? Center(
+                  child: Text(
+                    'No hay datos disponibles para el período seleccionado',
+                    style: TextStyle(color: textDark),
                   ),
-                  SizedBox(height: 16),
-                  _buildTablaProductosMasVendidos(),
-                ],
-              ),
-            ),
-          ),
+                )
+              : _buildDashboardContent(),
           SizedBox(height: 20),
-
-          // Ventas por categoría
-          Card(
-            color: cardBg,
-            elevation: 4,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Padding(
-              padding: EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Ventas por Categoría',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: textDark,
-                    ),
-                  ),
-                  SizedBox(height: 16),
-                  Container(height: 300, child: _buildPieChartCategorias()),
-                ],
-              ),
-            ),
-          ),
         ],
       ),
+    );
+  }
+
+  Widget _buildDashboardContent() {
+    final totalVentas = _ventasPorDia.fold<int>(0, (sum, item) {
+      final ventas = item['total'] ?? item['ventas'] ?? 0;
+      if (ventas is int) return sum + ventas;
+      if (ventas is double) return sum + ventas.round();
+      try {
+        return sum + int.parse(ventas.toString());
+      } catch (e) {
+        print('❌ Error sumando ventas: $ventas');
+        return sum;
+      }
+    });
+
+    // Calcular el promedio diario
+    final promedioDiario = _ventasPorDia.isNotEmpty
+        ? totalVentas / _ventasPorDia.length
+        : 0;
+
+    // Identificar el mejor día
+    final mejorDia = _ventasPorDia.isNotEmpty
+        ? _ventasPorDia.reduce((a, b) {
+            final ventasA = a['ventas'] ?? a['total'] ?? 0;
+            final ventasB = b['ventas'] ?? b['total'] ?? 0;
+            return ventasA > ventasB ? a : b;
+          })
+        : null;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Tarjetas de resumen
+        Wrap(
+          spacing: 16,
+          runSpacing: 16,
+          children: [
+            _buildSummaryCard(
+              title: 'Ventas del período',
+              value: _formatearNumero(totalVentas),
+              icon: Icons.attach_money,
+            ),
+            _buildSummaryCard(
+              title: 'Promedio diario',
+              value: _formatearNumero(promedioDiario.round()),
+              icon: Icons.show_chart,
+            ),
+            mejorDia != null
+                ? _buildSummaryCard(
+                    title: 'Mejor día',
+                    value: _formatFecha(mejorDia['fecha']),
+                    subtitle: _formatearNumero(
+                      mejorDia['ventas'] ?? mejorDia['total'] ?? 0,
+                    ),
+                    icon: Icons.calendar_today,
+                  )
+                : _buildSummaryCard(
+                    title: 'Mejor día',
+                    value: 'No disponible',
+                    icon: Icons.calendar_today,
+                  ),
+            _buildSummaryCard(
+              title: 'Total pedidos',
+              value:
+                  'Cargando...', // Este valor se debería obtener de un endpoint
+              icon: Icons.receipt_long,
+            ),
+          ],
+        ),
+        SizedBox(height: 20),
+
+        // Gráfico de ventas diarias
+        Card(
+          color: cardBg,
+          elevation: 4,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Padding(
+            padding: EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Ventas Diarias',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: textDark,
+                  ),
+                ),
+                SizedBox(height: 16),
+                Container(
+                  height: 250,
+                  child: _ventasPorDia.isEmpty
+                      ? Center(
+                          child: Text(
+                            'No hay datos de ventas disponibles',
+                            style: TextStyle(color: textLight),
+                          ),
+                        )
+                      : _buildBarChartVentas(),
+                ),
+              ],
+            ),
+          ),
+        ),
+        SizedBox(height: 20),
+
+        // Productos más vendidos
+        Card(
+          color: cardBg,
+          elevation: 4,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Padding(
+            padding: EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Productos Más Vendidos',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: textDark,
+                  ),
+                ),
+                SizedBox(height: 16),
+                _ventasTopProductos.isEmpty
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(20.0),
+                          child: Text(
+                            'No hay datos de productos disponibles',
+                            style: TextStyle(color: textLight),
+                          ),
+                        ),
+                      )
+                    : _buildTablaProductosMasVendidos(),
+              ],
+            ),
+          ),
+        ),
+        SizedBox(height: 20),
+
+        // Ventas por categoría
+        Card(
+          color: cardBg,
+          elevation: 4,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Padding(
+            padding: EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Ventas por Categoría',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: textDark,
+                  ),
+                ),
+                SizedBox(height: 16),
+                Container(
+                  height: 300,
+                  child: _ventasCategoria.isEmpty
+                      ? Center(
+                          child: Text(
+                            'No hay datos de categorías disponibles',
+                            style: TextStyle(color: textLight),
+                          ),
+                        )
+                      : _buildPieChartCategorias(),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -878,16 +1150,44 @@ class _ReportesScreenState extends State<ReportesScreen>
   }
 
   Widget _buildBarChartVentas() {
+    if (_ventasPorDia.isEmpty) {
+      return Center(
+        child: Text(
+          'No hay datos para mostrar',
+          style: TextStyle(color: textLight),
+        ),
+      );
+    }
+
+    // Encontrar el valor máximo para escalar el gráfico correctamente
+    double maxVenta = 0;
+    for (final dia in _ventasPorDia) {
+      // Usamos el método _getVentasValue para mantener consistencia
+      final venta = _getVentasValue(dia);
+      if (venta > maxVenta) {
+        maxVenta = venta;
+      }
+    }
+
+    // Calcular un maxY redondeado para que el gráfico se vea bien
+    // Redondear a la siguiente unidad de millón
+    double maxY = (maxVenta / 1000000).ceil() * 1000000;
+    if (maxY < 1000000) maxY = 1000000; // Mínimo 1M para que se vea bien
+
     return BarChart(
       BarChartData(
         alignment: BarChartAlignment.spaceAround,
-        maxY: 2000000,
+        maxY: maxY,
         barTouchData: BarTouchData(
           enabled: true,
           touchTooltipData: BarTouchTooltipData(
             tooltipBgColor: cardBg,
             tooltipBorder: BorderSide(color: primary.withOpacity(0.2)),
             getTooltipItem: (group, groupIndex, rod, rodIndex) {
+              if (group.x < 0 || group.x >= _ventasPorDia.length) {
+                return null;
+              }
+
               String formattedValue = _formatearNumero(rod.toY.round());
               return BarTooltipItem(
                 formattedValue,
@@ -906,8 +1206,9 @@ class _ReportesScreenState extends State<ReportesScreen>
                   return SizedBox();
                 }
 
-                final dia = _ventasPorDia[value.toInt()]['fecha'] as DateTime;
-                final String texto = '${dia.day}/${dia.month}';
+                final dia = _ventasPorDia[value.toInt()]['fecha'];
+                // Usar el método _formatFecha para manejar todos los casos posibles
+                final String texto = _formatFecha(dia);
 
                 return Padding(
                   padding: const EdgeInsets.only(top: 8.0),
@@ -924,22 +1225,38 @@ class _ReportesScreenState extends State<ReportesScreen>
             sideTitles: SideTitles(
               showTitles: true,
               getTitlesWidget: (value, meta) {
-                String text = '';
+                // Escalar valores según maxY
                 if (value == 0) {
-                  text = '0';
-                } else if (value == 500000) {
-                  text = '500K';
-                } else if (value == 1000000) {
-                  text = '1M';
-                } else if (value == 1500000) {
-                  text = '1.5M';
-                } else if (value == 2000000) {
-                  text = '2M';
+                  return Text(
+                    '0',
+                    style: TextStyle(color: textLight, fontSize: 10),
+                  );
                 }
-                return Text(
-                  text,
-                  style: TextStyle(color: textLight, fontSize: 10),
-                );
+
+                // Dividir el eje en 4 partes
+                final interval = maxY / 4;
+                if (value == interval) {
+                  return Text(
+                    '${(value / 1000).toInt()}K',
+                    style: TextStyle(color: textLight, fontSize: 10),
+                  );
+                } else if (value == interval * 2) {
+                  return Text(
+                    '${(value / 1000).toInt()}K',
+                    style: TextStyle(color: textLight, fontSize: 10),
+                  );
+                } else if (value == interval * 3) {
+                  return Text(
+                    '${(value / 1000).toInt()}K',
+                    style: TextStyle(color: textLight, fontSize: 10),
+                  );
+                } else if (value == maxY) {
+                  return Text(
+                    '${(value / 1000000).toInt()}M',
+                    style: TextStyle(color: textLight, fontSize: 10),
+                  );
+                }
+                return SizedBox();
               },
               reservedSize: 35,
             ),
@@ -950,7 +1267,7 @@ class _ReportesScreenState extends State<ReportesScreen>
         borderData: FlBorderData(show: false),
         gridData: FlGridData(
           show: true,
-          horizontalInterval: 500000,
+          horizontalInterval: maxY / 4, // 4 líneas horizontales
           getDrawingHorizontalLine: (value) {
             return FlLine(
               color: Colors.grey.withOpacity(0.2),
@@ -965,13 +1282,13 @@ class _ReportesScreenState extends State<ReportesScreen>
             x: index,
             barRods: [
               BarChartRodData(
-                toY: _ventasPorDia[index]['ventas'].toDouble(),
+                toY: _getVentasValue(_ventasPorDia[index]),
                 color: primary,
                 width: 20,
                 borderRadius: BorderRadius.vertical(top: Radius.circular(6)),
                 backDrawRodData: BackgroundBarChartRodData(
                   show: true,
-                  toY: 2000000,
+                  toY: maxY,
                   color: Colors.grey.withOpacity(0.1),
                 ),
               ),
@@ -983,6 +1300,15 @@ class _ReportesScreenState extends State<ReportesScreen>
   }
 
   Widget _buildTablaProductosMasVendidos() {
+    if (_ventasTopProductos.isEmpty) {
+      return Center(
+        child: Text(
+          'No hay datos de productos disponibles',
+          style: TextStyle(color: textLight),
+        ),
+      );
+    }
+
     return Container(
       decoration: BoxDecoration(
         border: Border.all(color: Colors.grey.shade800),
@@ -1021,17 +1347,20 @@ class _ReportesScreenState extends State<ReportesScreen>
             return DataRow(
               cells: [
                 DataCell(
-                  Text(producto['nombre'], style: TextStyle(color: textDark)),
-                ),
-                DataCell(
                   Text(
-                    producto['cantidad'].toString(),
+                    producto['nombre'] ?? 'Sin nombre',
                     style: TextStyle(color: textDark),
                   ),
                 ),
                 DataCell(
                   Text(
-                    _formatearNumero(producto['total']),
+                    (producto['cantidad'] ?? 0).toString(),
+                    style: TextStyle(color: textDark),
+                  ),
+                ),
+                DataCell(
+                  Text(
+                    _formatearNumero(producto['total'] ?? 0),
                     style: TextStyle(color: textDark),
                   ),
                 ),
@@ -1044,6 +1373,15 @@ class _ReportesScreenState extends State<ReportesScreen>
   }
 
   Widget _buildPieChartCategorias() {
+    if (_ventasCategoria.isEmpty) {
+      return Center(
+        child: Text(
+          'No hay datos de categorías disponibles',
+          style: TextStyle(color: textLight),
+        ),
+      );
+    }
+
     return Row(
       children: [
         Expanded(
@@ -1063,8 +1401,8 @@ class _ReportesScreenState extends State<ReportesScreen>
 
                 return PieChartSectionData(
                   color: colorList[idx % colorList.length],
-                  value: categoria['porcentaje'].toDouble(),
-                  title: '${categoria['porcentaje']}%',
+                  value: (categoria['porcentaje'] ?? 0).toDouble(),
+                  title: '${categoria['porcentaje'] ?? 0}%',
                   radius: 100,
                   titleStyle: TextStyle(
                     fontSize: 16,
@@ -1145,37 +1483,79 @@ class _ReportesScreenState extends State<ReportesScreen>
         children: [
           _buildFilterBar(),
           SizedBox(height: 20),
-          Card(
-            color: cardBg,
-            elevation: 4,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Padding(
-              padding: EdgeInsets.all(16),
+
+          // Muestra el indicador de carga si está cargando
+          if (_isLoading)
+            Center(child: CircularProgressIndicator(color: primary))
+          // Muestra un mensaje de error si hay algún problema
+          else if (_errorMessage != null)
+            Center(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  Icon(Icons.error_outline, color: Colors.red, size: 48),
+                  SizedBox(height: 16),
                   Text(
-                    'Reporte de Ventas',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: textDark,
-                    ),
+                    _errorMessage!,
+                    style: TextStyle(color: textDark),
+                    textAlign: TextAlign.center,
                   ),
                   SizedBox(height: 16),
-                  // Aquí iría una implementación más específica del reporte de ventas
-                  Text(
-                    'Esta sección mostrará información detallada de ventas con filtros para diferentes formas de pago, empleados, horas, etc.',
-                    style: TextStyle(color: textLight),
+                  ElevatedButton(
+                    onPressed: _cargarDatos,
+                    child: Text('Reintentar'),
+                    style: ElevatedButton.styleFrom(backgroundColor: primary),
                   ),
-                  SizedBox(height: 20),
-                  Container(height: 300, child: _buildBarChartVentas()),
                 ],
               ),
+            )
+          // Si todo está bien, muestra el reporte
+          else
+            Card(
+              color: cardBg,
+              elevation: 4,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Padding(
+                padding: EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Reporte de Ventas',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: textDark,
+                      ),
+                    ),
+                    SizedBox(height: 16),
+                    _ventasPorDia.isEmpty
+                        ? Center(
+                            child: Text(
+                              'No hay datos de ventas disponibles para el período seleccionado',
+                              style: TextStyle(color: textLight),
+                            ),
+                          )
+                        : Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Datos actualizados desde el API:',
+                                style: TextStyle(color: primary),
+                              ),
+                              SizedBox(height: 20),
+                              Container(
+                                height: 300,
+                                child: _buildBarChartVentas(),
+                              ),
+                            ],
+                          ),
+                  ],
+                ),
+              ),
             ),
-          ),
         ],
       ),
     );
@@ -1189,36 +1569,71 @@ class _ReportesScreenState extends State<ReportesScreen>
         children: [
           _buildFilterBar(),
           SizedBox(height: 20),
-          Card(
-            color: cardBg,
-            elevation: 4,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Padding(
-              padding: EdgeInsets.all(16),
+
+          if (_isLoading)
+            Center(child: CircularProgressIndicator(color: primary))
+          else if (_errorMessage != null)
+            Center(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
-                    'Reporte de Productos',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: textDark,
-                    ),
-                  ),
+                  Icon(Icons.error_outline, color: Colors.red, size: 48),
                   SizedBox(height: 16),
                   Text(
-                    'Esta sección mostrará información sobre los productos más vendidos, rentabilidad por producto, categorías más populares, etc.',
-                    style: TextStyle(color: textLight),
+                    _errorMessage!,
+                    style: TextStyle(color: textDark),
+                    textAlign: TextAlign.center,
                   ),
-                  SizedBox(height: 20),
-                  _buildTablaProductosMasVendidos(),
+                  SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: _cargarDatos,
+                    child: Text('Reintentar'),
+                    style: ElevatedButton.styleFrom(backgroundColor: primary),
+                  ),
                 ],
               ),
+            )
+          else
+            Card(
+              color: cardBg,
+              elevation: 4,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Padding(
+                padding: EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Reporte de Productos',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: textDark,
+                      ),
+                    ),
+                    SizedBox(height: 16),
+                    _ventasTopProductos.isEmpty
+                        ? Text(
+                            'No hay datos de productos disponibles para el período seleccionado',
+                            style: TextStyle(color: textLight),
+                          )
+                        : Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Top productos por ventas:',
+                                style: TextStyle(color: primary),
+                              ),
+                              SizedBox(height: 20),
+                              _buildTablaProductosMasVendidos(),
+                            ],
+                          ),
+                  ],
+                ),
+              ),
             ),
-          ),
         ],
       ),
     );
@@ -1232,37 +1647,75 @@ class _ReportesScreenState extends State<ReportesScreen>
         children: [
           _buildFilterBar(),
           SizedBox(height: 20),
-          Card(
-            color: cardBg,
-            elevation: 4,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Padding(
-              padding: EdgeInsets.all(16),
+
+          if (_isLoading)
+            Center(child: CircularProgressIndicator(color: primary))
+          else if (_errorMessage != null)
+            Center(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
-                    'Reporte de Pedidos',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: textDark,
-                    ),
-                  ),
+                  Icon(Icons.error_outline, color: Colors.red, size: 48),
                   SizedBox(height: 16),
                   Text(
-                    'Esta sección mostrará información sobre pedidos por mesa, tiempo promedio de atención, pedidos cancelados, etc.',
-                    style: TextStyle(color: textLight),
+                    _errorMessage!,
+                    style: TextStyle(color: textDark),
+                    textAlign: TextAlign.center,
                   ),
-                  // Aquí iría una implementación más específica
+                  SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: _cargarDatos,
+                    child: Text('Reintentar'),
+                    style: ElevatedButton.styleFrom(backgroundColor: primary),
+                  ),
                 ],
               ),
+            )
+          else
+            Card(
+              color: cardBg,
+              elevation: 4,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Padding(
+                padding: EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Reporte de Pedidos',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: textDark,
+                      ),
+                    ),
+                    SizedBox(height: 16),
+                    Text(
+                      'Esta funcionalidad requiere un nuevo endpoint en el API para obtener el historial de pedidos.',
+                      style: TextStyle(color: textLight),
+                    ),
+                    SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'Implementación pendiente: Consulta de pedidos',
+                            ),
+                            backgroundColor: primary,
+                          ),
+                        );
+                      },
+                      child: Text('Implementar API de pedidos'),
+                      style: ElevatedButton.styleFrom(backgroundColor: primary),
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ),
           SizedBox(height: 20),
-          // Agregar tabla simulada de pedidos recientes
         ],
       ),
     );
@@ -1276,35 +1729,74 @@ class _ReportesScreenState extends State<ReportesScreen>
         children: [
           _buildFilterBar(),
           SizedBox(height: 20),
-          Card(
-            color: cardBg,
-            elevation: 4,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Padding(
-              padding: EdgeInsets.all(16),
+
+          if (_isLoading)
+            Center(child: CircularProgressIndicator(color: primary))
+          else if (_errorMessage != null)
+            Center(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
-                    'Reporte de Clientes',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: textDark,
-                    ),
-                  ),
+                  Icon(Icons.error_outline, color: Colors.red, size: 48),
                   SizedBox(height: 16),
                   Text(
-                    'Esta sección mostrará información sobre clientes frecuentes, gasto promedio por cliente, preferencias, etc.',
-                    style: TextStyle(color: textLight),
+                    _errorMessage!,
+                    style: TextStyle(color: textDark),
+                    textAlign: TextAlign.center,
                   ),
-                  // Aquí iría una implementación más específica
+                  SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: _cargarDatos,
+                    child: Text('Reintentar'),
+                    style: ElevatedButton.styleFrom(backgroundColor: primary),
+                  ),
                 ],
               ),
+            )
+          else
+            Card(
+              color: cardBg,
+              elevation: 4,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Padding(
+                padding: EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Reporte de Clientes',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: textDark,
+                      ),
+                    ),
+                    SizedBox(height: 16),
+                    Text(
+                      'Esta funcionalidad requiere un nuevo endpoint en el API para obtener información sobre clientes.',
+                      style: TextStyle(color: textLight),
+                    ),
+                    SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'Implementación pendiente: Consulta de clientes',
+                            ),
+                            backgroundColor: primary,
+                          ),
+                        );
+                      },
+                      child: Text('Implementar API de clientes'),
+                      style: ElevatedButton.styleFrom(backgroundColor: primary),
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ),
         ],
       ),
     );

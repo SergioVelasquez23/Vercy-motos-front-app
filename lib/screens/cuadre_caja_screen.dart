@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/user_provider.dart';
 
 class CuadreCajaScreen extends StatefulWidget {
   @override
@@ -116,6 +118,23 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Check if user has admin permissions
+    final userProvider = Provider.of<UserProvider>(context);
+    if (!userProvider.isAdmin) {
+      // If user is not admin, redirect to dashboard
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.of(context).pushReplacementNamed('/dashboard');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Acceso restringido. Necesitas permisos de administrador.',
+            ),
+          ),
+        );
+      });
+      return Container(); // Return empty container while redirecting
+    }
+
     return Scaffold(
       backgroundColor: bgDark,
       appBar: AppBar(

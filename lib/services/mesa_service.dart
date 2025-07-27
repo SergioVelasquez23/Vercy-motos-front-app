@@ -9,7 +9,7 @@ class MesaService {
   factory MesaService() => _instance;
   MesaService._internal();
 
-  final String baseUrl = 'http://127.0.0.1:8081';
+  final String baseUrl = 'http://192.168.20.24:8081';
   final storage = FlutterSecureStorage();
 
   Future<Map<String, String>> _getHeaders() async {

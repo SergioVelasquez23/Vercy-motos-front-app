@@ -1,22 +1,56 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/dashboard_screen_v2.dart';
 import 'screens/mesas_screen.dart';
 import 'screens/productos_screen.dart';
 import 'screens/categorias_screen.dart';
-import 'screens/ventas_screen.dart';
 import 'screens/cuadre_caja_screen.dart';
 import 'screens/reportes_screen.dart';
 import 'screens/pedidos_screen_fusion.dart';
 import 'screens/documentos_screen.dart';
+import 'providers/user_provider.dart';
+import 'services/sincronizador_service.dart';
+import 'config/security_config.dart';
+import 'utils/security_utils.dart';
 
-void main() {
-  runApp(MyApp());
+void main() async {
+  // Aseguramos que Flutter esté inicializado
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Inicializar el sistema de seguridad
+  await SecurityUtils.initializeSecurity();
+  await SecurityConfig().init();
+
+  // No necesitamos precargar las fuentes aquí, lo manejaremos con CSS
+  // Iniciar la sincronización global cuando la app arranca
+  // Este servicio se encargará de mantener sincronizados los estados de mesas y pedidos
+  SincronizadorService().iniciarSincronizacionPeriodica(
+    periodo: Duration(minutes: 5),
+  );
+
+  runApp(
+    MultiProvider(
+      providers: [ChangeNotifierProvider(create: (_) => UserProvider())],
+      child: MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    // Aplicar configuraciones de seguridad
+    SecurityConfig().applySecurityBestPractices();
+
+    // Initialize user from stored token
+    Future.microtask(
+      () => Provider.of<UserProvider>(
+        context,
+        listen: false,
+      ).initializeFromStorage(),
+    );
+
     return MaterialApp(
       title: 'Sopa y Carbon',
       debugShowCheckedModeBanner: false,
@@ -43,14 +77,12 @@ class MyApp extends StatelessWidget {
         '/dashboard': (context) => DashboardScreenV2(),
         '/mesas': (context) => MesasScreen(),
         '/productos': (context) => ProductosScreen(),
-        '/ventas': (context) => VentasScreen(),
         '/categorias': (context) => CategoriasScreen(),
         '/cuadre_caja': (context) => CuadreCajaScreen(),
         '/pedidos': (context) =>
             const PedidosScreenFusion(), // Pantalla fusionada
         // '/pedidos_v2': (context) =>
         //     const PedidosScreenV2(), // Nueva pantalla V2
-        '/pantalla_digital': (context) => VentasScreen(initialIndex: 2),
         '/pedidos_rt': (context) => PedidosScreenFusion(),
         '/documentos': (context) => const DocumentosScreen(),
         '/pedidos_cancelados': (context) => PedidosScreenFusion(),

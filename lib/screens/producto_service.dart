@@ -1,11 +1,9 @@
 import 'dart:convert';
-import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
-import 'package:http_parser/http_parser.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:crypto/crypto.dart'; // Para hash de contraseñas
 import '../models/producto.dart';
 import '../models/categoria.dart';
 import '../config/api_config.dart';
@@ -13,11 +11,102 @@ import '../config/api_config.dart';
 class ProductoService {
   static final ProductoService _instance = ProductoService._internal();
   factory ProductoService() => _instance;
-  ProductoService._internal();
+  ProductoService._internal() {
+    _initSecureClient();
+  }
 
   String get baseUrl => ApiConfig.instance.baseUrl;
   final storage = FlutterSecureStorage();
   final ImagePicker _picker = ImagePicker();
+  late http.Client _client;
+
+  // Inicializar un cliente HTTP seguro
+  void _initSecureClient() {
+    // Por ahora usamos un cliente HTTP básico
+    _client = http.Client();
+
+    // Verificar que estamos usando HTTPS
+    if (!baseUrl.startsWith('https') &&
+        !baseUrl.contains('localhost') &&
+        !baseUrl.contains('127.0.0.1')) {
+      print(
+        '⚠️ ADVERTENCIA: No estás usando HTTPS. Las comunicaciones no son seguras.',
+      );
+    }
+
+    // En producción, deberías implementar SSL Pinning
+    // Ejemplo:
+    /*
+    // Para implementar SSL Pinning en producción, descomentar este código:
+    if (!kIsWeb) {  // SSL Pinning solo funciona en dispositivos móviles
+      try {
+        // Configurar SSL Pinning
+        final sslPinningManager = SSLPinningManager();
+        
+        // Define los hashes SHA-256 de los certificados que confías
+        // Estos hashes deben ser obtenidos de tus certificados reales
+        final trustedCertificateHashes = [
+          'sha256/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=', // Reemplazar con hash real
+        ];
+        
+        // Crea un cliente HTTP con SSL Pinning
+        final secureHttpClient = HttpClient()
+          ..badCertificateCallback = (cert, host, port) {
+            // Verificar si el certificado coincide con alguno de nuestros hashes confiables
+            final certBytes = cert.der;
+            final sha256Hash = sha256.convert(certBytes);
+            final hash64 = base64.encode(sha256Hash.bytes);
+            final pinnedHash = 'sha256/$hash64';
+            
+            return trustedCertificateHashes.contains(pinnedHash);
+          };
+        
+        // Reemplazar el cliente HTTP estándar con el seguro
+        _client = IOClient(secureHttpClient);
+        print('✅ SSL Pinning configurado correctamente');
+      } catch (e) {
+        print('❌ Error configurando SSL Pinning: $e');
+        // Fallback a cliente HTTP normal
+        _client = http.Client();
+      }
+    }
+    */
+  }
+
+  // Genera un hash SHA-256 para contraseñas
+  String hashPassword(String password) {
+    final bytes = utf8.encode(password);
+    final digest = sha256.convert(bytes);
+    return digest.toString();
+  }
+
+  // Cierre de sesión seguro (limpia todas las claves y datos sensibles)
+  Future<void> logoutSecurely() async {
+    try {
+      // Eliminar el token JWT
+      await storage.delete(key: 'jwt_token');
+
+      // En producción podrías hacer una llamada al servidor para invalidar el token
+      if (!ApiConfig.instance.isDevelopment) {
+        try {
+          await _client
+              .post(
+                Uri.parse('$baseUrl/api/auth/logout'),
+                headers: await _getHeaders(),
+              )
+              .timeout(Duration(seconds: 5));
+        } catch (e) {
+          print('Error al invalidar el token en el servidor: $e');
+          // No bloqueamos el proceso de cierre de sesión por este error
+        }
+      }
+
+      print('✅ Sesión cerrada correctamente y datos sensibles eliminados');
+    } catch (e) {
+      print('❌ Error durante el cierre de sesión: $e');
+      throw Exception('Error durante el cierre de sesión: $e');
+    }
+  }
 
   Future<Map<String, String>> _getHeaders() async {
     final token = await storage.read(key: 'jwt_token');
@@ -31,12 +120,16 @@ class ProductoService {
   Future<List<Producto>> getProductos() async {
     try {
       final headers = await _getHeaders();
-      final response = await http
-          .get(Uri.parse('$baseUrl/api/productos'), headers: headers)
+      final response = await _client
+          .get(
+            Uri.parse(ApiConfig.instance.endpoints.products.all),
+            headers: headers,
+          )
           .timeout(Duration(seconds: 10));
 
       print('📦 Response status: ${response.statusCode}');
-      print('📦 Response body: ${response.body}');
+      // No logueamos el body completo para evitar filtrar información potencialmente sensible
+      print('📦 Response recibida correctamente');
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
@@ -56,12 +149,15 @@ class ProductoService {
   Future<List<Categoria>> getCategorias() async {
     try {
       final headers = await _getHeaders();
-      final response = await http
+      // Para categorías necesitaríamos añadir un endpoint en la configuración
+      // Por ahora mantenemos la URL original
+      final response = await _client
           .get(Uri.parse('$baseUrl/api/categorias'), headers: headers)
           .timeout(Duration(seconds: 10));
 
       print('📂 Response status: ${response.statusCode}');
-      print('📂 Response body: ${response.body}');
+      // Evitar loguear información sensible
+      print('📂 Categorías recibidas correctamente');
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
@@ -81,7 +177,7 @@ class ProductoService {
   Future<Producto> addProducto(Producto producto) async {
     try {
       final headers = await _getHeaders();
-      final response = await http
+      final response = await _client
           .post(
             Uri.parse('$baseUrl/api/productos'),
             headers: headers,
@@ -105,7 +201,7 @@ class ProductoService {
   Future<Producto> updateProducto(Producto producto) async {
     try {
       final headers = await _getHeaders();
-      final response = await http
+      final response = await _client
           .put(
             Uri.parse('$baseUrl/api/productos/${producto.id}'),
             headers: headers,
@@ -129,7 +225,7 @@ class ProductoService {
   Future<void> deleteProducto(String id) async {
     try {
       final headers = await _getHeaders();
-      final response = await http
+      final response = await _client
           .delete(Uri.parse('$baseUrl/api/productos/$id'), headers: headers)
           .timeout(Duration(seconds: 10));
 
@@ -159,7 +255,7 @@ class ProductoService {
         // 2. O bien almacenarla directamente como base64 en la BD
       }
 
-      final response = await http
+      final response = await _client
           .post(
             Uri.parse('$baseUrl/api/categorias'),
             headers: headers,
@@ -171,8 +267,6 @@ class ProductoService {
         print('✅ Categoría creada exitosamente');
         return Categoria.fromJson(json.decode(response.body));
       } else {
-        print('❌ Error del servidor: ${response.statusCode}');
-        print('❌ Respuesta: ${response.body}');
         throw Exception('Error del servidor: ${response.statusCode}');
       }
     } catch (e) {
@@ -224,7 +318,7 @@ class ProductoService {
   Future<void> deleteCategoria(String id) async {
     try {
       final headers = await _getHeaders();
-      final response = await http
+      final response = await _client
           .delete(Uri.parse('$baseUrl/api/categorias/$id'), headers: headers)
           .timeout(Duration(seconds: 10));
 
@@ -253,7 +347,7 @@ class ProductoService {
       final uri = Uri.parse(
         '$baseUrl/api/productos/buscar',
       ).replace(queryParameters: queryParams);
-      final response = await http
+      final response = await _client
           .get(uri, headers: headers)
           .timeout(Duration(seconds: 10));
 
@@ -274,7 +368,7 @@ class ProductoService {
   Future<List<Producto>> getProductosByCategoria(String categoriaId) async {
     try {
       final headers = await _getHeaders();
-      final response = await http
+      final response = await _client
           .get(
             Uri.parse('$baseUrl/api/productos?categoriaId=$categoriaId'),
             headers: headers,
@@ -335,43 +429,23 @@ class ProductoService {
       if (image != null) {
         // En Flutter Web, necesitamos crear una URL de datos para la imagen
         if (kIsWeb) {
-          try {
-            // Leer el archivo como bytes
-            final bytes = await image.readAsBytes();
+          // Leer el archivo como bytes
+          final bytes = await image.readAsBytes();
 
-            // Codificar a base64
-            final base64Image = base64Encode(bytes);
+          // Codificar a base64
+          final base64Image = base64Encode(bytes);
 
-            // Crear una URL de datos para la imagen
-            // Detectar el tipo de imagen
-            String mimeType = 'image/jpeg';
-            if (image.name.toLowerCase().endsWith('.png')) {
-              mimeType = 'image/png';
-            } else if (image.name.toLowerCase().endsWith('.gif')) {
-              mimeType = 'image/gif';
-            }
-
-            // En Flutter Web, las URL de datos funcionan directamente en los widgets Image
-            final dataUrl = 'data:$mimeType;base64,$base64Image';
-            print('Generada URL de datos: longitud=${dataUrl.length}');
-
-            // Intentar subir la imagen al servidor
-            // Este método es opcional y depende de si tu backend soporta subida de imágenes
-            try {
-              // Podrías implementar una subida de imagen aquí
-              // final uploadedUrl = await _uploadImageToServer(bytes, mimeType);
-              // if (uploadedUrl != null) return uploadedUrl;
-            } catch (uploadError) {
-              print(
-                'Error al intentar subir la imagen: $uploadError. Usando URL de datos local.',
-              );
-            }
-
-            return dataUrl;
-          } catch (webError) {
-            print('Error procesando imagen en Web: $webError');
-            return null;
+          // Crear una URL de datos para la imagen
+          // Detectar el tipo de imagen
+          String mimeType = 'image/jpeg';
+          if (image.name.toLowerCase().endsWith('.png')) {
+            mimeType = 'image/png';
+          } else if (image.name.toLowerCase().endsWith('.gif')) {
+            mimeType = 'image/gif';
           }
+
+          // Devolver la URL de datos
+          return 'data:$mimeType;base64,$base64Image';
         } else {
           // En dispositivos móviles, devolvemos la ruta del archivo
           return image.path;
@@ -384,62 +458,11 @@ class ProductoService {
     }
   }
 
-  // Método para subir una imagen al servidor (implementación de ejemplo)
-  Future<String?> _uploadImageToServer(Uint8List bytes, String mimeType) async {
-    try {
-      // Crear un formulario multipart para subir la imagen
-      var request = http.MultipartRequest(
-        'POST',
-        Uri.parse('$baseUrl/api/upload'),
-      );
-
-      // Obtener el token de autenticación
-      final token = await storage.read(key: 'jwt_token');
-      if (token != null) {
-        request.headers['Authorization'] = 'Bearer $token';
-      }
-
-      // Añadir la imagen como un archivo multipart
-      final fileExtension = mimeType.split('/').last;
-      final fileName =
-          'imagen_${DateTime.now().millisecondsSinceEpoch}.$fileExtension';
-      request.files.add(
-        http.MultipartFile.fromBytes(
-          'file',
-          bytes,
-          filename: fileName,
-          contentType: MediaType.parse(mimeType),
-        ),
-      );
-
-      // Enviar la solicitud
-      final streamedResponse = await request.send().timeout(
-        Duration(seconds: 30),
-      );
-      final response = await http.Response.fromStream(streamedResponse);
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        // Suponiendo que el servidor devuelve la URL de la imagen subida
-        final uploadedUrl = json.decode(response.body)['url'];
-        print('✅ Imagen subida exitosamente: $uploadedUrl');
-        return uploadedUrl;
-      } else {
-        print(
-          '❌ Error subiendo imagen: ${response.statusCode} - ${response.body}',
-        );
-        return null;
-      }
-    } catch (e) {
-      print('❌ Excepción al subir imagen: $e');
-      return null;
-    }
-  }
-
   // Obtener un producto por ID
   Future<Producto?> getProducto(String id) async {
     try {
       final headers = await _getHeaders();
-      final response = await http
+      final response = await _client
           .get(Uri.parse('$baseUrl/api/productos/$id'), headers: headers)
           .timeout(Duration(seconds: 10));
 

@@ -11,51 +11,17 @@ class ReportesService {
   // Obtener dashboard
   Future<DashboardData?> getDashboard() async {
     try {
-      print('🔍 Dashboard: Solicitando datos del endpoint /reportes/dashboard');
-
       final response = await _apiService.get<Map<String, dynamic>>(
         '/reportes/dashboard',
         (json) => json,
       );
 
-      print(
-        '📦 Dashboard: Respuesta recibida - Success: ${response.isSuccess}',
-      );
-      print('📦 Dashboard: Data: ${response.data}');
-
       if (response.isSuccess && response.data != null) {
-        print('✅ Dashboard obtenido exitosamente');
-        print('🔍 Dashboard: Estructura de datos: ${response.data!.keys}');
-
-        // Debug detallado de las ventas
-        if (response.data!['ventasHoy'] != null) {
-          final ventasHoy = response.data!['ventasHoy'];
-          print('💰 VentasHoy DEBUG:');
-          print('  - objetivo: ${ventasHoy['objetivo']}');
-          print('  - total: ${ventasHoy['total']}');
-          print('  - totalPedidos: ${ventasHoy['totalPedidos']}');
-          print('  - totalFacturas: ${ventasHoy['totalFacturas']}');
-          print('  - cantidadTotal: ${ventasHoy['cantidadTotal']}');
-          print('  - cantidadPedidos: ${ventasHoy['cantidadPedidos']}');
-          print('  - cantidadFacturas: ${ventasHoy['cantidadFacturas']}');
-        }
-
-        if (response.data!['ventasSemana'] != null) {
-          final ventasSemana = response.data!['ventasSemana'];
-          print('📅 VentasSemana DEBUG:');
-          print('  - total: ${ventasSemana['total']}');
-          print('  - totalPedidos: ${ventasSemana['totalPedidos']}');
-          print('  - totalFacturas: ${ventasSemana['totalFacturas']}');
-        }
-
         return DashboardData.fromJson(response.data!);
       } else {
-        print('⚠️ Error al obtener dashboard: ${response.errorMessage}');
-        print('⚠️ Mensaje: ${response.message}');
         return null;
       }
     } catch (e) {
-      print('❌ Excepción en getDashboard: $e');
       return null;
     }
   }
@@ -130,6 +96,32 @@ class ReportesService {
     } else {
       print('⚠️ Error al obtener top productos: ${response.errorMessage}');
       return [];
+    }
+  }
+
+  // Obtener ventas por categoría
+  Future<List<Map<String, dynamic>>> getVentasPorCategoria([
+    int limite = 5,
+  ]) async {
+    try {
+      final response = await _apiService.get<List<Map<String, dynamic>>>(
+        '/reportes/ventas-por-categoria?limite=$limite',
+        (json) => List<Map<String, dynamic>>.from(json),
+      );
+
+      if (response.isSuccess) {
+        print('✅ Ventas por categoría obtenidas');
+        return response.data ?? [];
+      } else {
+        print(
+          '⚠️ Error al obtener ventas por categoría: ${response.errorMessage}',
+        );
+        return [];
+      }
+    } catch (e) {
+      print('❌ Excepción en getVentasPorCategoria: $e');
+      // Si el endpoint no existe aún, podemos devolver datos simulados temporales
+      throw e;
     }
   }
 

@@ -312,8 +312,25 @@ class _DocumentosScreenState extends State<DocumentosScreen>
     return documentosFiltrados;
   }
 
-  String _formatearNumero(int valor) {
-    return '\$${valor.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}';
+  String _formatearNumero(dynamic valor) {
+    if (valor == null) return '\$0';
+
+    // Asegurarse de que el valor sea un entero
+    int valorInt;
+    if (valor is int) {
+      valorInt = valor;
+    } else if (valor is double) {
+      valorInt = valor.round();
+    } else {
+      try {
+        valorInt = int.parse(valor.toString());
+      } catch (e) {
+        print('❌ Error convirtiendo valor a entero: $valor');
+        return '\$0';
+      }
+    }
+
+    return '\$${valorInt.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}';
   }
 
   @override

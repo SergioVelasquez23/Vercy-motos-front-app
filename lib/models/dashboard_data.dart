@@ -20,6 +20,27 @@ class DashboardData {
   });
 
   factory DashboardData.fromJson(Map<String, dynamic> json) {
+    print('🔄 Parseando JSON a DashboardData: ${json.keys}');
+
+    // Verificar keys esperadas
+    final expectedKeys = [
+      'fecha',
+      'ventasSemana',
+      'ventasMes',
+      'facturacion',
+      'ventasAño',
+      'ventasHoy',
+      'inventario',
+      'pedidosHoy',
+    ];
+    final missingKeys = expectedKeys
+        .where((key) => !json.containsKey(key))
+        .toList();
+
+    if (missingKeys.isNotEmpty) {
+      print('⚠️ Faltan claves en la respuesta: $missingKeys');
+    }
+
     return DashboardData(
       fecha: json['fecha'] ?? '',
       ventas7Dias: VentasPeriodo.fromJson(json['ventasSemana'] ?? {}),
