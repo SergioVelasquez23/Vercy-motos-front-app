@@ -14,6 +14,7 @@ class Producto {
   final String? descripcion;
   int cantidad;
   String? nota;
+  final List<String> ingredientesDisponibles; // Nuevo campo
 
   Producto({
     required this.id,
@@ -29,6 +30,7 @@ class Producto {
     this.descripcion,
     this.cantidad = 1,
     this.nota,
+    this.ingredientesDisponibles = const [], // Valor por defecto
   });
 
   // Eliminar: double get subtotal => precio * cantidad;
@@ -49,6 +51,7 @@ class Producto {
     'descripcion': descripcion,
     'cantidad': cantidad,
     'nota': nota,
+    'ingredientesDisponibles': ingredientesDisponibles,
   };
 
   factory Producto.fromJson(Map<String, dynamic> json) {
@@ -68,6 +71,9 @@ class Producto {
       descripcion: json['descripcion']?.toString(),
       cantidad: json['cantidad'] ?? 1,
       nota: json['nota']?.toString(),
+      ingredientesDisponibles: json['ingredientesDisponibles'] != null
+          ? List<String>.from(json['ingredientesDisponibles'])
+          : [],
     );
   }
 
@@ -86,6 +92,7 @@ class Producto {
     String? descripcion,
     int? cantidad,
     String? nota,
+    List<String>? ingredientesDisponibles,
   }) {
     return Producto(
       id: id ?? this.id,
@@ -101,6 +108,8 @@ class Producto {
       descripcion: descripcion ?? this.descripcion,
       cantidad: cantidad ?? this.cantidad,
       nota: nota ?? this.nota,
+      ingredientesDisponibles:
+          ingredientesDisponibles ?? this.ingredientesDisponibles,
     );
   }
 }

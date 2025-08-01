@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models/producto.dart';
 import '../models/categoria.dart';
+import '../models/ingrediente.dart';
 import '../services/producto_service.dart';
+import '../services/ingrediente_service.dart';
 
 class ProductosScreen extends StatefulWidget {
   @override
@@ -12,8 +14,10 @@ class ProductosScreen extends StatefulWidget {
 
 class _ProductosScreenState extends State<ProductosScreen> {
   final ProductoService _productoService = ProductoService();
+  final IngredienteService _ingredienteService = IngredienteService();
   List<Categoria> _categorias = [];
   List<Producto> _productos = [];
+  List<Ingrediente> _ingredientesCarnes = [];
   bool _isLoading = true;
   String? _error;
   TextEditingController _searchController = TextEditingController();
@@ -34,13 +38,17 @@ class _ProductosScreenState extends State<ProductosScreen> {
     }
 
     try {
+      // Cargar datos en paralelo
       final categorias = await _productoService.getCategorias();
       final productos = await _productoService.getProductos();
-      
+      final ingredientesCarnes = await _ingredienteService
+          .getIngredientesCarnes();
+
       if (mounted) {
         setState(() {
           _categorias = categorias;
           _productos = productos;
+          _ingredientesCarnes = ingredientesCarnes;
           _isLoading = false;
         });
       }
@@ -69,9 +77,10 @@ class _ProductosScreenState extends State<ProductosScreen> {
     } catch (e) {
       // En caso de error, devolver lista local filtrada
       return _productos.where((producto) {
-        final matchesQuery = query.isEmpty || 
-            producto.nombre.toLowerCase().contains(query);
-        final matchesCategory = _selectedCategoriaId == null || 
+        final matchesQuery =
+            query.isEmpty || producto.nombre.toLowerCase().contains(query);
+        final matchesCategory =
+            _selectedCategoriaId == null ||
             producto.categoria?.id == _selectedCategoriaId;
         return matchesQuery && matchesCategory;
       }).toList();
@@ -102,10 +111,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
             children: [
               CircularProgressIndicator(color: primary),
               SizedBox(height: 16),
-              Text(
-                'Cargando productos...',
-                style: TextStyle(color: textLight),
-              ),
+              Text('Cargando productos...', style: TextStyle(color: textLight)),
             ],
           ),
         ),
@@ -144,9 +150,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                 onPressed: _cargarDatos,
                 icon: Icon(Icons.refresh),
                 label: Text('Reintentar'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: primary,
-                ),
+                style: ElevatedButton.styleFrom(backgroundColor: primary),
               ),
             ],
           ),
@@ -293,7 +297,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                 }
 
                 final productos = snapshot.data ?? [];
-                
+
                 if (productos.isEmpty) {
                   return Center(
                     child: Text(
@@ -481,10 +485,10 @@ class _ProductosScreenState extends State<ProductosScreen> {
               try {
                 await _productoService.deleteProducto(producto.id);
                 Navigator.of(context).pop();
-                
+
                 // Recargar datos después de eliminar
                 await _cargarDatos();
-                
+
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text('Producto eliminado'),
@@ -495,7 +499,9 @@ class _ProductosScreenState extends State<ProductosScreen> {
                 Navigator.of(context).pop();
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('Error al eliminar producto: ${e.toString()}'),
+                    content: Text(
+                      'Error al eliminar producto: ${e.toString()}',
+                    ),
                     backgroundColor: Colors.redAccent,
                   ),
                 );
@@ -538,6 +544,9 @@ class _ProductosScreenState extends State<ProductosScreen> {
     String? selectedCategoriaId = isEditing ? producto.categoria?.id : null;
     String? selectedImageUrl = isEditing ? producto.imagenUrl : null;
     String? tempImagePath;
+    List<String> ingredientesSeleccionados = isEditing
+        ? List<String>.from(producto.ingredientesDisponibles)
+        : [];
 
     showDialog(
       context: context,
@@ -842,6 +851,95 @@ class _ProductosScreenState extends State<ProductosScreen> {
                       ),
                       maxLines: 3,
                     ),
+                    SizedBox(height: 16),
+
+                    // Sección de ingredientes (carnes)
+                    if (_ingredientesCarnes.isNotEmpty) ...[
+                      Text(
+                        'Ingredientes disponibles (Carnes):',
+                        style: TextStyle(
+                          color: textLight,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(color: textLight.withOpacity(0.3)),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        padding: EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Selecciona los ingredientes que estarán disponibles para este producto:',
+                              style: TextStyle(
+                                color: textLight.withOpacity(0.7),
+                                fontSize: 12,
+                              ),
+                            ),
+                            SizedBox(height: 8),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: _ingredientesCarnes.map((ingrediente) {
+                                final bool isSelected =
+                                    ingredientesSeleccionados.contains(
+                                      ingrediente.nombre,
+                                    );
+                                return FilterChip(
+                                  label: Text(
+                                    ingrediente.nombre,
+                                    style: TextStyle(
+                                      color: isSelected
+                                          ? Colors.white
+                                          : textLight,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  selected: isSelected,
+                                  onSelected: (selected) {
+                                    setState(() {
+                                      if (selected) {
+                                        ingredientesSeleccionados.add(
+                                          ingrediente.nombre,
+                                        );
+                                      } else {
+                                        ingredientesSeleccionados.remove(
+                                          ingrediente.nombre,
+                                        );
+                                      }
+                                    });
+                                  },
+                                  selectedColor: primary,
+                                  backgroundColor: cardBg.withOpacity(0.5),
+                                  checkmarkColor: Colors.white,
+                                  side: BorderSide(
+                                    color: isSelected
+                                        ? primary
+                                        : textLight.withOpacity(0.3),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                            if (ingredientesSeleccionados.isNotEmpty) ...[
+                              SizedBox(height: 8),
+                              Text(
+                                'Seleccionados: ${ingredientesSeleccionados.join(', ')}',
+                                style: TextStyle(
+                                  color: primary,
+                                  fontSize: 11,
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: 16),
+                    ],
                   ],
                 ),
               ),
@@ -904,35 +1002,51 @@ class _ProductosScreenState extends State<ProductosScreen> {
                               double.tryParse(utilidadController.text) ?? 0,
                           tieneVariantes: tieneVariantes,
                           estado: estado,
+                          ingredientesDisponibles: ingredientesSeleccionados,
                         );
                         await _productoService.updateProducto(updatedProducto);
                       } else {
-                        // Crear nuevo producto
-                        final nuevoProducto = Producto(
-                          id: DateTime.now().millisecondsSinceEpoch.toString(),
-                          nombre: nombreController.text,
-                          precio: double.parse(precioController.text),
-                          costo: double.parse(costoController.text),
-                          imagenUrl: finalImageUrl,
-                          categoria: categoriaSeleccionada,
-                          descripcion: descripcionController.text.isNotEmpty
-                              ? descripcionController.text
-                              : null,
-                          impuestos:
-                              double.tryParse(impuestosController.text) ?? 0,
-                          utilidad:
-                              double.tryParse(utilidadController.text) ?? 0,
-                          tieneVariantes: tieneVariantes,
-                          estado: estado,
-                        );
-                        await _productoService.addProducto(nuevoProducto);
+                        // Crear nuevo producto con ingredientes
+                        if (ingredientesSeleccionados.isNotEmpty) {
+                          await _productoService.crearProductoConIngredientes(
+                            nombre: nombreController.text,
+                            precio: double.parse(precioController.text),
+                            costo: double.parse(costoController.text),
+                            categoriaId: selectedCategoriaId ?? '',
+                            ingredientesDisponibles: ingredientesSeleccionados,
+                            descripcion: descripcionController.text.isNotEmpty
+                                ? descripcionController.text
+                                : null,
+                          );
+                        } else {
+                          final nuevoProducto = Producto(
+                            id: DateTime.now().millisecondsSinceEpoch
+                                .toString(),
+                            nombre: nombreController.text,
+                            precio: double.parse(precioController.text),
+                            costo: double.parse(costoController.text),
+                            imagenUrl: finalImageUrl,
+                            categoria: categoriaSeleccionada,
+                            descripcion: descripcionController.text.isNotEmpty
+                                ? descripcionController.text
+                                : null,
+                            impuestos:
+                                double.tryParse(impuestosController.text) ?? 0,
+                            utilidad:
+                                double.tryParse(utilidadController.text) ?? 0,
+                            tieneVariantes: tieneVariantes,
+                            estado: estado,
+                            ingredientesDisponibles: [],
+                          );
+                          await _productoService.addProducto(nuevoProducto);
+                        }
                       }
 
                       Navigator.of(context).pop();
-                      
+
                       // Recargar datos después de crear/actualizar
                       await _cargarDatos();
-                      
+
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(

@@ -1,9 +1,6 @@
 import 'dart:convert';
-import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
-import 'package:http_parser/http_parser.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models/producto.dart';
@@ -97,6 +94,61 @@ class ProductoService {
       }
     } catch (e) {
       print('❌ Error creando producto: $e');
+      throw Exception('No se pudo crear el producto: $e');
+    }
+  }
+
+  // Crear producto con ingredientes disponibles
+  Future<Producto> crearProductoConIngredientes({
+    required String nombre,
+    required double precio,
+    required double costo,
+    required String categoriaId,
+    List<String> ingredientesDisponibles = const [],
+    String? descripcion,
+  }) async {
+    try {
+      final headers = await _getHeaders();
+
+      final productoData = {
+        'nombre': nombre,
+        'precio': precio,
+        'costo': costo,
+        'categoriaId': categoriaId,
+        'ingredientesDisponibles': ingredientesDisponibles,
+        if (descripcion != null) 'descripcion': descripcion,
+      };
+
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/api/productos'),
+            headers: headers,
+            body: json.encode(productoData),
+          )
+          .timeout(Duration(seconds: 10));
+
+      print(
+        '📦 Crear producto con ingredientes response: ${response.statusCode}',
+      );
+      print('📦 Crear producto con ingredientes body: ${response.body}');
+
+      if (response.statusCode == 201) {
+        final responseData = json.decode(response.body);
+        if (responseData is Map<String, dynamic>) {
+          // Si la respuesta es un objeto con "data"
+          if (responseData.containsKey('data')) {
+            return Producto.fromJson(responseData['data']);
+          } else {
+            return Producto.fromJson(responseData);
+          }
+        } else {
+          throw Exception('Formato de respuesta inesperado');
+        }
+      } else {
+        throw Exception('Error del servidor: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ Error creando producto con ingredientes: $e');
       throw Exception('No se pudo crear el producto: $e');
     }
   }
@@ -384,54 +436,34 @@ class ProductoService {
     }
   }
 
-  // Método para subir una imagen al servidor (implementación de ejemplo)
-  Future<String?> _uploadImageToServer(Uint8List bytes, String mimeType) async {
+  // Obtener solo el nombre de un producto por ID
+  Future<String?> getProductoNombre(String id) async {
     try {
-      // Crear un formulario multipart para subir la imagen
-      var request = http.MultipartRequest(
-        'POST',
-        Uri.parse('$baseUrl/api/upload'),
-      );
+      final headers = await _getHeaders();
+      final response = await http
+          .get(Uri.parse('$baseUrl/api/productos/$id/nombre'), headers: headers)
+          .timeout(Duration(seconds: 5));
 
-      // Obtener el token de autenticación
-      final token = await storage.read(key: 'jwt_token');
-      if (token != null) {
-        request.headers['Authorization'] = 'Bearer $token';
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        if (responseData is Map<String, dynamic>) {
+          // Si la respuesta está envuelta en una estructura data
+          if (responseData.containsKey('nombre')) {
+            return responseData['nombre'];
+          } else if (responseData.containsKey('data') &&
+              responseData['data'] is Map<String, dynamic> &&
+              responseData['data'].containsKey('nombre')) {
+            return responseData['data']['nombre'];
+          }
+        }
+        return 'Producto #$id';
+      } else if (response.statusCode == 404) {
+        return 'Producto #$id';
       }
-
-      // Añadir la imagen como un archivo multipart
-      final fileExtension = mimeType.split('/').last;
-      final fileName =
-          'imagen_${DateTime.now().millisecondsSinceEpoch}.$fileExtension';
-      request.files.add(
-        http.MultipartFile.fromBytes(
-          'file',
-          bytes,
-          filename: fileName,
-          contentType: MediaType.parse(mimeType),
-        ),
-      );
-
-      // Enviar la solicitud
-      final streamedResponse = await request.send().timeout(
-        Duration(seconds: 30),
-      );
-      final response = await http.Response.fromStream(streamedResponse);
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        // Suponiendo que el servidor devuelve la URL de la imagen subida
-        final uploadedUrl = json.decode(response.body)['url'];
-        print('✅ Imagen subida exitosamente: $uploadedUrl');
-        return uploadedUrl;
-      } else {
-        print(
-          '❌ Error subiendo imagen: ${response.statusCode} - ${response.body}',
-        );
-        return null;
-      }
+      return 'Producto #$id';
     } catch (e) {
-      print('❌ Excepción al subir imagen: $e');
-      return null;
+      print('❌ Error obteniendo nombre del producto $id: $e');
+      return 'Producto #$id';
     }
   }
 

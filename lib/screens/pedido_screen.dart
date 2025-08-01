@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../models/mesa.dart';
 import '../models/producto.dart';
@@ -8,6 +9,10 @@ import '../models/item_pedido.dart';
 import '../services/producto_service.dart';
 import '../services/mesa_service.dart';
 import '../services/pedido_service.dart';
+import '../services/inventario_service.dart';
+import '../models/movimiento_inventario.dart';
+import '../models/inventario.dart';
+import '../providers/user_provider.dart';
 
 class PedidoScreen extends StatefulWidget {
   final Mesa mesa;
@@ -21,9 +26,13 @@ class PedidoScreen extends StatefulWidget {
 class _PedidoScreenState extends State<PedidoScreen> {
   final ProductoService _productoService = ProductoService();
   final MesaService _mesaService = MesaService();
+  final InventarioService _inventarioService = InventarioService();
 
   List<Producto> productosMesa = [];
   List<Producto> productosDisponibles = [];
+
+  // Mapa para guardar los IDs de productos de carne para descontar del inventario
+  Map<String, String> productosCarneMap = {};
   List<Categoria> categorias = [];
 
   // Map para controlar el estado de pago de cada producto
@@ -31,8 +40,6 @@ class _PedidoScreenState extends State<PedidoScreen> {
 
   bool isLoading = true;
   String? errorMessage;
-  bool esCortesia = false;
-  bool esConsumoInterno = false;
   String? clienteSeleccionado;
   TextEditingController busquedaController = TextEditingController();
   String filtro = '';
@@ -42,6 +49,228 @@ class _PedidoScreenState extends State<PedidoScreen> {
   void initState() {
     super.initState();
     _loadData();
+  }
+
+  Future<dynamic> _mostrarDialogoOpciones(
+    Producto producto,
+    List<String> opciones,
+  ) async {
+    TextEditingController observacionesController = TextEditingController();
+    int cantidad = 1;
+    String? opcionSeleccionada = opciones.isNotEmpty ? opciones.first : null;
+
+    final resultado = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text('Seleccionar opción para ${producto.nombre}'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (opciones.isNotEmpty) ...[
+                      DropdownButton<String>(
+                        value: opcionSeleccionada,
+                        items: opciones
+                            .map(
+                              (opcion) => DropdownMenuItem(
+                                value: opcion,
+                                child: Text(opcion),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (value) {
+                          setState(() {
+                            opcionSeleccionada = value;
+                          });
+                        },
+                      ),
+                      SizedBox(height: 16),
+                    ],
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: Icon(Icons.remove),
+                          onPressed: () {
+                            if (cantidad > 1) {
+                              setState(() => cantidad--);
+                            }
+                          },
+                        ),
+                        Text('$cantidad'),
+                        IconButton(
+                          icon: Icon(Icons.add),
+                          onPressed: () {
+                            setState(() => cantidad++);
+                          },
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 16),
+                    TextField(
+                      controller: observacionesController,
+                      decoration: InputDecoration(
+                        labelText: 'Observaciones',
+                        hintText: 'Ej: Sin sal, término medio, etc.',
+                      ),
+                      maxLines: 2,
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text('Cancelar'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).pop({
+                      'nota': opcionSeleccionada ?? '',
+                      'cantidad': cantidad,
+                      'observaciones': observacionesController.text,
+                      'productoId': producto.id,
+                      'nombre': opcionSeleccionada ?? producto.nombre,
+                    });
+                  },
+                  child: Text('Aceptar'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    return resultado;
+  }
+
+  // Nuevo método para seleccionar ingredientes
+  Future<Map<String, dynamic>?> _mostrarDialogoSeleccionIngredientes(
+    Producto producto,
+  ) async {
+    List<String> ingredientesSeleccionados = [];
+    TextEditingController notasController = TextEditingController();
+
+    final resultado = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text(
+                'Seleccionar ingredientes para ${producto.nombre}',
+                style: TextStyle(fontSize: 16),
+              ),
+              content: SingleChildScrollView(
+                child: Container(
+                  width: double.maxFinite,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Selecciona los ingredientes que deseas:',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                      SizedBox(height: 16),
+
+                      // Lista de ingredientes disponibles
+                      ...producto.ingredientesDisponibles.map((ingrediente) {
+                        final bool isSelected = ingredientesSeleccionados
+                            .contains(ingrediente);
+                        return CheckboxListTile(
+                          title: Text(ingrediente),
+                          value: isSelected,
+                          onChanged: (bool? value) {
+                            setState(() {
+                              if (value == true) {
+                                ingredientesSeleccionados.add(ingrediente);
+                              } else {
+                                ingredientesSeleccionados.remove(ingrediente);
+                              }
+                            });
+                          },
+                          dense: true,
+                          contentPadding: EdgeInsets.zero,
+                        );
+                      }).toList(),
+
+                      SizedBox(height: 16),
+
+                      // Campo de notas adicionales
+                      TextField(
+                        controller: notasController,
+                        decoration: InputDecoration(
+                          labelText: 'Notas adicionales (opcional)',
+                          border: OutlineInputBorder(),
+                          hintText: 'Ej: Sin sal, término medio...',
+                        ),
+                        maxLines: 2,
+                      ),
+
+                      if (ingredientesSeleccionados.isNotEmpty) ...[
+                        SizedBox(height: 16),
+                        Text(
+                          'Ingredientes seleccionados:',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          ingredientesSeleccionados.join(', '),
+                          style: TextStyle(color: Colors.orange, fontSize: 12),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(null),
+                  child: Text('Cancelar'),
+                ),
+                ElevatedButton(
+                  onPressed: ingredientesSeleccionados.isEmpty
+                      ? null
+                      : () {
+                          String notasFinales = '';
+                          if (ingredientesSeleccionados.isNotEmpty) {
+                            notasFinales =
+                                'Ingredientes: ${ingredientesSeleccionados.join(', ')}';
+                          }
+                          if (notasController.text.isNotEmpty) {
+                            if (notasFinales.isNotEmpty) {
+                              notasFinales += ' - ${notasController.text}';
+                            } else {
+                              notasFinales = notasController.text;
+                            }
+                          }
+
+                          Navigator.of(context).pop({
+                            'ingredientes': ingredientesSeleccionados,
+                            'notas': notasFinales,
+                          });
+                        },
+                  child: Text('Confirmar'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    return resultado;
   }
 
   Future<void> _loadData() async {
@@ -74,16 +303,115 @@ class _PedidoScreenState extends State<PedidoScreen> {
     }
   }
 
-  void _agregarProducto(Producto producto) {
+  Future<void> _agregarProducto(Producto producto) async {
+    String? notasEspeciales;
+    String? productoCarneId;
+    List<String> ingredientesSeleccionados = [];
+
+    // Verificar si el producto tiene ingredientes disponibles
+    if (producto.ingredientesDisponibles.isNotEmpty) {
+      // Mostrar diálogo de selección de ingredientes
+      final resultadoIngredientes = await _mostrarDialogoSeleccionIngredientes(
+        producto,
+      );
+      if (resultadoIngredientes != null) {
+        ingredientesSeleccionados =
+            resultadoIngredientes['ingredientes'] as List<String>;
+        notasEspeciales = resultadoIngredientes['notas'] as String?;
+      } else {
+        // Si el usuario canceló la selección, no agregar el producto
+        return;
+      }
+    }
+
+    if (producto.tieneVariantes) {
+      // Detectar productos específicos que requieren selección de opciones
+      bool esAsadoCombinado = producto.nombre.toLowerCase().contains(
+        'asado combinado',
+      );
+      bool esEjecutivo = producto.nombre.toLowerCase().contains('ejecutivo');
+
+      if (esAsadoCombinado || esEjecutivo || producto.tieneVariantes) {
+        // Determinar opciones personalizadas según el tipo de plato
+        List<String>? opcionesPersonalizadas;
+
+        // Configurar opciones según el nombre del plato
+        if (producto.nombre.toLowerCase().contains('chuzo')) {
+          opcionesPersonalizadas = ['Pollo', 'Res', 'Cerdo'];
+        } else if (producto.nombre.toLowerCase().contains('asado combinado')) {
+          opcionesPersonalizadas = ['Res', 'Cerdo'];
+        } else if (producto.nombre.toLowerCase().contains('ejecutivo')) {
+          opcionesPersonalizadas = [
+            'Res',
+            'Cerdo',
+            'Pollo',
+            'Pechuga',
+            'Chicharrón',
+          ];
+        }
+        // Puedes agregar más condiciones para otros platos aquí
+
+        // Mostrar diálogo para seleccionar opciones
+        final resultado = await _mostrarDialogoOpciones(
+          producto,
+          opcionesPersonalizadas ?? [],
+        );
+
+        // Verificamos si el resultado es un mapa (formato nuevo) o string (formato anterior)
+        if (resultado is Map<String, dynamic>) {
+          // Combinar notas de ingredientes con notas de variantes
+          String? notasVariantes = resultado['nota'];
+          if (notasEspeciales != null && notasVariantes != null) {
+            notasEspeciales = '$notasEspeciales - $notasVariantes';
+          } else if (notasVariantes != null) {
+            notasEspeciales = notasVariantes;
+          }
+
+          productoCarneId = resultado['productoId'];
+
+          // Si hay una cantidad específica, la incluimos en las notas
+          if (resultado['cantidad'] != null && resultado['cantidad'] > 1) {
+            int cantidadSeleccionada = resultado['cantidad'] as int;
+            notasEspeciales =
+                "$notasEspeciales (Cantidad: $cantidadSeleccionada)";
+          }
+
+          // Si hay observaciones, las incluimos también
+          if (resultado['observaciones'] != null &&
+              resultado['observaciones'].toString().isNotEmpty) {
+            notasEspeciales =
+                "$notasEspeciales - ${resultado['observaciones']}";
+          }
+        } else if (resultado is String) {
+          // Combinar notas de ingredientes con notas de variantes
+          if (notasEspeciales != null) {
+            notasEspeciales = '$notasEspeciales - $resultado';
+          } else {
+            notasEspeciales = resultado;
+          }
+        }
+
+        // Si no hay notas especiales ni ingredientes, no agregar el producto
+        if (notasEspeciales == null && ingredientesSeleccionados.isEmpty)
+          return;
+      }
+    }
+
     setState(() {
       // Verificar si el producto ya está en la mesa
       int index = productosMesa.indexWhere((p) => p.id == producto.id);
       if (index != -1) {
-        productosMesa[index].cantidad++;
-      } else {
-        // Crear una nueva instancia para no afectar al original
-        productosMesa.add(
-          Producto(
+        // Si ya existe y tiene las mismas opciones, solo incrementamos cantidad
+        if ((productosMesa[index].nota == null && notasEspeciales == null) ||
+            productosMesa[index].nota == notasEspeciales) {
+          productosMesa[index].cantidad++;
+          // Si es un producto con carne y tenemos ID de carne, actualizamos el mapa
+          if (productoCarneId != null) {
+            productosCarneMap[productosMesa[index].id] = productoCarneId;
+          }
+        } else {
+          // Si tiene opciones diferentes, lo agregamos como nuevo ítem
+          Producto nuevoProd = Producto(
             id: producto.id,
             nombre: producto.nombre,
             precio: producto.precio,
@@ -95,9 +423,43 @@ class _PedidoScreenState extends State<PedidoScreen> {
             imagenUrl: producto.imagenUrl,
             categoria: producto.categoria,
             descripcion: producto.descripcion,
+            nota: notasEspeciales,
             cantidad: 1,
-          ),
+            ingredientesDisponibles: ingredientesSeleccionados,
+          );
+
+          productosMesa.add(nuevoProd);
+
+          // Guardar el ID del producto de carne si existe
+          if (productoCarneId != null) {
+            productosCarneMap[nuevoProd.id] = productoCarneId;
+          }
+        }
+      } else {
+        // Crear una nueva instancia para no afectar al original
+        Producto nuevoProd = Producto(
+          id: producto.id,
+          nombre: producto.nombre,
+          precio: producto.precio,
+          costo: producto.costo,
+          impuestos: producto.impuestos,
+          utilidad: producto.utilidad,
+          tieneVariantes: producto.tieneVariantes,
+          estado: producto.estado,
+          imagenUrl: producto.imagenUrl,
+          categoria: producto.categoria,
+          descripcion: producto.descripcion,
+          nota: notasEspeciales,
+          cantidad: 1,
+          ingredientesDisponibles: ingredientesSeleccionados,
         );
+
+        productosMesa.add(nuevoProd);
+
+        // Guardar el ID del producto de carne si existe
+        if (productoCarneId != null) {
+          productosCarneMap[nuevoProd.id] = productoCarneId;
+        }
       }
     });
   }
@@ -109,10 +471,89 @@ class _PedidoScreenState extends State<PedidoScreen> {
         if (productosMesa[index].cantidad > 1) {
           productosMesa[index].cantidad--;
         } else {
+          // Si eliminamos un producto, eliminamos su referencia de carne del mapa
+          productosCarneMap.remove(productosMesa[index].id);
           productosMesa.removeAt(index);
         }
       }
     });
+  }
+
+  // Método para descontar los productos de carne del inventario
+  Future<void> _descontarCarnesDelInventario() async {
+    try {
+      // Si no hay productos de carne para descontar, terminamos
+      if (productosCarneMap.isEmpty) return;
+
+      // Obtener todos los items del inventario
+      final inventario = await _inventarioService.getInventario();
+
+      // Para cada producto de carne, realizar un movimiento de inventario
+      for (var entry in productosCarneMap.entries) {
+        final productoId = entry.value; // ID del producto de carne
+
+        // Buscar el producto en el inventario
+        final itemInventario = inventario.firstWhere(
+          (item) => item.id == productoId,
+          orElse: () => Inventario(
+            id: '',
+            categoria: '',
+            codigo: '',
+            nombre: 'No encontrado',
+            unidad: '',
+            precioCompra: 0,
+            stockActual: 0,
+            stockMinimo: 0,
+            estado: 'INACTIVO',
+          ),
+        );
+
+        // Si encontramos el producto en inventario, realizar el movimiento
+        if (itemInventario.id.isNotEmpty) {
+          // Determinar la cantidad a descontar (cantidad del producto en mesa)
+          final producto = productosMesa.firstWhere(
+            (p) => p.id == entry.key,
+            orElse: () => Producto(
+              id: '',
+              nombre: '',
+              precio: 0,
+              costo: 0,
+              utilidad: 0,
+              cantidad: 0,
+            ),
+          );
+
+          if (producto.id.isNotEmpty) {
+            // Crear un movimiento de salida para este producto
+            final movimiento = MovimientoInventario(
+              inventarioId: itemInventario.id,
+              productoId: producto.id,
+              productoNombre: producto.nombre,
+              tipoMovimiento: 'Salida - Venta',
+              motivo: 'Consumo en Pedido',
+              cantidadAnterior: itemInventario.stockActual,
+              cantidadMovimiento:
+                  -1.0 * producto.cantidad, // Negativo para salidas
+              cantidadNueva: itemInventario.stockActual - producto.cantidad,
+              responsable: 'Sistema',
+              referencia: 'Pedido Mesa: ${widget.mesa.nombre}',
+              observaciones: 'Automático por selección en ${producto.nombre}',
+              fecha: DateTime.now(),
+            );
+
+            // Realizar el movimiento de inventario
+            await _inventarioService.crearMovimientoInventario(movimiento);
+
+            print(
+              'Descontado del inventario: ${itemInventario.nombre} x ${producto.cantidad}',
+            );
+          }
+        }
+      }
+    } catch (e) {
+      print('Error al descontar carnes del inventario: $e');
+      // No interrumpimos el flujo del pedido si esto falla
+    }
   }
 
   Future<void> _guardarPedido() async {
@@ -140,8 +581,9 @@ class _PedidoScreenState extends State<PedidoScreen> {
           productoId: producto.id,
           producto: producto,
           cantidad: producto.cantidad,
-          notas: null,
+          notas: producto.nota, // Pasar las notas con opciones específicas
           precio: producto.precio,
+          ingredientesSeleccionados: producto.ingredientesDisponibles,
         );
       }).toList();
 
@@ -151,23 +593,17 @@ class _PedidoScreenState extends State<PedidoScreen> {
         (sum, producto) => sum + (producto.precio * producto.cantidad),
       );
 
-      // Determinar el tipo de pedido
-      TipoPedido tipo;
-      if (esCortesia) {
-        tipo = TipoPedido.cortesia;
-      } else if (esConsumoInterno) {
-        tipo = TipoPedido.interno;
-      } else {
-        tipo = TipoPedido.normal;
-      }
+      // Obtener el usuario actual
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      final meseroActual = userProvider.userName ?? 'Usuario Desconocido';
 
-      // Crear el pedido
+      // Crear el pedido (siempre como pedido normal)
       final pedido = Pedido(
         id: '',
         fecha: DateTime.now(),
-        tipo: tipo,
+        tipo: TipoPedido.normal,
         mesa: widget.mesa.nombre,
-        mesero: 'Juan Diego', // TODO: Obtener del usuario logueado
+        mesero: meseroActual,
         items: items,
         total: total,
         estado: EstadoPedido.activo,
@@ -176,6 +612,9 @@ class _PedidoScreenState extends State<PedidoScreen> {
 
       // Crear el pedido en el backend
       final pedidoCreado = await PedidoService().createPedido(pedido);
+
+      // Descontar productos de carne del inventario si existen
+      await _descontarCarnesDelInventario();
 
       // Actualizar la mesa para marcarla como ocupada
       widget.mesa.ocupada = true;
@@ -601,16 +1040,32 @@ class _PedidoScreenState extends State<PedidoScreen> {
           ),
           Expanded(
             flex: 2,
-            child: Text(
-              producto.nombre,
-              style: TextStyle(
-                color: productoPagado[producto.id]!
-                    ? textLight
-                    : textLight.withOpacity(0.5),
-                decoration: productoPagado[producto.id]!
-                    ? null
-                    : TextDecoration.lineThrough,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  producto.nombre,
+                  style: TextStyle(
+                    color: productoPagado[producto.id]!
+                        ? textLight
+                        : textLight.withOpacity(0.5),
+                    decoration: productoPagado[producto.id]!
+                        ? null
+                        : TextDecoration.lineThrough,
+                  ),
+                ),
+                if (producto.nota != null && producto.nota!.isNotEmpty)
+                  Text(
+                    producto.nota!,
+                    style: TextStyle(
+                      color: productoPagado[producto.id]!
+                          ? primary.withOpacity(0.7)
+                          : primary.withOpacity(0.3),
+                      fontSize: 12,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+              ],
             ),
           ),
           Expanded(

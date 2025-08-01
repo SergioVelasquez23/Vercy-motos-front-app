@@ -9,25 +9,12 @@ import 'screens/cuadre_caja_screen.dart';
 import 'screens/reportes_screen.dart';
 import 'screens/pedidos_screen_fusion.dart';
 import 'screens/documentos_screen.dart';
+import 'screens/inventario_screen.dart';
 import 'providers/user_provider.dart';
-import 'services/sincronizador_service.dart';
-import 'config/security_config.dart';
-import 'utils/security_utils.dart';
 
 void main() async {
   // Aseguramos que Flutter esté inicializado
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Inicializar el sistema de seguridad
-  await SecurityUtils.initializeSecurity();
-  await SecurityConfig().init();
-
-  // No necesitamos precargar las fuentes aquí, lo manejaremos con CSS
-  // Iniciar la sincronización global cuando la app arranca
-  // Este servicio se encargará de mantener sincronizados los estados de mesas y pedidos
-  SincronizadorService().iniciarSincronizacionPeriodica(
-    periodo: Duration(minutes: 5),
-  );
 
   runApp(
     MultiProvider(
@@ -40,9 +27,6 @@ void main() async {
 class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    // Aplicar configuraciones de seguridad
-    SecurityConfig().applySecurityBestPractices();
-
     // Initialize user from stored token
     Future.microtask(
       () => Provider.of<UserProvider>(

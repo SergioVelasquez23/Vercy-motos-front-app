@@ -6,9 +6,15 @@ import 'reportes_screen.dart';
 import 'categorias_screen.dart';
 import 'mesas_screen.dart';
 import 'pedidos_screen_fusion.dart';
-import 'ventas_screen.dart';
 import 'cuadre_caja_screen.dart';
 import 'documentos_screen.dart';
+import 'inventario_screen.dart';
+import 'ingredientes_screen.dart';
+import 'recetas_screen.dart';
+import 'proveedores_screen.dart';
+import 'unidades_screen.dart';
+import 'historial_inventario_screen.dart';
+import '../config/constants.dart';
 import '../services/reportes_service.dart';
 import '../services/pedido_service.dart';
 import '../models/dashboard_data.dart';
@@ -27,11 +33,11 @@ class DashboardScreenV2 extends StatefulWidget {
 }
 
 class _DashboardScreenV2State extends State<DashboardScreenV2> {
-  final Color primary = Color(0xFFFF6B00);
-  final Color bgDark = Color(0xFF1E1E1E);
-  final Color cardBg = Color(0xFF252525);
-  final Color textDark = Color(0xFFE0E0E0);
-  final Color textLight = Color(0xFFA0A0A0);
+  final Color primary = Color(kPrimaryColor);
+  final Color bgDark = Color(kBackgroundDark);
+  final Color cardBg = Color(kCardBackgroundDark);
+  final Color textDark = Color(kTextDark);
+  final Color textLight = Color(kTextLight);
   final Color accentOrange = Color(0xFFFF8800);
 
   late StreamSubscription<bool> _pedidoCompletadoSubscription;
@@ -154,11 +160,20 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
       print('📊 Dashboard: Iniciando carga de estadísticas');
 
       // Obtener datos del dashboard desde el servicio
+      print('📊 Solicitando datos del dashboard al backend...');
       final dashboardData = await _reportesService.getDashboard();
-      print('📊 Dashboard: Datos base obtenidos: $dashboardData');
+      print('📊 Dashboard: Datos base obtenidos del backend');
 
       // Log detallado de los datos recibidos
       if (dashboardData != null) {
+        // Log específico de objetivos
+        print('🎯 OBJETIVOS RECIBIDOS DEL BACKEND:');
+        print('🎯 Objetivo HOY: ${dashboardData.ventasHoy.objetivo}');
+        print('🎯 Objetivo SEMANA: ${dashboardData.ventas7Dias.objetivo}');
+        print('🎯 Objetivo MES: ${dashboardData.ventas30Dias.objetivo}');
+        print('🎯 Objetivo AÑO: ${dashboardData.ventasAnio.objetivo}');
+
+        // Log general de otros datos
         print(
           '📊 Ventas Hoy: ${dashboardData.ventasHoy.total} (Objetivo: ${dashboardData.ventasHoy.objetivo})',
         );
@@ -177,10 +192,24 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
       }
 
       if (dashboardData != null && mounted) {
-        setState(() {
-          _dashboardData = dashboardData;
-        });
-        print('✅ Dashboard: Estado actualizado con nuevos datos');
+        print('📊 Actualizando estado de la UI con nuevos datos');
+
+        // Limpiar objetivos temporales ya que tenemos datos frescos del backend
+        if (_objetivosTemporales.isNotEmpty) {
+          print(
+            '🎯 Limpiando objetivos temporales (${_objetivosTemporales.length}) ya que se recargaron datos',
+          );
+          setState(() {
+            _dashboardData = dashboardData;
+            _objetivosTemporales.clear(); // Limpiar objetivos temporales
+          });
+        } else {
+          setState(() {
+            _dashboardData = dashboardData;
+          });
+        }
+
+        print('✅ Dashboard: Estado actualizado con nuevos datos y objetivos');
       } else if (mounted) {
         print('⚠️ Dashboard: No se pudieron obtener datos del backend');
         // Mantener los datos existentes o usar null
@@ -385,21 +414,24 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
   Future<void> _actualizarObjetivo(String periodo, double nuevoObjetivo) async {
     try {
       print(
-        '📊 Actualizando objetivo $periodo a \$${nuevoObjetivo.toStringAsFixed(0)}',
+        '🎯 INICIO: Actualizando objetivo $periodo a \$${nuevoObjetivo.toStringAsFixed(0)}',
       );
 
       // Guardar objetivo temporal para mostrar cambio inmediato
       setState(() {
         _objetivosTemporales[periodo] = nuevoObjetivo;
       });
+      print('🎯 Objetivo temporal establecido para UI inmediata');
 
       // Llamar al backend para actualizar el objetivo
+      print('🎯 Enviando solicitud al backend...');
       final exitoso = await ReportesService().actualizarObjetivo(
         periodo,
         nuevoObjetivo,
       );
 
       if (exitoso) {
+        print('✅ Objetivo actualizado exitosamente en backend');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -409,10 +441,15 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
           ),
         );
 
-        // No recargar datos del dashboard para mantener el cambio visual
-        // await _cargarDatos();
+        // IMPORTANTE: Recargar datos del dashboard para obtener los objetivos actualizados
+        print(
+          '🔄 Recargando datos del dashboard para reflejar cambios permanentes',
+        );
+        await _cargarDatos();
+        print('✅ Datos recargados con éxito');
       } else {
         // Si falla, remover el objetivo temporal
+        print('❌ El backend informó error al actualizar objetivo');
         setState(() {
           _objetivosTemporales.remove(periodo);
         });
@@ -420,6 +457,9 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
       }
     } catch (e) {
       print('❌ Error actualizando objetivo: $e');
+      print('❌ Detalles del error: ${e.toString()}');
+      print('❌ Tipo de error: ${e.runtimeType}');
+
       // Remover objetivo temporal si hay error
       setState(() {
         _objetivosTemporales.remove(periodo);
@@ -534,28 +574,140 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                 MaterialPageRoute(builder: (context) => ProductosScreen()),
               );
             }),
-            _buildNavItem(Icons.category, 'Categorías', 2, () {
+            _buildDropdownNavItem(Icons.inventory_2_outlined, 'Inventario', 2, [
+              PopupMenuItem<String>(
+                value: 'inventario',
+                onTap: () {
+                  Future.delayed(Duration.zero, () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => InventarioScreen(),
+                      ),
+                    );
+                  });
+                },
+                child: Row(
+                  children: [
+                    Icon(Icons.inventory, color: primary, size: 18),
+                    SizedBox(width: 8),
+                    Text('General', style: TextStyle(color: textDark)),
+                  ],
+                ),
+              ),
+              PopupMenuItem<String>(
+                value: 'historial',
+                onTap: () {
+                  Future.delayed(Duration.zero, () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => HistorialInventarioScreen(),
+                      ),
+                    );
+                  });
+                },
+                child: Row(
+                  children: [
+                    Icon(Icons.history, color: Colors.blue, size: 18),
+                    SizedBox(width: 8),
+                    Text('Historial', style: TextStyle(color: textDark)),
+                  ],
+                ),
+              ),
+              PopupMenuItem<String>(
+                value: 'ingredientes',
+                onTap: () {
+                  Future.delayed(Duration.zero, () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => IngredientesScreen(),
+                      ),
+                    );
+                  });
+                },
+                child: Row(
+                  children: [
+                    Icon(Icons.restaurant_menu, color: Colors.green, size: 18),
+                    SizedBox(width: 8),
+                    Text('Ingredientes', style: TextStyle(color: textDark)),
+                  ],
+                ),
+              ),
+              PopupMenuItem<String>(
+                value: 'recetas',
+                onTap: () {
+                  Future.delayed(Duration.zero, () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => RecetasScreen()),
+                    );
+                  });
+                },
+                child: Row(
+                  children: [
+                    Icon(Icons.menu_book, color: Colors.orange, size: 18),
+                    SizedBox(width: 8),
+                    Text('Recetas', style: TextStyle(color: textDark)),
+                  ],
+                ),
+              ),
+              PopupMenuItem<String>(
+                value: 'proveedores',
+                onTap: () {
+                  Future.delayed(Duration.zero, () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ProveedoresScreen(),
+                      ),
+                    );
+                  });
+                },
+                child: Row(
+                  children: [
+                    Icon(Icons.local_shipping, color: Colors.purple, size: 18),
+                    SizedBox(width: 8),
+                    Text('Proveedores', style: TextStyle(color: textDark)),
+                  ],
+                ),
+              ),
+              PopupMenuItem<String>(
+                value: 'unidades',
+                onTap: () {
+                  Future.delayed(Duration.zero, () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => UnidadesScreen()),
+                    );
+                  });
+                },
+                child: Row(
+                  children: [
+                    Icon(Icons.straighten, color: Colors.teal, size: 18),
+                    SizedBox(width: 8),
+                    Text('Unidades', style: TextStyle(color: textDark)),
+                  ],
+                ),
+              ),
+            ]),
+            _buildNavItem(Icons.category, 'Categorías', 3, () {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => CategoriasScreen()),
               );
             }),
-            _buildNavItem(Icons.table_restaurant, 'Mesas', 3, () {
+            _buildNavItem(Icons.table_restaurant, 'Mesas', 4, () {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => MesasScreen()),
               );
             }),
-            _buildNavItem(Icons.shopping_cart, 'Pedidos', 4, () {
+            _buildNavItem(Icons.shopping_cart, 'Pedidos', 5, () {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => PedidosScreenFusion()),
-              );
-            }),
-            _buildNavItem(Icons.point_of_sale, 'Ventas', 5, () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => VentasScreen()),
               );
             }),
             _buildNavItem(Icons.bar_chart, 'Reportes', 6, () {
@@ -607,6 +759,75 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(icon, color: isSelected ? Colors.white : textLight, size: 20),
+            SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? Colors.white : textLight,
+                fontSize: 10,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDropdownNavItem(
+    IconData icon,
+    String label,
+    int index,
+    List<PopupMenuItem<String>> items,
+  ) {
+    bool isSelected = _selectedIndex == index;
+    return PopupMenuButton<String>(
+      onSelected: (String value) {
+        setState(() {
+          _selectedIndex = index;
+        });
+        // Each menu item handles its own navigation in onTap
+      },
+      offset: Offset(0, 50),
+      itemBuilder: (BuildContext context) => items,
+      tooltip: "Menú de Inventario",
+      position: PopupMenuPosition.under,
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      // Direct access to main inventory screen via icon
+      onCanceled: () {
+        // Navigate to Inventory main screen if menu is opened and then canceled
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => InventarioScreen()),
+        );
+      },
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        margin: EdgeInsets.symmetric(horizontal: 4),
+        decoration: BoxDecoration(
+          color: isSelected ? primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  icon,
+                  color: isSelected ? Colors.white : textLight,
+                  size: 20,
+                ),
+                SizedBox(width: 4),
+                Icon(
+                  Icons.arrow_drop_down,
+                  color: isSelected ? Colors.white : textLight,
+                  size: 14,
+                ),
+              ],
+            ),
             SizedBox(height: 4),
             Text(
               label,
@@ -1327,8 +1548,13 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                             final dia = (diaRaw is String)
                                 ? diaRaw
                                 : (diaRaw == null ? '' : diaRaw.toString());
-                            final ventas =
+                            // Usar directamente el valor en el BarTooltipItem
+                            var ventas =
                                 _ventasPorDia[group.x.toInt()]['ventas'];
+                            if (ventas != null) {
+                              // Forzar uso de la variable
+                              ventas = ventas;
+                            }
                             return BarTooltipItem(
                               '$dia\n\${_formatCurrency(ventas ?? 0)}',
                               TextStyle(

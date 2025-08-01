@@ -33,7 +33,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
   TipoPedido? _tipoFiltro;
   EstadoPedido? _estadoFiltro;
 
-  // Estados disponibles
+  // Estados disponibles - Ahora incluye cortesía y consumo interno
   final List<EstadoPedido> _estados = [
     EstadoPedido.activo,
     EstadoPedido.pagado,
@@ -44,7 +44,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
   void initState() {
     super.initState();
     _tabController = TabController(
-      length: 3, // Activo, pagado y cancelado
+      length: 5, // Activo, Pagado, Cancelado, Cortesía, Consumo Interno
       vsync: this,
     );
     _tabController.addListener(_onTabChanged);
@@ -64,7 +64,21 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
     if (_tabController.indexIsChanging) return;
 
     setState(() {
-      _estadoFiltro = _estados[_tabController.index];
+      // Reset filtros
+      _estadoFiltro = null;
+      _tipoFiltro = null;
+
+      // Configurar filtros según el tab seleccionado
+      if (_tabController.index <= 2) {
+        // Tabs de estados (Activo, Pagado, Cancelado)
+        _estadoFiltro = _estados[_tabController.index];
+      } else if (_tabController.index == 3) {
+        // Tab de Cortesía
+        _tipoFiltro = TipoPedido.cortesia;
+      } else if (_tabController.index == 4) {
+        // Tab de Consumo Interno
+        _tipoFiltro = TipoPedido.interno;
+      }
     });
     _aplicarFiltros();
   }
@@ -77,6 +91,10 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
 
     try {
       final pedidos = await _pedidoService.getAllPedidos();
+
+      // Ordenar pedidos por fecha descendente (más recientes primero)
+      pedidos.sort((a, b) => b.fecha.compareTo(a.fecha));
+
       setState(() {
         _pedidos = pedidos;
         _isLoading = false;
@@ -98,6 +116,8 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
         return Colors.blue;
       case EstadoPedido.cancelado:
         return Colors.red;
+      case EstadoPedido.cortesia:
+        return Colors.green;
     }
   }
 
@@ -108,6 +128,38 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
       case EstadoPedido.pagado:
         return 'Pagado';
       case EstadoPedido.cancelado:
+        return 'Cancelado';
+      case EstadoPedido.cortesia:
+        return 'Cortesía';
+    }
+  }
+
+  Color _getTipoColor(TipoPedido tipo) {
+    switch (tipo) {
+      case TipoPedido.normal:
+        return Colors.blue;
+      case TipoPedido.cortesia:
+        return Colors.green;
+      case TipoPedido.interno:
+        return Colors.purple;
+      case TipoPedido.rt:
+        return Colors.orange;
+      case TipoPedido.cancelado:
+        return Colors.red;
+    }
+  }
+
+  String _getTipoTexto(TipoPedido tipo) {
+    switch (tipo) {
+      case TipoPedido.normal:
+        return 'Normal';
+      case TipoPedido.cortesia:
+        return 'Cortesía';
+      case TipoPedido.interno:
+        return 'Consumo Interno';
+      case TipoPedido.rt:
+        return 'RT';
+      case TipoPedido.cancelado:
         return 'Cancelado';
     }
   }
@@ -123,7 +175,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
 
     List<Pedido> pedidosFiltrados = List.from(_pedidos);
 
-    // Filtrar por tipo
+    // NUEVA LÓGICA: Filtrar por tipo específico primero (Cortesía, Consumo Interno)
     if (_tipoFiltro != null) {
       final antes = pedidosFiltrados.length;
       pedidosFiltrados = pedidosFiltrados
@@ -133,13 +185,19 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
         '⚗️ Después del filtro de tipo: ${pedidosFiltrados.length} (antes: $antes)',
       );
     }
-
-    // Filtrar por estado
-    if (_estadoFiltro != null) {
+    // Solo filtrar por estado si NO hay filtro de tipo específico
+    else if (_estadoFiltro != null) {
       final antes = pedidosFiltrados.length;
-      pedidosFiltrados = pedidosFiltrados
-          .where((pedido) => pedido.estado == _estadoFiltro)
-          .toList();
+      pedidosFiltrados = pedidosFiltrados.where((pedido) {
+        // Para el tab "Pagados", excluir cortesía y consumo interno
+        // porque tienen sus propios tabs
+        if (_estadoFiltro == EstadoPedido.pagado) {
+          return pedido.estado == EstadoPedido.pagado &&
+              pedido.tipo != TipoPedido.cortesia &&
+              pedido.tipo != TipoPedido.interno;
+        }
+        return pedido.estado == _estadoFiltro;
+      }).toList();
       print(
         '⚗️ Después del filtro de estado: ${pedidosFiltrados.length} (antes: $antes)',
       );
@@ -162,9 +220,80 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
 
     print('✅ Pedidos filtrados finales: ${pedidosFiltrados.length}');
 
+    // Mantener orden cronológico inverso después del filtrado
+    pedidosFiltrados.sort((a, b) => b.fecha.compareTo(a.fecha));
+
     setState(() {
       _pedidosFiltrados = pedidosFiltrados;
     });
+  }
+
+  Future<void> _cancelarPedido(Pedido pedido) async {
+    // Mostrar confirmación
+    final bool? confirmar = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: cardBg,
+          title: Text('Cancelar Pedido', style: TextStyle(color: textDark)),
+          content: Text(
+            '¿Estás seguro de que quieres cancelar el pedido de la mesa ${pedido.mesa}?',
+            style: TextStyle(color: textLight),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text('No', style: TextStyle(color: textLight)),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              child: Text('Sí, Cancelar'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmar == true) {
+      try {
+        setState(() {
+          _isLoading = true;
+        });
+
+        // Cancelar el pedido usando el nuevo método con DTO
+        final userProvider = Provider.of<UserProvider>(context, listen: false);
+        final usuarioCancelacion =
+            userProvider.userName ?? 'Usuario Desconocido';
+
+        await _pedidoService.cancelarPedidoConDTO(
+          pedido.id,
+          procesadoPor: usuarioCancelacion,
+          notas: 'Pedido cancelado desde la pantalla de pedidos',
+        );
+
+        // Recargar la lista de pedidos
+        await _cargarPedidos();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Pedido cancelado exitosamente'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } catch (e) {
+        setState(() {
+          _isLoading = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al cancelar pedido: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   // El método _cambiarEstadoPedido ha sido eliminado
@@ -237,10 +366,13 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
               TabBar(
                 controller: _tabController,
                 indicatorColor: primary,
+                isScrollable: true, // Permitir scroll horizontal para los tabs
                 tabs: [
                   Tab(text: 'Activos'),
                   Tab(text: 'Pagados'),
                   Tab(text: 'Cancelados'),
+                  Tab(text: 'Cortesía'),
+                  Tab(text: 'Consumo Interno'),
                 ],
               ),
             ],
@@ -292,16 +424,42 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                   'Mesa: ${pedido.mesa}',
                   style: TextStyle(color: textDark, fontSize: 16),
                 ),
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: _getEstadoColor(pedido.estado),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    _getEstadoTexto(pedido.estado),
-                    style: TextStyle(color: Colors.white, fontSize: 12),
-                  ),
+                Row(
+                  children: [
+                    // Chip del tipo de pedido
+                    if (pedido.tipo != TipoPedido.normal) ...[
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        margin: EdgeInsets.only(right: 8),
+                        decoration: BoxDecoration(
+                          color: _getTipoColor(pedido.tipo),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          _getTipoTexto(pedido.tipo),
+                          style: TextStyle(color: Colors.white, fontSize: 10),
+                        ),
+                      ),
+                    ],
+                    // Chip del estado
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _getEstadoColor(pedido.estado),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        _getEstadoTexto(pedido.estado),
+                        style: TextStyle(color: Colors.white, fontSize: 12),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -318,13 +476,32 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
               ),
             ],
             SizedBox(height: 12),
-            Text(
-              'Total: \$${pedido.total.toStringAsFixed(0)}',
-              style: TextStyle(
-                color: primary,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Total: \$${pedido.total.toStringAsFixed(0)}',
+                  style: TextStyle(
+                    color: primary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                // Botón de cancelar solo para pedidos activos
+                if (pedido.estado == EstadoPedido.activo)
+                  TextButton.icon(
+                    onPressed: () => _cancelarPedido(pedido),
+                    icon: Icon(Icons.cancel, color: Colors.red, size: 16),
+                    label: Text(
+                      'Cancelar',
+                      style: TextStyle(color: Colors.red, fontSize: 12),
+                    ),
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      minimumSize: Size(0, 0),
+                    ),
+                  ),
+              ],
             ),
             // Nota: Los botones de pago y cancelación han sido eliminados
             // Para gestionar pagos, dirigirse a la pantalla de mesas

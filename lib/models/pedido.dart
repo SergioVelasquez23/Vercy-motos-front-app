@@ -4,7 +4,7 @@ import 'item_pedido.dart'; // Importar el ItemPedido correcto
 
 enum TipoPedido { normal, rt, interno, cancelado, cortesia }
 
-enum EstadoPedido { activo, pagado, cancelado }
+enum EstadoPedido { activo, pagado, cancelado, cortesia }
 
 extension EstadoPedidoExtension on EstadoPedido {
   String toJson() {
@@ -12,8 +12,10 @@ extension EstadoPedidoExtension on EstadoPedido {
   }
 
   static EstadoPedido fromJson(String json) {
+    // Convertir a minúsculas para comparación case-insensitive
+    final jsonLowerCase = json.toLowerCase();
     return EstadoPedido.values.firstWhere(
-      (e) => e.toString().split('.').last == json,
+      (e) => e.toString().split('.').last.toLowerCase() == jsonLowerCase,
       orElse: () => EstadoPedido.activo,
     );
   }
@@ -25,8 +27,10 @@ extension TipoPedidoExtension on TipoPedido {
   }
 
   static TipoPedido fromJson(String json) {
+    // Convertir a minúsculas para comparación case-insensitive
+    final jsonLowerCase = json.toLowerCase();
     return TipoPedido.values.firstWhere(
-      (e) => e.toString().split('.').last == json,
+      (e) => e.toString().split('.').last.toLowerCase() == jsonLowerCase,
       orElse: () => TipoPedido.normal,
     );
   }
@@ -106,6 +110,8 @@ class Pedido {
         return 'Pagado';
       case EstadoPedido.cancelado:
         return 'Cancelado';
+      case EstadoPedido.cortesia:
+        return 'Cortesía';
     }
   }
 
@@ -132,6 +138,8 @@ class Pedido {
         return Colors.blue;
       case EstadoPedido.cancelado:
         return Colors.red;
+      case EstadoPedido.cortesia:
+        return Colors.green;
     }
   }
 

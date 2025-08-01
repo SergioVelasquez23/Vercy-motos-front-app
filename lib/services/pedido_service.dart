@@ -519,6 +519,8 @@ class PedidoService {
     try {
       // Crear un mapa de productos por ID
       Map<String, Producto> productosMap = {};
+
+      // Primero intentamos cargar todos los productos
       for (final item in pedido.items) {
         if (!productosMap.containsKey(item.productoId)) {
           try {
@@ -526,10 +528,11 @@ class PedidoService {
               item.productoId,
             );
             if (producto != null) {
+              print('✅ Producto cargado: ${producto.nombre}');
               productosMap[item.productoId] = producto;
             }
           } catch (e) {
-            print('Error al cargar producto ${item.productoId}: $e');
+            print('❌ Error al cargar producto ${item.productoId}: $e');
           }
         }
       }
@@ -538,7 +541,9 @@ class PedidoService {
       for (var i = 0; i < pedido.items.length; i++) {
         final item = pedido.items[i];
         final producto = productosMap[item.productoId];
+
         if (producto != null) {
+          // Si tenemos el producto completo, lo usamos
           pedido.items[i] = ItemPedido(
             productoId: item.productoId,
             producto: producto,
@@ -546,6 +551,42 @@ class PedidoService {
             notas: item.notas,
             precio: producto.precio,
           );
+          print('✅ Item actualizado con producto completo: ${producto.nombre}');
+        } else if (item.producto == null) {
+          // Si no tenemos el producto, pero tenemos nombre en el JSON, creamos un producto básico
+          String nombreProducto = "Producto desconocido";
+
+          // Intentar obtener nombre del producto desde el servicio de productos
+          try {
+            final nombreInfo = await _productoService.getProductoNombre(
+              item.productoId,
+            );
+            if (nombreInfo != null && nombreInfo.isNotEmpty) {
+              nombreProducto = nombreInfo;
+              print('✅ Nombre de producto recuperado: $nombreProducto');
+            }
+          } catch (e) {
+            print('❌ Error obteniendo nombre del producto: $e');
+          }
+
+          // Crear un producto básico con la información disponible
+          final productoBasico = Producto(
+            id: item.productoId,
+            nombre: nombreProducto,
+            precio: item.precio,
+            costo: 0.0,
+            utilidad: 0.0,
+            cantidad: 0,
+          );
+
+          pedido.items[i] = ItemPedido(
+            productoId: item.productoId,
+            producto: productoBasico,
+            cantidad: item.cantidad,
+            notas: item.notas,
+            precio: item.precio,
+          );
+          print('⚠️ Item actualizado con producto básico: $nombreProducto');
         }
       }
     } catch (e) {
@@ -553,6 +594,7 @@ class PedidoService {
     }
   }
 
+  // Método legacy para cancelar pedidos (mantener por compatibilidad)
   Future<void> cancelarPedido(String pedidoId, String motivo) async {
     final url = '$baseUrl/api/pedidos/cancelar';
     final secureStorage = FlutterSecureStorage();
@@ -578,23 +620,179 @@ class PedidoService {
     _pedidoCompletadoController.add(true);
   }
 
-  // Pagar un pedido
-  Future<Pedido> pagarPedido(
+  // Nuevo método para cancelar pedidos usando el DTO PagarPedidoRequest
+  Future<Pedido> cancelarPedidoConDTO(
     String pedidoId, {
-    String formaPago = 'efectivo',
-    double propina = 0.0,
-    String pagadoPor = '',
+    String procesadoPor = '',
     String notas = '',
   }) async {
     try {
       final headers = await _getHeaders();
 
-      final Map<String, dynamic> pagarData = {
-        'formaPago': formaPago,
-        'propina': propina,
-        'pagadoPor': pagadoPor,
+      final Map<String, dynamic> cancelarData = {
+        'tipoPago': 'cancelado', // Usar el nuevo DTO
+        'procesadoPor': procesadoPor,
         'notas': notas,
       };
+
+      print('🚫 Datos enviados al cancelar pedido:');
+      print('  - Pedido ID: $pedidoId');
+      print('  - Datos completos: ${json.encode(cancelarData)}');
+
+      final response = await http.put(
+        Uri.parse('$baseUrl/api/pedidos/$pedidoId/pagar'),
+        headers: headers,
+        body: json.encode(cancelarData),
+      );
+
+      print('Cancelar pedido response: ${response.statusCode}');
+      print('Cancelar pedido body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        if (responseData['success'] == true && responseData['data'] != null) {
+          final pedidoCancelado = Pedido.fromJson(responseData['data']);
+
+          // Notificar que se canceló un pedido
+          _pedidoCompletadoController.add(true);
+          print('🔔 PedidoService: Notificación de cancelación enviada');
+
+          return pedidoCancelado;
+        } else {
+          throw Exception('Formato de respuesta inválido');
+        }
+      } else {
+        throw Exception('Error al cancelar pedido: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ Error cancelando pedido: $e');
+      throw Exception('Error de conexión: $e');
+    }
+  }
+
+  // Actualizar tipo de un pedido (cortesía, consumo interno, etc.)
+  Future<Pedido> actualizarTipoPedido(
+    String pedidoId,
+    TipoPedido nuevoTipo,
+  ) async {
+    try {
+      final headers = await _getHeaders();
+
+      print('🔄 Actualizando tipo de pedido:');
+      print('  - Pedido ID: $pedidoId');
+      print('  - Nuevo tipo: $nuevoTipo');
+
+      // PASO 1: Obtener el pedido actual completo
+      final getPedidoResponse = await http.get(
+        Uri.parse('$baseUrl/api/pedidos/$pedidoId'),
+        headers: headers,
+      );
+
+      if (getPedidoResponse.statusCode != 200) {
+        throw Exception(
+          'No se pudo obtener el pedido: ${getPedidoResponse.statusCode}',
+        );
+      }
+
+      final getPedidoData = json.decode(getPedidoResponse.body);
+      if (getPedidoData['success'] != true || getPedidoData['data'] == null) {
+        throw Exception('Formato de respuesta inválido al obtener pedido');
+      }
+
+      // PASO 2: Modificar solo el tipo en el pedido completo
+      final pedidoCompleto = getPedidoData['data'] as Map<String, dynamic>;
+      // El backend espera el tipo en mayúsculas (NORMAL, CORTESIA, INTERNO, etc.)
+      pedidoCompleto['tipo'] = nuevoTipo.toJson().toUpperCase();
+
+      print('  - Datos completos a enviar: ${json.encode(pedidoCompleto)}');
+
+      // PASO 3: Actualizar el pedido completo con el nuevo tipo
+      final response = await http.put(
+        Uri.parse('$baseUrl/api/pedidos/$pedidoId'),
+        headers: headers,
+        body: json.encode(pedidoCompleto),
+      );
+
+      print('Actualizar tipo pedido response: ${response.statusCode}');
+      print('Actualizar tipo pedido body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        if (responseData['success'] == true && responseData['data'] != null) {
+          return Pedido.fromJson(responseData['data']);
+        } else {
+          throw Exception('Formato de respuesta inválido');
+        }
+      } else {
+        throw Exception(
+          'Error al actualizar tipo de pedido: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      print('❌ Error actualizando tipo de pedido: $e');
+      throw Exception('No se pudo actualizar el tipo del pedido: $e');
+    }
+  }
+
+  // Pagar un pedido - Actualizado para coincidir con PagarPedidoRequest del backend
+  Future<Pedido> pagarPedido(
+    String pedidoId, {
+    String formaPago = 'efectivo',
+    double propina = 0.0,
+    String procesadoPor = '',
+    String notas = '',
+    TipoPedido? tipoPedido,
+    bool esCortesia = false,
+    bool esConsumoInterno = false,
+    String? motivoCortesia,
+    String? tipoConsumoInterno,
+  }) async {
+    try {
+      final headers = await _getHeaders();
+
+      // Determinar el tipoPago según las opciones
+      String tipoPago;
+      if (esCortesia) {
+        tipoPago = 'cortesia';
+      } else if (esConsumoInterno) {
+        tipoPago = 'consumo_interno';
+      } else {
+        tipoPago = 'pagado'; // Por defecto es pagado normal
+      }
+
+      // Construir el objeto según el DTO PagarPedidoRequest
+      final Map<String, dynamic> pagarData = {
+        'tipoPago': tipoPago, // Campo requerido
+        'procesadoPor': procesadoPor, // Cambio de 'pagadoPor' a 'procesadoPor'
+        'notas': notas,
+      };
+
+      // Solo incluir campos específicos para pagos normales
+      if (tipoPago == 'pagado') {
+        pagarData['formaPago'] = formaPago;
+        pagarData['propina'] = propina;
+      }
+
+      // Solo incluir motivoCortesia para cortesías
+      if (tipoPago == 'cortesia' &&
+          motivoCortesia != null &&
+          motivoCortesia.isNotEmpty) {
+        pagarData['motivoCortesia'] = motivoCortesia;
+      }
+
+      // Solo incluir tipoConsumoInterno para consumo interno
+      if (tipoPago == 'consumo_interno' &&
+          tipoConsumoInterno != null &&
+          tipoConsumoInterno.isNotEmpty) {
+        pagarData['tipoConsumoInterno'] = tipoConsumoInterno;
+      }
+
+      print('🚀 Datos enviados al pagar pedido:');
+      print('  - Pedido ID: $pedidoId');
+      print('  - Tipo de pago: $tipoPago');
+      print('  - Es cortesía: $esCortesia');
+      print('  - Es consumo interno: $esConsumoInterno');
+      print('  - Datos completos: ${json.encode(pagarData)}');
 
       final response = await http.put(
         Uri.parse('$baseUrl/api/pedidos/$pedidoId/pagar'),

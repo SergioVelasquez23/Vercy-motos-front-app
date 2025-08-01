@@ -6,7 +6,6 @@ import '../models/pedido.dart';
 import '../services/pedido_service.dart';
 import '../services/mesa_service.dart';
 import '../services/notification_service.dart';
-import '../services/sincronizador_service.dart';
 import '../providers/user_provider.dart';
 import 'pedido_screen.dart';
 
@@ -20,7 +19,6 @@ class MesasScreen extends StatefulWidget {
 class _MesasScreenState extends State<MesasScreen> {
   final MesaService _mesaService = MesaService();
   final PedidoService _pedidoService = PedidoService();
-  final SincronizadorService _sincronizadorService = SincronizadorService();
   List<Mesa> mesas = [];
   bool isLoading = true;
   String? errorMessage;
@@ -42,10 +40,7 @@ class _MesasScreenState extends State<MesasScreen> {
   }
 
   void _iniciarSincronizacion() {
-    // Iniciar sincronización cada 2 minutos
-    _sincronizadorService.iniciarSincronizacionPeriodica(
-      periodo: Duration(minutes: 2),
-    );
+    // Sincronización deshabilitada
   }
 
   @override
@@ -53,7 +48,6 @@ class _MesasScreenState extends State<MesasScreen> {
     // Limpiar subscripciones
     _pedidoCompletadoSubscription.cancel();
     _pedidoPagadoSubscription.cancel();
-    _sincronizadorService.detenerSincronizacionPeriodica();
     super.dispose();
   }
 
@@ -80,11 +74,12 @@ class _MesasScreenState extends State<MesasScreen> {
         errorMessage = null;
       });
 
-      // Primero realizar la sincronización
-      await _sincronizadorService.sincronizarEstadoMesasPedidos();
-
-      // Luego cargar las mesas ya sincronizadas
+      // Cargar las mesas
       final loadedMesas = await _mesaService.getMesas();
+
+      // Sincronizar estado de mesas con pedidos activos
+      await _sincronizarEstadoMesas(loadedMesas);
+
       setState(() {
         mesas = loadedMesas;
         isLoading = false;
@@ -97,15 +92,53 @@ class _MesasScreenState extends State<MesasScreen> {
     }
   }
 
+  Future<void> _sincronizarEstadoMesas(List<Mesa> mesas) async {
+    print(
+      '🔄 Sincronizando estado de ${mesas.length} mesas con pedidos activos...',
+    );
+
+    for (Mesa mesa in mesas) {
+      try {
+        // Solo verificar mesas que aparecen como ocupadas
+        if (mesa.ocupada || mesa.total > 0) {
+          final pedidos = await _pedidoService.getPedidosByMesa(mesa.nombre);
+          final hayPedidoActivo = pedidos.any(
+            (pedido) => pedido.estado == EstadoPedido.activo,
+          );
+
+          if (!hayPedidoActivo) {
+            print(
+              '⚠️ Mesa ${mesa.nombre}: Sin pedidos activos, liberando mesa...',
+            );
+
+            // Si no hay pedidos activos pero la mesa aparece ocupada, liberarla
+            if (mesa.ocupada || mesa.total > 0) {
+              mesa.ocupada = false;
+              mesa.productos = [];
+              mesa.total = 0.0;
+
+              try {
+                await _mesaService.updateMesa(mesa);
+                print('✅ Mesa ${mesa.nombre} liberada automáticamente');
+              } catch (e) {
+                print('❌ Error al liberar mesa ${mesa.nombre}: $e');
+              }
+            }
+          } else {
+            print('✅ Mesa ${mesa.nombre}: Pedido activo confirmado');
+          }
+        }
+      } catch (e) {
+        print('❌ Error verificando mesa ${mesa.nombre}: $e');
+      }
+    }
+  }
+
   Future<Pedido?> _obtenerPedidoActivoDeMesa(Mesa mesa) async {
     try {
       print('🔍 Buscando pedido activo para mesa: ${mesa.id}');
-      if (mesa.pedidoActual != null &&
-          mesa.pedidoActual!.estado == EstadoPedido.activo) {
-        print('✅ Pedido activo encontrado en la mesa');
-        return mesa.pedidoActual;
-      }
 
+      // Siempre buscar en el servidor para obtener el ID más actualizado
       final pedidos = await _pedidoService.getPedidosByMesa(mesa.nombre);
       print('📋 Pedidos encontrados para la mesa: ${pedidos.length}');
 
@@ -113,10 +146,40 @@ class _MesasScreenState extends State<MesasScreen> {
         (pedido) => pedido.estado == EstadoPedido.activo,
         orElse: () => throw Exception('No hay pedido activo'),
       );
-      print('✅ Pedido activo encontrado: ${pedidoActivo.id}');
+
+      print(
+        '✅ Pedido activo encontrado - ID: "${pedidoActivo.id}" - Mesa: ${pedidoActivo.mesa}',
+      );
+
+      // Verificar que el ID no esté vacío
+      if (pedidoActivo.id.isEmpty) {
+        print('❌ ERROR: El pedido activo no tiene ID válido');
+        throw Exception('El pedido activo no tiene ID válido');
+      }
+
       return pedidoActivo;
     } catch (e) {
       print('❌ Error al obtener pedido activo: $e');
+
+      // Si no hay pedido activo pero la mesa aparece ocupada, corregir automáticamente
+      if (mesa.ocupada || mesa.total > 0) {
+        print(
+          '🔧 Corrigiendo estado de mesa ${mesa.nombre} sin pedidos activos...',
+        );
+        try {
+          mesa.ocupada = false;
+          mesa.productos = [];
+          mesa.total = 0.0;
+          await _mesaService.updateMesa(mesa);
+          print('✅ Mesa ${mesa.nombre} corregida automáticamente');
+
+          // Recargar las mesas para reflejar el cambio en la UI
+          _loadMesas();
+        } catch (updateError) {
+          print('❌ Error al corregir mesa ${mesa.nombre}: $updateError');
+        }
+      }
+
       return null;
     }
   }
@@ -207,9 +270,8 @@ class _MesasScreenState extends State<MesasScreen> {
           isLoading = true;
         });
 
-        // Limpiar todas las mesas de forma forzada
-        final mesasLimpiadas = await _sincronizadorService
-            .forzarLimpiezaCompletaMesas();
+        // Funcionalidad de limpieza deshabilitada
+        int mesasLimpiadas = 0;
 
         // Recargar las mesas
         await _loadMesas();
@@ -295,12 +357,11 @@ class _MesasScreenState extends State<MesasScreen> {
         isLoading = true;
       });
 
-      await _sincronizadorService.sincronizarMesa(mesa);
-      await _loadMesas(); // Recargar después de sincronizar
+      await _loadMesas(); // Recargar las mesas
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Mesa ${mesa.nombre} sincronizada correctamente'),
+          content: Text('Mesa ${mesa.nombre} actualizada'),
           backgroundColor: Colors.green,
         ),
       );
@@ -473,7 +534,42 @@ class _MesasScreenState extends State<MesasScreen> {
     TextEditingController _descuentoPorcentajeController =
         TextEditingController();
     TextEditingController _descuentoValorController = TextEditingController();
+    TextEditingController _propinaController = TextEditingController();
 
+    // NUEVAS VARIABLES PARA LAS OPCIONES MOVIDAS
+    bool _esCortesia = false;
+    bool _esConsumoInterno = false;
+    String? _mesaDestinoId;
+
+    // Mostrar indicador de carga mientras se prepara el diálogo
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: _cardBg,
+        content: Row(
+          children: [
+            CircularProgressIndicator(color: _primary),
+            SizedBox(width: 20),
+            Text(
+              'Cargando información de productos...',
+              style: TextStyle(color: _textLight),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    // Asegurarse de que todos los productos estén cargados antes de mostrar el diálogo
+    try {
+      await PedidoService().cargarProductosParaPedido(pedido);
+      print('✅ Productos del pedido cargados correctamente');
+    } catch (e) {
+      print('❌ Error cargando productos del pedido: $e');
+    }
+
+    // Cerrar el diálogo de carga
+    Navigator.of(context).pop();
     final formResult = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (context) => StatefulBuilder(
@@ -531,19 +627,156 @@ class _MesasScreenState extends State<MesasScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Expanded(
-                            child: Text(
-                              '${item.cantidad}x ${item.producto?.nombre ?? item.productoId}',
-                              style: TextStyle(color: _textLight),
+                            flex: 2,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '${item.cantidad}x ${item.producto?.nombre ?? "Producto desconocido"}',
+                                  style: TextStyle(
+                                    color: _textLight,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                if (item.notas != null &&
+                                    item.notas!.isNotEmpty)
+                                  Text(
+                                    item.notas!,
+                                    style: TextStyle(
+                                      color: _textLight.withOpacity(0.7),
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                              ],
                             ),
                           ),
+                          // Removed the per-unit price display to avoid redundancy
                           Text(
-                            '\$${((item.producto?.precio ?? 0) * item.cantidad).toStringAsFixed(0)}',
-                            style: TextStyle(color: _textLight),
+                            '\$${((item.precio) * item.cantidad).toStringAsFixed(0)}',
+                            style: TextStyle(
+                              color: _textLight,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ],
                       ),
                     ),
                   ),
+                  Divider(color: _textLight.withOpacity(0.3)),
+
+                  // Campos de descuento
+                  SwitchListTile(
+                    title: Row(
+                      children: [
+                        Text(
+                          'Es cortesía',
+                          style: TextStyle(color: _textLight, fontSize: 16),
+                        ),
+                        if (_esCortesia)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 8.0),
+                            child: Icon(
+                              Icons.card_giftcard,
+                              color: _primary,
+                              size: 16,
+                            ),
+                          ),
+                      ],
+                    ),
+                    value: _esCortesia,
+                    activeColor: _primary,
+                    contentPadding: EdgeInsets.zero,
+                    onChanged: (value) {
+                      setState(() {
+                        _esCortesia = value;
+                        if (value) {
+                          _esConsumoInterno = false;
+                        }
+                      });
+                    },
+                  ),
+
+                  // Opción Consumo interno
+                  SwitchListTile(
+                    title: Row(
+                      children: [
+                        Text(
+                          'Consumo interno',
+                          style: TextStyle(color: _textLight, fontSize: 16),
+                        ),
+                        if (_esConsumoInterno)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 8.0),
+                            child: Icon(
+                              Icons.people,
+                              color: _primary,
+                              size: 16,
+                            ),
+                          ),
+                      ],
+                    ),
+                    value: _esConsumoInterno,
+                    activeColor: _primary,
+                    contentPadding: EdgeInsets.zero,
+                    onChanged: (value) {
+                      setState(() {
+                        _esConsumoInterno = value;
+                        if (value) {
+                          _esCortesia = false;
+                        }
+                      });
+                    },
+                  ),
+
+                  // Opción Mover a otra mesa
+                  InkWell(
+                    onTap: () async {
+                      final mesaSeleccionada =
+                          await _mostrarDialogoSeleccionMesa();
+                      if (mesaSeleccionada != null) {
+                        setState(() {
+                          _mesaDestinoId = mesaSeleccionada.id;
+                        });
+                      }
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8.0),
+                      child: Row(
+                        children: [
+                          Icon(Icons.swap_horiz, color: _textLight),
+                          SizedBox(width: 8),
+                          Text(
+                            'Mover a otra mesa',
+                            style: TextStyle(color: _textLight, fontSize: 16),
+                          ),
+                          Spacer(),
+                          if (_mesaDestinoId != null)
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: _primary.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                'Seleccionada',
+                                style: TextStyle(
+                                  color: _primary,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          SizedBox(width: 8),
+                          Icon(Icons.chevron_right, color: _textLight),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  SizedBox(height: 16),
                   Divider(color: _textLight.withOpacity(0.3)),
 
                   // Campos de descuento
@@ -629,44 +862,245 @@ class _MesasScreenState extends State<MesasScreen> {
                   ),
 
                   // Propina
-                  SwitchListTile(
-                    title: Text(
-                      'Incluir propina',
-                      style: TextStyle(color: _textLight),
+                  Text(
+                    'Propina:',
+                    style: TextStyle(
+                      color: _textLight,
+                      fontWeight: FontWeight.bold,
                     ),
-                    value: _incluyePropina,
+                  ),
+                  SizedBox(height: 8),
+                  TextField(
+                    controller: _propinaController,
+                    decoration: InputDecoration(
+                      labelText: 'Propina %',
+                      labelStyle: TextStyle(color: _textLight),
+                      suffixText: '%',
+                      enabledBorder: OutlineInputBorder(
+                        borderSide: BorderSide(
+                          color: _textLight.withOpacity(0.3),
+                        ),
+                      ),
+                    ),
+                    style: TextStyle(color: _textLight),
+                    keyboardType: TextInputType.number,
                     onChanged: (value) {
-                      setState(() => _incluyePropina = value);
+                      setState(() {
+                        _incluyePropina =
+                            value.isNotEmpty &&
+                            double.tryParse(value) != null &&
+                            double.parse(value) > 0;
+                      });
                     },
-                    activeColor: _primary,
                   ),
 
                   SizedBox(height: 16),
 
                   // Total
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Total:',
-                        style: TextStyle(
-                          color: _textLight,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        '\$${pedido.total.toStringAsFixed(0)}',
-                        style: TextStyle(
-                          color: _primary,
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
+                  Builder(
+                    builder: (context) {
+                      double subtotal = pedido.total;
+                      double propinaPercent =
+                          double.tryParse(_propinaController.text) ?? 0.0;
+                      double propinaMonto = (subtotal * propinaPercent / 100)
+                          .roundToDouble();
+                      double total = subtotal + propinaMonto;
+
+                      return Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Subtotal:',
+                                style: TextStyle(
+                                  color: _textLight,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              Text(
+                                '\$${subtotal.toStringAsFixed(0)}',
+                                style: TextStyle(
+                                  color: _textLight,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (propinaPercent > 0) ...[
+                            SizedBox(height: 8),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Propina ($propinaPercent%):',
+                                  style: TextStyle(
+                                    color: _textLight,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                Text(
+                                  '\$${propinaMonto.toStringAsFixed(0)}',
+                                  style: TextStyle(
+                                    color: _textLight,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                          SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Total:',
+                                style: TextStyle(
+                                  color: _textLight,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                '\$${total.toStringAsFixed(0)}',
+                                style: TextStyle(
+                                  color: _primary,
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      );
+                    },
                   ),
 
                   SizedBox(height: 24),
+
+                  // OPCIONES ESPECIALES
+                  Text(
+                    'Opciones especiales:',
+                    style: TextStyle(
+                      color: _textLight,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+
+                  // Opción Es cortesía
+                  SwitchListTile(
+                    title: Row(
+                      children: [
+                        Text(
+                          'Es cortesía',
+                          style: TextStyle(color: _textLight, fontSize: 16),
+                        ),
+                        if (_esCortesia)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 8.0),
+                            child: Icon(
+                              Icons.card_giftcard,
+                              color: _primary,
+                              size: 16,
+                            ),
+                          ),
+                      ],
+                    ),
+                    value: _esCortesia,
+                    activeColor: _primary,
+                    contentPadding: EdgeInsets.zero,
+                    onChanged: (value) {
+                      setState(() {
+                        _esCortesia = value;
+                        if (value) {
+                          _esConsumoInterno = false;
+                        }
+                      });
+                    },
+                  ),
+
+                  // Opción Consumo interno
+                  SwitchListTile(
+                    title: Row(
+                      children: [
+                        Text(
+                          'Consumo interno',
+                          style: TextStyle(color: _textLight, fontSize: 16),
+                        ),
+                        if (_esConsumoInterno)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 8.0),
+                            child: Icon(
+                              Icons.people,
+                              color: _primary,
+                              size: 16,
+                            ),
+                          ),
+                      ],
+                    ),
+                    value: _esConsumoInterno,
+                    activeColor: _primary,
+                    contentPadding: EdgeInsets.zero,
+                    onChanged: (value) {
+                      setState(() {
+                        _esConsumoInterno = value;
+                        if (value) {
+                          _esCortesia = false;
+                        }
+                      });
+                    },
+                  ),
+
+                  // Opción Mover a otra mesa
+                  InkWell(
+                    onTap: () async {
+                      final mesaSeleccionada =
+                          await _mostrarDialogoSeleccionMesa();
+                      if (mesaSeleccionada != null) {
+                        setState(() {
+                          _mesaDestinoId = mesaSeleccionada.id;
+                        });
+                      }
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8.0),
+                      child: Row(
+                        children: [
+                          Icon(Icons.swap_horiz, color: _textLight),
+                          SizedBox(width: 8),
+                          Text(
+                            'Mover a otra mesa',
+                            style: TextStyle(color: _textLight, fontSize: 16),
+                          ),
+                          Spacer(),
+                          if (_mesaDestinoId != null)
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: _primary.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                'Seleccionada',
+                                style: TextStyle(
+                                  color: _primary,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          SizedBox(width: 8),
+                          Icon(Icons.chevron_right, color: _textLight),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  SizedBox(height: 16),
 
                   // Botones de acción
                   Row(
@@ -688,6 +1122,10 @@ class _MesasScreenState extends State<MesasScreen> {
                             'descuentoPorcentaje':
                                 _descuentoPorcentajeController.text,
                             'descuentoValor': _descuentoValorController.text,
+                            'propina': _propinaController.text,
+                            'esCortesia': _esCortesia,
+                            'esConsumoInterno': _esConsumoInterno,
+                            'mesaDestinoId': _mesaDestinoId,
                           });
                         },
                         style: ElevatedButton.styleFrom(
@@ -708,41 +1146,145 @@ class _MesasScreenState extends State<MesasScreen> {
 
     if (formResult != null) {
       try {
+        // Manejar las opciones especiales
+        bool esCortesia = formResult['esCortesia'] ?? false;
+        bool esConsumoInterno = formResult['esConsumoInterno'] ?? false;
+        String? mesaDestinoId = formResult['mesaDestinoId'];
+
         // Preparar datos de pago
         double propina = 0.0;
-        if (formResult['incluyePropina'] == true) {
-          // Si hay descuentoValor, lo usamos como propina
-          propina = double.tryParse(formResult['descuentoValor'] ?? '0') ?? 0.0;
+        // Calcular propina basada en el porcentaje ingresado
+        double propinaPercentage =
+            double.tryParse(formResult['propina'] ?? '0') ?? 0.0;
+        if (propinaPercentage > 0) {
+          propina = (pedido.total * propinaPercentage / 100).roundToDouble();
         }
 
         print(
-          '📝 Procesando pago del pedido: ${pedido.id} - Mesa: ${mesa.nombre}',
+          '📝 Procesando pago del pedido: "${pedido.id}" - Mesa: ${mesa.nombre}',
         );
+        print('🎯 Opciones seleccionadas:');
+        print('  - Es cortesía: $esCortesia');
+        print('  - Es consumo interno: $esConsumoInterno');
+        print('  - Mesa destino: $mesaDestinoId');
+        print('  - Tipo actual del pedido: ${pedido.tipo}');
 
         if (pedido.id.isEmpty) {
-          throw Exception('El ID del pedido es inválido');
+          throw Exception('El ID del pedido es inválido o está vacío');
         }
 
-        // Usar el método pagarPedido para marcar el pedido como pagado
+        print('🆔 ID del pedido confirmado: "${pedido.id}"');
+
+        // Obtener el usuario actual para el pago
+        final userProvider = Provider.of<UserProvider>(context, listen: false);
+        final usuarioPago = userProvider.userName ?? 'Usuario Desconocido';
+
+        // PRIMERO: Cambiar el tipo de pedido si es necesario
+        if (esCortesia || esConsumoInterno) {
+          try {
+            TipoPedido nuevoTipo = esCortesia
+                ? TipoPedido.cortesia
+                : TipoPedido.interno;
+            print('🔄 Cambiando tipo de pedido a: $nuevoTipo');
+            print('  - Pedido ID: ${pedido.id}');
+            print('  - Tipo anterior: ${pedido.tipo}');
+
+            await _pedidoService.actualizarTipoPedido(pedido.id, nuevoTipo);
+
+            // Actualizar el objeto pedido local
+            pedido.tipo = nuevoTipo;
+
+            print('✅ Tipo de pedido actualizado correctamente');
+            print('  - Nuevo tipo asignado: $nuevoTipo');
+            print('  - Tipo en objeto local: ${pedido.tipo}');
+
+            // Esperar un momento para que el backend procese el cambio
+            await Future.delayed(Duration(milliseconds: 300));
+          } catch (e) {
+            print('❌ Error al cambiar tipo de pedido: $e');
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Error al actualizar tipo de pedido: $e'),
+                backgroundColor: Colors.red,
+              ),
+            );
+            Navigator.of(context).pop();
+            return; // Salir si falla el cambio de tipo
+          }
+        }
+
+        // SEGUNDO: Pagar el pedido (sin cambiar tipo aquí)
+        print('💰 Iniciando proceso de pago...');
+        print('  - Forma de pago: ${formResult['medioPago']}');
+        print('  - Propina: $propina');
+        print('  - Pagado por: $usuarioPago');
+        print('  - Tipo final del pedido: ${pedido.tipo}');
+
         await _pedidoService.pagarPedido(
           pedido.id,
           formaPago: formResult['medioPago'],
           propina: propina,
-          pagadoPor: 'Mesa', // TODO: Obtener del usuario logueado
+          procesadoPor: usuarioPago, // Cambio de 'pagadoPor' a 'procesadoPor'
+          esCortesia: esCortesia,
+          esConsumoInterno: esConsumoInterno,
+          motivoCortesia: esCortesia ? 'Pedido procesado como cortesía' : null,
+          tipoConsumoInterno: esConsumoInterno ? 'empleado' : null,
         );
+
+        print('✅ Pago procesado exitosamente');
 
         // Actualizar el objeto pedido con el estado devuelto por el servidor
         pedido.estado = EstadoPedido.pagado;
+        print('  - Estado actualizado a: ${pedido.estado}');
+        print('  - Tipo final confirmado: ${pedido.tipo}');
 
-        // Actualizar la mesa y sincronizar su estado con el pedido
-        await _sincronizadorService.sincronizarMesaConPedido(mesa, pedido);
+        // Manejar opciones especiales antes de liberar la mesa
+        if (mesaDestinoId != null) {
+          // Mover a otra mesa
+          try {
+            final mesasDisponibles = await _mesaService.getMesas();
+            final mesaDestino = mesasDisponibles.firstWhere(
+              (m) => m.id == mesaDestinoId,
+            );
+
+            mesaDestino.ocupada = true;
+            mesaDestino.total = pedido.total;
+            await _mesaService.updateMesa(mesaDestino);
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Pedido movido a la mesa ${mesaDestino.nombre} y pagado',
+                ),
+                backgroundColor: Colors.green,
+              ),
+            );
+          } catch (e) {
+            print('Error moviendo pedido a otra mesa: $e');
+          }
+        }
+
+        // Liberar la mesa después del pago exitoso
+        try {
+          mesa.ocupada = false;
+          mesa.productos = [];
+          mesa.total = 0.0;
+          await _mesaService.updateMesa(mesa);
+          print('✅ Mesa ${mesa.nombre} liberada después del pago');
+        } catch (e) {
+          print('❌ Error al liberar mesa después del pago: $e');
+        }
 
         // Notificar el cambio para actualizar el dashboard
         NotificationService().notificarCambioPedido(pedido);
 
+        String tipoTexto = '';
+        if (esCortesia) tipoTexto = ' (Cortesía)';
+        if (esConsumoInterno) tipoTexto = ' (Consumo Interno)';
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Pedido pagado exitosamente'),
+            content: Text('Pedido pagado exitosamente$tipoTexto'),
             backgroundColor: Colors.green,
           ),
         );
@@ -755,6 +1297,87 @@ class _MesasScreenState extends State<MesasScreen> {
           ),
         );
       }
+    }
+  }
+
+  Future<Mesa?> _mostrarDialogoSeleccionMesa() async {
+    try {
+      // Cargar la lista de mesas disponibles
+      final mesas = await _mesaService.getMesas();
+
+      // Filtrar mesas especiales y la mesa actual
+      final mesasDisponibles = mesas
+          .where(
+            (mesa) => ![
+              'DOMICILIO',
+              'CAJA',
+              'MESA AUXILIAR',
+            ].contains(mesa.nombre.toUpperCase()),
+          )
+          .toList();
+
+      if (mesasDisponibles.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('No hay otras mesas disponibles'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return null;
+      }
+
+      // Mostrar diálogo de selección
+      final mesaSeleccionada = await showDialog<Mesa>(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            backgroundColor: _cardBg,
+            title: Text(
+              'Seleccionar mesa destino',
+              style: TextStyle(color: _textLight),
+            ),
+            content: Container(
+              width: double.maxFinite,
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: mesasDisponibles.length,
+                itemBuilder: (context, index) {
+                  final mesa = mesasDisponibles[index];
+                  return ListTile(
+                    title: Text(
+                      mesa.nombre,
+                      style: TextStyle(color: _textLight),
+                    ),
+                    subtitle: Text(
+                      mesa.ocupada ? 'Ocupada' : 'Libre',
+                      style: TextStyle(
+                        color: mesa.ocupada ? Colors.orange : Colors.green,
+                      ),
+                    ),
+                    onTap: () => Navigator.of(context).pop(mesa),
+                  );
+                },
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text('Cancelar', style: TextStyle(color: _textLight)),
+              ),
+            ],
+          );
+        },
+      );
+
+      return mesaSeleccionada;
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al cargar las mesas: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return null;
     }
   }
 
@@ -774,11 +1397,10 @@ class _MesasScreenState extends State<MesasScreen> {
                 setState(() {
                   isLoading = true;
                 });
-                await _sincronizadorService.sincronizarEstadoMesasPedidos();
                 await _loadMesas();
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('Mesas sincronizadas correctamente'),
+                    content: Text('Mesas actualizadas'),
                     backgroundColor: Colors.green,
                   ),
                 );

@@ -744,10 +744,10 @@ class _ReportesScreenState extends State<ReportesScreen>
                       },
                       items:
                           <String>[
-                            'Juan Diego',
-                            'Sopa y Carbon',
-                            'María López',
-                            'Carlos Gómez',
+                            'Cliente A',
+                            'Cliente B',
+                            'Cliente C',
+                            'Cliente D',
                           ].map<DropdownMenuItem<String>>((String value) {
                             return DropdownMenuItem<String>(
                               value: value,

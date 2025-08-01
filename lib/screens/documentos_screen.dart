@@ -48,7 +48,7 @@ class _DocumentosScreenState extends State<DocumentosScreen>
       'id': 'FAC-001',
       'fecha': '2025-06-28',
       'hora': '14:35:42',
-      'cliente': 'Juan Diego Restrepo',
+      'cliente': 'Cliente General',
       'tipo': 'Factura',
       'estado': 'Pagada',
       'total': 96000,

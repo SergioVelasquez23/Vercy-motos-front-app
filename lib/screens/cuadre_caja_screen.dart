@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/user_provider.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class CuadreCajaScreen extends StatefulWidget {
   @override
@@ -28,26 +30,24 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
       TextEditingController();
   final TextEditingController _montoTransferenciasController =
       TextEditingController();
+  final TextEditingController _notasController = TextEditingController();
 
   // Variables para el estado
   double _totalIngresos = 0;
-  double _totalEgresos = 0;
-  bool _showSearchResults = true;
   bool _showCashRegisterForm = false;
-  bool _menuDigitalSwitch = false;
   bool _cerrarCajaSwitch = false;
+  bool _isLoading = false;
+  String? _errorMessage;
 
-  // Lista de registros de caja (simulada)
-  List<Map<String, dynamic>> _registrosCaja = [];
+  // Datos reales del backend
+  List<Map<String, dynamic>> _cuadresCaja = [];
+  List<String> _usuariosDisponibles = [];
+  Map<String, dynamic>? _cuadreActual;
 
-  // Lista de cajeros (simulada)
-  List<String> _cajeros = [
-    'Alejandra Montoya Rojas',
-    'Alejandro Giraldo',
-    'Camila Giraldo',
-    'Daniel Vargas',
-  ];
+  // Services
+  final String baseUrl = 'http://192.168.20.24:8081';
 
+  // Filtros
   String? _selectedCaja;
   String? _selectedResponsable;
   String? _selectedEstado;
@@ -56,54 +56,93 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
   @override
   void initState() {
     super.initState();
-    _montoAperturaController.text = '100000';
-    _actualizarTotales();
-    _cargarDatosSimulados();
+    _loadCuadresCaja();
+    _loadUsuariosDisponibles();
   }
 
-  void _cargarDatosSimulados() {
-    _registrosCaja = [
-      {
-        'fechaInicio': '2025-06-28 04:04:50 p. m.',
-        'fechaFin': '',
-        'nombreCaja': 'Caja Principal',
-        'responsable': 'Sopa y Carbon',
-        'totalInicial': 400000,
-        'cerrada': false,
-      },
-      {
-        'fechaInicio': '2025-06-28 09:57:35 a. m.',
-        'fechaFin': '2025-06-28 04:04:21 p. m.',
-        'nombreCaja': 'Caja Principal',
-        'responsable': 'Sopa y Carbon',
-        'totalInicial': 370000,
-        'cerrada': true,
-      },
-      {
-        'fechaInicio': '2025-06-27 03:36:44 p. m.',
-        'fechaFin': '2025-06-27 10:51:28 p. m.',
-        'nombreCaja': 'Caja Principal',
-        'responsable': 'Sopa y Carbon',
-        'totalInicial': 400000,
-        'cerrada': true,
-      },
-      {
-        'fechaInicio': '2025-06-27 09:54:47 a. m.',
-        'fechaFin': '2025-06-27 03:36:36 p. m.',
-        'nombreCaja': 'Caja Principal',
-        'responsable': 'Sopa y Carbon',
-        'totalInicial': 378500,
-        'cerrada': true,
-      },
-      {
-        'fechaInicio': '2025-06-26 10:06:17 a. m.',
-        'fechaFin': '2025-06-26 04:16:36 p. m.',
-        'nombreCaja': 'Caja Principal',
-        'responsable': 'Sopa y Carbon',
-        'totalInicial': 400000,
-        'cerrada': true,
-      },
-    ];
+  @override
+  void dispose() {
+    _desdeController.dispose();
+    _hastaController.dispose();
+    _idMaquinaController.dispose();
+    _montoAperturaController.dispose();
+    _montoEfectivoController.dispose();
+    _montoTransferenciasController.dispose();
+    _notasController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadCuadresCaja() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/cuadres-caja'),
+        headers: await _getHeaders(),
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        if (responseData['success'] == true) {
+          setState(() {
+            _cuadresCaja = List<Map<String, dynamic>>.from(
+              responseData['data'],
+            );
+          });
+        } else {
+          setState(() {
+            _errorMessage =
+                responseData['message'] ?? 'Error al cargar cuadres';
+          });
+        }
+      } else {
+        setState(() {
+          _errorMessage = 'Error del servidor: ${response.statusCode}';
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Error de conexión: $e';
+      });
+      print('Error loading cuadres caja: $e');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _loadUsuariosDisponibles() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/usuarios'),
+        headers: await _getHeaders(),
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        if (responseData['success'] == true) {
+          setState(() {
+            _usuariosDisponibles = List<String>.from(
+              responseData['data'].map((user) => user['nombre'] ?? ''),
+            );
+          });
+        }
+      }
+    } catch (e) {
+      print('Error loading usuarios: $e');
+    }
+  }
+
+  Future<Map<String, String>> _getHeaders() async {
+    return {
+      'Content-Type': 'application/json',
+      // TODO: Agregar token de autenticación si es necesario
+      // 'Authorization': 'Bearer $token',
+    };
   }
 
   void _actualizarTotales() {
@@ -114,6 +153,155 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
     setState(() {
       _totalIngresos = efectivo + transferencias;
     });
+  }
+
+  Future<void> _buscarCuadres() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      Map<String, String> queryParams = {};
+
+      if (_desdeController.text.isNotEmpty) {
+        queryParams['fechaDesde'] = _desdeController.text;
+      }
+      if (_hastaController.text.isNotEmpty) {
+        queryParams['fechaHasta'] = _hastaController.text;
+      }
+      if (_selectedCaja != null) {
+        queryParams['caja'] = _selectedCaja!;
+      }
+      if (_selectedResponsable != null) {
+        queryParams['responsable'] = _selectedResponsable!;
+      }
+      if (_selectedEstado != null) {
+        queryParams['estado'] = _selectedEstado!;
+      }
+
+      String queryString = queryParams.entries
+          .map((e) => '${e.key}=${Uri.encodeComponent(e.value)}')
+          .join('&');
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/cuadres-caja?$queryString'),
+        headers: await _getHeaders(),
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        if (responseData['success'] == true) {
+          setState(() {
+            _cuadresCaja = List<Map<String, dynamic>>.from(
+              responseData['data'],
+            );
+          });
+        }
+      }
+    } catch (e) {
+      print('Error en búsqueda: $e');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _crearNuevoCuadre() async {
+    try {
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      final responsable = userProvider.userName ?? 'Usuario Desconocido';
+
+      final cuadreData = {
+        'responsable': responsable,
+        'nombreCaja': _selectedCaja ?? 'Caja Principal',
+        'montoApertura': double.tryParse(_montoAperturaController.text) ?? 0,
+        'cajeros': _selectedCajero != null ? [_selectedCajero] : [],
+        'identificacionMaquina': _idMaquinaController.text,
+      };
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/cuadres-caja'),
+        headers: await _getHeaders(),
+        body: json.encode(cuadreData),
+      );
+
+      if (response.statusCode == 201) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Cuadre de caja creado exitosamente'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        _loadCuadresCaja();
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al crear cuadre: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _actualizarCuadre() async {
+    if (_cuadreActual == null) return;
+
+    try {
+      final cuadreData = {
+        'montoEfectivo': double.tryParse(_montoEfectivoController.text) ?? 0,
+        'montoTransferencias':
+            double.tryParse(_montoTransferenciasController.text) ?? 0,
+        'totalIngresos': _totalIngresos,
+        'cerrada': _cerrarCajaSwitch,
+        'notas': _notasController.text,
+        'identificacionMaquina': _idMaquinaController.text,
+      };
+
+      final response = await http.put(
+        Uri.parse('$baseUrl/api/cuadres-caja/${_cuadreActual!['_id']}'),
+        headers: await _getHeaders(),
+        body: json.encode(cuadreData),
+      );
+
+      if (response.statusCode == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Cuadre actualizado exitosamente'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        _loadCuadresCaja();
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al actualizar cuadre: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _imprimirComprobante(Map<String, dynamic> cuadre) {
+    // TODO: Implementar lógica de impresión de comprobante
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Función de impresión de comprobante en desarrollo'),
+        backgroundColor: Colors.orange,
+      ),
+    );
+  }
+
+  void _imprimirInventario(Map<String, dynamic> cuadre) {
+    // TODO: Implementar lógica de impresión de inventario
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Función de impresión de inventario en desarrollo'),
+        backgroundColor: Colors.orange,
+      ),
+    );
   }
 
   @override
@@ -152,7 +340,6 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                   onPressed: () {
                     setState(() {
                       _showCashRegisterForm = false;
-                      _showSearchResults = true;
                     });
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
@@ -175,7 +362,6 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                   onPressed: () {
                     setState(() {
                       _showCashRegisterForm = true;
-                      _showSearchResults = false;
                     });
                   },
                 ),
@@ -390,7 +576,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                         elevation: 4,
                       ),
                       onPressed: () {
-                        // Realizar búsqueda
+                        _buscarCuadres();
                       },
                       child: Text('Buscar'),
                     ),
@@ -399,211 +585,200 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
               ),
             ),
           ),
-          SizedBox(height: 20), // Toggle para menú digital
-          Row(
-            children: [
-              Text(
-                'Abrir Menú Digital',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: textDark,
-                ),
-              ),
-              SizedBox(width: 10),
-              Switch(
-                value: _menuDigitalSwitch,
-                onChanged: (value) {
-                  setState(() {
-                    _menuDigitalSwitch = value;
-                  });
-                },
-                activeColor: primary,
-              ),
-            ],
-          ),
-          SizedBox(height: 10),
+          SizedBox(height: 20),
 
           // Tabla de resultados
-          Container(
-            width: double.infinity,
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: DataTable(
-                headingRowColor: MaterialStateProperty.all(
-                  Colors.black.withOpacity(0.3),
-                ),
-                dataRowColor: MaterialStateProperty.all(
-                  cardBg.withOpacity(0.7),
-                ),
-                columns: [
-                  DataColumn(
-                    label: Text(
-                      'Fecha Inicio',
-                      style: TextStyle(
-                        color: textDark,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+          _isLoading
+              ? Center(child: CircularProgressIndicator(color: primary))
+              : _errorMessage != null
+              ? Center(
+                  child: Text(
+                    _errorMessage!,
+                    style: TextStyle(color: Colors.red),
                   ),
-                  DataColumn(
-                    label: Text(
-                      'Fecha Fin',
-                      style: TextStyle(
-                        color: textDark,
-                        fontWeight: FontWeight.bold,
+                )
+              : Container(
+                  width: double.infinity,
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: DataTable(
+                      headingRowColor: MaterialStateProperty.all(
+                        Colors.black.withOpacity(0.3),
                       ),
-                    ),
-                  ),
-                  DataColumn(
-                    label: Text(
-                      'Nombre de Caja',
-                      style: TextStyle(
-                        color: textDark,
-                        fontWeight: FontWeight.bold,
+                      dataRowColor: MaterialStateProperty.all(
+                        cardBg.withOpacity(0.7),
                       ),
-                    ),
-                  ),
-                  DataColumn(
-                    label: Text(
-                      'Responsable',
-                      style: TextStyle(
-                        color: textDark,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  DataColumn(
-                    label: Text(
-                      'Total Inicial',
-                      style: TextStyle(
-                        color: textDark,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  DataColumn(
-                    label: Text(
-                      'Cerrada',
-                      style: TextStyle(
-                        color: textDark,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  DataColumn(
-                    label: Text(
-                      '',
-                      style: TextStyle(
-                        color: textDark,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  DataColumn(
-                    label: Text(
-                      'Comprobante diario',
-                      style: TextStyle(
-                        color: textDark,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  DataColumn(
-                    label: Text(
-                      'Inventario',
-                      style: TextStyle(
-                        color: textDark,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
-                rows: _registrosCaja.map((registro) {
-                  return DataRow(
-                    cells: [
-                      DataCell(
-                        Text(
-                          registro['fechaInicio'].toString(),
-                          style: TextStyle(color: textDark),
-                        ),
-                      ),
-                      DataCell(
-                        Text(
-                          registro['fechaFin'].toString(),
-                          style: TextStyle(color: textDark),
-                        ),
-                      ),
-                      DataCell(
-                        Text(
-                          registro['nombreCaja'].toString(),
-                          style: TextStyle(color: textDark),
-                        ),
-                      ),
-                      DataCell(
-                        Text(
-                          registro['responsable'].toString(),
-                          style: TextStyle(color: textDark),
-                        ),
-                      ),
-                      DataCell(
-                        Text(
-                          '\$ ${registro['totalInicial']}',
-                          style: TextStyle(color: textDark),
-                        ),
-                      ),
-                      DataCell(
-                        Text(
-                          registro['cerrada'] ? 'Sí' : 'No',
-                          style: TextStyle(
-                            color: registro['cerrada'] ? Colors.green : primary,
-                          ),
-                        ),
-                      ),
-                      DataCell(
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: primary,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
+                      columns: [
+                        DataColumn(
+                          label: Text(
+                            'Fecha Inicio',
+                            style: TextStyle(
+                              color: textDark,
+                              fontWeight: FontWeight.bold,
                             ),
-                            elevation: 3,
-                          ),
-                          onPressed: () {
-                            // Ver o cerrar caja
-                            setState(() {
-                              _showCashRegisterForm = true;
-                              _showSearchResults = false;
-                            });
-                          },
-                          child: Text(
-                            registro['cerrada'] ? 'Ver' : 'Ver/Cerrar',
                           ),
                         ),
-                      ),
-                      DataCell(
-                        IconButton(
-                          icon: Icon(Icons.print, color: primary),
-                          onPressed: () {
-                            // Imprimir comprobante
-                          },
+                        DataColumn(
+                          label: Text(
+                            'Fecha Fin',
+                            style: TextStyle(
+                              color: textDark,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
-                      ),
-                      DataCell(
-                        IconButton(
-                          icon: Icon(Icons.print, color: primary),
-                          onPressed: () {
-                            // Imprimir inventario
-                          },
+                        DataColumn(
+                          label: Text(
+                            'Nombre de Caja',
+                            style: TextStyle(
+                              color: textDark,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
-                      ),
-                    ],
-                  );
-                }).toList(),
-              ),
-            ),
-          ),
+                        DataColumn(
+                          label: Text(
+                            'Responsable',
+                            style: TextStyle(
+                              color: textDark,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        DataColumn(
+                          label: Text(
+                            'Total Inicial',
+                            style: TextStyle(
+                              color: textDark,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        DataColumn(
+                          label: Text(
+                            'Cerrada',
+                            style: TextStyle(
+                              color: textDark,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        DataColumn(
+                          label: Text(
+                            '',
+                            style: TextStyle(
+                              color: textDark,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        DataColumn(
+                          label: Text(
+                            'Comprobante diario',
+                            style: TextStyle(
+                              color: textDark,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        DataColumn(
+                          label: Text(
+                            'Inventario',
+                            style: TextStyle(
+                              color: textDark,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                      rows: _cuadresCaja.map((cuadre) {
+                        return DataRow(
+                          cells: [
+                            DataCell(
+                              Text(
+                                cuadre['fechaInicio']?.toString() ?? '',
+                                style: TextStyle(color: textDark),
+                              ),
+                            ),
+                            DataCell(
+                              Text(
+                                cuadre['fechaFin']?.toString() ?? '',
+                                style: TextStyle(color: textDark),
+                              ),
+                            ),
+                            DataCell(
+                              Text(
+                                cuadre['nombreCaja']?.toString() ?? '',
+                                style: TextStyle(color: textDark),
+                              ),
+                            ),
+                            DataCell(
+                              Text(
+                                cuadre['responsable']?.toString() ?? '',
+                                style: TextStyle(color: textDark),
+                              ),
+                            ),
+                            DataCell(
+                              Text(
+                                '\$ ${cuadre['totalInicial']?.toString() ?? '0'}',
+                                style: TextStyle(color: textDark),
+                              ),
+                            ),
+                            DataCell(
+                              Text(
+                                cuadre['cerrada'] == true ? 'Sí' : 'No',
+                                style: TextStyle(
+                                  color: cuadre['cerrada'] == true
+                                      ? Colors.green
+                                      : primary,
+                                ),
+                              ),
+                            ),
+                            DataCell(
+                              ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: primary,
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  elevation: 3,
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    _cuadreActual = cuadre;
+                                    _showCashRegisterForm = true;
+                                  });
+                                },
+                                child: Text(
+                                  cuadre['cerrada'] == true
+                                      ? 'Ver'
+                                      : 'Ver/Cerrar',
+                                ),
+                              ),
+                            ),
+                            DataCell(
+                              IconButton(
+                                icon: Icon(Icons.print, color: primary),
+                                onPressed: () {
+                                  _imprimirComprobante(cuadre);
+                                },
+                              ),
+                            ),
+                            DataCell(
+                              IconButton(
+                                icon: Icon(Icons.print, color: primary),
+                                onPressed: () {
+                                  _imprimirInventario(cuadre);
+                                },
+                              ),
+                            ),
+                          ],
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ),
         ],
       ),
     );
@@ -711,14 +886,14 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                               _selectedCajero = newValue;
                             });
                           },
-                          items: _cajeros.map<DropdownMenuItem<String>>((
-                            String value,
-                          ) {
-                            return DropdownMenuItem<String>(
-                              value: value,
-                              child: Text(value),
-                            );
-                          }).toList(),
+                          items: _usuariosDisponibles
+                              .map<DropdownMenuItem<String>>((String value) {
+                                return DropdownMenuItem<String>(
+                                  value: value,
+                                  child: Text(value),
+                                );
+                              })
+                              .toList(),
                         ),
                       ),
                       SizedBox(width: 10),
@@ -764,8 +939,9 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                             ],
                           ),
                         ),
-                        // Filas de cajeros
-                        ..._cajeros
+                        // Filas de cajeros seleccionados
+                        ..._usuariosDisponibles
+                            .where((cajero) => _selectedCajero == cajero)
                             .map(
                               (cajero) => Container(
                                 decoration: BoxDecoration(
@@ -1011,18 +1187,17 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                 ),
                 elevation: 4,
               ),
-              onPressed: () {
-                // Guardar cambios
+              onPressed: () async {
+                if (_cuadreActual == null) {
+                  // Crear nuevo cuadre
+                  await _crearNuevoCuadre();
+                } else {
+                  // Actualizar cuadre existente
+                  await _actualizarCuadre();
+                }
                 setState(() {
                   _showCashRegisterForm = false;
-                  _showSearchResults = true;
                 });
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Cambios guardados correctamente'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
               },
               child: Text("Guardar cambios"),
             ),
