@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/user_provider.dart';
+import '../models/cuadre_caja.dart';
+import '../models/gasto.dart';
+import '../services/cuadre_caja_service.dart';
+import '../services/gasto_service.dart';
+import 'gastos_screen.dart';
+import 'tipos_gasto_screen.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
@@ -17,6 +23,9 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
   final Color textDark = Color(0xFFE0E0E0); // Color de texto claro
   final Color textLight = Color(0xFFA0A0A0); // Color de texto más suave
   final Color accentOrange = Color(0xFFFF8800); // Naranja más brillante
+
+  // Services
+  final GastoService _gastoService = GastoService();
 
   // Controllers para los filtros de búsqueda
   final TextEditingController _desdeController = TextEditingController();
@@ -40,11 +49,12 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
   String? _errorMessage;
 
   // Datos reales del backend
-  List<Map<String, dynamic>> _cuadresCaja = [];
+  List<CuadreCaja> _cuadresCaja = [];
   List<String> _usuariosDisponibles = [];
-  Map<String, dynamic>? _cuadreActual;
+  CuadreCaja? _cuadreActual;
 
   // Services
+  final CuadreCajaService _cuadreCajaService = CuadreCajaService();
   final String baseUrl = 'http://192.168.20.24:8081';
 
   // Filtros
@@ -58,6 +68,15 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
     super.initState();
     _loadCuadresCaja();
     _loadUsuariosDisponibles();
+  }
+
+  // Limpiar los controladores del formulario
+  void _limpiarFormulario() {
+    _montoAperturaController.clear();
+    _montoEfectivoController.clear();
+    _montoTransferenciasController.clear();
+    _notasController.clear();
+    _cerrarCajaSwitch = false;
   }
 
   @override
@@ -79,33 +98,15 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
     });
 
     try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/api/cuadres-caja'),
-        headers: await _getHeaders(),
-      );
+      // Usar el nuevo servicio en lugar de llamadas HTTP directas
+      final cuadres = await _cuadreCajaService.getAllCuadres();
 
-      if (response.statusCode == 200) {
-        final responseData = json.decode(response.body);
-        if (responseData['success'] == true) {
-          setState(() {
-            _cuadresCaja = List<Map<String, dynamic>>.from(
-              responseData['data'],
-            );
-          });
-        } else {
-          setState(() {
-            _errorMessage =
-                responseData['message'] ?? 'Error al cargar cuadres';
-          });
-        }
-      } else {
-        setState(() {
-          _errorMessage = 'Error del servidor: ${response.statusCode}';
-        });
-      }
+      setState(() {
+        _cuadresCaja = cuadres;
+      });
     } catch (e) {
       setState(() {
-        _errorMessage = 'Error de conexión: $e';
+        _errorMessage = 'Error al cargar cuadres: ${e.toString()}';
       });
       print('Error loading cuadres caja: $e');
     } finally {
@@ -117,23 +118,53 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
 
   Future<void> _loadUsuariosDisponibles() async {
     try {
+      // Usar el endpoint que existe según la configuración
       final response = await http.get(
-        Uri.parse('$baseUrl/api/usuarios'),
+        Uri.parse('$baseUrl/api/users'),
         headers: await _getHeaders(),
       );
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
-        if (responseData['success'] == true) {
+        // Ajustar según la estructura de respuesta del backend
+        if (responseData['success'] == true || responseData['data'] != null) {
+          final userData = responseData['data'] ?? responseData['users'] ?? [];
           setState(() {
             _usuariosDisponibles = List<String>.from(
-              responseData['data'].map((user) => user['nombre'] ?? ''),
+              userData.map(
+                (user) => user['nombre'] ?? user['name'] ?? user['email'] ?? '',
+              ),
             );
           });
         }
+      } else if (response.statusCode == 404) {
+        // Si el endpoint no existe, usar lista predefinida basada en roles comunes
+        setState(() {
+          _usuariosDisponibles = [
+            'Administrador',
+            'Cajero Principal',
+            'Cajero Secundario',
+            'Supervisor',
+            'Gerente',
+            'Mesero 1',
+            'Mesero 2',
+          ];
+        });
       }
     } catch (e) {
       print('Error loading usuarios: $e');
+      // Fallback a lista predefinida
+      setState(() {
+        _usuariosDisponibles = [
+          'Administrador',
+          'Cajero Principal',
+          'Cajero Secundario',
+          'Supervisor',
+          'Gerente',
+          'Mesero 1',
+          'Mesero 2',
+        ];
+      });
     }
   }
 
@@ -155,49 +186,30 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
     });
   }
 
+  // Cargar efectivo esperado del backend
+  Future<double> _loadEfectivoEsperado() async {
+    try {
+      final efectivoData = await _cuadreCajaService.getEfectivoEsperado();
+      return (efectivoData['efectivoEsperado'] ?? 0).toDouble();
+    } catch (e) {
+      print('Error loading efectivo esperado: $e');
+      // Fallback: calcular manualmente basado en ventas del día
+      return 0.0; // Se calculará cuando se abra el diálogo
+    }
+  }
+
   Future<void> _buscarCuadres() async {
     setState(() {
       _isLoading = true;
     });
 
     try {
-      Map<String, String> queryParams = {};
-
-      if (_desdeController.text.isNotEmpty) {
-        queryParams['fechaDesde'] = _desdeController.text;
-      }
-      if (_hastaController.text.isNotEmpty) {
-        queryParams['fechaHasta'] = _hastaController.text;
-      }
-      if (_selectedCaja != null) {
-        queryParams['caja'] = _selectedCaja!;
-      }
-      if (_selectedResponsable != null) {
-        queryParams['responsable'] = _selectedResponsable!;
-      }
-      if (_selectedEstado != null) {
-        queryParams['estado'] = _selectedEstado!;
-      }
-
-      String queryString = queryParams.entries
-          .map((e) => '${e.key}=${Uri.encodeComponent(e.value)}')
-          .join('&');
-
-      final response = await http.get(
-        Uri.parse('$baseUrl/api/cuadres-caja?$queryString'),
-        headers: await _getHeaders(),
-      );
-
-      if (response.statusCode == 200) {
-        final responseData = json.decode(response.body);
-        if (responseData['success'] == true) {
-          setState(() {
-            _cuadresCaja = List<Map<String, dynamic>>.from(
-              responseData['data'],
-            );
-          });
-        }
-      }
+      // Por ahora obtenemos todos los cuadres
+      // TODO: Mejorar el servicio para aceptar filtros
+      final cuadres = await _cuadreCajaService.getAllCuadres();
+      setState(() {
+        _cuadresCaja = cuadres;
+      });
     } catch (e) {
       print('Error en búsqueda: $e');
     } finally {
@@ -211,22 +223,29 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
     try {
       final userProvider = Provider.of<UserProvider>(context, listen: false);
       final responsable = userProvider.userName ?? 'Usuario Desconocido';
+      final montoApertura = double.tryParse(_montoAperturaController.text) ?? 0;
 
-      final cuadreData = {
-        'responsable': responsable,
-        'nombreCaja': _selectedCaja ?? 'Caja Principal',
-        'montoApertura': double.tryParse(_montoAperturaController.text) ?? 0,
-        'cajeros': _selectedCajero != null ? [_selectedCajero] : [],
-        'identificacionMaquina': _idMaquinaController.text,
-      };
-
-      final response = await http.post(
-        Uri.parse('$baseUrl/api/cuadres-caja'),
-        headers: await _getHeaders(),
-        body: json.encode(cuadreData),
+      // Debug: Verificar que el monto se está leyendo correctamente
+      print(
+        'DEBUG FRONTEND: Monto inicial texto: "${_montoAperturaController.text}"',
+      );
+      print('DEBUG FRONTEND: Monto inicial parseado: $montoApertura');
+      print('DEBUG FRONTEND: Responsable: $responsable');
+      print(
+        'DEBUG FRONTEND: Nombre caja: ${_selectedCaja ?? 'Caja Principal'}',
       );
 
-      if (response.statusCode == 201) {
+      final cuadre = await _cuadreCajaService.createCuadre(
+        nombre: _selectedCaja ?? 'Caja Principal',
+        responsable: responsable,
+        fondoInicial: montoApertura,
+        efectivoDeclarado: 0, // Al crear se inicia en 0
+        efectivoEsperado: 0, // Al crear se inicia en 0
+        tolerancia: 5.0, // Tolerancia por defecto
+        observaciones: 'Cuadre creado - ${_idMaquinaController.text}',
+      );
+
+      if (cuadre.id != null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Cuadre de caja creado exitosamente'),
@@ -234,6 +253,8 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
           ),
         );
         _loadCuadresCaja();
+      } else {
+        throw Exception('Error al crear el cuadre');
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -249,23 +270,27 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
     if (_cuadreActual == null) return;
 
     try {
-      final cuadreData = {
-        'montoEfectivo': double.tryParse(_montoEfectivoController.text) ?? 0,
-        'montoTransferencias':
-            double.tryParse(_montoTransferenciasController.text) ?? 0,
-        'totalIngresos': _totalIngresos,
-        'cerrada': _cerrarCajaSwitch,
-        'notas': _notasController.text,
-        'identificacionMaquina': _idMaquinaController.text,
-      };
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      final responsable = userProvider.userName ?? _cuadreActual!.responsable;
+      final montoEfectivo = double.tryParse(_montoEfectivoController.text) ?? 0;
+      final observaciones =
+          '${_notasController.text}. Identificación máquina: ${_idMaquinaController.text}';
 
-      final response = await http.put(
-        Uri.parse('$baseUrl/api/cuadres-caja/${_cuadreActual!['_id']}'),
-        headers: await _getHeaders(),
-        body: json.encode(cuadreData),
+      print('DEBUG: _cerrarCajaSwitch = $_cerrarCajaSwitch');
+      print(
+        'DEBUG: Fecha cierre = ${_cerrarCajaSwitch ? DateTime.now() : null}',
       );
 
-      if (response.statusCode == 200) {
+      final cuadre = await _cuadreCajaService.updateCuadre(
+        _cuadreActual!.id!,
+        responsable: responsable,
+        efectivoDeclarado: montoEfectivo,
+        observaciones: observaciones,
+        cerrarCaja: _cerrarCajaSwitch, // Cambio de cerrada a cerrarCaja
+        estado: _cerrarCajaSwitch ? 'cerrada' : 'pendiente',
+      );
+
+      if (cuadre.id != null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Cuadre actualizado exitosamente'),
@@ -284,7 +309,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
     }
   }
 
-  void _imprimirComprobante(Map<String, dynamic> cuadre) {
+  void _imprimirComprobante(CuadreCaja cuadre) {
     // TODO: Implementar lógica de impresión de comprobante
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -294,7 +319,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
     );
   }
 
-  void _imprimirInventario(Map<String, dynamic> cuadre) {
+  void _imprimirInventario(CuadreCaja cuadre) {
     // TODO: Implementar lógica de impresión de inventario
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -333,20 +358,79 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
         backgroundColor: primary,
         elevation: 0,
         actions: [
+          // Menú de opciones de gestión
+          if (!_showCashRegisterForm)
+            PopupMenuButton<String>(
+              icon: Icon(Icons.more_vert, color: Colors.white),
+              color: cardBg,
+              onSelected: (value) {
+                if (value == 'gastos') {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => GastosScreen()),
+                  );
+                } else if (value == 'tipos_gasto') {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => TiposGastoScreen()),
+                  );
+                }
+              },
+              itemBuilder: (context) => [
+                PopupMenuItem(
+                  value: 'gastos',
+                  child: Row(
+                    children: [
+                      Icon(Icons.receipt_long, color: primary),
+                      SizedBox(width: 8),
+                      Text(
+                        'Gestión de Gastos',
+                        style: TextStyle(color: textDark),
+                      ),
+                    ],
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'tipos_gasto',
+                  child: Row(
+                    children: [
+                      Icon(Icons.category, color: primary),
+                      SizedBox(width: 8),
+                      Text(
+                        'Tipos de Gastos',
+                        style: TextStyle(color: textDark),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           _showCashRegisterForm
               ? TextButton.icon(
                   icon: Icon(Icons.save, color: Colors.white),
                   label: Text('Guardar', style: TextStyle(color: Colors.white)),
-                  onPressed: () {
+                  onPressed: () async {
+                    // Validar campos requeridos
+                    if (_cuadreActual == null) {
+                      // Crear nuevo cuadre
+                      if (_montoAperturaController.text.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Por favor ingrese el monto inicial'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                        return;
+                      }
+                      await _crearNuevoCuadre();
+                    } else {
+                      // Actualizar cuadre existente
+                      await _actualizarCuadre();
+                    }
+
                     setState(() {
                       _showCashRegisterForm = false;
                     });
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Cuadre de caja guardado'),
-                        backgroundColor: Colors.green,
-                      ),
-                    );
                   },
                 )
               : TextButton.icon(
@@ -359,10 +443,13 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                     ),
                     padding: EdgeInsets.symmetric(horizontal: 16),
                   ),
-                  onPressed: () {
+                  onPressed: () async {
                     setState(() {
+                      _cuadreActual = null; // Nuevo cuadre
                       _showCashRegisterForm = true;
                     });
+                    _limpiarFormulario(); // Limpiar los campos para nueva caja
+                    await _loadEfectivoEsperado();
                   },
                 ),
           SizedBox(width: 16),
@@ -696,39 +783,40 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                           cells: [
                             DataCell(
                               Text(
-                                cuadre['fechaInicio']?.toString() ?? '',
+                                cuadre.fechaApertura.toString().split(' ')[0],
                                 style: TextStyle(color: textDark),
                               ),
                             ),
                             DataCell(
                               Text(
-                                cuadre['fechaFin']?.toString() ?? '',
+                                cuadre.fechaCierre?.toString().split(' ')[0] ??
+                                    'Abierta',
                                 style: TextStyle(color: textDark),
                               ),
                             ),
                             DataCell(
                               Text(
-                                cuadre['nombreCaja']?.toString() ?? '',
+                                cuadre.nombre,
                                 style: TextStyle(color: textDark),
                               ),
                             ),
                             DataCell(
                               Text(
-                                cuadre['responsable']?.toString() ?? '',
+                                cuadre.responsable,
                                 style: TextStyle(color: textDark),
                               ),
                             ),
                             DataCell(
                               Text(
-                                '\$ ${cuadre['totalInicial']?.toString() ?? '0'}',
+                                '\$ ${cuadre.fondoInicial.toStringAsFixed(0)}',
                                 style: TextStyle(color: textDark),
                               ),
                             ),
                             DataCell(
                               Text(
-                                cuadre['cerrada'] == true ? 'Sí' : 'No',
+                                cuadre.cerrada ? 'Sí' : 'No',
                                 style: TextStyle(
-                                  color: cuadre['cerrada'] == true
+                                  color: cuadre.cerrada
                                       ? Colors.green
                                       : primary,
                                 ),
@@ -744,16 +832,32 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                                   ),
                                   elevation: 3,
                                 ),
-                                onPressed: () {
-                                  setState(() {
-                                    _cuadreActual = cuadre;
-                                    _showCashRegisterForm = true;
-                                  });
+                                onPressed: () async {
+                                  if (cuadre.cerrada) {
+                                    // Si la caja está cerrada, mostrar diálogo de detalles
+                                    _mostrarDialogoDetalleCuadre(cuadre);
+                                  } else {
+                                    // Si está abierta, mostrar formulario de edición
+                                    setState(() {
+                                      _cuadreActual = cuadre;
+                                      _showCashRegisterForm = true;
+                                    });
+                                    await _loadEfectivoEsperado();
+                                    // Prellenar campos con datos del cuadre actual
+                                    if (_cuadreActual != null) {
+                                      _montoAperturaController.text =
+                                          _cuadreActual!.fondoInicial
+                                              .toString();
+                                      _montoEfectivoController.text =
+                                          _cuadreActual!.efectivoDeclarado
+                                              .toString();
+                                      _notasController.text =
+                                          _cuadreActual!.observaciones ?? '';
+                                    }
+                                  }
                                 },
                                 child: Text(
-                                  cuadre['cerrada'] == true
-                                      ? 'Ver'
-                                      : 'Ver/Cerrar',
+                                  cuadre.cerrada ? 'Ver' : 'Ver/Cerrar',
                                 ),
                               ),
                             ),
@@ -984,7 +1088,69 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
               ),
             ),
           ),
-          SizedBox(height: 20), // Identificación máquina
+          SizedBox(height: 20),
+
+          // Campo para Monto Inicial (solo para nuevos cuadres)
+          if (_cuadreActual == null) ...[
+            Card(
+              elevation: 4,
+              color: cardBg,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Padding(
+                padding: EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Monto Inicial",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: primary,
+                      ),
+                    ),
+                    SizedBox(height: 16),
+                    TextFormField(
+                      controller: _montoAperturaController,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        border: OutlineInputBorder(),
+                        labelText: 'Ingrese el monto inicial',
+                        labelStyle: TextStyle(color: textLight),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 15,
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: primary),
+                        ),
+                        prefixText: '\$ ',
+                        prefixStyle: TextStyle(color: textDark),
+                      ),
+                      style: TextStyle(color: textDark),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Por favor ingrese el monto inicial';
+                        }
+                        if (double.tryParse(value) == null) {
+                          return 'Por favor ingrese un número válido';
+                        }
+                        if (double.parse(value) < 0) {
+                          return 'El monto no puede ser negativo';
+                        }
+                        return null;
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            SizedBox(height: 20),
+          ],
+
+          // Identificación máquina
           Card(
             elevation: 4,
             color: cardBg,
@@ -1142,6 +1308,104 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
               ),
             ),
           ),
+          SizedBox(height: 20),
+
+          // Información financiera importante
+          Card(
+            elevation: 4,
+            color: cardBg,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Padding(
+              padding: EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Información Financiera",
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: textDark,
+                    ),
+                  ),
+                  SizedBox(height: 16),
+                  if (_cuadreActual != null) ...[
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          "Monto inicial:",
+                          style: TextStyle(color: textDark),
+                        ),
+                        Text(
+                          "\$ ${_cuadreActual!.fondoInicial.toStringAsFixed(0)}",
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: textDark,
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          "Fecha apertura:",
+                          style: TextStyle(color: textDark),
+                        ),
+                        Text(
+                          "${_cuadreActual!.fechaApertura.day}/${_cuadreActual!.fechaApertura.month}/${_cuadreActual!.fechaApertura.year}",
+                          style: TextStyle(color: textDark),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 8),
+                  ],
+                  FutureBuilder<double>(
+                    future: _loadEfectivoEsperado(),
+                    builder: (context, snapshot) {
+                      if (snapshot.hasData) {
+                        return Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              "Efectivo esperado:",
+                              style: TextStyle(color: textDark),
+                            ),
+                            Text(
+                              "\$ ${snapshot.data!.toStringAsFixed(0)}",
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: primary,
+                              ),
+                            ),
+                          ],
+                        );
+                      } else {
+                        return Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              "Efectivo esperado:",
+                              style: TextStyle(color: textDark),
+                            ),
+                            SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          ],
+                        );
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
           SizedBox(height: 20), // Cerrar caja
           Card(
             elevation: 4,
@@ -1204,6 +1468,456 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
           ),
         ],
       ),
+    );
+  }
+
+  // Mostrar diálogo con detalles completos del cuadre cerrado
+  void _mostrarDialogoDetalleCuadre(CuadreCaja cuadre) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: cardBg,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
+          child: Container(
+            width: MediaQuery.of(context).size.width * 0.9,
+            height: MediaQuery.of(context).size.height * 0.9,
+            child: Column(
+              children: [
+                // Header del diálogo
+                Container(
+                  padding: EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: primary,
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(15),
+                      topRight: Radius.circular(15),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        "Cuadre de caja",
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.close, color: Colors.white),
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Contenido del diálogo
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Fechas
+                        Center(
+                          child: Column(
+                            children: [
+                              Text(
+                                "Fecha inicio: ${_formatearFechaHora(cuadre.fechaApertura)}",
+                                style: TextStyle(fontSize: 16, color: textDark),
+                              ),
+                              SizedBox(height: 8),
+                              Text(
+                                "Fecha Fin: ${cuadre.fechaCierre != null ? _formatearFechaHora(cuadre.fechaCierre!) : 'No cerrada'}",
+                                style: TextStyle(fontSize: 16, color: textDark),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        SizedBox(height: 30),
+
+                        // Responsable y Caja
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "Responsable",
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      color: textLight,
+                                    ),
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    cuadre.responsable,
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: textDark,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "Caja",
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      color: textLight,
+                                    ),
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    cuadre.nombre,
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: textDark,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        SizedBox(height: 30),
+
+                        // Cajeros
+                        _buildSeccionDetalle("Cajeros", [
+                          "Alejandro Montoya Rojas, Alejandro Giraldo, Camila Giraldo, Daniel Vargas, Dania Alvarán, Felipe Villa Caicedo, Gustavo Galvis, Isabella Quintero, Jacobo Martínez Rojas, Juan Diego Castaño, Leonardo Vargas, Paula Díaz, SARA VELEZ, Sara Sofía Pardo, Sebastian Vargas, Sergio Velasquez, Sopa y Carbon Vargas Rendon, Valentina Ocampo, Valeria Alvarez, Victor Patiño",
+                        ]),
+
+                        SizedBox(height: 20),
+
+                        // Tabla de inicial
+                        _buildTablaDetalle("Inicial", [
+                          ["Medio de pago", "Inicial"],
+                          [
+                            "Efectivo",
+                            "\$ ${cuadre.fondoInicial.toStringAsFixed(0)}",
+                          ],
+                          ["Transferencia", "\$ 0"],
+                          [
+                            "Total",
+                            "\$ ${cuadre.fondoInicial.toStringAsFixed(0)}",
+                          ],
+                        ]),
+
+                        SizedBox(height: 20),
+
+                        // Tabla de ventas
+                        _buildTablaDetalle("Ventas", [
+                          ["Nombre", "Sistema"],
+                          [
+                            "Efectivo",
+                            "\$ ${cuadre.efectivoEsperado.toStringAsFixed(0)}",
+                          ],
+                          ["Transferencia", "\$ 0"],
+                          [
+                            "Total Ventas",
+                            "\$ ${cuadre.efectivoEsperado.toStringAsFixed(0)}",
+                          ],
+                          ["Total Propinas", "\$ 0"],
+                        ]),
+
+                        SizedBox(height: 20),
+
+                        // Tabla de resumen
+                        _buildTablaDetalle(
+                          "",
+                          [
+                            [
+                              "Efectivo",
+                              "\$ ${cuadre.efectivoEsperado.toStringAsFixed(0)}",
+                              "\$ 0",
+                              "\$ 0",
+                              "\$ ${cuadre.efectivoEsperado.toStringAsFixed(0)}",
+                            ],
+                            ["Transferencia", "\$ 0", "\$ 0", "\$ 0", "\$ 0"],
+                            [
+                              "Total",
+                              "\$ ${cuadre.efectivoEsperado.toStringAsFixed(0)}",
+                              "\$ 0",
+                              "\$ 0",
+                              "\$ ${cuadre.efectivoEsperado.toStringAsFixed(0)}",
+                            ],
+                          ],
+                          encabezados: ["", "", "", "", ""],
+                        ),
+
+                        SizedBox(height: 20),
+
+                        // Impuestos
+                        _buildTablaDetalle("Impuestos", [
+                          ["Nombre", "Base", "Imp"],
+                          ["Total", "", "\$ 0"],
+                        ]),
+
+                        SizedBox(height: 20),
+
+                        // Gastos - Ahora usando datos dinámicos del backend
+                        FutureBuilder<List<Gasto>>(
+                          future: _gastoService.getGastosByCuadre(cuadre.id!),
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState ==
+                                ConnectionState.waiting) {
+                              return Container(
+                                padding: EdgeInsets.all(20),
+                                child: Center(
+                                  child: CircularProgressIndicator(
+                                    color: primary,
+                                  ),
+                                ),
+                              );
+                            }
+
+                            if (snapshot.hasError) {
+                              return _buildTablaDetalle("Gastos", [
+                                ["Tipo de gasto", "Total"],
+                                ["Error al cargar gastos", "\$ 0"],
+                              ]);
+                            }
+
+                            final gastos = snapshot.data ?? [];
+
+                            // Agrupar gastos por tipo
+                            Map<String, double> gastosPorTipo = {};
+                            double totalGastos = 0;
+
+                            for (final gasto in gastos) {
+                              final tipoNombre = gasto.tipoGastoNombre.isEmpty
+                                  ? 'Sin categoría'
+                                  : gasto.tipoGastoNombre;
+                              gastosPorTipo[tipoNombre] =
+                                  (gastosPorTipo[tipoNombre] ?? 0) +
+                                  gasto.monto;
+                              totalGastos += gasto.monto;
+                            }
+
+                            // Construir filas para la tabla
+                            List<List<String>> filasGastos = [
+                              ["Tipo de gasto", "Total"],
+                            ];
+
+                            if (gastosPorTipo.isEmpty) {
+                              filasGastos.add([
+                                "No hay gastos registrados",
+                                "\$ 0",
+                              ]);
+                            } else {
+                              gastosPorTipo.forEach((tipo, monto) {
+                                filasGastos.add([
+                                  tipo,
+                                  "\$ ${monto.toStringAsFixed(0)}",
+                                ]);
+                              });
+
+                              // Agregar fila de total si hay más de un tipo
+                              if (gastosPorTipo.length > 1) {
+                                filasGastos.add([
+                                  "TOTAL GASTOS",
+                                  "\$ ${totalGastos.toStringAsFixed(0)}",
+                                ]);
+                              }
+                            }
+
+                            return Column(
+                              children: [
+                                _buildTablaDetalle("Gastos", filasGastos),
+                                SizedBox(height: 10),
+                                // Botón para ir a gestión de gastos
+                                ElevatedButton.icon(
+                                  onPressed: () {
+                                    Navigator.of(
+                                      context,
+                                    ).pop(); // Cerrar diálogo
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => GastosScreen(
+                                          cuadreCajaId: cuadre.id,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  icon: Icon(Icons.edit, color: Colors.white),
+                                  label: Text(
+                                    'Gestionar Gastos',
+                                    style: TextStyle(color: Colors.white),
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: primary,
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+
+                        SizedBox(height: 20),
+
+                        // Resumen final
+                        _buildResumenFinal(cuadre),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // Helper para formatear fecha y hora
+  String _formatearFechaHora(DateTime fecha) {
+    return "${fecha.year}-${fecha.month.toString().padLeft(2, '0')}-${fecha.day.toString().padLeft(2, '0')} ${fecha.hour.toString().padLeft(2, '0')}:${fecha.minute.toString().padLeft(2, '0')}:${fecha.second.toString().padLeft(2, '0')} ${fecha.hour >= 12 ? 'p. m.' : 'a. m.'}";
+  }
+
+  // Helper para construir secciones de detalle
+  Widget _buildSeccionDetalle(String titulo, List<String> contenido) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          titulo,
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: textDark,
+          ),
+        ),
+        SizedBox(height: 10),
+        ...contenido
+            .map(
+              (item) => Padding(
+                padding: EdgeInsets.only(bottom: 4),
+                child: Text(item, style: TextStyle(color: textDark)),
+              ),
+            )
+            .toList(),
+      ],
+    );
+  }
+
+  // Helper para construir tablas de detalle
+  Widget _buildTablaDetalle(
+    String titulo,
+    List<List<String>> filas, {
+    List<String>? encabezados,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (titulo.isNotEmpty) ...[
+          Center(
+            child: Text(
+              titulo,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: textDark,
+              ),
+            ),
+          ),
+          SizedBox(height: 10),
+        ],
+        Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey.shade600),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Table(
+            border: TableBorder.all(color: Colors.grey.shade600),
+            children: filas.asMap().entries.map((entry) {
+              int index = entry.key;
+              List<String> fila = entry.value;
+              bool esEncabezado = index == 0;
+
+              return TableRow(
+                decoration: BoxDecoration(
+                  color: esEncabezado
+                      ? Colors.grey.shade800.withOpacity(0.3)
+                      : null,
+                ),
+                children: fila
+                    .map(
+                      (celda) => Padding(
+                        padding: EdgeInsets.all(12),
+                        child: Text(
+                          celda,
+                          style: TextStyle(
+                            color: textDark,
+                            fontWeight: esEncabezado
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                          ),
+                          textAlign: fila.length > 2 && celda.contains('\$')
+                              ? TextAlign.right
+                              : TextAlign.left,
+                        ),
+                      ),
+                    )
+                    .toList(),
+              );
+            }).toList(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Helper para construir el resumen final - Ahora con gastos dinámicos
+  Widget _buildResumenFinal(CuadreCaja cuadre) {
+    return FutureBuilder<List<Gasto>>(
+      future: _gastoService.getGastosByCuadre(cuadre.id!),
+      builder: (context, snapshot) {
+        double inicial = cuadre.fondoInicial;
+        double ventas = cuadre.efectivoEsperado;
+        double gastos = 0;
+
+        // Calcular total de gastos desde el backend
+        if (snapshot.hasData) {
+          gastos = snapshot.data!.fold(
+            0,
+            (total, gasto) => total + gasto.monto,
+          );
+        }
+
+        double facturas = 0; // Podrías agregar otra consulta para facturas
+        double totalEfectivo = inicial + ventas - gastos - facturas;
+
+        return _buildTablaDetalle("Resumen", [
+          ["", ""],
+          ["Inicial + ventas", "\$ ${(inicial + ventas).toStringAsFixed(0)}"],
+          [
+            "Inicial + ventas + propinas + domicilios",
+            "\$ ${(inicial + ventas).toStringAsFixed(0)}",
+          ],
+          ["Pagos facturas de compras", "-\$ ${facturas.toStringAsFixed(0)}"],
+          ["Total Gastos", "-\$ ${gastos.toStringAsFixed(0)}"],
+          ["Total Efectivo", "\$ ${totalEfectivo.toStringAsFixed(0)}"],
+          ["", ""],
+          ["Debe tener", "\$ ${totalEfectivo.toStringAsFixed(0)}"],
+          ["", ""],
+          ["Domicilios", "\$ 0"],
+        ]);
+      },
     );
   }
 }
