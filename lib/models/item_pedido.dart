@@ -26,6 +26,8 @@ class ItemPedido {
     'notas': notas,
     'precio': precio,
     'ingredientesSeleccionados': ingredientesSeleccionados,
+    'esCombo': producto?.esCombo ?? false, // Indicar si es un producto combo
+    'tipoProducto': producto?.tipoProducto ?? 'individual', // Tipo de producto
   };
 
   factory ItemPedido.fromJson(Map<String, dynamic> json, {Producto? producto}) {
@@ -35,7 +37,25 @@ class ItemPedido {
       finalProducto = Producto(
         id: json['productoId'] ?? '',
         nombre: json['productoNombre'] ?? 'Producto desconocido',
-        precio: json['precio']?.toDouble() ?? 0.0,
+        precio:
+            json['precio']?.toDouble() ??
+            json['precioUnitario']?.toDouble() ??
+            0.0,
+        costo: 0.0,
+        utilidad: 0.0,
+        cantidad: 0,
+      );
+    }
+
+    // Handle the case where we don't have a product name but have other data
+    if (finalProducto == null) {
+      finalProducto = Producto(
+        id: json['productoId'] ?? '',
+        nombre: json['productoNombre'] ?? 'Producto sin nombre',
+        precio:
+            json['precio']?.toDouble() ??
+            json['precioUnitario']?.toDouble() ??
+            0.0,
         costo: 0.0,
         utilidad: 0.0,
         cantidad: 0,
@@ -47,7 +67,10 @@ class ItemPedido {
       producto: finalProducto,
       cantidad: json['cantidad'] ?? 0,
       notas: json['notas'],
-      precio: json['precio']?.toDouble() ?? finalProducto?.precio ?? 0.0,
+      precio:
+          json['precio']?.toDouble() ??
+          json['precioUnitario']?.toDouble() ??
+          finalProducto.precio,
       ingredientesSeleccionados: json['ingredientesSeleccionados'] != null
           ? List<String>.from(json['ingredientesSeleccionados'])
           : [],

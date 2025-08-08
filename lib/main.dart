@@ -6,10 +6,11 @@ import 'screens/mesas_screen.dart';
 import 'screens/productos_screen.dart';
 import 'screens/categorias_screen.dart';
 import 'screens/cuadre_caja_screen.dart';
+import 'screens/abrir_caja_screen.dart';
+import 'screens/cerrar_caja_screen.dart';
 import 'screens/reportes_screen.dart';
 import 'screens/pedidos_screen_fusion.dart';
 import 'screens/documentos_screen.dart';
-import 'screens/inventario_screen.dart';
 import 'providers/user_provider.dart';
 
 void main() async {
@@ -63,6 +64,8 @@ class MyApp extends StatelessWidget {
         '/productos': (context) => ProductosScreen(),
         '/categorias': (context) => CategoriasScreen(),
         '/cuadre_caja': (context) => CuadreCajaScreen(),
+        '/abrir_caja': (context) => AbrirCajaScreen(),
+        '/cerrar_caja': (context) => CerrarCajaScreen(),
         '/pedidos': (context) =>
             const PedidosScreenFusion(), // Pantalla fusionada
         // '/pedidos_v2': (context) =>

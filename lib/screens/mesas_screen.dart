@@ -1,13 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'dart:async';
+import 'dart:io';
+import 'dart:convert';
+import 'dart:typed_data';
 import '../models/mesa.dart';
 import '../models/pedido.dart';
 import '../services/pedido_service.dart';
 import '../services/mesa_service.dart';
+import '../services/impresion_service.dart';
 import '../services/notification_service.dart';
+import '../services/documento_service.dart';
+import '../services/pdf_service.dart';
 import '../providers/user_provider.dart';
 import 'pedido_screen.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
 
 class MesasScreen extends StatefulWidget {
   const MesasScreen({Key? key}) : super(key: key);
@@ -19,6 +29,9 @@ class MesasScreen extends StatefulWidget {
 class _MesasScreenState extends State<MesasScreen> {
   final MesaService _mesaService = MesaService();
   final PedidoService _pedidoService = PedidoService();
+  final ImpresionService _impresionService = ImpresionService();
+  final DocumentoService _documentoService = DocumentoService();
+  final PDFService _pdfService = PDFService();
   List<Mesa> mesas = [];
   bool isLoading = true;
   String? errorMessage;
@@ -541,6 +554,83 @@ class _MesasScreenState extends State<MesasScreen> {
     bool _esConsumoInterno = false;
     String? _mesaDestinoId;
 
+    // NUEVAS VARIABLES PARA SELECTOR DE BILLETES Y CAMBIO
+    double _billetesSeleccionados = 0.0;
+    TextEditingController _billetesController = TextEditingController();
+    Map<int, int> _contadorBilletes = {
+      50000: 0,
+      20000: 0,
+      10000: 0,
+      5000: 0,
+      2000: 0,
+      1000: 0,
+    };
+
+    // Función local para construir botones de billetes
+    Widget _buildBilletButton(int valor, Function(VoidCallback) setStateLocal) {
+      return Expanded(
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 3),
+          child: InkWell(
+            onTap: () {
+              setStateLocal(() {
+                _billetesSeleccionados += valor.toDouble();
+                _contadorBilletes[valor] = (_contadorBilletes[valor] ?? 0) + 1;
+                _billetesController.text = _billetesSeleccionados
+                    .toStringAsFixed(0);
+              });
+            },
+            child: Container(
+              height: 65,
+              decoration: BoxDecoration(
+                color: _primary,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.white.withOpacity(0.2)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 4,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Mostrar contador si hay billetes seleccionados
+                  if ((_contadorBilletes[valor] ?? 0) > 0)
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '${_contadorBilletes[valor]}',
+                        style: TextStyle(
+                          color: _primary,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  if ((_contadorBilletes[valor] ?? 0) > 0) SizedBox(height: 4),
+                  Text(
+                    '\$${(valor / 1000).toStringAsFixed(0)}K',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     // Mostrar indicador de carga mientras se prepara el diálogo
     showDialog(
       context: context,
@@ -664,70 +754,6 @@ class _MesasScreenState extends State<MesasScreen> {
                   ),
                   Divider(color: _textLight.withOpacity(0.3)),
 
-                  // Campos de descuento
-                  SwitchListTile(
-                    title: Row(
-                      children: [
-                        Text(
-                          'Es cortesía',
-                          style: TextStyle(color: _textLight, fontSize: 16),
-                        ),
-                        if (_esCortesia)
-                          Padding(
-                            padding: const EdgeInsets.only(left: 8.0),
-                            child: Icon(
-                              Icons.card_giftcard,
-                              color: _primary,
-                              size: 16,
-                            ),
-                          ),
-                      ],
-                    ),
-                    value: _esCortesia,
-                    activeColor: _primary,
-                    contentPadding: EdgeInsets.zero,
-                    onChanged: (value) {
-                      setState(() {
-                        _esCortesia = value;
-                        if (value) {
-                          _esConsumoInterno = false;
-                        }
-                      });
-                    },
-                  ),
-
-                  // Opción Consumo interno
-                  SwitchListTile(
-                    title: Row(
-                      children: [
-                        Text(
-                          'Consumo interno',
-                          style: TextStyle(color: _textLight, fontSize: 16),
-                        ),
-                        if (_esConsumoInterno)
-                          Padding(
-                            padding: const EdgeInsets.only(left: 8.0),
-                            child: Icon(
-                              Icons.people,
-                              color: _primary,
-                              size: 16,
-                            ),
-                          ),
-                      ],
-                    ),
-                    value: _esConsumoInterno,
-                    activeColor: _primary,
-                    contentPadding: EdgeInsets.zero,
-                    onChanged: (value) {
-                      setState(() {
-                        _esConsumoInterno = value;
-                        if (value) {
-                          _esCortesia = false;
-                        }
-                      });
-                    },
-                  ),
-
                   // Opción Mover a otra mesa
                   InkWell(
                     onTap: () async {
@@ -850,16 +876,310 @@ class _MesasScreenState extends State<MesasScreen> {
                       Text('Efectivo', style: TextStyle(color: _textLight)),
                       SizedBox(width: 16),
                       Radio<String>(
-                        value: 'tarjeta',
+                        value: 'transferencia',
                         groupValue: _medioPago,
                         onChanged: (value) {
                           setState(() => _medioPago = value!);
                         },
                         activeColor: _primary,
                       ),
-                      Text('Tarjeta', style: TextStyle(color: _textLight)),
+                      Text(
+                        'Transferencia/Tarjeta',
+                        style: TextStyle(color: _textLight),
+                      ),
                     ],
                   ),
+
+                  // Selector de billetes (solo para pago en efectivo)
+                  if (_medioPago == 'efectivo') ...[
+                    SizedBox(height: 16),
+
+                    // Campo para entrada manual opcional
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _billetesController,
+                            decoration: InputDecoration(
+                              labelText: 'Total recibido (opcional)',
+                              labelStyle: TextStyle(color: _textLight),
+                              prefixText: '\$',
+                              enabledBorder: OutlineInputBorder(
+                                borderSide: BorderSide(
+                                  color: _textLight.withOpacity(0.3),
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderSide: BorderSide(color: _primary),
+                              ),
+                            ),
+                            style: TextStyle(color: _textLight),
+                            keyboardType: TextInputType.number,
+                            onChanged: (value) {
+                              setState(() {
+                                _billetesSeleccionados =
+                                    double.tryParse(value) ?? 0.0;
+                                // Limpiar contadores cuando se ingresa manual
+                                if (value.isNotEmpty) {
+                                  _contadorBilletes.updateAll((key, val) => 0);
+                                }
+                              });
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 12),
+
+                    Text(
+                      'O selecciona los billetes:',
+                      style: TextStyle(
+                        color: _textLight,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+
+                    // Botones de billetes comunes
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _buildBilletButton(50000, setState),
+                        _buildBilletButton(20000, setState),
+                        _buildBilletButton(10000, setState),
+                        _buildBilletButton(5000, setState),
+                      ],
+                    ),
+                    SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _buildBilletButton(2000, setState),
+                        _buildBilletButton(1000, setState),
+                        // Botón para valor exacto
+                        Expanded(
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 2),
+                            child: ElevatedButton(
+                              onPressed: () {
+                                setState(() {
+                                  // Limpiar contadores primero
+                                  _contadorBilletes.updateAll(
+                                    (key, value) => 0,
+                                  );
+                                  // Calcular total con propina
+                                  double subtotal = pedido.total;
+                                  double propinaPercent =
+                                      double.tryParse(
+                                        _propinaController.text,
+                                      ) ??
+                                      0.0;
+                                  double propinaMonto =
+                                      (subtotal * propinaPercent / 100)
+                                          .roundToDouble();
+                                  double total = subtotal + propinaMonto;
+                                  _billetesSeleccionados = total;
+                                  _billetesController.text =
+                                      _billetesSeleccionados.toStringAsFixed(0);
+                                });
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green,
+                                padding: EdgeInsets.symmetric(vertical: 8),
+                              ),
+                              child: Text(
+                                'Exacto',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        // Botón para limpiar
+                        Expanded(
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 2),
+                            child: ElevatedButton(
+                              onPressed: () {
+                                setState(() {
+                                  _billetesSeleccionados = 0.0;
+                                  _billetesController.text = '0';
+                                  _contadorBilletes.updateAll(
+                                    (key, value) => 0,
+                                  );
+                                });
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.red,
+                                padding: EdgeInsets.symmetric(vertical: 8),
+                              ),
+                              child: Text(
+                                'Limpiar',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 8),
+
+                    // Mostrar resumen de billetes seleccionados
+                    if (_billetesSeleccionados > 0) ...[
+                      Container(
+                        padding: EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: _cardBg.withOpacity(0.3),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: _primary.withOpacity(0.2)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Billetes seleccionados:',
+                              style: TextStyle(
+                                color: _textLight,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Wrap(
+                              spacing: 8,
+                              children: _contadorBilletes.entries
+                                  .where((entry) => entry.value > 0)
+                                  .map(
+                                    (entry) => Container(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: _primary.withOpacity(0.2),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Text(
+                                        '${entry.value}x \$${(entry.key / 1000).toStringAsFixed(0)}K',
+                                        style: TextStyle(
+                                          color: _primary,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                    ],
+
+                    // Mostrar total recibido y cambio
+                    Builder(
+                      builder: (context) {
+                        double totalRecibido = _billetesSeleccionados;
+
+                        // Calcular total a pagar (con propina)
+                        double subtotal = pedido.total;
+                        double propinaPercent =
+                            double.tryParse(_propinaController.text) ?? 0.0;
+                        double propinaMonto = (subtotal * propinaPercent / 100)
+                            .roundToDouble();
+                        double totalAPagar = subtotal + propinaMonto;
+
+                        double cambio = totalRecibido - totalAPagar;
+
+                        return Column(
+                          children: [
+                            Container(
+                              padding: EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: _cardBg.withOpacity(0.5),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: _textLight.withOpacity(0.3),
+                                ),
+                              ),
+                              child: Column(
+                                children: [
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        'Total a pagar:',
+                                        style: TextStyle(color: _textLight),
+                                      ),
+                                      Text(
+                                        '\$${totalAPagar.toStringAsFixed(0)}',
+                                        style: TextStyle(
+                                          color: _textLight,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  SizedBox(height: 4),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        'Recibido:',
+                                        style: TextStyle(color: _textLight),
+                                      ),
+                                      Text(
+                                        '\$${totalRecibido.toStringAsFixed(0)}',
+                                        style: TextStyle(
+                                          color: _textLight,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  Divider(color: _textLight.withOpacity(0.3)),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        'Cambio:',
+                                        style: TextStyle(
+                                          color: _textLight,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                      Text(
+                                        cambio >= 0
+                                            ? '\$${cambio.toStringAsFixed(0)}'
+                                            : '-\$${(-cambio).toStringAsFixed(0)}',
+                                        style: TextStyle(
+                                          color: cambio >= 0
+                                              ? Colors.green
+                                              : Colors.red,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ],
 
                   // Propina
                   Text(
@@ -1104,35 +1424,59 @@ class _MesasScreenState extends State<MesasScreen> {
 
                   // Botones de acción
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: Text('Cancelar'),
-                        style: TextButton.styleFrom(
-                          foregroundColor: _textLight,
+                      // Botón Resumen/Imprimir
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          _mostrarResumenImpresion(pedido);
+                        },
+                        icon: Icon(Icons.receipt, size: 18),
+                        label: Text('Resumen'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue,
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
                         ),
                       ),
-                      SizedBox(width: 16),
-                      ElevatedButton(
-                        onPressed: () {
-                          Navigator.pop(context, {
-                            'medioPago': _medioPago,
-                            'incluyePropina': _incluyePropina,
-                            'descuentoPorcentaje':
-                                _descuentoPorcentajeController.text,
-                            'descuentoValor': _descuentoValorController.text,
-                            'propina': _propinaController.text,
-                            'esCortesia': _esCortesia,
-                            'esConsumoInterno': _esConsumoInterno,
-                            'mesaDestinoId': _mesaDestinoId,
-                          });
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: _primary,
-                          foregroundColor: Colors.white,
-                        ),
-                        child: Text('Confirmar pago'),
+
+                      // Botones de acción derecha
+                      Row(
+                        children: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: Text('Cancelar'),
+                            style: TextButton.styleFrom(
+                              foregroundColor: _textLight,
+                            ),
+                          ),
+                          SizedBox(width: 16),
+                          ElevatedButton(
+                            onPressed: () {
+                              Navigator.pop(context, {
+                                'medioPago': _medioPago,
+                                'incluyePropina': _incluyePropina,
+                                'descuentoPorcentaje':
+                                    _descuentoPorcentajeController.text,
+                                'descuentoValor':
+                                    _descuentoValorController.text,
+                                'propina': _propinaController.text,
+                                'esCortesia': _esCortesia,
+                                'esConsumoInterno': _esConsumoInterno,
+                                'mesaDestinoId': _mesaDestinoId,
+                                'billetesRecibidos': _billetesSeleccionados,
+                              });
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: _primary,
+                              foregroundColor: Colors.white,
+                            ),
+                            child: Text('Confirmar pago'),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -1278,6 +1622,9 @@ class _MesasScreenState extends State<MesasScreen> {
         // Notificar el cambio para actualizar el dashboard
         NotificationService().notificarCambioPedido(pedido);
 
+        // Notificar que se debe actualizar la lista de documentos
+        _notificarActualizacionDocumentos(pedido);
+
         String tipoTexto = '';
         if (esCortesia) tipoTexto = ' (Cortesía)';
         if (esConsumoInterno) tipoTexto = ' (Consumo Interno)';
@@ -1297,6 +1644,23 @@ class _MesasScreenState extends State<MesasScreen> {
           ),
         );
       }
+    }
+  }
+
+  // Notificar actualización de documentos
+  Future<void> _notificarActualizacionDocumentos(Pedido pedido) async {
+    try {
+      print(
+        '📄 Notificando actualización de documentos para pedido: ${pedido.id}',
+      );
+
+      // Aquí puedes agregar lógica adicional si necesitas comunicación
+      // entre pantallas para actualizar los documentos en tiempo real
+
+      // Por ejemplo, usando un EventBus o Stream si lo tienes configurado
+      // EventBus().fire(DocumentoActualizadoEvent(pedido.id));
+    } catch (e) {
+      print('❌ Error notificando actualización de documentos: $e');
     }
   }
 
@@ -1381,6 +1745,1719 @@ class _MesasScreenState extends State<MesasScreen> {
     }
   }
 
+  // Método para mostrar resumen e imprimir factura
+  void _mostrarResumenImpresion(Pedido pedido) async {
+    // Mostrar indicador de carga
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: _cardBg,
+        content: Row(
+          children: [
+            CircularProgressIndicator(color: _primary),
+            SizedBox(width: 20),
+            Text(
+              'Generando resumen de impresión...',
+              style: TextStyle(color: _textLight),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    try {
+      // Generar resumen desde el backend usando el nuevo endpoint
+      final resumen = await _impresionService.generarResumenPedido(pedido.id);
+
+      // Cerrar diálogo de carga
+      Navigator.of(context).pop();
+
+      if (resumen == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('No se pudo generar el resumen del pedido'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      // Mostrar diálogo con resumen - trabajando directamente con los datos del endpoint
+      showDialog(
+        context: context,
+        builder: (context) => Dialog(
+          backgroundColor: _cardBg,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
+          child: Container(
+            width: MediaQuery.of(context).size.width * 0.9,
+            padding: EdgeInsets.all(20),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Encabezado
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Resumen del Pedido',
+                        style: TextStyle(
+                          color: _textLight,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.close, color: _textLight),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                  Divider(color: _textLight.withOpacity(0.3)),
+                  SizedBox(height: 16),
+
+                  // Información del restaurante
+                  _buildSeccionResumen('RESTAURANTE', [
+                    resumen['nombreRestaurante'] ?? 'SOPA Y CARBÓN',
+                    resumen['direccionRestaurante'] ??
+                        'Dirección del restaurante',
+                    'Tel: ${resumen['telefonoRestaurante'] ?? 'Teléfono'}',
+                  ]),
+
+                  // Información del pedido
+                  _buildSeccionResumen('INFORMACIÓN DEL PEDIDO', [
+                    'Pedido: ${resumen['pedidoId'] ?? 'N/A'}',
+                    'Fecha: ${resumen['fecha'] ?? 'N/A'}',
+                    'Hora: ${resumen['hora'] ?? 'N/A'}',
+                    if (resumen['mesa'] != null) 'Mesa: ${resumen['mesa']}',
+                    if (resumen['mesero'] != null)
+                      'Mesero: ${resumen['mesero']}',
+                    if (resumen['tipo'] != null) 'Tipo: ${resumen['tipo']}',
+                  ]),
+
+                  // Detalle de productos
+                  Text(
+                    'DETALLE DE PRODUCTOS:',
+                    style: TextStyle(
+                      color: _textLight,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+
+                  Container(
+                    constraints: BoxConstraints(maxHeight: 350),
+                    child: SingleChildScrollView(
+                      child: Column(
+                        children: (resumen['productos'] as List? ?? [])
+                            .map<Widget>(
+                              (producto) =>
+                                  _buildProductoItemConIngredientes(producto),
+                            )
+                            .toList(),
+                      ),
+                    ),
+                  ),
+
+                  SizedBox(height: 16),
+                  Divider(color: _textLight.withOpacity(0.3)),
+
+                  // Total
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'TOTAL:',
+                        style: TextStyle(
+                          color: _textLight,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        '\$${(resumen['total'] ?? 0.0).toStringAsFixed(0)}',
+                        style: TextStyle(
+                          color: _primary,
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  SizedBox(height: 24),
+
+                  // Botones de acción
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      ElevatedButton.icon(
+                        onPressed: () async {
+                          await _imprimirResumenPedido(resumen);
+                        },
+                        icon: Icon(Icons.print, size: 18),
+                        label: Text('Imprimir'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                        ),
+                      ),
+                      ElevatedButton.icon(
+                        onPressed: () async {
+                          await _compartirResumenPedido(resumen);
+                        },
+                        icon: Icon(Icons.share, size: 18),
+                        label: Text('Compartir'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue,
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                        ),
+                      ),
+                      ElevatedButton.icon(
+                        onPressed: () async {
+                          Navigator.pop(context); // Cerrar diálogo actual
+                          await _crearYMostrarFactura(pedido.id);
+                        },
+                        icon: Icon(Icons.receipt_long, size: 18),
+                        label: Text('Facturar'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange,
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    } catch (e) {
+      // Cerrar diálogo de carga si está abierto
+      Navigator.of(context).pop();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error generando resumen: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  // Método auxiliar para construir items de producto con ingredientes (nuevo endpoint)
+  Widget _buildProductoItemConIngredientes(Map<String, dynamic> producto) {
+    return Container(
+      padding: EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Información del producto
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${producto['cantidad'] ?? 1}x ${producto['nombre'] ?? 'Producto desconocido'}',
+                      style: TextStyle(
+                        color: _textLight,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    if (producto['observaciones'] != null &&
+                        producto['observaciones'].toString().isNotEmpty)
+                      Padding(
+                        padding: EdgeInsets.only(top: 4),
+                        child: Text(
+                          'Observaciones: ${producto['observaciones']}',
+                          style: TextStyle(
+                            color: _textLight.withOpacity(0.8),
+                            fontSize: 12,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              Text(
+                '\$${((producto['precio'] ?? 0.0) * (producto['cantidad'] ?? 1)).toStringAsFixed(0)}',
+                style: TextStyle(
+                  color: _primary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+
+          // Ingredientes requeridos
+          if (producto['ingredientesRequeridos'] != null &&
+              (producto['ingredientesRequeridos'] as List).isNotEmpty)
+            Padding(
+              padding: EdgeInsets.only(top: 8, left: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Ingredientes requeridos:',
+                    style: TextStyle(
+                      color: _textLight.withOpacity(0.9),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  ...(producto['ingredientesRequeridos'] as List)
+                      .map(
+                        (ingrediente) => Padding(
+                          padding: EdgeInsets.only(left: 8, bottom: 2),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 4,
+                                height: 4,
+                                decoration: BoxDecoration(
+                                  color: Colors.green,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              SizedBox(width: 6),
+                              Text(
+                                '${ingrediente['nombre']} (${ingrediente['cantidad']} ${ingrediente['unidad'] ?? ''})',
+                                style: TextStyle(
+                                  color: _textLight.withOpacity(0.8),
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                      .toList(),
+                ],
+              ),
+            ),
+
+          // Ingredientes opcionales
+          if (producto['ingredientesOpcionales'] != null &&
+              (producto['ingredientesOpcionales'] as List).isNotEmpty)
+            Padding(
+              padding: EdgeInsets.only(top: 8, left: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Ingredientes opcionales:',
+                    style: TextStyle(
+                      color: _textLight.withOpacity(0.9),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  ...(producto['ingredientesOpcionales'] as List)
+                      .map(
+                        (ingrediente) => Padding(
+                          padding: EdgeInsets.only(left: 8, bottom: 2),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 4,
+                                height: 4,
+                                decoration: BoxDecoration(
+                                  color: Colors.blue,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              SizedBox(width: 6),
+                              Text(
+                                '${ingrediente['nombre']} (${ingrediente['cantidad']} ${ingrediente['unidad'] ?? ''})',
+                                style: TextStyle(
+                                  color: _textLight.withOpacity(0.8),
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                      .toList(),
+                ],
+              ),
+            ),
+
+          SizedBox(height: 8),
+          Divider(color: _textLight.withOpacity(0.1), height: 1),
+        ],
+      ),
+    );
+  }
+
+  // Método auxiliar para construir secciones del resumen
+  Widget _buildSeccionResumen(String titulo, List<String> contenido) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          titulo,
+          style: TextStyle(
+            color: _primary,
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        SizedBox(height: 4),
+        ...contenido
+            .map(
+              (linea) => Text(
+                linea,
+                style: TextStyle(color: _textLight, fontSize: 13),
+              ),
+            )
+            .toList(),
+        SizedBox(height: 12),
+      ],
+    );
+  }
+
+  // Método auxiliar para construir items de producto
+  Widget _buildProductoItem(Map<String, dynamic> producto) {
+    return Container(
+      padding: EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 30,
+                child: Text(
+                  '${producto['cantidad']}x',
+                  style: TextStyle(
+                    color: _textLight,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      producto['nombre'] ?? 'Producto desconocido',
+                      style: TextStyle(
+                        color: _textLight,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    if (producto['observaciones'] != null &&
+                        producto['observaciones'].toString().isNotEmpty)
+                      Text(
+                        '  • ${producto['observaciones']}',
+                        style: TextStyle(
+                          color: _textLight.withOpacity(0.7),
+                          fontSize: 12,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    // Mostrar ingredientes si están disponibles
+                    if (producto['ingredientes'] != null &&
+                        (producto['ingredientes'] as List).isNotEmpty) ...[
+                      SizedBox(height: 4),
+                      Text(
+                        'Ingredientes:',
+                        style: TextStyle(
+                          color: _textLight.withOpacity(0.8),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      ...(producto['ingredientes'] as List)
+                          .map<Widget>(
+                            (ing) => Text(
+                              '  - ${ing['nombre']}: ${ing['cantidad']} ${ing['unidad']}',
+                              style: TextStyle(
+                                color: _textLight.withOpacity(0.6),
+                                fontSize: 10,
+                              ),
+                            ),
+                          )
+                          .toList(),
+                    ],
+                  ],
+                ),
+              ),
+              Text(
+                '\$${producto['subtotal'].toStringAsFixed(0)}',
+                style: TextStyle(
+                  color: _textLight,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 4),
+          Divider(color: _textLight.withOpacity(0.1), height: 1),
+        ],
+      ),
+    );
+  }
+
+  // Método para imprimir resumen de pedido (usando nuevo endpoint)
+  Future<void> _imprimirResumenPedido(Map<String, dynamic> resumen) async {
+    try {
+      // Mostrar opciones de impresión/compartir
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: _cardBg,
+          title: Text(
+            'Opciones de Impresión',
+            style: TextStyle(color: _textLight),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Resumen de Pedido #${resumen['pedidoId'] ?? 'N/A'}',
+                style: TextStyle(color: _textLight),
+              ),
+              SizedBox(height: 16),
+              ListTile(
+                leading: Icon(Icons.print, color: _primary),
+                title: Text('Imprimir', style: TextStyle(color: _textLight)),
+                subtitle: Text(
+                  'Usar impresora del sistema',
+                  style: TextStyle(color: _textLight.withOpacity(0.7)),
+                ),
+                onTap: () async {
+                  Navigator.pop(context);
+                  try {
+                    await _pdfService.mostrarDialogoImpresion(
+                      resumen: resumen,
+                      esFactura: false,
+                    );
+                    _mostrarMensajeExito('PDF enviado a impresión');
+                  } catch (e) {
+                    _mostrarMensajeError('Error al imprimir: $e');
+                  }
+                },
+              ),
+              Divider(color: _textLight.withOpacity(0.3)),
+              ListTile(
+                leading: Icon(Icons.preview, color: _primary),
+                title: Text(
+                  'Vista Previa',
+                  style: TextStyle(color: _textLight),
+                ),
+                subtitle: Text(
+                  'Ver antes de imprimir',
+                  style: TextStyle(color: _textLight.withOpacity(0.7)),
+                ),
+                onTap: () async {
+                  Navigator.pop(context);
+                  try {
+                    await _pdfService.mostrarVistaPrevia(
+                      resumen: resumen,
+                      esFactura: false,
+                    );
+                  } catch (e) {
+                    _mostrarMensajeError('Error en vista previa: $e');
+                  }
+                },
+              ),
+              Divider(color: _textLight.withOpacity(0.3)),
+              ListTile(
+                leading: Icon(Icons.share, color: _primary),
+                title: Text(
+                  'Compartir PDF',
+                  style: TextStyle(color: _textLight),
+                ),
+                subtitle: Text(
+                  'Enviar por WhatsApp, email, etc.',
+                  style: TextStyle(color: _textLight.withOpacity(0.7)),
+                ),
+                onTap: () async {
+                  Navigator.pop(context);
+                  try {
+                    await _pdfService.compartirPDF(
+                      resumen: resumen,
+                      esFactura: false,
+                    );
+                  } catch (e) {
+                    _mostrarMensajeError('Error al compartir: $e');
+                  }
+                },
+              ),
+              Divider(color: _textLight.withOpacity(0.3)),
+              ListTile(
+                leading: Icon(Icons.save, color: _primary),
+                title: Text('Guardar PDF', style: TextStyle(color: _textLight)),
+                subtitle: Text(
+                  'Almacenar en el dispositivo',
+                  style: TextStyle(color: _textLight.withOpacity(0.7)),
+                ),
+                onTap: () async {
+                  Navigator.pop(context);
+                  try {
+                    final file = await _pdfService.guardarPDF(
+                      resumen: resumen,
+                      esFactura: false,
+                    );
+                    _mostrarMensajeExito('PDF guardado: ${file.path}');
+                  } catch (e) {
+                    _mostrarMensajeError('Error al guardar: $e');
+                  }
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Cancelar', style: TextStyle(color: _textLight)),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      _mostrarMensajeError('Error generando opciones: $e');
+    }
+  }
+
+  // Método para compartir resumen de pedido
+  Future<void> _compartirResumenPedido(Map<String, dynamic> resumen) async {
+    try {
+      await _pdfService.compartirPDF(resumen: resumen, esFactura: false);
+      _mostrarMensajeExito('Resumen compartido exitosamente');
+    } catch (e) {
+      _mostrarMensajeError('Error compartiendo resumen: $e');
+    }
+  }
+
+  // Método para crear y mostrar factura oficial
+  Future<void> _crearYMostrarFactura(String pedidoId) async {
+    // Mostrar indicador de carga
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: _cardBg,
+        content: Row(
+          children: [
+            CircularProgressIndicator(color: _primary),
+            SizedBox(width: 20),
+            Text(
+              'Creando factura oficial...',
+              style: TextStyle(color: _textLight),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    try {
+      // Crear factura desde el pedido
+      final facturaCreada = await _impresionService.crearFacturaDesdepedido(
+        pedidoId,
+        medioPago: 'Efectivo',
+      );
+
+      if (facturaCreada == null) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('No se pudo crear la factura'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      // Obtener la factura para impresión
+      final facturaParaImpresion = await _impresionService
+          .obtenerFacturaParaImpresion(facturaCreada['id'].toString());
+
+      Navigator.of(context).pop(); // Cerrar diálogo de carga
+
+      if (facturaParaImpresion == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('No se pudo obtener los datos de la factura'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      // Mostrar la factura oficial
+      _mostrarFacturaOficial(facturaParaImpresion);
+    } catch (e) {
+      Navigator.of(context).pop(); // Cerrar diálogo de carga
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error creando factura: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  // Método para mostrar factura oficial
+  void _mostrarFacturaOficial(Map<String, dynamic> factura) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: _cardBg,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        child: Container(
+          width: MediaQuery.of(context).size.width * 0.9,
+          padding: EdgeInsets.all(20),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Encabezado
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Factura Oficial',
+                      style: TextStyle(
+                        color: _textLight,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.close, color: _textLight),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                Divider(color: _textLight.withOpacity(0.3)),
+                SizedBox(height: 16),
+
+                // Información del restaurante
+                _buildSeccionResumen('RESTAURANTE', [
+                  factura['nombreRestaurante'] ?? 'SOPA Y CARBÓN',
+                  factura['direccionRestaurante'] ??
+                      'Dirección del restaurante',
+                  'NIT: ${factura['nitRestaurante'] ?? 'NIT del restaurante'}',
+                  'Tel: ${factura['telefonoRestaurante'] ?? 'Teléfono'}',
+                ]),
+
+                // Información de la factura
+                _buildSeccionResumen('FACTURA', [
+                  'Número: ${factura['numero'] ?? 'N/A'}',
+                  'Fecha: ${factura['fecha'] ?? 'N/A'}',
+                  'Hora: ${factura['hora'] ?? 'N/A'}',
+                  'NIT Cliente: ${factura['nit'] ?? '22222222222'}',
+                  if (factura['clienteTelefono'] != null &&
+                      factura['clienteTelefono'].toString().isNotEmpty)
+                    'Teléfono: ${factura['clienteTelefono']}',
+                  if (factura['clienteDireccion'] != null &&
+                      factura['clienteDireccion'].toString().isNotEmpty)
+                    'Dirección: ${factura['clienteDireccion']}',
+                  'Medio de Pago: ${factura['medioPago'] ?? 'Efectivo'}',
+                ]),
+
+                // Productos facturados
+                Text(
+                  'PRODUCTOS FACTURADOS:',
+                  style: TextStyle(
+                    color: _textLight,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(height: 8),
+
+                Container(
+                  constraints: BoxConstraints(maxHeight: 300),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      children: (factura['productos'] as List? ?? [])
+                          .map<Widget>(
+                            (producto) => _buildProductoFacturado(producto),
+                          )
+                          .toList(),
+                    ),
+                  ),
+                ),
+
+                SizedBox(height: 16),
+                Divider(color: _textLight.withOpacity(0.3)),
+
+                // Totales
+                Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Subtotal:', style: TextStyle(color: _textLight)),
+                        Text(
+                          '\$${(factura['subtotal'] ?? 0.0).toStringAsFixed(0)}',
+                          style: TextStyle(color: _textLight),
+                        ),
+                      ],
+                    ),
+                    if (factura['propina'] != null && factura['propina'] > 0)
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('Propina:', style: TextStyle(color: _textLight)),
+                          Text(
+                            '\$${(factura['propina'] ?? 0.0).toStringAsFixed(0)}',
+                            style: TextStyle(color: _textLight),
+                          ),
+                        ],
+                      ),
+                    Divider(color: _textLight.withOpacity(0.3)),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'TOTAL:',
+                          style: TextStyle(
+                            color: _textLight,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          '\$${(factura['total'] ?? 0.0).toStringAsFixed(0)}',
+                          style: TextStyle(
+                            color: _primary,
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+
+                SizedBox(height: 24),
+
+                // Botones de acción para factura
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: () async {
+                        await _imprimirFacturaOficial(factura);
+                      },
+                      icon: Icon(Icons.print, size: 18),
+                      label: Text('Imprimir'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                      ),
+                    ),
+                    ElevatedButton.icon(
+                      onPressed: () async {
+                        await _compartirFacturaOficial(factura);
+                      },
+                      icon: Icon(Icons.share, size: 18),
+                      label: Text('Compartir'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Widget para productos facturados
+  Widget _buildProductoFacturado(Map<String, dynamic> producto) {
+    return Container(
+      padding: EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Text(
+              '${producto['cantidad'] ?? 1}x ${producto['nombre'] ?? 'Producto'}',
+              style: TextStyle(color: _textLight, fontSize: 14),
+            ),
+          ),
+          Text(
+            '\$${((producto['precio'] ?? 0.0) * (producto['cantidad'] ?? 1)).toStringAsFixed(0)}',
+            style: TextStyle(
+              color: _primary,
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Método para imprimir factura oficial
+  Future<void> _imprimirFacturaOficial(Map<String, dynamic> factura) async {
+    try {
+      // Mostrar opciones de impresión/compartir para factura
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: _cardBg,
+          title: Text(
+            'Opciones de Factura',
+            style: TextStyle(color: _textLight),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Factura #${factura['numero'] ?? 'N/A'}',
+                style: TextStyle(color: _textLight),
+              ),
+              SizedBox(height: 16),
+              ListTile(
+                leading: Icon(Icons.print, color: _primary),
+                title: Text(
+                  'Imprimir Factura',
+                  style: TextStyle(color: _textLight),
+                ),
+                subtitle: Text(
+                  'Usar impresora del sistema',
+                  style: TextStyle(color: _textLight.withOpacity(0.7)),
+                ),
+                onTap: () async {
+                  Navigator.pop(context);
+                  try {
+                    await _pdfService.mostrarDialogoImpresion(
+                      resumen: factura,
+                      esFactura: true,
+                    );
+                    _mostrarMensajeExito('Factura enviada a impresión');
+                  } catch (e) {
+                    _mostrarMensajeError('Error al imprimir: $e');
+                  }
+                },
+              ),
+              Divider(color: _textLight.withOpacity(0.3)),
+              ListTile(
+                leading: Icon(Icons.preview, color: _primary),
+                title: Text(
+                  'Vista Previa',
+                  style: TextStyle(color: _textLight),
+                ),
+                subtitle: Text(
+                  'Ver factura antes de imprimir',
+                  style: TextStyle(color: _textLight.withOpacity(0.7)),
+                ),
+                onTap: () async {
+                  Navigator.pop(context);
+                  try {
+                    await _pdfService.mostrarVistaPrevia(
+                      resumen: factura,
+                      esFactura: true,
+                    );
+                  } catch (e) {
+                    _mostrarMensajeError('Error en vista previa: $e');
+                  }
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Cancelar', style: TextStyle(color: _textLight)),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      _mostrarMensajeError('Error generando opciones: $e');
+    }
+  }
+
+  // Método para compartir factura oficial
+  Future<void> _compartirFacturaOficial(Map<String, dynamic> factura) async {
+    try {
+      await _pdfService.compartirPDF(resumen: factura, esFactura: true);
+      _mostrarMensajeExito('Factura compartida exitosamente');
+    } catch (e) {
+      _mostrarMensajeError('Error compartiendo factura: $e');
+    }
+  }
+
+  // Método para imprimir pedido
+  Future<void> _imprimirPedido(Map<String, dynamic> resumen) async {
+    try {
+      final textoImpresion = _impresionService.generarTextoImpresion(resumen);
+
+      // En una app real, aquí se enviaría a una impresora
+      // Por ahora, mostraremos el texto en un diálogo
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: _cardBg,
+          title: Text(
+            'Vista Previa de Impresión',
+            style: TextStyle(color: _textLight),
+          ),
+          content: Container(
+            width: double.maxFinite,
+            child: SingleChildScrollView(
+              child: Text(
+                textoImpresion,
+                style: TextStyle(
+                  color: _textLight,
+                  fontFamily: 'monospace',
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Cerrar'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.pop(context);
+                await _imprimirDocumento(resumen);
+              },
+              child: Text('Imprimir'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error preparando impresión: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  // Método para compartir pedido
+  Future<void> _compartirPedido(Map<String, dynamic> resumen) async {
+    try {
+      final textoImpresion = _impresionService.generarTextoImpresion(resumen);
+      await Share.share(
+        textoImpresion,
+        subject: 'Resumen de Pedido - ${resumen['pedidoId']}',
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error compartiendo: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  // Método para imprimir documento (real)
+  Future<void> _imprimirDocumento(Map<String, dynamic> resumen) async {
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          backgroundColor: _cardBg,
+          content: Row(
+            children: [
+              CircularProgressIndicator(color: _primary),
+              SizedBox(width: 20),
+              Text(
+                'Enviando a impresora...',
+                style: TextStyle(color: _textLight),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      final textoImpresion = _impresionService.generarTextoImpresion(resumen);
+
+      // Mostrar opciones de impresión
+      Navigator.of(context).pop(); // Cerrar diálogo de carga
+
+      // Mostrar diálogo con opciones de impresión
+      await _mostrarOpcionesImpresion(textoImpresion, resumen);
+    } catch (e) {
+      Navigator.of(context).pop(); // Cerrar diálogo de carga
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error preparando impresión: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  // Mostrar opciones de impresión
+  Future<void> _mostrarOpcionesImpresion(
+    String contenido,
+    Map<String, dynamic> resumen,
+  ) async {
+    return showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: _cardBg,
+        title: Text(
+          'Opciones de Impresión',
+          style: TextStyle(color: _textLight),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '¿Cómo deseas imprimir este documento?',
+              style: TextStyle(color: _textLight),
+            ),
+            SizedBox(height: 20),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancelar'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _abrirDialogoImpresionNativo(contenido, resumen);
+            },
+            icon: Icon(Icons.print),
+            label: Text('Imprimir'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _primary,
+              foregroundColor: Colors.white,
+            ),
+          ),
+          ElevatedButton.icon(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _guardarYAbrir(contenido);
+            },
+            icon: Icon(Icons.open_in_new),
+            label: Text('Abrir con Notepad'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+            ),
+          ),
+          ElevatedButton.icon(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _compartirPedido(resumen);
+            },
+            icon: Icon(Icons.share),
+            label: Text('Compartir'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Generar PDF y mostrarlo al usuario
+  Future<void> _abrirDialogoImpresionNativo(
+    String contenido,
+    Map<String, dynamic> resumen,
+  ) async {
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          backgroundColor: _cardBg,
+          content: Row(
+            children: [
+              CircularProgressIndicator(color: _primary),
+              SizedBox(width: 20),
+              Text(
+                'Generando documento PDF...',
+                style: TextStyle(color: _textLight),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      // Generar PDF
+      final pdfBytes = await _generarPDFTicket(contenido, resumen);
+
+      // Guardar archivo PDF
+      final tempDir = Directory.systemTemp;
+      final pdfFile = File(
+        '${tempDir.path}/ticket_${resumen['pedidoId'] ?? DateTime.now().millisecondsSinceEpoch}.pdf',
+      );
+
+      await pdfFile.writeAsBytes(pdfBytes);
+
+      Navigator.of(context).pop(); // Cerrar diálogo de carga
+
+      // Mostrar opciones para el archivo generado
+      await _mostrarOpcionesArchivo(pdfFile, 'PDF');
+    } catch (e) {
+      Navigator.of(context).pop(); // Cerrar diálogo de carga si hay error
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Error generando PDF: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      print('❌ Error completo: $e');
+    }
+  }
+
+  // Mostrar opciones para el archivo generado
+  Future<void> _mostrarOpcionesArchivo(File archivo, String tipo) async {
+    final fileName = archivo.path.split('\\').last;
+
+    return showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: _cardBg,
+        title: Text('$tipo Generado', style: TextStyle(color: _textLight)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              tipo == 'PDF' ? Icons.picture_as_pdf : Icons.description,
+              color: tipo == 'PDF' ? Colors.red : Colors.blue,
+              size: 48,
+            ),
+            SizedBox(height: 16),
+            Text(
+              'El archivo $tipo se ha generado correctamente.',
+              style: TextStyle(color: _textLight),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: 8),
+            SelectableText(
+              'Archivo: $fileName',
+              style: TextStyle(
+                color: _textLight.withOpacity(0.7),
+                fontSize: 12,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: 8),
+            SelectableText(
+              'Ubicación: ${archivo.parent.path}',
+              style: TextStyle(
+                color: _textLight.withOpacity(0.5),
+                fontSize: 10,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cerrar'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _copiarRutaAlPortapapeles(archivo.path);
+            },
+            icon: Icon(Icons.copy),
+            label: Text('Copiar Ruta'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+            ),
+          ),
+          ElevatedButton.icon(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _intentarAbrirArchivo(archivo.path);
+            },
+            icon: Icon(Icons.open_in_new),
+            label: Text('Intentar Abrir'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _primary,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Copiar ruta al portapapeles
+  Future<void> _copiarRutaAlPortapapeles(String ruta) async {
+    try {
+      await Clipboard.setData(ClipboardData(text: ruta));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('📋 Ruta copiada al portapapeles'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Error copiando ruta: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  // Intentar abrir archivo (fallback seguro)
+  Future<void> _intentarAbrirArchivo(String rutaArchivo) async {
+    try {
+      // Mostrar instrucciones al usuario
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: _cardBg,
+          title: Text('Abrir Archivo', style: TextStyle(color: _textLight)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Para abrir el archivo, puedes:',
+                style: TextStyle(
+                  color: _textLight,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              SizedBox(height: 12),
+              Text(
+                '• Abrir el Explorador de Windows',
+                style: TextStyle(color: _textLight),
+              ),
+              Text(
+                '• Navegar a la carpeta temporal',
+                style: TextStyle(color: _textLight),
+              ),
+              Text(
+                '• Buscar el archivo y hacer doble clic',
+                style: TextStyle(color: _textLight),
+              ),
+              SizedBox(height: 12),
+              Container(
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: _primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: SelectableText(
+                  rutaArchivo,
+                  style: TextStyle(
+                    color: _primary,
+                    fontSize: 12,
+                    fontFamily: 'monospace',
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Entendido'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.pop(context);
+                await _copiarRutaAlPortapapeles(rutaArchivo);
+              },
+              child: Text('Copiar Ruta'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('❌ Error: $e'), backgroundColor: Colors.red),
+      );
+    }
+  } // Generar PDF del ticket
+
+  Future<Uint8List> _generarPDFTicket(
+    String contenido,
+    Map<String, dynamic> resumen,
+  ) async {
+    final pdf = pw.Document();
+
+    // Dividir el contenido en líneas
+    final lineas = contenido.split('\n');
+
+    pdf.addPage(
+      pw.Page(
+        pageFormat: PdfPageFormat.roll80,
+        margin: pw.EdgeInsets.all(8),
+        build: (pw.Context context) {
+          return pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: lineas.map((linea) {
+              // Diferentes estilos según el contenido de la línea
+              if (linea.contains('=====')) {
+                return pw.Text(
+                  linea,
+                  style: pw.TextStyle(
+                    fontSize: 8,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                );
+              } else if (linea.contains('TOTAL:') || linea.contains('Total:')) {
+                return pw.Text(
+                  linea,
+                  style: pw.TextStyle(
+                    fontSize: 12,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                );
+              } else if (linea.trim().isEmpty) {
+                return pw.SizedBox(height: 4);
+              } else {
+                return pw.Text(linea, style: pw.TextStyle(fontSize: 10));
+              }
+            }).toList(),
+          );
+        },
+      ),
+    );
+
+    return pdf.save();
+  }
+
+  // Método para guardar archivo y mostrarlo al usuario
+  Future<void> _guardarYAbrir(String contenido) async {
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          backgroundColor: _cardBg,
+          content: Row(
+            children: [
+              CircularProgressIndicator(color: _primary),
+              SizedBox(width: 20),
+              Text(
+                'Generando documento de texto...',
+                style: TextStyle(color: _textLight),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      final tempDir = Directory.systemTemp;
+      final tempFile = File(
+        '${tempDir.path}/ticket_${DateTime.now().millisecondsSinceEpoch}.txt',
+      );
+
+      await tempFile.writeAsString(contenido, encoding: utf8);
+
+      Navigator.of(context).pop();
+
+      // Mostrar opciones para el archivo de texto
+      await _mostrarOpcionesArchivo(tempFile, 'Texto');
+    } catch (e) {
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Error generando documento: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  // Obtener el conteo de documentos del día actual
+  Future<int> _obtenerConteoDocumentosHoy() async {
+    try {
+      final hoy = DateTime.now();
+      final fechaHoy =
+          '${hoy.year}-${hoy.month.toString().padLeft(2, '0')}-${hoy.day.toString().padLeft(2, '0')}';
+
+      final documentos = await _documentoService.obtenerDocumentos(
+        fechaInicio: fechaHoy,
+        fechaFin: fechaHoy,
+      );
+
+      return documentos.length;
+    } catch (e) {
+      print('❌ Error obteniendo conteo de documentos: $e');
+      return 0;
+    }
+  }
+
+  // Navegar a la pantalla de documentos
+  Future<void> _navegarADocumentos() async {
+    try {
+      // Navegar a la pantalla de documentos
+      await Navigator.of(context).pushNamed('/documentos');
+
+      // Al regresar, actualizar las mesas por si hubo cambios
+      await _loadMesas();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error navegando a documentos: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  // MÉTODO ANTERIOR - YA NO SE USA (Se reemplazó por _crearYMostrarFactura)
+  // Método para crear factura
+  /*
+  Future<void> _crearFacturaPedido(String pedidoId) async {
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          backgroundColor: _cardBg,
+          content: Row(
+            children: [
+              CircularProgressIndicator(color: _primary),
+              SizedBox(width: 20),
+              Text('Generando factura...', style: TextStyle(color: _textLight)),
+            ],
+          ),
+        ),
+      );
+
+      final factura = await _impresionService.crearFacturaDesdepedido(pedidoId);
+
+      Navigator.of(context).pop(); // Cerrar diálogo de carga
+
+      if (factura != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Factura generada: ${factura['numero']}'),
+            backgroundColor: Colors.green,
+            action: SnackBarAction(
+              label: 'Ver Documentos',
+              onPressed: () {
+                // Navegar a la pantalla de documentos y actualizar
+                _navegarADocumentos();
+              },
+            ),
+          ),
+        );
+
+        // Mostrar resumen de factura y opciones
+        final resumenFactura = await _impresionService
+            .obtenerFacturaParaImpresion(factura['_id']);
+        if (resumenFactura != null) {
+          _mostrarResumenFactura(resumenFactura);
+        }
+
+        // Actualizar el estado de la mesa después de facturar
+        await _loadMesas();
+
+        // Mostrar opción adicional para navegar a documentos
+        _mostrarOpcionesPostFacturacion(factura);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('No se pudo generar la factura'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      Navigator.of(context).pop(); // Cerrar diálogo de carga si hay error
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error creando factura: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+  */
+
+  // Mostrar opciones después de crear una factura
+  Future<void> _mostrarOpcionesPostFacturacion(
+    Map<String, dynamic> factura,
+  ) async {
+    await Future.delayed(
+      Duration(seconds: 2),
+    ); // Esperar un poco para que el usuario lea el mensaje
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: _cardBg,
+        title: Text(
+          'Factura Creada Exitosamente',
+          style: TextStyle(color: _textLight),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.check_circle, color: Colors.green, size: 64),
+            SizedBox(height: 16),
+            Text(
+              'Factura ${factura['numero']} ha sido creada correctamente.',
+              style: TextStyle(color: _textLight),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Total: \$${factura['total']?.toStringAsFixed(0) ?? '0'}',
+              style: TextStyle(
+                color: _primary,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cerrar'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _navegarADocumentos();
+            },
+            icon: Icon(Icons.receipt_long),
+            label: Text('Ver Todos los Documentos'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _primary,
+              foregroundColor: Colors.white,
+            ),
+          ),
+          ElevatedButton.icon(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _compartirFactura(factura);
+            },
+            icon: Icon(Icons.share),
+            label: Text('Compartir'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Método para mostrar resumen de factura
+  void _mostrarResumenFactura(Map<String, dynamic> factura) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: _cardBg,
+        title: Text('Factura Generada', style: TextStyle(color: _textLight)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Número: ${factura['numero']}',
+              style: TextStyle(color: _textLight, fontSize: 16),
+            ),
+            Text(
+              'Total: \$${factura['total'].toStringAsFixed(0)}',
+              style: TextStyle(
+                color: _primary,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cerrar'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _compartirFactura(factura);
+            },
+            child: Text('Compartir Factura'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Método para compartir factura
+  Future<void> _compartirFactura(Map<String, dynamic> factura) async {
+    try {
+      final textoFactura = _impresionService.generarTextoImpresion(
+        factura,
+        esFactura: true,
+      );
+      await Share.share(textoFactura, subject: 'Factura ${factura['numero']}');
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error compartiendo factura: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -1389,6 +3466,48 @@ class _MesasScreenState extends State<MesasScreen> {
         backgroundColor: _cardBg,
         title: const Text('Mesas'),
         actions: [
+          // Botón para mostrar resumen rápido de documentos del día
+          IconButton(
+            icon: Stack(
+              children: [
+                Icon(Icons.receipt_long),
+                FutureBuilder<int>(
+                  future: _obtenerConteoDocumentosHoy(),
+                  builder: (context, snapshot) {
+                    if (snapshot.hasData && snapshot.data! > 0) {
+                      return Positioned(
+                        right: 0,
+                        top: 0,
+                        child: Container(
+                          padding: EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          constraints: BoxConstraints(
+                            minWidth: 16,
+                            minHeight: 16,
+                          ),
+                          child: Text(
+                            '${snapshot.data}',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      );
+                    }
+                    return SizedBox.shrink();
+                  },
+                ),
+              ],
+            ),
+            tooltip: 'Ver documentos del día',
+            onPressed: () => _navegarADocumentos(),
+          ),
           IconButton(
             icon: const Icon(Icons.sync),
             tooltip: 'Sincronizar todas las mesas',
@@ -1547,75 +3666,124 @@ class _MesasScreenState extends State<MesasScreen> {
     VoidCallback onTap, {
     required double height,
   }) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        double screenWidth = constraints.maxWidth;
-        double iconSize = _getResponsiveIconSize(screenWidth);
-        double fontSize = _getResponsiveFontSize(screenWidth, 10);
-        double statusFontSize = _getResponsiveFontSize(screenWidth, 7);
+    return FutureBuilder<List<Pedido>>(
+      future: _pedidoService.getPedidosByMesa(nombre),
+      builder: (context, snapshot) {
+        List<Pedido> pedidosActivos = [];
+        if (snapshot.hasData) {
+          pedidosActivos = snapshot.data!
+              .where((pedido) => pedido.estado == EstadoPedido.activo)
+              .toList();
+        }
 
-        return GestureDetector(
-          onTap: onTap,
-          child: Container(
-            height: height,
-            decoration: BoxDecoration(
-              color: _cardBg,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: _primary.withOpacity(0.3), width: 1),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 3,
-                  offset: Offset(0, 1),
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  padding: EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: _primary.withOpacity(0.1),
-                    shape: BoxShape.circle,
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            double screenWidth = constraints.maxWidth;
+            double iconSize = _getResponsiveIconSize(screenWidth);
+            double fontSize = _getResponsiveFontSize(screenWidth, 10);
+            double statusFontSize = _getResponsiveFontSize(screenWidth, 7);
+
+            // Determinar el estado basado en pedidos activos
+            bool tienePedidos = pedidosActivos.isNotEmpty;
+            Color statusColor = tienePedidos ? Colors.red : Colors.green;
+            String estadoTexto = tienePedidos
+                ? '${pedidosActivos.length} pedido${pedidosActivos.length > 1 ? 's' : ''}'
+                : 'Disponible';
+
+            // Calcular total de todos los pedidos activos
+            double totalGeneral = pedidosActivos.fold(
+              0.0,
+              (sum, pedido) => sum + pedido.total,
+            );
+
+            return GestureDetector(
+              onTap: onTap,
+              child: Container(
+                height: height,
+                decoration: BoxDecoration(
+                  color: _cardBg,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: _primary.withOpacity(0.3),
+                    width: 1,
                   ),
-                  child: Icon(icono, color: _primary, size: iconSize),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 3,
+                      offset: Offset(0, 1),
+                    ),
+                  ],
                 ),
-                SizedBox(height: 4),
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 4),
-                    child: Text(
-                      nombre,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: _textLight,
-                        fontSize: fontSize,
-                        fontWeight: FontWeight.bold,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: _primary.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(icono, color: _primary, size: iconSize),
+                    ),
+                    SizedBox(height: 4),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 4),
+                        child: Text(
+                          nombre,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: _textLight,
+                            fontSize: fontSize,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ),
-                SizedBox(height: 2),
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                  decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    'Disponible',
-                    style: TextStyle(
-                      color: Colors.green,
-                      fontSize: statusFontSize,
+                    SizedBox(height: 2),
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: statusColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        estadoTexto,
+                        style: TextStyle(
+                          color: statusColor,
+                          fontSize: statusFontSize,
+                        ),
+                      ),
                     ),
-                  ),
+                    if (totalGeneral > 0) ...[
+                      SizedBox(height: 2),
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 1,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _primary.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          '\$${totalGeneral.toStringAsFixed(0)}',
+                          style: TextStyle(
+                            color: _primary,
+                            fontSize: statusFontSize,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
     );
@@ -1776,10 +3944,347 @@ class _MesasScreenState extends State<MesasScreen> {
       return;
     }
 
-    // Navegar con la mesa real encontrada
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => PedidoScreen(mesa: mesaReal)),
-    );
+    // Verificar si es una mesa especial (puede tener múltiples pedidos activos)
+    final mesasEspeciales = ['DOMICILIO', 'CAJA', 'MESA AUXILIAR'];
+    if (mesasEspeciales.contains(nombreMesa.toUpperCase())) {
+      // Para mesas especiales, mostrar la lista de pedidos activos
+      _mostrarPedidosMesaEspecial(mesaReal);
+    } else {
+      // Para mesas normales, usar la lógica original
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => PedidoScreen(mesa: mesaReal)),
+      );
+    }
+  }
+
+  Future<void> _mostrarPedidosMesaEspecial(Mesa mesa) async {
+    try {
+      setState(() {
+        isLoading = true;
+      });
+
+      // Cargar pedidos activos de esta mesa
+      final pedidos = await _pedidoService.getPedidosByMesa(mesa.nombre);
+      final pedidosActivos = pedidos
+          .where((p) => p.estado == EstadoPedido.activo)
+          .toList();
+
+      setState(() {
+        isLoading = false;
+      });
+
+      if (pedidosActivos.isEmpty) {
+        // Si no hay pedidos activos, ir directamente a crear un nuevo pedido
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => PedidoScreen(mesa: mesa)),
+        );
+        return;
+      }
+
+      // Mostrar la lista de pedidos activos
+      showModalBottomSheet(
+        context: context,
+        backgroundColor: _cardBg,
+        isScrollControlled: true,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        builder: (context) {
+          return Container(
+            height: MediaQuery.of(context).size.height * 0.7,
+            padding: EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Título
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Pedidos Activos - ${mesa.nombre}',
+                      style: TextStyle(
+                        color: _textLight,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.close, color: _textLight),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 16),
+
+                // Lista de pedidos
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: pedidosActivos.length,
+                    itemBuilder: (context, index) {
+                      final pedido = pedidosActivos[index];
+                      return Card(
+                        color: _cardBg.withOpacity(0.8),
+                        margin: EdgeInsets.only(bottom: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          side: BorderSide(color: _primary.withOpacity(0.3)),
+                        ),
+                        child: Padding(
+                          padding: EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Cabecera del pedido
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      pedido.cliente ?? 'Pedido ${index + 1}',
+                                      style: TextStyle(
+                                        color: _textLight,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: _primary,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      '\$${pedido.total.toStringAsFixed(0)}',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: 8),
+
+                              // Información del pedido
+                              Row(
+                                children: [
+                                  Icon(Icons.person, color: _primary, size: 16),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    'Mesero: ${pedido.mesero}',
+                                    style: TextStyle(
+                                      color: _textLight.withOpacity(0.8),
+                                    ),
+                                  ),
+                                  SizedBox(width: 16),
+                                  Icon(
+                                    Icons.access_time,
+                                    color: _primary,
+                                    size: 16,
+                                  ),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    '${pedido.fecha.hour.toString().padLeft(2, '0')}:${pedido.fecha.minute.toString().padLeft(2, '0')}',
+                                    style: TextStyle(
+                                      color: _textLight.withOpacity(0.8),
+                                    ),
+                                  ),
+                                ],
+                              ),
+
+                              if (pedido.notas != null &&
+                                  pedido.notas!.isNotEmpty) ...[
+                                SizedBox(height: 8),
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Icon(Icons.note, color: _primary, size: 16),
+                                    SizedBox(width: 4),
+                                    Expanded(
+                                      child: Text(
+                                        pedido.notas!,
+                                        style: TextStyle(
+                                          color: _textLight.withOpacity(0.7),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+
+                              SizedBox(height: 8),
+
+                              // Items del pedido
+                              Text(
+                                'Items (${pedido.items.length}):',
+                                style: TextStyle(
+                                  color: _textLight,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              SizedBox(height: 4),
+                              ...pedido.items
+                                  .take(3)
+                                  .map(
+                                    (item) => Padding(
+                                      padding: EdgeInsets.only(
+                                        left: 16,
+                                        bottom: 2,
+                                      ),
+                                      child: Text(
+                                        '• ${item.cantidad}x ${item.producto?.nombre ?? "Producto"} - \$${(item.precio * item.cantidad).toStringAsFixed(0)}',
+                                        style: TextStyle(
+                                          color: _textLight.withOpacity(0.8),
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
+
+                              if (pedido.items.length > 3)
+                                Padding(
+                                  padding: EdgeInsets.only(left: 16),
+                                  child: Text(
+                                    '... y ${pedido.items.length - 3} más',
+                                    style: TextStyle(
+                                      color: _textLight.withOpacity(0.6),
+                                      fontSize: 12,
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                                  ),
+                                ),
+
+                              SizedBox(height: 12),
+
+                              // Botón de pago (solo para admins)
+                              if (Provider.of<UserProvider>(
+                                context,
+                                listen: false,
+                              ).isAdmin)
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: ElevatedButton(
+                                    onPressed: () {
+                                      Navigator.pop(context); // Cerrar el modal
+                                      _mostrarDialogoPago(mesa, pedido);
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: _primary,
+                                      foregroundColor: Colors.white,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(Icons.payment, size: 18),
+                                        SizedBox(width: 8),
+                                        Text('Procesar Pago'),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+
+                // Botón para agregar nuevo pedido
+                SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: () {
+                      Navigator.pop(context); // Cerrar el modal
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => PedidoScreen(mesa: mesa),
+                        ),
+                      );
+                    },
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: _primary,
+                      side: BorderSide(color: _primary),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.add, size: 18),
+                        SizedBox(width: 8),
+                        Text('Agregar Nuevo Pedido'),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    } catch (e) {
+      setState(() {
+        isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al cargar pedidos: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  // Métodos de utilidad para mostrar mensajes
+  void _mostrarMensajeExito(String mensaje) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(mensaje),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+
+  void _mostrarMensajeError(String mensaje) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(mensaje),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 4),
+        ),
+      );
+    }
+  }
+
+  void _mostrarMensajeInfo(String mensaje) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(mensaje),
+          backgroundColor: Colors.blue,
+          duration: Duration(seconds: 3),
+        ),
+      );
+    }
   }
 }

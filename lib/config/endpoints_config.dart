@@ -35,6 +35,10 @@ class EndpointsConfig {
 
   /// Endpoints de autenticación y usuarios (único endpoints usado)
   AuthEndpoints get auth => AuthEndpoints(currentBaseUrl);
+
+  /// Endpoints para documentos de mesa
+  DocumentoMesaEndpoints get documentosMesa =>
+      DocumentoMesaEndpoints(currentBaseUrl);
 }
 
 /// Endpoints relacionados con autenticación y usuarios
@@ -55,4 +59,50 @@ class AuthEndpoints {
   /// Endpoint para validar un código de autenticación
   String validateCode(String code) =>
       '$baseUrl/api/public/security/login/validate/$code';
+}
+
+/// Endpoints relacionados con documentos de mesa
+class DocumentoMesaEndpoints {
+  final String baseUrl;
+
+  DocumentoMesaEndpoints(this.baseUrl);
+
+  /// Endpoint base para documentos de mesa
+  String get base => '$baseUrl/api/documentos-mesa';
+
+  /// Crear un nuevo documento
+  String get crear => base;
+
+  /// Obtener documentos por mesa
+  String mesa(String mesaNombre) => '$base/mesa/$mesaNombre';
+
+  /// Obtener documento por ID
+  String documento(String id) => '$base/$id';
+
+  /// Agregar pedido a documento
+  String agregarPedido(String documentoId) =>
+      '$base/$documentoId/agregar-pedido';
+
+  /// Pagar un documento
+  String pagar(String documentoId) => '$base/$documentoId/pagar';
+
+  /// Eliminar un documento
+  String eliminar(String documentoId) => '$base/$documentoId';
+
+  /// Obtener documentos pendientes de una mesa
+  String pendientes(String mesaNombre) => '$base/mesa/$mesaNombre/pendientes';
+
+  /// Obtener documentos pagados de una mesa
+  String pagados(String mesaNombre) => '$base/mesa/$mesaNombre/pagados';
+
+  /// Obtener resumen de una mesa
+  String resumen(String mesaNombre) => '$base/mesa/$mesaNombre/resumen';
+
+  /// Verificar si una mesa es especial
+  String verificarMesaEspecial(String mesaNombre) =>
+      '$base/verificar-mesa-especial/$mesaNombre';
+
+  /// Obtener documentos con pedidos completos
+  String documentosCompletos(String mesaNombre) =>
+      '$base/mesa/$mesaNombre/completos';
 }

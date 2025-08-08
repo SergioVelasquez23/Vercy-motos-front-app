@@ -780,18 +780,14 @@ class _ReportesScreenState extends State<ReportesScreen>
                           _selectedFormaPago = value;
                         });
                       },
-                      items:
-                          <String>[
-                            'Efectivo',
-                            'Tarjeta',
-                            'Transferencia',
-                            'Crédito',
-                          ].map<DropdownMenuItem<String>>((String value) {
+                      items: <String>['Efectivo', 'Transferencia', 'Crédito']
+                          .map<DropdownMenuItem<String>>((String value) {
                             return DropdownMenuItem<String>(
                               value: value,
                               child: Text(value),
                             );
-                          }).toList(),
+                          })
+                          .toList(),
                     ),
                   ),
                 ],

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/documento_service.dart';
 
 class DocumentosScreen extends StatefulWidget {
   const DocumentosScreen({Key? key}) : super(key: key);
@@ -18,6 +19,8 @@ class _DocumentosScreenState extends State<DocumentosScreen>
   final Color textDark = Color(0xFFE0E0E0); // Color de texto claro
   final Color textLight = Color(0xFFA0A0A0); // Color de texto más suave
   final Color accentOrange = Color(0xFFFF8800); // Naranja más brillante
+
+  final DocumentoService _documentoService = DocumentoService();
 
   // Variable para controlar el modo de visualización
   bool _mostrarComoTabla = false; // Por defecto, mostrar como tarjetas
@@ -39,191 +42,11 @@ class _DocumentosScreenState extends State<DocumentosScreen>
     'Comanda',
   ];
   // Tipo de documento seleccionado para filtrar
-  // Se inicializa en initState() y se utiliza en _filtrarDocumentos()
   String? _tipoSeleccionado;
 
-  // Datos simulados de documentos para demostración
-  List<Map<String, dynamic>> _documentos = [
-    {
-      'id': 'FAC-001',
-      'fecha': '2025-06-28',
-      'hora': '14:35:42',
-      'cliente': 'Cliente General',
-      'tipo': 'Factura',
-      'estado': 'Pagada',
-      'total': 96000,
-      'proveedorDomicilio': '', // Proveedor del domicilio si aplica
-      'facturador': 'Sopa y Carbon', // Quien factura
-      'mesa': '', // Identificador de mesa si aplica
-      'medioPago': 'Efectivo', // Forma de pago
-      'pagadoCon': 'Efectivo: 96000', // Detalle del pago
-      'fechaPago': '2025-06-28 14:35:42', // Fecha y hora del pago
-      'base': 80672, // Base imponible
-      'totalImp': 15328, // Total impuestos
-      'propina': 0, // Propina
-      'comisionProveedor': 0, // Comisión al proveedor de domicilio
-      'domicilio': false, // Si es domicilio
-      'items': [
-        {
-          'producto': 'Asado Mixto',
-          'cantidad': 1,
-          'precio': 34000,
-          'total': 34000,
-        },
-        {
-          'producto': 'Hígado Encebollado',
-          'cantidad': 1,
-          'precio': 27000,
-          'total': 27000,
-        },
-        {'producto': 'Coca Cola', 'cantidad': 2, 'precio': 4500, 'total': 9000},
-        {
-          'producto': 'Papas a la Francesa',
-          'cantidad': 1,
-          'precio': 9000,
-          'total': 9000,
-        },
-        {
-          'producto': 'Entrada de Chicharrón',
-          'cantidad': 1,
-          'precio': 17000,
-          'total': 17000,
-        },
-      ],
-    },
-    {
-      'id': 'REC-002',
-      'fecha': '2025-06-28',
-      'hora': '15:30:12',
-      'cliente': 'Domicilio - Sopa y Carbon',
-      'tipo': 'Recibo',
-      'estado': 'Generado',
-      'total': 25000,
-      'proveedorDomicilio': 'Rappi', // Proveedor del domicilio si aplica
-      'facturador': 'Sopa y Carbon', // Quien factura
-      'mesa': '', // Identificador de mesa si aplica
-      'medioPago': 'Efectivo', // Forma de pago
-      'pagadoCon': 'Efectivo: 25000', // Detalle del pago
-      'fechaPago': '2025-06-28 15:30:12', // Fecha y hora del pago
-      'base': 21008, // Base imponible
-      'totalImp': 3992, // Total impuestos
-      'propina': 0, // Propina
-      'comisionProveedor': 3750, // Comisión al proveedor de domicilio (15%)
-      'domicilio': true, // Si es domicilio
-      'items': [
-        {
-          'producto': 'Ejecutivo',
-          'cantidad': 1,
-          'precio': 19000,
-          'total': 19000,
-        },
-        {'producto': 'Patacón', 'cantidad': 2, 'precio': 3000, 'total': 6000},
-      ],
-    },
-    {
-      'id': 'FAC-003',
-      'fecha': '2025-06-28',
-      'hora': '13:15:30',
-      'cliente': 'María López Gómez',
-      'tipo': 'Factura',
-      'estado': 'Pagada',
-      'total': 52000,
-      'proveedorDomicilio': '', // Proveedor del domicilio si aplica
-      'facturador': 'Sopa y Carbon', // Quien factura
-      'mesa': 'Mesa B3', // Identificador de mesa si aplica
-      'medioPago': 'Tarjeta', // Forma de pago
-      'pagadoCon': 'Tarjeta: 52000', // Detalle del pago
-      'fechaPago': '2025-06-28 13:15:30', // Fecha y hora del pago
-      'base': 43697, // Base imponible
-      'totalImp': 8303, // Total impuestos
-      'propina': 5200, // Propina (10%)
-      'comisionProveedor': 0, // Comisión al proveedor de domicilio
-      'domicilio': false, // Si es domicilio
-      'items': [
-        {
-          'producto': 'Pechuga a la plancha',
-          'cantidad': 1,
-          'precio': 24000,
-          'total': 24000,
-        },
-        {
-          'producto': 'Jugo Natural',
-          'cantidad': 1,
-          'precio': 8000,
-          'total': 8000,
-        },
-        {
-          'producto': 'Postre de la casa',
-          'cantidad': 2,
-          'precio': 10000,
-          'total': 20000,
-        },
-      ],
-    },
-    {
-      'id': 'COM-004',
-      'fecha': '2025-06-28',
-      'hora': '12:45:18',
-      'cliente': 'Mesa C2',
-      'tipo': 'Comanda',
-      'estado': 'En cocina',
-      'total': 42000,
-      'proveedorDomicilio': '', // Proveedor del domicilio si aplica
-      'facturador': 'Sopa y Carbon', // Quien factura
-      'mesa': 'Mesa C2', // Identificador de mesa si aplica
-      'medioPago': 'Pendiente', // Forma de pago
-      'pagadoCon': '', // Detalle del pago
-      'fechaPago': '', // Fecha y hora del pago
-      'base': 35294, // Base imponible
-      'totalImp': 6706, // Total impuestos
-      'propina': 0, // Propina
-      'comisionProveedor': 0, // Comisión al proveedor de domicilio
-      'domicilio': false, // Si es domicilio
-      'items': [
-        {
-          'producto': 'Bandeja Paisa',
-          'cantidad': 1,
-          'precio': 32000,
-          'total': 32000,
-        },
-        {
-          'producto': 'Cerveza Nacional',
-          'cantidad': 1,
-          'precio': 10000,
-          'total': 10000,
-        },
-      ],
-    },
-    {
-      'id': 'CRE-005',
-      'fecha': '2025-06-27',
-      'hora': '11:20:05',
-      'cliente': 'Andrea Ruiz Ospina',
-      'tipo': 'Nota de crédito',
-      'estado': 'Aplicada',
-      'total': 28000,
-      'proveedorDomicilio': '', // Proveedor del domicilio si aplica
-      'facturador': 'Sopa y Carbon', // Quien factura
-      'mesa': '', // Identificador de mesa si aplica
-      'medioPago': 'Efectivo', // Forma de pago
-      'pagadoCon': 'Efectivo: 28000', // Detalle del pago
-      'fechaPago': '2025-06-27 11:20:05', // Fecha y hora del pago
-      'base': 23529, // Base imponible
-      'totalImp': 4471, // Total impuestos
-      'propina': 0, // Propina
-      'comisionProveedor': 0, // Comisión al proveedor de domicilio
-      'domicilio': false, // Si es domicilio
-      'items': [
-        {
-          'producto': 'Pescado Frito',
-          'cantidad': 1,
-          'precio': 28000,
-          'total': 28000,
-        },
-      ],
-    },
-  ];
-
+  // Lista de documentos reales del backend
+  List<Map<String, dynamic>> _documentos = [];
+  bool _cargandoDocumentos = true;
   @override
   void initState() {
     super.initState();
@@ -238,12 +61,29 @@ class _DocumentosScreenState extends State<DocumentosScreen>
 
     // Agregar un listener para debug y para manejar el cambio de tab
     _tabController.addListener(() {
+      if (!mounted) return; // Verificar que el widget sigue montado
+
       print('DocumentosScreen - Tab changed to: ${_tabController.index}');
-      if (_tabController.indexIsChanging) {
+      print(
+        'DocumentosScreen - _tiposDocumento.length: ${_tiposDocumento.length}',
+      );
+      print(
+        'DocumentosScreen - indexIsChanging: ${_tabController.indexIsChanging}',
+      );
+
+      // Verificar que el TabController esté inicializado correctamente y dentro de rango
+      if (_tabController.index >= 0 &&
+          _tabController.index < _tiposDocumento.length &&
+          _tabController.indexIsChanging == true) {
+        final nuevoTipo = _tiposDocumento[_tabController.index];
+        print('DocumentosScreen - Cambiando a tipo: $nuevoTipo');
+
         setState(() {
           // Actualizar el tipo seleccionado cuando cambia el tab
-          _tipoSeleccionado = _tiposDocumento[_tabController.index];
+          _tipoSeleccionado = nuevoTipo;
         });
+        // Recargar documentos cuando cambia el tipo
+        _cargarDocumentos();
       }
     });
 
@@ -257,12 +97,65 @@ class _DocumentosScreenState extends State<DocumentosScreen>
     // Inicializar el tipo seleccionado
     _tipoSeleccionado = 'Todos';
 
+    // Cargar documentos reales del backend
+    _cargarDocumentos();
+
     // Extra log para debugging
     print('DocumentosScreen - Tipo seleccionado: $_tipoSeleccionado');
   }
 
+  // Método para cargar documentos del backend
+  Future<void> _cargarDocumentos() async {
+    print('📄 Cargando documentos desde el backend...');
+
+    setState(() {
+      _cargandoDocumentos = true;
+    });
+
+    try {
+      final documentosRaw = await _documentoService.obtenerDocumentos(
+        tipoDocumento: _tipoSeleccionado,
+        fechaInicio: _fechaInicioController.text.isNotEmpty
+            ? _fechaInicioController.text
+            : null,
+        fechaFin: _fechaFinController.text.isNotEmpty
+            ? _fechaFinController.text
+            : null,
+        filtro: _filtro.isNotEmpty ? _filtro : null,
+      );
+
+      final documentosFormateados = documentosRaw
+          .map((doc) => _documentoService.formatearDocumentoParaUI(doc))
+          .toList();
+
+      setState(() {
+        _documentos = documentosFormateados;
+        _cargandoDocumentos = false;
+      });
+
+      print('✅ ${documentosFormateados.length} documentos cargados');
+    } catch (e) {
+      print('❌ Error cargando documentos: $e');
+
+      setState(() {
+        _documentos = [];
+        _cargandoDocumentos = false;
+      });
+
+      // Si falla el backend, mostrar mensaje pero continuar
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error cargando documentos: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   @override
   void dispose() {
+    // Limpiar recursos de forma segura
+    _tabController.removeListener(() {});
     _tabController.dispose();
     _searchController.dispose();
     _fechaInicioController.dispose();
@@ -288,28 +181,47 @@ class _DocumentosScreenState extends State<DocumentosScreen>
   }
 
   List<Map<String, dynamic>> _filtrarDocumentos(String tipo) {
-    var documentosFiltrados = _documentos;
+    try {
+      print('🔍 Filtrando documentos por tipo: $tipo');
+      print('📊 Total documentos disponibles: ${_documentos.length}');
 
-    // Actualizar el tipo seleccionado para otros filtros
-    _tipoSeleccionado = tipo;
+      var documentosFiltrados = List<Map<String, dynamic>>.from(_documentos);
 
-    // Filtrar por tipo de documento si se especifica
-    if (tipo != 'Todos') {
-      documentosFiltrados = documentosFiltrados
-          .where((d) => d['tipo'] == tipo)
-          .toList();
+      // Actualizar el tipo seleccionado para otros filtros
+      _tipoSeleccionado = tipo;
+
+      // Filtrar por tipo de documento si se especifica
+      if (tipo != 'Todos') {
+        documentosFiltrados = documentosFiltrados
+            .where((d) => (d['tipo']?.toString() ?? '') == tipo)
+            .toList();
+        print(
+          '📋 Documentos después de filtrar por tipo: ${documentosFiltrados.length}',
+        );
+      }
+
+      // Filtrar por texto de búsqueda
+      if (_filtro.isNotEmpty) {
+        documentosFiltrados = documentosFiltrados.where((d) {
+          final id = d['id']?.toString() ?? '';
+          final cliente = d['cliente']?.toString() ?? '';
+          final estado = d['estado']?.toString() ?? '';
+
+          return id.toLowerCase().contains(_filtro.toLowerCase()) ||
+              cliente.toLowerCase().contains(_filtro.toLowerCase()) ||
+              estado.toLowerCase().contains(_filtro.toLowerCase());
+        }).toList();
+        print(
+          '🔎 Documentos después de filtrar por texto: ${documentosFiltrados.length}',
+        );
+      }
+
+      print('✅ Documentos finales filtrados: ${documentosFiltrados.length}');
+      return documentosFiltrados;
+    } catch (e) {
+      print('❌ Error en _filtrarDocumentos: $e');
+      return [];
     }
-
-    // Filtrar por texto de búsqueda
-    if (_filtro.isNotEmpty) {
-      documentosFiltrados = documentosFiltrados.where((d) {
-        return d['id'].toLowerCase().contains(_filtro.toLowerCase()) ||
-            d['cliente'].toLowerCase().contains(_filtro.toLowerCase()) ||
-            d['estado'].toLowerCase().contains(_filtro.toLowerCase());
-      }).toList();
-    }
-
-    return documentosFiltrados;
   }
 
   String _formatearNumero(dynamic valor) {
@@ -359,12 +271,14 @@ class _DocumentosScreenState extends State<DocumentosScreen>
           ),
           backgroundColor: primary,
           elevation: 0,
-          bottom: TabBar(
-            controller: _tabController,
-            indicatorColor: Colors.white,
-            isScrollable: true,
-            tabs: _tiposDocumento.map((tipo) => Tab(text: tipo)).toList(),
-          ),
+          bottom: _tiposDocumento.isNotEmpty
+              ? TabBar(
+                  controller: _tabController,
+                  indicatorColor: Colors.white,
+                  isScrollable: true,
+                  tabs: _tiposDocumento.map((tipo) => Tab(text: tipo)).toList(),
+                )
+              : null,
           actions: [
             // Botón para alternar entre vista tabla y tarjetas
             IconButton(
@@ -411,28 +325,38 @@ class _DocumentosScreenState extends State<DocumentosScreen>
 
             // TabBarView para los diferentes tipos de documentos
             Expanded(
-              child: _tabController.index < _tiposDocumento.length
-                  ? TabBarView(
-                      controller: _tabController,
-                      children: _tiposDocumento
-                          .map((tipo) => _buildDocumentosList(tipo))
-                          .toList(),
-                    )
-                  : Center(
+              child: _cargandoDocumentos
+                  ? Center(
                       child: CircularProgressIndicator(
                         valueColor: AlwaysStoppedAnimation<Color>(primary),
+                      ),
+                    )
+                  : (_tiposDocumento.isNotEmpty &&
+                        _tabController.length == _tiposDocumento.length)
+                  ? TabBarView(
+                      controller: _tabController,
+                      children: List.generate(_tiposDocumento.length, (index) {
+                        if (index < _tiposDocumento.length) {
+                          return _buildDocumentosList(_tiposDocumento[index]);
+                        }
+                        return Center(
+                          child: Text(
+                            'Error de índice',
+                            style: TextStyle(color: textDark),
+                          ),
+                        );
+                      }),
+                    )
+                  : Center(
+                      child: Text(
+                        'Error de configuración de pestañas',
+                        style: TextStyle(color: textDark),
                       ),
                     ),
             ),
           ],
         ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: () {
-            _mostrarOpcionesNuevoDocumento(context);
-          },
-          backgroundColor: primary,
-          child: Icon(Icons.add),
-        ),
+        // FloatingActionButton removido - Los documentos se generan automáticamente desde pedidos
       ),
     );
   }
@@ -586,10 +510,8 @@ class _DocumentosScreenState extends State<DocumentosScreen>
                     ),
                   ),
                   onPressed: () {
-                    // Lógica para filtrar documentos
-                    setState(() {
-                      // Aquí se aplicarían los filtros
-                    });
+                    // Cargar documentos con filtros aplicados
+                    _cargarDocumentos();
                   },
                 ),
                 SizedBox(width: 16),
@@ -616,6 +538,8 @@ class _DocumentosScreenState extends State<DocumentosScreen>
                       _fechaFinController.text =
                           '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
                     });
+                    // Recargar documentos después de limpiar filtros
+                    _cargarDocumentos();
                   },
                 ),
               ],
@@ -628,6 +552,23 @@ class _DocumentosScreenState extends State<DocumentosScreen>
 
   // Usaremos un booleano en el state para esto
   Widget _buildDocumentosList(String tipo) {
+    // Mostrar loading si se están cargando documentos
+    if (_cargandoDocumentos) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(color: primary),
+            SizedBox(height: 16),
+            Text(
+              'Cargando documentos...',
+              style: TextStyle(color: textLight, fontSize: 16),
+            ),
+          ],
+        ),
+      );
+    }
+
     final documentos = _filtrarDocumentos(tipo);
 
     if (documentos.isEmpty) {
@@ -640,6 +581,16 @@ class _DocumentosScreenState extends State<DocumentosScreen>
             Text(
               'No hay documentos${tipo != 'Todos' ? ' tipo ' + tipo.toLowerCase() : ''}',
               style: TextStyle(color: textLight, fontSize: 18),
+            ),
+            SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: _cargarDocumentos,
+              icon: Icon(Icons.refresh),
+              label: Text('Recargar'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: primary,
+                foregroundColor: Colors.white,
+              ),
             ),
           ],
         ),
@@ -1456,131 +1407,6 @@ class _DocumentosScreenState extends State<DocumentosScreen>
         ),
       ),
     );
-  }
-
-  void _mostrarOpcionesNuevoDocumento(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: cardBg,
-          title: Text(
-            'Crear nuevo documento',
-            style: TextStyle(color: textDark),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: Icon(Icons.receipt, color: primary),
-                title: Text('Factura', style: TextStyle(color: textDark)),
-                onTap: () {
-                  Navigator.pop(context);
-                  _crearNuevoDocumento('Factura');
-                },
-              ),
-              ListTile(
-                leading: Icon(Icons.receipt_long, color: primary),
-                title: Text('Recibo', style: TextStyle(color: textDark)),
-                onTap: () {
-                  Navigator.pop(context);
-                  _crearNuevoDocumento('Recibo');
-                },
-              ),
-              ListTile(
-                leading: Icon(Icons.note_alt, color: primary),
-                title: Text(
-                  'Nota de crédito',
-                  style: TextStyle(color: textDark),
-                ),
-                onTap: () {
-                  Navigator.pop(context);
-                  _crearNuevoDocumento('Nota de crédito');
-                },
-              ),
-              ListTile(
-                leading: Icon(Icons.restaurant_menu, color: primary),
-                title: Text('Comanda', style: TextStyle(color: textDark)),
-                onTap: () {
-                  Navigator.pop(context);
-                  _crearNuevoDocumento('Comanda');
-                },
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              child: Text('Cancelar', style: TextStyle(color: primary)),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _crearNuevoDocumento(String tipo) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Creando nuevo documento tipo $tipo...'),
-        duration: Duration(seconds: 2),
-      ),
-    );
-
-    // En un futuro, aquí iría la navegación a la pantalla de creación de documento
-    // Por ahora, simulamos la creación de un documento después de un breve delay
-    Future.delayed(Duration(milliseconds: 800), () {
-      final now = DateTime.now();
-      final String fecha =
-          '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-      final String hora =
-          '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}';
-      final String id =
-          tipo.substring(0, 3).toUpperCase() +
-          '-' +
-          (100 + _documentos.length).toString();
-
-      final String fechaPago = tipo == 'Comanda' ? '' : '$fecha $hora';
-      final esDomicilio = false;
-      final String mesa = tipo == 'Comanda' ? 'Mesa Nueva' : '';
-
-      final nuevoDocumento = {
-        'id': id,
-        'fecha': fecha,
-        'hora': hora,
-        'cliente': 'Cliente Nuevo',
-        'tipo': tipo,
-        'estado': tipo == 'Comanda' ? 'En cocina' : 'Generado',
-        'total': 0,
-        'proveedorDomicilio': '', // Proveedor del domicilio si aplica
-        'facturador': 'Sopa y Carbon', // Quien factura
-        'mesa': mesa, // Identificador de mesa si aplica
-        'medioPago': tipo == 'Comanda'
-            ? 'Pendiente'
-            : 'Efectivo', // Forma de pago
-        'pagadoCon': tipo == 'Comanda' ? '' : 'Efectivo: 0', // Detalle del pago
-        'fechaPago': fechaPago, // Fecha y hora del pago
-        'base': 0, // Base imponible
-        'totalImp': 0, // Total impuestos
-        'propina': 0, // Propina
-        'comisionProveedor': 0, // Comisión al proveedor de domicilio
-        'domicilio': esDomicilio, // Si es domicilio
-        'items': [],
-      };
-
-      setState(() {
-        _documentos.insert(0, nuevoDocumento);
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Documento $id creado correctamente'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    });
   }
 
   void _mostrarDialogoConfirmacion(

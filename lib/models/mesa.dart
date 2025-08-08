@@ -37,9 +37,7 @@ class Mesa {
        _ocupada = ocupada,
        _total = total,
        _productos = productos ?? [],
-       _pedidoActual = pedidoActual {
-    print('🎯 Mesa creada - ID: $id, Nombre: $nombre');
-  }
+       _pedidoActual = pedidoActual {}
 
   Mesa copyWith({
     String? id,

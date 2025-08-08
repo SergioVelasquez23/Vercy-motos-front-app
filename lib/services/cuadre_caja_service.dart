@@ -31,11 +31,6 @@ class CuadreCajaService {
         headers: headers,
       );
 
-      print(
-        'CuadreCajaService - getAllCuadres response: ${response.statusCode}',
-      );
-      print('CuadreCajaService - getAllCuadres body: ${response.body}');
-
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
         List<dynamic> jsonList = responseData['data'] ?? [];
@@ -44,7 +39,6 @@ class CuadreCajaService {
         throw Exception('Error al obtener cuadres: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error completo: $e');
       throw Exception('Error de conexión: $e');
     }
   }
@@ -163,25 +157,211 @@ class CuadreCajaService {
     }
   }
 
-  // Obtener efectivo esperado
+  // Obtener efectivo esperado con logging detallado
   Future<Map<String, dynamic>> getEfectivoEsperado() async {
     try {
+      print('🔍 Iniciando cálculo de efectivo esperado...');
       final headers = await _getHeaders();
+
       final response = await http.get(
         Uri.parse('$baseUrl/api/cuadres-caja/efectivo-esperado'),
         headers: headers,
       );
 
+      print('📡 Respuesta del servidor - Status: ${response.statusCode}');
+      print('📄 Headers de respuesta: ${response.headers}');
+
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
+        print('✅ Datos recibidos: $responseData');
+
+        final efectivoEsperado = (responseData['data']['efectivoEsperado'] ?? 0)
+            .toDouble();
+        final transferenciasEsperadas =
+            (responseData['data']['transferenciasEsperadas'] ??
+                    responseData['data']['transferenciaEsperada'] ??
+                    0)
+                .toDouble();
+
+        print(
+          '💰 Efectivo esperado calculado: \$${efectivoEsperado.toStringAsFixed(2)}',
+        );
+        print(
+          '🏦 Transferencias esperadas: \$${transferenciasEsperadas.toStringAsFixed(2)}',
+        );
+
         return responseData['data'];
       } else {
-        throw Exception(
-          'Error al obtener efectivo esperado: ${response.statusCode}',
-        );
+        print('❌ Error del servidor: ${response.statusCode}');
+        print('📝 Body de error: ${response.body}');
+
+        // Fallback: intentar calcular manualmente desde pedidos
+        return await _calcularEfectivoManual();
       }
     } catch (e) {
-      throw Exception('Error de conexión: $e');
+      print('💥 Error de conexión: $e');
+      // Fallback: intentar calcular manualmente desde pedidos
+      return await _calcularEfectivoManual();
+    }
+  }
+
+  // Método fallback para calcular efectivo manualmente
+  Future<Map<String, dynamic>> _calcularEfectivoManual() async {
+    try {
+      print('🔧 Iniciando cálculo manual del efectivo esperado...');
+
+      // Intentar obtener datos de múltiples endpoints
+      Map<String, dynamic>? ventasData;
+
+      try {
+        ventasData = await getVentasPorTipoPago();
+        print('✅ Datos de ventas por tipo de pago obtenidos exitosamente');
+      } catch (e) {
+        print('⚠️ Error al obtener ventas por tipo de pago: $e');
+
+        try {
+          ventasData = await getDetallesVentas();
+          print('✅ Datos de ventas obtenidos exitosamente');
+        } catch (e) {
+          print('⚠️ Error al obtener detalles de ventas: $e');
+        }
+      }
+
+      if (ventasData == null) {
+        try {
+          ventasData = await getTodosPedidosHoy();
+          print('✅ Datos de pedidos obtenidos exitosamente');
+        } catch (e) {
+          print('⚠️ Error al obtener pedidos: $e');
+        }
+      }
+
+      double efectivoEsperado = 0.0;
+      double transferenciasEsperadas = 0.0;
+
+      if (ventasData != null) {
+        print('📊 Procesando datos de ventas...');
+        print('🔍 Estructura de datos recibida: ${ventasData.keys.toList()}');
+
+        // Procesar los datos según la estructura que venga del backend
+        if (ventasData.containsKey('efectivo')) {
+          efectivoEsperado = (ventasData['efectivo'] ?? 0).toDouble();
+          print(
+            '💰 Efectivo desde campo directo: \$${efectivoEsperado.toStringAsFixed(2)}',
+          );
+        }
+
+        if (ventasData.containsKey('transferencias')) {
+          transferenciasEsperadas = (ventasData['transferencias'] ?? 0)
+              .toDouble();
+          print(
+            '🏦 Transferencias desde campo directo: \$${transferenciasEsperadas.toStringAsFixed(2)}',
+          );
+        } else if (ventasData.containsKey('transferencia')) {
+          transferenciasEsperadas = (ventasData['transferencia'] ?? 0)
+              .toDouble();
+          print(
+            '🏦 Transferencias desde campo alternativo: \$${transferenciasEsperadas.toStringAsFixed(2)}',
+          );
+        }
+
+        // Si vienen datos por tipo de pago, procesarlos
+        if (ventasData.containsKey('ventasPorTipo')) {
+          final ventasPorTipo =
+              ventasData['ventasPorTipo'] as Map<String, dynamic>? ?? {};
+          print('💳 Procesando ventas por tipo de pago: $ventasPorTipo');
+
+          ventasPorTipo.forEach((tipoPago, monto) {
+            double valor = (monto ?? 0).toDouble();
+            String tipo = tipoPago.toLowerCase();
+
+            if (tipo.contains('efectivo') || tipo == 'cash') {
+              efectivoEsperado += valor;
+              print('💵 Agregado a efectivo: \$${valor.toStringAsFixed(2)}');
+            } else if (tipo.contains('transfer') ||
+                tipo.contains('debito') ||
+                tipo.contains('tarjeta')) {
+              transferenciasEsperadas += valor;
+              print(
+                '💳 Agregado a transferencias: \$${valor.toStringAsFixed(2)}',
+              );
+            }
+          });
+        }
+
+        // Si no vienen datos específicos, sumar pedidos manualmente
+        if ((efectivoEsperado == 0 && transferenciasEsperadas == 0) &&
+            ventasData.containsKey('pedidos')) {
+          print('📋 Calculando desde lista de pedidos...');
+          List<dynamic> pedidos = ventasData['pedidos'] ?? [];
+          print('📊 Total de pedidos a procesar: ${pedidos.length}');
+
+          for (var pedido in pedidos) {
+            if (pedido['estado'] == 'pagado') {
+              double total = (pedido['total'] ?? 0).toDouble();
+              String tipoPago =
+                  (pedido['tipoPago'] ?? pedido['tipo_pago'] ?? 'efectivo')
+                      .toString()
+                      .toLowerCase();
+
+              print(
+                '🧾 Procesando pedido - Total: \$${total.toStringAsFixed(2)}, Tipo: $tipoPago',
+              );
+
+              if (tipoPago.contains('efectivo') || tipoPago == 'cash') {
+                efectivoEsperado += total;
+                print('💵 Sumado a efectivo: \$${total.toStringAsFixed(2)}');
+              } else if (tipoPago.contains('transfer') ||
+                  tipoPago.contains('debito') ||
+                  tipoPago.contains('tarjeta')) {
+                transferenciasEsperadas += total;
+                print(
+                  '💳 Sumado a transferencias: \$${total.toStringAsFixed(2)}',
+                );
+              } else {
+                // Por defecto, considerar como efectivo si no se especifica
+                efectivoEsperado += total;
+                print(
+                  '💵 Tipo desconocido, sumado a efectivo por defecto: \$${total.toStringAsFixed(2)}',
+                );
+              }
+            }
+          }
+        }
+      }
+
+      print('🔧 Cálculo manual completado:');
+      print('💰 Efectivo total: \$${efectivoEsperado.toStringAsFixed(2)}');
+      print(
+        '🏦 Transferencias total: \$${transferenciasEsperadas.toStringAsFixed(2)}',
+      );
+      print(
+        '📊 Gran total: \$${(efectivoEsperado + transferenciasEsperadas).toStringAsFixed(2)}',
+      );
+
+      return {
+        'efectivoEsperado': efectivoEsperado,
+        'transferenciasEsperadas': transferenciasEsperadas,
+        'transferenciaEsperada': transferenciasEsperadas, // Compatibilidad
+        'totalVentas': efectivoEsperado + transferenciasEsperadas,
+        'calculoManual': true,
+        'timestamp': DateTime.now().toIso8601String(),
+        'detalleCalculo': {
+          'efectivo': efectivoEsperado,
+          'transferencias': transferenciasEsperadas,
+        },
+      };
+    } catch (e) {
+      print('💥 Error en cálculo manual: $e');
+      // Devolver valores por defecto en caso de error total
+      return {
+        'efectivoEsperado': 0.0,
+        'transferenciasEsperadas': 0.0,
+        'transferenciaEsperada': 0.0,
+        'totalVentas': 0.0,
+        'error': 'No se pudo calcular el efectivo esperado: $e',
+        'timestamp': DateTime.now().toIso8601String(),
+      };
     }
   }
 
@@ -207,18 +387,11 @@ class CuadreCajaService {
         'observaciones': observaciones ?? '',
       };
 
-      print('CuadreCajaService - createCuadre body: ${json.encode(body)}');
-
       final response = await http.post(
         Uri.parse('$baseUrl/api/cuadres-caja'),
         headers: headers,
         body: json.encode(body),
       );
-
-      print(
-        'CuadreCajaService - createCuadre response: ${response.statusCode}',
-      );
-      print('CuadreCajaService - createCuadre body: ${response.body}');
 
       if (response.statusCode == 201) {
         final responseData = json.decode(response.body);
@@ -228,7 +401,6 @@ class CuadreCajaService {
         throw Exception(errorData['message'] ?? 'Error al crear cuadre');
       }
     } catch (e) {
-      print('Error completo: $e');
       throw Exception('Error de conexión: $e');
     }
   }
@@ -261,18 +433,11 @@ class CuadreCajaService {
         if (estado != null) 'estado': estado,
       };
 
-      print('CuadreCajaService - updateCuadre body: ${json.encode(body)}');
-
       final response = await http.put(
         Uri.parse('$baseUrl/api/cuadres-caja/$id'),
         headers: headers,
         body: json.encode(body),
       );
-
-      print(
-        'CuadreCajaService - updateCuadre response: ${response.statusCode}',
-      );
-      print('CuadreCajaService - updateCuadre response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
@@ -352,6 +517,197 @@ class CuadreCajaService {
 
       return response.statusCode == 200;
     } catch (e) {
+      throw Exception('Error de conexión: $e');
+    }
+  }
+
+  // Debug de pedidos - para verificar qué pedidos están registrados
+  Future<Map<String, dynamic>> debugPedidos() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/cuadres-caja/debug-pedidos'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        return responseData['data'];
+      } else {
+        throw Exception(
+          'Error al obtener debug de pedidos: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      throw Exception('Error de conexión: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> getDetallesVentas() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/cuadres-caja/detalles-ventas'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        return responseData['data'];
+      } else {
+        throw Exception(
+          'Error al obtener detalles de ventas: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      throw Exception('Error de conexión: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> getTodosPedidosHoy() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/cuadres-caja/todos-pedidos-hoy'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        return responseData['data'];
+      } else {
+        throw Exception(
+          'Error al obtener todos los pedidos: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      throw Exception('Error de conexión: $e');
+    }
+  }
+
+  // Obtener ventas específicamente por tipo de pago usando el endpoint del backend
+  Future<Map<String, dynamic>> getVentasPorTipoPago() async {
+    try {
+      print('🔍 Obteniendo ventas por tipo de pago desde pedidos...');
+      final headers = await _getHeaders();
+
+      // Obtener fechas del día actual
+      final DateTime now = DateTime.now();
+      final DateTime startOfDay = DateTime(now.year, now.month, now.day);
+      final DateTime endOfDay = DateTime(
+        now.year,
+        now.month,
+        now.day,
+        23,
+        59,
+        59,
+      );
+
+      final response = await http.get(
+        Uri.parse(
+          '$baseUrl/api/pedidos/total-ventas?fechaInicio=${startOfDay.toIso8601String()}&fechaFin=${endOfDay.toIso8601String()}',
+        ),
+        headers: headers,
+      );
+
+      print('📡 Respuesta ventas por tipo - Status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        print('✅ Datos de ventas por tipo recibidos: $responseData');
+
+        final data = responseData['data'];
+        return {
+          'total': (data['total'] ?? 0.0).toDouble(),
+          'efectivo': (data['totalEfectivo'] ?? 0.0).toDouble(),
+          'transferencias': (data['totalTransferencia'] ?? 0.0).toDouble(),
+          'tarjeta': (data['totalTarjeta'] ?? 0.0).toDouble(),
+          'otros': (data['totalOtros'] ?? 0.0).toDouble(),
+        };
+      } else {
+        print('❌ Error al obtener ventas por tipo: ${response.statusCode}');
+        print('📝 Body de error: ${response.body}');
+
+        // Fallback al endpoint de cuadre de caja si existe
+        try {
+          final fallbackResponse = await http.get(
+            Uri.parse('$baseUrl/api/cuadres-caja/ventas-por-tipo-pago'),
+            headers: headers,
+          );
+
+          if (fallbackResponse.statusCode == 200) {
+            final fallbackData = json.decode(fallbackResponse.body);
+            print('✅ Datos obtenidos del fallback: $fallbackData');
+            return fallbackData['data'];
+          }
+        } catch (fallbackError) {
+          print('⚠️ Fallback también falló: $fallbackError');
+        }
+
+        throw Exception(
+          'Error al obtener ventas por tipo de pago: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      print('💥 Error en getVentasPorTipoPago: $e');
+      throw Exception('Error de conexión: $e');
+    }
+  }
+
+  // Obtener resumen completo de ventas del día
+  Future<Map<String, dynamic>> getResumenVentasHoy() async {
+    try {
+      print('🔍 Obteniendo resumen completo de ventas del día...');
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/cuadres-caja/resumen-ventas-hoy'),
+        headers: headers,
+      );
+
+      print('📡 Respuesta resumen ventas - Status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        print('✅ Resumen de ventas recibido: $responseData');
+        return responseData['data'];
+      } else {
+        print('❌ Error al obtener resumen de ventas: ${response.statusCode}');
+        print('📝 Body de error: ${response.body}');
+        throw Exception(
+          'Error al obtener resumen de ventas: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      print('💥 Error en getResumenVentasHoy: $e');
+      throw Exception('Error de conexión: $e');
+    }
+  }
+
+  // Obtener información completa del cuadre actual incluyendo contadores
+  Future<Map<String, dynamic>> getCuadreCompleto() async {
+    try {
+      print('🔍 Obteniendo información completa del cuadre...');
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/cuadres-caja/cuadre-completo'),
+        headers: headers,
+      );
+
+      print('📡 Respuesta cuadre completo - Status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        print('✅ Información completa del cuadre recibida: $responseData');
+        return responseData['data'];
+      } else {
+        print('❌ Error al obtener cuadre completo: ${response.statusCode}');
+        print('📝 Body de error: ${response.body}');
+        throw Exception(
+          'Error al obtener cuadre completo: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      print('💥 Error en getCuadreCompleto: $e');
       throw Exception('Error de conexión: $e');
     }
   }

@@ -5,8 +5,10 @@ import 'dart:async'; // Importar para usar StreamController
 import '../models/pedido.dart';
 import '../utils/pedido_helper.dart'; // Añadido import
 import '../services/producto_service.dart';
+import '../services/inventario_service.dart'; // Para manejar descuento de ingredientes
 import '../models/producto.dart';
 import '../models/item_pedido.dart';
+import '../models/cancelar_producto_request.dart'; // Para cancelaciones selectivas
 import '../config/api_config.dart';
 
 class PedidoService {
@@ -18,6 +20,8 @@ class PedidoService {
 
   final _pedidoPagadoController = StreamController<bool>.broadcast();
   Stream<bool> get onPedidoPagado => _pedidoPagadoController.stream;
+
+  final InventarioService _inventarioService = InventarioService();
 
   PedidoService._internal() {
     print('🔧 PedidoService: Inicializando servicio y StreamControllers');
@@ -213,7 +217,15 @@ class PedidoService {
       if (response.statusCode == 201 || response.statusCode == 200) {
         final responseData = json.decode(response.body);
         if (responseData['success'] == true && responseData['data'] != null) {
-          return Pedido.fromJson(responseData['data']);
+          final pedidoCreado = Pedido.fromJson(responseData['data']);
+
+          // El procesamiento de inventario se hace automáticamente en el backend
+          _inventarioService.notificarProcesamientoInventario(pedidoCreado.id);
+          print(
+            '✅ Pedido creado - El inventario se procesa automáticamente en el servidor: ${pedidoCreado.id}',
+          );
+
+          return pedidoCreado;
         } else {
           throw Exception('Formato de respuesta inválido');
         }
@@ -222,6 +234,63 @@ class PedidoService {
       }
     } catch (e) {
       print('❌ Error creando pedido: $e');
+      throw Exception('Error de conexión: $e');
+    }
+  }
+
+  // Actualizar pedido existente
+  Future<Pedido> updatePedido(Pedido pedido) async {
+    try {
+      // Validar que los items del pedido sean válidos
+      if (pedido.items.isEmpty) {
+        throw Exception('El pedido debe tener al menos un item');
+      }
+
+      if (!PedidoHelper.validatePedidoItems(pedido.items)) {
+        throw Exception(
+          'Los items del pedido no son válidos. Verifica que cada item tenga un ID de producto y cantidad mayor a 0.',
+        );
+      }
+
+      final headers = await _getHeaders();
+
+      // Debug: Imprimir el JSON que se va a enviar
+      final pedidoJson = pedido.toJson();
+      print(
+        '🔄 Actualizando pedido ${pedido.id} con datos: ${json.encode(pedidoJson)}',
+      );
+
+      final response = await http.put(
+        Uri.parse('$baseUrl/api/pedidos/${pedido.id}'),
+        headers: headers,
+        body: json.encode(pedidoJson),
+      );
+
+      print('Update pedido response: ${response.statusCode}');
+      print('Update pedido body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        if (responseData['success'] == true && responseData['data'] != null) {
+          final pedidoActualizado = Pedido.fromJson(responseData['data']);
+
+          // El procesamiento de inventario se hace automáticamente en el backend
+          _inventarioService.notificarProcesamientoInventario(
+            pedidoActualizado.id,
+          );
+          print(
+            '✅ Pedido actualizado - El inventario se procesa automáticamente en el servidor: ${pedidoActualizado.id}',
+          );
+
+          return pedidoActualizado;
+        } else {
+          throw Exception('Formato de respuesta inválido');
+        }
+      } else {
+        throw Exception('Error al actualizar pedido: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ Error actualizando pedido: $e');
       throw Exception('Error de conexión: $e');
     }
   }
@@ -404,13 +473,24 @@ class PedidoService {
   Future<List<Pedido>> getPedidosByMesa(String nombreMesa) async {
     try {
       final headers = await _getHeaders();
+      // Limpiar el nombre de la mesa de cualquier carácter de salto de línea o espacios extra
+      final nombreLimpio = nombreMesa
+          .replaceAll('\n', ' ')
+          .replaceAll(RegExp(r'\s+'), ' ')
+          .trim();
+      // Usar Uri.encodeComponent para manejar correctamente los espacios y caracteres especiales
+      final encodedNombreMesa = Uri.encodeComponent(nombreLimpio);
       final response = await http.get(
-        Uri.parse('$baseUrl/api/pedidos/mesa/$nombreMesa'),
+        Uri.parse('$baseUrl/api/pedidos/mesa/$encodedNombreMesa'),
         headers: headers,
       );
 
       print('getPedidosByMesa response: ${response.statusCode}');
       print('getPedidosByMesa body: ${response.body}');
+      print('Original mesa name: $nombreMesa');
+      print('Cleaned mesa name: $nombreLimpio');
+      print('Encoded mesa name: $encodedNombreMesa');
+      print('Full URL: $baseUrl/api/pedidos/mesa/$encodedNombreMesa');
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
@@ -434,7 +514,12 @@ class PedidoService {
         final pedidos = jsonList
             .map((json) {
               try {
-                return Pedido.fromJson(json);
+                print('Parsing pedido JSON: $json');
+                final pedido = Pedido.fromJson(json);
+                print(
+                  'Pedido parsed successfully: ID=${pedido.id}, Mesa=${pedido.mesa}, Estado=${pedido.estado}',
+                );
+                return pedido;
               } catch (e) {
                 print('Error parsing pedido: $e');
                 print('JSON causing error: $json');
@@ -822,6 +907,49 @@ class PedidoService {
     } catch (e) {
       print('❌ Error pagando pedido: $e');
       throw Exception('Error de conexión: $e');
+    }
+  }
+
+  // Obtener ingredientes que pueden devolverse para un producto cancelado
+  Future<List<IngredienteDevolucion>> obtenerIngredientesParaDevolucion(
+    String pedidoId,
+    String productoId,
+  ) async {
+    try {
+      final ingredientes = await _inventarioService
+          .getIngredientesDescontadosParaProducto(pedidoId, productoId);
+
+      return ingredientes
+          .map((ingrediente) => IngredienteDevolucion.fromJson(ingrediente))
+          .toList();
+    } catch (e) {
+      print('❌ Error obteniendo ingredientes para devolución: $e');
+      throw Exception('Error al obtener ingredientes para devolución: $e');
+    }
+  }
+
+  // Cancelar producto con selección de ingredientes
+  Future<void> cancelarProductoConIngredientes(
+    CancelarProductoRequest request,
+  ) async {
+    try {
+      final ingredientesADevolver = request.ingredientes
+          .where((ingrediente) => ingrediente.devolver)
+          .map((ingrediente) => ingrediente.toJson())
+          .toList();
+
+      await _inventarioService.devolverIngredientesAlInventario(
+        request.pedidoId,
+        request.productoId,
+        ingredientesADevolver,
+        request.motivo,
+        request.responsable,
+      );
+
+      print('✅ Producto cancelado con ingredientes devueltos correctamente');
+    } catch (e) {
+      print('❌ Error cancelando producto con ingredientes: $e');
+      throw Exception('Error al cancelar producto con ingredientes: $e');
     }
   }
 }

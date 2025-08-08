@@ -489,22 +489,26 @@ class _ProductosScreenState extends State<ProductosScreen> {
                 // Recargar datos después de eliminar
                 await _cargarDatos();
 
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Producto eliminado'),
-                    backgroundColor: Colors.redAccent,
-                  ),
-                );
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Producto eliminado'),
+                      backgroundColor: Colors.redAccent,
+                    ),
+                  );
+                }
               } catch (e) {
                 Navigator.of(context).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      'Error al eliminar producto: ${e.toString()}',
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Error al eliminar producto: ${e.toString()}',
+                      ),
+                      backgroundColor: Colors.redAccent,
                     ),
-                    backgroundColor: Colors.redAccent,
-                  ),
-                );
+                  );
+                }
               }
             },
           ),
@@ -546,6 +550,16 @@ class _ProductosScreenState extends State<ProductosScreen> {
     String? tempImagePath;
     List<String> ingredientesSeleccionados = isEditing
         ? List<String>.from(producto.ingredientesDisponibles)
+        : [];
+
+    // Nuevas variables para ingredientes y tipo de producto
+    bool tieneIngredientes = isEditing ? producto.tieneIngredientes : false;
+    String tipoProducto = isEditing ? producto.tipoProducto : 'individual';
+    List<IngredienteProducto> ingredientesRequeridos = isEditing
+        ? List<IngredienteProducto>.from(producto.ingredientesRequeridos)
+        : [];
+    List<IngredienteProducto> ingredientesOpcionales = isEditing
+        ? List<IngredienteProducto>.from(producto.ingredientesOpcionales)
         : [];
 
     showDialog(
@@ -791,6 +805,263 @@ class _ProductosScreenState extends State<ProductosScreen> {
                     ),
                     SizedBox(height: 16),
 
+                    // Tipo de producto (siempre visible)
+                    DropdownButtonFormField<String>(
+                      value: tipoProducto,
+                      style: TextStyle(color: textLight),
+                      dropdownColor: cardBg,
+                      decoration: InputDecoration(
+                        labelText: 'Tipo de Producto',
+                        labelStyle: TextStyle(
+                          color: textLight.withOpacity(0.7),
+                        ),
+                        filled: true,
+                        fillColor: cardBg.withOpacity(0.3),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: primary),
+                        ),
+                      ),
+                      items: [
+                        DropdownMenuItem<String>(
+                          value: 'individual',
+                          child: Text(
+                            'Individual (Selección libre)',
+                            style: TextStyle(color: textLight),
+                          ),
+                        ),
+                        DropdownMenuItem<String>(
+                          value: 'combo',
+                          child: Text(
+                            'Combo (Cliente elige ingredientes)',
+                            style: TextStyle(color: textLight),
+                          ),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        setState(() {
+                          tipoProducto = value!;
+                          // Actualizar tieneIngredientes basado en el tipo
+                          tieneIngredientes = true; // Siempre true ahora
+                          // Limpiar ingredientes al cambiar tipo
+                          ingredientesRequeridos.clear();
+                          ingredientesOpcionales.clear();
+                        });
+                      },
+                    ),
+                    SizedBox(height: 16),
+
+                    // Información sobre el tipo seleccionado
+                    Container(
+                      padding: EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: primary.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: primary.withOpacity(0.3)),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            tipoProducto == 'combo'
+                                ? Icons.restaurant_menu
+                                : Icons.fastfood,
+                            color: primary,
+                            size: 20,
+                          ),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              tipoProducto == 'combo'
+                                  ? 'Los combos permiten al cliente elegir entre ingredientes opcionales (ej: pollo, res, cerdo)'
+                                  : 'Los productos individuales permiten al cliente seleccionar cualquier ingrediente disponible al momento del pedido',
+                              style: TextStyle(
+                                color: textLight.withOpacity(0.8),
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(height: 16),
+
+                    // Botón para gestionar ingredientes (solo para combos)
+                    if (tipoProducto == 'combo') ...[
+                      ElevatedButton.icon(
+                        onPressed: () async {
+                          final resultado = await _showIngredientesDialog(
+                            tipoProducto: tipoProducto,
+                            ingredientesRequeridos: ingredientesRequeridos,
+                            ingredientesOpcionales: ingredientesOpcionales,
+                          );
+                          if (resultado != null) {
+                            setState(() {
+                              ingredientesRequeridos =
+                                  resultado['requeridos'] ?? [];
+                              ingredientesOpcionales =
+                                  resultado['opcionales'] ?? [];
+                            });
+                          }
+                        },
+                        icon: Icon(Icons.add_circle_outline),
+                        label: Text('Gestionar Ingredientes'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: primary,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+
+                      // Resumen de ingredientes agregados
+                      if (ingredientesRequeridos.isNotEmpty ||
+                          ingredientesOpcionales.isNotEmpty) ...[
+                        Container(
+                          padding: EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: cardBg.withOpacity(0.5),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: primary.withOpacity(0.3)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (ingredientesRequeridos.isNotEmpty) ...[
+                                Text(
+                                  'Ingredientes Requeridos (${ingredientesRequeridos.length}):',
+                                  style: TextStyle(
+                                    color: Colors.blue,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                ...ingredientesRequeridos.map(
+                                  (ing) => Text(
+                                    '• ${ing.ingredienteNombre}',
+                                    style: TextStyle(
+                                      color: textLight.withOpacity(0.8),
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(height: 8),
+                              ],
+                              if (ingredientesOpcionales.isNotEmpty) ...[
+                                Text(
+                                  'Ingredientes Opcionales (${ingredientesOpcionales.length}):',
+                                  style: TextStyle(
+                                    color: Colors.orange,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                ...ingredientesOpcionales.map(
+                                  (ing) => Text(
+                                    '• ${ing.ingredienteNombre}',
+                                    style: TextStyle(
+                                      color: textLight.withOpacity(0.8),
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        SizedBox(height: 16),
+                      ],
+                    ],
+
+                    // Ingredientes para productos individuales
+                    if (tipoProducto == 'individual') ...[
+                      Text(
+                        'Ingredientes disponibles:',
+                        style: TextStyle(
+                          color: textLight,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'Selecciona los ingredientes que estarán disponibles para este producto:',
+                        style: TextStyle(
+                          color: textLight.withOpacity(0.7),
+                          fontSize: 12,
+                        ),
+                      ),
+                      SizedBox(height: 12),
+
+                      // Botón para cargar y seleccionar ingredientes de la base de datos
+                      ElevatedButton.icon(
+                        onPressed: () async {
+                          // Cargar ingredientes de la base de datos
+                          final ingredientesDB =
+                              await _cargarIngredientesDisponibles();
+
+                          // Mostrar diálogo de selección
+                          final ingredientesSeleccionadosDB =
+                              await showDialog<List<String>>(
+                                context: context,
+                                builder: (context) =>
+                                    _buildIngredientesIndividualesDialog(
+                                      ingredientesDB,
+                                      ingredientesSeleccionados,
+                                    ),
+                              );
+
+                          if (ingredientesSeleccionadosDB != null) {
+                            setState(() {
+                              ingredientesSeleccionados =
+                                  ingredientesSeleccionadosDB;
+                            });
+                          }
+                        },
+                        icon: Icon(Icons.add_circle_outline),
+                        label: Text('Seleccionar Ingredientes'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: primary,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+
+                      // Mostrar ingredientes seleccionados
+                      if (ingredientesSeleccionados.isNotEmpty) ...[
+                        Container(
+                          padding: EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: cardBg.withOpacity(0.3),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Ingredientes seleccionados:',
+                                style: TextStyle(
+                                  color: primary,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                '${ingredientesSeleccionados.length} ingredientes seleccionados',
+                                style: TextStyle(
+                                  color: textLight.withOpacity(0.8),
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(height: 16),
+                      ],
+                    ],
+
                     // Estado del producto
                     DropdownButtonFormField<String>(
                       value: estado,
@@ -852,94 +1123,88 @@ class _ProductosScreenState extends State<ProductosScreen> {
                       maxLines: 3,
                     ),
                     SizedBox(height: 16),
-
-                    // Sección de ingredientes (carnes)
-                    if (_ingredientesCarnes.isNotEmpty) ...[
-                      Text(
-                        'Ingredientes disponibles (Carnes):',
-                        style: TextStyle(
-                          color: textLight,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
+                    Text(
+                      'Ingredientes disponibles (Carnes):',
+                      style: TextStyle(
+                        color: textLight,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
                       ),
-                      SizedBox(height: 8),
-                      Container(
-                        decoration: BoxDecoration(
-                          border: Border.all(color: textLight.withOpacity(0.3)),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        padding: EdgeInsets.all(12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Selecciona los ingredientes que estarán disponibles para este producto:',
-                              style: TextStyle(
-                                color: textLight.withOpacity(0.7),
-                                fontSize: 12,
-                              ),
+                    ),
+                    SizedBox(height: 8),
+                    Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(color: textLight.withOpacity(0.3)),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      padding: EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Selecciona los ingredientes que estarán disponibles para este producto:',
+                            style: TextStyle(
+                              color: textLight.withOpacity(0.7),
+                              fontSize: 12,
                             ),
-                            SizedBox(height: 8),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: _ingredientesCarnes.map((ingrediente) {
-                                final bool isSelected =
-                                    ingredientesSeleccionados.contains(
-                                      ingrediente.nombre,
-                                    );
-                                return FilterChip(
-                                  label: Text(
-                                    ingrediente.nombre,
-                                    style: TextStyle(
-                                      color: isSelected
-                                          ? Colors.white
-                                          : textLight,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                  selected: isSelected,
-                                  onSelected: (selected) {
-                                    setState(() {
-                                      if (selected) {
-                                        ingredientesSeleccionados.add(
-                                          ingrediente.nombre,
-                                        );
-                                      } else {
-                                        ingredientesSeleccionados.remove(
-                                          ingrediente.nombre,
-                                        );
-                                      }
-                                    });
-                                  },
-                                  selectedColor: primary,
-                                  backgroundColor: cardBg.withOpacity(0.5),
-                                  checkmarkColor: Colors.white,
-                                  side: BorderSide(
+                          ),
+                          SizedBox(height: 8),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: _ingredientesCarnes.map((ingrediente) {
+                              final bool isSelected = ingredientesSeleccionados
+                                  .contains(ingrediente.nombre);
+                              return FilterChip(
+                                label: Text(
+                                  ingrediente.nombre,
+                                  style: TextStyle(
                                     color: isSelected
-                                        ? primary
-                                        : textLight.withOpacity(0.3),
+                                        ? Colors.white
+                                        : textLight,
+                                    fontSize: 12,
                                   ),
-                                );
-                              }).toList(),
-                            ),
-                            if (ingredientesSeleccionados.isNotEmpty) ...[
-                              SizedBox(height: 8),
-                              Text(
-                                'Seleccionados: ${ingredientesSeleccionados.join(', ')}',
-                                style: TextStyle(
-                                  color: primary,
-                                  fontSize: 11,
-                                  fontStyle: FontStyle.italic,
                                 ),
+                                selected: isSelected,
+                                onSelected: (selected) {
+                                  setState(() {
+                                    if (selected) {
+                                      ingredientesSeleccionados.add(
+                                        ingrediente.nombre,
+                                      );
+                                    } else {
+                                      ingredientesSeleccionados.remove(
+                                        ingrediente.nombre,
+                                      );
+                                    }
+                                  });
+                                },
+                                selectedColor: primary,
+                                backgroundColor: cardBg.withOpacity(0.5),
+                                checkmarkColor: Colors.white,
+                                side: BorderSide(
+                                  color: isSelected
+                                      ? primary
+                                      : textLight.withOpacity(0.3),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                          if (ingredientesSeleccionados.isNotEmpty) ...[
+                            SizedBox(height: 8),
+                            Text(
+                              'Seleccionados: ${ingredientesSeleccionados.join(', ')}',
+                              style: TextStyle(
+                                color: primary,
+                                fontSize: 11,
+                                fontStyle: FontStyle.italic,
                               ),
-                            ],
+                            ),
                           ],
-                        ),
+                        ],
                       ),
-                      SizedBox(height: 16),
-                    ],
+                    ),
+                    SizedBox(height: 16),
                   ],
                 ),
               ),
@@ -959,12 +1224,14 @@ class _ProductosScreenState extends State<ProductosScreen> {
                     // Validar campos
                     if (nombreController.text.isEmpty ||
                         precioController.text.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Complete los campos requeridos'),
-                          backgroundColor: Colors.redAccent,
-                        ),
-                      );
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Complete los campos requeridos'),
+                            backgroundColor: Colors.redAccent,
+                          ),
+                        );
+                      }
                       return;
                     }
 
@@ -1003,43 +1270,37 @@ class _ProductosScreenState extends State<ProductosScreen> {
                           tieneVariantes: tieneVariantes,
                           estado: estado,
                           ingredientesDisponibles: ingredientesSeleccionados,
+                          tieneIngredientes: tieneIngredientes,
+                          tipoProducto: tipoProducto,
+                          ingredientesRequeridos: ingredientesRequeridos,
+                          ingredientesOpcionales: ingredientesOpcionales,
                         );
                         await _productoService.updateProducto(updatedProducto);
                       } else {
-                        // Crear nuevo producto con ingredientes
-                        if (ingredientesSeleccionados.isNotEmpty) {
-                          await _productoService.crearProductoConIngredientes(
-                            nombre: nombreController.text,
-                            precio: double.parse(precioController.text),
-                            costo: double.parse(costoController.text),
-                            categoriaId: selectedCategoriaId ?? '',
-                            ingredientesDisponibles: ingredientesSeleccionados,
-                            descripcion: descripcionController.text.isNotEmpty
-                                ? descripcionController.text
-                                : null,
-                          );
-                        } else {
-                          final nuevoProducto = Producto(
-                            id: DateTime.now().millisecondsSinceEpoch
-                                .toString(),
-                            nombre: nombreController.text,
-                            precio: double.parse(precioController.text),
-                            costo: double.parse(costoController.text),
-                            imagenUrl: finalImageUrl,
-                            categoria: categoriaSeleccionada,
-                            descripcion: descripcionController.text.isNotEmpty
-                                ? descripcionController.text
-                                : null,
-                            impuestos:
-                                double.tryParse(impuestosController.text) ?? 0,
-                            utilidad:
-                                double.tryParse(utilidadController.text) ?? 0,
-                            tieneVariantes: tieneVariantes,
-                            estado: estado,
-                            ingredientesDisponibles: [],
-                          );
-                          await _productoService.addProducto(nuevoProducto);
-                        }
+                        // Crear nuevo producto con el sistema actualizado
+                        final nuevoProducto = Producto(
+                          id: DateTime.now().millisecondsSinceEpoch.toString(),
+                          nombre: nombreController.text,
+                          precio: double.parse(precioController.text),
+                          costo: double.parse(costoController.text),
+                          imagenUrl: finalImageUrl,
+                          categoria: categoriaSeleccionada,
+                          descripcion: descripcionController.text.isNotEmpty
+                              ? descripcionController.text
+                              : null,
+                          impuestos:
+                              double.tryParse(impuestosController.text) ?? 0,
+                          utilidad:
+                              double.tryParse(utilidadController.text) ?? 0,
+                          tieneVariantes: tieneVariantes,
+                          estado: estado,
+                          ingredientesDisponibles: ingredientesSeleccionados,
+                          tieneIngredientes: tieneIngredientes,
+                          tipoProducto: tipoProducto,
+                          ingredientesRequeridos: ingredientesRequeridos,
+                          ingredientesOpcionales: ingredientesOpcionales,
+                        );
+                        await _productoService.addProducto(nuevoProducto);
                       }
 
                       Navigator.of(context).pop();
@@ -1047,23 +1308,27 @@ class _ProductosScreenState extends State<ProductosScreen> {
                       // Recargar datos después de crear/actualizar
                       await _cargarDatos();
 
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            isEditing
-                                ? 'Producto actualizado'
-                                : 'Producto agregado',
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              isEditing
+                                  ? 'Producto actualizado'
+                                  : 'Producto agregado',
+                            ),
+                            backgroundColor: Colors.green,
                           ),
-                          backgroundColor: Colors.green,
-                        ),
-                      );
+                        );
+                      }
                     } catch (e) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Error: $e'),
-                          backgroundColor: Colors.redAccent,
-                        ),
-                      );
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Error: $e'),
+                            backgroundColor: Colors.redAccent,
+                          ),
+                        );
+                      }
                     }
                   },
                 ),
@@ -1116,6 +1381,481 @@ class _ProductosScreenState extends State<ProductosScreen> {
               ),
             ],
           ),
+        );
+      },
+    );
+  }
+
+  // Método para cargar ingredientes disponibles de la base de datos
+  Future<List<Ingrediente>> _cargarIngredientesDisponibles() async {
+    try {
+      final ingredienteService = IngredienteService();
+      return await ingredienteService.getAllIngredientes();
+    } catch (e) {
+      print('Error cargando ingredientes: $e');
+      return [];
+    }
+  }
+
+  Future<Map<String, List<IngredienteProducto>>?> _showIngredientesDialog({
+    required String tipoProducto,
+    required List<IngredienteProducto> ingredientesRequeridos,
+    required List<IngredienteProducto> ingredientesOpcionales,
+  }) async {
+    final Color primary = Color(0xFFFF6B00);
+    final Color cardBg = Color(0xFF252525);
+    final Color textLight = Color(0xFFE0E0E0);
+
+    // Copias locales para editar
+    List<IngredienteProducto> requeridosEditables = List.from(
+      ingredientesRequeridos,
+    );
+    List<IngredienteProducto> opcionalesEditables = List.from(
+      ingredientesOpcionales,
+    );
+
+    // Variables para manejar ingredientes disponibles
+    List<Ingrediente> ingredientesDisponibles = [];
+    bool isLoading = true;
+
+    return await showDialog<Map<String, List<IngredienteProducto>>>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            // Cargar ingredientes disponibles al mostrar el diálogo
+            if (isLoading) {
+              _cargarIngredientesDisponibles().then((ingredientes) {
+                setState(() {
+                  ingredientesDisponibles = ingredientes;
+                  isLoading = false;
+                });
+              });
+            }
+            return AlertDialog(
+              backgroundColor: cardBg,
+              title: Text(
+                'Gestionar Ingredientes - ${tipoProducto == 'combo' ? 'Combo' : 'Individual'}',
+                style: TextStyle(color: textLight, fontSize: 18),
+              ),
+              content: SizedBox(
+                width: double.maxFinite,
+                height: 500,
+                child: isLoading
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            CircularProgressIndicator(color: primary),
+                            SizedBox(height: 16),
+                            Text(
+                              'Cargando ingredientes disponibles...',
+                              style: TextStyle(color: textLight),
+                            ),
+                          ],
+                        ),
+                      )
+                    : Column(
+                        children: [
+                          // Información del tipo
+                          Container(
+                            padding: EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: primary.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              tipoProducto == 'combo'
+                                  ? '• Ingredientes requeridos: Se incluyen automáticamente\n• Ingredientes opcionales: El cliente puede elegir'
+                                  : '• Solo ingredientes requeridos: Se descuentan automáticamente del inventario',
+                              style: TextStyle(
+                                color: textLight.withOpacity(0.8),
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: 16),
+
+                          // Tabs para ingredientes requeridos y opcionales
+                          Expanded(
+                            child: DefaultTabController(
+                              length: tipoProducto == 'combo' ? 2 : 1,
+                              child: Column(
+                                children: [
+                                  TabBar(
+                                    labelColor: primary,
+                                    unselectedLabelColor: textLight.withOpacity(
+                                      0.6,
+                                    ),
+                                    indicatorColor: primary,
+                                    tabs: [
+                                      Tab(text: 'Requeridos'),
+                                      if (tipoProducto == 'combo')
+                                        Tab(text: 'Opcionales'),
+                                    ],
+                                  ),
+                                  SizedBox(height: 16),
+                                  Expanded(
+                                    child: TabBarView(
+                                      children: [
+                                        // Tab de ingredientes requeridos
+                                        _buildIngredientesTab(
+                                          ingredientes: requeridosEditables,
+                                          esOpcional: false,
+                                          ingredientesDisponibles:
+                                              ingredientesDisponibles,
+                                          onAdd: () =>
+                                              _showSelectIngredienteDialog(
+                                                false,
+                                                requeridosEditables,
+                                                setState,
+                                                ingredientesDisponibles,
+                                              ),
+                                          onRemove: (index) => setState(
+                                            () => requeridosEditables.removeAt(
+                                              index,
+                                            ),
+                                          ),
+                                          setState: setState,
+                                        ),
+                                        // Tab de ingredientes opcionales (solo para combos)
+                                        if (tipoProducto == 'combo')
+                                          _buildIngredientesTab(
+                                            ingredientes: opcionalesEditables,
+                                            esOpcional: true,
+                                            ingredientesDisponibles:
+                                                ingredientesDisponibles,
+                                            onAdd: () =>
+                                                _showSelectIngredienteDialog(
+                                                  true,
+                                                  opcionalesEditables,
+                                                  setState,
+                                                  ingredientesDisponibles,
+                                                ),
+                                            onRemove: (index) => setState(
+                                              () => opcionalesEditables
+                                                  .removeAt(index),
+                                            ),
+                                            setState: setState,
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text('Cancelar', style: TextStyle(color: textLight)),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).pop({
+                      'requeridos': requeridosEditables,
+                      'opcionales': opcionalesEditables,
+                    });
+                  },
+                  style: ElevatedButton.styleFrom(backgroundColor: primary),
+                  child: Text('Guardar', style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildIngredientesTab({
+    required List<IngredienteProducto> ingredientes,
+    required bool esOpcional,
+    required List<Ingrediente> ingredientesDisponibles,
+    required VoidCallback onAdd,
+    required Function(int) onRemove,
+    required StateSetter setState,
+  }) {
+    final Color primary = Color(0xFFFF6B00);
+    final Color cardBg = Color(0xFF252525);
+    final Color textLight = Color(0xFFE0E0E0);
+
+    return Column(
+      children: [
+        // Botón agregar
+        ElevatedButton.icon(
+          onPressed: onAdd,
+          icon: Icon(Icons.add),
+          label: Text('Agregar Ingrediente'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: primary,
+            foregroundColor: Colors.white,
+          ),
+        ),
+        SizedBox(height: 8),
+
+        // Lista de ingredientes
+        Expanded(
+          child: ingredientes.isEmpty
+              ? Center(
+                  child: Text(
+                    'No hay ingredientes ${esOpcional ? 'opcionales' : 'requeridos'} configurados',
+                    style: TextStyle(color: textLight.withOpacity(0.6)),
+                    textAlign: TextAlign.center,
+                  ),
+                )
+              : ListView.builder(
+                  itemCount: ingredientes.length,
+                  itemBuilder: (context, index) {
+                    final ingrediente = ingredientes[index];
+                    return Card(
+                      color: cardBg.withOpacity(0.5),
+                      child: ListTile(
+                        title: Text(
+                          ingrediente.ingredienteNombre,
+                          style: TextStyle(color: textLight),
+                        ),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Cantidad: ${ingrediente.cantidadNecesaria}',
+                              style: TextStyle(
+                                color: textLight.withOpacity(0.7),
+                              ),
+                            ),
+                            if (ingrediente.precioAdicional > 0)
+                              Text(
+                                'Precio adicional: \$${ingrediente.precioAdicional}',
+                                style: TextStyle(color: primary),
+                              ),
+                          ],
+                        ),
+                        trailing: IconButton(
+                          icon: Icon(Icons.delete, color: Colors.red),
+                          onPressed: () => onRemove(index),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+
+  void _showSelectIngredienteDialog(
+    bool esOpcional,
+    List<IngredienteProducto> lista,
+    StateSetter parentSetState,
+    List<Ingrediente> ingredientesDisponibles,
+  ) {
+    final Color primary = Color(0xFFFF6B00);
+    final Color cardBg = Color(0xFF252525);
+    final Color textLight = Color(0xFFE0E0E0);
+
+    Ingrediente? selectedIngrediente;
+    final cantidadController = TextEditingController();
+    final precioController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, dialogSetState) {
+            return AlertDialog(
+              backgroundColor: cardBg,
+              title: Text(
+                'Seleccionar Ingrediente ${esOpcional ? 'Opcional' : 'Requerido'}',
+                style: TextStyle(color: textLight),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  DropdownButtonFormField<Ingrediente>(
+                    value: selectedIngrediente,
+                    onChanged: (Ingrediente? value) {
+                      dialogSetState(() {
+                        selectedIngrediente = value;
+                      });
+                    },
+                    items: ingredientesDisponibles.map((ingrediente) {
+                      return DropdownMenuItem<Ingrediente>(
+                        value: ingrediente,
+                        child: Text(
+                          '${ingrediente.nombre} (${ingrediente.unidad})',
+                          style: TextStyle(color: textLight),
+                        ),
+                      );
+                    }).toList(),
+                    decoration: InputDecoration(
+                      labelText: 'Seleccionar ingrediente',
+                      labelStyle: TextStyle(color: textLight.withOpacity(0.7)),
+                      filled: true,
+                      fillColor: cardBg.withOpacity(0.3),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    dropdownColor: cardBg,
+                  ),
+                  SizedBox(height: 16),
+                  TextField(
+                    controller: cantidadController,
+                    style: TextStyle(color: textLight),
+                    decoration: InputDecoration(
+                      labelText: 'Cantidad necesaria',
+                      labelStyle: TextStyle(color: textLight.withOpacity(0.7)),
+                      filled: true,
+                      fillColor: cardBg.withOpacity(0.3),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    keyboardType: TextInputType.number,
+                  ),
+                  SizedBox(height: 16),
+                  if (esOpcional) ...[
+                    TextField(
+                      controller: precioController,
+                      style: TextStyle(color: textLight),
+                      decoration: InputDecoration(
+                        labelText: 'Precio adicional (opcional)',
+                        labelStyle: TextStyle(
+                          color: textLight.withOpacity(0.7),
+                        ),
+                        prefixText: '\$ ',
+                        filled: true,
+                        fillColor: cardBg.withOpacity(0.3),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      keyboardType: TextInputType.number,
+                    ),
+                  ],
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text('Cancelar', style: TextStyle(color: textLight)),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    if (selectedIngrediente != null &&
+                        cantidadController.text.isNotEmpty) {
+                      final nuevoIngrediente = IngredienteProducto(
+                        ingredienteId: selectedIngrediente!.id,
+                        ingredienteNombre: selectedIngrediente!.nombre,
+                        cantidadNecesaria:
+                            double.tryParse(cantidadController.text) ?? 1.0,
+                        esOpcional: esOpcional,
+                        precioAdicional:
+                            double.tryParse(precioController.text) ?? 0.0,
+                      );
+
+                      parentSetState(() {
+                        lista.add(nuevoIngrediente);
+                      });
+
+                      Navigator.of(context).pop();
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(backgroundColor: primary),
+                  child: Text('Agregar', style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildIngredientesIndividualesDialog(
+    List<Ingrediente> ingredientesDisponibles,
+    List<String> ingredientesSeleccionados,
+  ) {
+    final Color primary = Color(0xFFFF6B00);
+    final Color cardBg = Color(0xFF252525);
+    final Color textLight = Color(0xFFE0E0E0);
+
+    List<String> selectedIds = List.from(ingredientesSeleccionados);
+
+    return StatefulBuilder(
+      builder: (context, setState) {
+        return AlertDialog(
+          backgroundColor: cardBg,
+          title: Text(
+            'Seleccionar Ingredientes',
+            style: TextStyle(color: textLight),
+          ),
+          content: Container(
+            width: double.maxFinite,
+            height: 400,
+            child: Column(
+              children: [
+                Text(
+                  'Selecciona los ingredientes disponibles para este producto:',
+                  style: TextStyle(
+                    color: textLight.withOpacity(0.7),
+                    fontSize: 12,
+                  ),
+                ),
+                SizedBox(height: 16),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: ingredientesDisponibles.length,
+                    itemBuilder: (context, index) {
+                      final ingrediente = ingredientesDisponibles[index];
+                      final isSelected = selectedIds.contains(ingrediente.id);
+
+                      return CheckboxListTile(
+                        title: Text(
+                          ingrediente.nombre,
+                          style: TextStyle(color: textLight),
+                        ),
+                        subtitle: Text(
+                          '${ingrediente.categoria} - ${ingrediente.unidad}',
+                          style: TextStyle(
+                            color: textLight.withOpacity(0.6),
+                            fontSize: 12,
+                          ),
+                        ),
+                        value: isSelected,
+                        onChanged: (bool? value) {
+                          setState(() {
+                            if (value == true) {
+                              selectedIds.add(ingrediente.id);
+                            } else {
+                              selectedIds.remove(ingrediente.id);
+                            }
+                          });
+                        },
+                        activeColor: primary,
+                        checkColor: Colors.white,
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(null),
+              child: Text('Cancelar', style: TextStyle(color: textLight)),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(selectedIds),
+              style: ElevatedButton.styleFrom(backgroundColor: primary),
+              child: Text('Confirmar', style: TextStyle(color: Colors.white)),
+            ),
+          ],
         );
       },
     );

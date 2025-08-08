@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'producto.dart';
 import 'item_pedido.dart'; // Importar el ItemPedido correcto
 
-enum TipoPedido { normal, rt, interno, cancelado, cortesia }
+enum TipoPedido { normal, rt, interno, cancelado, cortesia, domicilio }
 
 enum EstadoPedido { activo, pagado, cancelado, cortesia }
 
@@ -99,6 +99,8 @@ class Pedido {
         return 'Cancelado';
       case TipoPedido.cortesia:
         return 'Cortesía';
+      case TipoPedido.domicilio:
+        return 'Domicilio';
     }
   }
 
@@ -127,6 +129,8 @@ class Pedido {
         return Colors.red;
       case TipoPedido.cortesia:
         return Colors.green;
+      case TipoPedido.domicilio:
+        return Colors.cyan;
     }
   }
 
@@ -169,7 +173,9 @@ class Pedido {
       fecha: DateTime.parse(json['fecha']),
       tipo: TipoPedidoExtension.fromJson(json['tipo'] ?? 'normal'),
       mesa: json['mesa'] ?? '',
-      cliente: json['cliente'],
+      cliente:
+          json['cliente'] ??
+          json['nombrePedido'], // Usar nombrePedido como cliente si no hay cliente
       mesero: json['mesero'] ?? '',
       items:
           (json['items'] as List<dynamic>?)
@@ -179,8 +185,8 @@ class Pedido {
       total: (json['total'] ?? 0).toDouble(),
       estado: EstadoPedidoExtension.fromJson(json['estado'] ?? 'activo'),
       notas: json['notas'],
-      plataforma: json['plataforma'],
-      pedidoPor: json['pedidoPor'],
+      plataforma: json['plataforma'] ?? 'local',
+      pedidoPor: json['pedidoPor'] ?? json['guardadoPor'],
       guardadoPor: json['guardadoPor'],
       fechaCortesia: json['fechaCortesia'] != null
           ? DateTime.parse(json['fechaCortesia'])

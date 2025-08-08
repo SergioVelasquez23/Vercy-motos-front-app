@@ -9,22 +9,15 @@ class MesaController {
 
   Future<List<Mesa>> getMesas() async {
     try {
-      print('🎯 MesaController: Obteniendo mesas...');
       _mesas = await _service.getMesas();
-      print('🎯 MesaController: ${_mesas.length} mesas obtenidas');
-      _mesas.forEach((mesa) {
-        print('🎯 Mesa cargada - ID: ${mesa.id}, Nombre: ${mesa.nombre}');
-      });
       return _mesas;
     } catch (e) {
-      print('❌ Error en MesaController.getMesas: $e');
       throw Exception('Error al obtener mesas: $e');
     }
   }
 
   Future<Mesa> crearMesa(String nombre) async {
     try {
-      print('🎯 MesaController: Creando mesa con nombre: $nombre');
       final mesa = Mesa(
         id: '', // El ID será asignado por el backend
         nombre: nombre,
@@ -33,19 +26,14 @@ class MesaController {
         total: 0.0,
       );
       final mesaCreada = await _service.createMesa(mesa);
-      print('🎯 MesaController: Mesa creada con ID: ${mesaCreada.id}');
       return mesaCreada;
     } catch (e) {
-      print('❌ Error en MesaController.crearMesa: $e');
       throw Exception('Error al crear mesa: $e');
     }
   }
 
   Future<Mesa> actualizarMesa(Mesa mesa, String nuevoNombre) async {
     try {
-      print(
-        '🎯 MesaController: Actualizando mesa - ID: ${mesa.id}, Nuevo nombre: $nuevoNombre',
-      );
       if (mesa.id.isEmpty) {
         throw Exception('No se puede actualizar una mesa sin ID');
       }
@@ -53,27 +41,19 @@ class MesaController {
       // Crear una nueva instancia de Mesa con el nombre actualizado
       final mesaActualizar = mesa.copyWith(nombre: nuevoNombre);
       final mesaActualizada = await _service.updateMesa(mesaActualizar);
-
-      print(
-        '🎯 MesaController: Mesa actualizada - ID: ${mesaActualizada.id}, Nombre: ${mesaActualizada.nombre}',
-      );
       return mesaActualizada;
     } catch (e) {
-      print('❌ Error en MesaController.actualizarMesa: $e');
       throw Exception('Error al actualizar mesa: $e');
     }
   }
 
   Future<void> eliminarMesa(String id) async {
     try {
-      print('🎯 MesaController: Eliminando mesa con ID: $id');
       if (id.isEmpty) {
         throw Exception('No se puede eliminar una mesa sin ID');
       }
       await _service.deleteMesa(id);
-      print('🎯 MesaController: Mesa eliminada correctamente - ID: $id');
     } catch (e) {
-      print('❌ Error en MesaController.eliminarMesa: $e');
       throw Exception('Error al eliminar mesa: $e');
     }
   }
@@ -89,7 +69,6 @@ class MesaController {
       );
       await _service.updateMesa(mesaVacia);
     } catch (e) {
-      print('❌ Error en MesaController.vaciarMesa: $e');
       throw Exception('Error al vaciar mesa: $e');
     }
   }
@@ -115,7 +94,6 @@ class MesaController {
       // Vaciar mesa origen
       await vaciarMesa(origen.id);
     } catch (e) {
-      print('❌ Error en MesaController.moverMesa: $e');
       throw Exception('Error al mover mesa: $e');
     }
   }

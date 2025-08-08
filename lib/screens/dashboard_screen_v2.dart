@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:provider/provider.dart';
 import 'dart:async';
 import 'productos_screen.dart';
 import 'reportes_screen.dart';
@@ -18,6 +19,7 @@ import '../config/constants.dart';
 import '../services/reportes_service.dart';
 import '../services/pedido_service.dart';
 import '../models/dashboard_data.dart';
+import '../providers/user_provider.dart';
 
 class InfoCardItem {
   final String label;
@@ -32,7 +34,8 @@ class DashboardScreenV2 extends StatefulWidget {
   _DashboardScreenV2State createState() => _DashboardScreenV2State();
 }
 
-class _DashboardScreenV2State extends State<DashboardScreenV2> {
+class _DashboardScreenV2State extends State<DashboardScreenV2>
+    with WidgetsBindingObserver {
   final Color primary = Color(kPrimaryColor);
   final Color bgDark = Color(kBackgroundDark);
   final Color cardBg = Color(kCardBackgroundDark);
@@ -64,39 +67,70 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
   @override
   void initState() {
     super.initState();
-    print('📊 Dashboard: Iniciando y cargando datos iniciales');
-    _cargarDatos();
 
-    // Suscribirse al stream de eventos de pedidos completados
-    print('📊 Dashboard: Configurando suscripción a eventos de pedidos');
-    _pedidoCompletadoSubscription = _pedidoService.onPedidoCompletado.listen((
-      _,
-    ) {
-      print(
-        '📊 Dashboard: Evento de pedido completado recibido, recargando datos',
-      );
-      _cargarDatos();
-    });
+    // Agregar observer para detectar cambios en el ciclo de vida
+    WidgetsBinding.instance.addObserver(this);
 
-    // Suscribirse al stream de eventos de pedidos pagados
-    print('📊 Dashboard: Configurando suscripción a eventos de pagos');
-    _pedidoPagadoSubscription = _pedidoService.onPedidoPagado.listen((_) {
-      print(
-        '📊 Dashboard: Evento de pago recibido, recargando datos del dashboard',
-      );
-      _cargarDatos();
-    });
+    // Verificar roles después de que el context esté disponible
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
 
-    // Timer para actualizar automáticamente cada 30 segundos
-    _autoRefreshTimer = Timer.periodic(Duration(seconds: 30), (timer) {
-      print('🔄 Dashboard: Actualización automática de datos');
-      _cargarDatos();
+      // Solo cargar datos si el usuario es admin
+      if (userProvider.isAdmin) {
+        _cargarDatos();
+
+        // Suscribirse al stream de eventos de pedidos completados
+        _pedidoCompletadoSubscription = _pedidoService.onPedidoCompletado
+            .listen((_) {
+              _cargarDatos();
+            });
+
+        // Suscribirse al stream de eventos de pedidos pagados
+        _pedidoPagadoSubscription = _pedidoService.onPedidoPagado.listen((_) {
+          _cargarDatos();
+        });
+
+        // Timer para actualizar automáticamente cada 30 segundos
+        _autoRefreshTimer = Timer.periodic(Duration(seconds: 30), (timer) {
+          _cargarDatos();
+        });
+      }
     });
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Resetear el índice cuando regresamos al dashboard
+    if (mounted && _selectedIndex != 0) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          setState(() {
+            _selectedIndex = 0;
+          });
+        }
+      });
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+
+    // Solo recargar datos cuando la app vuelve a estar activa
+    if (state == AppLifecycleState.resumed && mounted) {
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      if (userProvider.isAdmin) {
+        _cargarDatos();
+      }
+    }
+  }
+
+  @override
   void dispose() {
-    print('📊 Dashboard: Limpiando recursos');
+    // Remover observer
+    WidgetsBinding.instance.removeObserver(this);
+
     _pedidoCompletadoSubscription.cancel();
     _pedidoPagadoSubscription.cancel();
     _autoRefreshTimer.cancel();
@@ -109,19 +143,14 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
     setState(() => _isLoading = true);
 
     try {
-      print('📊 Dashboard: Iniciando carga de todos los datos...');
-
       // Cargar datos en paralelo pero manejar errores individualmente
       final estadisticasFuture = _cargarEstadisticas().catchError((e) {
-        print('❌ Error en estadísticas: $e');
         return null;
       });
       final ingresosFuture = _cargarIngresosVsEgresos().catchError((e) {
-        print('❌ Error en ingresos vs egresos: $e');
         return null;
       });
       final topProductosFuture = _cargarTopProductos().catchError((e) {
-        print('❌ Error en top productos: $e');
         return null;
       });
       final ventasPorDiaFuture = _reportesService
@@ -130,10 +159,8 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
             setState(() {
               _ventasPorDia = data;
             });
-            print('✅ Ventas por día actualizadas: $_ventasPorDia');
           })
           .catchError((e) {
-            print('❌ Error en ventas por día: $e');
             setState(() {
               _ventasPorDia = [];
             });
@@ -145,9 +172,8 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
         topProductosFuture,
         ventasPorDiaFuture,
       ]);
-      print('✅ Dashboard: Carga de datos completada');
     } catch (e) {
-      print('❌ Error general cargando datos del dashboard: $e');
+      // Error handling
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -157,48 +183,12 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
 
   Future<void> _cargarEstadisticas() async {
     try {
-      print('📊 Dashboard: Iniciando carga de estadísticas');
-
       // Obtener datos del dashboard desde el servicio
-      print('📊 Solicitando datos del dashboard al backend...');
       final dashboardData = await _reportesService.getDashboard();
-      print('📊 Dashboard: Datos base obtenidos del backend');
-
-      // Log detallado de los datos recibidos
-      if (dashboardData != null) {
-        // Log específico de objetivos
-        print('🎯 OBJETIVOS RECIBIDOS DEL BACKEND:');
-        print('🎯 Objetivo HOY: ${dashboardData.ventasHoy.objetivo}');
-        print('🎯 Objetivo SEMANA: ${dashboardData.ventas7Dias.objetivo}');
-        print('🎯 Objetivo MES: ${dashboardData.ventas30Dias.objetivo}');
-        print('🎯 Objetivo AÑO: ${dashboardData.ventasAnio.objetivo}');
-
-        // Log general de otros datos
-        print(
-          '📊 Ventas Hoy: ${dashboardData.ventasHoy.total} (Objetivo: ${dashboardData.ventasHoy.objetivo})',
-        );
-        print(
-          '📊 Ventas 7 días: ${dashboardData.ventas7Dias.total} (Objetivo: ${dashboardData.ventas7Dias.objetivo})',
-        );
-        print(
-          '📊 Pedidos Hoy: ${dashboardData.pedidosHoy.total} (Completados: ${dashboardData.pedidosHoy.completados}, Pendientes: ${dashboardData.pedidosHoy.pendientes})',
-        );
-        print(
-          '📊 Inventario: ${dashboardData.inventario.alertas} alertas (Stock bajo: ${dashboardData.inventario.stockBajo}, Agotados: ${dashboardData.inventario.agotados})',
-        );
-        print(
-          '📊 Facturación: ${dashboardData.facturacion.pendientesPago} pendientes (\$${dashboardData.facturacion.montoPendiente})',
-        );
-      }
 
       if (dashboardData != null && mounted) {
-        print('📊 Actualizando estado de la UI con nuevos datos');
-
         // Limpiar objetivos temporales ya que tenemos datos frescos del backend
         if (_objetivosTemporales.isNotEmpty) {
-          print(
-            '🎯 Limpiando objetivos temporales (${_objetivosTemporales.length}) ya que se recargaron datos',
-          );
           setState(() {
             _dashboardData = dashboardData;
             _objetivosTemporales.clear(); // Limpiar objetivos temporales
@@ -208,20 +198,10 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
             _dashboardData = dashboardData;
           });
         }
-
-        print('✅ Dashboard: Estado actualizado con nuevos datos y objetivos');
       } else if (mounted) {
-        print('⚠️ Dashboard: No se pudieron obtener datos del backend');
         // Mantener los datos existentes o usar null
       }
-
-      print('✅ Dashboard: Estadísticas actualizadas exitosamente');
     } catch (e) {
-      print('❌ Error cargando estadísticas: $e');
-      // Agregar más detalles del error
-      print('❌ Tipo de error: ${e.runtimeType}');
-      print('❌ Stack trace: ${StackTrace.current}');
-
       // No propagamos el error para evitar que falle toda la UI
       if (mounted) {
         setState(() {
@@ -233,21 +213,15 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
 
   Future<void> _cargarIngresosVsEgresos() async {
     try {
-      print('📊 Cargando ingresos vs egresos...');
       // Obtener ingresos vs egresos de los últimos 12 meses desde el backend
       final ingresosVsEgresos = await _reportesService.getIngresosVsEgresos(12);
-      print(
-        '📊 Ingresos vs egresos obtenidos: ${ingresosVsEgresos.length} registros',
-      );
 
       if (mounted) {
         setState(() {
           _ingresosVsEgresos = ingresosVsEgresos;
         });
-        print('✅ Estado actualizado con ingresos vs egresos');
       }
     } catch (e) {
-      print('❌ Error cargando ingresos vs egresos: $e');
       // En caso de error, usar datos vacíos para evitar crashes
       if (mounted) {
         setState(() {
@@ -260,9 +234,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
   Future<void> _cargarTopProductos() async {
     try {
       // Obtener top 5 productos más vendidos del mes actual desde el backend
-      print('📊 Cargando top productos...');
       final topProductos = await _reportesService.getTopProductos(5);
-      print('📊 Datos recibidos del backend: $topProductos');
 
       // Transformar datos al formato esperado por la UI
       final List<Map<String, dynamic>> productosTransformados = [];
@@ -283,22 +255,15 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
           'porcentaje': porcentaje,
           'color': colores[i % colores.length],
         });
-
-        print(
-          '📊 Producto transformado: ${producto['nombre']} - ${porcentaje}%',
-        );
       }
-
-      print('📊 Productos transformados finales: $productosTransformados');
 
       if (mounted) {
         setState(() {
           _topProductos = productosTransformados;
         });
-        print('✅ Estado actualizado con nuevos top productos');
       }
     } catch (e) {
-      print('❌ Error cargando top productos: $e');
+      // Error handling
     }
   }
 
@@ -413,25 +378,18 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
 
   Future<void> _actualizarObjetivo(String periodo, double nuevoObjetivo) async {
     try {
-      print(
-        '🎯 INICIO: Actualizando objetivo $periodo a \$${nuevoObjetivo.toStringAsFixed(0)}',
-      );
-
       // Guardar objetivo temporal para mostrar cambio inmediato
       setState(() {
         _objetivosTemporales[periodo] = nuevoObjetivo;
       });
-      print('🎯 Objetivo temporal establecido para UI inmediata');
 
       // Llamar al backend para actualizar el objetivo
-      print('🎯 Enviando solicitud al backend...');
       final exitoso = await ReportesService().actualizarObjetivo(
         periodo,
         nuevoObjetivo,
       );
 
       if (exitoso) {
-        print('✅ Objetivo actualizado exitosamente en backend');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -442,24 +400,15 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
         );
 
         // IMPORTANTE: Recargar datos del dashboard para obtener los objetivos actualizados
-        print(
-          '🔄 Recargando datos del dashboard para reflejar cambios permanentes',
-        );
         await _cargarDatos();
-        print('✅ Datos recargados con éxito');
       } else {
         // Si falla, remover el objetivo temporal
-        print('❌ El backend informó error al actualizar objetivo');
         setState(() {
           _objetivosTemporales.remove(periodo);
         });
         throw Exception('Error en el servidor al actualizar objetivo');
       }
     } catch (e) {
-      print('❌ Error actualizando objetivo: $e');
-      print('❌ Detalles del error: ${e.toString()}');
-      print('❌ Tipo de error: ${e.runtimeType}');
-
       // Remover objetivo temporal si hay error
       setState(() {
         _objetivosTemporales.remove(periodo);
@@ -475,6 +424,46 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
 
   @override
   Widget build(BuildContext context) {
+    final userProvider = Provider.of<UserProvider>(context);
+
+    // Resetear el índice seleccionado a Dashboard cuando se construye la pantalla
+    // Esto asegura que cuando regreses de otra pantalla, el sidebar muestre Dashboard como activo
+    if (_selectedIndex != 0 && ModalRoute.of(context)?.isCurrent == true) {
+      // Usar addPostFrameCallback para evitar setState durante el build
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          setState(() {
+            _selectedIndex = 0;
+          });
+        }
+      });
+    }
+
+    // Si el usuario es mesero sin permisos de admin, redirigir a la pantalla de mesas
+    if (userProvider.isMesero && !userProvider.isAdmin) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.pushReplacementNamed(context, '/mesas');
+      });
+      return Scaffold(
+        backgroundColor: bgDark,
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(primary),
+              ),
+              SizedBox(height: 16),
+              Text(
+                'Redirigiendo a Mesas...',
+                style: TextStyle(color: Colors.white, fontSize: 16),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: bgDark,
       body: SafeArea(
@@ -483,34 +472,84 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
             _buildTopBar(),
             _buildNavBar(),
             Expanded(
-              child: _isLoading
-                  ? Center(
-                      child: CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(primary),
-                      ),
-                    )
-                  : RefreshIndicator(
-                      onRefresh: _cargarDatos,
-                      child: SingleChildScrollView(
-                        physics: AlwaysScrollableScrollPhysics(),
-                        padding: EdgeInsets.all(16.0),
-                        child: Column(
-                          children: [
-                            _buildStatsCards(),
-                            SizedBox(height: 20),
-                            _buildInfoCards(),
-                            SizedBox(height: 20),
-                            _buildRecentSales(),
-                            SizedBox(height: 20),
-                            Row(
-                              children: [
-                                Expanded(child: _buildIngresosVsEgresosChart()),
-                                SizedBox(width: 20),
-                                Expanded(child: _buildTopProductosChart()),
-                              ],
+              child: userProvider.isAdmin
+                  ? (_isLoading
+                        ? Center(
+                            child: CircularProgressIndicator(
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                primary,
+                              ),
                             ),
-                          ],
-                        ),
+                          )
+                        : RefreshIndicator(
+                            onRefresh: _cargarDatos,
+                            child: SingleChildScrollView(
+                              physics: AlwaysScrollableScrollPhysics(),
+                              padding: EdgeInsets.all(16.0),
+                              child: Column(
+                                children: [
+                                  _buildStatsCards(),
+                                  SizedBox(height: 20),
+                                  _buildInfoCards(),
+                                  SizedBox(height: 20),
+                                  _buildRecentSales(),
+                                  SizedBox(height: 20),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: _buildIngresosVsEgresosChart(),
+                                      ),
+                                      SizedBox(width: 20),
+                                      Expanded(
+                                        child: _buildTopProductosChart(),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ))
+                  : Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.security, size: 64, color: Colors.grey),
+                          SizedBox(height: 16),
+                          Text(
+                            'Acceso Restringido',
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            'No tienes permisos para acceder al dashboard.',
+                            style: TextStyle(fontSize: 16, color: Colors.grey),
+                            textAlign: TextAlign.center,
+                          ),
+                          SizedBox(height: 24),
+                          ElevatedButton(
+                            onPressed: () {
+                              Navigator.pushReplacementNamed(context, '/mesas');
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: primary,
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 32,
+                                vertical: 16,
+                              ),
+                            ),
+                            child: Text(
+                              'Ir a Mesas',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
             ),
@@ -560,178 +599,210 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
   }
 
   Widget _buildNavBar() {
+    final userProvider = Provider.of<UserProvider>(context);
+
     return Container(
       height: 60,
       color: cardBg,
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-        child: Row(
-          children: [
-            _buildNavItem(Icons.dashboard, 'Dashboard', 0, () {}),
-            _buildNavItem(Icons.inventory_2, 'Productos', 1, () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => ProductosScreen()),
-              );
-            }),
-            _buildDropdownNavItem(Icons.inventory_2_outlined, 'Inventario', 2, [
-              PopupMenuItem<String>(
-                value: 'inventario',
-                onTap: () {
-                  Future.delayed(Duration.zero, () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => InventarioScreen(),
-                      ),
-                    );
-                  });
-                },
-                child: Row(
-                  children: [
-                    Icon(Icons.inventory, color: primary, size: 18),
-                    SizedBox(width: 8),
-                    Text('General', style: TextStyle(color: textDark)),
-                  ],
-                ),
-              ),
-              PopupMenuItem<String>(
-                value: 'historial',
-                onTap: () {
-                  Future.delayed(Duration.zero, () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => HistorialInventarioScreen(),
-                      ),
-                    );
-                  });
-                },
-                child: Row(
-                  children: [
-                    Icon(Icons.history, color: Colors.blue, size: 18),
-                    SizedBox(width: 8),
-                    Text('Historial', style: TextStyle(color: textDark)),
-                  ],
-                ),
-              ),
-              PopupMenuItem<String>(
-                value: 'ingredientes',
-                onTap: () {
-                  Future.delayed(Duration.zero, () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => IngredientesScreen(),
-                      ),
-                    );
-                  });
-                },
-                child: Row(
-                  children: [
-                    Icon(Icons.restaurant_menu, color: Colors.green, size: 18),
-                    SizedBox(width: 8),
-                    Text('Ingredientes', style: TextStyle(color: textDark)),
-                  ],
-                ),
-              ),
-              PopupMenuItem<String>(
-                value: 'recetas',
-                onTap: () {
-                  Future.delayed(Duration.zero, () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => RecetasScreen()),
-                    );
-                  });
-                },
-                child: Row(
-                  children: [
-                    Icon(Icons.menu_book, color: Colors.orange, size: 18),
-                    SizedBox(width: 8),
-                    Text('Recetas', style: TextStyle(color: textDark)),
-                  ],
-                ),
-              ),
-              PopupMenuItem<String>(
-                value: 'proveedores',
-                onTap: () {
-                  Future.delayed(Duration.zero, () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => ProveedoresScreen(),
-                      ),
-                    );
-                  });
-                },
-                child: Row(
-                  children: [
-                    Icon(Icons.local_shipping, color: Colors.purple, size: 18),
-                    SizedBox(width: 8),
-                    Text('Proveedores', style: TextStyle(color: textDark)),
-                  ],
-                ),
-              ),
-              PopupMenuItem<String>(
-                value: 'unidades',
-                onTap: () {
-                  Future.delayed(Duration.zero, () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => UnidadesScreen()),
-                    );
-                  });
-                },
-                child: Row(
-                  children: [
-                    Icon(Icons.straighten, color: Colors.teal, size: 18),
-                    SizedBox(width: 8),
-                    Text('Unidades', style: TextStyle(color: textDark)),
-                  ],
-                ),
-              ),
-            ]),
-            _buildNavItem(Icons.category, 'Categorías', 3, () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => CategoriasScreen()),
-              );
-            }),
-            _buildNavItem(Icons.table_restaurant, 'Mesas', 4, () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => MesasScreen()),
-              );
-            }),
-            _buildNavItem(Icons.shopping_cart, 'Pedidos', 5, () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => PedidosScreenFusion()),
-              );
-            }),
-            _buildNavItem(Icons.bar_chart, 'Reportes', 6, () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => ReportesScreen()),
-              );
-            }),
-            _buildNavItem(Icons.description, 'Documentos', 7, () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => DocumentosScreen()),
-              );
-            }),
-            _buildNavItem(Icons.account_balance, 'Caja', 8, () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => CuadreCajaScreen()),
-              );
-            }),
-          ],
-        ),
+        child: Row(children: _buildNavItems(userProvider)),
       ),
     );
+  }
+
+  List<Widget> _buildNavItems(UserProvider userProvider) {
+    List<Widget> navItems = [];
+
+    // Dashboard - Solo para ADMIN y SUPERADMIN
+    if (userProvider.isAdmin) {
+      navItems.add(_buildNavItem(Icons.dashboard, 'Dashboard', 0, () {}));
+    }
+
+    // Mesas - Disponible para todos los roles
+    navItems.add(
+      _buildNavItem(Icons.table_restaurant, 'Mesas', 4, () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => MesasScreen()),
+        );
+      }),
+    );
+
+    // Pedidos - Disponible para todos los roles
+    navItems.add(
+      _buildNavItem(Icons.shopping_cart, 'Pedidos', 5, () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => PedidosScreenFusion()),
+        );
+      }),
+    );
+
+    // Los siguientes módulos solo para ADMIN y SUPERADMIN
+    if (userProvider.isAdmin) {
+      navItems.add(
+        _buildNavItem(Icons.inventory_2, 'Productos', 1, () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => ProductosScreen()),
+          );
+        }),
+      );
+
+      navItems.add(
+        _buildDropdownNavItem(Icons.inventory_2_outlined, 'Inventario', 2, [
+          PopupMenuItem<String>(
+            value: 'inventario',
+            onTap: () {
+              Future.delayed(Duration.zero, () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => InventarioScreen()),
+                );
+              });
+            },
+            child: Row(
+              children: [
+                Icon(Icons.inventory, color: primary, size: 18),
+                SizedBox(width: 8),
+                Text('General', style: TextStyle(color: textDark)),
+              ],
+            ),
+          ),
+          PopupMenuItem<String>(
+            value: 'historial',
+            onTap: () {
+              Future.delayed(Duration.zero, () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => HistorialInventarioScreen(),
+                  ),
+                );
+              });
+            },
+            child: Row(
+              children: [
+                Icon(Icons.history, color: Colors.blue, size: 18),
+                SizedBox(width: 8),
+                Text('Historial', style: TextStyle(color: textDark)),
+              ],
+            ),
+          ),
+          PopupMenuItem<String>(
+            value: 'ingredientes',
+            onTap: () {
+              Future.delayed(Duration.zero, () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => IngredientesScreen()),
+                );
+              });
+            },
+            child: Row(
+              children: [
+                Icon(Icons.restaurant_menu, color: Colors.green, size: 18),
+                SizedBox(width: 8),
+                Text('Ingredientes', style: TextStyle(color: textDark)),
+              ],
+            ),
+          ),
+          PopupMenuItem<String>(
+            value: 'recetas',
+            onTap: () {
+              Future.delayed(Duration.zero, () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => RecetasScreen()),
+                );
+              });
+            },
+            child: Row(
+              children: [
+                Icon(Icons.menu_book, color: Colors.orange, size: 18),
+                SizedBox(width: 8),
+                Text('Recetas', style: TextStyle(color: textDark)),
+              ],
+            ),
+          ),
+          PopupMenuItem<String>(
+            value: 'proveedores',
+            onTap: () {
+              Future.delayed(Duration.zero, () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => ProveedoresScreen()),
+                );
+              });
+            },
+            child: Row(
+              children: [
+                Icon(Icons.local_shipping, color: Colors.purple, size: 18),
+                SizedBox(width: 8),
+                Text('Proveedores', style: TextStyle(color: textDark)),
+              ],
+            ),
+          ),
+          PopupMenuItem<String>(
+            value: 'unidades',
+            onTap: () {
+              Future.delayed(Duration.zero, () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => UnidadesScreen()),
+                );
+              });
+            },
+            child: Row(
+              children: [
+                Icon(Icons.straighten, color: Colors.teal, size: 18),
+                SizedBox(width: 8),
+                Text('Unidades', style: TextStyle(color: textDark)),
+              ],
+            ),
+          ),
+        ]),
+      );
+
+      navItems.add(
+        _buildNavItem(Icons.category, 'Categorías', 3, () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => CategoriasScreen()),
+          );
+        }),
+      );
+
+      navItems.add(
+        _buildNavItem(Icons.bar_chart, 'Reportes', 6, () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => ReportesScreen()),
+          );
+        }),
+      );
+
+      navItems.add(
+        _buildNavItem(Icons.description, 'Documentos', 7, () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => DocumentosScreen()),
+          );
+        }),
+      );
+
+      navItems.add(
+        _buildNavItem(Icons.account_balance, 'Caja', 8, () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => CuadreCajaScreen()),
+          );
+        }),
+      );
+    }
+
+    return navItems;
   }
 
   Widget _buildNavItem(

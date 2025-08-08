@@ -52,12 +52,7 @@ class _GastosScreenState extends State<GastosScreen> {
   Gasto? _gastoEditando;
 
   // Opciones de forma de pago
-  final List<String> _formasPago = [
-    'Efectivo',
-    'Transferencia',
-    'Tarjeta',
-    'Cheque',
-  ];
+  final List<String> _formasPago = ['Efectivo', 'Transferencia', 'Cheque'];
 
   @override
   void initState() {

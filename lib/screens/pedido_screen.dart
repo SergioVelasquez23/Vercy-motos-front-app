@@ -10,6 +10,7 @@ import '../services/producto_service.dart';
 import '../services/mesa_service.dart';
 import '../services/pedido_service.dart';
 import '../services/inventario_service.dart';
+import '../services/documento_mesa_service.dart';
 import '../models/movimiento_inventario.dart';
 import '../models/inventario.dart';
 import '../providers/user_provider.dart';
@@ -27,6 +28,7 @@ class _PedidoScreenState extends State<PedidoScreen> {
   final ProductoService _productoService = ProductoService();
   final MesaService _mesaService = MesaService();
   final InventarioService _inventarioService = InventarioService();
+  final DocumentoMesaService _documentoService = DocumentoMesaService();
 
   List<Producto> productosMesa = [];
   List<Producto> productosDisponibles = [];
@@ -42,8 +44,16 @@ class _PedidoScreenState extends State<PedidoScreen> {
   String? errorMessage;
   String? clienteSeleccionado;
   TextEditingController busquedaController = TextEditingController();
+  TextEditingController clienteController = TextEditingController();
   String filtro = '';
   String? categoriaSelecionadaId;
+
+  // Variables para manejar pedido existente
+  Pedido? pedidoExistente;
+  bool esPedidoExistente = false;
+  List<Producto> productosOriginales =
+      []; // Productos que ya estaban en el pedido
+  int cantidadProductosOriginales = 0; // Cantidad de productos originales
 
   @override
   void initState() {
@@ -155,6 +165,61 @@ class _PedidoScreenState extends State<PedidoScreen> {
     List<String> ingredientesSeleccionados = [];
     TextEditingController notasController = TextEditingController();
 
+    print('🔍 DEBUGING INGREDIENTES para ${producto.nombre}:');
+    print('  - ingredientesDisponibles: ${producto.ingredientesDisponibles}');
+    print(
+      '  - ingredientesRequeridos: ${producto.ingredientesRequeridos.length} items',
+    );
+    for (var ingrediente in producto.ingredientesRequeridos) {
+      print(
+        '    * Requerido: ID="${ingrediente.ingredienteId}", Nombre="${ingrediente.ingredienteNombre}"',
+      );
+    }
+    print(
+      '  - ingredientesOpcionales: ${producto.ingredientesOpcionales.length} items',
+    );
+    for (var ingrediente in producto.ingredientesOpcionales) {
+      print(
+        '    * Opcional: ID="${ingrediente.ingredienteId}", Nombre="${ingrediente.ingredienteNombre}" (+\$${ingrediente.precioAdicional})',
+      );
+    }
+
+    // Crear lista combinada de todos los ingredientes disponibles
+    List<String> todosLosIngredientes = [];
+
+    // Agregar ingredientes básicos (lista simple)
+    todosLosIngredientes.addAll(producto.ingredientesDisponibles);
+
+    // Agregar ingredientes opcionales
+    for (var ingrediente in producto.ingredientesOpcionales) {
+      print(
+        '🔍 Procesando ingrediente opcional: ID="${ingrediente.ingredienteId}", Nombre="${ingrediente.ingredienteNombre}"',
+      );
+
+      String nombreConPrecio = ingrediente.ingredienteNombre;
+      if (ingrediente.precioAdicional > 0) {
+        nombreConPrecio +=
+            ' (+\$${ingrediente.precioAdicional.toStringAsFixed(0)})';
+      }
+
+      print('🔍 Nombre con precio generado: "$nombreConPrecio"');
+      todosLosIngredientes.add(nombreConPrecio);
+    }
+
+    // Agregar ingredientes requeridos (pero marcados como obligatorios)
+    for (var ingrediente in producto.ingredientesRequeridos) {
+      String nombreConIndicacion =
+          '${ingrediente.ingredienteNombre} (Requerido)';
+      todosLosIngredientes.add(nombreConIndicacion);
+      // Pre-seleccionar ingredientes requeridos
+      ingredientesSeleccionados.add(nombreConIndicacion);
+    }
+
+    print('📋 Total ingredientes para mostrar: ${todosLosIngredientes.length}');
+    for (var ingrediente in todosLosIngredientes) {
+      print('  - ${ingrediente}');
+    }
+
     final resultado = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (BuildContext context) {
@@ -181,26 +246,80 @@ class _PedidoScreenState extends State<PedidoScreen> {
                       ),
                       SizedBox(height: 16),
 
-                      // Lista de ingredientes disponibles
-                      ...producto.ingredientesDisponibles.map((ingrediente) {
-                        final bool isSelected = ingredientesSeleccionados
-                            .contains(ingrediente);
-                        return CheckboxListTile(
-                          title: Text(ingrediente),
-                          value: isSelected,
-                          onChanged: (bool? value) {
-                            setState(() {
-                              if (value == true) {
-                                ingredientesSeleccionados.add(ingrediente);
-                              } else {
-                                ingredientesSeleccionados.remove(ingrediente);
-                              }
-                            });
-                          },
-                          dense: true,
-                          contentPadding: EdgeInsets.zero,
-                        );
-                      }).toList(),
+                      // Mostrar información del producto si es combo
+                      if (producto.esCombo) ...[
+                        Container(
+                          padding: EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(
+                              color: Colors.blue.withOpacity(0.3),
+                            ),
+                          ),
+                          child: Text(
+                            'Producto tipo combo - Puedes personalizar los ingredientes',
+                            style: TextStyle(
+                              color: Colors.blue,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                        SizedBox(height: 12),
+                      ],
+
+                      // Lista de todos los ingredientes disponibles
+                      if (todosLosIngredientes.isEmpty)
+                        Container(
+                          padding: EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            'Este producto no tiene ingredientes configurados aún.\nContacta al administrador para configurarlos.',
+                            style: TextStyle(color: Colors.orange),
+                          ),
+                        )
+                      else
+                        ...todosLosIngredientes.map((ingrediente) {
+                          final bool isSelected = ingredientesSeleccionados
+                              .contains(ingrediente);
+                          final bool esRequerido = ingrediente.contains(
+                            '(Requerido)',
+                          );
+
+                          return CheckboxListTile(
+                            title: Text(
+                              ingrediente,
+                              style: TextStyle(
+                                fontWeight: esRequerido
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                                color: esRequerido ? Colors.blue : null,
+                              ),
+                            ),
+                            value: isSelected,
+                            onChanged: esRequerido
+                                ? null
+                                : (bool? value) {
+                                    setState(() {
+                                      if (value == true) {
+                                        ingredientesSeleccionados.add(
+                                          ingrediente,
+                                        );
+                                      } else {
+                                        ingredientesSeleccionados.remove(
+                                          ingrediente,
+                                        );
+                                      }
+                                    });
+                                  },
+                            dense: true,
+                            contentPadding: EdgeInsets.zero,
+                          );
+                        }).toList(),
 
                       SizedBox(height: 16),
 
@@ -240,7 +359,17 @@ class _PedidoScreenState extends State<PedidoScreen> {
                   child: Text('Cancelar'),
                 ),
                 ElevatedButton(
-                  onPressed: ingredientesSeleccionados.isEmpty
+                  onPressed: todosLosIngredientes.isEmpty
+                      ? () {
+                          // Si no hay ingredientes configurados, permitir continuar sin selección
+                          Navigator.of(context).pop({
+                            'ingredientes': <String>[],
+                            'notas': notasController.text.isNotEmpty
+                                ? notasController.text
+                                : null,
+                          });
+                        }
+                      : ingredientesSeleccionados.isEmpty
                       ? null
                       : () {
                           String notasFinales = '';
@@ -261,7 +390,11 @@ class _PedidoScreenState extends State<PedidoScreen> {
                             'notas': notasFinales,
                           });
                         },
-                  child: Text('Confirmar'),
+                  child: Text(
+                    todosLosIngredientes.isEmpty
+                        ? 'Continuar sin ingredientes'
+                        : 'Confirmar',
+                  ),
                 ),
               ],
             );
@@ -284,15 +417,90 @@ class _PedidoScreenState extends State<PedidoScreen> {
       final productos = await _productoService.getProductos();
       final categoriasData = await _productoService.getCategorias();
 
+      // Si la mesa está ocupada, intentar cargar el pedido activo existente
+      if (widget.mesa.ocupada) {
+        try {
+          print(
+            '🔍 Mesa ocupada detectada. Buscando pedido activo para: ${widget.mesa.nombre}',
+          );
+          final pedidosService = PedidoService();
+          final pedidosActivos = await pedidosService.getPedidosByMesa(
+            widget.mesa.nombre,
+          );
+
+          // Buscar el pedido activo (no pagado/cancelado)
+          final pedidoActivo = pedidosActivos
+              .where((p) => p.estado == EstadoPedido.activo)
+              .toList();
+
+          if (pedidoActivo.isNotEmpty) {
+            pedidoExistente = pedidoActivo.first;
+            esPedidoExistente = true;
+
+            // Cargar productos del pedido existente en la lista local
+            productosMesa = [];
+            for (var item in pedidoExistente!.items) {
+              if (item.producto != null) {
+                // Crear una copia del producto con la cantidad y notas del item
+                final productoParaMesa = Producto(
+                  id: item.producto!.id,
+                  nombre: item.producto!.nombre,
+                  precio: item.precio,
+                  costo: item.producto!.costo,
+                  utilidad: item.producto!.utilidad,
+                  descripcion: item.producto!.descripcion,
+                  categoria: item.producto!.categoria,
+                  tieneVariantes: item.producto!.tieneVariantes,
+                  ingredientesDisponibles: item.ingredientesSeleccionados,
+                  cantidad: item.cantidad,
+                  nota: item.notas,
+                );
+                productosMesa.add(productoParaMesa);
+              }
+            }
+
+            // Si el pedido existente tiene cliente, cargarlo
+            if (pedidoExistente!.cliente != null &&
+                pedidoExistente!.cliente!.isNotEmpty) {
+              clienteController.text = pedidoExistente!.cliente!;
+              clienteSeleccionado = pedidoExistente!.cliente!;
+            }
+
+            // Guardar referencia de productos originales para control de permisos
+            productosOriginales = List.from(productosMesa);
+            cantidadProductosOriginales = productosMesa.length;
+
+            print('✅ Pedido existente cargado. Items: ${productosMesa.length}');
+            print(
+              '📝 Productos originales guardados: ${productosOriginales.length}',
+            );
+          } else {
+            print('ℹ️ No se encontró pedido activo, creando nuevo pedido');
+            esPedidoExistente = false;
+
+            // Clone existing products from mesa for local editing (fallback)
+            if (widget.mesa.productos.isNotEmpty) {
+              productosMesa = List.from(widget.mesa.productos);
+            }
+          }
+        } catch (e) {
+          print('⚠️ Error cargando pedido existente: $e');
+          esPedidoExistente = false;
+
+          // Fallback: usar productos de la mesa
+          if (widget.mesa.productos.isNotEmpty) {
+            productosMesa = List.from(widget.mesa.productos);
+          }
+        }
+      } else {
+        print('ℹ️ Mesa disponible, creando nuevo pedido');
+        esPedidoExistente = false;
+        productosMesa = [];
+      }
+
       setState(() {
         productosDisponibles = productos;
         categorias = categoriasData;
-
-        // Clone existing products from mesa for local editing
-        if (widget.mesa.productos.isNotEmpty) {
-          productosMesa = List.from(widget.mesa.productos);
-        }
-
         isLoading = false;
       });
     } catch (e) {
@@ -308,8 +516,75 @@ class _PedidoScreenState extends State<PedidoScreen> {
     String? productoCarneId;
     List<String> ingredientesSeleccionados = [];
 
-    // Verificar si el producto tiene ingredientes disponibles
-    if (producto.ingredientesDisponibles.isNotEmpty) {
+    // Verificar si el producto tiene ingredientes disponibles para seleccionar
+    bool tieneIngredientesSeleccionables =
+        producto.ingredientesDisponibles.isNotEmpty ||
+        producto.ingredientesOpcionales.isNotEmpty ||
+        producto.ingredientesRequeridos.isNotEmpty;
+
+    // Si el producto indica que tiene ingredientes pero no los tiene cargados, intentar cargarlos
+    if (!tieneIngredientesSeleccionables &&
+        (producto.tieneIngredientes || producto.esCombo)) {
+      try {
+        print('🔄 Cargando ingredientes para producto: ${producto.nombre}');
+        print(
+          '🔍 Estado actual - ingredientesDisponibles: ${producto.ingredientesDisponibles}',
+        );
+        print(
+          '🔍 Estado actual - ingredientesRequeridos: ${producto.ingredientesRequeridos.length} items',
+        );
+        print(
+          '🔍 Estado actual - ingredientesOpcionales: ${producto.ingredientesOpcionales.length} items',
+        );
+
+        // Intentar cargar tanto ingredientes requeridos como opcionales
+        final ingredientesRequeridos = await _productoService
+            .getIngredientesRequeridosCombo(producto.id);
+
+        final ingredientesOpcionales = await _productoService
+            .getIngredientesOpcionalesCombo(producto.id);
+
+        print(
+          '🔍 Ingredientes cargados - requeridos: ${ingredientesRequeridos.length}',
+        );
+        print(
+          '🔍 Ingredientes cargados - opcionales: ${ingredientesOpcionales.length}',
+        );
+
+        // Debug de ingredientes cargados
+        print('🔍 INGREDIENTES REQUERIDOS CARGADOS:');
+        for (var ing in ingredientesRequeridos) {
+          print(
+            '  - ID: "${ing.ingredienteId}", Nombre: "${ing.ingredienteNombre}"',
+          );
+        }
+
+        print('🔍 INGREDIENTES OPCIONALES CARGADOS:');
+        for (var ing in ingredientesOpcionales) {
+          print(
+            '  - ID: "${ing.ingredienteId}", Nombre: "${ing.ingredienteNombre}"',
+          );
+        }
+
+        if (ingredientesRequeridos.isNotEmpty ||
+            ingredientesOpcionales.isNotEmpty) {
+          // Crear un producto actualizado con los ingredientes cargados
+          final productoConIngredientes = producto.copyWith(
+            ingredientesRequeridos: ingredientesRequeridos,
+            ingredientesOpcionales: ingredientesOpcionales,
+          );
+
+          print('✅ Producto actualizado con ingredientes, reintentando...');
+          // Usar el producto actualizado para el resto del proceso
+          return _agregarProducto(productoConIngredientes);
+        }
+      } catch (e) {
+        print('⚠️ Error cargando ingredientes: $e');
+        // Continuar sin ingredientes si hay error
+      }
+    }
+
+    if (tieneIngredientesSeleccionables) {
       // Mostrar diálogo de selección de ingredientes
       final resultadoIngredientes = await _mostrarDialogoSeleccionIngredientes(
         producto,
@@ -575,6 +850,24 @@ class _PedidoScreenState extends State<PedidoScreen> {
         return;
       }
 
+      String? clienteFinal = clienteSeleccionado;
+
+      // Si es un domicilio y no hay cliente, pedir el lugar de destino
+      if (widget.mesa.nombre.toUpperCase() == 'DOMICILIO' &&
+          (clienteSeleccionado == null || clienteSeleccionado!.isEmpty)) {
+        final lugarDomicilio = await _pedirLugarDomicilio();
+
+        if (lugarDomicilio == null || lugarDomicilio.isEmpty) {
+          // El usuario canceló
+          setState(() {
+            isLoading = false;
+          });
+          return;
+        }
+
+        clienteFinal = lugarDomicilio;
+      }
+
       // Crear los items del pedido
       List<ItemPedido> items = productosMesa.map((producto) {
         return ItemPedido(
@@ -597,39 +890,103 @@ class _PedidoScreenState extends State<PedidoScreen> {
       final userProvider = Provider.of<UserProvider>(context, listen: false);
       final meseroActual = userProvider.userName ?? 'Usuario Desconocido';
 
-      // Crear el pedido (siempre como pedido normal)
-      final pedido = Pedido(
-        id: '',
-        fecha: DateTime.now(),
-        tipo: TipoPedido.normal,
-        mesa: widget.mesa.nombre,
-        mesero: meseroActual,
-        items: items,
-        total: total,
-        estado: EstadoPedido.activo,
-        cliente: clienteSeleccionado,
-      );
+      // Determinar el tipo de pedido basado en la mesa
+      TipoPedido tipoPedido = TipoPedido.normal;
+      if (widget.mesa.nombre.toUpperCase() == 'DOMICILIO') {
+        tipoPedido = TipoPedido.domicilio;
+      }
 
-      // Crear el pedido en el backend
-      final pedidoCreado = await PedidoService().createPedido(pedido);
+      Pedido pedidoFinal;
+
+      if (esPedidoExistente && pedidoExistente != null) {
+        // ACTUALIZAR PEDIDO EXISTENTE
+        print('🔄 Actualizando pedido existente: ${pedidoExistente!.id}');
+
+        final pedidoActualizado = Pedido(
+          id: pedidoExistente!.id, // Mantener el ID existente
+          fecha: pedidoExistente!.fecha, // Mantener la fecha original
+          tipo: pedidoExistente!.tipo, // Mantener el tipo original
+          mesa: widget.mesa.nombre,
+          mesero: pedidoExistente!.mesero, // Mantener el mesero original
+          items: items,
+          total: total,
+          estado: EstadoPedido.activo,
+          cliente:
+              clienteFinal ??
+              pedidoExistente!
+                  .cliente, // Usar cliente existente si no hay uno nuevo
+        );
+
+        // Actualizar el pedido en el backend
+        pedidoFinal = await PedidoService().updatePedido(pedidoActualizado);
+
+        print('✅ Pedido actualizado correctamente');
+      } else {
+        // CREAR NUEVO PEDIDO
+        print('🆕 Creando nuevo pedido para mesa: ${widget.mesa.nombre}');
+
+        final nuevoPedido = Pedido(
+          id: '',
+          fecha: DateTime.now(),
+          tipo: tipoPedido,
+          mesa: widget.mesa.nombre,
+          mesero: meseroActual,
+          items: items,
+          total: total,
+          estado: EstadoPedido.activo,
+          cliente: clienteFinal,
+        );
+
+        // Crear el pedido en el backend
+        pedidoFinal = await PedidoService().createPedido(nuevoPedido);
+
+        print('✅ Nuevo pedido creado correctamente');
+      }
 
       // Descontar productos de carne del inventario si existen
       await _descontarCarnesDelInventario();
 
-      // Actualizar la mesa para marcarla como ocupada
-      widget.mesa.ocupada = true;
-      widget.mesa.total = total;
-      await _mesaService.updateMesa(widget.mesa);
-
-      // Mostrar mensaje de éxito
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Pedido #${pedidoCreado.id} guardado exitosamente - Total: \$${total.toStringAsFixed(0)}',
-          ),
-          backgroundColor: Colors.green,
-        ),
+      // Verificar si es una mesa especial
+      final mesasEspeciales = ['DOMICILIO', 'CAJA', 'MESA AUXILIAR'];
+      bool esMesaEspecial = mesasEspeciales.contains(
+        widget.mesa.nombre.toUpperCase(),
       );
+
+      if (esMesaEspecial) {
+        // Para mesas especiales, crear un documento
+        try {
+          final documento = await _documentoService.crearDocumento(
+            mesaNombre: widget.mesa.nombre,
+            vendedor: meseroActual,
+            pedidosIds: [pedidoFinal.id], // Pasar como lista de IDs
+          );
+
+          if (documento != null) {
+            // Mostrar mensaje específico para mesas especiales
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Documento #${documento.numeroDocumento} creado para ${widget.mesa.nombre}${clienteSeleccionado != null ? ' - Cliente: $clienteSeleccionado' : ''} - Total: \$${total.toStringAsFixed(0)}',
+                ),
+                backgroundColor: Colors.green,
+              ),
+            );
+          } else {
+            throw Exception('No se pudo crear el documento');
+          }
+        } catch (e) {
+          print('Error creando documento para mesa especial: $e');
+          // Mostrar el mensaje normal si falla la creación del documento
+          _mostrarMensajeExito(pedidoFinal.id, total);
+        }
+      } else {
+        // Para mesas normales, actualizar el estado de la mesa
+        widget.mesa.ocupada = true;
+        widget.mesa.total = total;
+        await _mesaService.updateMesa(widget.mesa);
+
+        _mostrarMensajeExito(pedidoFinal.id, total);
+      }
 
       // Regresar a la pantalla anterior y notificar que se actualizó
       Navigator.pop(context, true);
@@ -647,6 +1004,17 @@ class _PedidoScreenState extends State<PedidoScreen> {
     }
   }
 
+  void _mostrarMensajeExito(String pedidoId, double total) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Pedido #$pedidoId guardado exitosamente - Total: \$${total.toStringAsFixed(0)}',
+        ),
+        backgroundColor: Colors.green,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final Color primary = Color(0xFFFF6B00);
@@ -656,7 +1024,7 @@ class _PedidoScreenState extends State<PedidoScreen> {
       backgroundColor: bgDark,
       appBar: AppBar(
         title: Text(
-          '${widget.mesa.nombre} - Pedido',
+          '${widget.mesa.nombre} - ${esPedidoExistente ? 'Agregar productos' : 'Nuevo pedido'}',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         backgroundColor: primary,
@@ -668,7 +1036,10 @@ class _PedidoScreenState extends State<PedidoScreen> {
           TextButton.icon(
             onPressed: isLoading ? null : () => _guardarPedido(),
             icon: Icon(Icons.save, color: Colors.white),
-            label: Text('Guardar', style: TextStyle(color: Colors.white)),
+            label: Text(
+              esPedidoExistente ? 'Actualizar' : 'Guardar',
+              style: TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -753,6 +1124,42 @@ class _PedidoScreenState extends State<PedidoScreen> {
           ),
         ),
 
+        // Campo del cliente para mesas especiales
+        if ([
+          'DOMICILIO',
+          'CAJA',
+          'MESA AUXILIAR',
+        ].contains(widget.mesa.nombre.toUpperCase()))
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: TextField(
+              controller: clienteController,
+              style: TextStyle(color: textLight),
+              decoration: InputDecoration(
+                hintText: 'Nombre del cliente...',
+                hintStyle: TextStyle(color: textLight.withOpacity(0.5)),
+                prefixIcon: Icon(Icons.person, color: primary),
+                filled: true,
+                fillColor: cardBg,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide.none,
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(color: primary),
+                ),
+              ),
+              onChanged: (value) {
+                setState(() {
+                  clienteSeleccionado = value.trim().isNotEmpty
+                      ? value.trim()
+                      : null;
+                });
+              },
+            ),
+          ),
+
         // Filtro de categorías
         Container(
           height: 50,
@@ -826,13 +1233,58 @@ class _PedidoScreenState extends State<PedidoScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Productos en el pedido:',
-                  style: TextStyle(
-                    color: textLight,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Productos en el pedido:',
+                        style: TextStyle(
+                          color: textLight,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    // Mensaje informativo para usuarios no admin con pedidos existentes
+                    if (!Provider.of<UserProvider>(
+                          context,
+                          listen: false,
+                        ).isAdmin &&
+                        esPedidoExistente &&
+                        cantidadProductosOriginales > 0)
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Colors.blue.withOpacity(0.3),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.info_outline,
+                              color: Colors.blue,
+                              size: 16,
+                            ),
+                            SizedBox(width: 4),
+                            Text(
+                              'Productos guardados no se pueden eliminar. Los nuevos sí.',
+                              style: TextStyle(
+                                color: Colors.blue,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
                 ),
                 SizedBox(height: 8),
                 ...productosMesa.map(
@@ -1020,6 +1472,33 @@ class _PedidoScreenState extends State<PedidoScreen> {
   Widget _buildProductoEnPedido(Producto producto) {
     final Color textLight = Color(0xFFE0E0E0);
     final Color primary = Color(0xFFFF6B00);
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+
+    // Determinar si este producto puede ser eliminado
+    bool puedeEliminar = userProvider.isAdmin;
+    bool esProductoOriginal = false;
+
+    // Si no es admin y es un pedido existente, verificar si el producto era original
+    if (!userProvider.isAdmin && esPedidoExistente) {
+      // Encontrar el índice de este producto en la lista actual
+      int indexActual = productosMesa.indexOf(producto);
+
+      // Si el índice es menor que la cantidad de productos originales, era un producto original
+      if (indexActual >= 0 && indexActual < cantidadProductosOriginales) {
+        puedeEliminar = false;
+        esProductoOriginal = true;
+        print(
+          '🔒 Producto ${producto.nombre} es ORIGINAL (índice: $indexActual < $cantidadProductosOriginales) - NO se puede eliminar',
+        );
+      } else {
+        // Es un producto nuevo agregado en esta sesión, sí se puede eliminar
+        puedeEliminar = true;
+        esProductoOriginal = false;
+        print(
+          '✅ Producto ${producto.nombre} es NUEVO (índice: $indexActual >= $cantidadProductosOriginales) - SÍ se puede eliminar',
+        );
+      }
+    }
 
     // Inicializar el estado de pago si no existe
     productoPagado.putIfAbsent(producto.id, () => true);
@@ -1028,31 +1507,90 @@ class _PedidoScreenState extends State<PedidoScreen> {
       padding: EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          // Switch para controlar estado activo/pagado
-          Switch(
-            value: productoPagado[producto.id]!,
-            onChanged: (bool value) {
-              setState(() {
-                productoPagado[producto.id] = value;
-              });
-            },
-            activeColor: primary,
-          ),
+          // Switch para controlar estado activo/pagado (solo admins)
+          if (userProvider.isAdmin)
+            Switch(
+              value: productoPagado[producto.id]!,
+              onChanged: (bool value) {
+                setState(() {
+                  productoPagado[producto.id] = value;
+                });
+              },
+              activeColor: primary,
+            )
+          else
+            SizedBox(width: 50), // Espacio reservado para mantener alineación
+
           Expanded(
             flex: 2,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  producto.nombre,
-                  style: TextStyle(
-                    color: productoPagado[producto.id]!
-                        ? textLight
-                        : textLight.withOpacity(0.5),
-                    decoration: productoPagado[producto.id]!
-                        ? null
-                        : TextDecoration.lineThrough,
-                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        producto.nombre,
+                        style: TextStyle(
+                          color: productoPagado[producto.id]!
+                              ? textLight
+                              : textLight.withOpacity(0.5),
+                          decoration: productoPagado[producto.id]!
+                              ? null
+                              : TextDecoration.lineThrough,
+                        ),
+                      ),
+                    ),
+                    // Indicadores visuales para productos según su estado
+                    if (!userProvider.isAdmin && esPedidoExistente) ...[
+                      if (esProductoOriginal)
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          margin: EdgeInsets.only(left: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: Colors.blue.withOpacity(0.3),
+                            ),
+                          ),
+                          child: Text(
+                            'Guardado',
+                            style: TextStyle(
+                              color: Colors.blue,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        )
+                      else
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          margin: EdgeInsets.only(left: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: Colors.orange.withOpacity(0.3),
+                            ),
+                          ),
+                          child: Text(
+                            'Nuevo',
+                            style: TextStyle(
+                              color: Colors.orange,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ],
                 ),
                 if (producto.nota != null && producto.nota!.isNotEmpty)
                   Text(
@@ -1075,11 +1613,11 @@ class _PedidoScreenState extends State<PedidoScreen> {
                 IconButton(
                   icon: Icon(
                     Icons.remove_circle,
-                    color: productoPagado[producto.id]!
+                    color: (productoPagado[producto.id]! && puedeEliminar)
                         ? Colors.red
-                        : Colors.red.withOpacity(0.5),
+                        : Colors.grey.withOpacity(0.3),
                   ),
-                  onPressed: productoPagado[producto.id]!
+                  onPressed: (productoPagado[producto.id]! && puedeEliminar)
                       ? () => _eliminarProducto(producto)
                       : null,
                   iconSize: 20,
@@ -1127,6 +1665,89 @@ class _PedidoScreenState extends State<PedidoScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Future<String?> _pedirLugarDomicilio() async {
+    final TextEditingController nombreController = TextEditingController();
+
+    return await showDialog<String>(
+      context: context,
+      barrierDismissible: false, // No permitir cerrar tocando fuera
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Color(0xFF252525),
+          title: Text(
+            'Lugar de Domicilio',
+            style: TextStyle(color: Color(0xFFE0E0E0), fontSize: 18),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Ingresa el lugar de destino para este domicilio:',
+                style: TextStyle(color: Color(0xFFE0E0E0).withOpacity(0.8)),
+              ),
+              SizedBox(height: 16),
+              TextField(
+                controller: nombreController,
+                style: TextStyle(color: Color(0xFFE0E0E0)),
+                autofocus: true,
+                decoration: InputDecoration(
+                  hintText: 'Ej: Casa Juan, Oficina ABC, Calle 123...',
+                  hintStyle: TextStyle(
+                    color: Color(0xFFE0E0E0).withOpacity(0.5),
+                  ),
+                  filled: true,
+                  fillColor: Color(0xFF252525).withOpacity(0.8),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(
+                      color: Color(0xFFFF6B00).withOpacity(0.3),
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Color(0xFFFF6B00), width: 2),
+                  ),
+                  prefixIcon: Icon(Icons.location_on, color: Color(0xFFFF6B00)),
+                ),
+                maxLength: 50,
+                textCapitalization: TextCapitalization.words,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(null),
+              child: Text(
+                'Cancelar',
+                style: TextStyle(color: Color(0xFFE0E0E0).withOpacity(0.7)),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final texto = nombreController.text.trim();
+                if (texto.isNotEmpty) {
+                  Navigator.of(context).pop(texto);
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Por favor ingresa un lugar de destino'),
+                      backgroundColor: Colors.orange,
+                    ),
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Color(0xFFFF6B00),
+                foregroundColor: Colors.white,
+              ),
+              child: Text('Continuar'),
+            ),
+          ],
+        );
+      },
     );
   }
 }

@@ -157,8 +157,23 @@ class _LoginScreenState extends State<LoginScreen> {
             await userProvider.setToken(token);
             print('✅ Token guardado en UserProvider');
 
-            // Redirigir al dashboard
-            Navigator.pushReplacementNamed(context, '/dashboard');
+            // Esperar un poco para que se procesen los roles del JWT
+            await Future.delayed(Duration(milliseconds: 100));
+
+            // Verificar roles nuevamente después del delay
+            print('👤 Verificación final de roles:');
+            print('👤 isMesero: ${userProvider.isMesero}');
+            print('👤 isAdmin: ${userProvider.isAdmin}');
+            print('👤 roles: ${userProvider.roles}');
+
+            // Redirigir según el rol del usuario
+            if (userProvider.isMesero && !userProvider.isAdmin) {
+              print('👤 ✅ Usuario es mesero, redirigiendo a mesas');
+              Navigator.pushReplacementNamed(context, '/mesas');
+            } else {
+              print('👤 ✅ Usuario es admin, redirigiendo a dashboard');
+              Navigator.pushReplacementNamed(context, '/dashboard');
+            }
           } catch (e) {
             print('❌ Error procesando login: $e');
             setState(() {
@@ -194,7 +209,24 @@ class _LoginScreenState extends State<LoginScreen> {
       if (response != null && response['token'] != null) {
         // Update the UserProvider with token instead of just saving it
         await userProvider.setToken(response['token']);
-        Navigator.pushReplacementNamed(context, '/dashboard');
+
+        // Esperar un poco para que se procesen los roles del JWT
+        await Future.delayed(Duration(milliseconds: 100));
+
+        // Verificar roles nuevamente después del delay
+        print('👤 Verificación final de roles en validación código:');
+        print('👤 isMesero: ${userProvider.isMesero}');
+        print('👤 isAdmin: ${userProvider.isAdmin}');
+        print('👤 roles: ${userProvider.roles}');
+
+        // Redirigir según el rol del usuario
+        if (userProvider.isMesero && !userProvider.isAdmin) {
+          print('👤 ✅ Usuario es mesero, redirigiendo a mesas');
+          Navigator.pushReplacementNamed(context, '/mesas');
+        } else {
+          print('👤 ✅ Usuario es admin, redirigiendo a dashboard');
+          Navigator.pushReplacementNamed(context, '/dashboard');
+        }
       } else {
         setState(() {
           errorMessage = 'Código incorrecto o expirado.';

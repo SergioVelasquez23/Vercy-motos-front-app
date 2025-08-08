@@ -373,173 +373,187 @@ class _InventarioScreenState extends State<InventarioScreen>
                     style: TextStyle(color: textDark),
                   ),
                 )
-              : SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: DataTable(
-                    headingRowColor: MaterialStateProperty.all(
-                      cardBg.withOpacity(0.7),
-                    ),
-                    dataRowColor: MaterialStateProperty.all(
-                      cardBg.withOpacity(0.3),
-                    ),
-                    columns: [
-                      DataColumn(
-                        label: Text(
-                          'Negocio',
-                          style: TextStyle(color: textDark),
-                        ),
-                      ),
-                      DataColumn(
-                        label: Text(
-                          'Categoría',
-                          style: TextStyle(color: textDark),
-                        ),
-                      ),
-                      DataColumn(
-                        label: Text(
-                          'Nombre',
-                          style: TextStyle(color: textDark),
-                        ),
-                      ),
-                      DataColumn(
-                        label: Text(
-                          'Unidad',
-                          style: TextStyle(color: textDark),
-                        ),
-                      ),
-                      DataColumn(
-                        label: Text(
-                          'Precio de compra',
-                          style: TextStyle(color: textDark),
-                        ),
-                      ),
-                      DataColumn(
-                        label: Text(
-                          'Costo Promedio',
-                          style: TextStyle(color: textDark),
-                        ),
-                      ),
-                      DataColumn(
-                        label: Text(
-                          'Cantidad actual',
-                          style: TextStyle(color: textDark),
-                        ),
-                      ),
-                      DataColumn(
-                        label: Text(
-                          'Stock mínimo',
-                          style: TextStyle(color: textDark),
-                        ),
-                      ),
-                      DataColumn(
-                        label: Text(
-                          'Total Precio de Compra',
-                          style: TextStyle(color: textDark),
-                        ),
-                      ),
-                      DataColumn(
-                        label: Text(
-                          'Total Costo Promedio',
-                          style: TextStyle(color: textDark),
-                        ),
-                      ),
-                    ],
-                    rows: _inventarioItemsFiltrados.map((item) {
-                      // Verificar si el stock está por debajo del umbral mínimo configurado o del stock mínimo del producto
-                      bool esStockBajo =
-                          item.stockActual <= item.stockMinimo ||
-                          item.stockActual <= kStockBajoUmbral;
-
-                      // Calcular totales
-                      double totalPrecioCompra =
-                          item.precioCompra * item.stockActual;
-
-                      return DataRow(
-                        cells: [
-                          DataCell(
-                            Text(
-                              'Sopa y Carbon',
-                              style: TextStyle(color: textDark),
+              : Scrollbar(
+                  thumbVisibility: true,
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.vertical,
+                    child: Container(
+                      width: double.infinity,
+                      child: Scrollbar(
+                        thumbVisibility: true,
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: DataTable(
+                            headingRowColor: MaterialStateProperty.all(
+                              cardBg.withOpacity(0.7),
                             ),
-                          ),
-                          DataCell(
-                            Text(
-                              item.categoria,
-                              style: TextStyle(color: textDark),
+                            dataRowColor: MaterialStateProperty.all(
+                              cardBg.withOpacity(0.3),
                             ),
-                          ),
-                          DataCell(
-                            Text(
-                              item.nombre,
-                              style: TextStyle(color: textDark),
-                            ),
-                          ),
-                          DataCell(
-                            Text(
-                              item.unidad,
-                              style: TextStyle(color: textDark),
-                            ),
-                          ),
-                          DataCell(
-                            Text(
-                              NumberFormat.currency(
-                                symbol: '',
-                                decimalDigits: 2,
-                              ).format(item.precioCompra),
-                              style: TextStyle(color: textDark),
-                            ),
-                          ),
-                          DataCell(
-                            Text(
-                              NumberFormat.currency(
-                                symbol: '',
-                                decimalDigits: 2,
-                              ).format(
-                                item.precioCompra,
-                              ), // Using precioCompra since costoPromedio isn't available
-                              style: TextStyle(color: textDark),
-                            ),
-                          ),
-                          DataCell(
-                            Text(
-                              item.stockActual.toString(),
-                              style: TextStyle(
-                                color: esStockBajo ? Colors.red : textDark,
-                                fontWeight: esStockBajo
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
+                            columns: [
+                              DataColumn(
+                                label: Text(
+                                  'Negocio',
+                                  style: TextStyle(color: textDark),
+                                ),
                               ),
-                            ),
+                              DataColumn(
+                                label: Text(
+                                  'Categoría',
+                                  style: TextStyle(color: textDark),
+                                ),
+                              ),
+                              DataColumn(
+                                label: Text(
+                                  'Nombre',
+                                  style: TextStyle(color: textDark),
+                                ),
+                              ),
+                              DataColumn(
+                                label: Text(
+                                  'Unidad',
+                                  style: TextStyle(color: textDark),
+                                ),
+                              ),
+                              DataColumn(
+                                label: Text(
+                                  'Precio de compra',
+                                  style: TextStyle(color: textDark),
+                                ),
+                              ),
+                              DataColumn(
+                                label: Text(
+                                  'Costo Promedio',
+                                  style: TextStyle(color: textDark),
+                                ),
+                              ),
+                              DataColumn(
+                                label: Text(
+                                  'Cantidad actual',
+                                  style: TextStyle(color: textDark),
+                                ),
+                              ),
+                              DataColumn(
+                                label: Text(
+                                  'Stock mínimo',
+                                  style: TextStyle(color: textDark),
+                                ),
+                              ),
+                              DataColumn(
+                                label: Text(
+                                  'Total Precio de Compra',
+                                  style: TextStyle(color: textDark),
+                                ),
+                              ),
+                              DataColumn(
+                                label: Text(
+                                  'Total Costo Promedio',
+                                  style: TextStyle(color: textDark),
+                                ),
+                              ),
+                            ],
+                            rows: _inventarioItemsFiltrados.map((item) {
+                              // Verificar si el stock está por debajo del umbral mínimo configurado o del stock mínimo del producto
+                              bool esStockBajo =
+                                  item.stockActual <= item.stockMinimo ||
+                                  item.stockActual <= kStockBajoUmbral;
+
+                              // Calcular totales
+                              double totalPrecioCompra =
+                                  item.precioCompra * item.stockActual;
+
+                              return DataRow(
+                                cells: [
+                                  DataCell(
+                                    Text(
+                                      'Sopa y Carbon',
+                                      style: TextStyle(color: textDark),
+                                    ),
+                                  ),
+                                  DataCell(
+                                    Text(
+                                      item.categoria,
+                                      style: TextStyle(color: textDark),
+                                    ),
+                                  ),
+                                  DataCell(
+                                    Text(
+                                      item.nombre,
+                                      style: TextStyle(color: textDark),
+                                    ),
+                                  ),
+                                  DataCell(
+                                    Text(
+                                      item.unidad,
+                                      style: TextStyle(color: textDark),
+                                    ),
+                                  ),
+                                  DataCell(
+                                    Text(
+                                      NumberFormat.currency(
+                                        symbol: '',
+                                        decimalDigits: 2,
+                                      ).format(item.precioCompra),
+                                      style: TextStyle(color: textDark),
+                                    ),
+                                  ),
+                                  DataCell(
+                                    Text(
+                                      NumberFormat.currency(
+                                        symbol: '',
+                                        decimalDigits: 2,
+                                      ).format(
+                                        item.precioCompra,
+                                      ), // Using precioCompra since costoPromedio isn't available
+                                      style: TextStyle(color: textDark),
+                                    ),
+                                  ),
+                                  DataCell(
+                                    Text(
+                                      item.stockActual.toString(),
+                                      style: TextStyle(
+                                        color: esStockBajo
+                                            ? Colors.red
+                                            : textDark,
+                                        fontWeight: esStockBajo
+                                            ? FontWeight.bold
+                                            : FontWeight.normal,
+                                      ),
+                                    ),
+                                  ),
+                                  DataCell(
+                                    Text(
+                                      item.stockMinimo.toString(),
+                                      style: TextStyle(color: textDark),
+                                    ),
+                                  ),
+                                  DataCell(
+                                    Text(
+                                      NumberFormat.currency(
+                                        symbol: '',
+                                        decimalDigits: 2,
+                                      ).format(totalPrecioCompra),
+                                      style: TextStyle(color: textDark),
+                                    ),
+                                  ),
+                                  DataCell(
+                                    Text(
+                                      NumberFormat.currency(
+                                        symbol: '',
+                                        decimalDigits: 2,
+                                      ).format(
+                                        totalPrecioCompra,
+                                      ), // Using totalPrecioCompra since totalCostoPromedio isn't available
+                                      style: TextStyle(color: textDark),
+                                    ),
+                                  ),
+                                ],
+                              );
+                            }).toList(),
                           ),
-                          DataCell(
-                            Text(
-                              item.stockMinimo.toString(),
-                              style: TextStyle(color: textDark),
-                            ),
-                          ),
-                          DataCell(
-                            Text(
-                              NumberFormat.currency(
-                                symbol: '',
-                                decimalDigits: 2,
-                              ).format(totalPrecioCompra),
-                              style: TextStyle(color: textDark),
-                            ),
-                          ),
-                          DataCell(
-                            Text(
-                              NumberFormat.currency(
-                                symbol: '',
-                                decimalDigits: 2,
-                              ).format(
-                                totalPrecioCompra,
-                              ), // Using totalPrecioCompra since totalCostoPromedio isn't available
-                              style: TextStyle(color: textDark),
-                            ),
-                          ),
-                        ],
-                      );
-                    }).toList(),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
         ),
@@ -686,128 +700,152 @@ class _InventarioScreenState extends State<InventarioScreen>
                     style: TextStyle(color: textDark),
                   ),
                 )
-              : SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: DataTable(
-                    headingRowColor: MaterialStateProperty.all(
-                      cardBg.withOpacity(0.7),
-                    ),
-                    dataRowColor: MaterialStateProperty.all(
-                      cardBg.withOpacity(0.3),
-                    ),
-                    columns: [
-                      DataColumn(
-                        label: Text(
-                          'Fecha Movimiento',
-                          style: TextStyle(color: textDark),
-                        ),
-                      ),
-                      DataColumn(
-                        label: Text(
-                          'Fecha Creación',
-                          style: TextStyle(color: textDark),
-                        ),
-                      ),
-                      DataColumn(
-                        label: Text('Tipo', style: TextStyle(color: textDark)),
-                      ),
-                      DataColumn(
-                        label: Text('Total', style: TextStyle(color: textDark)),
-                      ),
-                      DataColumn(
-                        label: Text(
-                          'Proveedor',
-                          style: TextStyle(color: textDark),
-                        ),
-                      ),
-                      DataColumn(
-                        label: Text(
-                          'Fact. No.',
-                          style: TextStyle(color: textDark),
-                        ),
-                      ),
-                      DataColumn(
-                        label: Text(
-                          'Acciones',
-                          style: TextStyle(color: textDark),
-                        ),
-                      ),
-                    ],
-                    rows: _movimientosFiltrados.map((movimiento) {
-                      bool esEntrada = movimiento.tipoMovimiento
-                          .toLowerCase()
-                          .contains('entrada');
-                      return DataRow(
-                        cells: [
-                          DataCell(
-                            Text(
-                              DateFormat(
-                                'yyyy-MM-dd HH:mm:ss',
-                              ).format(movimiento.fecha),
-                              style: TextStyle(color: textDark),
+              : Scrollbar(
+                  thumbVisibility: true,
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.vertical,
+                    child: Container(
+                      width: double.infinity,
+                      child: Scrollbar(
+                        thumbVisibility: true,
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: DataTable(
+                            headingRowColor: MaterialStateProperty.all(
+                              cardBg.withOpacity(0.7),
                             ),
-                          ),
-                          DataCell(
-                            Text(
-                              DateFormat(
-                                'yyyy-MM-dd HH:mm:ss',
-                              ).format(movimiento.fecha),
-                              style: TextStyle(color: textDark),
+                            dataRowColor: MaterialStateProperty.all(
+                              cardBg.withOpacity(0.3),
                             ),
-                          ),
-                          DataCell(
-                            Text(
-                              movimiento.tipoMovimiento,
-                              style: TextStyle(color: textDark),
-                            ),
-                          ),
-                          DataCell(
-                            Text(
-                              NumberFormat.currency(
-                                symbol: '',
-                                decimalDigits: 2,
-                              ).format(movimiento.valorMovimiento),
-                              style: TextStyle(
-                                color: esEntrada
-                                    ? Colors.green[300]
-                                    : Colors.red[300],
+                            columns: [
+                              DataColumn(
+                                label: Text(
+                                  'Fecha Movimiento',
+                                  style: TextStyle(color: textDark),
+                                ),
                               ),
-                            ),
-                          ),
-                          DataCell(
-                            Text(
-                              movimiento.proveedor ?? 'N/A',
-                              style: TextStyle(color: textDark),
-                            ),
-                          ),
-                          DataCell(
-                            Text(
-                              movimiento.facturaNo ?? 'N/A',
-                              style: TextStyle(color: textDark),
-                            ),
-                          ),
-                          DataCell(
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(
-                                  icon: Icon(Icons.edit, color: primary),
-                                  onPressed: () {
-                                    // Ver detalles o editar movimiento
-                                  },
+                              DataColumn(
+                                label: Text(
+                                  'Fecha Creación',
+                                  style: TextStyle(color: textDark),
                                 ),
-                                IconButton(
-                                  icon: Icon(Icons.delete, color: Colors.red),
-                                  onPressed: () {
-                                    // Eliminar movimiento
-                                  },
+                              ),
+                              DataColumn(
+                                label: Text(
+                                  'Tipo',
+                                  style: TextStyle(color: textDark),
                                 ),
-                              ],
-                            ),
+                              ),
+                              DataColumn(
+                                label: Text(
+                                  'Total',
+                                  style: TextStyle(color: textDark),
+                                ),
+                              ),
+                              DataColumn(
+                                label: Text(
+                                  'Proveedor',
+                                  style: TextStyle(color: textDark),
+                                ),
+                              ),
+                              DataColumn(
+                                label: Text(
+                                  'Fact. No.',
+                                  style: TextStyle(color: textDark),
+                                ),
+                              ),
+                              DataColumn(
+                                label: Text(
+                                  'Acciones',
+                                  style: TextStyle(color: textDark),
+                                ),
+                              ),
+                            ],
+                            rows: _movimientosFiltrados.map((movimiento) {
+                              bool esEntrada = movimiento.tipoMovimiento
+                                  .toLowerCase()
+                                  .contains('entrada');
+                              return DataRow(
+                                cells: [
+                                  DataCell(
+                                    Text(
+                                      DateFormat(
+                                        'yyyy-MM-dd HH:mm:ss',
+                                      ).format(movimiento.fecha),
+                                      style: TextStyle(color: textDark),
+                                    ),
+                                  ),
+                                  DataCell(
+                                    Text(
+                                      DateFormat(
+                                        'yyyy-MM-dd HH:mm:ss',
+                                      ).format(movimiento.fecha),
+                                      style: TextStyle(color: textDark),
+                                    ),
+                                  ),
+                                  DataCell(
+                                    Text(
+                                      movimiento.tipoMovimiento,
+                                      style: TextStyle(color: textDark),
+                                    ),
+                                  ),
+                                  DataCell(
+                                    Text(
+                                      NumberFormat.currency(
+                                        symbol: '',
+                                        decimalDigits: 2,
+                                      ).format(movimiento.valorMovimiento),
+                                      style: TextStyle(
+                                        color: esEntrada
+                                            ? Colors.green[300]
+                                            : Colors.red[300],
+                                      ),
+                                    ),
+                                  ),
+                                  DataCell(
+                                    Text(
+                                      movimiento.proveedor ?? 'N/A',
+                                      style: TextStyle(color: textDark),
+                                    ),
+                                  ),
+                                  DataCell(
+                                    Text(
+                                      movimiento.facturaNo ?? 'N/A',
+                                      style: TextStyle(color: textDark),
+                                    ),
+                                  ),
+                                  DataCell(
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        IconButton(
+                                          icon: Icon(
+                                            Icons.edit,
+                                            color: primary,
+                                          ),
+                                          onPressed: () {
+                                            // Ver detalles o editar movimiento
+                                          },
+                                        ),
+                                        IconButton(
+                                          icon: Icon(
+                                            Icons.delete,
+                                            color: Colors.red,
+                                          ),
+                                          onPressed: () {
+                                            // Eliminar movimiento
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              );
+                            }).toList(),
                           ),
-                        ],
-                      );
-                    }).toList(),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
         ),

@@ -70,15 +70,6 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
     _loadUsuariosDisponibles();
   }
 
-  // Limpiar los controladores del formulario
-  void _limpiarFormulario() {
-    _montoAperturaController.clear();
-    _montoEfectivoController.clear();
-    _montoTransferenciasController.clear();
-    _notasController.clear();
-    _cerrarCajaSwitch = false;
-  }
-
   @override
   void dispose() {
     _desdeController.dispose();
@@ -108,7 +99,6 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
       setState(() {
         _errorMessage = 'Error al cargar cuadres: ${e.toString()}';
       });
-      print('Error loading cuadres caja: $e');
     } finally {
       setState(() {
         _isLoading = false;
@@ -125,47 +115,102 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
       );
 
       if (response.statusCode == 200) {
-        final responseData = json.decode(response.body);
-        // Ajustar según la estructura de respuesta del backend
-        if (responseData['success'] == true || responseData['data'] != null) {
-          final userData = responseData['data'] ?? responseData['users'] ?? [];
-          setState(() {
-            _usuariosDisponibles = List<String>.from(
-              userData.map(
-                (user) => user['nombre'] ?? user['name'] ?? user['email'] ?? '',
-              ),
-            );
-          });
+        // Parsear JSON de forma más segura
+        Map<String, dynamic> responseData;
+        try {
+          responseData = json.decode(response.body);
+        } catch (jsonError) {
+          // Si no se puede parsear el JSON, usar lista predefinida
+          _setDefaultUsuarios();
+          return;
+        }
+
+        // Manejar diferentes tipos de respuesta success de forma más robusta
+        bool isSuccess = false;
+        try {
+          if (responseData.containsKey('success') &&
+              responseData['success'] != null) {
+            final successValue = responseData['success'];
+            if (successValue is bool) {
+              isSuccess = successValue;
+            } else if (successValue is String) {
+              isSuccess = successValue.toString().toLowerCase() == 'true';
+            } else if (successValue is int) {
+              isSuccess = successValue == 1;
+            } else {
+              // Si es cualquier otro tipo, asumir éxito si hay datos
+              isSuccess =
+                  responseData.containsKey('data') &&
+                  responseData['data'] != null;
+            }
+          } else {
+            // Si no hay campo success, verificar si hay datos
+            isSuccess =
+                responseData.containsKey('data') &&
+                responseData['data'] != null;
+          }
+        } catch (successParseError) {
+          // Si hay error al parsear success, verificar si hay datos válidos
+          isSuccess =
+              responseData.containsKey('data') && responseData['data'] != null;
+        }
+
+        if (isSuccess || responseData['data'] != null) {
+          try {
+            final userData =
+                responseData['data'] ?? responseData['users'] ?? [];
+            if (userData is List && userData.isNotEmpty) {
+              setState(() {
+                _usuariosDisponibles = List<String>.from(
+                  userData
+                      .map(
+                        (user) =>
+                            user['nombre'] ??
+                            user['name'] ??
+                            user['email'] ??
+                            'Usuario',
+                      )
+                      .where((name) => name.isNotEmpty),
+                );
+              });
+              // Si la lista está vacía después del filtrado, usar predefinida
+              if (_usuariosDisponibles.isEmpty) {
+                _setDefaultUsuarios();
+              }
+            } else {
+              _setDefaultUsuarios();
+            }
+          } catch (userParseError) {
+            _setDefaultUsuarios();
+          }
+        } else {
+          _setDefaultUsuarios();
         }
       } else if (response.statusCode == 404) {
         // Si el endpoint no existe, usar lista predefinida basada en roles comunes
-        setState(() {
-          _usuariosDisponibles = [
-            'Administrador',
-            'Cajero Principal',
-            'Cajero Secundario',
-            'Supervisor',
-            'Gerente',
-            'Mesero 1',
-            'Mesero 2',
-          ];
-        });
+        _setDefaultUsuarios();
+      } else {
+        // Otros códigos de estado
+        _setDefaultUsuarios();
       }
     } catch (e) {
-      print('Error loading usuarios: $e');
-      // Fallback a lista predefinida
-      setState(() {
-        _usuariosDisponibles = [
-          'Administrador',
-          'Cajero Principal',
-          'Cajero Secundario',
-          'Supervisor',
-          'Gerente',
-          'Mesero 1',
-          'Mesero 2',
-        ];
-      });
+      // Fallback a lista predefinida para cualquier error de red o parsing
+      _setDefaultUsuarios();
     }
+  }
+
+  void _setDefaultUsuarios() {
+    setState(() {
+      _usuariosDisponibles = [
+        'Administrador',
+        'Cajero Principal',
+        'Cajero Secundario',
+        'Supervisor',
+        'Gerente',
+        'Mesero 1',
+        'Mesero 2',
+      ];
+    });
   }
 
   Future<Map<String, String>> _getHeaders() async {
@@ -186,18 +231,6 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
     });
   }
 
-  // Cargar efectivo esperado del backend
-  Future<double> _loadEfectivoEsperado() async {
-    try {
-      final efectivoData = await _cuadreCajaService.getEfectivoEsperado();
-      return (efectivoData['efectivoEsperado'] ?? 0).toDouble();
-    } catch (e) {
-      print('Error loading efectivo esperado: $e');
-      // Fallback: calcular manualmente basado en ventas del día
-      return 0.0; // Se calculará cuando se abra el diálogo
-    }
-  }
-
   Future<void> _buscarCuadres() async {
     setState(() {
       _isLoading = true;
@@ -211,58 +244,13 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
         _cuadresCaja = cuadres;
       });
     } catch (e) {
-      print('Error en búsqueda: $e');
+      setState(() {
+        _errorMessage = 'Error en búsqueda: ${e.toString()}';
+      });
     } finally {
       setState(() {
         _isLoading = false;
       });
-    }
-  }
-
-  Future<void> _crearNuevoCuadre() async {
-    try {
-      final userProvider = Provider.of<UserProvider>(context, listen: false);
-      final responsable = userProvider.userName ?? 'Usuario Desconocido';
-      final montoApertura = double.tryParse(_montoAperturaController.text) ?? 0;
-
-      // Debug: Verificar que el monto se está leyendo correctamente
-      print(
-        'DEBUG FRONTEND: Monto inicial texto: "${_montoAperturaController.text}"',
-      );
-      print('DEBUG FRONTEND: Monto inicial parseado: $montoApertura');
-      print('DEBUG FRONTEND: Responsable: $responsable');
-      print(
-        'DEBUG FRONTEND: Nombre caja: ${_selectedCaja ?? 'Caja Principal'}',
-      );
-
-      final cuadre = await _cuadreCajaService.createCuadre(
-        nombre: _selectedCaja ?? 'Caja Principal',
-        responsable: responsable,
-        fondoInicial: montoApertura,
-        efectivoDeclarado: 0, // Al crear se inicia en 0
-        efectivoEsperado: 0, // Al crear se inicia en 0
-        tolerancia: 5.0, // Tolerancia por defecto
-        observaciones: 'Cuadre creado - ${_idMaquinaController.text}',
-      );
-
-      if (cuadre.id != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Cuadre de caja creado exitosamente'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        _loadCuadresCaja();
-      } else {
-        throw Exception('Error al crear el cuadre');
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al crear cuadre: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
     }
   }
 
@@ -275,11 +263,6 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
       final montoEfectivo = double.tryParse(_montoEfectivoController.text) ?? 0;
       final observaciones =
           '${_notasController.text}. Identificación máquina: ${_idMaquinaController.text}';
-
-      print('DEBUG: _cerrarCajaSwitch = $_cerrarCajaSwitch');
-      print(
-        'DEBUG: Fecha cierre = ${_cerrarCajaSwitch ? DateTime.now() : null}',
-      );
 
       final cuadre = await _cuadreCajaService.updateCuadre(
         _cuadreActual!.id!,
@@ -358,6 +341,56 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
         backgroundColor: primary,
         elevation: 0,
         actions: [
+          // Botón para abrir caja
+          if (!_showCashRegisterForm)
+            TextButton.icon(
+              icon: Icon(Icons.lock_open, color: Colors.white),
+              label: Text('Abrir Caja', style: TextStyle(color: Colors.white)),
+              style: TextButton.styleFrom(
+                backgroundColor: Colors.green,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                padding: EdgeInsets.symmetric(horizontal: 16),
+              ),
+              onPressed: () async {
+                final result = await Navigator.pushNamed(
+                  context,
+                  '/abrir_caja',
+                );
+                if (result == true) {
+                  // Si se abrió exitosamente, recargar la lista
+                  _loadCuadresCaja();
+                }
+              },
+            ),
+          SizedBox(width: 8),
+
+          // Botón para cerrar caja
+          if (!_showCashRegisterForm)
+            TextButton.icon(
+              icon: Icon(Icons.lock, color: Colors.white),
+              label: Text('Cerrar Caja', style: TextStyle(color: Colors.white)),
+              style: TextButton.styleFrom(
+                backgroundColor: Colors.red,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                padding: EdgeInsets.symmetric(horizontal: 16),
+              ),
+              onPressed: () async {
+                final result = await Navigator.pushNamed(
+                  context,
+                  '/cerrar_caja',
+                );
+                if (result == true) {
+                  // Si se cerró exitosamente, recargar la lista
+                  _loadCuadresCaja();
+                }
+              },
+            ),
+          SizedBox(width: 8),
+
           // Menú de opciones de gestión
           if (!_showCashRegisterForm)
             PopupMenuButton<String>(
@@ -405,53 +438,21 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                 ),
               ],
             ),
-          _showCashRegisterForm
-              ? TextButton.icon(
-                  icon: Icon(Icons.save, color: Colors.white),
-                  label: Text('Guardar', style: TextStyle(color: Colors.white)),
-                  onPressed: () async {
-                    // Validar campos requeridos
-                    if (_cuadreActual == null) {
-                      // Crear nuevo cuadre
-                      if (_montoAperturaController.text.isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Por favor ingrese el monto inicial'),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                        return;
-                      }
-                      await _crearNuevoCuadre();
-                    } else {
-                      // Actualizar cuadre existente
-                      await _actualizarCuadre();
-                    }
-
-                    setState(() {
-                      _showCashRegisterForm = false;
-                    });
-                  },
-                )
-              : TextButton.icon(
-                  icon: Icon(Icons.add, color: Colors.white),
-                  label: Text('Nueva', style: TextStyle(color: Colors.white)),
-                  style: TextButton.styleFrom(
-                    backgroundColor: primary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    padding: EdgeInsets.symmetric(horizontal: 16),
-                  ),
-                  onPressed: () async {
-                    setState(() {
-                      _cuadreActual = null; // Nuevo cuadre
-                      _showCashRegisterForm = true;
-                    });
-                    _limpiarFormulario(); // Limpiar los campos para nueva caja
-                    await _loadEfectivoEsperado();
-                  },
-                ),
+          // Botón para guardar cuando estamos en modo formulario
+          if (_showCashRegisterForm)
+            TextButton.icon(
+              icon: Icon(Icons.save, color: Colors.white),
+              label: Text('Guardar', style: TextStyle(color: Colors.white)),
+              onPressed: () async {
+                // Solo actualizar cuadre existente
+                if (_cuadreActual != null) {
+                  await _actualizarCuadre();
+                  setState(() {
+                    _showCashRegisterForm = false;
+                  });
+                }
+              },
+            ),
           SizedBox(width: 16),
         ],
       ),
@@ -833,32 +834,10 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                                   elevation: 3,
                                 ),
                                 onPressed: () async {
-                                  if (cuadre.cerrada) {
-                                    // Si la caja está cerrada, mostrar diálogo de detalles
-                                    _mostrarDialogoDetalleCuadre(cuadre);
-                                  } else {
-                                    // Si está abierta, mostrar formulario de edición
-                                    setState(() {
-                                      _cuadreActual = cuadre;
-                                      _showCashRegisterForm = true;
-                                    });
-                                    await _loadEfectivoEsperado();
-                                    // Prellenar campos con datos del cuadre actual
-                                    if (_cuadreActual != null) {
-                                      _montoAperturaController.text =
-                                          _cuadreActual!.fondoInicial
-                                              .toString();
-                                      _montoEfectivoController.text =
-                                          _cuadreActual!.efectivoDeclarado
-                                              .toString();
-                                      _notasController.text =
-                                          _cuadreActual!.observaciones ?? '';
-                                    }
-                                  }
+                                  // Solo mostrar diálogo de detalles (sin edición)
+                                  _mostrarDialogoDetalleCuadre(cuadre);
                                 },
-                                child: Text(
-                                  cuadre.cerrada ? 'Ver' : 'Ver/Cerrar',
-                                ),
+                                child: Text('Ver'),
                               ),
                             ),
                             DataCell(
@@ -1288,15 +1267,22 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                             Padding(
                               padding: const EdgeInsets.all(8.0),
                               child: Text(
-                                "Total",
-                                style: TextStyle(fontWeight: FontWeight.bold),
+                                "Total Declarado",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: primary,
+                                ),
                               ),
                             ),
                             Padding(
                               padding: const EdgeInsets.all(8.0),
                               child: Text(
                                 "\$ ${_totalIngresos.toStringAsFixed(0)}",
-                                style: TextStyle(fontWeight: FontWeight.bold),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: primary,
+                                  fontSize: 16,
+                                ),
                               ),
                             ),
                           ],
@@ -1364,38 +1350,462 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                     ),
                     SizedBox(height: 8),
                   ],
-                  FutureBuilder<double>(
-                    future: _loadEfectivoEsperado(),
+
+                  // Información de efectivo esperado con logging mejorado
+                  FutureBuilder<Map<String, dynamic>>(
+                    future: _cuadreCajaService.getEfectivoEsperado(),
                     builder: (context, snapshot) {
+                      print('🖼️ Estado del FutureBuilder:');
+                      print(
+                        '   - ConnectionState: ${snapshot.connectionState}',
+                      );
+                      print('   - HasData: ${snapshot.hasData}');
+                      print('   - HasError: ${snapshot.hasError}');
+                      if (snapshot.hasError) {
+                        print('   - Error: ${snapshot.error}');
+                      }
+
                       if (snapshot.hasData) {
-                        return Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        final data = snapshot.data!;
+                        print('📊 Datos del FutureBuilder: $data');
+
+                        final efectivoEsperado = (data['efectivoEsperado'] ?? 0)
+                            .toDouble();
+                        final transferenciasEsperadas =
+                            (data['transferenciasEsperadas'] ??
+                                    data['transferenciaEsperada'] ??
+                                    0)
+                                .toDouble();
+                        final totalEsperado =
+                            efectivoEsperado + transferenciasEsperadas;
+                        final esCalculoManual = data['calculoManual'] == true;
+                        final tieneError = data['error'] != null;
+
+                        return Column(
                           children: [
-                            Text(
-                              "Efectivo esperado:",
-                              style: TextStyle(color: textDark),
-                            ),
-                            Text(
-                              "\$ ${snapshot.data!.toStringAsFixed(0)}",
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: primary,
+                            // Indicador de estado del cálculo
+                            if (esCalculoManual || tieneError) ...[
+                              Container(
+                                padding: EdgeInsets.symmetric(
+                                  vertical: 4,
+                                  horizontal: 8,
+                                ),
+                                margin: EdgeInsets.only(bottom: 8),
+                                decoration: BoxDecoration(
+                                  color:
+                                      (tieneError ? Colors.red : Colors.orange)
+                                          .withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color:
+                                        (tieneError
+                                                ? Colors.red
+                                                : Colors.orange)
+                                            .withOpacity(0.3),
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      tieneError ? Icons.error : Icons.info,
+                                      size: 16,
+                                      color: tieneError
+                                          ? Colors.red
+                                          : Colors.orange,
+                                    ),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      tieneError
+                                          ? 'Error en cálculo'
+                                          : 'Cálculo manual',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: tieneError
+                                            ? Colors.red
+                                            : Colors.orange,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    SizedBox(width: 8),
+                                    // Botón para autocompletar campos
+                                    if (!tieneError &&
+                                        (efectivoEsperado > 0 ||
+                                            transferenciasEsperadas > 0)) ...[
+                                      GestureDetector(
+                                        onTap: () {
+                                          // Autocompletar los campos de ventas
+                                          setState(() {
+                                            _montoEfectivoController.text =
+                                                efectivoEsperado
+                                                    .toStringAsFixed(0);
+                                            _montoTransferenciasController
+                                                .text = transferenciasEsperadas
+                                                .toStringAsFixed(0);
+                                          });
+                                          _actualizarTotales();
+
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                'Campos actualizados con valores esperados',
+                                              ),
+                                              backgroundColor: Colors.green,
+                                              duration: Duration(seconds: 2),
+                                            ),
+                                          );
+                                        },
+                                        child: Container(
+                                          padding: EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.green.withOpacity(
+                                              0.2,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              4,
+                                            ),
+                                            border: Border.all(
+                                              color: Colors.green.withOpacity(
+                                                0.3,
+                                              ),
+                                            ),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(
+                                                Icons.auto_fix_high,
+                                                size: 12,
+                                                color: Colors.green,
+                                              ),
+                                              SizedBox(width: 2),
+                                              Text(
+                                                'Auto',
+                                                style: TextStyle(
+                                                  fontSize: 10,
+                                                  color: Colors.green,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
                               ),
+                            ],
+
+                            // Efectivo esperado
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  "Efectivo esperado:",
+                                  style: TextStyle(color: textDark),
+                                ),
+                                Text(
+                                  "\$ ${efectivoEsperado.toStringAsFixed(0)}",
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: tieneError ? Colors.red : primary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 8),
+
+                            // Transferencias esperadas
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  "Transferencias esperadas:",
+                                  style: TextStyle(color: textDark),
+                                ),
+                                Text(
+                                  "\$ ${transferenciasEsperadas.toStringAsFixed(0)}",
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: tieneError
+                                        ? Colors.red
+                                        : accentOrange,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 8),
+
+                            // Total esperado con comparación
+                            Container(
+                              padding: EdgeInsets.symmetric(vertical: 8),
+                              decoration: BoxDecoration(
+                                border: Border(
+                                  top: BorderSide(
+                                    color: Colors.grey.withOpacity(0.3),
+                                  ),
+                                ),
+                              ),
+                              child: Column(
+                                children: [
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        "Total esperado:",
+                                        style: TextStyle(
+                                          color: textDark,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                      Text(
+                                        "\$ ${totalEsperado.toStringAsFixed(0)}",
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: tieneError
+                                              ? Colors.red
+                                              : Colors.green,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+
+                                  // Mostrar comparación si hay valores declarados
+                                  if (_totalIngresos > 0) ...[
+                                    SizedBox(height: 8),
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          "Total declarado:",
+                                          style: TextStyle(
+                                            color: textLight,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                        Text(
+                                          "\$ ${_totalIngresos.toStringAsFixed(0)}",
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color: primary,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    SizedBox(height: 4),
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          "Diferencia:",
+                                          style: TextStyle(
+                                            color: textLight,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                        Text(
+                                          "\$ ${(_totalIngresos - totalEsperado).toStringAsFixed(0)}",
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color:
+                                                (_totalIngresos - totalEsperado)
+                                                        .abs() <=
+                                                    5000
+                                                ? Colors.green
+                                                : (_totalIngresos >
+                                                          totalEsperado
+                                                      ? Colors.blue
+                                                      : Colors.red),
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+
+                            // Información de debug para usuarios admin
+                            if (esCalculoManual || tieneError) ...[
+                              SizedBox(height: 8),
+                              ExpansionTile(
+                                title: Text(
+                                  'Información técnica',
+                                  style: TextStyle(
+                                    color: textLight,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                iconColor: textLight,
+                                children: [
+                                  if (data['timestamp'] != null)
+                                    Padding(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: 16,
+                                        vertical: 4,
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Text(
+                                            'Calculado: ${DateTime.parse(data['timestamp']).toString().substring(11, 19)}',
+                                            style: TextStyle(
+                                              color: textLight,
+                                              fontSize: 10,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  if (data['error'] != null)
+                                    Padding(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: 16,
+                                        vertical: 4,
+                                      ),
+                                      child: Text(
+                                        'Error: ${data['error']}',
+                                        style: TextStyle(
+                                          color: Colors.red,
+                                          fontSize: 10,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ],
+                          ],
+                        );
+                      } else if (snapshot.hasError) {
+                        return Column(
+                          children: [
+                            Container(
+                              padding: EdgeInsets.all(12),
+                              margin: EdgeInsets.only(bottom: 8),
+                              decoration: BoxDecoration(
+                                color: Colors.red.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: Colors.red.withOpacity(0.3),
+                                ),
+                              ),
+                              child: Column(
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.error,
+                                        color: Colors.red,
+                                        size: 20,
+                                      ),
+                                      SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          'Error al cargar efectivo esperado',
+                                          style: TextStyle(
+                                            color: Colors.red,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  SizedBox(height: 8),
+                                  Text(
+                                    'Error: ${snapshot.error.toString()}',
+                                    style: TextStyle(
+                                      color: Colors.red,
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  "Efectivo esperado:",
+                                  style: TextStyle(color: textDark),
+                                ),
+                                Text(
+                                  "Error",
+                                  style: TextStyle(
+                                    color: Colors.red,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 8),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  "Transferencias esperadas:",
+                                  style: TextStyle(color: textDark),
+                                ),
+                                Text(
+                                  "Error",
+                                  style: TextStyle(
+                                    color: Colors.red,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         );
                       } else {
-                        return Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        // Loading state
+                        return Column(
                           children: [
-                            Text(
-                              "Efectivo esperado:",
-                              style: TextStyle(color: textDark),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  "Efectivo esperado:",
+                                  style: TextStyle(color: textDark),
+                                ),
+                                SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: primary,
+                                  ),
+                                ),
+                              ],
                             ),
-                            SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
+                            SizedBox(height: 8),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  "Transferencias esperadas:",
+                                  style: TextStyle(color: textDark),
+                                ),
+                                SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: accentOrange,
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         );
@@ -1406,7 +1816,9 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
               ),
             ),
           ),
-          SizedBox(height: 20), // Cerrar caja
+          SizedBox(height: 20),
+
+          // Cerrar caja
           Card(
             elevation: 4,
             color: cardBg,
@@ -1452,16 +1864,13 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                 elevation: 4,
               ),
               onPressed: () async {
-                if (_cuadreActual == null) {
-                  // Crear nuevo cuadre
-                  await _crearNuevoCuadre();
-                } else {
-                  // Actualizar cuadre existente
+                // Solo actualizar cuadre existente
+                if (_cuadreActual != null) {
                   await _actualizarCuadre();
+                  setState(() {
+                    _showCashRegisterForm = false;
+                  });
                 }
-                setState(() {
-                  _showCashRegisterForm = false;
-                });
               },
               child: Text("Guardar cambios"),
             ),
@@ -1619,44 +2028,93 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
 
                         SizedBox(height: 20),
 
-                        // Tabla de ventas
-                        _buildTablaDetalle("Ventas", [
-                          ["Nombre", "Sistema"],
-                          [
-                            "Efectivo",
-                            "\$ ${cuadre.efectivoEsperado.toStringAsFixed(0)}",
-                          ],
-                          ["Transferencia", "\$ 0"],
-                          [
-                            "Total Ventas",
-                            "\$ ${cuadre.efectivoEsperado.toStringAsFixed(0)}",
-                          ],
-                          ["Total Propinas", "\$ 0"],
-                        ]),
+                        // Tabla de ventas con datos dinámicos
+                        FutureBuilder<Map<String, dynamic>>(
+                          future: _cuadreCajaService.getEfectivoEsperado(),
+                          builder: (context, snapshot) {
+                            double efectivoVentas = cuadre.efectivoEsperado;
+                            double transferenciasVentas = 0;
+
+                            if (snapshot.hasData) {
+                              final data = snapshot.data!;
+                              transferenciasVentas =
+                                  (data['transferenciasEsperadas'] ??
+                                          data['transferenciaEsperada'] ??
+                                          0)
+                                      .toDouble();
+                            }
+
+                            double totalVentas =
+                                efectivoVentas + transferenciasVentas;
+
+                            return _buildTablaDetalle("Ventas", [
+                              ["Nombre", "Sistema"],
+                              [
+                                "Efectivo",
+                                "\$ ${efectivoVentas.toStringAsFixed(0)}",
+                              ],
+                              [
+                                "Transferencia",
+                                "\$ ${transferenciasVentas.toStringAsFixed(0)}",
+                              ],
+                              [
+                                "Total Ventas",
+                                "\$ ${totalVentas.toStringAsFixed(0)}",
+                              ],
+                              ["Total Propinas", "\$ 0"],
+                            ]);
+                          },
+                        ),
 
                         SizedBox(height: 20),
 
-                        // Tabla de resumen
-                        _buildTablaDetalle(
-                          "",
-                          [
-                            [
-                              "Efectivo",
-                              "\$ ${cuadre.efectivoEsperado.toStringAsFixed(0)}",
-                              "\$ 0",
-                              "\$ 0",
-                              "\$ ${cuadre.efectivoEsperado.toStringAsFixed(0)}",
-                            ],
-                            ["Transferencia", "\$ 0", "\$ 0", "\$ 0", "\$ 0"],
-                            [
-                              "Total",
-                              "\$ ${cuadre.efectivoEsperado.toStringAsFixed(0)}",
-                              "\$ 0",
-                              "\$ 0",
-                              "\$ ${cuadre.efectivoEsperado.toStringAsFixed(0)}",
-                            ],
-                          ],
-                          encabezados: ["", "", "", "", ""],
+                        // Tabla de resumen con datos dinámicos
+                        FutureBuilder<Map<String, dynamic>>(
+                          future: _cuadreCajaService.getEfectivoEsperado(),
+                          builder: (context, snapshot) {
+                            double efectivoVentas = cuadre.efectivoEsperado;
+                            double transferenciasVentas = 0;
+
+                            if (snapshot.hasData) {
+                              final data = snapshot.data!;
+                              transferenciasVentas =
+                                  (data['transferenciasEsperadas'] ??
+                                          data['transferenciaEsperada'] ??
+                                          0)
+                                      .toDouble();
+                            }
+
+                            double totalVentas =
+                                efectivoVentas + transferenciasVentas;
+
+                            return _buildTablaDetalle(
+                              "",
+                              [
+                                [
+                                  "Efectivo",
+                                  "\$ ${efectivoVentas.toStringAsFixed(0)}",
+                                  "\$ 0",
+                                  "\$ 0",
+                                  "\$ ${efectivoVentas.toStringAsFixed(0)}",
+                                ],
+                                [
+                                  "Transferencia",
+                                  "\$ ${transferenciasVentas.toStringAsFixed(0)}",
+                                  "\$ 0",
+                                  "\$ 0",
+                                  "\$ ${transferenciasVentas.toStringAsFixed(0)}",
+                                ],
+                                [
+                                  "Total",
+                                  "\$ ${totalVentas.toStringAsFixed(0)}",
+                                  "\$ 0",
+                                  "\$ 0",
+                                  "\$ ${totalVentas.toStringAsFixed(0)}",
+                                ],
+                              ],
+                              encabezados: ["", "", "", "", ""],
+                            );
+                          },
                         ),
 
                         SizedBox(height: 20),
@@ -1882,38 +2340,65 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
     );
   }
 
-  // Helper para construir el resumen final - Ahora con gastos dinámicos
+  // Helper para construir el resumen final - Ahora con gastos dinámicos y transferencias
   Widget _buildResumenFinal(CuadreCaja cuadre) {
-    return FutureBuilder<List<Gasto>>(
-      future: _gastoService.getGastosByCuadre(cuadre.id!),
+    return FutureBuilder<Map<String, dynamic>>(
+      future:
+          Future.wait([
+            _gastoService.getGastosByCuadre(cuadre.id!),
+            _cuadreCajaService.getEfectivoEsperado(),
+          ]).then(
+            (results) => {
+              'gastos': results[0] as List<Gasto>,
+              'efectivoData': results[1] as Map<String, dynamic>,
+            },
+          ),
       builder: (context, snapshot) {
         double inicial = cuadre.fondoInicial;
-        double ventas = cuadre.efectivoEsperado;
+        double ventasEfectivo = cuadre.efectivoEsperado;
+        double ventasTransferencias = 0;
         double gastos = 0;
 
-        // Calcular total de gastos desde el backend
         if (snapshot.hasData) {
-          gastos = snapshot.data!.fold(
-            0,
-            (total, gasto) => total + gasto.monto,
-          );
+          final data = snapshot.data!;
+
+          // Calcular gastos
+          final gastosData = data['gastos'] as List<Gasto>;
+          gastos = gastosData.fold(0, (total, gasto) => total + gasto.monto);
+
+          // Obtener transferencias
+          final efectivoData = data['efectivoData'] as Map<String, dynamic>;
+          ventasTransferencias =
+              (efectivoData['transferenciasEsperadas'] ??
+                      efectivoData['transferenciaEsperada'] ??
+                      0)
+                  .toDouble();
         }
 
+        double totalVentas = ventasEfectivo + ventasTransferencias;
         double facturas = 0; // Podrías agregar otra consulta para facturas
-        double totalEfectivo = inicial + ventas - gastos - facturas;
+        double totalEfectivo = inicial + ventasEfectivo - gastos - facturas;
 
         return _buildTablaDetalle("Resumen", [
           ["", ""],
-          ["Inicial + ventas", "\$ ${(inicial + ventas).toStringAsFixed(0)}"],
           [
-            "Inicial + ventas + propinas + domicilios",
-            "\$ ${(inicial + ventas).toStringAsFixed(0)}",
+            "Inicial + ventas efectivo",
+            "\$ ${(inicial + ventasEfectivo).toStringAsFixed(0)}",
+          ],
+          ["Transferencias", "\$ ${ventasTransferencias.toStringAsFixed(0)}"],
+          [
+            "Total inicial + ventas + transferencias",
+            "\$ ${(inicial + totalVentas).toStringAsFixed(0)}",
           ],
           ["Pagos facturas de compras", "-\$ ${facturas.toStringAsFixed(0)}"],
           ["Total Gastos", "-\$ ${gastos.toStringAsFixed(0)}"],
-          ["Total Efectivo", "\$ ${totalEfectivo.toStringAsFixed(0)}"],
+          ["Total Efectivo en caja", "\$ ${totalEfectivo.toStringAsFixed(0)}"],
           ["", ""],
-          ["Debe tener", "\$ ${totalEfectivo.toStringAsFixed(0)}"],
+          ["Debe tener en efectivo", "\$ ${totalEfectivo.toStringAsFixed(0)}"],
+          [
+            "Debe tener en transferencias",
+            "\$ ${ventasTransferencias.toStringAsFixed(0)}",
+          ],
           ["", ""],
           ["Domicilios", "\$ 0"],
         ]);

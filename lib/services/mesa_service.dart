@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../models/mesa.dart';
-import '../models/producto.dart';
 
 class MesaService {
   static final MesaService _instance = MesaService._internal();
@@ -30,13 +29,9 @@ class MesaService {
         final List<dynamic> mesasJson = responseData['data'];
         final mesas = mesasJson.map((json) {
           final mesa = Mesa.fromJson(json);
-          print(
-            '🎯 MesaService: Parsed mesa - ID: ${mesa.id}, Nombre: ${mesa.nombre}',
-          );
           return mesa;
         }).toList();
 
-        print('🎯 MesaService: Successfully parsed ${mesas.length} mesas');
         return mesas;
       } else {
         print('❌ MesaService: Invalid response format');
@@ -54,11 +49,6 @@ class MesaService {
       final response = await http
           .get(Uri.parse('$baseUrl/api/mesas'), headers: headers)
           .timeout(Duration(seconds: 10));
-
-      print(
-        '🎯 MesaService: Get mesas response - Status: ${response.statusCode}',
-      );
-      print('🎯 MesaService: Get mesas response - Body: ${response.body}');
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
@@ -95,18 +85,10 @@ class MesaService {
           )
           .timeout(Duration(seconds: 10));
 
-      print(
-        '🎯 MesaService: Create mesa response - Status: ${response.statusCode}',
-      );
-      print('🎯 MesaService: Create mesa response - Body: ${response.body}');
-
       if (response.statusCode == 201 || response.statusCode == 200) {
         final responseData = json.decode(response.body);
         if (responseData['success'] == true && responseData['data'] != null) {
           final createdMesa = Mesa.fromJson(responseData['data']);
-          print(
-            '🎯 MesaService: Mesa created successfully - ID: ${createdMesa.id}',
-          );
           return createdMesa;
         } else {
           throw Exception('Formato de respuesta inválido');
@@ -122,16 +104,12 @@ class MesaService {
 
   Future<Mesa> updateMesa(Mesa mesa) async {
     try {
-      print('🎯 MesaService: Updating mesa - ID: ${mesa.id}');
-
       final requestData = {
         'nombre': mesa.nombre,
         'ocupada': mesa.ocupada,
         'total': mesa.total,
         'productos': mesa.productos.map((p) => p.toJson()).toList(),
       };
-
-      print('🎯 MesaService: Update data: ${json.encode(requestData)}');
 
       final headers = await _getHeaders();
       final response = await http
@@ -144,16 +122,10 @@ class MesaService {
           )
           .timeout(Duration(seconds: 10));
 
-      print('🎯 MesaService: Update response - Status: ${response.statusCode}');
-      print('🎯 MesaService: Update response - Body: ${response.body}');
-
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
         if (responseData['success'] == true && responseData['data'] != null) {
           final updatedMesa = Mesa.fromJson(responseData['data']);
-          print(
-            '🎯 MesaService: Mesa updated successfully - ID: ${updatedMesa.id}',
-          );
           return updatedMesa;
         } else {
           throw Exception('Formato de respuesta inválido');
@@ -176,9 +148,6 @@ class MesaService {
           .delete(Uri.parse('$baseUrl/api/mesas/$id'), headers: headers)
           .timeout(Duration(seconds: 10));
 
-      print('🎯 MesaService: Delete response - Status: ${response.statusCode}');
-      print('🎯 MesaService: Delete response - Body: ${response.body}');
-
       if (response.statusCode != 200 && response.statusCode != 204) {
         throw Exception('Error del servidor: ${response.statusCode}');
       }
@@ -190,8 +159,6 @@ class MesaService {
 
   Future<Mesa> getMesaById(String id) async {
     try {
-      print('🎯 MesaService: Getting mesa - ID: $id');
-
       final headers = await _getHeaders();
       final response = await http
           .get(Uri.parse('$baseUrl/api/mesas/$id'), headers: headers)

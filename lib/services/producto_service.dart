@@ -24,16 +24,45 @@ class ProductoService {
     };
   }
 
-  // Obtener todos los productos
+  // Obtener todos los productos con nombres de ingredientes resueltos (NUEVO ENDPOINT OPTIMIZADO)
   Future<List<Producto>> getProductos() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl/api/productos/con-nombres-ingredientes'),
+            headers: headers,
+          )
+          .timeout(Duration(seconds: 10));
+
+      print('📦 Response status: ${response.statusCode}');
+      print('📦 Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        return _parseListResponse(responseData);
+      } else {
+        print('❌ Endpoint optimizado no disponible, usando endpoint básico...');
+        // Fallback al endpoint original
+        return await _getProductosBasico();
+      }
+    } catch (e) {
+      print('❌ Error con endpoint optimizado, usando endpoint básico...: $e');
+      // Fallback al endpoint original
+      return await _getProductosBasico();
+    }
+  }
+
+  // Obtener todos los productos (endpoint básico como fallback)
+  Future<List<Producto>> _getProductosBasico() async {
     try {
       final headers = await _getHeaders();
       final response = await http
           .get(Uri.parse('$baseUrl/api/productos'), headers: headers)
           .timeout(Duration(seconds: 10));
 
-      print('📦 Response status: ${response.statusCode}');
-      print('📦 Response body: ${response.body}');
+      print('📦 Response status (básico): ${response.statusCode}');
+      print('📦 Response body (básico): ${response.body}');
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
@@ -467,8 +496,46 @@ class ProductoService {
     }
   }
 
-  // Obtener un producto por ID
+  // Obtener un producto por ID con nombres de ingredientes resueltos (OPTIMIZADO)
   Future<Producto?> getProducto(String id) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl/api/productos/$id/con-nombres-ingredientes'),
+            headers: headers,
+          )
+          .timeout(Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        if (responseData is Map<String, dynamic>) {
+          // Si la respuesta está envuelta en una estructura data
+          if (responseData.containsKey('data')) {
+            return Producto.fromJson(responseData['data']);
+          }
+          // Si la respuesta es directamente el producto
+          return Producto.fromJson(responseData);
+        }
+      } else if (response.statusCode == 404) {
+        print(
+          '❌ Endpoint optimizado no encontrado para producto $id, usando básico...',
+        );
+        // Fallback al endpoint original
+        return await _getProductoBasico(id);
+      }
+      throw Exception('Error del servidor: ${response.statusCode}');
+    } catch (e) {
+      print(
+        '❌ Error con endpoint optimizado para producto $id, usando básico: $e',
+      );
+      // Fallback al endpoint original
+      return await _getProductoBasico(id);
+    }
+  }
+
+  // Obtener un producto por ID (endpoint básico como fallback)
+  Future<Producto?> _getProductoBasico(String id) async {
     try {
       final headers = await _getHeaders();
       final response = await http
@@ -519,6 +586,503 @@ class ProductoService {
           .toList();
     }
     throw Exception('Formato de respuesta no válido');
+  }
+
+  // ========== MÉTODOS PARA PRODUCTOS COMBO ==========
+
+  /// Obtiene los ingredientes requeridos disponibles para un producto combo
+  Future<List<IngredienteProducto>> getIngredientesRequeridosCombo(
+    String productoId,
+  ) async {
+    try {
+      final headers = await _getHeaders();
+      // USAR ENDPOINT OPTIMIZADO que ya trae nombres resueltos
+      final response = await http
+          .get(
+            Uri.parse(
+              '$baseUrl/api/productos/$productoId/con-nombres-ingredientes',
+            ),
+            headers: headers,
+          )
+          .timeout(Duration(seconds: 10));
+
+      print(
+        '🥘 Obteniendo producto completo CON NOMBRES para ingredientes requeridos: $productoId',
+      );
+      print('🥘 Response status: ${response.statusCode}');
+      print('🥘 Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        Map<String, dynamic> productoJson;
+
+        if (responseData is Map<String, dynamic>) {
+          if (responseData.containsKey('data')) {
+            productoJson = responseData['data'];
+          } else {
+            productoJson = responseData;
+          }
+        } else {
+          throw Exception('Formato de respuesta inesperado');
+        }
+
+        // Extraer ingredientes requeridos del producto
+        List<dynamic> ingredientesJson = [];
+        if (productoJson.containsKey('ingredientesRequeridos') &&
+            productoJson['ingredientesRequeridos'] != null) {
+          ingredientesJson = productoJson['ingredientesRequeridos'];
+        }
+
+        print(
+          '🔍 TOTAL ingredientes requeridos encontrados: ${ingredientesJson.length}',
+        );
+        for (int i = 0; i < ingredientesJson.length; i++) {
+          print('🔍 Ingrediente requerido $i RAW: ${ingredientesJson[i]}');
+        }
+
+        List<IngredienteProducto> ingredientesBasicos = ingredientesJson.map((
+          json,
+        ) {
+          print('🔍 INGREDIENTE REQUERIDO RAW JSON: $json');
+          final ingrediente = IngredienteProducto.fromJson(json);
+          print(
+            '🔍 INGREDIENTE REQUERIDO PROCESADO: nombre="${ingrediente.ingredienteNombre}", id="${ingrediente.ingredienteId}", precio=${ingrediente.precioAdicional}',
+          );
+          return ingrediente;
+        }).toList();
+
+        // Con el nuevo endpoint, los nombres ya deberían venir resueltos, pero mantenemos el fallback
+        if (ingredientesBasicos.any(
+          (ing) =>
+              ing.ingredienteNombre.isEmpty ||
+              ing.ingredienteNombre == ing.ingredienteId,
+        )) {
+          print(
+            '⚠️ Algunos ingredientes aún necesitan enriquecimiento, aplicando fallback...',
+          );
+          return await _enriquecerIngredientesConNombres(ingredientesBasicos);
+        }
+
+        return ingredientesBasicos;
+      } else if (response.statusCode == 404) {
+        print('❌ Endpoint optimizado no disponible, usando básico...');
+        return await _getIngredientesRequeridosComboBasico(productoId);
+      }
+      throw Exception('Error del servidor: ${response.statusCode}');
+    } catch (e) {
+      print('❌ Error con endpoint optimizado, usando básico: $e');
+      return await _getIngredientesRequeridosComboBasico(productoId);
+    }
+  }
+
+  /// Método fallback para ingredientes requeridos (endpoint básico)
+  Future<List<IngredienteProducto>> _getIngredientesRequeridosComboBasico(
+    String productoId,
+  ) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl/api/productos/$productoId'),
+            headers: headers,
+          )
+          .timeout(Duration(seconds: 10));
+
+      print(
+        '🥘 Obteniendo producto completo para ingredientes requeridos (BÁSICO): $productoId',
+      );
+      print('🥘 Response status: ${response.statusCode}');
+      print('🥘 Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        Map<String, dynamic> productoJson;
+
+        if (responseData is Map<String, dynamic>) {
+          if (responseData.containsKey('data')) {
+            productoJson = responseData['data'];
+          } else {
+            productoJson = responseData;
+          }
+        } else {
+          throw Exception('Formato de respuesta inesperado');
+        }
+
+        // Extraer ingredientes requeridos del producto
+        List<dynamic> ingredientesJson = [];
+        if (productoJson.containsKey('ingredientesRequeridos') &&
+            productoJson['ingredientesRequeridos'] != null) {
+          ingredientesJson = productoJson['ingredientesRequeridos'];
+        }
+
+        print(
+          '🔍 TOTAL ingredientes requeridos encontrados: ${ingredientesJson.length}',
+        );
+        for (int i = 0; i < ingredientesJson.length; i++) {
+          print('🔍 Ingrediente requerido $i RAW: ${ingredientesJson[i]}');
+        }
+
+        List<IngredienteProducto> ingredientesBasicos = ingredientesJson.map((
+          json,
+        ) {
+          print('🔍 INGREDIENTE REQUERIDO RAW JSON: $json');
+          final ingrediente = IngredienteProducto.fromJson(json);
+          print(
+            '🔍 INGREDIENTE REQUERIDO PROCESADO: nombre="${ingrediente.ingredienteNombre}", id="${ingrediente.ingredienteId}", precio=${ingrediente.precioAdicional}',
+          );
+          return ingrediente;
+        }).toList();
+
+        // Enriquecer con nombres de ingredientes si están vacíos
+        return await _enriquecerIngredientesConNombres(ingredientesBasicos);
+      } else {
+        throw Exception('Error del servidor: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ Error obteniendo ingredientes requeridos del combo: $e');
+      throw Exception('No se pudieron cargar los ingredientes requeridos: $e');
+    }
+  }
+
+  /// Obtiene los ingredientes opcionales disponibles para un producto combo
+  Future<List<IngredienteProducto>> getIngredientesOpcionalesCombo(
+    String productoId,
+  ) async {
+    try {
+      final headers = await _getHeaders();
+      // USAR ENDPOINT OPTIMIZADO que ya trae nombres resueltos
+      final response = await http
+          .get(
+            Uri.parse(
+              '$baseUrl/api/productos/$productoId/con-nombres-ingredientes',
+            ),
+            headers: headers,
+          )
+          .timeout(Duration(seconds: 10));
+
+      print(
+        '🥘 Obteniendo producto completo CON NOMBRES para ingredientes opcionales: $productoId',
+      );
+      print('🥘 Response status: ${response.statusCode}');
+      print('🥘 Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        Map<String, dynamic> productoJson;
+
+        if (responseData is Map<String, dynamic>) {
+          if (responseData.containsKey('data')) {
+            productoJson = responseData['data'];
+          } else {
+            productoJson = responseData;
+          }
+        } else {
+          throw Exception('Formato de respuesta inesperado');
+        }
+
+        // Extraer ingredientes opcionales del producto
+        List<dynamic> ingredientesJson = [];
+        if (productoJson.containsKey('ingredientesOpcionales') &&
+            productoJson['ingredientesOpcionales'] != null) {
+          ingredientesJson = productoJson['ingredientesOpcionales'];
+        }
+
+        print(
+          '🔍 TOTAL ingredientes opcionales encontrados: ${ingredientesJson.length}',
+        );
+        for (int i = 0; i < ingredientesJson.length; i++) {
+          print('🔍 Ingrediente $i RAW: ${ingredientesJson[i]}');
+        }
+
+        List<IngredienteProducto> ingredientesBasicos = ingredientesJson.map((
+          json,
+        ) {
+          print('🔍 INGREDIENTE OPCIONAL RAW JSON: $json');
+          final ingrediente = IngredienteProducto.fromJson(json);
+          print(
+            '🔍 INGREDIENTE OPCIONAL PROCESADO: nombre="${ingrediente.ingredienteNombre}", id="${ingrediente.ingredienteId}", precio=${ingrediente.precioAdicional}',
+          );
+          return ingrediente;
+        }).toList();
+
+        // Con el nuevo endpoint, los nombres ya deberían venir resueltos, pero mantenemos el fallback
+        if (ingredientesBasicos.any(
+          (ing) =>
+              ing.ingredienteNombre.isEmpty ||
+              ing.ingredienteNombre == ing.ingredienteId,
+        )) {
+          print(
+            '⚠️ Algunos ingredientes aún necesitan enriquecimiento, aplicando fallback...',
+          );
+          return await _enriquecerIngredientesConNombres(ingredientesBasicos);
+        }
+
+        return ingredientesBasicos;
+      } else if (response.statusCode == 404) {
+        print('❌ Endpoint optimizado no disponible, usando básico...');
+        return await _getIngredientesOpcionalesComboBasico(productoId);
+      }
+      throw Exception('Error del servidor: ${response.statusCode}');
+    } catch (e) {
+      print('❌ Error con endpoint optimizado, usando básico: $e');
+      return await _getIngredientesOpcionalesComboBasico(productoId);
+    }
+  }
+
+  /// Método fallback para ingredientes opcionales (endpoint básico)
+  Future<List<IngredienteProducto>> _getIngredientesOpcionalesComboBasico(
+    String productoId,
+  ) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl/api/productos/$productoId'),
+            headers: headers,
+          )
+          .timeout(Duration(seconds: 10));
+
+      print(
+        '🥘 Obteniendo producto completo para ingredientes opcionales (BÁSICO): $productoId',
+      );
+      print('🥘 Response status: ${response.statusCode}');
+      print('🥘 Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        Map<String, dynamic> productoJson;
+
+        if (responseData is Map<String, dynamic>) {
+          if (responseData.containsKey('data')) {
+            productoJson = responseData['data'];
+          } else {
+            productoJson = responseData;
+          }
+        } else {
+          throw Exception('Formato de respuesta inesperado');
+        }
+
+        // Extraer ingredientes opcionales del producto
+        List<dynamic> ingredientesJson = [];
+        if (productoJson.containsKey('ingredientesOpcionales') &&
+            productoJson['ingredientesOpcionales'] != null) {
+          ingredientesJson = productoJson['ingredientesOpcionales'];
+        }
+
+        print(
+          '🔍 TOTAL ingredientes opcionales encontrados: ${ingredientesJson.length}',
+        );
+        for (int i = 0; i < ingredientesJson.length; i++) {
+          print('🔍 Ingrediente $i RAW: ${ingredientesJson[i]}');
+        }
+
+        List<IngredienteProducto> ingredientesBasicos = ingredientesJson.map((
+          json,
+        ) {
+          print('🔍 INGREDIENTE OPCIONAL RAW JSON: $json');
+          final ingrediente = IngredienteProducto.fromJson(json);
+          print(
+            '🔍 INGREDIENTE OPCIONAL PROCESADO: nombre="${ingrediente.ingredienteNombre}", id="${ingrediente.ingredienteId}", precio=${ingrediente.precioAdicional}',
+          );
+          return ingrediente;
+        }).toList();
+
+        // Enriquecer con nombres de ingredientes si están vacíos
+        return await _enriquecerIngredientesConNombres(ingredientesBasicos);
+      } else {
+        throw Exception('Error del servidor: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ Error obteniendo ingredientes opcionales del combo: $e');
+      throw Exception('No se pudieron cargar los ingredientes opcionales: $e');
+    }
+  }
+
+  /// Verifica si un producto es tipo combo
+  Future<bool> verificarSiEsCombo(String productoId) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl/api/productos/$productoId/es-combo'),
+            headers: headers,
+          )
+          .timeout(Duration(seconds: 10));
+
+      print('🔍 Verificando si producto $productoId es combo');
+      print('🔍 Response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+
+        if (responseData is Map<String, dynamic>) {
+          return responseData['data'] ?? false;
+        }
+        return false;
+      } else {
+        throw Exception('Error del servidor: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ Error verificando tipo de producto: $e');
+      return false; // En caso de error, asumir que no es combo
+    }
+  }
+
+  /// Carga los ingredientes requeridos y opcionales de un producto y actualiza el objeto Producto
+  Future<Producto> cargarIngredientesOpcionalesParaProducto(
+    Producto producto,
+  ) async {
+    try {
+      // Solo cargar ingredientes si el producto puede seleccionarlos
+      if (producto.puedeSeleccionarIngredientes) {
+        print('🔄 Cargando ingredientes para producto: ${producto.nombre}');
+
+        List<IngredienteProducto> ingredientesRequeridos = [];
+        List<IngredienteProducto> ingredientesOpcionales = [];
+
+        // Cargar ingredientes requeridos
+        try {
+          ingredientesRequeridos = await getIngredientesRequeridosCombo(
+            producto.id,
+          );
+          print(
+            '✅ Ingredientes requeridos cargados: ${ingredientesRequeridos.length}',
+          );
+        } catch (e) {
+          print('⚠️ Error cargando ingredientes requeridos: $e');
+        }
+
+        // Cargar ingredientes opcionales
+        try {
+          ingredientesOpcionales = await getIngredientesOpcionalesCombo(
+            producto.id,
+          );
+          print(
+            '✅ Ingredientes opcionales cargados: ${ingredientesOpcionales.length}',
+          );
+        } catch (e) {
+          print('⚠️ Error cargando ingredientes opcionales: $e');
+        }
+
+        // Crear una nueva instancia del producto con los ingredientes cargados
+        return producto.copyWith(
+          ingredientesRequeridos: ingredientesRequeridos,
+          ingredientesOpcionales: ingredientesOpcionales,
+        );
+      }
+
+      // Si no es combo, devolver el producto sin modificar
+      return producto;
+    } catch (e) {
+      print(
+        '❌ Error cargando ingredientes para producto ${producto.nombre}: $e',
+      );
+      // En caso de error, devolver el producto original
+      return producto;
+    }
+  }
+
+  /// Enriquece los ingredientes con sus nombres completos cargándolos desde el backend
+  Future<List<IngredienteProducto>> _enriquecerIngredientesConNombres(
+    List<IngredienteProducto> ingredientes,
+  ) async {
+    List<IngredienteProducto> ingredientesEnriquecidos = [];
+
+    for (var ingrediente in ingredientes) {
+      print(
+        '🔍 Procesando ingrediente: ID="${ingrediente.ingredienteId}", Nombre="${ingrediente.ingredienteNombre}"',
+      );
+
+      // Si el ingrediente ya tiene nombre válido (no es un ID), no necesita enriquecimiento
+      if (ingrediente.ingredienteNombre.isNotEmpty &&
+          !ingrediente.ingredienteNombre.startsWith('689') &&
+          ingrediente.ingredienteNombre != ingrediente.ingredienteId) {
+        print(
+          '✅ Ingrediente ya tiene nombre válido: ${ingrediente.ingredienteNombre}',
+        );
+        ingredientesEnriquecidos.add(ingrediente);
+        continue;
+      }
+
+      print(
+        '🔄 Ingrediente necesita enriquecimiento. Nombre actual: "${ingrediente.ingredienteNombre}"',
+      );
+
+      // Si solo tenemos el ID, cargar los datos completos del ingrediente
+      if (ingrediente.ingredienteId.isNotEmpty) {
+        try {
+          print(
+            '🔄 Cargando nombre para ingrediente ID: ${ingrediente.ingredienteId}',
+          );
+
+          final headers = await _getHeaders();
+          final response = await http
+              .get(
+                Uri.parse(
+                  '$baseUrl/api/ingredientes/${ingrediente.ingredienteId}',
+                ),
+                headers: headers,
+              )
+              .timeout(Duration(seconds: 5));
+
+          if (response.statusCode == 200) {
+            final responseData = json.decode(response.body);
+            print(
+              '📦 Respuesta raw del backend para ingrediente ${ingrediente.ingredienteId}: $responseData',
+            );
+
+            Map<String, dynamic> ingredienteJson;
+
+            if (responseData is Map<String, dynamic>) {
+              if (responseData.containsKey('data')) {
+                ingredienteJson = responseData['data'];
+                print('📦 Usando campo "data": $ingredienteJson');
+              } else {
+                ingredienteJson = responseData;
+                print('📦 Usando respuesta directa: $ingredienteJson');
+              }
+            } else {
+              throw Exception('Formato de respuesta inesperado');
+            }
+
+            String nombreIngrediente =
+                ingredienteJson['nombre']?.toString() ??
+                'Ingrediente ${ingrediente.ingredienteId}';
+
+            print(
+              '✅ Nombre extraído: "$nombreIngrediente" para ID: ${ingrediente.ingredienteId}',
+            );
+
+            // Crear un nuevo ingrediente con el nombre correcto
+            final ingredienteEnriquecido = IngredienteProducto(
+              ingredienteId: ingrediente.ingredienteId,
+              ingredienteNombre: nombreIngrediente,
+              cantidadNecesaria: ingrediente.cantidadNecesaria,
+              esOpcional: ingrediente.esOpcional,
+              precioAdicional: ingrediente.precioAdicional,
+            );
+
+            ingredientesEnriquecidos.add(ingredienteEnriquecido);
+          } else {
+            print(
+              '⚠️ No se pudo cargar ingrediente ${ingrediente.ingredienteId}, usando ID como nombre',
+            );
+            ingredientesEnriquecidos.add(ingrediente);
+          }
+        } catch (e) {
+          print(
+            '⚠️ Error cargando ingrediente ${ingrediente.ingredienteId}: $e',
+          );
+          // En caso de error, usar el ingrediente original
+          ingredientesEnriquecidos.add(ingrediente);
+        }
+      } else {
+        // Si no tenemos ID, agregar el ingrediente tal como está
+        ingredientesEnriquecidos.add(ingrediente);
+      }
+    }
+
+    return ingredientesEnriquecidos;
   }
 
   // Método auxiliar para parsear respuestas de lista de categorías

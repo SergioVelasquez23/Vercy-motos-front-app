@@ -68,46 +68,26 @@ class UserProvider extends ChangeNotifier {
       _userName = payload['name'];
       _userEmail = payload['email'];
 
-      print('👤 JWT Payload completo: $payload');
-
       // Extract roles
       if (payload.containsKey('roles')) {
         final rolesData = payload['roles'];
-        print(
-          '👤 Datos de roles sin procesar: $rolesData (tipo: ${rolesData.runtimeType})',
-        );
 
         if (rolesData is List) {
           // Convertir cada elemento a String para asegurar compatibilidad
           _roles = rolesData.map((role) => role.toString()).toList();
-          print('👤 Roles convertidos desde Lista: $_roles');
         } else if (rolesData is String) {
           // Si es una cadena, posiblemente sea un solo rol
           _roles = [rolesData];
-          print('👤 Roles como única cadena: $_roles');
         } else {
           // Para otros casos, intentar convertir a String
           try {
             _roles = [rolesData.toString()];
-            print('👤 Rol convertido a String: $_roles');
           } catch (e) {
             _roles = [];
-            print('⚠️ No se pudo convertir el rol a String: $e');
           }
-          print(
-            '⚠️ Formato de roles desconocido (usando toString): $rolesData',
-          );
         }
-
-        print('👤 Roles extraídos del token: $_roles');
-
-        // Verificar roles específicos para depuración
-        print('👤 ¿Es SUPERADMIN? ${_roles.contains("SUPERADMIN")}');
-        print('👤 ¿Es ADMIN? ${_roles.contains("ADMIN")}');
-        print('👤 ¿Es MESERO? ${_roles.contains("MESERO")}');
       } else {
         _roles = [];
-        print('⚠️ No se encontraron roles en el token JWT');
       } // Save token to storage
       if (kIsWeb) {
         html.window.localStorage['jwt_token'] = token;
@@ -117,7 +97,6 @@ class UserProvider extends ChangeNotifier {
 
       notifyListeners();
     } catch (e) {
-      print('Error processing token: $e');
       _roles = [];
     }
   }
@@ -140,11 +119,7 @@ class UserProvider extends ChangeNotifier {
 
   // Método para actualizar los roles desde el backend
   Future<void> actualizarRoles(List<String> roles) async {
-    print('🔄 Actualizando roles de usuario: $roles');
     _roles = roles;
     notifyListeners();
-    print(
-      '✅ Roles actualizados. isAdmin: $isAdmin, isSuperAdmin: $isSuperAdmin, isMesero: $isMesero',
-    );
   }
 }

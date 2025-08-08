@@ -146,6 +146,8 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
         return Colors.orange;
       case TipoPedido.cancelado:
         return Colors.red;
+      case TipoPedido.domicilio:
+        return Colors.cyan;
     }
   }
 
@@ -161,6 +163,8 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
         return 'RT';
       case TipoPedido.cancelado:
         return 'Cancelado';
+      case TipoPedido.domicilio:
+        return 'Domicilio';
     }
   }
 
