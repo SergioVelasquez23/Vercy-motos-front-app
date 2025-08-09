@@ -219,11 +219,18 @@ class PedidoService {
         if (responseData['success'] == true && responseData['data'] != null) {
           final pedidoCreado = Pedido.fromJson(responseData['data']);
 
-          // El procesamiento de inventario se hace automáticamente en el backend
-          _inventarioService.notificarProcesamientoInventario(pedidoCreado.id);
-          print(
-            '✅ Pedido creado - El inventario se procesa automáticamente en el servidor: ${pedidoCreado.id}',
-          );
+          // Procesar descuento de ingredientes automáticamente
+          try {
+            await _inventarioService.procesarPedidoParaInventario(
+              pedidoCreado.id,
+            );
+            print(
+              '✅ Ingredientes descontados correctamente para pedido: ${pedidoCreado.id}',
+            );
+          } catch (e) {
+            print('⚠️ Error al descontar ingredientes del inventario: $e');
+            // No fallar la creación del pedido, solo loggear el error
+          }
 
           return pedidoCreado;
         } else {
@@ -274,13 +281,18 @@ class PedidoService {
         if (responseData['success'] == true && responseData['data'] != null) {
           final pedidoActualizado = Pedido.fromJson(responseData['data']);
 
-          // El procesamiento de inventario se hace automáticamente en el backend
-          _inventarioService.notificarProcesamientoInventario(
-            pedidoActualizado.id,
-          );
-          print(
-            '✅ Pedido actualizado - El inventario se procesa automáticamente en el servidor: ${pedidoActualizado.id}',
-          );
+          // Procesar cambios en ingredientes automáticamente
+          try {
+            await _inventarioService.procesarPedidoParaInventario(
+              pedidoActualizado.id,
+            );
+            print(
+              '✅ Inventario actualizado correctamente para pedido: ${pedidoActualizado.id}',
+            );
+          } catch (e) {
+            print('⚠️ Error al actualizar inventario: $e');
+            // No fallar la actualización del pedido, solo loggear el error
+          }
 
           return pedidoActualizado;
         } else {

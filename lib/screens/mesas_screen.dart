@@ -566,11 +566,11 @@ class _MesasScreenState extends State<MesasScreen> {
       1000: 0,
     };
 
-    // Función local para construir botones de billetes
+    // Función local para construir botones de billetes mejorados
     Widget _buildBilletButton(int valor, Function(VoidCallback) setStateLocal) {
       return Expanded(
         child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 3),
+          padding: EdgeInsets.symmetric(horizontal: 4),
           child: InkWell(
             onTap: () {
               setStateLocal(() {
@@ -581,16 +581,20 @@ class _MesasScreenState extends State<MesasScreen> {
               });
             },
             child: Container(
-              height: 65,
+              height: 80, // Más alto
               decoration: BoxDecoration(
-                color: _primary,
-                borderRadius: BorderRadius.circular(8),
+                gradient: LinearGradient(
+                  colors: [_primary, _primary.withOpacity(0.8)],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
+                borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: Colors.white.withOpacity(0.2)),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 4,
-                    offset: Offset(0, 2),
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: 6,
+                    offset: Offset(0, 3),
                   ),
                 ],
               ),
@@ -598,28 +602,35 @@ class _MesasScreenState extends State<MesasScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   // Mostrar contador si hay billetes seleccionados
-                  if ((_contadorBilletes[valor] ?? 0) > 0)
+                  if ((_contadorBilletes[valor] ?? 0) > 0) ...[
                     Container(
-                      padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(15),
                       ),
                       child: Text(
                         '${_contadorBilletes[valor]}',
                         style: TextStyle(
                           color: _primary,
-                          fontSize: 11,
+                          fontSize: 12,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
-                  if ((_contadorBilletes[valor] ?? 0) > 0) SizedBox(height: 4),
+                    SizedBox(height: 6),
+                  ],
+
+                  // Icono de billete
+                  Icon(Icons.money, color: Colors.white, size: 20),
+                  SizedBox(height: 4),
+
+                  // Valor del billete
                   Text(
                     '\$${(valor / 1000).toStringAsFixed(0)}K',
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 13,
+                      fontSize: 14,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -666,446 +677,468 @@ class _MesasScreenState extends State<MesasScreen> {
         builder: (context, setState) => Dialog(
           backgroundColor: _cardBg,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15),
+            borderRadius: BorderRadius.circular(20), // Bordes más redondeados
           ),
           child: Container(
-            width: MediaQuery.of(context).size.width * 0.8,
-            padding: EdgeInsets.all(20),
+            width:
+                MediaQuery.of(context).size.width *
+                0.85, // Ancho ligeramente mayor
+            padding: EdgeInsets.all(28), // Más padding
             child: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Resumen del Pedido',
-                    style: TextStyle(
-                      color: _textLight,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
+                  // Header del diálogo
+                  Center(
+                    child: Column(
+                      children: [
+                        Icon(Icons.payment, color: _primary, size: 32),
+                        SizedBox(height: 12),
+                        Text(
+                          'Procesar Pago',
+                          style: TextStyle(
+                            color: _textLight,
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  SizedBox(height: 20),
-
-                  // Información del pedido
-                  Text(
-                    'Mesa: ${pedido.mesa}',
-                    style: TextStyle(color: _textLight),
-                  ),
-                  Text(
-                    'Mesero: ${pedido.mesero}',
-                    style: TextStyle(color: _textLight),
-                  ),
-                  if (pedido.cliente != null)
-                    Text(
-                      'Cliente: ${pedido.cliente}',
-                      style: TextStyle(color: _textLight),
-                    ),
+                  SizedBox(height: 32), // Más espacio
+                  // Sección: Información del pedido
+                  _buildSeccionTitulo('Información del Pedido'),
                   SizedBox(height: 16),
-
-                  // Detalle de productos
-                  Text(
-                    'Productos:',
-                    style: TextStyle(
-                      color: _textLight,
-                      fontWeight: FontWeight.bold,
+                  Container(
+                    padding: EdgeInsets.all(20), // Más padding
+                    decoration: BoxDecoration(
+                      color: _cardBg.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(
+                        16,
+                      ), // Bordes más redondeados
+                      border: Border.all(color: _primary.withOpacity(0.2)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildInfoRow(
+                          Icons.table_restaurant,
+                          'Mesa',
+                          pedido.mesa,
+                        ),
+                        SizedBox(height: 12),
+                        _buildInfoRow(Icons.person, 'Mesero', pedido.mesero),
+                        if (pedido.cliente != null) ...[
+                          SizedBox(height: 12),
+                          _buildInfoRow(
+                            Icons.person_outline,
+                            'Cliente',
+                            pedido.cliente!,
+                          ),
+                        ],
+                      ],
                     ),
                   ),
-                  ...pedido.items.map(
-                    (item) => Padding(
-                      padding: EdgeInsets.symmetric(vertical: 4),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            flex: 2,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  '${item.cantidad}x ${item.producto?.nombre ?? "Producto desconocido"}',
-                                  style: TextStyle(
-                                    color: _textLight,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                if (item.notas != null &&
-                                    item.notas!.isNotEmpty)
-                                  Text(
-                                    item.notas!,
-                                    style: TextStyle(
-                                      color: _textLight.withOpacity(0.7),
-                                      fontSize: 12,
+                  SizedBox(height: 32), // Más espacio
+                  // Sección: Productos
+                  _buildSeccionTitulo('Detalle de Productos'),
+                  SizedBox(height: 16),
+                  Container(
+                    padding: EdgeInsets.all(20), // Más padding
+                    decoration: BoxDecoration(
+                      color: _cardBg.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: _primary.withOpacity(0.2)),
+                    ),
+                    child: Column(
+                      children: pedido.items
+                          .map(
+                            (item) => Padding(
+                              padding: EdgeInsets.symmetric(
+                                vertical: 8,
+                              ), // Más padding vertical
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    flex: 3,
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          '${item.cantidad}x ${item.producto?.nombre ?? "Producto desconocido"}',
+                                          style: TextStyle(
+                                            color: _textLight,
+                                            fontWeight:
+                                                FontWeight.w600, // Más peso
+                                            fontSize: 15, // Texto más grande
+                                          ),
+                                        ),
+                                        if (item.notas != null &&
+                                            item.notas!.isNotEmpty) ...[
+                                          SizedBox(height: 4),
+                                          Text(
+                                            item.notas!,
+                                            style: TextStyle(
+                                              color: _textLight.withOpacity(
+                                                0.7,
+                                              ),
+                                              fontSize: 13,
+                                            ),
+                                          ),
+                                        ],
+                                      ],
                                     ),
                                   ),
-                              ],
+                                  Text(
+                                    '\$${((item.precio) * item.cantidad).toStringAsFixed(0)}',
+                                    style: TextStyle(
+                                      color: _primary,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16, // Texto más grande
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                          // Removed the per-unit price display to avoid redundancy
-                          Text(
-                            '\$${((item.precio) * item.cantidad).toStringAsFixed(0)}',
-                            style: TextStyle(
-                              color: _textLight,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
+                          )
+                          .toList(),
                     ),
                   ),
-                  Divider(color: _textLight.withOpacity(0.3)),
+                  SizedBox(height: 32),
 
-                  // Opción Mover a otra mesa
-                  InkWell(
-                    onTap: () async {
-                      final mesaSeleccionada =
-                          await _mostrarDialogoSeleccionMesa();
-                      if (mesaSeleccionada != null) {
-                        setState(() {
-                          _mesaDestinoId = mesaSeleccionada.id;
-                        });
-                      }
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8.0),
-                      child: Row(
-                        children: [
-                          Icon(Icons.swap_horiz, color: _textLight),
-                          SizedBox(width: 8),
-                          Text(
-                            'Mover a otra mesa',
-                            style: TextStyle(color: _textLight, fontSize: 16),
-                          ),
-                          Spacer(),
-                          if (_mesaDestinoId != null)
-                            Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: _primary.withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                'Seleccionada',
-                                style: TextStyle(
-                                  color: _primary,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
+                  // Sección: Forma de pago
+                  _buildSeccionTitulo('Método de Pago'),
+                  SizedBox(height: 16),
+                  Container(
+                    padding: EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: _cardBg.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: _primary.withOpacity(0.2)),
+                    ),
+                    child: Column(
+                      children: [
+                        // Botones de método de pago mejorados
+                        Row(
+                          children: [
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () =>
+                                    setState(() => _medioPago = 'efectivo'),
+                                child: Container(
+                                  padding: EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: _medioPago == 'efectivo'
+                                        ? _primary.withOpacity(0.2)
+                                        : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: _medioPago == 'efectivo'
+                                          ? _primary
+                                          : _textLight.withOpacity(0.3),
+                                      width: 2,
+                                    ),
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      Icon(
+                                        Icons.money,
+                                        color: _medioPago == 'efectivo'
+                                            ? _primary
+                                            : _textLight.withOpacity(0.6),
+                                        size: 24,
+                                      ),
+                                      SizedBox(height: 8),
+                                      Text(
+                                        'Efectivo',
+                                        style: TextStyle(
+                                          color: _medioPago == 'efectivo'
+                                              ? _primary
+                                              : _textLight.withOpacity(0.8),
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
-                          SizedBox(width: 8),
-                          Icon(Icons.chevron_right, color: _textLight),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  SizedBox(height: 16),
-                  Divider(color: _textLight.withOpacity(0.3)),
-
-                  // Campos de descuento
-                  Text(
-                    'Descuentos:',
-                    style: TextStyle(
-                      color: _textLight,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _descuentoPorcentajeController,
-                          decoration: InputDecoration(
-                            labelText: 'Descuento %',
-                            labelStyle: TextStyle(color: _textLight),
-                            suffixText: '%',
-                            enabledBorder: OutlineInputBorder(
-                              borderSide: BorderSide(
-                                color: _textLight.withOpacity(0.3),
+                            SizedBox(width: 16),
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () => setState(
+                                  () => _medioPago = 'transferencia',
+                                ),
+                                child: Container(
+                                  padding: EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: _medioPago == 'transferencia'
+                                        ? _primary.withOpacity(0.2)
+                                        : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: _medioPago == 'transferencia'
+                                          ? _primary
+                                          : _textLight.withOpacity(0.3),
+                                      width: 2,
+                                    ),
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      Icon(
+                                        Icons.credit_card,
+                                        color: _medioPago == 'transferencia'
+                                            ? _primary
+                                            : _textLight.withOpacity(0.6),
+                                        size: 24,
+                                      ),
+                                      SizedBox(height: 8),
+                                      Text(
+                                        'Tarjeta/Transfer.',
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          color: _medioPago == 'transferencia'
+                                              ? _primary
+                                              : _textLight.withOpacity(0.8),
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ),
                             ),
-                          ),
-                          style: TextStyle(color: _textLight),
-                          keyboardType: TextInputType.number,
+                          ],
                         ),
-                      ),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: TextField(
-                          controller: _descuentoValorController,
-                          decoration: InputDecoration(
-                            labelText: 'Descuento \$',
-                            labelStyle: TextStyle(color: _textLight),
-                            prefixText: '\$',
-                            enabledBorder: OutlineInputBorder(
-                              borderSide: BorderSide(
-                                color: _textLight.withOpacity(0.3),
-                              ),
-                            ),
-                          ),
-                          style: TextStyle(color: _textLight),
-                          keyboardType: TextInputType.number,
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 16),
-
-                  // Forma de pago
-                  Text(
-                    'Forma de pago:',
-                    style: TextStyle(
-                      color: _textLight,
-                      fontWeight: FontWeight.bold,
+                      ],
                     ),
                   ),
-                  Row(
-                    children: [
-                      Radio<String>(
-                        value: 'efectivo',
-                        groupValue: _medioPago,
-                        onChanged: (value) {
-                          setState(() => _medioPago = value!);
-                        },
-                        activeColor: _primary,
-                      ),
-                      Text('Efectivo', style: TextStyle(color: _textLight)),
-                      SizedBox(width: 16),
-                      Radio<String>(
-                        value: 'transferencia',
-                        groupValue: _medioPago,
-                        onChanged: (value) {
-                          setState(() => _medioPago = value!);
-                        },
-                        activeColor: _primary,
-                      ),
-                      Text(
-                        'Transferencia/Tarjeta',
-                        style: TextStyle(color: _textLight),
-                      ),
-                    ],
-                  ),
+                  SizedBox(height: 32),
 
-                  // Selector de billetes (solo para pago en efectivo)
+                  // Sección: Pago en efectivo (condicional)
                   if (_medioPago == 'efectivo') ...[
+                    _buildSeccionTitulo('Cálculo de Cambio'),
                     SizedBox(height: 16),
-
-                    // Campo para entrada manual opcional
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
+                    Container(
+                      padding: EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: _cardBg.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: _primary.withOpacity(0.2)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Campo para entrada manual
+                          TextField(
                             controller: _billetesController,
                             decoration: InputDecoration(
-                              labelText: 'Total recibido (opcional)',
+                              labelText: 'Total recibido',
                               labelStyle: TextStyle(color: _textLight),
                               prefixText: '\$',
                               enabledBorder: OutlineInputBorder(
                                 borderSide: BorderSide(
                                   color: _textLight.withOpacity(0.3),
                                 ),
+                                borderRadius: BorderRadius.circular(12),
                               ),
                               focusedBorder: OutlineInputBorder(
-                                borderSide: BorderSide(color: _primary),
+                                borderSide: BorderSide(
+                                  color: _primary,
+                                  width: 2,
+                                ),
+                                borderRadius: BorderRadius.circular(12),
                               ),
                             ),
-                            style: TextStyle(color: _textLight),
+                            style: TextStyle(color: _textLight, fontSize: 16),
                             keyboardType: TextInputType.number,
                             onChanged: (value) {
                               setState(() {
                                 _billetesSeleccionados =
                                     double.tryParse(value) ?? 0.0;
-                                // Limpiar contadores cuando se ingresa manual
                                 if (value.isNotEmpty) {
                                   _contadorBilletes.updateAll((key, val) => 0);
                                 }
                               });
                             },
                           ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 12),
+                          SizedBox(height: 20),
 
-                    Text(
-                      'O selecciona los billetes:',
-                      style: TextStyle(
-                        color: _textLight,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    SizedBox(height: 8),
-
-                    // Botones de billetes comunes
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        _buildBilletButton(50000, setState),
-                        _buildBilletButton(20000, setState),
-                        _buildBilletButton(10000, setState),
-                        _buildBilletButton(5000, setState),
-                      ],
-                    ),
-                    SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        _buildBilletButton(2000, setState),
-                        _buildBilletButton(1000, setState),
-                        // Botón para valor exacto
-                        Expanded(
-                          child: Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 2),
-                            child: ElevatedButton(
-                              onPressed: () {
-                                setState(() {
-                                  // Limpiar contadores primero
-                                  _contadorBilletes.updateAll(
-                                    (key, value) => 0,
-                                  );
-                                  // Calcular total con propina
-                                  double subtotal = pedido.total;
-                                  double propinaPercent =
-                                      double.tryParse(
-                                        _propinaController.text,
-                                      ) ??
-                                      0.0;
-                                  double propinaMonto =
-                                      (subtotal * propinaPercent / 100)
-                                          .roundToDouble();
-                                  double total = subtotal + propinaMonto;
-                                  _billetesSeleccionados = total;
-                                  _billetesController.text =
-                                      _billetesSeleccionados.toStringAsFixed(0);
-                                });
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.green,
-                                padding: EdgeInsets.symmetric(vertical: 8),
-                              ),
-                              child: Text(
-                                'Exacto',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.white,
-                                ),
-                              ),
+                          Text(
+                            'O selecciona los billetes:',
+                            style: TextStyle(
+                              color: _textLight,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
                             ),
                           ),
-                        ),
-                        // Botón para limpiar
-                        Expanded(
-                          child: Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 2),
-                            child: ElevatedButton(
-                              onPressed: () {
-                                setState(() {
-                                  _billetesSeleccionados = 0.0;
-                                  _billetesController.text = '0';
-                                  _contadorBilletes.updateAll(
-                                    (key, value) => 0,
-                                  );
-                                });
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.red,
-                                padding: EdgeInsets.symmetric(vertical: 8),
-                              ),
-                              child: Text(
-                                'Limpiar',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 8),
+                          SizedBox(height: 16),
 
-                    // Mostrar resumen de billetes seleccionados
-                    if (_billetesSeleccionados > 0) ...[
-                      Container(
-                        padding: EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: _cardBg.withOpacity(0.3),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: _primary.withOpacity(0.2)),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Billetes seleccionados:',
-                              style: TextStyle(
-                                color: _textLight,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            SizedBox(height: 4),
-                            Wrap(
-                              spacing: 8,
-                              children: _contadorBilletes.entries
-                                  .where((entry) => entry.value > 0)
-                                  .map(
-                                    (entry) => Container(
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: 6,
-                                        vertical: 2,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: _primary.withOpacity(0.2),
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      child: Text(
-                                        '${entry.value}x \$${(entry.key / 1000).toStringAsFixed(0)}K',
-                                        style: TextStyle(
-                                          color: _primary,
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
+                          // Botones de billetes mejorados
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              _buildBilletButton(50000, setState),
+                              _buildBilletButton(20000, setState),
+                              _buildBilletButton(10000, setState),
+                            ],
+                          ),
+                          SizedBox(height: 12),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              _buildBilletButton(5000, setState),
+                              _buildBilletButton(2000, setState),
+                              _buildBilletButton(1000, setState),
+                            ],
+                          ),
+                          SizedBox(height: 16),
+
+                          // Botones de acción para billetes
+                          Row(
+                            children: [
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: () {
+                                    setState(() {
+                                      _contadorBilletes.updateAll(
+                                        (key, value) => 0,
+                                      );
+                                      double subtotal = pedido.total;
+                                      double propinaPercent =
+                                          double.tryParse(
+                                            _propinaController.text,
+                                          ) ??
+                                          0.0;
+                                      double propinaMonto =
+                                          (subtotal * propinaPercent / 100)
+                                              .roundToDouble();
+                                      double total = subtotal + propinaMonto;
+                                      _billetesSeleccionados = total;
+                                      _billetesController.text =
+                                          _billetesSeleccionados
+                                              .toStringAsFixed(0);
+                                    });
+                                  },
+                                  icon: Icon(Icons.check, size: 18),
+                                  label: Text('Exacto'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.green,
+                                    foregroundColor: Colors.white,
+                                    padding: EdgeInsets.symmetric(vertical: 12),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
                                     ),
-                                  )
-                                  .toList(),
-                            ),
-                          ],
-                        ),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(width: 12),
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: () {
+                                    setState(() {
+                                      _billetesSeleccionados = 0.0;
+                                      _billetesController.text = '0';
+                                      _contadorBilletes.updateAll(
+                                        (key, value) => 0,
+                                      );
+                                    });
+                                  },
+                                  icon: Icon(Icons.clear, size: 18),
+                                  label: Text('Limpiar'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.red,
+                                    foregroundColor: Colors.white,
+                                    padding: EdgeInsets.symmetric(vertical: 12),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
-                      SizedBox(height: 8),
-                    ],
+                    ),
+                    SizedBox(height: 24),
+                  ],
 
-                    // Mostrar total recibido y cambio
-                    Builder(
-                      builder: (context) {
-                        double totalRecibido = _billetesSeleccionados;
+                  // Sección: Propina y Totales
+                  _buildSeccionTitulo('Propina y Totales'),
+                  SizedBox(height: 16),
+                  Container(
+                    padding: EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: _cardBg.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: _primary.withOpacity(0.2)),
+                    ),
+                    child: Column(
+                      children: [
+                        // Campo de propina
+                        TextField(
+                          controller: _propinaController,
+                          decoration: InputDecoration(
+                            labelText: 'Propina (%)',
+                            labelStyle: TextStyle(color: _textLight),
+                            suffixText: '%',
+                            prefixIcon: Icon(Icons.star, color: _primary),
+                            enabledBorder: OutlineInputBorder(
+                              borderSide: BorderSide(
+                                color: _textLight.withOpacity(0.3),
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderSide: BorderSide(color: _primary, width: 2),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          style: TextStyle(color: _textLight, fontSize: 16),
+                          keyboardType: TextInputType.number,
+                          onChanged: (value) {
+                            setState(() {
+                              _incluyePropina =
+                                  value.isNotEmpty &&
+                                  double.tryParse(value) != null &&
+                                  double.parse(value) > 0;
+                            });
+                          },
+                        ),
+                        SizedBox(height: 24),
 
-                        // Calcular total a pagar (con propina)
-                        double subtotal = pedido.total;
-                        double propinaPercent =
-                            double.tryParse(_propinaController.text) ?? 0.0;
-                        double propinaMonto = (subtotal * propinaPercent / 100)
-                            .roundToDouble();
-                        double totalAPagar = subtotal + propinaMonto;
+                        // Resumen de totales
+                        Builder(
+                          builder: (context) {
+                            double subtotal = pedido.total;
+                            double propinaPercent =
+                                double.tryParse(_propinaController.text) ?? 0.0;
+                            double propinaMonto =
+                                (subtotal * propinaPercent / 100)
+                                    .roundToDouble();
+                            double total = subtotal + propinaMonto;
 
-                        double cambio = totalRecibido - totalAPagar;
-
-                        return Column(
-                          children: [
-                            Container(
-                              padding: EdgeInsets.all(12),
+                            return Container(
+                              padding: EdgeInsets.all(20),
                               decoration: BoxDecoration(
-                                color: _cardBg.withOpacity(0.5),
-                                borderRadius: BorderRadius.circular(8),
+                                gradient: LinearGradient(
+                                  colors: [
+                                    _primary.withOpacity(0.1),
+                                    _primary.withOpacity(0.05),
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(16),
                                 border: Border.all(
-                                  color: _textLight.withOpacity(0.3),
+                                  color: _primary.withOpacity(0.3),
                                 ),
                               ),
                               child: Column(
@@ -1115,368 +1148,426 @@ class _MesasScreenState extends State<MesasScreen> {
                                         MainAxisAlignment.spaceBetween,
                                     children: [
                                       Text(
-                                        'Total a pagar:',
-                                        style: TextStyle(color: _textLight),
-                                      ),
-                                      Text(
-                                        '\$${totalAPagar.toStringAsFixed(0)}',
+                                        'Subtotal:',
                                         style: TextStyle(
                                           color: _textLight,
-                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                      Text(
+                                        '\$${subtotal.toStringAsFixed(0)}',
+                                        style: TextStyle(
+                                          color: _textLight,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w500,
                                         ),
                                       ),
                                     ],
                                   ),
-                                  SizedBox(height: 4),
+                                  if (propinaPercent > 0) ...[
+                                    SizedBox(height: 12),
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          'Propina ($propinaPercent%):',
+                                          style: TextStyle(
+                                            color: _textLight,
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                        Text(
+                                          '\$${propinaMonto.toStringAsFixed(0)}',
+                                          style: TextStyle(
+                                            color: _textLight,
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                  SizedBox(height: 16),
+                                  Divider(
+                                    color: _primary.withOpacity(0.3),
+                                    thickness: 2,
+                                  ),
+                                  SizedBox(height: 16),
                                   Row(
                                     mainAxisAlignment:
                                         MainAxisAlignment.spaceBetween,
                                     children: [
                                       Text(
-                                        'Recibido:',
-                                        style: TextStyle(color: _textLight),
-                                      ),
-                                      Text(
-                                        '\$${totalRecibido.toStringAsFixed(0)}',
+                                        'TOTAL:',
                                         style: TextStyle(
                                           color: _textLight,
+                                          fontSize: 22,
+                                          fontWeight: FontWeight.bold,
+                                          letterSpacing: 1.2,
+                                        ),
+                                      ),
+                                      Text(
+                                        '\$${total.toStringAsFixed(0)}',
+                                        style: TextStyle(
+                                          color: _primary,
+                                          fontSize: 26,
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
                                     ],
                                   ),
-                                  Divider(color: _textLight.withOpacity(0.3)),
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        'Cambio:',
-                                        style: TextStyle(
-                                          color: _textLight,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 16,
-                                        ),
+
+                                  // Mostrar cálculo de cambio para efectivo
+                                  if (_medioPago == 'efectivo' &&
+                                      _billetesSeleccionados > 0) ...[
+                                    SizedBox(height: 20),
+                                    Container(
+                                      padding: EdgeInsets.all(16),
+                                      decoration: BoxDecoration(
+                                        color: _cardBg.withOpacity(0.5),
+                                        borderRadius: BorderRadius.circular(12),
                                       ),
-                                      Text(
-                                        cambio >= 0
-                                            ? '\$${cambio.toStringAsFixed(0)}'
-                                            : '-\$${(-cambio).toStringAsFixed(0)}',
-                                        style: TextStyle(
-                                          color: cambio >= 0
-                                              ? Colors.green
-                                              : Colors.red,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 16,
-                                        ),
+                                      child: Column(
+                                        children: [
+                                          Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Text(
+                                                'Recibido:',
+                                                style: TextStyle(
+                                                  color: _textLight,
+                                                  fontSize: 15,
+                                                ),
+                                              ),
+                                              Text(
+                                                '\$${_billetesSeleccionados.toStringAsFixed(0)}',
+                                                style: TextStyle(
+                                                  color: _textLight,
+                                                  fontSize: 15,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          SizedBox(height: 8),
+                                          Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Text(
+                                                'Cambio:',
+                                                style: TextStyle(
+                                                  color: _textLight,
+                                                  fontSize: 17,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                              Text(
+                                                (_billetesSeleccionados -
+                                                            total) >=
+                                                        0
+                                                    ? '\$${(_billetesSeleccionados - total).toStringAsFixed(0)}'
+                                                    : '-\$${(total - _billetesSeleccionados).toStringAsFixed(0)}',
+                                                style: TextStyle(
+                                                  color:
+                                                      (_billetesSeleccionados -
+                                                              total) >=
+                                                          0
+                                                      ? Colors.green
+                                                      : Colors.red,
+                                                  fontSize: 18,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
                                       ),
-                                    ],
-                                  ),
+                                    ),
+                                  ],
                                 ],
                               ),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                  ],
-
-                  // Propina
-                  Text(
-                    'Propina:',
-                    style: TextStyle(
-                      color: _textLight,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  SizedBox(height: 8),
-                  TextField(
-                    controller: _propinaController,
-                    decoration: InputDecoration(
-                      labelText: 'Propina %',
-                      labelStyle: TextStyle(color: _textLight),
-                      suffixText: '%',
-                      enabledBorder: OutlineInputBorder(
-                        borderSide: BorderSide(
-                          color: _textLight.withOpacity(0.3),
+                            );
+                          },
                         ),
-                      ),
+                      ],
                     ),
-                    style: TextStyle(color: _textLight),
-                    keyboardType: TextInputType.number,
-                    onChanged: (value) {
-                      setState(() {
-                        _incluyePropina =
-                            value.isNotEmpty &&
-                            double.tryParse(value) != null &&
-                            double.parse(value) > 0;
-                      });
-                    },
                   ),
+                  SizedBox(height: 32),
 
+                  // Sección: Opciones Especiales
+                  _buildSeccionTitulo('Opciones Especiales'),
                   SizedBox(height: 16),
-
-                  // Total
-                  Builder(
-                    builder: (context) {
-                      double subtotal = pedido.total;
-                      double propinaPercent =
-                          double.tryParse(_propinaController.text) ?? 0.0;
-                      double propinaMonto = (subtotal * propinaPercent / 100)
-                          .roundToDouble();
-                      double total = subtotal + propinaMonto;
-
-                      return Column(
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  Container(
+                    padding: EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: _cardBg.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: _primary.withOpacity(0.2)),
+                    ),
+                    child: Column(
+                      children: [
+                        // Opción Es cortesía
+                        Container(
+                          padding: EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: _esCortesia
+                                ? _primary.withOpacity(0.1)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: _esCortesia
+                                  ? _primary
+                                  : _textLight.withOpacity(0.2),
+                            ),
+                          ),
+                          child: Row(
                             children: [
-                              Text(
-                                'Subtotal:',
-                                style: TextStyle(
-                                  color: _textLight,
-                                  fontSize: 16,
+                              Icon(
+                                Icons.card_giftcard,
+                                color: _esCortesia
+                                    ? _primary
+                                    : _textLight.withOpacity(0.6),
+                                size: 24,
+                              ),
+                              SizedBox(width: 16),
+                              Expanded(
+                                child: Text(
+                                  'Es cortesía',
+                                  style: TextStyle(
+                                    color: _textLight,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
                               ),
-                              Text(
-                                '\$${subtotal.toStringAsFixed(0)}',
-                                style: TextStyle(
-                                  color: _textLight,
-                                  fontSize: 16,
-                                ),
+                              Switch(
+                                value: _esCortesia,
+                                activeColor: _primary,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _esCortesia = value;
+                                    if (value) {
+                                      _esConsumoInterno = false;
+                                    }
+                                  });
+                                },
                               ),
                             ],
                           ),
-                          if (propinaPercent > 0) ...[
-                            SizedBox(height: 8),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  'Propina ($propinaPercent%):',
+                        ),
+                        SizedBox(height: 16),
+
+                        // Opción Consumo interno
+                        Container(
+                          padding: EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: _esConsumoInterno
+                                ? _primary.withOpacity(0.1)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: _esConsumoInterno
+                                  ? _primary
+                                  : _textLight.withOpacity(0.2),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.people,
+                                color: _esConsumoInterno
+                                    ? _primary
+                                    : _textLight.withOpacity(0.6),
+                                size: 24,
+                              ),
+                              SizedBox(width: 16),
+                              Expanded(
+                                child: Text(
+                                  'Consumo interno',
                                   style: TextStyle(
                                     color: _textLight,
                                     fontSize: 16,
+                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
-                                Text(
-                                  '\$${propinaMonto.toStringAsFixed(0)}',
-                                  style: TextStyle(
-                                    color: _textLight,
-                                    fontSize: 16,
+                              ),
+                              Switch(
+                                value: _esConsumoInterno,
+                                activeColor: _primary,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _esConsumoInterno = value;
+                                    if (value) {
+                                      _esCortesia = false;
+                                    }
+                                  });
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(height: 16),
+
+                        // Opción Mover a otra mesa
+                        InkWell(
+                          onTap: () async {
+                            final mesaSeleccionada =
+                                await _mostrarDialogoSeleccionMesa();
+                            if (mesaSeleccionada != null) {
+                              setState(() {
+                                _mesaDestinoId = mesaSeleccionada.id;
+                              });
+                            }
+                          },
+                          child: Container(
+                            padding: EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: _mesaDestinoId != null
+                                  ? _primary.withOpacity(0.1)
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: _mesaDestinoId != null
+                                    ? _primary
+                                    : _textLight.withOpacity(0.2),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.swap_horiz,
+                                  color: _mesaDestinoId != null
+                                      ? _primary
+                                      : _textLight.withOpacity(0.6),
+                                  size: 24,
+                                ),
+                                SizedBox(width: 16),
+                                Expanded(
+                                  child: Text(
+                                    'Mover a otra mesa',
+                                    style: TextStyle(
+                                      color: _textLight,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w500,
+                                    ),
                                   ),
+                                ),
+                                if (_mesaDestinoId != null)
+                                  Container(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: _primary,
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: Text(
+                                      'Seleccionada',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                SizedBox(width: 12),
+                                Icon(
+                                  Icons.chevron_right,
+                                  color: _textLight.withOpacity(0.6),
+                                  size: 20,
                                 ),
                               ],
                             ),
-                          ],
-                          SizedBox(height: 8),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'Total:',
-                                style: TextStyle(
-                                  color: _textLight,
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              Text(
-                                '\$${total.toStringAsFixed(0)}',
-                                style: TextStyle(
-                                  color: _primary,
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
                           ),
-                        ],
-                      );
-                    },
-                  ),
-
-                  SizedBox(height: 24),
-
-                  // OPCIONES ESPECIALES
-                  Text(
-                    'Opciones especiales:',
-                    style: TextStyle(
-                      color: _textLight,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  SizedBox(height: 8),
-
-                  // Opción Es cortesía
-                  SwitchListTile(
-                    title: Row(
-                      children: [
-                        Text(
-                          'Es cortesía',
-                          style: TextStyle(color: _textLight, fontSize: 16),
                         ),
-                        if (_esCortesia)
-                          Padding(
-                            padding: const EdgeInsets.only(left: 8.0),
-                            child: Icon(
-                              Icons.card_giftcard,
-                              color: _primary,
-                              size: 16,
-                            ),
-                          ),
                       ],
                     ),
-                    value: _esCortesia,
-                    activeColor: _primary,
-                    contentPadding: EdgeInsets.zero,
-                    onChanged: (value) {
-                      setState(() {
-                        _esCortesia = value;
-                        if (value) {
-                          _esConsumoInterno = false;
-                        }
-                      });
-                    },
                   ),
-
-                  // Opción Consumo interno
-                  SwitchListTile(
-                    title: Row(
-                      children: [
-                        Text(
-                          'Consumo interno',
-                          style: TextStyle(color: _textLight, fontSize: 16),
-                        ),
-                        if (_esConsumoInterno)
-                          Padding(
-                            padding: const EdgeInsets.only(left: 8.0),
-                            child: Icon(
-                              Icons.people,
-                              color: _primary,
-                              size: 16,
-                            ),
-                          ),
-                      ],
-                    ),
-                    value: _esConsumoInterno,
-                    activeColor: _primary,
-                    contentPadding: EdgeInsets.zero,
-                    onChanged: (value) {
-                      setState(() {
-                        _esConsumoInterno = value;
-                        if (value) {
-                          _esCortesia = false;
-                        }
-                      });
-                    },
-                  ),
-
-                  // Opción Mover a otra mesa
-                  InkWell(
-                    onTap: () async {
-                      final mesaSeleccionada =
-                          await _mostrarDialogoSeleccionMesa();
-                      if (mesaSeleccionada != null) {
-                        setState(() {
-                          _mesaDestinoId = mesaSeleccionada.id;
-                        });
-                      }
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8.0),
-                      child: Row(
-                        children: [
-                          Icon(Icons.swap_horiz, color: _textLight),
-                          SizedBox(width: 8),
-                          Text(
-                            'Mover a otra mesa',
-                            style: TextStyle(color: _textLight, fontSize: 16),
-                          ),
-                          Spacer(),
-                          if (_mesaDestinoId != null)
-                            Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: _primary.withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                'Seleccionada',
-                                style: TextStyle(
-                                  color: _primary,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          SizedBox(width: 8),
-                          Icon(Icons.chevron_right, color: _textLight),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  SizedBox(height: 16),
-
-                  // Botones de acción
+                  SizedBox(height: 40), // Más espacio antes de botones
+                  // Botones de acción mejorados
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // Botón Resumen/Imprimir
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          _mostrarResumenImpresion(pedido);
-                        },
-                        icon: Icon(Icons.receipt, size: 18),
-                        label: Text('Resumen'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue,
-                          foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
+                      // Botón Resumen
+                      Expanded(
+                        flex: 2,
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            _mostrarResumenImpresion(pedido);
+                          },
+                          icon: Icon(Icons.receipt_long, size: 20),
+                          label: Text('Ver Resumen'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue.shade600,
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                            elevation: 3,
                           ),
                         ),
                       ),
+                      SizedBox(width: 16),
 
-                      // Botones de acción derecha
-                      Row(
-                        children: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: Text('Cancelar'),
-                            style: TextButton.styleFrom(
-                              foregroundColor: _textLight,
+                      // Botón Cancelar
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: Text(
+                            'Cancelar',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
-                          SizedBox(width: 16),
-                          ElevatedButton(
-                            onPressed: () {
-                              Navigator.pop(context, {
-                                'medioPago': _medioPago,
-                                'incluyePropina': _incluyePropina,
-                                'descuentoPorcentaje':
-                                    _descuentoPorcentajeController.text,
-                                'descuentoValor':
-                                    _descuentoValorController.text,
-                                'propina': _propinaController.text,
-                                'esCortesia': _esCortesia,
-                                'esConsumoInterno': _esConsumoInterno,
-                                'mesaDestinoId': _mesaDestinoId,
-                                'billetesRecibidos': _billetesSeleccionados,
-                              });
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: _primary,
-                              foregroundColor: Colors.white,
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: _textLight,
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(15),
                             ),
-                            child: Text('Confirmar pago'),
+                            side: BorderSide(
+                              color: _textLight.withOpacity(0.3),
+                            ),
                           ),
-                        ],
+                        ),
+                      ),
+                      SizedBox(width: 16),
+
+                      // Botón Confirmar Pago
+                      Expanded(
+                        flex: 2,
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            Navigator.pop(context, {
+                              'medioPago': _medioPago,
+                              'incluyePropina': _incluyePropina,
+                              'descuentoPorcentaje':
+                                  _descuentoPorcentajeController.text,
+                              'descuentoValor': _descuentoValorController.text,
+                              'propina': _propinaController.text,
+                              'esCortesia': _esCortesia,
+                              'esConsumoInterno': _esConsumoInterno,
+                              'mesaDestinoId': _mesaDestinoId,
+                              'billetesRecibidos': _billetesSeleccionados,
+                            });
+                          },
+                          icon: Icon(Icons.payment, size: 20),
+                          label: Text('Confirmar Pago'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _primary,
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                            elevation: 5,
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -4286,5 +4377,41 @@ class _MesasScreenState extends State<MesasScreen> {
         ),
       );
     }
+  }
+
+  // Métodos auxiliares para el diálogo de pago mejorado
+  Widget _buildSeccionTitulo(String titulo) {
+    return Text(
+      titulo,
+      style: TextStyle(
+        color: _textLight,
+        fontSize: 18,
+        fontWeight: FontWeight.bold,
+        letterSpacing: 0.5,
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(IconData icono, String etiqueta, String valor) {
+    return Row(
+      children: [
+        Icon(icono, color: _primary, size: 18),
+        SizedBox(width: 12),
+        Text(
+          '$etiqueta: ',
+          style: TextStyle(color: _textLight.withOpacity(0.8), fontSize: 14),
+        ),
+        Expanded(
+          child: Text(
+            valor,
+            style: TextStyle(
+              color: _textLight,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      ],
+    );
   }
 }

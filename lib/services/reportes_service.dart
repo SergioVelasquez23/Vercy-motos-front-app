@@ -50,7 +50,7 @@ class ReportesService {
     int ultimosDias = 7,
   ]) async {
     final response = await _apiService.get<List<Map<String, dynamic>>>(
-      '/reportes/ventas-por-dia?ultimosDias=$ultimosDias',
+      '/ventas-por-dia?ultimosDias=$ultimosDias',
       (json) => List<Map<String, dynamic>>.from(json),
     );
 
@@ -236,6 +236,54 @@ class ReportesService {
       // Fallback: guardar localmente
       await _guardarObjetivoLocal(periodo, nuevoObjetivo);
       return true;
+    }
+  }
+
+  // Obtener últimos pedidos con detalles
+  Future<List<Map<String, dynamic>>> getUltimosPedidos([
+    int limite = 10,
+  ]) async {
+    try {
+      final response = await _apiService.get<List<Map<String, dynamic>>>(
+        '/ultimos-pedidos?limite=$limite',
+        (json) => List<Map<String, dynamic>>.from(json),
+      );
+
+      if (response.isSuccess) {
+        print('✅ Últimos pedidos obtenidos');
+        return response.data ?? [];
+      } else {
+        print('⚠️ Error al obtener últimos pedidos: ${response.errorMessage}');
+        return [];
+      }
+    } catch (e) {
+      print('❌ Excepción obteniendo últimos pedidos: $e');
+      return [];
+    }
+  }
+
+  // Obtener vendedores del mes
+  Future<List<Map<String, dynamic>>> getVendedoresDelMes([
+    int dias = 30,
+  ]) async {
+    try {
+      final response = await _apiService.get<List<Map<String, dynamic>>>(
+        '/vendedores-mes?dias=$dias',
+        (json) => List<Map<String, dynamic>>.from(json),
+      );
+
+      if (response.isSuccess) {
+        print('✅ Vendedores del mes obtenidos');
+        return response.data ?? [];
+      } else {
+        print(
+          '⚠️ Error al obtener vendedores del mes: ${response.errorMessage}',
+        );
+        return [];
+      }
+    } catch (e) {
+      print('❌ Excepción obteniendo vendedores del mes: $e');
+      return [];
     }
   }
 

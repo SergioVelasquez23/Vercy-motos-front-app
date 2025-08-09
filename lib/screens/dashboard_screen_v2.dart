@@ -64,6 +64,11 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
   List<Map<String, dynamic>> _ingresosVsEgresos = [];
   List<Map<String, dynamic>> _topProductos = [];
 
+  // Datos adicionales para nuevos componentes
+  List<Map<String, dynamic>> _pedidosPorHora = [];
+  List<Map<String, dynamic>> _ultimosPedidos = [];
+  List<Map<String, dynamic>> _vendedoresDelMes = [];
+
   @override
   void initState() {
     super.initState();
@@ -157,20 +162,46 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
           .getVentasPorDia(7)
           .then((data) {
             setState(() {
-              _ventasPorDia = data;
+              // Transformar los datos del backend al formato esperado por el frontend
+              _ventasPorDia = data.map((item) {
+                return {
+                  'dia': _formatearFecha(item['fecha'] as String? ?? ''),
+                  'ventas': (item['total'] as num?)?.toDouble() ?? 0.0,
+                };
+              }).toList();
+              print('📊 Datos de ventas por día transformados: $_ventasPorDia');
             });
           })
           .catchError((e) {
+            print('❌ Error cargando ventas por día: $e');
             setState(() {
               _ventasPorDia = [];
             });
           });
+
+      // Cargar pedidos por hora
+      final pedidosPorHoraFuture = _cargarPedidosPorHora().catchError((e) {
+        return null;
+      });
+
+      // Cargar últimos pedidos
+      final ultimosPedidosFuture = _cargarUltimosPedidos().catchError((e) {
+        return null;
+      });
+
+      // Cargar vendedores del mes
+      final vendedoresDelMesFuture = _cargarVendedoresDelMes().catchError((e) {
+        return null;
+      });
 
       await Future.wait([
         estadisticasFuture,
         ingresosFuture,
         topProductosFuture,
         ventasPorDiaFuture,
+        pedidosPorHoraFuture,
+        ultimosPedidosFuture,
+        vendedoresDelMesFuture,
       ]);
     } catch (e) {
       // Error handling
@@ -215,6 +246,17 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
     try {
       // Obtener ingresos vs egresos de los últimos 12 meses desde el backend
       final ingresosVsEgresos = await _reportesService.getIngresosVsEgresos(12);
+
+      // 🚨 DEBUG: Mostrar exactamente qué datos vienen del backend
+      print('🔍 DATOS DE INGRESOS VS EGRESOS DEL BACKEND:');
+      for (var item in ingresosVsEgresos) {
+        final ingresos = item['ingresos'];
+        final egresos = item['egresos'];
+        final porcentaje = egresos / ingresos * 100;
+        print(
+          '  ${item['mes']}: Ingresos=\$${ingresos}, Egresos=\$${egresos} (${porcentaje.toStringAsFixed(1)}%)',
+        );
+      }
 
       if (mounted) {
         setState(() {
@@ -264,6 +306,104 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
       }
     } catch (e) {
       // Error handling
+    }
+  }
+
+  Future<void> _cargarPedidosPorHora() async {
+    try {
+      // Obtener pedidos por hora desde el backend
+      final pedidosPorHora = await _reportesService.getPedidosPorHora();
+
+      // Validar y limpiar los datos
+      final pedidosValidados = pedidosPorHora.map((pedido) {
+        return {
+          'hora': pedido['hora'] ?? '00:00',
+          'cantidad': (pedido['cantidad'] as num?)?.toInt() ?? 0,
+        };
+      }).toList();
+
+      if (mounted) {
+        setState(() {
+          _pedidosPorHora = pedidosValidados.cast<Map<String, dynamic>>();
+        });
+      }
+    } catch (e) {
+      print('❌ Error cargando pedidos por hora: $e');
+      if (mounted) {
+        setState(() {
+          _pedidosPorHora = [];
+        });
+      }
+    }
+  }
+
+  Future<void> _cargarUltimosPedidos() async {
+    try {
+      // Obtener últimos 10 pedidos desde el backend
+      final ultimosPedidos = await _reportesService.getUltimosPedidos(10);
+
+      // Validar y limpiar los datos antes de usarlos
+      final pedidosValidados = ultimosPedidos.map((pedido) {
+        return {
+          'pedidoId': pedido['pedidoId'] ?? 'N/A',
+          'mesa': pedido['mesa'] ?? 'N/A',
+          'producto': pedido['producto'] ?? 'Producto N/A',
+          'fecha': pedido['fecha'] ?? DateTime.now().toString(),
+          'cantidad': pedido['cantidad'] ?? 1,
+          'estado': pedido['estado'] ?? 'pendiente',
+          'vendedor': pedido['vendedor'] ?? 'N/A',
+          'precio': (pedido['precio'] as num?)?.toDouble() ?? 0.0,
+          'subtotal': (pedido['subtotal'] as num?)?.toDouble() ?? 0.0,
+          'tipo': pedido['tipo'] ?? 'Normal',
+          'notas': pedido['notas'] ?? '',
+        };
+      }).toList();
+
+      if (mounted) {
+        setState(() {
+          _ultimosPedidos = pedidosValidados.cast<Map<String, dynamic>>();
+        });
+      }
+    } catch (e) {
+      print('❌ Error cargando últimos pedidos: $e');
+      if (mounted) {
+        setState(() {
+          _ultimosPedidos = [];
+        });
+      }
+    }
+  }
+
+  Future<void> _cargarVendedoresDelMes() async {
+    try {
+      // Obtener vendedores del mes desde el backend
+      final vendedores = await _reportesService.getVendedoresDelMes(30);
+
+      // Validar y limpiar los datos
+      final vendedoresValidados = vendedores.map((vendedor) {
+        return {
+          'nombre': vendedor['nombre'] ?? 'N/A',
+          'totalVentas': (vendedor['totalVentas'] as num?)?.toDouble() ?? 0.0,
+          'cantidadPedidos':
+              (vendedor['cantidadPedidos'] as num?)?.toInt() ?? 0,
+          'promedioVenta':
+              (vendedor['promedioVenta'] as num?)?.toDouble() ?? 0.0,
+          'puesto': (vendedor['puesto'] as num?)?.toInt() ?? 0,
+        };
+      }).toList();
+
+      if (mounted) {
+        setState(() {
+          _vendedoresDelMes = vendedoresValidados.cast<Map<String, dynamic>>();
+        });
+      }
+    } catch (e) {
+      print('❌ Error cargando vendedores del mes: $e');
+      if (mounted) {
+        setState(() {
+          _vendedoresDelMes = [];
+        });
+      }
     }
   }
 
@@ -485,26 +625,52 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                             onRefresh: _cargarDatos,
                             child: SingleChildScrollView(
                               physics: AlwaysScrollableScrollPhysics(),
-                              padding: EdgeInsets.all(16.0),
+                              padding: EdgeInsets.all(
+                                32.0,
+                              ), // Más padding general
                               child: Column(
                                 children: [
+                                  // Cards de estadísticas principales
                                   _buildStatsCards(),
-                                  SizedBox(height: 20),
-                                  _buildInfoCards(),
-                                  SizedBox(height: 20),
-                                  _buildRecentSales(),
-                                  SizedBox(height: 20),
+                                  SizedBox(height: 40), // Más espacio
+                                  // Gráfico de pedidos por hora (más prominente)
+                                  _buildPedidosPorHoraChart(),
+                                  SizedBox(height: 40),
+
+                                  // Fila de gráficos: Ingresos vs Egresos y Top Productos
                                   Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Expanded(
                                         child: _buildIngresosVsEgresosChart(),
                                       ),
-                                      SizedBox(width: 20),
+                                      SizedBox(width: 32), // Más espacio
                                       Expanded(
                                         child: _buildTopProductosChart(),
                                       ),
                                     ],
                                   ),
+                                  SizedBox(height: 40),
+
+                                  // Fila principal: Últimos pedidos y Vendedores
+                                  Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Expanded(
+                                        flex: 3, // Más espacio para pedidos
+                                        child: _buildUltimosPedidos(),
+                                      ),
+                                      SizedBox(width: 32), // Más espacio
+                                      Expanded(
+                                        flex:
+                                            2, // Menos espacio para vendedores
+                                        child: _buildVendedoresDelMes(),
+                                      ),
+                                    ],
+                                  ),
+                                  SizedBox(height: 40), // Espacio final
                                 ],
                               ),
                             ),
@@ -955,7 +1121,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                 periodo: 'hoy',
               ),
             ),
-            SizedBox(width: 16),
+            SizedBox(width: 24), // Más espacio horizontal
             Expanded(
               child: _buildStatCard(
                 title: 'Últimos 7 días',
@@ -973,7 +1139,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
             ),
           ],
         ),
-        SizedBox(height: 16),
+        SizedBox(height: 24), // Más espacio vertical
         Row(
           children: [
             Expanded(
@@ -991,7 +1157,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                 periodo: 'mes',
               ),
             ),
-            SizedBox(width: 16),
+            SizedBox(width: 24), // Más espacio horizontal
             Expanded(
               child: _buildStatCard(
                 title: 'Año actual',
@@ -1035,102 +1201,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
       );
     }
 
-    return Column(
-      children: [
-        // Primera fila: Pedidos y Facturación
-        Row(
-          children: [
-            Expanded(
-              child: _buildInfoCard(
-                title: 'Pedidos Hoy',
-                icon: Icons.shopping_cart,
-                mainValue: '${_dashboardData!.pedidosHoy.total}',
-                items: [
-                  InfoCardItem(
-                    label: 'Completados',
-                    value: '${_dashboardData!.pedidosHoy.completados}',
-                    color: Colors.green,
-                  ),
-                  InfoCardItem(
-                    label: 'Pendientes',
-                    value: '${_dashboardData!.pedidosHoy.pendientes}',
-                    color: Colors.orange,
-                  ),
-                ],
-                color: primary,
-              ),
-            ),
-            SizedBox(width: 16),
-            Expanded(
-              child: _buildInfoCard(
-                title: 'Facturación',
-                icon: Icons.account_balance_wallet,
-                mainValue: _dashboardData!.facturacion.montoPendiente > 0
-                    ? '\$${_formatNumber(_dashboardData!.facturacion.montoPendiente)}'
-                    : 'Al día',
-                items: [
-                  InfoCardItem(
-                    label: 'Pendientes',
-                    value: '${_dashboardData!.facturacion.pendientesPago}',
-                    color: _dashboardData!.facturacion.pendientesPago > 0
-                        ? Colors.red
-                        : Colors.green,
-                  ),
-                ],
-                color: accentOrange,
-              ),
-            ),
-          ],
-        ),
-        SizedBox(height: 16),
-        // Segunda fila: Inventario y Ventas Hoy
-        Row(
-          children: [
-            Expanded(
-              child: _buildInfoCard(
-                title: 'Inventario',
-                icon: Icons.inventory,
-                mainValue: '${_dashboardData!.inventario.alertas} Alertas',
-                items: [
-                  InfoCardItem(
-                    label: 'Stock Bajo',
-                    value: '${_dashboardData!.inventario.stockBajo}',
-                    color: Colors.yellow,
-                  ),
-                  InfoCardItem(
-                    label: 'Agotados',
-                    value: '${_dashboardData!.inventario.agotados}',
-                    color: Colors.red,
-                  ),
-                ],
-                color: Colors.purple,
-              ),
-            ),
-            SizedBox(width: 16),
-            Expanded(
-              child: _buildInfoCard(
-                title: 'Detalles Hoy',
-                icon: Icons.today,
-                mainValue: '${_dashboardData!.ventasHoy.cantidad} Items',
-                items: [
-                  InfoCardItem(
-                    label: 'Facturas',
-                    value: '${_dashboardData!.ventasHoy.facturas}',
-                    color: Colors.blue,
-                  ),
-                  InfoCardItem(
-                    label: 'Pagados',
-                    value: '${_dashboardData!.ventasHoy.pedidosPagados}',
-                    color: Colors.green,
-                  ),
-                ],
-                color: Colors.teal,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
+    return SizedBox.shrink(); // Widgets removidos
   }
 
   Widget _buildIngresosVsEgresosChart() {
@@ -1178,7 +1249,23 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                     BarChartData(
                       alignment: BarChartAlignment.spaceAround,
                       maxY: _getMaxIngreso() * 1.2,
-                      barTouchData: BarTouchData(enabled: false),
+                      barTouchData: BarTouchData(
+                        enabled: true,
+                        touchTooltipData: BarTouchTooltipData(
+                          tooltipBgColor: Colors.grey[800],
+                          getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                            final isIngresos = rodIndex == 0;
+                            final valor = rod.toY;
+                            return BarTooltipItem(
+                              '${isIngresos ? "Ingresos" : "Egresos"}\n\$${_formatCurrency(valor)}',
+                              TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            );
+                          },
+                        ),
+                      ),
                       titlesData: FlTitlesData(
                         show: true,
                         bottomTitles: AxisTitles(
@@ -1385,100 +1472,491 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
     );
   }
 
-  Widget _buildLegendItem(Color color, String label) {
-    return Row(
-      children: [
-        Container(
-          width: 12,
-          height: 12,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        ),
-        SizedBox(width: 8),
-        Text(label, style: TextStyle(color: textLight, fontSize: 12)),
-      ],
-    );
-  }
-
-  Widget _buildInfoCard({
-    required String title,
-    required IconData icon,
-    required String mainValue,
-    required List<InfoCardItem> items,
-    required Color color,
-  }) {
+  Widget _buildPedidosPorHoraChart() {
     return Container(
-      padding: EdgeInsets.all(16),
+      padding: EdgeInsets.all(24), // Más padding
       decoration: BoxDecoration(
         color: cardBg,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.withOpacity(0.3)),
+        borderRadius: BorderRadius.circular(16), // Bordes más redondeados
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(icon, color: color, size: 24),
-              SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  title,
-                  style: TextStyle(
-                    color: textLight,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
+              Icon(
+                Icons.access_time,
+                color: accentOrange,
+                size: 16,
+              ), // Ícono más grande
+              SizedBox(width: 12),
+              Text(
+                'PEDIDOS POR HORA',
+                style: TextStyle(
+                  color: textDark,
+                  fontSize: 16, // Título más grande
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.5,
                 ),
               ),
             ],
           ),
-          SizedBox(height: 12),
-          Text(
-            mainValue,
-            style: TextStyle(
-              color: textDark,
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          SizedBox(height: 12),
-          ...items
-              .map(
-                (item) => Padding(
-                  padding: EdgeInsets.only(bottom: 8),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        item.label,
-                        style: TextStyle(color: textLight, fontSize: 12),
+          SizedBox(height: 24), // Más espacio
+          Container(
+            height: 280, // Gráfico más alto
+            child: _pedidosPorHora.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(color: primary),
+                        SizedBox(height: 8),
+                        Text(
+                          'Cargando pedidos...',
+                          style: TextStyle(color: textLight, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  )
+                : LineChart(
+                    LineChartData(
+                      gridData: FlGridData(
+                        show: true,
+                        drawVerticalLine: false,
+                        getDrawingHorizontalLine: (value) {
+                          return FlLine(
+                            color: Colors.grey.withOpacity(0.3),
+                            strokeWidth: 1,
+                          );
+                        },
                       ),
-                      Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: item.color.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          item.value,
-                          style: TextStyle(
-                            color: item.color,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
+                      titlesData: FlTitlesData(
+                        show: true,
+                        bottomTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            getTitlesWidget: (value, meta) {
+                              if (value.toInt() >= 0 &&
+                                  value.toInt() < _pedidosPorHora.length) {
+                                // Mostrar solo algunas horas para evitar solapamiento
+                                if (value.toInt() % 3 == 0) {
+                                  return Text(
+                                    _pedidosPorHora[value.toInt()]['hora'] ??
+                                        '',
+                                    style: TextStyle(
+                                      color: textLight,
+                                      fontSize: 10,
+                                    ),
+                                  );
+                                }
+                              }
+                              return Text('');
+                            },
                           ),
                         ),
+                        leftTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 30,
+                            getTitlesWidget: (value, meta) {
+                              return Text(
+                                '${value.toInt()}',
+                                style: TextStyle(color: textLight, fontSize: 8),
+                              );
+                            },
+                          ),
+                        ),
+                        topTitles: AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+                        rightTitles: AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
                       ),
-                    ],
+                      borderData: FlBorderData(show: false),
+                      lineBarsData: [
+                        LineChartBarData(
+                          spots: _pedidosPorHora.asMap().entries.map((entry) {
+                            return FlSpot(
+                              entry.key.toDouble(),
+                              (entry.value['cantidad'] as num?)?.toDouble() ??
+                                  0.0,
+                            );
+                          }).toList(),
+                          isCurved: true,
+                          color: accentOrange,
+                          barWidth: 3,
+                          dotData: FlDotData(show: false),
+                          belowBarData: BarAreaData(
+                            show: true,
+                            color: accentOrange.withOpacity(0.2),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              )
-              .toList(),
+          ),
         ],
       ),
     );
+  }
+
+  Widget _buildUltimosPedidos() {
+    return Container(
+      padding: EdgeInsets.all(24), // Más padding
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(16), // Bordes más redondeados
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.receipt,
+                color: Colors.blue,
+                size: 16,
+              ), // Ícono más grande
+              SizedBox(width: 12),
+              Text(
+                'ÚLTIMOS PEDIDOS',
+                style: TextStyle(
+                  color: textDark,
+                  fontSize: 16, // Título más grande
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 20), // Más espacio
+          Container(
+            height: 320, // Lista más alta
+            child: _ultimosPedidos.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(color: primary),
+                        SizedBox(height: 12),
+                        Text(
+                          'Cargando pedidos...',
+                          style: TextStyle(color: textLight, fontSize: 14),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    itemCount: _ultimosPedidos.length,
+                    itemBuilder: (context, index) {
+                      final pedido = _ultimosPedidos[index];
+                      return Padding(
+                        padding: EdgeInsets.only(
+                          bottom: 12,
+                        ), // Más espacio entre elementos
+                        child: Container(
+                          padding: EdgeInsets.all(16), // Más padding interno
+                          decoration: BoxDecoration(
+                            color: bgDark,
+                            borderRadius: BorderRadius.circular(
+                              12,
+                            ), // Bordes más redondeados
+                            border: Border.all(
+                              color: Colors.grey.withOpacity(0.2),
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.05),
+                                blurRadius: 4,
+                                offset: Offset(0, 1),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'Mesa ${pedido['mesa'] ?? 'N/A'}',
+                                    style: TextStyle(
+                                      color: textDark,
+                                      fontSize: 14, // Texto más grande
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  Text(
+                                    pedido['estado'] ?? 'N/A',
+                                    style: TextStyle(
+                                      color: _getEstadoColor(pedido['estado']),
+                                      fontSize: 12, // Texto más grande
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: 8), // Más espacio
+                              Text(
+                                pedido['producto'] ?? 'Producto N/A',
+                                style: TextStyle(
+                                  color: textLight,
+                                  fontSize: 13, // Texto más grande
+                                ),
+                                maxLines: 2, // Más líneas para producto
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              SizedBox(height: 8), // Más espacio
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    _extraerHoraDeFecha(pedido['fecha']),
+                                    style: TextStyle(
+                                      color: textLight,
+                                      fontSize: 12, // Texto más grande
+                                    ),
+                                  ),
+                                  Text(
+                                    '\$${_formatCurrency(pedido['subtotal'] ?? 0)}',
+                                    style: TextStyle(
+                                      color: accentOrange,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVendedoresDelMes() {
+    return Container(
+      padding: EdgeInsets.all(24), // Más padding
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(16), // Bordes más redondeados
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.star,
+                color: Colors.amber,
+                size: 16,
+              ), // Ícono más grande
+              SizedBox(width: 12),
+              Text(
+                'TOP VENDEDORES',
+                style: TextStyle(
+                  color: textDark,
+                  fontSize: 16, // Título más grande
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 20), // Más espacio
+          Container(
+            height: 320, // Lista más alta
+            child: _vendedoresDelMes.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(color: primary),
+                        SizedBox(height: 12),
+                        Text(
+                          'Cargando vendedores...',
+                          style: TextStyle(color: textLight, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    itemCount: _vendedoresDelMes.length,
+                    itemBuilder: (context, index) {
+                      final vendedor = _vendedoresDelMes[index];
+                      final puesto = index + 1;
+                      return Padding(
+                        padding: EdgeInsets.only(bottom: 12), // Más espacio
+                        child: Container(
+                          padding: EdgeInsets.all(16), // Más padding
+                          decoration: BoxDecoration(
+                            color: bgDark,
+                            borderRadius: BorderRadius.circular(
+                              12,
+                            ), // Bordes más redondeados
+                            border: Border.all(
+                              color: puesto <= 3
+                                  ? Colors.amber
+                                  : Colors.grey.withOpacity(0.2),
+                              width: puesto <= 3
+                                  ? 2
+                                  : 1, // Bordes más gruesos para top 3
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: puesto <= 3
+                                    ? Colors.amber.withOpacity(0.1)
+                                    : Colors.black.withOpacity(0.05),
+                                blurRadius: puesto <= 3 ? 6 : 4,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    width: 28, // Círculo más grande
+                                    height: 28,
+                                    decoration: BoxDecoration(
+                                      color: _getPuestoColor(puesto),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        '$puesto',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 12, // Número más grande
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  SizedBox(width: 12), // Más espacio
+                                  Expanded(
+                                    child: Text(
+                                      vendedor['nombre'] ?? 'N/A',
+                                      style: TextStyle(
+                                        color: textDark,
+                                        fontSize: 14, // Texto más grande
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: 10), // Más espacio
+                              Text(
+                                '\$${_formatCurrency(vendedor['totalVentas'] ?? 0)}',
+                                style: TextStyle(
+                                  color: accentOrange,
+                                  fontSize: 16, // Texto más grande
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              SizedBox(height: 4), // Más espacio
+                              Text(
+                                '${vendedor['cantidadPedidos'] ?? 0} pedidos',
+                                style: TextStyle(
+                                  color: textLight,
+                                  fontSize: 12, // Texto más grande
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _getEstadoColor(String? estado) {
+    switch (estado?.toLowerCase()) {
+      case 'pagada':
+        return Colors.green;
+      case 'pendiente':
+        return Colors.orange;
+      case 'cancelado':
+        return Colors.red;
+      default:
+        return textLight;
+    }
+  }
+
+  Color _getPuestoColor(int puesto) {
+    switch (puesto) {
+      case 1:
+        return Colors.amber;
+      case 2:
+        return Colors.grey[400]!;
+      case 3:
+        return Colors.orange[700]!;
+      default:
+        return Colors.blue;
+    }
+  }
+
+  String _extraerHoraDeFecha(dynamic fecha) {
+    if (fecha == null) return 'N/A';
+
+    try {
+      String fechaStr = fecha.toString();
+
+      // Si la fecha tiene formato completo (yyyy-MM-dd HH:mm:ss), extraer la hora
+      if (fechaStr.length >= 16) {
+        return fechaStr.substring(11, 16); // HH:mm
+      }
+
+      // Si es solo hora (HH:mm:ss), tomar solo HH:mm
+      if (fechaStr.contains(':') && fechaStr.length >= 5) {
+        List<String> partes = fechaStr.split(':');
+        if (partes.length >= 2) {
+          return '${partes[0]}:${partes[1]}';
+        }
+      }
+
+      return fechaStr.length > 5 ? fechaStr.substring(0, 5) : fechaStr;
+    } catch (e) {
+      print('❌ Error extrayendo hora de fecha: $e');
+      return 'N/A';
+    }
   }
 
   Widget _buildStatCard({
@@ -1786,5 +2264,30 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
       if (maxLocal > max) max = maxLocal;
     }
     return max > 0 ? max : 1000000;
+  }
+
+  Widget _buildLegendItem(Color color, String label) {
+    return Row(
+      children: [
+        Container(
+          width: 12,
+          height: 12,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        SizedBox(width: 8),
+        Text(label, style: TextStyle(color: textLight, fontSize: 12)),
+      ],
+    );
+  }
+
+  /// Formatear fecha de "2025-08-07" a "07/08"
+  String _formatearFecha(String fecha) {
+    try {
+      final DateTime fechaDateTime = DateTime.parse(fecha);
+      return '${fechaDateTime.day.toString().padLeft(2, '0')}/${fechaDateTime.month.toString().padLeft(2, '0')}';
+    } catch (e) {
+      print('❌ Error parseando fecha: $fecha, error: $e');
+      return fecha.length > 5 ? fecha.substring(fecha.length - 5) : fecha;
+    }
   }
 }
