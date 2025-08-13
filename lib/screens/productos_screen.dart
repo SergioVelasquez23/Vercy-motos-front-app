@@ -1238,9 +1238,20 @@ class _ProductosScreenState extends State<ProductosScreen> {
                     // Obtener categoría
                     Categoria? categoriaSeleccionada;
                     if (selectedCategoriaId != null) {
-                      categoriaSeleccionada = _categorias.firstWhere(
-                        (c) => c.id == selectedCategoriaId,
-                      );
+                      try {
+                        categoriaSeleccionada = _categorias.firstWhere(
+                          (c) => c.id == selectedCategoriaId,
+                        );
+                        print(
+                          '✅ Categoría seleccionada: ${categoriaSeleccionada.nombre} (ID: ${categoriaSeleccionada.id})',
+                        );
+                      } catch (e) {
+                        print(
+                          '❌ Error al buscar categoría con ID: $selectedCategoriaId - $e',
+                        );
+                      }
+                    } else {
+                      print('⚠️ No se ha seleccionado ninguna categoría');
                     }
 
                     // Obtener imagen final
@@ -1275,6 +1286,15 @@ class _ProductosScreenState extends State<ProductosScreen> {
                           ingredientesRequeridos: ingredientesRequeridos,
                           ingredientesOpcionales: ingredientesOpcionales,
                         );
+
+                        // Depuración para verificar los datos del producto antes de actualizar
+                        print(
+                          '🔍 Producto a actualizar: ${updatedProducto.nombre}',
+                        );
+                        print(
+                          '🔍 Categoria ID: ${updatedProducto.categoria?.id}',
+                        );
+
                         await _productoService.updateProducto(updatedProducto);
                       } else {
                         // Crear nuevo producto con el sistema actualizado

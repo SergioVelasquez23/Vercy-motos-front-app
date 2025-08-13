@@ -28,21 +28,24 @@ class ProductoService {
   Future<List<Producto>> getProductos() async {
     try {
       final headers = await _getHeaders();
+
+      // Asegurar que la URL esté correctamente formada
+      final url = '$baseUrl/api/productos/con-nombres-ingredientes';
+      print('📦 Obteniendo productos de URL: $url');
+
       final response = await http
-          .get(
-            Uri.parse('$baseUrl/api/productos/con-nombres-ingredientes'),
-            headers: headers,
-          )
+          .get(Uri.parse(url), headers: headers)
           .timeout(Duration(seconds: 10));
 
       print('📦 Response status: ${response.statusCode}');
-      print('📦 Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
         return _parseListResponse(responseData);
       } else {
-        print('❌ Endpoint optimizado no disponible, usando endpoint básico...');
+        print(
+          '❌ Endpoint optimizado no disponible (${response.statusCode}), usando endpoint básico...',
+        );
         // Fallback al endpoint original
         return await _getProductosBasico();
       }
@@ -186,11 +189,16 @@ class ProductoService {
   Future<Producto> updateProducto(Producto producto) async {
     try {
       final headers = await _getHeaders();
+
+      // Convertir el producto a JSON para enviarlo al backend
+      final productoJson = producto.toJson();
+      print('🔄 Enviando datos de producto al backend: $productoJson');
+
       final response = await http
           .put(
             Uri.parse('$baseUrl/api/productos/${producto.id}'),
             headers: headers,
-            body: json.encode(producto.toJson()),
+            body: json.encode(productoJson),
           )
           .timeout(Duration(seconds: 10));
 
@@ -497,7 +505,13 @@ class ProductoService {
   }
 
   // Obtener un producto por ID con nombres de ingredientes resueltos (OPTIMIZADO)
-  Future<Producto?> getProducto(String id) async {
+  Future<Producto?> getProducto(String? id) async {
+    // Validar que el ID no sea nulo o vacío
+    if (id == null || id.trim().isEmpty) {
+      print('❌ Error: ID de producto nulo o vacío');
+      return null;
+    }
+
     try {
       final headers = await _getHeaders();
       final response = await http
@@ -535,7 +549,13 @@ class ProductoService {
   }
 
   // Obtener un producto por ID (endpoint básico como fallback)
-  Future<Producto?> _getProductoBasico(String id) async {
+  Future<Producto?> _getProductoBasico(String? id) async {
+    // Validar que el ID no sea nulo o vacío
+    if (id == null || id.trim().isEmpty) {
+      print('❌ Error: ID de producto nulo o vacío en _getProductoBasico');
+      return null;
+    }
+
     try {
       final headers = await _getHeaders();
       final response = await http

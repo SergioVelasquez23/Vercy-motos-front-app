@@ -870,13 +870,31 @@ class _PedidoScreenState extends State<PedidoScreen> {
 
       // Crear los items del pedido
       List<ItemPedido> items = productosMesa.map((producto) {
+        // Mapear ingredientesDisponibles (que pueden ser nombres) a IDs si es necesario
+        List<String> ingredientesIds = [];
+        for (var ing in producto.ingredientesDisponibles) {
+          final opcional = producto.ingredientesOpcionales.where(
+            (i) => i.ingredienteId == ing || i.ingredienteNombre == ing,
+          );
+          final requerido = producto.ingredientesRequeridos.where(
+            (i) => i.ingredienteId == ing || i.ingredienteNombre == ing,
+          );
+          if (opcional.isNotEmpty) {
+            ingredientesIds.add(opcional.first.ingredienteId);
+          } else if (requerido.isNotEmpty) {
+            ingredientesIds.add(requerido.first.ingredienteId);
+          } else {
+            // Si ya es un id, lo dejamos
+            ingredientesIds.add(ing);
+          }
+        }
         return ItemPedido(
           productoId: producto.id,
           producto: producto,
           cantidad: producto.cantidad,
           notas: producto.nota, // Pasar las notas con opciones específicas
           precio: producto.precio,
-          ingredientesSeleccionados: producto.ingredientesDisponibles,
+          ingredientesSeleccionados: ingredientesIds,
         );
       }).toList();
 

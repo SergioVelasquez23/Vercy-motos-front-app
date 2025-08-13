@@ -118,13 +118,6 @@ class InventarioService {
     }
   }
 
-  // Alias para registrarMovimiento (compatibilidad)
-  Future<MovimientoInventario> crearMovimientoInventario(
-    MovimientoInventario movimiento,
-  ) async {
-    return registrarMovimiento(movimiento);
-  }
-
   // Actualizar un movimiento de inventario
   Future<MovimientoInventario> updateMovimiento(
     String id,
@@ -269,9 +262,6 @@ class InventarioService {
 
           // Convertir ingredientes a formato de inventario
           return ingredientes.map<Inventario>((ingrediente) {
-            final stock =
-                (ingrediente['stockActual'] ?? ingrediente['cantidad'] ?? 0)
-                    .toDouble();
             return Inventario(
               id: ingrediente['_id'] ?? '',
               categoria: ingrediente['categoria'] ?? 'Ingrediente',
@@ -279,9 +269,11 @@ class InventarioService {
               nombre: ingrediente['nombre'] ?? 'Sin nombre',
               unidad: ingrediente['unidad'] ?? 'Unidad',
               precioCompra: (ingrediente['costo'] ?? 0).toDouble(),
-              stockActual: stock,
+              stockActual: (ingrediente['cantidad'] ?? 0).toDouble(),
               stockMinimo: 5.0, // Valor por defecto
-              estado: stock > 0 ? 'Disponible' : 'Agotado',
+              estado: (ingrediente['cantidad'] ?? 0) > 0
+                  ? 'Disponible'
+                  : 'Agotado',
             );
           }).toList();
         }
@@ -399,125 +391,5 @@ class InventarioService {
   // Cerrar el stream controller cuando ya no sea necesario
   void dispose() {
     _inventarioActualizadoController.close();
-  }
-
-  // Procesa un pedido para actualizar el inventario, enviando ingredientes seleccionados
-  Future<bool> procesarPedidoParaInventario(
-    String pedidoId,
-    Map<String, List<String>> ingredientesPorItem,
-  ) async {
-    try {
-      if (kDebugMode) {
-        print('🔄 Procesando pedido para actualizar inventario: $pedidoId');
-        print(
-          '📦 Body ingredientesPorItem: ${json.encode(ingredientesPorItem)}',
-        );
-      }
-
-      final response = await http
-          .post(
-            Uri.parse(_buildUrl(path: "procesar-pedido/$pedidoId")),
-            headers: _apiConfig.getSecureHeaders(),
-            body: json.encode(ingredientesPorItem),
-          )
-          .timeout(_timeout);
-
-      if (kDebugMode) {
-        print('📡 Response status: ${response.statusCode}');
-        print('📦 Response body: ${response.body}');
-      }
-
-      if (response.statusCode == 200) {
-        _inventarioActualizadoController.add(true);
-        return true;
-      }
-
-      throw _handleErrorResponse(response);
-    } catch (e) {
-      if (kDebugMode) {
-        print('❌ Error procesando pedido para inventario: $e');
-      }
-      // No lanzamos una excepción porque no queremos interrumpir el flujo principal
-      return false;
-    }
-  }
-
-  // Devuelve ingredientes al inventario (usado en cancelación de pedidos)
-  Future<bool> devolverIngredientesAlInventario(
-    String pedidoId,
-    String productoId,
-    List<Map<String, dynamic>> ingredientes,
-    String motivo,
-    String responsable,
-  ) async {
-    try {
-      if (kDebugMode) {
-        print(
-          '🔄 Devolviendo ingredientes al inventario para pedido: $pedidoId, producto: $productoId',
-        );
-      }
-
-      final Map<String, dynamic> requestBody = {
-        'pedidoId': pedidoId,
-        'productoId': productoId,
-        'ingredientes': ingredientes,
-        'motivo': motivo,
-        'responsable': responsable,
-      };
-
-      final response = await http
-          .post(
-            Uri.parse(_buildUrl(path: "devolver-ingredientes")),
-            headers: _apiConfig.getSecureHeaders(),
-            body: json.encode(requestBody),
-          )
-          .timeout(_timeout);
-
-      if (kDebugMode) {
-        print('📡 Response status: ${response.statusCode}');
-      }
-
-      if (response.statusCode == 200) {
-        _inventarioActualizadoController.add(true);
-        return true;
-      }
-
-      throw _handleErrorResponse(response);
-    } catch (e) {
-      if (kDebugMode) {
-        print('❌ Error devolviendo ingredientes al inventario: $e');
-      }
-      // No lanzamos una excepción porque no queremos interrumpir el flujo principal
-      return false;
-    }
-  }
-
-  // Obtener ingredientes descontados para un producto de un pedido
-  Future<List<Map<String, dynamic>>> getIngredientesDescontadosParaProducto(
-    String pedidoId,
-    String productoId,
-  ) async {
-    try {
-      final uri = Uri.parse(
-        '${_apiConfig.baseUrl}/api/inventario/ingredientes-descontados?pedidoId=$pedidoId&productoId=$productoId',
-      );
-      final response = await http
-          .get(uri, headers: _apiConfig.getSecureHeaders())
-          .timeout(_timeout);
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['success'] == true && data['data'] != null) {
-          final List<dynamic> ingredientes = data['data'];
-          return ingredientes.cast<Map<String, dynamic>>();
-        }
-      }
-      return [];
-    } catch (e) {
-      if (kDebugMode) {
-        print('❌ Error obteniendo ingredientes descontados: $e');
-      }
-      return [];
-    }
   }
 }

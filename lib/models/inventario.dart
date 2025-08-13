@@ -24,12 +24,13 @@ class Inventario {
   factory Inventario.fromJson(Map<String, dynamic> json) {
     return Inventario(
       id: json['_id'] ?? '',
-      categoria: json['categoria'] ?? '',
+      categoria: json['categoria'] ?? json['categoriaId'] ?? '',
       codigo: json['codigo'] ?? '',
       nombre: json['nombre'] ?? '',
       unidad: json['unidad'] ?? '',
-      precioCompra: (json['precioCompra'] ?? 0).toDouble(),
-      stockActual: (json['stockActual'] ?? 0).toDouble(),
+      precioCompra: (json['precioCompra'] ?? json['costo'] ?? 0).toDouble(),
+      stockActual: (json['stockActual'] ?? json['cantidadActual'] ?? 0)
+          .toDouble(),
       stockMinimo: (json['stockMinimo'] ?? 0).toDouble(),
       estado: json['estado'] ?? '',
     );

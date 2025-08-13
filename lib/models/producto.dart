@@ -136,7 +136,8 @@ class Producto {
     'tieneVariantes': tieneVariantes,
     'estado': estado,
     'imagenUrl': imagenUrl,
-    'categoria': categoria?.toJson(),
+    // Eliminamos la serialización del objeto categoria completo
+    'categoriaId': categoria?.id, // Solo enviamos el ID de la categoría
     'descripcion': descripcion,
     'cantidad': cantidad,
     'nota': nota,

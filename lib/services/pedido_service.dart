@@ -219,10 +219,17 @@ class PedidoService {
         if (responseData['success'] == true && responseData['data'] != null) {
           final pedidoCreado = Pedido.fromJson(responseData['data']);
 
+          // Construir el Map<String, List<String>> de ingredientes seleccionados por producto
+          final Map<String, List<String>> ingredientesPorItem = {
+            for (var item in pedidoCreado.items)
+              item.productoId: item.ingredientesSeleccionados,
+          };
+
           // Procesar descuento de ingredientes automáticamente
           try {
             await _inventarioService.procesarPedidoParaInventario(
               pedidoCreado.id,
+              ingredientesPorItem,
             );
             print(
               '✅ Ingredientes descontados correctamente para pedido: ${pedidoCreado.id}',
@@ -281,10 +288,17 @@ class PedidoService {
         if (responseData['success'] == true && responseData['data'] != null) {
           final pedidoActualizado = Pedido.fromJson(responseData['data']);
 
+          // Construir el Map<String, List<String>> de ingredientes seleccionados por producto
+          final Map<String, List<String>> ingredientesPorItem = {
+            for (var item in pedidoActualizado.items)
+              item.productoId: item.ingredientesSeleccionados,
+          };
+
           // Procesar cambios en ingredientes automáticamente
           try {
             await _inventarioService.procesarPedidoParaInventario(
               pedidoActualizado.id,
+              ingredientesPorItem,
             );
             print(
               '✅ Inventario actualizado correctamente para pedido: ${pedidoActualizado.id}',
@@ -620,6 +634,12 @@ class PedidoService {
       // Primero intentamos cargar todos los productos
       for (final item in pedido.items) {
         if (!productosMap.containsKey(item.productoId)) {
+          // Validar que el ID del producto no sea vacío
+          if (item.productoId.isEmpty) {
+            print('⚠️ Saltando producto con ID inválido');
+            continue;
+          }
+
           try {
             final producto = await _productoService.getProducto(
               item.productoId,
@@ -627,6 +647,17 @@ class PedidoService {
             if (producto != null) {
               print('✅ Producto cargado: ${producto.nombre}');
               productosMap[item.productoId] = producto;
+            } else {
+              print('⚠️ Producto no encontrado: ${item.productoId}');
+              // Crear un producto ficticio para evitar errores en la UI
+              productosMap[item.productoId] = Producto(
+                id: item.productoId,
+                nombre: "Producto no disponible",
+                precio: item.precio,
+                costo: 0,
+                utilidad: 0,
+                descripcion: "Este producto ya no está disponible",
+              );
             }
           } catch (e) {
             print('❌ Error al cargar producto ${item.productoId}: $e');

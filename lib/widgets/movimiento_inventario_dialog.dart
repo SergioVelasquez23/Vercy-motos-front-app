@@ -158,7 +158,7 @@ class _MovimientoInventarioDialogState
       );
 
       // Guardar movimiento
-      await _inventarioService.crearMovimientoInventario(nuevoMovimiento);
+      await _inventarioService.registrarMovimiento(nuevoMovimiento);
 
       // Cerrar diálogo
       Navigator.of(context).pop(true);
