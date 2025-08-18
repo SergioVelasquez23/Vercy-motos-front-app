@@ -39,6 +39,12 @@ class EndpointsConfig {
   /// Endpoints para documentos de mesa
   DocumentoMesaEndpoints get documentosMesa =>
       DocumentoMesaEndpoints(currentBaseUrl);
+
+  /// Endpoints para facturas
+  FacturaEndpoints get facturas => FacturaEndpoints(currentBaseUrl);
+
+  /// Endpoints para proveedores
+  ProveedorEndpoints get proveedores => ProveedorEndpoints(currentBaseUrl);
 }
 
 /// Endpoints relacionados con autenticación y usuarios
@@ -73,6 +79,9 @@ class DocumentoMesaEndpoints {
   /// Crear un nuevo documento
   String get crear => base;
 
+  /// Listar todos los documentos (endpoint simplificado)
+  String get listaCompleta => base;
+
   /// Obtener documentos por mesa
   String mesa(String mesaNombre) => '$base/mesa/$mesaNombre';
 
@@ -89,6 +98,9 @@ class DocumentoMesaEndpoints {
   /// Eliminar un documento
   String eliminar(String documentoId) => '$base/$documentoId';
 
+  /// Anular un documento
+  String anular(String documentoId) => '$base/$documentoId/anular';
+
   /// Obtener documentos pendientes de una mesa
   String pendientes(String mesaNombre) => '$base/mesa/$mesaNombre/pendientes';
 
@@ -98,6 +110,19 @@ class DocumentoMesaEndpoints {
   /// Obtener resumen de una mesa
   String resumen(String mesaNombre) => '$base/mesa/$mesaNombre/resumen';
 
+  /// Listar todos los documentos (con filtros opcionales)
+  String lista({String? tipo, String? mesa}) {
+    final params = <String, String>{};
+    if (tipo != null) params['tipo'] = tipo;
+    if (mesa != null) params['mesa'] = mesa;
+
+    final query = params.isEmpty
+        ? ''
+        : '?' + params.entries.map((e) => '${e.key}=${e.value}').join('&');
+
+    return '$base$query';
+  }
+
   /// Verificar si una mesa es especial
   String verificarMesaEspecial(String mesaNombre) =>
       '$base/verificar-mesa-especial/$mesaNombre';
@@ -105,4 +130,96 @@ class DocumentoMesaEndpoints {
   /// Obtener documentos con pedidos completos
   String documentosCompletos(String mesaNombre) =>
       '$base/mesa/$mesaNombre/completos';
+}
+
+/// Endpoints para Facturas
+class FacturaEndpoints {
+  final String baseUrl;
+
+  FacturaEndpoints(this.baseUrl);
+
+  /// Base URL para las facturas
+  String get base => '$baseUrl/api/facturas';
+
+  /// Lista de todas las facturas
+  String get lista => base;
+
+  /// Obtener una factura por ID
+  String factura(String id) => '$base/$id';
+
+  /// Obtener factura por número
+  String porNumero(String numero) => '$base/numero/$numero';
+
+  /// Obtener facturas por NIT
+  String porNit(String nit) => '$base/nit/$nit';
+
+  /// Obtener facturas por teléfono del cliente
+  String porTelefono(String telefono) => '$base/telefono/$telefono';
+
+  /// Obtener facturas por medio de pago
+  String porMedioPago(String medioPago) => '$base/medio-pago/$medioPago';
+
+  /// Obtener facturas por quien atendió
+  String porAtendidoPor(String atendidoPor) =>
+      '$base/atendido-por/$atendidoPor';
+
+  /// Obtener facturas pendientes de pago
+  String get pendientesPago => '$base/pendientes-pago';
+
+  /// Obtener facturas del día
+  String get ventasDia => '$base/ventas-dia';
+
+  /// Obtener facturas por período
+  String get ventasPeriodo => '$base/ventas-periodo';
+
+  /// Crear factura desde un pedido
+  String desdePedido(String pedidoId) => '$base/desde-pedido/$pedidoId';
+
+  /// Emitir una factura
+  String emitir(String id) => '$base/$id/emitir';
+
+  /// Pagar una factura
+  String pagar(String id) => '$base/$id/pagar';
+
+  /// Anular una factura
+  String anular(String id) => '$base/$id/anular';
+
+  /// Generar resumen para impresión de un pedido
+  String resumenImpresion(String pedidoId) =>
+      '$base/resumen-impresion/$pedidoId';
+
+  /// Generar factura para impresión
+  String facturaImpresion(String facturaId) =>
+      '$base/factura-impresion/$facturaId';
+
+  /// Obtener resumen de ventas
+  String get resumenVentas => '$base/resumen-ventas';
+}
+
+/// Endpoints relacionados con proveedores
+class ProveedorEndpoints {
+  final String baseUrl;
+
+  ProveedorEndpoints(this.baseUrl);
+
+  String get base => '$baseUrl/api/proveedores';
+
+  /// Obtener proveedores activos (para selects/listas)
+  String get activos => '$base/activos';
+
+  /// Buscar proveedores por texto
+  String buscar(String texto) =>
+      '$base/buscar?texto=${Uri.encodeComponent(texto)}';
+
+  /// Crear nuevo proveedor
+  String get crear => base;
+
+  /// Actualizar proveedor
+  String actualizar(String id) => '$base/$id';
+
+  /// Cambiar estado de proveedor (activar/desactivar)
+  String cambiarEstado(String id) => '$base/$id/estado';
+
+  /// Obtener proveedores para facturas de compras
+  String get paraFacturas => '$baseUrl/api/facturas-compras/proveedores';
 }

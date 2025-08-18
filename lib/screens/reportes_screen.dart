@@ -45,7 +45,7 @@ class _ReportesScreenState extends State<ReportesScreen>
   void initState() {
     super.initState();
     _tabController = TabController(
-      length: 5,
+      length: 6,
       vsync: this,
       initialIndex: widget.initialReportIndex,
     );
@@ -288,6 +288,7 @@ class _ReportesScreenState extends State<ReportesScreen>
             Tab(text: 'Productos'),
             Tab(text: 'Pedidos'),
             Tab(text: 'Clientes'),
+            Tab(text: 'Utilidad'),
           ],
         ),
         actions: [
@@ -315,6 +316,7 @@ class _ReportesScreenState extends State<ReportesScreen>
           _buildReporteProductos(),
           _buildReportePedidos(),
           _buildReporteClientes(),
+          _buildReporteUtilidad(),
         ],
       ),
       drawer: _buildMenuLateral(),
@@ -1796,5 +1798,546 @@ class _ReportesScreenState extends State<ReportesScreen>
         ],
       ),
     );
+  }
+
+  // Nuevo método para reporte de utilidad
+  Widget _buildReporteUtilidad() {
+    return Container(
+      color: bgDark,
+      child: Column(
+        children: [
+          // Filtros superiores
+          Container(
+            padding: EdgeInsets.all(16),
+            color: cardBg,
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.analytics, color: primary, size: 24),
+                    SizedBox(width: 12),
+                    Text(
+                      'Análisis de Utilidad',
+                      style: TextStyle(
+                        color: textDark,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 16),
+                // Filtros de fecha
+                Row(
+                  children: [
+                    Expanded(child: _buildDateRangePicker()),
+                    SizedBox(width: 16),
+                    ElevatedButton.icon(
+                      onPressed: _cargarReporteUtilidad,
+                      icon: Icon(Icons.refresh),
+                      label: Text('Actualizar'),
+                      style: ElevatedButton.styleFrom(backgroundColor: primary),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          // Contenido del reporte
+          Expanded(
+            child: _isLoading
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(color: primary),
+                        SizedBox(height: 16),
+                        Text(
+                          'Calculando utilidades...',
+                          style: TextStyle(color: textLight),
+                        ),
+                      ],
+                    ),
+                  )
+                : _errorMessage != null
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.error, color: Colors.red, size: 64),
+                        SizedBox(height: 16),
+                        Text(
+                          _errorMessage!,
+                          style: TextStyle(color: Colors.red),
+                          textAlign: TextAlign.center,
+                        ),
+                        SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: _cargarReporteUtilidad,
+                          child: Text('Reintentar'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : SingleChildScrollView(
+                    padding: EdgeInsets.all(16),
+                    child: Column(
+                      children: [
+                        // Tarjetas de resumen
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildUtilidadCard(
+                                'Total Ventas',
+                                '\$500,000',
+                                Colors.blue,
+                              ),
+                            ),
+                            SizedBox(width: 16),
+                            Expanded(
+                              child: _buildUtilidadCard(
+                                'Total Costos',
+                                '\$300,000',
+                                Colors.red,
+                              ),
+                            ),
+                            SizedBox(width: 16),
+                            Expanded(
+                              child: _buildUtilidadCard(
+                                'Utilidad Bruta',
+                                '\$200,000',
+                                Colors.green,
+                              ),
+                            ),
+                            SizedBox(width: 16),
+                            Expanded(
+                              child: _buildUtilidadCard(
+                                'Margen %',
+                                '40%',
+                                Colors.orange,
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 24),
+
+                        // Gráfico de utilidad por producto
+                        Container(
+                          padding: EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: cardBg,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Utilidad por Producto (Top 10)',
+                                style: TextStyle(
+                                  color: textDark,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              SizedBox(height: 20),
+                              Container(
+                                height: 300,
+                                child: BarChart(
+                                  BarChartData(
+                                    alignment: BarChartAlignment.spaceAround,
+                                    maxY: 100000,
+                                    barTouchData: BarTouchData(enabled: false),
+                                    titlesData: FlTitlesData(
+                                      show: true,
+                                      bottomTitles: AxisTitles(
+                                        sideTitles: SideTitles(
+                                          showTitles: true,
+                                          reservedSize: 40,
+                                          getTitlesWidget: (value, meta) {
+                                            const products = [
+                                              'Hamburguesa',
+                                              'Pizza',
+                                              'Pasta',
+                                              'Ensalada',
+                                              'Bebida',
+                                            ];
+                                            if (value.toInt() <
+                                                products.length) {
+                                              return Padding(
+                                                padding: EdgeInsets.only(
+                                                  top: 8,
+                                                ),
+                                                child: Text(
+                                                  products[value.toInt()],
+                                                  style: TextStyle(
+                                                    color: textLight,
+                                                    fontSize: 10,
+                                                  ),
+                                                ),
+                                              );
+                                            }
+                                            return Text('');
+                                          },
+                                        ),
+                                      ),
+                                      leftTitles: AxisTitles(
+                                        sideTitles: SideTitles(
+                                          showTitles: true,
+                                          reservedSize: 50,
+                                          getTitlesWidget: (value, meta) {
+                                            return Text(
+                                              '\$${(value / 1000).toStringAsFixed(0)}k',
+                                              style: TextStyle(
+                                                color: textLight,
+                                                fontSize: 10,
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                      topTitles: AxisTitles(
+                                        sideTitles: SideTitles(
+                                          showTitles: false,
+                                        ),
+                                      ),
+                                      rightTitles: AxisTitles(
+                                        sideTitles: SideTitles(
+                                          showTitles: false,
+                                        ),
+                                      ),
+                                    ),
+                                    borderData: FlBorderData(show: false),
+                                    barGroups: [
+                                      BarChartGroupData(
+                                        x: 0,
+                                        barRods: [
+                                          BarChartRodData(
+                                            toY: 85000,
+                                            color: primary,
+                                          ),
+                                        ],
+                                      ),
+                                      BarChartGroupData(
+                                        x: 1,
+                                        barRods: [
+                                          BarChartRodData(
+                                            toY: 72000,
+                                            color: primary,
+                                          ),
+                                        ],
+                                      ),
+                                      BarChartGroupData(
+                                        x: 2,
+                                        barRods: [
+                                          BarChartRodData(
+                                            toY: 61000,
+                                            color: primary,
+                                          ),
+                                        ],
+                                      ),
+                                      BarChartGroupData(
+                                        x: 3,
+                                        barRods: [
+                                          BarChartRodData(
+                                            toY: 45000,
+                                            color: primary,
+                                          ),
+                                        ],
+                                      ),
+                                      BarChartGroupData(
+                                        x: 4,
+                                        barRods: [
+                                          BarChartRodData(
+                                            toY: 38000,
+                                            color: primary,
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(height: 24),
+
+                        // Tabla detallada de productos
+                        Container(
+                          padding: EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: cardBg,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Detalle de Utilidad por Producto',
+                                style: TextStyle(
+                                  color: textDark,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              SizedBox(height: 16),
+                              _buildUtilidadTable(),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Método auxiliar para las tarjetas de utilidad
+  Widget _buildUtilidadCard(String titulo, String valor, Color color) {
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(titulo, style: TextStyle(color: textLight, fontSize: 14)),
+          SizedBox(height: 8),
+          Text(
+            valor,
+            style: TextStyle(
+              color: color,
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Método auxiliar para la tabla de utilidad
+  Widget _buildUtilidadTable() {
+    return Table(
+      columnWidths: {
+        0: FlexColumnWidth(3),
+        1: FlexColumnWidth(1.5),
+        2: FlexColumnWidth(1.5),
+        3: FlexColumnWidth(1.5),
+        4: FlexColumnWidth(1),
+      },
+      children: [
+        // Encabezados
+        TableRow(
+          children: [
+            _buildTableHeader('Producto'),
+            _buildTableHeader('Precio'),
+            _buildTableHeader('Costo'),
+            _buildTableHeader('Utilidad'),
+            _buildTableHeader('Margen %'),
+          ],
+        ),
+        // Datos de ejemplo (aquí irían los datos reales del servicio)
+        ..._buildUtilidadTableRows(),
+      ],
+    );
+  }
+
+  Widget _buildTableHeader(String text) {
+    return Container(
+      padding: EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: primary.withOpacity(0.1),
+        border: Border.all(color: primary.withOpacity(0.3)),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: textDark,
+          fontWeight: FontWeight.bold,
+          fontSize: 12,
+        ),
+        textAlign: TextAlign.center,
+      ),
+    );
+  }
+
+  List<TableRow> _buildUtilidadTableRows() {
+    // Datos de ejemplo (en producción vendrían del servicio)
+    final productos = [
+      {
+        'nombre': 'Hamburguesa Clásica',
+        'precio': 15000,
+        'costo': 8000,
+        'vendidos': 120,
+      },
+      {
+        'nombre': 'Pizza Margarita',
+        'precio': 25000,
+        'costo': 12000,
+        'vendidos': 85,
+      },
+      {
+        'nombre': 'Pasta Carbonara',
+        'precio': 18000,
+        'costo': 9500,
+        'vendidos': 95,
+      },
+      {
+        'nombre': 'Ensalada César',
+        'precio': 12000,
+        'costo': 6000,
+        'vendidos': 65,
+      },
+      {
+        'nombre': 'Bebida Grande',
+        'precio': 5000,
+        'costo': 2000,
+        'vendidos': 200,
+      },
+    ];
+
+    return productos.map((producto) {
+      final precio = producto['precio'] as int;
+      final costo = producto['costo'] as int;
+      final utilidad = precio - costo;
+      final margen = ((utilidad / precio) * 100);
+
+      return TableRow(
+        children: [
+          _buildTableCell(producto['nombre'].toString(), textDark),
+          _buildTableCell('\$${precio.toString()}', textLight),
+          _buildTableCell('\$${costo.toString()}', Colors.red.shade300),
+          _buildTableCell('\$${utilidad.toString()}', Colors.green.shade300),
+          _buildTableCell(
+            '${margen.toStringAsFixed(1)}%',
+            margen > 30
+                ? Colors.green
+                : margen > 15
+                ? Colors.orange
+                : Colors.red,
+          ),
+        ],
+      );
+    }).toList();
+  }
+
+  Widget _buildTableCell(String text, Color color) {
+    return Container(
+      padding: EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        border: Border.all(color: textLight.withOpacity(0.2)),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(color: color, fontSize: 12),
+        textAlign: TextAlign.center,
+      ),
+    );
+  }
+
+  // Método para selector de rango de fechas (reutilizado para utilidad)
+  Widget _buildDateRangePicker() {
+    return DropdownButtonFormField<String>(
+      decoration: InputDecoration(
+        labelText: 'Período',
+        labelStyle: TextStyle(color: primary),
+        border: OutlineInputBorder(borderSide: BorderSide(color: textLight)),
+        focusedBorder: OutlineInputBorder(
+          borderSide: BorderSide(color: primary),
+        ),
+        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      ),
+      style: TextStyle(color: textDark),
+      dropdownColor: cardBg,
+      value: _periodoSeleccionado,
+      onChanged: (String? value) {
+        if (value != null) {
+          setState(() {
+            _periodoSeleccionado = value;
+            switch (value) {
+              case 'Hoy':
+                _fechaInicio = DateTime.now();
+                _fechaFin = DateTime.now();
+                break;
+              case 'Ayer':
+                _fechaInicio = DateTime.now().subtract(Duration(days: 1));
+                _fechaFin = DateTime.now().subtract(Duration(days: 1));
+                break;
+              case 'Esta semana':
+                _fechaInicio = DateTime.now().subtract(
+                  Duration(days: DateTime.now().weekday - 1),
+                );
+                _fechaFin = DateTime.now();
+                break;
+              case 'Últimos 7 días':
+                _fechaInicio = DateTime.now().subtract(Duration(days: 7));
+                _fechaFin = DateTime.now();
+                break;
+              case 'Este mes':
+                _fechaInicio = DateTime(
+                  DateTime.now().year,
+                  DateTime.now().month,
+                  1,
+                );
+                _fechaFin = DateTime.now();
+                break;
+            }
+          });
+          _cargarReporteUtilidad();
+        }
+      },
+      items:
+          <String>[
+            'Hoy',
+            'Ayer',
+            'Esta semana',
+            'Últimos 7 días',
+            'Este mes',
+          ].map<DropdownMenuItem<String>>((String value) {
+            return DropdownMenuItem<String>(
+              value: value,
+              child: Text(value, style: TextStyle(color: textDark)),
+            );
+          }).toList(),
+    );
+  }
+
+  // Método para cargar datos del reporte de utilidad
+  Future<void> _cargarReporteUtilidad() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      // Aquí iría la llamada al servicio para obtener datos reales
+      // await _reportesService.obtenerReporteUtilidad(_fechaInicio, _fechaFin);
+
+      // Simular carga
+      await Future.delayed(Duration(seconds: 1));
+
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('❌ Error cargando reporte de utilidad: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage =
+              'Error al cargar el reporte de utilidad: ${e.toString()}';
+        });
+      }
+    }
   }
 }

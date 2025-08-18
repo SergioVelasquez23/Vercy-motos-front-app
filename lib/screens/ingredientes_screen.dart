@@ -146,207 +146,246 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
       text: ingrediente?.stockMinimo.toString() ?? '',
     );
 
+    bool esDescontable = ingrediente?.descontable ?? true;
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          ingrediente == null ? 'Nuevo Ingrediente' : 'Editar Ingrediente',
-        ),
-        content: SingleChildScrollView(
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  controller: nombreController,
-                  decoration: InputDecoration(
-                    labelText: 'Nombre*',
-                    filled: true,
-                    fillColor: Colors.white10,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(
+            ingrediente == null ? 'Nuevo Ingrediente' : 'Editar Ingrediente',
+          ),
+          content: SingleChildScrollView(
+            child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    controller: nombreController,
+                    decoration: InputDecoration(
+                      labelText: 'Nombre*',
+                      filled: true,
+                      fillColor: Colors.white10,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    style: TextStyle(color: Color(kTextDark)),
+                    validator: (value) {
+                      if (value?.isEmpty ?? true) return 'Campo requerido';
+                      if (value!.length < 3) return 'Mínimo 3 caracteres';
+                      return null;
+                    },
+                  ),
+                  SizedBox(height: 16),
+                  TextFormField(
+                    controller: codigoController,
+                    decoration: InputDecoration(
+                      labelText: 'Código*',
+                      filled: true,
+                      fillColor: Colors.white10,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    style: TextStyle(color: Color(kTextDark)),
+                    validator: (value) {
+                      if (value?.isEmpty ?? true) return 'Campo requerido';
+                      if (value!.length < 2) return 'Mínimo 2 caracteres';
+                      return null;
+                    },
+                  ),
+                  SizedBox(height: 16),
+                  TextFormField(
+                    controller: categoriaController,
+                    decoration: InputDecoration(
+                      labelText: 'Categoría*',
+                      filled: true,
+                      fillColor: Colors.white10,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    style: TextStyle(color: Color(kTextDark)),
+                    validator: (value) =>
+                        value?.isEmpty ?? true ? 'Campo requerido' : null,
+                  ),
+                  SizedBox(height: 16),
+                  TextFormField(
+                    controller: unidadController,
+                    decoration: InputDecoration(
+                      labelText: 'Unidad*',
+                      filled: true,
+                      fillColor: Colors.white10,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      helperText: 'Ejemplo: kg, g, l, ml, unidad',
+                    ),
+                    style: TextStyle(color: Color(kTextDark)),
+                    validator: (value) =>
+                        value?.isEmpty ?? true ? 'Campo requerido' : null,
+                  ),
+                  SizedBox(height: 16),
+                  TextFormField(
+                    controller: precioController,
+                    decoration: InputDecoration(
+                      labelText: 'Precio de compra*',
+                      filled: true,
+                      fillColor: Colors.white10,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      prefixText: '\$ ',
+                    ),
+                    keyboardType: TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    style: TextStyle(color: Color(kTextDark)),
+                    validator: (value) {
+                      if (value?.isEmpty ?? true) return 'Campo requerido';
+                      final precio = double.tryParse(value!);
+                      if (precio == null) return 'Ingrese un número válido';
+                      if (precio <= 0) return 'El precio debe ser mayor a 0';
+                      return null;
+                    },
+                  ),
+                  SizedBox(height: 16),
+                  TextFormField(
+                    controller: stockActualController,
+                    decoration: InputDecoration(
+                      labelText: 'Stock actual*',
+                      filled: true,
+                      fillColor: Colors.white10,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    keyboardType: TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    style: TextStyle(color: Color(kTextDark)),
+                    validator: (value) {
+                      if (value?.isEmpty ?? true) return 'Campo requerido';
+                      final stock = double.tryParse(value!);
+                      if (stock == null) return 'Ingrese un número válido';
+                      if (stock < 0) return 'El stock no puede ser negativo';
+                      return null;
+                    },
+                  ),
+                  SizedBox(height: 16),
+                  TextFormField(
+                    controller: stockMinimoController,
+                    decoration: InputDecoration(
+                      labelText: 'Stock mínimo*',
+                      filled: true,
+                      fillColor: Colors.white10,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      helperText: 'Nivel mínimo para alertas',
+                    ),
+                    keyboardType: TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    style: TextStyle(color: Color(kTextDark)),
+                    validator: (value) {
+                      if (value?.isEmpty ?? true) return 'Campo requerido';
+                      final stockMin = double.tryParse(value!);
+                      if (stockMin == null) return 'Ingrese un número válido';
+                      if (stockMin < 0)
+                        return 'El stock mínimo no puede ser negativo';
+                      return null;
+                    },
+                  ),
+                  SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Checkbox(
+                        value: esDescontable,
+                        onChanged: (value) {
+                          setDialogState(() {
+                            esDescontable = value ?? true;
+                          });
+                        },
+                      ),
+                      Expanded(
+                        child: Text(
+                          'Descontable del inventario',
+                          style: TextStyle(color: Color(kTextDark)),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'Los ingredientes descontables reducen el stock automáticamente al usarse en pedidos.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                      fontStyle: FontStyle.italic,
                     ),
                   ),
-                  style: TextStyle(color: Color(kTextDark)),
-                  validator: (value) {
-                    if (value?.isEmpty ?? true) return 'Campo requerido';
-                    if (value!.length < 3) return 'Mínimo 3 caracteres';
-                    return null;
-                  },
-                ),
-                SizedBox(height: 16),
-                TextFormField(
-                  controller: codigoController,
-                  decoration: InputDecoration(
-                    labelText: 'Código*',
-                    filled: true,
-                    fillColor: Colors.white10,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  style: TextStyle(color: Color(kTextDark)),
-                  validator: (value) {
-                    if (value?.isEmpty ?? true) return 'Campo requerido';
-                    if (value!.length < 2) return 'Mínimo 2 caracteres';
-                    return null;
-                  },
-                ),
-                SizedBox(height: 16),
-                TextFormField(
-                  controller: categoriaController,
-                  decoration: InputDecoration(
-                    labelText: 'Categoría*',
-                    filled: true,
-                    fillColor: Colors.white10,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  style: TextStyle(color: Color(kTextDark)),
-                  validator: (value) =>
-                      value?.isEmpty ?? true ? 'Campo requerido' : null,
-                ),
-                SizedBox(height: 16),
-                TextFormField(
-                  controller: unidadController,
-                  decoration: InputDecoration(
-                    labelText: 'Unidad*',
-                    filled: true,
-                    fillColor: Colors.white10,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    helperText: 'Ejemplo: kg, g, l, ml, unidad',
-                  ),
-                  style: TextStyle(color: Color(kTextDark)),
-                  validator: (value) =>
-                      value?.isEmpty ?? true ? 'Campo requerido' : null,
-                ),
-                SizedBox(height: 16),
-                TextFormField(
-                  controller: precioController,
-                  decoration: InputDecoration(
-                    labelText: 'Precio de compra*',
-                    filled: true,
-                    fillColor: Colors.white10,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    prefixText: '\$ ',
-                  ),
-                  keyboardType: TextInputType.numberWithOptions(decimal: true),
-                  style: TextStyle(color: Color(kTextDark)),
-                  validator: (value) {
-                    if (value?.isEmpty ?? true) return 'Campo requerido';
-                    final precio = double.tryParse(value!);
-                    if (precio == null) return 'Ingrese un número válido';
-                    if (precio <= 0) return 'El precio debe ser mayor a 0';
-                    return null;
-                  },
-                ),
-                SizedBox(height: 16),
-                TextFormField(
-                  controller: stockActualController,
-                  decoration: InputDecoration(
-                    labelText: 'Stock actual*',
-                    filled: true,
-                    fillColor: Colors.white10,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  keyboardType: TextInputType.numberWithOptions(decimal: true),
-                  style: TextStyle(color: Color(kTextDark)),
-                  validator: (value) {
-                    if (value?.isEmpty ?? true) return 'Campo requerido';
-                    final stock = double.tryParse(value!);
-                    if (stock == null) return 'Ingrese un número válido';
-                    if (stock < 0) return 'El stock no puede ser negativo';
-                    return null;
-                  },
-                ),
-                SizedBox(height: 16),
-                TextFormField(
-                  controller: stockMinimoController,
-                  decoration: InputDecoration(
-                    labelText: 'Stock mínimo*',
-                    filled: true,
-                    fillColor: Colors.white10,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    helperText: 'Nivel mínimo para alertas',
-                  ),
-                  keyboardType: TextInputType.numberWithOptions(decimal: true),
-                  style: TextStyle(color: Color(kTextDark)),
-                  validator: (value) {
-                    if (value?.isEmpty ?? true) return 'Campo requerido';
-                    final stockMin = double.tryParse(value!);
-                    if (stockMin == null) return 'Ingrese un número válido';
-                    if (stockMin < 0)
-                      return 'El stock mínimo no puede ser negativo';
-                    return null;
-                  },
-                ),
-              ],
+                ],
+              ),
             ),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Cancelar'),
-          ),
-          TextButton(
-            onPressed: () async {
-              if (_formKey.currentState?.validate() ?? false) {
-                try {
-                  final nuevoIngrediente = Inventario(
-                    id: ingrediente?.id ?? '',
-                    nombre: nombreController.text,
-                    codigo: codigoController.text,
-                    categoria: categoriaController.text,
-                    unidad: unidadController.text,
-                    precioCompra: double.parse(precioController.text),
-                    stockActual: double.parse(stockActualController.text),
-                    stockMinimo: double.parse(stockMinimoController.text),
-                    estado: ingrediente?.estado ?? 'ACTIVO',
-                  );
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () async {
+                if (_formKey.currentState?.validate() ?? false) {
+                  try {
+                    final nuevoIngrediente = Inventario(
+                      id: ingrediente?.id ?? '',
+                      nombre: nombreController.text,
+                      codigo: codigoController.text,
+                      categoria: categoriaController.text,
+                      unidad: unidadController.text,
+                      precioCompra: double.parse(precioController.text),
+                      stockActual: double.parse(stockActualController.text),
+                      stockMinimo: double.parse(stockMinimoController.text),
+                      estado: ingrediente?.estado ?? 'ACTIVO',
+                      descontable: esDescontable,
+                    );
 
-                  if (ingrediente == null) {
-                    // Nuevo ingrediente
-                    await _inventarioService.createIngrediente(
-                      nuevoIngrediente,
-                    );
+                    if (ingrediente == null) {
+                      // Nuevo ingrediente
+                      await _inventarioService.createIngrediente(
+                        nuevoIngrediente,
+                      );
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Ingrediente agregado')),
+                      );
+                    } else {
+                      // Editar ingrediente
+                      await _inventarioService.updateIngrediente(
+                        ingrediente.id,
+                        nuevoIngrediente,
+                      );
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Ingrediente actualizado')),
+                      );
+                    }
+
+                    Navigator.pop(context);
+                    _cargarIngredientes();
+                  } catch (e) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Ingrediente agregado')),
+                      SnackBar(content: Text('Error al guardar ingrediente')),
                     );
-                  } else {
-                    // Editar ingrediente
-                    await _inventarioService.updateIngrediente(
-                      ingrediente.id,
-                      nuevoIngrediente,
-                    );
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Ingrediente actualizado')),
-                    );
+                    print('Error al guardar ingrediente: $e');
                   }
-
-                  Navigator.pop(context);
-                  _cargarIngredientes();
-                } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error al guardar ingrediente')),
-                  );
-                  print('Error al guardar ingrediente: $e');
                 }
-              }
-            },
-            child: Text('Guardar'),
-          ),
-        ],
+              },
+              child: Text('Guardar'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -472,9 +511,41 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          subtitle: Text(
-                            'Categoría: ${item.categoria} | Unidad: ${item.unidad}',
-                            style: TextStyle(color: Color(kTextLight)),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Categoría: ${item.categoria} | Unidad: ${item.unidad}',
+                                style: TextStyle(color: Color(kTextLight)),
+                              ),
+                              SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Icon(
+                                    item.descontable
+                                        ? Icons.check_circle
+                                        : Icons.cancel,
+                                    size: 16,
+                                    color: item.descontable
+                                        ? Colors.green
+                                        : Colors.orange,
+                                  ),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    item.descontable
+                                        ? 'Descontable'
+                                        : 'No descontable',
+                                    style: TextStyle(
+                                      color: item.descontable
+                                          ? Colors.green
+                                          : Colors.orange,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,

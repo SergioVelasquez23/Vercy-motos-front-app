@@ -10,7 +10,8 @@ import 'screens/abrir_caja_screen.dart';
 import 'screens/cerrar_caja_screen.dart';
 import 'screens/reportes_screen.dart';
 import 'screens/pedidos_screen_fusion.dart';
-import 'screens/documentos_screen.dart';
+import 'screens/documentos_mesa_screen.dart';
+import 'models/mesa.dart';
 import 'providers/user_provider.dart';
 
 void main() async {
@@ -71,13 +72,19 @@ class MyApp extends StatelessWidget {
         // '/pedidos_v2': (context) =>
         //     const PedidosScreenV2(), // Nueva pantalla V2
         '/pedidos_rt': (context) => PedidosScreenFusion(),
-        '/documentos': (context) => const DocumentosScreen(),
+        '/documentos': (context) => const DocumentosMesaScreen(),
         '/pedidos_cancelados': (context) => PedidosScreenFusion(),
         '/pedidos_cortesia': (context) => PedidosScreenFusion(),
         '/pedidos_internos': (context) =>
             PedidosScreenFusion(), // Cambiado aquí
         // Ruta para detalle de pedido (requiere pasar una mesa como parámetro)
         // Nota: Esta ruta normalmente se usaría con argumentos: Navigator.pushNamed(context, '/pedido', arguments: mesa)
+
+        // Ruta para ver documentos de una mesa específica
+        '/documentos_mesa': (context) {
+          final mesa = ModalRoute.of(context)?.settings.arguments as Mesa?;
+          return DocumentosMesaScreen(mesa: mesa);
+        },
 
         // Rutas para la pantalla de reportes
         '/reportes': (context) => ReportesScreen(),

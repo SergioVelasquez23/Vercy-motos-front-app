@@ -2,7 +2,7 @@
 
 // Configuración de API
 const String kApiUrl =
-    'http://localhost:3000'; // Ajusta esta URL según tu backend
+    'http://192.168.20.24:8081'; // URL corregida para coincidir con el resto de endpoints
 
 // Colores principales de la aplicación
 const kPrimaryColor = 0xFFFF6B00;

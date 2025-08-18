@@ -6,6 +6,7 @@ class Ingrediente {
   final String unidad;
   final double costo;
   final String estado;
+  final bool descontable;
 
   Ingrediente({
     required this.id,
@@ -15,6 +16,7 @@ class Ingrediente {
     required this.unidad,
     required this.costo,
     this.estado = 'Activo',
+    this.descontable = true,
   });
 
   Map<String, dynamic> toJson() => {
@@ -25,6 +27,7 @@ class Ingrediente {
     'unidad': unidad,
     'costo': costo,
     'estado': estado,
+    'descontable': descontable,
   };
 
   factory Ingrediente.fromJson(Map<String, dynamic> json) {
@@ -36,6 +39,7 @@ class Ingrediente {
       unidad: json['unidad']?.toString() ?? '',
       costo: (json['costo'] as num?)?.toDouble() ?? 0.0,
       estado: json['estado']?.toString() ?? 'Activo',
+      descontable: json['descontable'] ?? true,
     );
   }
 
@@ -47,6 +51,7 @@ class Ingrediente {
     String? unidad,
     double? costo,
     String? estado,
+    bool? descontable,
   }) {
     return Ingrediente(
       id: id ?? this.id,
@@ -56,6 +61,7 @@ class Ingrediente {
       unidad: unidad ?? this.unidad,
       costo: costo ?? this.costo,
       estado: estado ?? this.estado,
+      descontable: descontable ?? this.descontable,
     );
   }
 }

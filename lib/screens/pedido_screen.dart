@@ -10,7 +10,6 @@ import '../services/producto_service.dart';
 import '../services/mesa_service.dart';
 import '../services/pedido_service.dart';
 import '../services/inventario_service.dart';
-import '../services/documento_mesa_service.dart';
 import '../models/movimiento_inventario.dart';
 import '../models/inventario.dart';
 import '../providers/user_provider.dart';
@@ -28,7 +27,6 @@ class _PedidoScreenState extends State<PedidoScreen> {
   final ProductoService _productoService = ProductoService();
   final MesaService _mesaService = MesaService();
   final InventarioService _inventarioService = InventarioService();
-  final DocumentoMesaService _documentoService = DocumentoMesaService();
 
   List<Producto> productosMesa = [];
   List<Producto> productosDisponibles = [];
@@ -41,6 +39,9 @@ class _PedidoScreenState extends State<PedidoScreen> {
   Map<String, bool> productoPagado = {};
 
   bool isLoading = true;
+  bool isSaving = false; // Nueva variable para controlar el estado de guardado
+  DateTime?
+  lastSaveAttempt; // Para controlar el timeout entre intentos de guardado
   String? errorMessage;
   String? clienteSeleccionado;
   TextEditingController busquedaController = TextEditingController();
@@ -164,6 +165,7 @@ class _PedidoScreenState extends State<PedidoScreen> {
   ) async {
     List<String> ingredientesSeleccionados = [];
     TextEditingController notasController = TextEditingController();
+    String? ingredienteOpcionalSeleccionado; // Para radio buttons de opcionales
 
     print('🔍 DEBUGING INGREDIENTES para ${producto.nombre}:');
     print('  - ingredientesDisponibles: ${producto.ingredientesDisponibles}');
@@ -184,13 +186,14 @@ class _PedidoScreenState extends State<PedidoScreen> {
       );
     }
 
-    // Crear lista combinada de todos los ingredientes disponibles
-    List<String> todosLosIngredientes = [];
+    // Crear listas separadas para diferentes tipos de ingredientes
+    List<String> ingredientesBasicos = List.from(
+      producto.ingredientesDisponibles,
+    );
+    List<String> ingredientesOpcionales = [];
+    List<String> ingredientesRequeridos = [];
 
-    // Agregar ingredientes básicos (lista simple)
-    todosLosIngredientes.addAll(producto.ingredientesDisponibles);
-
-    // Agregar ingredientes opcionales
+    // Agregar ingredientes opcionales con precios
     for (var ingrediente in producto.ingredientesOpcionales) {
       print(
         '🔍 Procesando ingrediente opcional: ID="${ingrediente.ingredienteId}", Nombre="${ingrediente.ingredienteNombre}"',
@@ -203,22 +206,21 @@ class _PedidoScreenState extends State<PedidoScreen> {
       }
 
       print('🔍 Nombre con precio generado: "$nombreConPrecio"');
-      todosLosIngredientes.add(nombreConPrecio);
+      ingredientesOpcionales.add(nombreConPrecio);
     }
 
     // Agregar ingredientes requeridos (pero marcados como obligatorios)
     for (var ingrediente in producto.ingredientesRequeridos) {
       String nombreConIndicacion =
           '${ingrediente.ingredienteNombre} (Requerido)';
-      todosLosIngredientes.add(nombreConIndicacion);
+      ingredientesRequeridos.add(nombreConIndicacion);
       // Pre-seleccionar ingredientes requeridos
       ingredientesSeleccionados.add(nombreConIndicacion);
     }
 
-    print('📋 Total ingredientes para mostrar: ${todosLosIngredientes.length}');
-    for (var ingrediente in todosLosIngredientes) {
-      print('  - ${ingrediente}');
-    }
+    print('📋 Ingredientes básicos: ${ingredientesBasicos.length}');
+    print('📋 Ingredientes opcionales: ${ingredientesOpcionales.length}');
+    print('📋 Ingredientes requeridos: ${ingredientesRequeridos.length}');
 
     final resultado = await showDialog<Map<String, dynamic>>(
       context: context,
@@ -269,8 +271,10 @@ class _PedidoScreenState extends State<PedidoScreen> {
                         SizedBox(height: 12),
                       ],
 
-                      // Lista de todos los ingredientes disponibles
-                      if (todosLosIngredientes.isEmpty)
+                      // Lista de ingredientes por tipo
+                      if (ingredientesBasicos.isEmpty &&
+                          ingredientesOpcionales.isEmpty &&
+                          ingredientesRequeridos.isEmpty)
                         Container(
                           padding: EdgeInsets.all(16),
                           decoration: BoxDecoration(
@@ -282,44 +286,134 @@ class _PedidoScreenState extends State<PedidoScreen> {
                             style: TextStyle(color: Colors.orange),
                           ),
                         )
-                      else
-                        ...todosLosIngredientes.map((ingrediente) {
-                          final bool isSelected = ingredientesSeleccionados
-                              .contains(ingrediente);
-                          final bool esRequerido = ingrediente.contains(
-                            '(Requerido)',
-                          );
-
-                          return CheckboxListTile(
-                            title: Text(
-                              ingrediente,
-                              style: TextStyle(
-                                fontWeight: esRequerido
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                                color: esRequerido ? Colors.blue : null,
-                              ),
+                      else ...[
+                        // Ingredientes requeridos (pre-seleccionados, no editables)
+                        if (ingredientesRequeridos.isNotEmpty) ...[
+                          Text(
+                            'Ingredientes incluidos:',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue,
+                              fontSize: 14,
                             ),
-                            value: isSelected,
-                            onChanged: esRequerido
-                                ? null
-                                : (bool? value) {
-                                    setState(() {
-                                      if (value == true) {
-                                        ingredientesSeleccionados.add(
-                                          ingrediente,
-                                        );
-                                      } else {
-                                        ingredientesSeleccionados.remove(
-                                          ingrediente,
-                                        );
-                                      }
-                                    });
-                                  },
+                          ),
+                          SizedBox(height: 8),
+                          ...ingredientesRequeridos.map((ingrediente) {
+                            return ListTile(
+                              dense: true,
+                              contentPadding: EdgeInsets.zero,
+                              leading: Icon(
+                                Icons.check_circle,
+                                color: Colors.blue,
+                                size: 20,
+                              ),
+                              title: Text(
+                                ingrediente,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.blue,
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                          SizedBox(height: 16),
+                        ],
+
+                        // Ingredientes básicos (checkboxes múltiples)
+                        if (ingredientesBasicos.isNotEmpty) ...[
+                          Text(
+                            'Ingredientes adicionales:',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          ...ingredientesBasicos.map((ingrediente) {
+                            final bool isSelected = ingredientesSeleccionados
+                                .contains(ingrediente);
+                            return CheckboxListTile(
+                              title: Text(ingrediente),
+                              value: isSelected,
+                              onChanged: (bool? value) {
+                                setState(() {
+                                  if (value == true) {
+                                    ingredientesSeleccionados.add(ingrediente);
+                                  } else {
+                                    ingredientesSeleccionados.remove(
+                                      ingrediente,
+                                    );
+                                  }
+                                });
+                              },
+                              dense: true,
+                              contentPadding: EdgeInsets.zero,
+                            );
+                          }).toList(),
+                          SizedBox(height: 16),
+                        ],
+
+                        // Ingredientes opcionales (radio buttons - solo uno)
+                        if (ingredientesOpcionales.isNotEmpty) ...[
+                          Text(
+                            'Selecciona UNA opción de carne:',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                              fontSize: 14,
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          // Opción "Ninguna"
+                          RadioListTile<String>(
+                            title: Text('Ninguna selección'),
+                            value: '',
+                            groupValue: ingredienteOpcionalSeleccionado,
+                            onChanged: (String? value) {
+                              setState(() {
+                                ingredienteOpcionalSeleccionado = value;
+                                // Remover cualquier ingrediente opcional previamente seleccionado
+                                ingredientesSeleccionados.removeWhere(
+                                  (ing) => ingredientesOpcionales.contains(ing),
+                                );
+                              });
+                            },
                             dense: true,
                             contentPadding: EdgeInsets.zero,
-                          );
-                        }).toList(),
+                          ),
+                          ...ingredientesOpcionales.map((ingrediente) {
+                            return RadioListTile<String>(
+                              title: Text(
+                                ingrediente,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              value: ingrediente,
+                              groupValue: ingredienteOpcionalSeleccionado,
+                              onChanged: (String? value) {
+                                setState(() {
+                                  // Remover cualquier ingrediente opcional previamente seleccionado
+                                  ingredientesSeleccionados.removeWhere(
+                                    (ing) =>
+                                        ingredientesOpcionales.contains(ing),
+                                  );
+
+                                  // Agregar el nuevo ingrediente seleccionado
+                                  ingredienteOpcionalSeleccionado = value;
+                                  if (value != null && value.isNotEmpty) {
+                                    ingredientesSeleccionados.add(value);
+                                  }
+                                });
+                              },
+                              dense: true,
+                              contentPadding: EdgeInsets.zero,
+                            );
+                          }).toList(),
+                          SizedBox(height: 16),
+                        ],
+                      ],
 
                       SizedBox(height: 16),
 
@@ -359,7 +453,10 @@ class _PedidoScreenState extends State<PedidoScreen> {
                   child: Text('Cancelar'),
                 ),
                 ElevatedButton(
-                  onPressed: todosLosIngredientes.isEmpty
+                  onPressed:
+                      (ingredientesBasicos.isEmpty &&
+                          ingredientesOpcionales.isEmpty &&
+                          ingredientesRequeridos.isEmpty)
                       ? () {
                           // Si no hay ingredientes configurados, permitir continuar sin selección
                           Navigator.of(context).pop({
@@ -391,7 +488,9 @@ class _PedidoScreenState extends State<PedidoScreen> {
                           });
                         },
                   child: Text(
-                    todosLosIngredientes.isEmpty
+                    (ingredientesBasicos.isEmpty &&
+                            ingredientesOpcionales.isEmpty &&
+                            ingredientesRequeridos.isEmpty)
                         ? 'Continuar sin ingredientes'
                         : 'Confirmar',
                   ),
@@ -832,9 +931,39 @@ class _PedidoScreenState extends State<PedidoScreen> {
   }
 
   Future<void> _guardarPedido() async {
+    // Prevenir múltiples clicks rápidos - timeout de 2 segundos
+    final now = DateTime.now();
+    if (lastSaveAttempt != null &&
+        now.difference(lastSaveAttempt!).inSeconds < 2) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Espere un momento antes de intentar guardar nuevamente',
+          ),
+          backgroundColor: Colors.orange,
+          duration: Duration(seconds: 1),
+        ),
+      );
+      return;
+    }
+
+    if (isSaving) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Guardando pedido, por favor espere...'),
+          backgroundColor: Colors.orange,
+          duration: Duration(seconds: 1),
+        ),
+      );
+      return;
+    }
+
+    lastSaveAttempt = now;
+
     try {
       setState(() {
         isLoading = true;
+        isSaving = true;
       });
 
       if (productosMesa.isEmpty) {
@@ -846,6 +975,7 @@ class _PedidoScreenState extends State<PedidoScreen> {
         );
         setState(() {
           isLoading = false;
+          isSaving = false;
         });
         return;
       }
@@ -861,6 +991,7 @@ class _PedidoScreenState extends State<PedidoScreen> {
           // El usuario canceló
           setState(() {
             isLoading = false;
+            isSaving = false;
           });
           return;
         }
@@ -971,32 +1102,9 @@ class _PedidoScreenState extends State<PedidoScreen> {
       );
 
       if (esMesaEspecial) {
-        // Para mesas especiales, crear un documento
-        try {
-          final documento = await _documentoService.crearDocumento(
-            mesaNombre: widget.mesa.nombre,
-            vendedor: meseroActual,
-            pedidosIds: [pedidoFinal.id], // Pasar como lista de IDs
-          );
-
-          if (documento != null) {
-            // Mostrar mensaje específico para mesas especiales
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  'Documento #${documento.numeroDocumento} creado para ${widget.mesa.nombre}${clienteSeleccionado != null ? ' - Cliente: $clienteSeleccionado' : ''} - Total: \$${total.toStringAsFixed(0)}',
-                ),
-                backgroundColor: Colors.green,
-              ),
-            );
-          } else {
-            throw Exception('No se pudo crear el documento');
-          }
-        } catch (e) {
-          print('Error creando documento para mesa especial: $e');
-          // Mostrar el mensaje normal si falla la creación del documento
-          _mostrarMensajeExito(pedidoFinal.id, total);
-        }
+        // Para mesas especiales, el backend creará automáticamente la factura
+        // Solo mostrar el mensaje de éxito
+        _mostrarMensajeExito(pedidoFinal.id, total);
       } else {
         // Para mesas normales, actualizar el estado de la mesa
         widget.mesa.ocupada = true;
@@ -1011,6 +1119,7 @@ class _PedidoScreenState extends State<PedidoScreen> {
     } catch (e) {
       setState(() {
         isLoading = false;
+        isSaving = false;
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1050,15 +1159,6 @@ class _PedidoScreenState extends State<PedidoScreen> {
         actions: [
           // Refresh button
           IconButton(icon: Icon(Icons.refresh), onPressed: _loadData),
-          // Save button
-          TextButton.icon(
-            onPressed: isLoading ? null : () => _guardarPedido(),
-            icon: Icon(Icons.save, color: Colors.white),
-            label: Text(
-              esPedidoExistente ? 'Actualizar' : 'Guardar',
-              style: TextStyle(color: Colors.white),
-            ),
-          ),
         ],
       ),
       body: isLoading
@@ -1105,14 +1205,16 @@ class _PedidoScreenState extends State<PedidoScreen> {
     final Color cardBg = Color(0xFF252525);
     final Color textLight = Color(0xFFE0E0E0);
 
-    return Column(
+    return Row(
       children: [
-        // Barra de búsqueda
-        Padding(
-          padding: EdgeInsets.all(16),
-          child: Row(
+        // Panel izquierdo - Productos disponibles
+        Expanded(
+          flex: 2,
+          child: Column(
             children: [
-              Expanded(
+              // Barra de búsqueda
+              Padding(
+                padding: EdgeInsets.all(16),
                 child: TextField(
                   controller: busquedaController,
                   style: TextStyle(color: textLight),
@@ -1138,218 +1240,356 @@ class _PedidoScreenState extends State<PedidoScreen> {
                   },
                 ),
               ),
-            ],
-          ),
-        ),
 
-        // Campo del cliente para mesas especiales
-        if ([
-          'DOMICILIO',
-          'CAJA',
-          'MESA AUXILIAR',
-        ].contains(widget.mesa.nombre.toUpperCase()))
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: TextField(
-              controller: clienteController,
-              style: TextStyle(color: textLight),
-              decoration: InputDecoration(
-                hintText: 'Nombre del cliente...',
-                hintStyle: TextStyle(color: textLight.withOpacity(0.5)),
-                prefixIcon: Icon(Icons.person, color: primary),
-                filled: true,
-                fillColor: cardBg,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide.none,
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide(color: primary),
-                ),
-              ),
-              onChanged: (value) {
-                setState(() {
-                  clienteSeleccionado = value.trim().isNotEmpty
-                      ? value.trim()
-                      : null;
-                });
-              },
-            ),
-          ),
-
-        // Filtro de categorías
-        Container(
-          height: 50,
-          margin: EdgeInsets.symmetric(horizontal: 16),
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            children: [
-              // Botón "Todas las categorías"
-              Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: FilterChip(
-                  backgroundColor: categoriaSelecionadaId == null
-                      ? primary
-                      : cardBg,
-                  label: Text(
-                    'Todas',
-                    style: TextStyle(
-                      color: categoriaSelecionadaId == null
-                          ? Colors.white
-                          : textLight,
-                    ),
-                  ),
-                  onSelected: (bool selected) {
-                    setState(() {
-                      categoriaSelecionadaId = null;
-                    });
-                  },
-                  selected: categoriaSelecionadaId == null,
-                ),
-              ),
-              // Chips para cada categoría
-              ...categorias.map((categoria) {
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: FilterChip(
-                    backgroundColor: categoriaSelecionadaId == categoria.id
-                        ? primary
-                        : cardBg,
-                    label: Text(
-                      categoria.nombre,
-                      style: TextStyle(
-                        color: categoriaSelecionadaId == categoria.id
-                            ? Colors.white
-                            : textLight,
+              // Campo del cliente para mesas especiales
+              if ([
+                'DOMICILIO',
+                'CAJA',
+                'MESA AUXILIAR',
+              ].contains(widget.mesa.nombre.toUpperCase()))
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: TextField(
+                    controller: clienteController,
+                    style: TextStyle(color: textLight),
+                    decoration: InputDecoration(
+                      hintText: 'Nombre del cliente...',
+                      hintStyle: TextStyle(color: textLight.withOpacity(0.5)),
+                      prefixIcon: Icon(Icons.person, color: primary),
+                      filled: true,
+                      fillColor: cardBg,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide.none,
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(color: primary),
                       ),
                     ),
-                    onSelected: (bool selected) {
+                    onChanged: (value) {
                       setState(() {
-                        categoriaSelecionadaId = selected ? categoria.id : null;
+                        clienteSeleccionado = value.trim().isNotEmpty
+                            ? value.trim()
+                            : null;
                       });
                     },
-                    selected: categoriaSelecionadaId == categoria.id,
                   ),
-                );
-              }).toList(),
+                ),
+
+              // Filtro de categorías
+              Container(
+                height: 50,
+                margin: EdgeInsets.symmetric(horizontal: 16),
+                child: Scrollbar(
+                  scrollbarOrientation: ScrollbarOrientation.bottom,
+                  thumbVisibility: true,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    children: [
+                      // Botón "Todas las categorías"
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: FilterChip(
+                          backgroundColor: categoriaSelecionadaId == null
+                              ? primary
+                              : cardBg,
+                          label: Text(
+                            'Todas',
+                            style: TextStyle(
+                              color: categoriaSelecionadaId == null
+                                  ? Colors.white
+                                  : textLight,
+                            ),
+                          ),
+                          onSelected: (bool selected) {
+                            setState(() {
+                              categoriaSelecionadaId = null;
+                            });
+                          },
+                          selected: categoriaSelecionadaId == null,
+                        ),
+                      ),
+                      // Chips para cada categoría
+                      ...categorias.map((categoria) {
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: FilterChip(
+                            backgroundColor:
+                                categoriaSelecionadaId == categoria.id
+                                ? primary
+                                : cardBg,
+                            label: Text(
+                              categoria.nombre,
+                              style: TextStyle(
+                                color: categoriaSelecionadaId == categoria.id
+                                    ? Colors.white
+                                    : textLight,
+                              ),
+                            ),
+                            onSelected: (bool selected) {
+                              setState(() {
+                                categoriaSelecionadaId = selected
+                                    ? categoria.id
+                                    : null;
+                              });
+                            },
+                            selected: categoriaSelecionadaId == categoria.id,
+                          ),
+                        );
+                      }).toList(),
+                    ],
+                  ),
+                ),
+              ),
+
+              SizedBox(height: 12),
+
+              // Lista de productos disponibles
+              Expanded(
+                child: GridView.builder(
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount:
+                        5, // Aumentado de 4 a 5 para más productos por fila
+                    childAspectRatio:
+                        0.65, // Reducido de 0.75 a 0.65 para tarjetas más compactas
+                    crossAxisSpacing: 6, // Reducido de 8 a 6
+                    mainAxisSpacing: 6, // Reducido de 8 a 6
+                  ),
+                  itemCount: _filtrarProductos().length,
+                  itemBuilder: (context, index) {
+                    return _buildProductoDisponible(_filtrarProductos()[index]);
+                  },
+                ),
+              ),
             ],
           ),
         ),
 
-        SizedBox(height: 8),
-
-        // Lista de productos en el pedido
-        if (productosMesa.isNotEmpty)
-          Container(
-            padding: EdgeInsets.all(16),
-            margin: EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(
-              color: cardBg,
-              borderRadius: BorderRadius.circular(10),
+        // Panel derecho - Productos en el pedido
+        Container(
+          width: 380, // Aumentado de 300 a 380 para mejor visualización
+          decoration: BoxDecoration(
+            color: cardBg.withOpacity(0.3),
+            border: Border(
+              left: BorderSide(color: Colors.grey.withOpacity(0.3), width: 1),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Productos en el pedido:',
-                        style: TextStyle(
-                          color: textLight,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+          ),
+          child: Column(
+            children: [
+              // Encabezado del pedido
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(12), // Reducido de 16 a 12
+                decoration: BoxDecoration(
+                  color: primary.withOpacity(0.1),
+                  border: Border(
+                    bottom: BorderSide(
+                      color: primary.withOpacity(0.3),
+                      width: 1,
                     ),
-                    // Mensaje informativo para usuarios no admin con pedidos existentes
-                    if (!Provider.of<UserProvider>(
-                          context,
-                          listen: false,
-                        ).isAdmin &&
-                        esPedidoExistente &&
-                        cantidadProductosOriginales > 0)
-                      Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.blue.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: Colors.blue.withOpacity(0.3),
+                  ),
+                ),
+                child: Text(
+                  'PEDIDO - ${widget.mesa.nombre}',
+                  style: TextStyle(
+                    color: primary,
+                    fontSize: 14, // Reducido de 16 a 14
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+
+              // Lista de productos en el pedido
+              if (productosMesa.isNotEmpty)
+                Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.all(8), // Reducido de 12 a 8
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Mensaje informativo para usuarios no admin con pedidos existentes
+                        if (!Provider.of<UserProvider>(
+                              context,
+                              listen: false,
+                            ).isAdmin &&
+                            esPedidoExistente &&
+                            cantidadProductosOriginales > 0)
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 6, // Reducido el padding
+                              vertical: 2, // Reducido el padding
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(
+                                8,
+                              ), // Reducido el radio
+                              border: Border.all(
+                                color: Colors.blue.withOpacity(0.3),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.info_outline,
+                                  color: Colors.blue,
+                                  size: 12, // Reducido el tamaño del ícono
+                                ),
+                                SizedBox(width: 3),
+                                Text(
+                                  'Solo agregar nuevos',
+                                  style: TextStyle(
+                                    color: Colors.blue,
+                                    fontSize: 9, // Reducido el tamaño de fuente
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                        SizedBox(height: 6), // Reducido el espaciado
+
+                        Expanded(
+                          // Hacer scrollable la lista de productos
+                          child: SingleChildScrollView(
+                            child: Column(
+                              children: [
+                                ...productosMesa.map(
+                                  (producto) =>
+                                      _buildProductoEnPedido(producto),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
+
+                        Divider(
+                          color: textLight.withOpacity(0.3),
+                          height: 12,
+                        ), // Reducido la altura
+
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Icon(
-                              Icons.info_outline,
-                              color: Colors.blue,
-                              size: 16,
-                            ),
-                            SizedBox(width: 4),
                             Text(
-                              'Productos guardados no se pueden eliminar. Los nuevos sí.',
+                              'Total:',
                               style: TextStyle(
-                                color: Colors.blue,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w500,
+                                color: textLight,
+                                fontSize: 14, // Reducido el tamaño de fuente
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              '\$${_calcularTotal().toStringAsFixed(0)}',
+                              style: TextStyle(
+                                color: primary,
+                                fontSize: 18, // Reducido el tamaño de fuente
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
                           ],
                         ),
-                      ),
-                  ],
-                ),
-                SizedBox(height: 8),
-                ...productosMesa.map(
-                  (producto) => _buildProductoEnPedido(producto),
-                ),
-                Divider(color: textLight.withOpacity(0.3)),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Total:',
-                      style: TextStyle(
-                        color: textLight,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      ],
                     ),
-                    Text(
-                      '\$${_calcularTotal().toStringAsFixed(0)}',
-                      style: TextStyle(
-                        color: primary,
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
+                  ),
+                )
+              else
+                Expanded(
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.shopping_cart_outlined,
+                          size: 48, // Reducido de 64 a 48
+                          color: textLight.withOpacity(0.3),
+                        ),
+                        SizedBox(height: 12), // Reducido de 16 a 12
+                        Text(
+                          'No hay productos\nen el pedido',
+                          style: TextStyle(
+                            color: textLight.withOpacity(0.5),
+                            fontSize: 14, // Reducido de 16 a 14
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
-              ],
-            ),
-          ),
 
-        SizedBox(height: 20),
-
-        // Lista de productos disponibles
-        Expanded(
-          child: GridView.builder(
-            padding: EdgeInsets.symmetric(horizontal: 16),
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              childAspectRatio: 0.75,
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
-            ),
-            itemCount: _filtrarProductos().length,
-            itemBuilder: (context, index) {
-              return _buildProductoDisponible(_filtrarProductos()[index]);
-            },
+              // Botón de guardar en la parte inferior del panel derecho
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(12), // Reducido de 16 a 12
+                decoration: BoxDecoration(
+                  color: cardBg,
+                  border: Border(
+                    top: BorderSide(
+                      color: Colors.grey.withOpacity(0.3),
+                      width: 1,
+                    ),
+                  ),
+                ),
+                child: ElevatedButton(
+                  onPressed: (isLoading || isSaving)
+                      ? null
+                      : () => _guardarPedido(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primary,
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(
+                      vertical: 12,
+                    ), // Reducido de 16 a 12
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(
+                        8,
+                      ), // Reducido de 10 a 8
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      if (isSaving)
+                        SizedBox(
+                          width: 18, // Reducido de 20 a 18
+                          height: 18, // Reducido de 20 a 18
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
+                          ),
+                        )
+                      else
+                        Icon(Icons.save, size: 18), // Reducido de 20 a 18
+                      SizedBox(width: 6), // Reducido de 8 a 6
+                      Flexible(
+                        // Añadido Flexible para evitar overflow
+                        child: Text(
+                          isSaving
+                              ? 'Guardando...'
+                              : (esPedidoExistente
+                                    ? 'Actualizar' // Texto más corto
+                                    : 'Guardar'), // Texto más corto
+                          style: TextStyle(
+                            fontSize: 14, // Reducido el tamaño de fuente
+                            fontWeight: FontWeight.bold,
+                          ),
+                          overflow:
+                              TextOverflow.ellipsis, // Evitar overflow de texto
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ],
@@ -1392,64 +1632,61 @@ class _PedidoScreenState extends State<PedidoScreen> {
     return GestureDetector(
       onTap: () => _agregarProducto(producto),
       child: Container(
-        padding: EdgeInsets.all(10),
+        padding: EdgeInsets.all(4), // Reducido de 6 a 4
         decoration: BoxDecoration(
           color: cardBg,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(6), // Reducido de 8 a 6
           border: Border.all(color: Colors.grey.withOpacity(0.3)),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             // Imagen del producto
-            Expanded(child: _buildProductImage(producto.imagenUrl)),
-            SizedBox(height: 8),
+            Expanded(
+              flex: 3, // Mayor proporción para la imagen
+              child: _buildProductImage(producto.imagenUrl),
+            ),
+            SizedBox(height: 3), // Reducido de 4 a 3
             // Etiqueta de categoría
             Container(
-              padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              padding: EdgeInsets.symmetric(horizontal: 3, vertical: 1),
               decoration: BoxDecoration(
                 color: primary.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(2),
               ),
               child: Text(
                 categoriaText,
                 style: TextStyle(
                   color: primary,
-                  fontSize: 10,
+                  fontSize: 7, // Reducido de 8 a 7
                   fontWeight: FontWeight.w500,
                 ),
               ),
             ),
-            SizedBox(height: 4),
+            SizedBox(height: 2), // Mantener en 2
             // Nombre del producto
-            Text(
-              producto.nombre,
-              style: TextStyle(color: textLight, fontWeight: FontWeight.bold),
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            // Descripción si existe
-            if (producto.descripcion != null &&
-                producto.descripcion!.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 2),
-                child: Text(
-                  producto.descripcion!,
-                  style: TextStyle(
-                    color: textLight.withOpacity(0.7),
-                    fontSize: 10,
-                  ),
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+            Flexible(
+              child: Text(
+                producto.nombre,
+                style: TextStyle(
+                  color: textLight,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 10, // Reducido de 11 a 10
                 ),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
-            SizedBox(height: 4),
+            ),
+            SizedBox(height: 1), // Reducido de 2 a 1
             // Precio
             Text(
               '\$${producto.precio.toStringAsFixed(0)}',
-              style: TextStyle(color: primary, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: primary,
+                fontWeight: FontWeight.bold,
+                fontSize: 11, // Reducido de 12 a 11
+              ),
             ),
           ],
         ),
@@ -1462,7 +1699,11 @@ class _PedidoScreenState extends State<PedidoScreen> {
 
     // Si no hay imagen o la URL es inválida
     if (imagenUrl == null || imagenUrl.isEmpty) {
-      return Icon(Icons.restaurant, color: primary, size: 48);
+      return Icon(
+        Icons.restaurant,
+        color: primary,
+        size: 28, // Reducido de 32 a 28
+      );
     }
 
     // Si es una URL web
@@ -1624,7 +1865,9 @@ class _PedidoScreenState extends State<PedidoScreen> {
               ],
             ),
           ),
-          Expanded(
+          // Controles de cantidad (con más espacio)
+          SizedBox(
+            width: 120, // Aumentado de 100 a 120 para mejor usabilidad
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -1638,20 +1881,22 @@ class _PedidoScreenState extends State<PedidoScreen> {
                   onPressed: (productoPagado[producto.id]! && puedeEliminar)
                       ? () => _eliminarProducto(producto)
                       : null,
-                  iconSize: 20,
+                  iconSize: 20, // Regresado de 18 a 20 para mejor visibilidad
                   padding: EdgeInsets.zero,
-                  constraints: BoxConstraints(),
+                  constraints: BoxConstraints(minWidth: 26, minHeight: 26),
                 ),
-                SizedBox(width: 10),
+                SizedBox(width: 8), // Aumentado de 6 a 8
                 Text(
                   '${producto.cantidad}',
                   style: TextStyle(
                     color: productoPagado[producto.id]!
                         ? textLight
                         : textLight.withOpacity(0.5),
+                    fontSize: 14, // Aumentado de 12 a 14
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-                SizedBox(width: 10),
+                SizedBox(width: 8), // Aumentado de 6 a 8
                 IconButton(
                   icon: Icon(
                     Icons.add_circle,
@@ -1662,14 +1907,16 @@ class _PedidoScreenState extends State<PedidoScreen> {
                   onPressed: productoPagado[producto.id]!
                       ? () => _agregarProducto(producto)
                       : null,
-                  iconSize: 20,
+                  iconSize: 20, // Regresado de 18 a 20 para mejor visibilidad
                   padding: EdgeInsets.zero,
-                  constraints: BoxConstraints(),
+                  constraints: BoxConstraints(minWidth: 26, minHeight: 26),
                 ),
               ],
             ),
           ),
-          Expanded(
+          // Precio (con ancho ampliado)
+          SizedBox(
+            width: 80, // Aumentado de 60 a 80 para mejor legibilidad
             child: Text(
               '\$${(producto.precio * producto.cantidad).toStringAsFixed(0)}',
               style: TextStyle(
@@ -1677,6 +1924,7 @@ class _PedidoScreenState extends State<PedidoScreen> {
                     ? primary
                     : primary.withOpacity(0.5),
                 fontWeight: FontWeight.bold,
+                fontSize: 14, // Aumentado de 12 a 14
               ),
               textAlign: TextAlign.end,
             ),

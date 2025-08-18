@@ -34,7 +34,14 @@ class CuadreCajaService {
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
         List<dynamic> jsonList = responseData['data'] ?? [];
-        return jsonList.map((json) => CuadreCaja.fromJson(json)).toList();
+        final cuadres = jsonList
+            .map((json) => CuadreCaja.fromJson(json))
+            .toList();
+
+        // Ordenar cuadres por fecha de apertura descendente (más recientes primero)
+        cuadres.sort((a, b) => b.fechaApertura.compareTo(a.fechaApertura));
+
+        return cuadres;
       } else {
         throw Exception('Error al obtener cuadres: ${response.statusCode}');
       }
@@ -77,7 +84,14 @@ class CuadreCajaService {
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
         List<dynamic> jsonList = responseData['data'] ?? [];
-        return jsonList.map((json) => CuadreCaja.fromJson(json)).toList();
+        final cuadres = jsonList
+            .map((json) => CuadreCaja.fromJson(json))
+            .toList();
+
+        // Ordenar cuadres por fecha de apertura descendente (más recientes primero)
+        cuadres.sort((a, b) => b.fechaApertura.compareTo(a.fechaApertura));
+
+        return cuadres;
       } else {
         throw Exception(
           'Error al obtener cuadres por responsable: ${response.statusCode}',
@@ -100,7 +114,14 @@ class CuadreCajaService {
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
         List<dynamic> jsonList = responseData['data'] ?? [];
-        return jsonList.map((json) => CuadreCaja.fromJson(json)).toList();
+        final cuadres = jsonList
+            .map((json) => CuadreCaja.fromJson(json))
+            .toList();
+
+        // Ordenar cuadres por fecha de apertura descendente (más recientes primero)
+        cuadres.sort((a, b) => b.fechaApertura.compareTo(a.fechaApertura));
+
+        return cuadres;
       } else {
         throw Exception(
           'Error al obtener cuadres por estado: ${response.statusCode}',
@@ -123,7 +144,14 @@ class CuadreCajaService {
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
         List<dynamic> jsonList = responseData['data'] ?? [];
-        return jsonList.map((json) => CuadreCaja.fromJson(json)).toList();
+        final cuadres = jsonList
+            .map((json) => CuadreCaja.fromJson(json))
+            .toList();
+
+        // Ordenar cuadres por fecha de apertura descendente (más recientes primero)
+        cuadres.sort((a, b) => b.fechaApertura.compareTo(a.fechaApertura));
+
+        return cuadres;
       } else {
         throw Exception(
           'Error al obtener cuadres de hoy: ${response.statusCode}',
@@ -146,7 +174,14 @@ class CuadreCajaService {
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
         List<dynamic> jsonList = responseData['data'] ?? [];
-        return jsonList.map((json) => CuadreCaja.fromJson(json)).toList();
+        final cuadres = jsonList
+            .map((json) => CuadreCaja.fromJson(json))
+            .toList();
+
+        // Ordenar cuadres por fecha de apertura descendente (más recientes primero)
+        cuadres.sort((a, b) => b.fechaApertura.compareTo(a.fechaApertura));
+
+        return cuadres;
       } else {
         throw Exception(
           'Error al obtener cajas abiertas: ${response.statusCode}',

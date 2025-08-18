@@ -117,6 +117,10 @@ class _GastosScreenState extends State<GastosScreen> {
       } else {
         gastos = await _gastoService.getAllGastos();
       }
+
+      // Ordenar gastos por fecha descendente (más recientes primero)
+      gastos.sort((a, b) => b.fechaGasto.compareTo(a.fechaGasto));
+
       setState(() => _gastos = gastos);
     } catch (e) {
       _showError('Error al cargar gastos: $e');

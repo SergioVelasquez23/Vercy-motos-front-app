@@ -1,11 +1,11 @@
 {
-    "name": "serch_restapp",
-    "short_name": "serch_restapp",
+    "name": "Serch Restapp",
+    "short_name": "Serch Restapp",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#FF6B00",
+    "theme_color": "#FF6B00",
+    "description": "Sistema de gestión de restaurante Serch Restapp",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

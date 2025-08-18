@@ -133,11 +133,6 @@ class _CategoriasScreenState extends State<CategoriasScreen> {
           categoria.nombre,
           style: TextStyle(color: textLight, fontWeight: FontWeight.bold),
         ),
-        // Conteo de productos en esta categoría
-        subtitle: Text(
-          '${_getProductosCount(categoria.id)} productos',
-          style: TextStyle(color: textLight.withOpacity(0.7)),
-        ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [

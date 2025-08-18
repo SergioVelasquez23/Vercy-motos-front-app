@@ -210,59 +210,63 @@ class _ProductosScreenState extends State<ProductosScreen> {
                 // Filtro de categorías
                 Container(
                   height: 50,
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: FilterChip(
-                          backgroundColor: _selectedCategoriaId == null
-                              ? primary
-                              : cardBg,
-                          label: Text(
-                            'Todas',
-                            style: TextStyle(
-                              color: _selectedCategoriaId == null
-                                  ? Colors.white
-                                  : textLight,
-                            ),
-                          ),
-                          onSelected: (bool selected) {
-                            setState(() {
-                              _selectedCategoriaId = null;
-                            });
-                          },
-                          selected: _selectedCategoriaId == null,
-                        ),
-                      ),
-                      ..._categorias.map((categoria) {
-                        return Padding(
+                  child: Scrollbar(
+                    scrollbarOrientation: ScrollbarOrientation.bottom,
+                    thumbVisibility: true,
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      children: [
+                        Padding(
                           padding: const EdgeInsets.only(right: 8),
                           child: FilterChip(
-                            backgroundColor:
-                                _selectedCategoriaId == categoria.id
+                            backgroundColor: _selectedCategoriaId == null
                                 ? primary
                                 : cardBg,
                             label: Text(
-                              categoria.nombre,
+                              'Todas',
                               style: TextStyle(
-                                color: _selectedCategoriaId == categoria.id
+                                color: _selectedCategoriaId == null
                                     ? Colors.white
                                     : textLight,
                               ),
                             ),
                             onSelected: (bool selected) {
                               setState(() {
-                                _selectedCategoriaId = selected
-                                    ? categoria.id
-                                    : null;
+                                _selectedCategoriaId = null;
                               });
                             },
-                            selected: _selectedCategoriaId == categoria.id,
+                            selected: _selectedCategoriaId == null,
                           ),
-                        );
-                      }).toList(),
-                    ],
+                        ),
+                        ..._categorias.map((categoria) {
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: FilterChip(
+                              backgroundColor:
+                                  _selectedCategoriaId == categoria.id
+                                  ? primary
+                                  : cardBg,
+                              label: Text(
+                                categoria.nombre,
+                                style: TextStyle(
+                                  color: _selectedCategoriaId == categoria.id
+                                      ? Colors.white
+                                      : textLight,
+                                ),
+                              ),
+                              onSelected: (bool selected) {
+                                setState(() {
+                                  _selectedCategoriaId = selected
+                                      ? categoria.id
+                                      : null;
+                                });
+                              },
+                              selected: _selectedCategoriaId == categoria.id,
+                            ),
+                          );
+                        }).toList(),
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -539,6 +543,35 @@ class _ProductosScreenState extends State<ProductosScreen> {
     final utilidadController = TextEditingController(
       text: isEditing ? producto.utilidad.toString() : '',
     );
+
+    // Función para calcular la utilidad automáticamente
+    void calcularUtilidad() {
+      final precio = double.tryParse(precioController.text) ?? 0.0;
+      final costo = double.tryParse(costoController.text) ?? 0.0;
+      final utilidad = precio - costo;
+      utilidadController.text = utilidad.toStringAsFixed(2);
+    }
+
+    // Función para obtener el margen de ganancia
+    double obtenerMargenGanancia() {
+      final precio = double.tryParse(precioController.text) ?? 0.0;
+      final costo = double.tryParse(costoController.text) ?? 0.0;
+      if (precio > 0) {
+        return ((precio - costo) / precio) * 100;
+      }
+      return 0.0;
+    }
+
+    // Color del margen según el porcentaje
+    Color colorMargen(double margen) {
+      if (margen >= 30) return Colors.green;
+      if (margen >= 15) return Colors.orange;
+      return Colors.red;
+    }
+
+    // Agregar listeners para cálculo automático
+    precioController.addListener(calcularUtilidad);
+    costoController.addListener(calcularUtilidad);
     final descripcionController = TextEditingController(
       text: isEditing ? producto.descripcion ?? '' : '',
     );
@@ -723,28 +756,111 @@ class _ProductosScreenState extends State<ProductosScreen> {
                     ),
                     SizedBox(height: 16),
 
-                    // Utilidad
+                    // Utilidad (calculada automáticamente)
                     TextField(
                       controller: utilidadController,
                       style: TextStyle(color: textLight),
+                      readOnly:
+                          true, // Solo lectura - se calcula automáticamente
                       decoration: InputDecoration(
-                        labelText: 'Utilidad',
+                        labelText: 'Utilidad (Automática)',
                         labelStyle: TextStyle(
                           color: textLight.withOpacity(0.7),
                         ),
                         prefixText: '\$ ',
                         prefixStyle: TextStyle(color: primary),
+                        suffixIcon: Icon(
+                          Icons.calculate,
+                          color: Colors.green,
+                          size: 20,
+                        ),
                         filled: true,
-                        fillColor: cardBg.withOpacity(0.3),
+                        fillColor: Colors.green.withOpacity(0.1),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(
+                            color: Colors.green.withOpacity(0.5),
+                          ),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(
+                            color: Colors.green.withOpacity(0.5),
+                          ),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide(color: primary),
+                          borderSide: BorderSide(color: Colors.green),
                         ),
                       ),
                       keyboardType: TextInputType.number,
+                    ),
+                    SizedBox(height: 8),
+
+                    // Indicador de margen de ganancia en tiempo real
+                    StatefulBuilder(
+                      builder: (context, setState) {
+                        // Actualizar cuando cambien los campos
+                        precioController.removeListener(() {});
+                        costoController.removeListener(() {});
+
+                        void updateMargin() {
+                          setState(() {}); // Actualizar solo este widget
+                        }
+
+                        precioController.addListener(updateMargin);
+                        costoController.addListener(updateMargin);
+
+                        final margen = obtenerMargenGanancia();
+                        final color = colorMargen(margen);
+
+                        return Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: color.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: color.withOpacity(0.3)),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                margen >= 30
+                                    ? Icons.trending_up
+                                    : margen >= 15
+                                    ? Icons.trending_flat
+                                    : Icons.trending_down,
+                                color: color,
+                                size: 16,
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                'Margen: ${margen.toStringAsFixed(1)}%',
+                                style: TextStyle(
+                                  color: color,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                margen >= 30
+                                    ? '(Excelente)'
+                                    : margen >= 15
+                                    ? '(Bueno)'
+                                    : '(Bajo)',
+                                style: TextStyle(
+                                  color: color.withOpacity(0.8),
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
                     ),
                     SizedBox(height: 16),
 

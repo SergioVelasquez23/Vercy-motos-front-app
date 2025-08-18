@@ -8,6 +8,7 @@ class Inventario {
   final double stockActual;
   final double stockMinimo;
   final String estado;
+  final bool descontable;
 
   Inventario({
     required this.id,
@@ -19,6 +20,7 @@ class Inventario {
     required this.stockActual,
     required this.stockMinimo,
     required this.estado,
+    this.descontable = true,
   });
 
   factory Inventario.fromJson(Map<String, dynamic> json) {
@@ -33,6 +35,7 @@ class Inventario {
           .toDouble(),
       stockMinimo: (json['stockMinimo'] ?? 0).toDouble(),
       estado: json['estado'] ?? '',
+      descontable: json['descontable'] ?? true,
     );
   }
 
@@ -47,6 +50,7 @@ class Inventario {
       'stockActual': stockActual,
       'stockMinimo': stockMinimo,
       'estado': estado,
+      'descontable': descontable,
     };
   }
 }

@@ -66,6 +66,9 @@ class PedidoService {
       // Convertir JSON a objetos Pedido
       pedidos = jsonList.map((json) => Pedido.fromJson(json)).toList();
 
+      // Ordenar pedidos por fecha descendente (más recientes primero)
+      pedidos.sort((a, b) => b.fecha.compareTo(a.fecha));
+
       // Cargar productos para cada pedido
       for (var pedido in pedidos) {
         cargarProductosParaPedido(pedido);

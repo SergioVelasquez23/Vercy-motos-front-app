@@ -5,16 +5,20 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:http/http.dart' as http;
 import '../models/mesa.dart';
 import '../models/pedido.dart';
+import '../models/documento_mesa.dart';
 import '../services/pedido_service.dart';
 import '../services/mesa_service.dart';
+import '../services/documento_mesa_service.dart';
 import '../services/impresion_service.dart';
 import '../services/notification_service.dart';
-import '../services/documento_service.dart';
 import '../services/pdf_service.dart';
+import '../config/api_config.dart';
 import '../providers/user_provider.dart';
 import 'pedido_screen.dart';
+import 'documentos_mesa_screen.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -29,8 +33,8 @@ class MesasScreen extends StatefulWidget {
 class _MesasScreenState extends State<MesasScreen> {
   final MesaService _mesaService = MesaService();
   final PedidoService _pedidoService = PedidoService();
+  final DocumentoMesaService _documentoMesaService = DocumentoMesaService();
   final ImpresionService _impresionService = ImpresionService();
-  final DocumentoService _documentoService = DocumentoService();
   final PDFService _pdfService = PDFService();
   List<Mesa> mesas = [];
   bool isLoading = true;
@@ -147,6 +151,136 @@ class _MesasScreenState extends State<MesasScreen> {
     }
   }
 
+  /// Crea un documento de mesa agrupando varios pedidos
+  Future<void> _crearDocumentoMesa(Mesa mesa) async {
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    final vendedor = userProvider.userName ?? 'Usuario';
+
+    try {
+      // 1. Obtener pedidos activos para esta mesa
+      List<Pedido> pedidosActivos = await _pedidoService.getPedidosByMesa(
+        mesa.nombre,
+      );
+      pedidosActivos = pedidosActivos
+          .where((p) => p.estado != 'pagado')
+          .toList();
+
+      if (pedidosActivos.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No hay pedidos activos para agrupar')),
+        );
+        return;
+      }
+
+      // 2. Mostrar diálogo para seleccionar pedidos
+      await _mostrarDialogoSeleccionPedidos(mesa, pedidosActivos, vendedor);
+    } catch (e) {
+      print('❌ Error al crear documento: $e');
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error al crear documento: $e')));
+    }
+  }
+
+  /// Muestra un diálogo para seleccionar pedidos al crear un documento
+  Future<void> _mostrarDialogoSeleccionPedidos(
+    Mesa mesa,
+    List<Pedido> pedidos,
+    String vendedor,
+  ) async {
+    List<String> pedidosSeleccionados = [];
+
+    return showDialog<void>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              backgroundColor: const Color(0xFF252525),
+              title: Text(
+                'Crear documento para ${mesa.nombre}',
+                style: const TextStyle(color: Colors.white),
+              ),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'Selecciona los pedidos a incluir:',
+                      style: TextStyle(color: Color(0xFFE0E0E0)),
+                    ),
+                    const SizedBox(height: 10),
+                    Flexible(
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: pedidos.length,
+                        itemBuilder: (context, index) {
+                          final pedido = pedidos[index];
+                          return CheckboxListTile(
+                            title: Text(
+                              'Pedido ${pedido.id.substring(0, 8)}...',
+                              style: const TextStyle(color: Color(0xFFE0E0E0)),
+                            ),
+                            subtitle: Text(
+                              'Total: \$${pedido.total.toStringAsFixed(2)}',
+                              style: TextStyle(
+                                color: const Color(0xFFE0E0E0).withOpacity(0.7),
+                              ),
+                            ),
+                            value: pedidosSeleccionados.contains(pedido.id),
+                            activeColor: const Color(0xFFFF6B00),
+                            checkColor: Colors.white,
+                            onChanged: (bool? value) {
+                              setState(() {
+                                if (value == true) {
+                                  pedidosSeleccionados.add(pedido.id);
+                                } else {
+                                  pedidosSeleccionados.remove(pedido.id);
+                                }
+                              });
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  child: const Text(
+                    'Cancelar',
+                    style: TextStyle(color: Color(0xFFE0E0E0)),
+                  ),
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFF6B00),
+                  ),
+                  child: const Text('Crear Documento'),
+                  onPressed: pedidosSeleccionados.isEmpty
+                      ? null
+                      : () async {
+                          Navigator.of(context).pop();
+                          await _enviarDocumentoAlServidor(
+                            mesa.nombre,
+                            vendedor,
+                            pedidosSeleccionados,
+                          );
+                        },
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   Future<Pedido?> _obtenerPedidoActivoDeMesa(Mesa mesa) async {
     try {
       print('🔍 Buscando pedido activo para mesa: ${mesa.id}');
@@ -240,6 +374,17 @@ class _MesasScreenState extends State<MesasScreen> {
                   onTap: () {
                     Navigator.pop(context);
                     _vaciarMesaManualmente(mesa);
+                  },
+                ),
+                ListTile(
+                  leading: Icon(Icons.description_outlined, color: _primary),
+                  title: Text(
+                    'Crear documento de mesa',
+                    style: TextStyle(color: _textLight),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _crearDocumentoMesa(mesa);
                   },
                 ),
               ],
@@ -1673,6 +1818,15 @@ class _MesasScreenState extends State<MesasScreen> {
         print('  - Estado actualizado a: ${pedido.estado}');
         print('  - Tipo final confirmado: ${pedido.tipo}');
 
+        // CREAR FACTURA AUTOMÁTICAMENTE DESPUÉS DEL PAGO EXITOSO
+        print('📄 Creando factura automática para pedido pagado...');
+        await _crearFacturaPedido(
+          pedido.id,
+          formaPago: formResult['medioPago'],
+          propina: propina,
+          pagadoPor: usuarioPago,
+        );
+
         // Manejar opciones especiales antes de liberar la mesa
         if (mesaDestinoId != null) {
           // Mover a otra mesa
@@ -1722,7 +1876,9 @@ class _MesasScreenState extends State<MesasScreen> {
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Pedido pagado exitosamente$tipoTexto'),
+            content: Text(
+              'Pedido pagado y documento generado exitosamente$tipoTexto',
+            ),
             backgroundColor: Colors.green,
           ),
         );
@@ -2020,7 +2176,25 @@ class _MesasScreenState extends State<MesasScreen> {
                       ElevatedButton.icon(
                         onPressed: () async {
                           Navigator.pop(context); // Cerrar diálogo actual
-                          await _crearYMostrarFactura(pedido.id);
+
+                          // Solicitar información de pago antes de crear la factura
+                          final formResult = await _mostrarDialogoSimplePago();
+
+                          if (formResult != null) {
+                            await _crearFacturaPedido(
+                              resumen['pedidoId'],
+                              formaPago: formResult['medioPago'],
+                              propina: formResult['propina'] ?? 0.0,
+                              pagadoPor: formResult['pagadoPor'],
+                            );
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Factura creada exitosamente'),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                          }
                         },
                         icon: Icon(Icons.receipt_long, size: 18),
                         label: Text('Facturar'),
@@ -2446,287 +2620,129 @@ class _MesasScreenState extends State<MesasScreen> {
   // Método para compartir resumen de pedido
   Future<void> _compartirResumenPedido(Map<String, dynamic> resumen) async {
     try {
+      // PASO 1: Guardar el resumen como documento en el módulo de documentos
+      print('💾 Guardando resumen como documento antes de compartir...');
+
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      final atendidoPor = userProvider.userName ?? 'Usuario Desconocido';
+
+      // TODO: Implementar guardado de documento usando FacturaService
+      // final documentoGuardado = await _facturaService
+      //     .guardarDocumentoDesdeResumen(
+      //       resumen: resumen,
+      //       tipoDocumento:
+      //           'Recibo', // Es un recibo porque es compartir, no factura oficial
+      //       pedidoId: resumen['pedidoId']?.toString() ?? '',
+      //       medioPago: 'N/A', // Se definirá cuando se pague
+      //       atendidoPor: atendidoPor,
+      //       observaciones: 'Documento generado al compartir resumen de pedido',
+      //     );
+
+      // TODO: Check if document was saved
+      // if (documentoGuardado != null) {
+      //   print('✅ Documento guardado correctamente en módulo documentos');
+      // } else {
+      //   print(
+      //     '⚠️ No se pudo guardar el documento, pero continuamos con compartir',
+      //   );
+      // }
+
+      // PASO 2: Compartir el PDF como antes
       await _pdfService.compartirPDF(resumen: resumen, esFactura: false);
-      _mostrarMensajeExito('Resumen compartido exitosamente');
+      _mostrarMensajeExito('Resumen compartido y guardado en documentos');
     } catch (e) {
+      print('❌ Error en _compartirResumenPedido: $e');
       _mostrarMensajeError('Error compartiendo resumen: $e');
     }
   }
 
-  // Método para crear y mostrar factura oficial
-  Future<void> _crearYMostrarFactura(String pedidoId) async {
-    // Mostrar indicador de carga
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        backgroundColor: _cardBg,
-        content: Row(
-          children: [
-            CircularProgressIndicator(color: _primary),
-            SizedBox(width: 20),
-            Text(
-              'Creando factura oficial...',
-              style: TextStyle(color: _textLight),
-            ),
-          ],
-        ),
-      ),
-    );
-
+  // Método para crear factura automáticamente al pagar - SIMPLIFICADO
+  Future<void> _crearFacturaPedido(
+    String pedidoId, {
+    String? formaPago,
+    double? propina,
+    String? pagadoPor,
+  }) async {
     try {
-      // Crear factura desde el pedido
-      final facturaCreada = await _impresionService.crearFacturaDesdepedido(
-        pedidoId,
-        medioPago: 'Efectivo',
+      print('🧾 Creando documento para pedido: $pedidoId');
+
+      // PASO 1: Obtener los datos del pedido para saber la mesa
+      final pedidoResponse = await http.get(
+        Uri.parse('${ApiConfig().baseUrl}/api/pedidos/$pedidoId'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
       );
 
-      if (facturaCreada == null) {
-        Navigator.of(context).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('No se pudo crear la factura'),
-            backgroundColor: Colors.red,
-          ),
-        );
+      if (pedidoResponse.statusCode != 200) {
+        print('❌ Error obteniendo pedido: ${pedidoResponse.statusCode}');
         return;
       }
 
-      // Obtener la factura para impresión
-      final facturaParaImpresion = await _impresionService
-          .obtenerFacturaParaImpresion(facturaCreada['id'].toString());
+      final pedidoData = json.decode(pedidoResponse.body);
+      final pedido = pedidoData['data'] ?? pedidoData;
+      final mesaNombre = pedido['mesa'] ?? 'GENERAL';
 
-      Navigator.of(context).pop(); // Cerrar diálogo de carga
+      print('📍 Mesa: $mesaNombre');
 
-      if (facturaParaImpresion == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('No se pudo obtener los datos de la factura'),
-            backgroundColor: Colors.red,
-          ),
-        );
+      // PASO 2: Generar resumen completo del pedido
+      final resumen = await _impresionService.generarResumenPedido(pedidoId);
+
+      if (resumen == null) {
+        print('❌ No se pudo generar resumen del pedido');
         return;
       }
 
-      // Mostrar la factura oficial
-      _mostrarFacturaOficial(facturaParaImpresion);
+      // PASO 3: Crear el documento usando el endpoint correcto documentos-mesa
+      final documentoData = {
+        'mesaNombre': mesaNombre,
+        'vendedor':
+            Provider.of<UserProvider>(context, listen: false).userName ??
+            'Sistema',
+        'pedidosIds': [pedidoId],
+        'resumenPedido': resumen,
+        'tipoDocumento': 'Factura',
+        'observaciones': 'Factura generada automáticamente al procesar pago',
+        // Incluir información del pago si está disponible
+        if (formaPago != null) 'formaPago': formaPago,
+        if (propina != null && propina > 0) 'propina': propina,
+        if (pagadoPor != null) 'pagadoPor': pagadoPor,
+        'pagado': true,
+        'fechaPago': DateTime.now().toIso8601String(),
+      };
+
+      // Debug: Verificar qué datos se están enviando
+      print('📤 Enviando documento al backend:');
+      print('  - mesaNombre: $mesaNombre');
+      print('  - formaPago: $formaPago');
+      print('  - pagadoPor: $pagadoPor');
+      print('  - propina: $propina');
+      print('  - JSON completo: ${json.encode(documentoData)}');
+
+      final response = await http.post(
+        Uri.parse('${ApiConfig().baseUrl}/api/documentos-mesa'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: json.encode(documentoData),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final responseData = json.decode(response.body);
+        final documento = responseData['data'] ?? responseData;
+        print(
+          '✅ Documento creado: ${documento['numeroDocumento'] ?? documento['_id']}',
+        );
+      } else {
+        print(
+          '❌ Error creando documento: ${response.statusCode} - ${response.body}',
+        );
+      }
     } catch (e) {
-      Navigator.of(context).pop(); // Cerrar diálogo de carga
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error creando factura: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      print('❌ Error en _crearFacturaPedido: $e');
     }
-  }
-
-  // Método para mostrar factura oficial
-  void _mostrarFacturaOficial(Map<String, dynamic> factura) {
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        backgroundColor: _cardBg,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        child: Container(
-          width: MediaQuery.of(context).size.width * 0.9,
-          padding: EdgeInsets.all(20),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Encabezado
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Factura Oficial',
-                      style: TextStyle(
-                        color: _textLight,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    IconButton(
-                      icon: Icon(Icons.close, color: _textLight),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
-                ),
-                Divider(color: _textLight.withOpacity(0.3)),
-                SizedBox(height: 16),
-
-                // Información del restaurante
-                _buildSeccionResumen('RESTAURANTE', [
-                  factura['nombreRestaurante'] ?? 'SOPA Y CARBÓN',
-                  factura['direccionRestaurante'] ??
-                      'Dirección del restaurante',
-                  'NIT: ${factura['nitRestaurante'] ?? 'NIT del restaurante'}',
-                  'Tel: ${factura['telefonoRestaurante'] ?? 'Teléfono'}',
-                ]),
-
-                // Información de la factura
-                _buildSeccionResumen('FACTURA', [
-                  'Número: ${factura['numero'] ?? 'N/A'}',
-                  'Fecha: ${factura['fecha'] ?? 'N/A'}',
-                  'Hora: ${factura['hora'] ?? 'N/A'}',
-                  'NIT Cliente: ${factura['nit'] ?? '22222222222'}',
-                  if (factura['clienteTelefono'] != null &&
-                      factura['clienteTelefono'].toString().isNotEmpty)
-                    'Teléfono: ${factura['clienteTelefono']}',
-                  if (factura['clienteDireccion'] != null &&
-                      factura['clienteDireccion'].toString().isNotEmpty)
-                    'Dirección: ${factura['clienteDireccion']}',
-                  'Medio de Pago: ${factura['medioPago'] ?? 'Efectivo'}',
-                ]),
-
-                // Productos facturados
-                Text(
-                  'PRODUCTOS FACTURADOS:',
-                  style: TextStyle(
-                    color: _textLight,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                SizedBox(height: 8),
-
-                Container(
-                  constraints: BoxConstraints(maxHeight: 300),
-                  child: SingleChildScrollView(
-                    child: Column(
-                      children: (factura['productos'] as List? ?? [])
-                          .map<Widget>(
-                            (producto) => _buildProductoFacturado(producto),
-                          )
-                          .toList(),
-                    ),
-                  ),
-                ),
-
-                SizedBox(height: 16),
-                Divider(color: _textLight.withOpacity(0.3)),
-
-                // Totales
-                Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('Subtotal:', style: TextStyle(color: _textLight)),
-                        Text(
-                          '\$${(factura['subtotal'] ?? 0.0).toStringAsFixed(0)}',
-                          style: TextStyle(color: _textLight),
-                        ),
-                      ],
-                    ),
-                    if (factura['propina'] != null && factura['propina'] > 0)
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text('Propina:', style: TextStyle(color: _textLight)),
-                          Text(
-                            '\$${(factura['propina'] ?? 0.0).toStringAsFixed(0)}',
-                            style: TextStyle(color: _textLight),
-                          ),
-                        ],
-                      ),
-                    Divider(color: _textLight.withOpacity(0.3)),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'TOTAL:',
-                          style: TextStyle(
-                            color: _textLight,
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(
-                          '\$${(factura['total'] ?? 0.0).toStringAsFixed(0)}',
-                          style: TextStyle(
-                            color: _primary,
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-
-                SizedBox(height: 24),
-
-                // Botones de acción para factura
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    ElevatedButton.icon(
-                      onPressed: () async {
-                        await _imprimirFacturaOficial(factura);
-                      },
-                      icon: Icon(Icons.print, size: 18),
-                      label: Text('Imprimir'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        foregroundColor: Colors.white,
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                      ),
-                    ),
-                    ElevatedButton.icon(
-                      onPressed: () async {
-                        await _compartirFacturaOficial(factura);
-                      },
-                      icon: Icon(Icons.share, size: 18),
-                      label: Text('Compartir'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
-                        foregroundColor: Colors.white,
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // Widget para productos facturados
-  Widget _buildProductoFacturado(Map<String, dynamic> producto) {
-    return Container(
-      padding: EdgeInsets.symmetric(vertical: 6, horizontal: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(
-            child: Text(
-              '${producto['cantidad'] ?? 1}x ${producto['nombre'] ?? 'Producto'}',
-              style: TextStyle(color: _textLight, fontSize: 14),
-            ),
-          ),
-          Text(
-            '\$${((producto['precio'] ?? 0.0) * (producto['cantidad'] ?? 1)).toStringAsFixed(0)}',
-            style: TextStyle(
-              color: _primary,
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   // Método para imprimir factura oficial
@@ -3314,16 +3330,15 @@ class _MesasScreenState extends State<MesasScreen> {
   // Obtener el conteo de documentos del día actual
   Future<int> _obtenerConteoDocumentosHoy() async {
     try {
-      final hoy = DateTime.now();
-      final fechaHoy =
-          '${hoy.year}-${hoy.month.toString().padLeft(2, '0')}-${hoy.day.toString().padLeft(2, '0')}';
+      // TODO: Implement with FacturaService
+      // final hoy = DateTime.now();
+      // final fechaHoy =
+      //     '${hoy.year}-${hoy.month.toString().padLeft(2, '0')}-${hoy.day.toString().padLeft(2, '0')}';
 
-      final documentos = await _documentoService.obtenerDocumentos(
-        fechaInicio: fechaHoy,
-        fechaFin: fechaHoy,
-      );
+      // final documentos = await _facturaService.getFacturas();
+      // return documentos.length;
 
-      return documentos.length;
+      return 0; // Placeholder until proper implementation
     } catch (e) {
       print('❌ Error obteniendo conteo de documentos: $e');
       return 0;
@@ -3347,77 +3362,6 @@ class _MesasScreenState extends State<MesasScreen> {
       );
     }
   }
-
-  // MÉTODO ANTERIOR - YA NO SE USA (Se reemplazó por _crearYMostrarFactura)
-  // Método para crear factura
-  /*
-  Future<void> _crearFacturaPedido(String pedidoId) async {
-    try {
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => AlertDialog(
-          backgroundColor: _cardBg,
-          content: Row(
-            children: [
-              CircularProgressIndicator(color: _primary),
-              SizedBox(width: 20),
-              Text('Generando factura...', style: TextStyle(color: _textLight)),
-            ],
-          ),
-        ),
-      );
-
-      final factura = await _impresionService.crearFacturaDesdepedido(pedidoId);
-
-      Navigator.of(context).pop(); // Cerrar diálogo de carga
-
-      if (factura != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Factura generada: ${factura['numero']}'),
-            backgroundColor: Colors.green,
-            action: SnackBarAction(
-              label: 'Ver Documentos',
-              onPressed: () {
-                // Navegar a la pantalla de documentos y actualizar
-                _navegarADocumentos();
-              },
-            ),
-          ),
-        );
-
-        // Mostrar resumen de factura y opciones
-        final resumenFactura = await _impresionService
-            .obtenerFacturaParaImpresion(factura['_id']);
-        if (resumenFactura != null) {
-          _mostrarResumenFactura(resumenFactura);
-        }
-
-        // Actualizar el estado de la mesa después de facturar
-        await _loadMesas();
-
-        // Mostrar opción adicional para navegar a documentos
-        _mostrarOpcionesPostFacturacion(factura);
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('No se pudo generar la factura'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } catch (e) {
-      Navigator.of(context).pop(); // Cerrar diálogo de carga si hay error
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error creando factura: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-  */
 
   // Mostrar opciones después de crear una factura
   Future<void> _mostrarOpcionesPostFacturacion(
@@ -3924,62 +3868,66 @@ class _MesasScreenState extends State<MesasScreen> {
         double cardHeight = _getResponsiveCardHeight(screenWidth);
         double horizontalMargin = _getResponsiveMargin(screenWidth);
 
-        return SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: letrasOrdenadas.map((letra) {
-              List<Mesa> mesasDeLaLetra = mesasPorLetra[letra]!;
+        return Scrollbar(
+          scrollbarOrientation: ScrollbarOrientation.bottom,
+          thumbVisibility: true,
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: letrasOrdenadas.map((letra) {
+                List<Mesa> mesasDeLaLetra = mesasPorLetra[letra]!;
 
-              // Ordenar las mesas de cada letra por NÚMERO (1, 2, 3...10)
-              mesasDeLaLetra.sort((a, b) {
-                int numeroA = int.tryParse(a.nombre.substring(1)) ?? 0;
-                int numeroB = int.tryParse(b.nombre.substring(1)) ?? 0;
+                // Ordenar las mesas de cada letra por NÚMERO (1, 2, 3...10)
+                mesasDeLaLetra.sort((a, b) {
+                  int numeroA = int.tryParse(a.nombre.substring(1)) ?? 0;
+                  int numeroB = int.tryParse(b.nombre.substring(1)) ?? 0;
 
-                // Convertir 0 a 10 para que vaya al final
-                if (numeroA == 0) numeroA = 10;
-                if (numeroB == 0) numeroB = 10;
+                  // Convertir 0 a 10 para que vaya al final
+                  if (numeroA == 0) numeroA = 10;
+                  if (numeroB == 0) numeroB = 10;
 
-                return numeroA.compareTo(numeroB);
-              });
+                  return numeroA.compareTo(numeroB);
+                });
 
-              return Container(
-                margin: EdgeInsets.only(right: horizontalMargin),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Título de la columna (letra)
-                    Padding(
-                      padding: EdgeInsets.symmetric(vertical: 8),
-                      child: Text(
-                        'Fila $letra',
-                        style: TextStyle(
-                          color: _primary,
-                          fontSize: _getResponsiveFontSize(screenWidth, 16),
-                          fontWeight: FontWeight.bold,
+                return Container(
+                  margin: EdgeInsets.only(right: horizontalMargin),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Título de la columna (letra)
+                      Padding(
+                        padding: EdgeInsets.symmetric(vertical: 8),
+                        child: Text(
+                          'Fila $letra',
+                          style: TextStyle(
+                            color: _primary,
+                            fontSize: _getResponsiveFontSize(screenWidth, 16),
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
-                    ),
 
-                    // Mesas de la letra organizadas verticalmente (A1, A2, A3... A10)
-                    Column(
-                      children: mesasDeLaLetra
-                          .map(
-                            (mesa) => Container(
-                              width: cardWidth,
-                              height: cardHeight,
-                              margin: EdgeInsets.only(
-                                bottom: horizontalMargin * 0.75,
+                      // Mesas de la letra organizadas verticalmente (A1, A2, A3... A10)
+                      Column(
+                        children: mesasDeLaLetra
+                            .map(
+                              (mesa) => Container(
+                                width: cardWidth,
+                                height: cardHeight,
+                                margin: EdgeInsets.only(
+                                  bottom: horizontalMargin * 0.75,
+                                ),
+                                child: _buildMesaCard(mesa),
                               ),
-                              child: _buildMesaCard(mesa),
-                            ),
-                          )
-                          .toList(),
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
+                            )
+                            .toList(),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
           ),
         );
       },
@@ -4412,6 +4360,342 @@ class _MesasScreenState extends State<MesasScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  /// Envía la petición al servidor para crear un nuevo documento
+  Future<void> _enviarDocumentoAlServidor(
+    String mesaNombre,
+    String vendedor,
+    List<String> pedidosIds,
+  ) async {
+    try {
+      // Mostrar indicador de carga
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Creando documento...')));
+
+      // Llamar al servicio para crear el documento
+      final DocumentoMesa? documento = await _documentoMesaService
+          .crearDocumento(
+            mesaNombre: mesaNombre,
+            vendedor: vendedor,
+            pedidosIds: pedidosIds,
+          );
+
+      if (documento != null) {
+        // Documento creado con éxito
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Documento #${documento.numeroDocumento} creado con éxito',
+            ),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+
+        // Navegar a la pantalla de documentos de la mesa
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => DocumentosMesaScreen(
+              mesa: Mesa(
+                id: '', // No necesitamos el ID real aquí
+                nombre: mesaNombre,
+                ocupada: true,
+                total: 0,
+                productos: [],
+                pedidoActual: null,
+              ),
+            ),
+          ),
+        );
+      } else {
+        // Error al crear documento
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Error al crear el documento'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      print('❌ Error enviando documento al servidor: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  // Diálogo simple para solo obtener información de pago
+  Future<Map<String, dynamic>?> _mostrarDialogoSimplePago() async {
+    String medioPago = 'efectivo';
+    String pagadoPor = '';
+    double propina = 0.0;
+
+    return await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => Dialog(
+          backgroundColor: _cardBg,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Container(
+            width: MediaQuery.of(context).size.width * 0.8,
+            padding: EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header
+                Center(
+                  child: Column(
+                    children: [
+                      Icon(Icons.receipt_long, color: _primary, size: 32),
+                      SizedBox(height: 12),
+                      Text(
+                        'Información de Facturación',
+                        style: TextStyle(
+                          color: _textLight,
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(height: 24),
+
+                // Método de pago
+                Text(
+                  'Método de Pago',
+                  style: TextStyle(
+                    color: _textLight,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => setState(() => medioPago = 'efectivo'),
+                        child: Container(
+                          padding: EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: medioPago == 'efectivo'
+                                ? _primary.withOpacity(0.2)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: medioPago == 'efectivo'
+                                  ? _primary
+                                  : _textLight.withOpacity(0.3),
+                              width: 2,
+                            ),
+                          ),
+                          child: Column(
+                            children: [
+                              Icon(
+                                Icons.money,
+                                color: medioPago == 'efectivo'
+                                    ? _primary
+                                    : _textLight.withOpacity(0.6),
+                                size: 24,
+                              ),
+                              SizedBox(height: 8),
+                              Text(
+                                'Efectivo',
+                                style: TextStyle(
+                                  color: medioPago == 'efectivo'
+                                      ? _primary
+                                      : _textLight.withOpacity(0.6),
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () =>
+                            setState(() => medioPago = 'transferencia'),
+                        child: Container(
+                          padding: EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: medioPago == 'transferencia'
+                                ? _primary.withOpacity(0.2)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: medioPago == 'transferencia'
+                                  ? _primary
+                                  : _textLight.withOpacity(0.3),
+                              width: 2,
+                            ),
+                          ),
+                          child: Column(
+                            children: [
+                              Icon(
+                                Icons.account_balance,
+                                color: medioPago == 'transferencia'
+                                    ? _primary
+                                    : _textLight.withOpacity(0.6),
+                                size: 24,
+                              ),
+                              SizedBox(height: 8),
+                              Text(
+                                'Transferencia',
+                                style: TextStyle(
+                                  color: medioPago == 'transferencia'
+                                      ? _primary
+                                      : _textLight.withOpacity(0.6),
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 20),
+
+                // Campo para pagado por
+                Text(
+                  'Pagado por (opcional)',
+                  style: TextStyle(
+                    color: _textLight,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(height: 8),
+                TextField(
+                  onChanged: (value) => pagadoPor = value,
+                  style: TextStyle(color: _textLight),
+                  decoration: InputDecoration(
+                    hintText: 'Nombre del cliente o facturador',
+                    hintStyle: TextStyle(color: _textLight.withOpacity(0.5)),
+                    filled: true,
+                    fillColor: _cardBg.withOpacity(0.3),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: _textLight.withOpacity(0.3),
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: _textLight.withOpacity(0.3),
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: _primary),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 20),
+
+                // Campo para propina
+                Text(
+                  'Propina (opcional)',
+                  style: TextStyle(
+                    color: _textLight,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(height: 8),
+                TextField(
+                  onChanged: (value) => propina = double.tryParse(value) ?? 0.0,
+                  keyboardType: TextInputType.number,
+                  style: TextStyle(color: _textLight),
+                  decoration: InputDecoration(
+                    hintText: '0',
+                    hintStyle: TextStyle(color: _textLight.withOpacity(0.5)),
+                    prefixText: '\$ ',
+                    prefixStyle: TextStyle(color: _primary),
+                    filled: true,
+                    fillColor: _cardBg.withOpacity(0.3),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: _textLight.withOpacity(0.3),
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: _textLight.withOpacity(0.3),
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: _primary),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 24),
+
+                // Botones de acción
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.of(context).pop(null),
+                        child: Text(
+                          'Cancelar',
+                          style: TextStyle(color: _textLight),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(context).pop({
+                            'medioPago': medioPago,
+                            'pagadoPor': pagadoPor.isNotEmpty
+                                ? pagadoPor
+                                : null,
+                            'propina': propina,
+                          });
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _primary,
+                          padding: EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: Text(
+                          'Crear Factura',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

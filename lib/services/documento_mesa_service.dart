@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../models/documento_mesa.dart';
-import '../models/pedido.dart';
 import '../config/endpoints_config.dart';
 
 class DocumentoMesaService {
@@ -22,14 +21,7 @@ class DocumentoMesaService {
     };
   }
 
-  /// Genera un número de documento único
-  String _generarNumeroDocumento() {
-    final now = DateTime.now();
-    final timestamp = now.millisecondsSinceEpoch.toString().substring(6);
-    return timestamp;
-  }
-
-  /// Obtiene todos los documentos de una mesa especial
+  /// Obtiene todos los documentos de una mesa específica
   Future<List<DocumentoMesa>> getDocumentosPorMesa(String nombreMesa) async {
     try {
       final headers = await _getHeaders();
@@ -41,7 +33,18 @@ class DocumentoMesaService {
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
         final List<dynamic> jsonList = responseData['data'] ?? [];
-        return jsonList.map((json) => DocumentoMesa.fromJson(json)).toList();
+        final documentos = jsonList
+            .map((json) => DocumentoMesa.fromJson(json))
+            .toList();
+
+        // Ordenar documentos por fecha descendente (más recientes primero)
+        documentos.sort((a, b) {
+          final fechaA = a.fechaCreacion ?? a.fecha;
+          final fechaB = b.fechaCreacion ?? b.fecha;
+          return fechaB.compareTo(fechaA);
+        });
+
+        return documentos;
       } else {
         print('❌ Error obteniendo documentos: ${response.statusCode}');
         return [];
@@ -52,7 +55,7 @@ class DocumentoMesaService {
     }
   }
 
-  /// Crea un nuevo documento para una mesa especial
+  /// Crea un nuevo documento para cualquier mesa
   Future<DocumentoMesa?> crearDocumento({
     required String mesaNombre,
     required String vendedor,
@@ -86,41 +89,12 @@ class DocumentoMesaService {
     }
   }
 
-  /// Agrega un pedido a un documento existente
-  Future<DocumentoMesa?> agregarPedidoADocumento({
-    required String documentoId,
-    required String pedidoId,
-  }) async {
-    try {
-      final headers = await _getHeaders();
-
-      final body = json.encode({'pedidoId': pedidoId});
-
-      final response = await http.put(
-        Uri.parse(_endpoints.documentosMesa.agregarPedido(documentoId)),
-        headers: headers,
-        body: body,
-      );
-
-      if (response.statusCode == 200) {
-        final responseData = json.decode(response.body);
-        if (responseData['success'] == true && responseData['data'] != null) {
-          return DocumentoMesa.fromJson(responseData['data']);
-        }
-      }
-      return null;
-    } catch (e) {
-      print('❌ Error agregando pedido: $e');
-      return null;
-    }
-  }
-
-  /// Paga un documento completo
-  Future<DocumentoMesa?> pagarDocumento({
+  /// Paga un documento existente
+  Future<bool> pagarDocumento({
     required String documentoId,
     required String formaPago,
     required String pagadoPor,
-    double propina = 0.0,
+    double? propina,
   }) async {
     try {
       final headers = await _getHeaders();
@@ -128,7 +102,7 @@ class DocumentoMesaService {
       final body = json.encode({
         'formaPago': formaPago,
         'pagadoPor': pagadoPor,
-        'propina': propina,
+        if (propina != null && propina > 0) 'propina': propina,
       });
 
       final response = await http.put(
@@ -137,24 +111,17 @@ class DocumentoMesaService {
         body: body,
       );
 
-      if (response.statusCode == 200) {
-        final responseData = json.decode(response.body);
-        if (responseData['success'] == true && responseData['data'] != null) {
-          return DocumentoMesa.fromJson(responseData['data']);
-        }
-      }
-      return null;
+      return response.statusCode == 200;
     } catch (e) {
       print('❌ Error pagando documento: $e');
-      return null;
+      return false;
     }
   }
 
-  /// Elimina un documento (solo si no está pagado)
+  /// Elimina un documento
   Future<bool> eliminarDocumento(String documentoId) async {
     try {
       final headers = await _getHeaders();
-
       final response = await http.delete(
         Uri.parse(_endpoints.documentosMesa.eliminar(documentoId)),
         headers: headers,
@@ -167,49 +134,55 @@ class DocumentoMesaService {
     }
   }
 
-  /// Verifica si una mesa es especial (puede tener múltiples documentos)
-  bool esMesaEspecial(String nombreMesa) {
-    final mesasEspeciales = ['DOMICILIO', 'CAJA', 'MESA AUXILIAR'];
-    return mesasEspeciales.contains(nombreMesa.toUpperCase());
-  }
-
-  /// Obtiene todos los documentos pendientes de una mesa especial
-  Future<List<DocumentoMesa>> getDocumentosPendientes(String nombreMesa) async {
-    final todosDocumentos = await getDocumentosPorMesa(nombreMesa);
-    return todosDocumentos.where((doc) => !doc.pagado).toList();
-  }
-
-  /// Obtiene todos los documentos pagados de una mesa especial
-  Future<List<DocumentoMesa>> getDocumentosPagados(String nombreMesa) async {
-    final todosDocumentos = await getDocumentosPorMesa(nombreMesa);
-    return todosDocumentos.where((doc) => doc.pagado).toList();
-  }
-
-  /// Obtiene el resumen de una mesa especial
-  Future<Map<String, dynamic>> getResumenMesa(String nombreMesa) async {
+  /// Obtiene todos los documentos
+  Future<List<DocumentoMesa>> getDocumentos() async {
     try {
-      final documentos = await getDocumentosPorMesa(nombreMesa);
-
-      final pendientes = documentos.where((doc) => !doc.pagado).toList();
-      final pagados = documentos.where((doc) => doc.pagado).toList();
-
-      final totalPendiente = pendientes.fold(
-        0.0,
-        (sum, doc) => sum + doc.total,
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse(_endpoints.documentosMesa.listaCompleta),
+        headers: headers,
       );
-      final totalPagado = pagados.fold(0.0, (sum, doc) => sum + doc.total);
 
-      return {
-        'totalDocumentos': documentos.length,
-        'documentosPendientes': pendientes.length,
-        'documentosPagados': pagados.length,
-        'totalPendiente': totalPendiente,
-        'totalPagado': totalPagado,
-        'totalGeneral': totalPendiente + totalPagado,
-      };
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        final List<dynamic> jsonList = responseData['data'] ?? [];
+        final documentos = jsonList
+            .map((json) => DocumentoMesa.fromJson(json))
+            .toList();
+
+        // Ordenar documentos por fecha descendente (más recientes primero)
+        documentos.sort((a, b) {
+          final fechaA = a.fechaCreacion ?? a.fecha;
+          final fechaB = b.fechaCreacion ?? b.fecha;
+          return fechaB.compareTo(fechaA);
+        });
+
+        return documentos;
+      } else {
+        print(
+          '❌ Error obteniendo todos los documentos: ${response.statusCode}',
+        );
+        return [];
+      }
     } catch (e) {
-      print('❌ Error obteniendo resumen: $e');
-      return {};
+      print('❌ Error de conexión obteniendo todos los documentos: $e');
+      return [];
+    }
+  }
+
+  /// Anula un documento
+  Future<bool> anularDocumento(String documentoId) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.put(
+        Uri.parse(_endpoints.documentosMesa.anular(documentoId)),
+        headers: headers,
+      );
+
+      return response.statusCode == 200;
+    } catch (e) {
+      print('❌ Error anulando documento: $e');
+      return false;
     }
   }
 }

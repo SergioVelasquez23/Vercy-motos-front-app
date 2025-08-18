@@ -38,7 +38,12 @@ class GastoService {
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
         List<dynamic> jsonList = responseData['data'] ?? [];
-        return jsonList.map((json) => Gasto.fromJson(json)).toList();
+        final gastos = jsonList.map((json) => Gasto.fromJson(json)).toList();
+
+        // Ordenar gastos por fecha descendente (más recientes primero)
+        gastos.sort((a, b) => b.fechaGasto.compareTo(a.fechaGasto));
+
+        return gastos;
       } else {
         throw Exception('Error al obtener gastos: ${response.statusCode}');
       }
@@ -87,7 +92,12 @@ class GastoService {
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
         List<dynamic> jsonList = responseData['data'] ?? [];
-        return jsonList.map((json) => Gasto.fromJson(json)).toList();
+        final gastos = jsonList.map((json) => Gasto.fromJson(json)).toList();
+
+        // Ordenar gastos por fecha descendente (más recientes primero)
+        gastos.sort((a, b) => b.fechaGasto.compareTo(a.fechaGasto));
+
+        return gastos;
       } else {
         throw Exception(
           'Error al obtener gastos del cuadre: ${response.statusCode}',

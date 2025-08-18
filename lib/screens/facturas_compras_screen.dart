@@ -1,0 +1,1735 @@
+import 'package:flutter/material.dart';
+import '../models/factura_compra.dart';
+import '../models/ingrediente.dart';
+import '../models/proveedor.dart';
+import '../services/factura_compra_service.dart';
+import '../services/ingrediente_service.dart';
+import '../services/proveedor_service.dart';
+
+class FacturasComprasScreen extends StatefulWidget {
+  @override
+  _FacturasComprasScreenState createState() => _FacturasComprasScreenState();
+}
+
+class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
+  final FacturaCompraService _facturaCompraService = FacturaCompraService();
+  final TextEditingController _searchController = TextEditingController();
+
+  List<FacturaCompra> _facturas = [];
+  List<FacturaCompra> _facturasFiltradas = [];
+  bool _isLoading = false;
+  String _filtroEstado = 'TODOS';
+  String? _filtroProveedor;
+  String _filtroPagoCaja = 'TODOS'; // TODOS, PAGADAS_CAJA, NO_PAGADAS_CAJA
+
+  final Color primary = Color(0xFFFF6B00);
+  final Color bgDark = Color(0xFF1E1E1E);
+  final Color cardBg = Color(0xFF252525);
+  final Color textDark = Color(0xFFE0E0E0);
+  final Color textLight = Color(0xFFA0A0A0);
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarFacturas();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _cargarFacturas() async {
+    setState(() => _isLoading = true);
+    try {
+      final facturas = await _facturaCompraService.getFacturasCompras();
+      setState(() {
+        _facturas = facturas;
+        _aplicarFiltros();
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al cargar facturas: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  void _aplicarFiltros() {
+    setState(() {
+      _facturasFiltradas = _facturas.where((factura) {
+        final cumpleBusqueda =
+            _searchController.text.isEmpty ||
+            factura.numeroFactura.toLowerCase().contains(
+              _searchController.text.toLowerCase(),
+            ) ||
+            factura.proveedorNombre.toLowerCase().contains(
+              _searchController.text.toLowerCase(),
+            ) ||
+            (factura.proveedorNit?.toLowerCase().contains(
+                  _searchController.text.toLowerCase(),
+                ) ??
+                false);
+
+        final cumpleEstado =
+            _filtroEstado == 'TODOS' || factura.estado == _filtroEstado;
+
+        final cumpleProveedor =
+            _filtroProveedor == null ||
+            factura.proveedorNit == _filtroProveedor;
+
+        final cumplePagoCaja =
+            _filtroPagoCaja == 'TODOS' ||
+            (_filtroPagoCaja == 'PAGADAS_CAJA' && factura.pagadoDesdeCaja) ||
+            (_filtroPagoCaja == 'NO_PAGADAS_CAJA' && !factura.pagadoDesdeCaja);
+
+        return cumpleBusqueda &&
+            cumpleEstado &&
+            cumpleProveedor &&
+            cumplePagoCaja;
+      }).toList();
+
+      _facturasFiltradas.sort(
+        (a, b) => b.fechaCreacion.compareTo(a.fechaCreacion),
+      );
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: bgDark,
+      appBar: AppBar(
+        title: Text(
+          'Facturas de Compras',
+          style: TextStyle(color: textDark, fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: bgDark,
+        elevation: 0,
+        iconTheme: IconThemeData(color: textDark),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.refresh, color: textDark),
+            onPressed: _cargarFacturas,
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          _buildFiltros(),
+          Expanded(
+            child: _isLoading
+                ? Center(child: CircularProgressIndicator(color: primary))
+                : _facturasFiltradas.isEmpty
+                ? _buildEmptyState()
+                : _buildListaFacturas(),
+          ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: primary,
+        onPressed: () => _navegarACrearFactura(),
+        child: Icon(Icons.add, color: Colors.white),
+      ),
+    );
+  }
+
+  Widget _buildFiltros() {
+    return Container(
+      margin: EdgeInsets.all(16),
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          TextField(
+            controller: _searchController,
+            style: TextStyle(color: textDark),
+            decoration: InputDecoration(
+              hintText: 'Buscar por número, proveedor...',
+              hintStyle: TextStyle(color: textLight),
+              prefixIcon: Icon(Icons.search, color: textLight),
+              suffixIcon: _searchController.text.isNotEmpty
+                  ? IconButton(
+                      icon: Icon(Icons.clear, color: textLight),
+                      onPressed: () {
+                        _searchController.clear();
+                        _aplicarFiltros();
+                      },
+                    )
+                  : null,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: textLight.withOpacity(0.3)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: textLight.withOpacity(0.3)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: primary),
+              ),
+            ),
+            onChanged: (value) => _aplicarFiltros(),
+          ),
+          SizedBox(height: 16),
+          Row(
+            children: [
+              Text('Estado: ', style: TextStyle(color: textDark)),
+              SizedBox(width: 8),
+              Expanded(
+                child: Scrollbar(
+                  scrollbarOrientation: ScrollbarOrientation.bottom,
+                  thumbVisibility: true,
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: ['TODOS', 'PENDIENTE', 'PAGADA', 'CANCELADA']
+                          .map(
+                            (estado) => Padding(
+                              padding: EdgeInsets.only(right: 8),
+                              child: FilterChip(
+                                label: Text(estado),
+                                selected: _filtroEstado == estado,
+                                onSelected: (selected) {
+                                  setState(() {
+                                    _filtroEstado = estado;
+                                    _aplicarFiltros();
+                                  });
+                                },
+                                selectedColor: primary.withOpacity(0.2),
+                                checkmarkColor: primary,
+                                labelStyle: TextStyle(
+                                  color: _filtroEstado == estado
+                                      ? primary
+                                      : textLight,
+                                ),
+                              ),
+                            ),
+                          )
+                          .toList(),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 16),
+          Row(
+            children: [
+              Text('Pago: ', style: TextStyle(color: textDark)),
+              SizedBox(width: 8),
+              Expanded(
+                child: Scrollbar(
+                  scrollbarOrientation: ScrollbarOrientation.bottom,
+                  thumbVisibility: true,
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children:
+                          [
+                                {'value': 'TODOS', 'label': 'Todos'},
+                                {
+                                  'value': 'PAGADAS_CAJA',
+                                  'label': 'Desde caja',
+                                },
+                                {
+                                  'value': 'NO_PAGADAS_CAJA',
+                                  'label': 'Fuera de caja',
+                                },
+                              ]
+                              .map(
+                                (filtro) => Padding(
+                                  padding: EdgeInsets.only(right: 8),
+                                  child: FilterChip(
+                                    label: Text(filtro['label']!),
+                                    selected:
+                                        _filtroPagoCaja == filtro['value'],
+                                    onSelected: (selected) {
+                                      setState(() {
+                                        _filtroPagoCaja = filtro['value']!;
+                                        _aplicarFiltros();
+                                      });
+                                    },
+                                    selectedColor: Colors.blue.withOpacity(0.2),
+                                    checkmarkColor: Colors.blue,
+                                    labelStyle: TextStyle(
+                                      color: _filtroPagoCaja == filtro['value']
+                                          ? Colors.blue
+                                          : textLight,
+                                    ),
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.receipt_long, size: 64, color: textLight),
+          SizedBox(height: 16),
+          Text(
+            'No hay facturas de compras',
+            style: TextStyle(
+              color: textDark,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          SizedBox(height: 8),
+          Text(
+            'Crea tu primera factura de compras',
+            style: TextStyle(color: textLight),
+          ),
+          SizedBox(height: 24),
+          ElevatedButton.icon(
+            onPressed: () => _navegarACrearFactura(),
+            icon: Icon(Icons.add),
+            label: Text('Crear Factura'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: primary,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildListaFacturas() {
+    return ListView.builder(
+      padding: EdgeInsets.all(16),
+      itemCount: _facturasFiltradas.length,
+      itemBuilder: (context, index) {
+        final factura = _facturasFiltradas[index];
+        return Card(
+          color: cardBg,
+          margin: EdgeInsets.only(bottom: 12),
+          child: ListTile(
+            leading: CircleAvatar(
+              backgroundColor: primary,
+              child: Icon(Icons.receipt, color: Colors.white),
+            ),
+            title: Text(
+              factura.numeroFactura,
+              style: TextStyle(color: textDark, fontWeight: FontWeight.bold),
+            ),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  factura.proveedorNombre,
+                  style: TextStyle(color: textDark),
+                ),
+                Text(
+                  'NIT: ${factura.proveedorNit ?? 'No especificado'}',
+                  style: TextStyle(color: textLight, fontSize: 12),
+                ),
+                Text(
+                  _formatearFecha(factura.fechaFactura),
+                  style: TextStyle(color: textLight, fontSize: 12),
+                ),
+              ],
+            ),
+            trailing: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (factura.pagadoDesdeCaja)
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        margin: EdgeInsets.only(right: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.green),
+                        ),
+                        child: Icon(
+                          Icons.account_balance_wallet,
+                          size: 12,
+                          color: Colors.green,
+                        ),
+                      ),
+                    _buildEstadoChip(factura.estado),
+                  ],
+                ),
+                SizedBox(height: 4),
+                Text(
+                  '\$${factura.total.toStringAsFixed(0)}',
+                  style: TextStyle(
+                    color: primary,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ],
+            ),
+            onTap: () => _mostrarDetalleFactura(factura),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildEstadoChip(String estado) {
+    Color color;
+    switch (estado.toUpperCase()) {
+      case 'PENDIENTE':
+        color = Colors.orange;
+        break;
+      case 'PAGADA':
+        color = Colors.green;
+        break;
+      case 'CANCELADA':
+        color = Colors.red;
+        break;
+      default:
+        color = Colors.grey;
+    }
+
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color),
+      ),
+      child: Text(
+        estado,
+        style: TextStyle(
+          color: color,
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
+  void _navegarACrearFactura() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => CrearFacturaCompraScreen()),
+    ).then((_) => _cargarFacturas());
+  }
+
+  void _mostrarDetalleFactura(FacturaCompra factura) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => DetalleFacturaCompraScreen(factura: factura),
+      ),
+    ).then((_) => _cargarFacturas());
+  }
+
+  String _formatearFecha(DateTime fecha) {
+    return '${fecha.day.toString().padLeft(2, '0')}/${fecha.month.toString().padLeft(2, '0')}/${fecha.year}';
+  }
+}
+
+class CrearFacturaCompraScreen extends StatefulWidget {
+  @override
+  _CrearFacturaCompraScreenState createState() =>
+      _CrearFacturaCompraScreenState();
+}
+
+class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final FacturaCompraService _facturaCompraService = FacturaCompraService();
+  final IngredienteService _ingredienteService = IngredienteService();
+  final ProveedorService _proveedorService = ProveedorService();
+
+  final _proveedorNitController = TextEditingController();
+  final _proveedorNombreController = TextEditingController();
+
+  DateTime _fechaFactura = DateTime.now();
+  DateTime _fechaVencimiento = DateTime.now().add(Duration(days: 30));
+  List<ItemFacturaCompra> _items = [];
+  List<Ingrediente> _ingredientes = [];
+  List<Proveedor> _proveedores = [];
+  Proveedor? _proveedorSeleccionado;
+  bool _isLoading = false;
+  bool _pagadoDesdeCaja = false;
+  String? _numeroFactura;
+
+  final Color primary = Color(0xFFFF6B00);
+  final Color bgDark = Color(0xFF1E1E1E);
+  final Color cardBg = Color(0xFF252525);
+  final Color textDark = Color(0xFFE0E0E0);
+  final Color textLight = Color(0xFFA0A0A0);
+
+  @override
+  void initState() {
+    super.initState();
+    _generarNumeroFactura();
+    _cargarIngredientes();
+    _cargarProveedores();
+  }
+
+  @override
+  void dispose() {
+    _proveedorNitController.dispose();
+    _proveedorNombreController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _runDebugTests() async {
+    try {
+      print('🔧 Ejecutando pruebas de debug desde UI...');
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Ejecutando pruebas de debug...'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+
+      final debugResult = await _facturaCompraService.debugBackendConnection();
+
+      print('📊 Resultado de pruebas de debug: $debugResult');
+
+      // Crear un mensaje resumido para mostrar al usuario
+      final tests = debugResult['tests'] as Map<String, dynamic>;
+      final successCount = tests.values
+          .where(
+            (test) =>
+                test is Map && test['success'] == true ||
+                test['reachable'] == true,
+          )
+          .length;
+
+      final message =
+          'Pruebas completadas: $successCount/${tests.length} exitosas. Ver consola para detalles.';
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: successCount == tests.length
+              ? Colors.green
+              : Colors.red,
+          duration: Duration(seconds: 5),
+        ),
+      );
+    } catch (e) {
+      print('💥 Error en pruebas de debug: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error en pruebas de debug: $e'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 5),
+        ),
+      );
+    }
+  }
+
+  Future<void> _generarNumeroFactura() async {
+    try {
+      print('🎯 Iniciando generación de número de factura desde UI...');
+      setState(() {
+        _numeroFactura = 'Generando...';
+      });
+
+      final numero = await _facturaCompraService.generarNumeroFactura();
+      print('🎯 Número de factura recibido en UI: $numero');
+
+      setState(() {
+        _numeroFactura = numero;
+      });
+
+      print('✅ Estado actualizado con número: $_numeroFactura');
+    } catch (e) {
+      print('💥 Error en _generarNumeroFactura (UI): $e');
+      setState(() {
+        _numeroFactura = 'Error al generar';
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al generar número de factura: $e'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 5),
+        ),
+      );
+    }
+  }
+
+  Future<void> _cargarIngredientes() async {
+    try {
+      final ingredientes = await _ingredienteService.getAllIngredientes();
+      setState(() {
+        _ingredientes = ingredientes;
+      });
+    } catch (e) {
+      print('Error al cargar ingredientes: $e');
+    }
+  }
+
+  Future<void> _cargarProveedores() async {
+    try {
+      final proveedores = await _proveedorService.getProveedores();
+      setState(() {
+        _proveedores = proveedores;
+      });
+    } catch (e) {
+      print('Error al cargar proveedores: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: bgDark,
+      appBar: AppBar(
+        title: Text(
+          'Nueva Factura de Compras',
+          style: TextStyle(color: textDark, fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: bgDark,
+        elevation: 0,
+        iconTheme: IconThemeData(color: textDark),
+        actions: [
+          IconButton(
+            onPressed: _runDebugTests,
+            icon: Icon(Icons.bug_report, color: Colors.orange),
+            tooltip: 'Debug Backend',
+          ),
+          TextButton(
+            onPressed: _isLoading ? null : _guardarFactura,
+            child: Text(
+              'Guardar',
+              style: TextStyle(
+                color: _isLoading ? textLight : primary,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+      body: _isLoading
+          ? Center(child: CircularProgressIndicator(color: primary))
+          : Form(
+              key: _formKey,
+              child: SingleChildScrollView(
+                padding: EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildInfoBasica(),
+                    SizedBox(height: 24),
+                    _buildFechas(),
+                    SizedBox(height: 24),
+                    _buildItems(),
+                    SizedBox(height: 24),
+                    _buildResumen(),
+                  ],
+                ),
+              ),
+            ),
+    );
+  }
+
+  Widget _buildInfoBasica() {
+    return Card(
+      color: cardBg,
+      child: Padding(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Información Básica',
+              style: TextStyle(
+                color: textDark,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: 16),
+            TextFormField(
+              style: TextStyle(color: textDark),
+              decoration: InputDecoration(
+                labelText: 'Número de Factura',
+                labelStyle: TextStyle(color: textLight),
+                border: OutlineInputBorder(),
+                enabledBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: textLight.withOpacity(0.3)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: primary),
+                ),
+              ),
+              initialValue: _numeroFactura ?? 'Generando...',
+              enabled: false,
+            ),
+            SizedBox(height: 16),
+            DropdownButtonFormField<Proveedor>(
+              value: _proveedorSeleccionado,
+              style: TextStyle(color: textDark),
+              decoration: InputDecoration(
+                labelText: 'Proveedor',
+                labelStyle: TextStyle(color: textLight),
+                hintText: 'Seleccionar proveedor',
+                hintStyle: TextStyle(color: textLight.withOpacity(0.7)),
+                border: OutlineInputBorder(),
+                enabledBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: textLight.withOpacity(0.3)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: primary),
+                ),
+              ),
+              dropdownColor: cardBg,
+              items: [
+                DropdownMenuItem<Proveedor>(
+                  value: null,
+                  child: Text(
+                    'Proveedor general',
+                    style: TextStyle(color: textLight),
+                  ),
+                ),
+                ..._proveedores.map((proveedor) {
+                  return DropdownMenuItem<Proveedor>(
+                    value: proveedor,
+                    child: Text(
+                      proveedor.nombre,
+                      style: TextStyle(color: textDark),
+                    ),
+                  );
+                }).toList(),
+              ],
+              onChanged: (Proveedor? valor) {
+                setState(() {
+                  _proveedorSeleccionado = valor;
+                  if (valor != null) {
+                    _proveedorNitController.text = valor.documento ?? '';
+                    _proveedorNombreController.text = valor.nombre;
+                  } else {
+                    _proveedorNitController.clear();
+                    _proveedorNombreController.clear();
+                  }
+                });
+              },
+            ),
+            SizedBox(height: 16),
+            TextFormField(
+              controller: _proveedorNitController,
+              style: TextStyle(color: textDark),
+              enabled: _proveedorSeleccionado == null,
+              decoration: InputDecoration(
+                labelText: 'NIT del Proveedor (Opcional)',
+                labelStyle: TextStyle(color: textLight),
+                hintText: _proveedorSeleccionado != null
+                    ? 'Autocompletado desde proveedor seleccionado'
+                    : 'Solo para proveedores personalizados',
+                hintStyle: TextStyle(color: textLight.withOpacity(0.7)),
+                border: OutlineInputBorder(),
+                enabledBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: textLight.withOpacity(0.3)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: primary),
+                ),
+                disabledBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: textLight.withOpacity(0.1)),
+                ),
+              ),
+            ),
+            SizedBox(height: 16),
+            TextFormField(
+              controller: _proveedorNombreController,
+              style: TextStyle(color: textDark),
+              enabled: _proveedorSeleccionado == null,
+              decoration: InputDecoration(
+                labelText: 'Nombre del Proveedor (Opcional)',
+                labelStyle: TextStyle(color: textLight),
+                hintText: _proveedorSeleccionado != null
+                    ? 'Autocompletado desde proveedor seleccionado'
+                    : 'Solo para proveedores personalizados',
+                hintStyle: TextStyle(color: textLight.withOpacity(0.7)),
+                border: OutlineInputBorder(),
+                enabledBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: textLight.withOpacity(0.3)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: primary),
+                ),
+                disabledBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: textLight.withOpacity(0.1)),
+                ),
+              ),
+            ),
+            SizedBox(height: 16),
+            SwitchListTile(
+              title: Text(
+                'Pagado desde caja',
+                style: TextStyle(color: textDark),
+              ),
+              subtitle: Text(
+                'Marcar si esta compra afecta el flujo de caja del día',
+                style: TextStyle(color: textLight, fontSize: 12),
+              ),
+              value: _pagadoDesdeCaja,
+              onChanged: (value) {
+                setState(() {
+                  _pagadoDesdeCaja = value;
+                });
+              },
+              activeColor: primary,
+              activeTrackColor: primary.withOpacity(0.3),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFechas() {
+    return Card(
+      color: cardBg,
+      child: Padding(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Fechas',
+              style: TextStyle(
+                color: textDark,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: ListTile(
+                    title: Text(
+                      'Fecha de Factura',
+                      style: TextStyle(color: textDark),
+                    ),
+                    subtitle: Text(
+                      _formatearFecha(_fechaFactura),
+                      style: TextStyle(color: textLight),
+                    ),
+                    leading: Icon(Icons.calendar_today, color: primary),
+                    onTap: () => _seleccionarFecha(context, true),
+                  ),
+                ),
+                Expanded(
+                  child: ListTile(
+                    title: Text(
+                      'Fecha de Vencimiento',
+                      style: TextStyle(color: textDark),
+                    ),
+                    subtitle: Text(
+                      _formatearFecha(_fechaVencimiento),
+                      style: TextStyle(color: textLight),
+                    ),
+                    leading: Icon(Icons.event, color: primary),
+                    onTap: () => _seleccionarFecha(context, false),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildItems() {
+    return Card(
+      color: cardBg,
+      child: Padding(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Items de la Factura',
+                  style: TextStyle(
+                    color: textDark,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                ElevatedButton.icon(
+                  onPressed: _agregarItem,
+                  icon: Icon(Icons.add),
+                  label: Text('Agregar Item'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primary,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 16),
+            if (_items.isEmpty)
+              Container(
+                padding: EdgeInsets.all(32),
+                child: Center(
+                  child: Column(
+                    children: [
+                      Icon(Icons.inventory_2, size: 48, color: textLight),
+                      SizedBox(height: 8),
+                      Text(
+                        'No hay items agregados',
+                        style: TextStyle(color: textLight),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              ..._items.asMap().entries.map((entry) {
+                final index = entry.key;
+                final item = entry.value;
+                return Card(
+                  color: bgDark,
+                  margin: EdgeInsets.only(bottom: 8),
+                  child: ListTile(
+                    title: Text(
+                      item.ingredienteNombre,
+                      style: TextStyle(color: textDark),
+                    ),
+                    subtitle: Text(
+                      '${item.cantidad} ${item.unidad} x \$${item.precioUnitario.toStringAsFixed(0)}',
+                      style: TextStyle(color: textLight),
+                    ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '\$${item.subtotal.toStringAsFixed(0)}',
+                          style: TextStyle(
+                            color: primary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.delete, color: Colors.red),
+                          onPressed: () => _eliminarItem(index),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildResumen() {
+    final total = _items.fold<double>(0, (sum, item) => sum + item.subtotal);
+
+    return Card(
+      color: cardBg,
+      child: Padding(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Resumen',
+              style: TextStyle(
+                color: textDark,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Total:',
+                  style: TextStyle(
+                    color: textDark,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  '\$${total.toStringAsFixed(0)}',
+                  style: TextStyle(
+                    color: primary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Nota: El IVA ya está incluido en los precios de los items',
+              style: TextStyle(
+                color: textLight,
+                fontSize: 12,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _seleccionarFecha(
+    BuildContext context,
+    bool esFechaFactura,
+  ) async {
+    final fecha = await showDatePicker(
+      context: context,
+      initialDate: esFechaFactura ? _fechaFactura : _fechaVencimiento,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2030),
+    );
+
+    if (fecha != null) {
+      setState(() {
+        if (esFechaFactura) {
+          _fechaFactura = fecha;
+        } else {
+          _fechaVencimiento = fecha;
+        }
+      });
+    }
+  }
+
+  void _agregarItem() {
+    if (_ingredientes.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('No hay ingredientes disponibles'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => _DialogoAgregarItem(
+        ingredientes: _ingredientes,
+        onItemAgregado: (item) {
+          setState(() {
+            _items.add(item);
+          });
+        },
+        primary: primary,
+        cardBg: cardBg,
+        textDark: textDark,
+        textLight: textLight,
+      ),
+    );
+  }
+
+  void _eliminarItem(int index) {
+    setState(() {
+      _items.removeAt(index);
+    });
+  }
+
+  Future<void> _guardarFactura() async {
+    if (!_formKey.currentState!.validate()) {
+      print('❌ Formulario no válido');
+      return;
+    }
+
+    if (_items.isEmpty) {
+      print('❌ No hay items en la factura');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Debe agregar al menos un item'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    print('🎯 Iniciando proceso de guardado de factura...');
+    print('🆔 Número de factura actual: $_numeroFactura');
+    print('📋 Cantidad de items: ${_items.length}');
+
+    setState(() => _isLoading = true);
+
+    try {
+      final total = _items.fold<double>(0, (sum, item) => sum + item.subtotal);
+      print('💰 Total calculado: $total');
+
+      // Verificar que el número de factura no esté vacío o sea "Generando..."
+      if (_numeroFactura == null ||
+          _numeroFactura!.isEmpty ||
+          _numeroFactura == 'Generando...' ||
+          _numeroFactura == 'Error al generar') {
+        print('⚠️ Número de factura no válido: $_numeroFactura');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Error: Número de factura no válido. Reintentando generación...',
+            ),
+            backgroundColor: Colors.orange,
+          ),
+        );
+
+        // Intentar regenerar el número
+        await _generarNumeroFactura();
+
+        if (_numeroFactura == null ||
+            _numeroFactura!.isEmpty ||
+            _numeroFactura == 'Generando...' ||
+            _numeroFactura == 'Error al generar') {
+          throw Exception('No se pudo generar un número de factura válido');
+        }
+      }
+
+      final factura = FacturaCompra(
+        // No pasamos ID - se genera automáticamente en el backend
+        numeroFactura: _numeroFactura ?? '',
+        proveedorNit: _proveedorNitController.text.trim().isEmpty
+            ? null
+            : _proveedorNitController.text.trim(),
+        proveedorNombre: _proveedorNombreController.text.trim().isEmpty
+            ? null
+            : _proveedorNombreController.text.trim(),
+        fechaFactura: _fechaFactura,
+        fechaVencimiento: _fechaVencimiento,
+        total: total,
+        estado: 'PENDIENTE',
+        pagadoDesdeCaja: _pagadoDesdeCaja,
+        items: _items,
+        fechaCreacion: DateTime.now(),
+        fechaActualizacion: DateTime.now(),
+      );
+
+      print('🏪 Enviando factura al servicio...');
+      final facturaCreada = await _facturaCompraService.crearFacturaCompra(
+        factura,
+      );
+      print('✅ Factura creada exitosamente: ${facturaCreada.id}');
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Factura creada exitosamente'),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+      Navigator.pop(context);
+    } catch (e) {
+      print('💥 Error en _guardarFactura (UI): $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al crear factura: $e'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 5),
+        ),
+      );
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  String _formatearFecha(DateTime fecha) {
+    return '${fecha.day.toString().padLeft(2, '0')}/${fecha.month.toString().padLeft(2, '0')}/${fecha.year}';
+  }
+}
+
+class DetalleFacturaCompraScreen extends StatelessWidget {
+  final FacturaCompra factura;
+
+  const DetalleFacturaCompraScreen({Key? key, required this.factura})
+    : super(key: key);
+
+  final Color primary = const Color(0xFFFF6B00);
+  final Color bgDark = const Color(0xFF1E1E1E);
+  final Color cardBg = const Color(0xFF252525);
+  final Color textDark = const Color(0xFFE0E0E0);
+  final Color textLight = const Color(0xFFA0A0A0);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: bgDark,
+      appBar: AppBar(
+        title: Text(
+          'Detalle de Factura',
+          style: TextStyle(color: textDark, fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: bgDark,
+        elevation: 0,
+        iconTheme: IconThemeData(color: textDark),
+      ),
+      body: SingleChildScrollView(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildInfoGeneral(),
+            SizedBox(height: 16),
+            _buildItems(),
+            SizedBox(height: 16),
+            _buildResumen(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoGeneral() {
+    return Card(
+      color: cardBg,
+      child: Padding(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Información General',
+              style: TextStyle(
+                color: textDark,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: 16),
+            _buildInfoRow('Número de Factura:', factura.numeroFactura),
+            _buildInfoRow('Proveedor:', factura.proveedorNombre),
+            if (factura.proveedorNit != null)
+              _buildInfoRow('NIT:', factura.proveedorNit!),
+            _buildInfoRow(
+              'Fecha de Factura:',
+              _formatearFecha(factura.fechaFactura),
+            ),
+            _buildInfoRow(
+              'Fecha de Vencimiento:',
+              _formatearFecha(factura.fechaVencimiento),
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Estado:', style: TextStyle(color: textLight)),
+                _buildEstadoChip(factura.estado),
+              ],
+            ),
+            SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Pagado desde caja:', style: TextStyle(color: textLight)),
+                Row(
+                  children: [
+                    Icon(
+                      factura.pagadoDesdeCaja
+                          ? Icons.check_circle
+                          : Icons.cancel,
+                      color: factura.pagadoDesdeCaja
+                          ? Colors.green
+                          : Colors.grey,
+                      size: 16,
+                    ),
+                    SizedBox(width: 4),
+                    Text(
+                      factura.pagadoDesdeCaja ? 'Sí' : 'No',
+                      style: TextStyle(
+                        color: factura.pagadoDesdeCaja
+                            ? Colors.green
+                            : textLight,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildItems() {
+    return Card(
+      color: cardBg,
+      child: Padding(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Items de la Factura',
+              style: TextStyle(
+                color: textDark,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: 16),
+            ...factura.items
+                .map(
+                  (item) => Card(
+                    color: bgDark,
+                    margin: EdgeInsets.only(bottom: 8),
+                    child: ListTile(
+                      title: Text(
+                        item.ingredienteNombre,
+                        style: TextStyle(color: textDark),
+                      ),
+                      subtitle: Text(
+                        '${item.cantidad} ${item.unidad} x \$${item.precioUnitario.toStringAsFixed(0)}',
+                        style: TextStyle(color: textLight),
+                      ),
+                      trailing: Text(
+                        '\$${item.subtotal.toStringAsFixed(0)}',
+                        style: TextStyle(
+                          color: primary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                )
+                .toList(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildResumen() {
+    return Card(
+      color: cardBg,
+      child: Padding(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Resumen',
+              style: TextStyle(
+                color: textDark,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Total:',
+                  style: TextStyle(
+                    color: textDark,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  '\$${factura.total.toStringAsFixed(0)}',
+                  style: TextStyle(
+                    color: primary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Nota: El IVA ya está incluido en los precios',
+              style: TextStyle(
+                color: textLight,
+                fontSize: 12,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(String label, String value) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: TextStyle(color: textLight)),
+          Text(value, style: TextStyle(color: textDark)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEstadoChip(String estado) {
+    Color color;
+    switch (estado.toUpperCase()) {
+      case 'PENDIENTE':
+        color = Colors.orange;
+        break;
+      case 'PAGADA':
+        color = Colors.green;
+        break;
+      case 'CANCELADA':
+        color = Colors.red;
+        break;
+      default:
+        color = Colors.grey;
+    }
+
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color),
+      ),
+      child: Text(
+        estado,
+        style: TextStyle(
+          color: color,
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
+  String _formatearFecha(DateTime fecha) {
+    return '${fecha.day.toString().padLeft(2, '0')}/${fecha.month.toString().padLeft(2, '0')}/${fecha.year}';
+  }
+}
+
+// Widget de diálogo para agregar items desde ingredientes
+class _DialogoAgregarItem extends StatefulWidget {
+  final List<Ingrediente> ingredientes;
+  final Function(ItemFacturaCompra) onItemAgregado;
+  final Color primary;
+  final Color cardBg;
+  final Color textDark;
+  final Color textLight;
+
+  const _DialogoAgregarItem({
+    Key? key,
+    required this.ingredientes,
+    required this.onItemAgregado,
+    required this.primary,
+    required this.cardBg,
+    required this.textDark,
+    required this.textLight,
+  }) : super(key: key);
+
+  @override
+  _DialogoAgregarItemState createState() => _DialogoAgregarItemState();
+}
+
+class _DialogoAgregarItemState extends State<_DialogoAgregarItem> {
+  Ingrediente? _ingredienteSeleccionado;
+  final _cantidadController = TextEditingController();
+  final _precioController = TextEditingController();
+  String _searchText = '';
+
+  @override
+  void dispose() {
+    _cantidadController.dispose();
+    _precioController.dispose();
+    super.dispose();
+  }
+
+  List<Ingrediente> get _ingredientesFiltrados {
+    if (_searchText.isEmpty) return widget.ingredientes;
+    return widget.ingredientes.where((ingrediente) {
+      return ingrediente.nombre.toLowerCase().contains(
+            _searchText.toLowerCase(),
+          ) ||
+          ingrediente.categoria.toLowerCase().contains(
+            _searchText.toLowerCase(),
+          );
+    }).toList();
+  }
+
+  double get _subtotal {
+    final cantidad = double.tryParse(_cantidadController.text) ?? 0;
+    final precio = double.tryParse(_precioController.text) ?? 0;
+    return cantidad * precio;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: widget.cardBg,
+      child: Container(
+        width: MediaQuery.of(context).size.width * 0.9,
+        height: MediaQuery.of(context).size.height * 0.8,
+        padding: EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Título
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Agregar Item',
+                  style: TextStyle(
+                    color: widget.textDark,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: Icon(Icons.close, color: widget.textLight),
+                ),
+              ],
+            ),
+            SizedBox(height: 20),
+
+            // Búsqueda de ingredientes
+            TextField(
+              style: TextStyle(color: widget.textDark),
+              decoration: InputDecoration(
+                hintText: 'Buscar ingredientes...',
+                hintStyle: TextStyle(color: widget.textLight),
+                prefixIcon: Icon(Icons.search, color: widget.textLight),
+                filled: true,
+                fillColor: Colors.grey[800],
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+              onChanged: (value) {
+                setState(() => _searchText = value);
+              },
+            ),
+            SizedBox(height: 16),
+
+            // Lista de ingredientes
+            Text(
+              'Seleccionar Ingrediente:',
+              style: TextStyle(
+                color: widget.textDark,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: 8),
+            Expanded(
+              flex: 2,
+              child: Container(
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey[600]!),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: ListView.builder(
+                  itemCount: _ingredientesFiltrados.length,
+                  itemBuilder: (context, index) {
+                    final ingrediente = _ingredientesFiltrados[index];
+                    final isSelected =
+                        _ingredienteSeleccionado?.id == ingrediente.id;
+
+                    return ListTile(
+                      title: Text(
+                        ingrediente.nombre,
+                        style: TextStyle(color: widget.textDark),
+                      ),
+                      subtitle: Text(
+                        '${ingrediente.categoria} - Stock: ${ingrediente.cantidad} ${ingrediente.unidad}',
+                        style: TextStyle(color: widget.textLight),
+                      ),
+                      trailing: Text(
+                        '\$${ingrediente.costo.toStringAsFixed(0)}/${ingrediente.unidad}',
+                        style: TextStyle(color: widget.primary),
+                      ),
+                      selected: isSelected,
+                      selectedTileColor: widget.primary.withOpacity(0.1),
+                      onTap: () {
+                        setState(() {
+                          _ingredienteSeleccionado = ingrediente;
+                          _precioController.text = ingrediente.costo.toString();
+                        });
+                      },
+                    );
+                  },
+                ),
+              ),
+            ),
+            SizedBox(height: 16),
+
+            // Detalles del item
+            if (_ingredienteSeleccionado != null) ...[
+              Text(
+                'Detalles del Item:',
+                style: TextStyle(
+                  color: widget.textDark,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _cantidadController,
+                      style: TextStyle(color: widget.textDark),
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: 'Cantidad',
+                        suffixText: _ingredienteSeleccionado!.unidad,
+                        suffixStyle: TextStyle(color: widget.textLight),
+                        enabledBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: Colors.grey[600]!),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: widget.primary),
+                        ),
+                      ),
+                      onChanged: (_) => setState(() {}),
+                    ),
+                  ),
+                  SizedBox(width: 16),
+                  Expanded(
+                    child: TextField(
+                      controller: _precioController,
+                      style: TextStyle(color: widget.textDark),
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: 'Precio Unitario',
+                        labelStyle: TextStyle(color: widget.textLight),
+                        prefixText: '\$',
+                        prefixStyle: TextStyle(color: widget.textLight),
+                        enabledBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: Colors.grey[600]!),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: widget.primary),
+                        ),
+                      ),
+                      onChanged: (_) => setState(() {}),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 16),
+
+              // Subtotal
+              Container(
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: widget.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: widget.primary),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Subtotal:',
+                      style: TextStyle(
+                        color: widget.textDark,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      '\$${_subtotal.toStringAsFixed(0)}',
+                      style: TextStyle(
+                        color: widget.primary,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: 16),
+
+              // Botones
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text(
+                      'Cancelar',
+                      style: TextStyle(color: widget.textLight),
+                    ),
+                  ),
+                  SizedBox(width: 12),
+                  ElevatedButton(
+                    onPressed: _puedeAgregar() ? _agregarItem : null,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: widget.primary,
+                      foregroundColor: Colors.white,
+                    ),
+                    child: Text('Agregar'),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  bool _puedeAgregar() {
+    return _ingredienteSeleccionado != null &&
+        _cantidadController.text.isNotEmpty &&
+        _precioController.text.isNotEmpty &&
+        (double.tryParse(_cantidadController.text) ?? 0) > 0 &&
+        (double.tryParse(_precioController.text) ?? 0) > 0;
+  }
+
+  void _agregarItem() {
+    final cantidad = double.parse(_cantidadController.text);
+    final precio = double.parse(_precioController.text);
+
+    final item = ItemFacturaCompra(
+      ingredienteId: _ingredienteSeleccionado!.id,
+      ingredienteNombre: _ingredienteSeleccionado!.nombre,
+      cantidad: cantidad,
+      unidad: _ingredienteSeleccionado!.unidad,
+      precioUnitario: precio,
+      subtotal: cantidad * precio,
+    );
+
+    widget.onItemAgregado(item);
+    Navigator.pop(context);
+  }
+}

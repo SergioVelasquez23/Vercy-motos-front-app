@@ -3,18 +3,18 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:provider/provider.dart';
 import 'dart:async';
 import 'productos_screen.dart';
-import 'reportes_screen.dart';
-import 'categorias_screen.dart';
 import 'mesas_screen.dart';
 import 'pedidos_screen_fusion.dart';
 import 'cuadre_caja_screen.dart';
-import 'documentos_screen.dart';
+import 'documentos_mesa_screen.dart';
 import 'inventario_screen.dart';
 import 'ingredientes_screen.dart';
+import 'facturas_compras_screen.dart';
 import 'recetas_screen.dart';
 import 'proveedores_screen.dart';
 import 'unidades_screen.dart';
 import 'historial_inventario_screen.dart';
+import 'configuracion_screen.dart';
 import '../config/constants.dart';
 import '../services/reportes_service.dart';
 import '../services/pedido_service.dart';
@@ -734,7 +734,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
           Icon(Icons.restaurant_menu, color: Colors.white, size: 24),
           SizedBox(width: 12),
           Text(
-            'Dashboard Asados',
+            'Dashboard',
             style: TextStyle(
               color: Colors.white,
               fontSize: 20,
@@ -770,9 +770,13 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
     return Container(
       height: 60,
       color: cardBg,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(children: _buildNavItems(userProvider)),
+      child: Scrollbar(
+        scrollbarOrientation: ScrollbarOrientation.bottom,
+        thumbVisibility: true,
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(children: _buildNavItems(userProvider)),
+        ),
       ),
     );
   }
@@ -780,14 +784,14 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
   List<Widget> _buildNavItems(UserProvider userProvider) {
     List<Widget> navItems = [];
 
-    // Dashboard - Solo para ADMIN y SUPERADMIN
+    // 1. Dashboard - Solo para ADMIN y SUPERADMIN
     if (userProvider.isAdmin) {
       navItems.add(_buildNavItem(Icons.dashboard, 'Dashboard', 0, () {}));
     }
 
-    // Mesas - Disponible para todos los roles
+    // 2. Mesas - Disponible para todos los roles
     navItems.add(
-      _buildNavItem(Icons.table_restaurant, 'Mesas', 4, () {
+      _buildNavItem(Icons.table_restaurant, 'Mesas', 1, () {
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => MesasScreen()),
@@ -795,9 +799,9 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
       }),
     );
 
-    // Pedidos - Disponible para todos los roles
+    // 3. Pedidos - Disponible para todos los roles
     navItems.add(
-      _buildNavItem(Icons.shopping_cart, 'Pedidos', 5, () {
+      _buildNavItem(Icons.shopping_cart, 'Pedidos', 2, () {
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => PedidosScreenFusion()),
@@ -807,8 +811,9 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
 
     // Los siguientes módulos solo para ADMIN y SUPERADMIN
     if (userProvider.isAdmin) {
+      // 4. Productos
       navItems.add(
-        _buildNavItem(Icons.inventory_2, 'Productos', 1, () {
+        _buildNavItem(Icons.inventory_2, 'Productos', 3, () {
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => ProductosScreen()),
@@ -816,8 +821,9 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         }),
       );
 
+      // 5. Inventario (dropdown)
       navItems.add(
-        _buildDropdownNavItem(Icons.inventory_2_outlined, 'Inventario', 2, [
+        _buildDropdownNavItem(Icons.inventory_2_outlined, 'Inventario', 4, [
           PopupMenuItem<String>(
             value: 'inventario',
             onTap: () {
@@ -931,38 +937,42 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         ]),
       );
 
+      // 6. Facturas Compras
       navItems.add(
-        _buildNavItem(Icons.category, 'Categorías', 3, () {
+        _buildNavItem(Icons.receipt_long, 'Facturas Compras', 5, () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => CategoriasScreen()),
+            MaterialPageRoute(builder: (context) => FacturasComprasScreen()),
           );
         }),
       );
 
+      // 7. Documentos
       navItems.add(
-        _buildNavItem(Icons.bar_chart, 'Reportes', 6, () {
+        _buildNavItem(Icons.description, 'Documentos', 6, () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => ReportesScreen()),
+            MaterialPageRoute(builder: (context) => DocumentosMesaScreen()),
           );
         }),
       );
 
+      // 8. Caja
       navItems.add(
-        _buildNavItem(Icons.description, 'Documentos', 7, () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => DocumentosScreen()),
-          );
-        }),
-      );
-
-      navItems.add(
-        _buildNavItem(Icons.account_balance, 'Caja', 8, () {
+        _buildNavItem(Icons.account_balance, 'Caja', 7, () {
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => CuadreCajaScreen()),
+          );
+        }),
+      );
+
+      // 9. Configuración
+      navItems.add(
+        _buildNavItem(Icons.settings, 'Configuración', 8, () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => ConfiguracionScreen()),
           );
         }),
       );

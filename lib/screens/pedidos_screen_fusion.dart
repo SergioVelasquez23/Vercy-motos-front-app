@@ -786,11 +786,25 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                       ),
                       SizedBox(width: 16),
                       Expanded(
-                        child: _buildInfoItem(
-                          Icons.person_outline,
-                          'Cliente',
-                          pedido.cliente ?? 'Sin cliente',
-                        ),
+                        child: _buildInfoItem(Icons.person_outline, 'Cliente', () {
+                          // Debug: Imprimir información del pedido
+                          print('🔍 Debug Pedido ID: ${pedido.id}');
+                          print('🔍 Debug Cliente: ${pedido.cliente}');
+                          print('🔍 Debug Items count: ${pedido.items.length}');
+                          if (pedido.items.isNotEmpty) {
+                            print(
+                              '🔍 Debug Primer producto ID: ${pedido.items.first.productoId}',
+                            );
+                            print(
+                              '🔍 Debug Primer producto nombre: ${pedido.items.first.producto?.nombre}',
+                            );
+                          }
+
+                          // Verificar si hay algún problema con el cliente
+                          final clienteInfo = pedido.cliente ?? 'Sin cliente';
+                          print('🔍 Debug Cliente final: $clienteInfo');
+                          return clienteInfo;
+                        }()),
                       ),
                     ],
                   ),
@@ -808,11 +822,32 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                       ),
                       SizedBox(width: 16),
                       Expanded(
-                        child: _buildInfoItem(
-                          Icons.inventory,
-                          'Items',
-                          '${pedido.items.length} productos',
-                        ),
+                        child: _buildInfoItem(Icons.inventory, 'Items', () {
+                          if (pedido.items.isEmpty) {
+                            return '0 productos';
+                          }
+
+                          // Mostrar el primer producto con su nombre si está disponible
+                          final primerItem = pedido.items.first;
+
+                          // Prioridad: objeto producto > productoNombre del JSON > ID
+                          String nombreProducto;
+                          if (primerItem.producto?.nombre != null &&
+                              primerItem.producto!.nombre.isNotEmpty) {
+                            nombreProducto = primerItem.producto!.nombre;
+                          } else {
+                            // Intentar usar productoNombre del JSON como fallback
+                            // Este campo viene del backend en el JSON
+                            nombreProducto =
+                                'ID: ${primerItem.productoId}'; // Fallback al ID
+                          }
+
+                          if (pedido.items.length == 1) {
+                            return nombreProducto;
+                          } else {
+                            return '$nombreProducto + ${pedido.items.length - 1} más';
+                          }
+                        }()),
                       ),
                     ],
                   ),
