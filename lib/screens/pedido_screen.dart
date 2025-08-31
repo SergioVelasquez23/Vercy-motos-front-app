@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -13,11 +14,13 @@ import '../services/inventario_service.dart';
 import '../models/movimiento_inventario.dart';
 import '../models/inventario.dart';
 import '../providers/user_provider.dart';
+import '../utils/format_utils.dart';
 
 class PedidoScreen extends StatefulWidget {
   final Mesa mesa;
+  final Pedido? pedidoExistente; // Pedido existente para editar (opcional)
 
-  PedidoScreen({required this.mesa});
+  PedidoScreen({required this.mesa, this.pedidoExistente});
 
   @override
   _PedidoScreenState createState() => _PedidoScreenState();
@@ -27,6 +30,32 @@ class _PedidoScreenState extends State<PedidoScreen> {
   final ProductoService _productoService = ProductoService();
   final MesaService _mesaService = MesaService();
   final InventarioService _inventarioService = InventarioService();
+
+  /// Helper method to convert dynamic to Producto
+  /// If forceNonNull is true, returns a default Producto instead of null for invalid inputs
+  /// If productoId is provided, it will be used in case a default Producto needs to be created
+  Producto? _getProductoFromItem(dynamic producto, {String? productoId, bool forceNonNull = false}) {
+    if (producto == null) {
+      return forceNonNull ? Producto(
+        id: productoId ?? "",
+        nombre: "Producto desconocido",
+        precio: 0,
+        costo: 0,
+        utilidad: 0,
+      ) : null;
+    }
+    if (producto is Producto) return producto;
+    if (producto is Map<String, dynamic>) {
+      return Producto.fromJson(producto);
+    }
+    return forceNonNull ? Producto(
+      id: productoId ?? "",
+      nombre: "Producto desconocido",
+      precio: 0,
+      costo: 0,
+      utilidad: 0,
+    ) : null;
+  }
 
   List<Producto> productosMesa = [];
   List<Producto> productosDisponibles = [];
@@ -49,7 +78,12 @@ class _PedidoScreenState extends State<PedidoScreen> {
   String filtro = '';
   String? categoriaSelecionadaId;
 
-  // Variables para manejar pedido existente
+  // Variables para el debounce en la búsqueda
+  Timer? _debounceTimer;
+  final int _debounceMilliseconds = 300;
+
+  // Variable para almacenar los productos filtrados por la API
+  List<Producto>? _productosFiltered; // Variables para manejar pedido existente
   Pedido? pedidoExistente;
   bool esPedidoExistente = false;
   List<Producto> productosOriginales =
@@ -60,6 +94,69 @@ class _PedidoScreenState extends State<PedidoScreen> {
   void initState() {
     super.initState();
     _loadData();
+
+    // Configurar el controlador de búsqueda con debounce
+    busquedaController.addListener(_onSearchChanged);
+  }
+
+  @override
+  void dispose() {
+    // Limpiar el timer de debounce
+    _debounceTimer?.cancel();
+    busquedaController.removeListener(_onSearchChanged);
+    busquedaController.dispose();
+    clienteController.dispose();
+    super.dispose();
+  }
+
+  // Método para manejar cambios en la búsqueda con debounce y búsqueda mediante API
+  void _onSearchChanged() {
+    if (_debounceTimer?.isActive ?? false) {
+      _debounceTimer!.cancel();
+    }
+    _debounceTimer = Timer(Duration(milliseconds: _debounceMilliseconds), () {
+      if (mounted) {
+        final query = busquedaController.text;
+        setState(() {
+          filtro = query.toLowerCase();
+        });
+
+        // Si el texto de búsqueda es suficientemente largo, o si hay una categoría seleccionada, realizar búsqueda API
+        if ((query.isNotEmpty && query.length >= 1) ||
+            categoriaSelecionadaId != null) {
+          _searchProductosAPI(query);
+        } else {
+          // Si no hay texto ni categoría seleccionada, limpiar resultados filtrados
+          setState(() {
+            _productosFiltered = null;
+          });
+        }
+      }
+    });
+  }
+
+  // Método para realizar la búsqueda de productos mediante la API
+  Future<void> _searchProductosAPI(String query) async {
+    try {
+      final results = await _productoService.searchProductos(
+        query,
+        categoriaId: categoriaSelecionadaId,
+      );
+
+      if (mounted) {
+        setState(() {
+          _productosFiltered = results;
+        });
+      }
+    } catch (error) {
+      print('Error al buscar productos: $error');
+      // En caso de error, usar filtrado local como fallback
+      if (mounted) {
+        setState(() {
+          _productosFiltered = _filtrarProductosLocal();
+        });
+      }
+    }
   }
 
   Future<dynamic> _mostrarDialogoOpciones(
@@ -516,8 +613,65 @@ class _PedidoScreenState extends State<PedidoScreen> {
       final productos = await _productoService.getProductos();
       final categoriasData = await _productoService.getCategorias();
 
-      // Si la mesa está ocupada, intentar cargar el pedido activo existente
-      if (widget.mesa.ocupada) {
+      // Si se pasó un pedido existente directamente, usarlo
+      if (widget.pedidoExistente != null) {
+        print('🔍 Editando pedido existente que se pasó como parámetro');
+        print('  - ID: ${widget.pedidoExistente!.id}');
+        print('  - Items: ${widget.pedidoExistente!.items.length}');
+        print('  - Estado: ${widget.pedidoExistente!.estado}');
+
+        pedidoExistente = widget.pedidoExistente;
+        esPedidoExistente = true;
+
+        // Cargar productos del pedido existente en la lista local
+        productosMesa = [];
+        print(
+          '📋 Cargando ${pedidoExistente!.items.length} items del pedido existente',
+        );
+
+        for (var item in pedidoExistente!.items) {
+          final productoObj = _getProductoFromItem(item.producto, productoId: item.productoId);
+          print(
+            '📦 Cargando producto: ${productoObj?.nombre ?? "Sin nombre"} (ID: ${item.productoId})',
+          );
+
+          // Crear una copia del producto con la cantidad y notas del item
+          final productoParaMesa = Producto(
+            id: item.productoId,
+            nombre: productoObj?.nombre ?? "Producto sin nombre",
+            precio: item.precio,
+            costo: productoObj?.costo ?? 0.0,
+            utilidad: productoObj?.utilidad ?? 0.0,
+            descripcion: productoObj?.descripcion ?? "",
+            categoria: productoObj?.categoria,
+            tieneVariantes: productoObj?.tieneVariantes ?? false,
+            ingredientesDisponibles: item.ingredientesSeleccionados,
+            cantidad: item.cantidad,
+            nota: item.notas,
+          );
+          productosMesa.add(productoParaMesa);
+
+          // Inicializar el mapa de pagados como activos (true) ya que son productos existentes
+          productoPagado[productoParaMesa.id] = true;
+        }
+
+        // Si el pedido existente tiene cliente, cargarlo
+        if (pedidoExistente!.cliente != null &&
+            pedidoExistente!.cliente!.isNotEmpty) {
+          clienteController.text = pedidoExistente!.cliente!;
+          clienteSeleccionado = pedidoExistente!.cliente!;
+        }
+
+        // Guardar referencia de productos originales para control de permisos
+        productosOriginales = List.from(productosMesa);
+        cantidadProductosOriginales = productosMesa.length;
+
+        print(
+          '✅ Pedido existente cargado como parámetro. Items: ${productosMesa.length}',
+        );
+      }
+      // Si no hay pedido pasado como parámetro pero la mesa está ocupada, buscar pedido activo
+      else if (widget.mesa.ocupada) {
         try {
           print(
             '🔍 Mesa ocupada detectada. Buscando pedido activo para: ${widget.mesa.nombre}',
@@ -541,20 +695,24 @@ class _PedidoScreenState extends State<PedidoScreen> {
             for (var item in pedidoExistente!.items) {
               if (item.producto != null) {
                 // Crear una copia del producto con la cantidad y notas del item
+                final productoOriginal = _getProductoFromItem(item.producto, forceNonNull: true)!;
                 final productoParaMesa = Producto(
-                  id: item.producto!.id,
-                  nombre: item.producto!.nombre,
+                  id: productoOriginal.id,
+                  nombre: productoOriginal.nombre,
                   precio: item.precio,
-                  costo: item.producto!.costo,
-                  utilidad: item.producto!.utilidad,
-                  descripcion: item.producto!.descripcion,
-                  categoria: item.producto!.categoria,
-                  tieneVariantes: item.producto!.tieneVariantes,
+                  costo: productoOriginal.costo,
+                  utilidad: productoOriginal.utilidad,
+                  descripcion: productoOriginal.descripcion,
+                  categoria: productoOriginal.categoria,
+                  tieneVariantes: productoOriginal.tieneVariantes,
                   ingredientesDisponibles: item.ingredientesSeleccionados,
                   cantidad: item.cantidad,
                   nota: item.notas,
                 );
                 productosMesa.add(productoParaMesa);
+
+                // Inicializar el mapa de pagados como activos (true) para productos existentes
+                productoPagado[productoParaMesa.id] = true;
               }
             }
 
@@ -601,7 +759,13 @@ class _PedidoScreenState extends State<PedidoScreen> {
         productosDisponibles = productos;
         categorias = categoriasData;
         isLoading = false;
+        _productosFiltered = null; // Reset filtered products on load
       });
+
+      // Initial search if there's a category selected
+      if (categoriaSelecionadaId != null) {
+        _searchProductosAPI(busquedaController.text);
+      }
     } catch (e) {
       setState(() {
         errorMessage = 'Error al cargar datos: ${e.toString()}';
@@ -803,6 +967,8 @@ class _PedidoScreenState extends State<PedidoScreen> {
           );
 
           productosMesa.add(nuevoProd);
+          // Inicializar el estado como activo
+          productoPagado[nuevoProd.id] = true;
 
           // Guardar el ID del producto de carne si existe
           if (productoCarneId != null) {
@@ -829,12 +995,17 @@ class _PedidoScreenState extends State<PedidoScreen> {
         );
 
         productosMesa.add(nuevoProd);
+        // Inicializar el estado como activo
+        productoPagado[nuevoProd.id] = true;
 
         // Guardar el ID del producto de carne si existe
         if (productoCarneId != null) {
           productosCarneMap[nuevoProd.id] = productoCarneId;
         }
       }
+
+      // Actualizar el total después de agregar el producto
+      _calcularTotal();
     });
   }
 
@@ -850,6 +1021,8 @@ class _PedidoScreenState extends State<PedidoScreen> {
           productosMesa.removeAt(index);
         }
       }
+      // Actualizar el total después de modificar la lista de productos
+      _calcularTotal();
     });
   }
 
@@ -1021,11 +1194,11 @@ class _PedidoScreenState extends State<PedidoScreen> {
         }
         return ItemPedido(
           productoId: producto.id,
-          producto: producto,
           cantidad: producto.cantidad,
+          precioUnitario: producto.precio,
           notas: producto.nota, // Pasar las notas con opciones específicas
-          precio: producto.precio,
           ingredientesSeleccionados: ingredientesIds,
+          productoNombre: producto.nombre,
         );
       }).toList();
 
@@ -1233,11 +1406,7 @@ class _PedidoScreenState extends State<PedidoScreen> {
                       borderSide: BorderSide(color: primary),
                     ),
                   ),
-                  onChanged: (value) {
-                    setState(() {
-                      filtro = value.toLowerCase();
-                    });
-                  },
+                  // No necesitamos onChanged ya que usamos el listener en initState
                 ),
               ),
 
@@ -1306,6 +1475,7 @@ class _PedidoScreenState extends State<PedidoScreen> {
                             setState(() {
                               categoriaSelecionadaId = null;
                             });
+                            _searchProductosAPI(busquedaController.text);
                           },
                           selected: categoriaSelecionadaId == null,
                         ),
@@ -1333,6 +1503,7 @@ class _PedidoScreenState extends State<PedidoScreen> {
                                     ? categoria.id
                                     : null;
                               });
+                              _searchProductosAPI(busquedaController.text);
                             },
                             selected: categoriaSelecionadaId == categoria.id,
                           ),
@@ -1485,7 +1656,7 @@ class _PedidoScreenState extends State<PedidoScreen> {
                               ),
                             ),
                             Text(
-                              '\$${_calcularTotal().toStringAsFixed(0)}',
+                              formatCurrency(_calcularTotal()),
                               style: TextStyle(
                                 color: primary,
                                 fontSize: 18, // Reducido el tamaño de fuente
@@ -1596,16 +1767,44 @@ class _PedidoScreenState extends State<PedidoScreen> {
     );
   }
 
-  List<Producto> _filtrarProductos() {
+  // Método de filtrado local (fallback para cuando la API no está disponible)
+  List<Producto> _filtrarProductosLocal() {
     if (filtro.isEmpty && categoriaSelecionadaId == null) {
       return productosDisponibles;
     }
 
     return productosDisponibles.where((producto) {
-      bool matchesNombre =
-          filtro.isEmpty ||
-          producto.nombre.toLowerCase().contains(filtro.toLowerCase());
+      // Filtrado por nombre mejorado - busca coincidencias parciales en nombre
+      // También busca coincidencias en descripción, categoría y otros campos relevantes
+      bool matchesNombre = false;
+      if (filtro.isEmpty) {
+        matchesNombre = true;
+      } else {
+        // Dividir la búsqueda en palabras clave y verificar si todas están en alguna parte
+        final palabrasClave = filtro
+            .toLowerCase()
+            .split(' ')
+            .where((palabra) => palabra.trim().isNotEmpty)
+            .toList();
 
+        if (palabrasClave.isEmpty) {
+          matchesNombre = true;
+        } else {
+          // Verificar si todas las palabras clave están contenidas en el nombre
+          final nombreLower = producto.nombre.toLowerCase();
+          final descripcionLower = producto.descripcion?.toLowerCase() ?? '';
+          final categoriaLower = producto.categoria?.nombre.toLowerCase() ?? '';
+
+          matchesNombre = palabrasClave.every(
+            (palabra) =>
+                nombreLower.contains(palabra) ||
+                descripcionLower.contains(palabra) ||
+                categoriaLower.contains(palabra),
+          );
+        }
+      }
+
+      // Filtrado por categoría
       bool matchesCategoria =
           categoriaSelecionadaId == null ||
           producto.categoria?.id == categoriaSelecionadaId;
@@ -1614,11 +1813,21 @@ class _PedidoScreenState extends State<PedidoScreen> {
     }).toList();
   }
 
+  // Nueva implementación que usa la API para filtrar productos
+  List<Producto> _filtrarProductos() {
+    return _productosFiltered ?? productosDisponibles;
+  }
+
   double _calcularTotal() {
-    return productosMesa.fold(
-      0,
-      (sum, producto) => sum + (producto.precio * producto.cantidad),
-    );
+    double total = productosMesa.fold(0, (sum, producto) {
+      // Solo incluir productos activos (no tachados) en el total
+      if (productoPagado[producto.id] != false) {
+        return sum + (producto.precio * producto.cantidad);
+      }
+      return sum;
+    });
+    setState(() {}); // Forzar actualización de la UI
+    return total;
   }
 
   Widget _buildProductoDisponible(Producto producto) {
@@ -1681,7 +1890,7 @@ class _PedidoScreenState extends State<PedidoScreen> {
             SizedBox(height: 1), // Reducido de 2 a 1
             // Precio
             Text(
-              '\$${producto.precio.toStringAsFixed(0)}',
+              formatCurrency(producto.precio),
               style: TextStyle(
                 color: primary,
                 fontWeight: FontWeight.bold,
@@ -1773,6 +1982,8 @@ class _PedidoScreenState extends State<PedidoScreen> {
               onChanged: (bool value) {
                 setState(() {
                   productoPagado[producto.id] = value;
+                  // Actualizar el estado para reflejar el nuevo total
+                  _calcularTotal();
                 });
               },
               activeColor: primary,
@@ -1791,12 +2002,8 @@ class _PedidoScreenState extends State<PedidoScreen> {
                       child: Text(
                         producto.nombre,
                         style: TextStyle(
-                          color: productoPagado[producto.id]!
-                              ? textLight
-                              : textLight.withOpacity(0.5),
-                          decoration: productoPagado[producto.id]!
-                              ? null
-                              : TextDecoration.lineThrough,
+                          color: textLight,
+                          // Eliminar tachado basado en productoPagado
                         ),
                       ),
                     ),
@@ -1889,25 +2096,20 @@ class _PedidoScreenState extends State<PedidoScreen> {
                 Text(
                   '${producto.cantidad}',
                   style: TextStyle(
-                    color: productoPagado[producto.id]!
-                        ? textLight
-                        : textLight.withOpacity(0.5),
-                    fontSize: 14, // Aumentado de 12 a 14
+                    color: textLight,
+                    fontSize: 14,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                SizedBox(width: 8), // Aumentado de 6 a 8
+                SizedBox(width: 8),
                 IconButton(
-                  icon: Icon(
-                    Icons.add_circle,
-                    color: productoPagado[producto.id]!
-                        ? Colors.green
-                        : Colors.green.withOpacity(0.5),
-                  ),
-                  onPressed: productoPagado[producto.id]!
-                      ? () => _agregarProducto(producto)
-                      : null,
-                  iconSize: 20, // Regresado de 18 a 20 para mejor visibilidad
+                  icon: Icon(Icons.add_circle, color: Colors.green),
+                  onPressed: () {
+                    _agregarProducto(producto);
+                    // Actualizar el total después de incrementar la cantidad
+                    setState(() {});
+                  },
+                  iconSize: 20,
                   padding: EdgeInsets.zero,
                   constraints: BoxConstraints(minWidth: 26, minHeight: 26),
                 ),
@@ -1918,7 +2120,7 @@ class _PedidoScreenState extends State<PedidoScreen> {
           SizedBox(
             width: 80, // Aumentado de 60 a 80 para mejor legibilidad
             child: Text(
-              '\$${(producto.precio * producto.cantidad).toStringAsFixed(0)}',
+              formatCurrency(producto.precio * producto.cantidad),
               style: TextStyle(
                 color: productoPagado[producto.id]!
                     ? primary

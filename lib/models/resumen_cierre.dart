@@ -83,6 +83,7 @@ class MovimientosEfectivo {
   final double fondoInicial;
   final bool cuadrado;
   final double ventasEfectivo;
+  final double ingresosEfectivo;
   final double gastosEfectivo;
   final double tolerancia;
   final double comprasEfectivo;
@@ -94,6 +95,7 @@ class MovimientosEfectivo {
     required this.fondoInicial,
     required this.cuadrado,
     required this.ventasEfectivo,
+    required this.ingresosEfectivo,
     required this.gastosEfectivo,
     required this.tolerancia,
     required this.comprasEfectivo,
@@ -119,6 +121,7 @@ class MovimientosEfectivo {
       fondoInicial: safeToDouble(json['fondoInicial']),
       cuadrado: json['cuadrado'] ?? false,
       ventasEfectivo: safeToDouble(json['ventasEfectivo']),
+      ingresosEfectivo: safeToDouble(json['ingresosEfectivo']),
       gastosEfectivo: safeToDouble(json['gastosEfectivo']),
       tolerancia: safeToDouble(json['tolerancia']),
       comprasEfectivo: safeToDouble(json['comprasEfectivo']),

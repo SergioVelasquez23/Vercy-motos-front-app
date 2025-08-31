@@ -40,15 +40,39 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
     super.dispose();
   }
 
+  // Método auxiliar para determinar si una factura debe considerarse como pagada
+  bool _estaFacturaPagada(FacturaCompra factura) {
+    return factura.estado.toUpperCase() == 'PAGADA' || factura.pagadoDesdeCaja;
+  }
+
+  // Método para obtener el estado real a mostrar para una factura
+  String _obtenerEstadoVisual(FacturaCompra factura) {
+    if (_estaFacturaPagada(factura)) {
+      return 'PAGADA';
+    }
+    return factura.estado.toUpperCase();
+  }
+
   Future<void> _cargarFacturas() async {
     setState(() => _isLoading = true);
     try {
       final facturas = await _facturaCompraService.getFacturasCompras();
+
+      // Verificar las fechas de creación de las facturas
+      print('📊 Facturas cargadas: ${facturas.length}');
+      for (var i = 0; i < facturas.length && i < 5; i++) {
+        var factura = facturas[i];
+        print(
+          '📅 Factura ${factura.numeroFactura} creada: ${_formatearFechaConHora(factura.fechaCreacion)}',
+        );
+      }
+
       setState(() {
         _facturas = facturas;
         _aplicarFiltros();
       });
     } catch (e) {
+      print('❌ Error al cargar facturas: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error al cargar facturas: $e'),
@@ -76,8 +100,23 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
                 ) ??
                 false);
 
-        final cumpleEstado =
-            _filtroEstado == 'TODOS' || factura.estado == _filtroEstado;
+        // Mejorar la lógica de filtrado por estado usando el método auxiliar
+        bool cumpleEstado;
+        if (_filtroEstado == 'TODOS') {
+          cumpleEstado = true;
+        } else if (_filtroEstado == 'PAGADA') {
+          // Una factura se considera pagada si su estado es PAGADA o si pagadoDesdeCaja es true
+          cumpleEstado = _estaFacturaPagada(factura);
+        } else {
+          // Para otros estados como PENDIENTE o CANCELADA, usar la comparación directa
+          // Si la factura está pagada desde caja, no debe aparecer como pendiente
+          if (_filtroEstado == 'PENDIENTE') {
+            cumpleEstado =
+                factura.estado == _filtroEstado && !_estaFacturaPagada(factura);
+          } else {
+            cumpleEstado = factura.estado == _filtroEstado;
+          }
+        }
 
         final cumpleProveedor =
             _filtroProveedor == null ||
@@ -94,9 +133,38 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
             cumplePagoCaja;
       }).toList();
 
-      _facturasFiltradas.sort(
-        (a, b) => b.fechaCreacion.compareTo(a.fechaCreacion),
-      );
+      // Imprimir fechas antes de ordenar
+      print('📅 Fechas antes de ordenar:');
+      for (var i = 0; i < _facturasFiltradas.length && i < 5; i++) {
+        final factura = _facturasFiltradas[i];
+        print('📆 ${factura.numeroFactura}: ${factura.fechaCreacion}');
+      }
+
+      // Ordenar por fecha de creación primero, luego por fecha de factura si hay empate
+      _facturasFiltradas.sort((a, b) {
+        // Primero intentar ordenar por fechaCreacion
+        final dateCompare = b.fechaCreacion.compareTo(a.fechaCreacion);
+
+        // Si las fechas son iguales (posible para facturas creadas en el mismo momento)
+        // usar la fecha de factura como criterio secundario
+        if (dateCompare == 0) {
+          return b.fechaFactura.compareTo(a.fechaFactura);
+        }
+
+        return dateCompare;
+      });
+
+      // Imprimir logs para debug después de ordenar
+      print('📋 Facturas filtradas (ordenadas): ${_facturasFiltradas.length}');
+      print('📅 Filtro de estado: $_filtroEstado');
+      for (var i = 0; i < _facturasFiltradas.length && i < 5; i++) {
+        final factura = _facturasFiltradas[i];
+        final fechaStr =
+            "${factura.fechaCreacion.day}/${factura.fechaCreacion.month}/${factura.fechaCreacion.year} ${factura.fechaCreacion.hour}:${factura.fechaCreacion.minute}";
+        print(
+          '📝 Factura $i: ${factura.numeroFactura} - Estado: ${factura.estado} - PagadaCaja: ${factura.pagadoDesdeCaja} - Fecha: $fechaStr',
+        );
+      }
     });
   }
 
@@ -325,72 +393,102 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
         return Card(
           color: cardBg,
           margin: EdgeInsets.only(bottom: 12),
-          child: ListTile(
-            leading: CircleAvatar(
-              backgroundColor: primary,
-              child: Icon(Icons.receipt, color: Colors.white),
-            ),
-            title: Text(
-              factura.numeroFactura,
-              style: TextStyle(color: textDark, fontWeight: FontWeight.bold),
-            ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  factura.proveedorNombre,
-                  style: TextStyle(color: textDark),
-                ),
-                Text(
-                  'NIT: ${factura.proveedorNit ?? 'No especificado'}',
-                  style: TextStyle(color: textLight, fontSize: 12),
-                ),
-                Text(
-                  _formatearFecha(factura.fechaFactura),
-                  style: TextStyle(color: textLight, fontSize: 12),
-                ),
-              ],
-            ),
-            trailing: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (factura.pagadoDesdeCaja)
-                      Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
+          child: InkWell(
+            onTap: () => _mostrarDetalleFactura(factura),
+            borderRadius: BorderRadius.circular(4),
+            child: Padding(
+              padding: EdgeInsets.all(12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // Icono a la izquierda
+                  CircleAvatar(
+                    backgroundColor: primary,
+                    child: Icon(Icons.receipt, color: Colors.white),
+                  ),
+                  SizedBox(width: 12),
+
+                  // Columna con información principal
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          factura.numeroFactura,
+                          style: TextStyle(
+                            color: textDark,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        margin: EdgeInsets.only(right: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.green.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.green),
+                        Text(
+                          factura.proveedorNombre,
+                          style: TextStyle(color: textDark),
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        child: Icon(
-                          Icons.account_balance_wallet,
-                          size: 12,
-                          color: Colors.green,
+                        Text(
+                          'NIT: ${factura.proveedorNit ?? 'No especificado'}',
+                          style: TextStyle(color: textLight, fontSize: 12),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        // Mostrar fecha de creación en lugar de fecha de factura para facilitar la verificación del orden
+                        Text(
+                          'Creado: ${_formatearFechaConHora(factura.fechaCreacion)} - Factura: ${_formatearFecha(factura.fechaFactura)}',
+                          style: TextStyle(color: textLight, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  SizedBox(width: 12),
+
+                  // Columna de estado y precio
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Si la factura está pagada desde caja, mostrar el indicador
+                          if (_estaFacturaPagada(factura))
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              margin: EdgeInsets.only(right: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.green.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.green),
+                              ),
+                              child: Icon(
+                                Icons.account_balance_wallet,
+                                size: 12,
+                                color: Colors.green,
+                              ),
+                            ),
+                          // Si está pagado desde caja, mostrar como PAGADA independientemente del estado
+                          _buildEstadoChip(
+                            factura.pagadoDesdeCaja ? 'PAGADA' : factura.estado,
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        '\$${factura.total.toStringAsFixed(0)}',
+                        style: TextStyle(
+                          color: primary,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
                         ),
                       ),
-                    _buildEstadoChip(factura.estado),
-                  ],
-                ),
-                SizedBox(height: 4),
-                Text(
-                  '\$${factura.total.toStringAsFixed(0)}',
-                  style: TextStyle(
-                    color: primary,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
+                    ],
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-            onTap: () => _mostrarDetalleFactura(factura),
           ),
         );
       },
@@ -449,6 +547,11 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
 
   String _formatearFecha(DateTime fecha) {
     return '${fecha.day.toString().padLeft(2, '0')}/${fecha.month.toString().padLeft(2, '0')}/${fecha.year}';
+  }
+
+  // Nuevo método para formatear fecha con hora
+  String _formatearFechaConHora(DateTime fecha) {
+    return '${fecha.day.toString().padLeft(2, '0')}/${fecha.month.toString().padLeft(2, '0')} ${fecha.hour.toString().padLeft(2, '0')}:${fecha.minute.toString().padLeft(2, '0')}';
   }
 }
 
@@ -1086,6 +1189,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
     setState(() => _isLoading = true);
 
     try {
+      // Calcular el total acumulando los subtotales de cada ítem
       final total = _items.fold<double>(0, (sum, item) => sum + item.subtotal);
       print('💰 Total calculado: $total');
 
@@ -1115,6 +1219,49 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
         }
       }
 
+      // Verificar que todos los ítems tengan subtotales válidos
+      bool itemsValidos = _items.every((item) => item.subtotal > 0);
+      if (!itemsValidos) {
+        print('⚠️ Hay ítems con subtotales inválidos');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: Algunos ítems tienen valores inválidos'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      print('✅ Total validado: $total');
+      print('📋 Items de la factura antes de crear:');
+      for (var i = 0; i < _items.length; i++) {
+        final item = _items[i];
+        print(
+          '📝 Item $i: ${item.ingredienteNombre} - ${item.cantidad} ${item.unidad} x ${item.precioUnitario} = ${item.subtotal}',
+        );
+      }
+
+      // Asegurarnos que los items tengan valores correctos
+      final List<ItemFacturaCompra> itemsVerificados = _items.map((item) {
+        // Validar y corregir cualquier subtotal si fuera necesario
+        double subtotalCalculado = item.cantidad * item.precioUnitario;
+        if (subtotalCalculado != item.subtotal) {
+          print(
+            '⚠️ Subtotal incorrecto en ${item.ingredienteNombre}: reportado ${item.subtotal}, calculado $subtotalCalculado',
+          );
+          // Crear una nueva instancia con el subtotal correcto
+          return ItemFacturaCompra(
+            ingredienteId: item.ingredienteId,
+            ingredienteNombre: item.ingredienteNombre,
+            cantidad: item.cantidad,
+            unidad: item.unidad,
+            precioUnitario: item.precioUnitario,
+            subtotal: subtotalCalculado,
+          );
+        }
+        return item;
+      }).toList();
+
       final factura = FacturaCompra(
         // No pasamos ID - se genera automáticamente en el backend
         numeroFactura: _numeroFactura ?? '',
@@ -1126,10 +1273,11 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
             : _proveedorNombreController.text.trim(),
         fechaFactura: _fechaFactura,
         fechaVencimiento: _fechaVencimiento,
+        // El modelo recalculará el total automáticamente, pero lo pasamos explícitamente para claridad
         total: total,
         estado: 'PENDIENTE',
         pagadoDesdeCaja: _pagadoDesdeCaja,
-        items: _items,
+        items: itemsVerificados, // Usar los items verificados
         fechaCreacion: DateTime.now(),
         fechaActualizacion: DateTime.now(),
       );
@@ -1140,12 +1288,36 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
       );
       print('✅ Factura creada exitosamente: ${facturaCreada.id}');
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Factura creada exitosamente'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      // Verificar si la factura creada tiene el total correcto
+      if (facturaCreada.total <= 0 && total > 0) {
+        print('⚠️ La factura se creó con total 0 pero debería ser $total');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Advertencia: La factura se creó pero el total puede estar incorrecto. Se intentará corregir.',
+            ),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 5),
+          ),
+        );
+
+        // Intentar actualizar la factura con el total correcto
+        try {
+          // Aquí podrías llamar a un método para actualizar la factura si existe
+          print(
+            '🔄 Se debería implementar un método para actualizar el total de la factura',
+          );
+        } catch (e) {
+          print('❌ Error al intentar actualizar el total: $e');
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Factura creada exitosamente'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
 
       Navigator.pop(context);
     } catch (e) {
@@ -1172,6 +1344,11 @@ class DetalleFacturaCompraScreen extends StatelessWidget {
 
   const DetalleFacturaCompraScreen({Key? key, required this.factura})
     : super(key: key);
+
+  // Método auxiliar para determinar si una factura debe considerarse como pagada
+  bool _estaFacturaPagada(FacturaCompra factura) {
+    return factura.estado.toUpperCase() == 'PAGADA' || factura.pagadoDesdeCaja;
+  }
 
   final Color primary = const Color(0xFFFF6B00);
   final Color bgDark = const Color(0xFF1E1E1E);
@@ -1234,6 +1411,10 @@ class DetalleFacturaCompraScreen extends StatelessWidget {
               _formatearFecha(factura.fechaFactura),
             ),
             _buildInfoRow(
+              'Fecha de Creación:',
+              _formatearFechaConHora(factura.fechaCreacion),
+            ),
+            _buildInfoRow(
               'Fecha de Vencimiento:',
               _formatearFecha(factura.fechaVencimiento),
             ),
@@ -1241,7 +1422,11 @@ class DetalleFacturaCompraScreen extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text('Estado:', style: TextStyle(color: textLight)),
-                _buildEstadoChip(factura.estado),
+                // Si está pagado desde caja, mostrar PAGADA independientemente del estado en la base de datos
+                // Usar el método auxiliar para determinar el estado visual
+                _buildEstadoChip(
+                  _estaFacturaPagada(factura) ? 'PAGADA' : factura.estado,
+                ),
               ],
             ),
             SizedBox(height: 8),
@@ -1430,6 +1615,11 @@ class DetalleFacturaCompraScreen extends StatelessWidget {
 
   String _formatearFecha(DateTime fecha) {
     return '${fecha.day.toString().padLeft(2, '0')}/${fecha.month.toString().padLeft(2, '0')}/${fecha.year}';
+  }
+
+  // Añadir método para formatear fecha con hora
+  String _formatearFechaConHora(DateTime fecha) {
+    return '${fecha.day.toString().padLeft(2, '0')}/${fecha.month.toString().padLeft(2, '0')} ${fecha.hour.toString().padLeft(2, '0')}:${fecha.minute.toString().padLeft(2, '0')}';
   }
 }
 

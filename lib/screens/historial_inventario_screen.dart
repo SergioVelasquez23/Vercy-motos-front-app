@@ -49,101 +49,86 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
 
       setState(() {
         _movimientos = movimientos;
-        _aplicarFiltros();
+        _movimientosFiltrados = movimientos;
+        _isLoading = false;
         _error = '';
       });
+
+      _aplicarFiltros();
     } catch (e) {
-      setState(() => _error = kErrorCargaDatos);
-      print('Error cargando movimientos: $e');
-    } finally {
-      setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _seleccionarFecha(BuildContext context, bool esDesde) async {
-    final DateTime initialDate = esDesde ? _fechaDesde : _fechaHasta;
-    final DateTime firstDate = DateTime(2020);
-    final DateTime lastDate = DateTime.now().add(Duration(days: 1));
-
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: initialDate,
-      firstDate: firstDate,
-      lastDate: lastDate,
-      builder: (context, child) {
-        return Theme(
-          data: ThemeData.dark().copyWith(
-            colorScheme: ColorScheme.dark(
-              primary: Color(kPrimaryColor),
-              onPrimary: Colors.white,
-              surface: Color(kCardBackgroundDark),
-              onSurface: Color(kTextDark),
-            ),
-            dialogBackgroundColor: Color(kCardBackgroundDark),
-          ),
-          child: child!,
-        );
-      },
-    );
-
-    if (picked != null) {
       setState(() {
-        if (esDesde) {
-          _fechaDesde = picked;
-          // Si la fecha inicial es mayor que la final, actualizar la final
-          if (_fechaDesde.isAfter(_fechaHasta)) {
-            _fechaHasta = _fechaDesde;
-          }
-        } else {
-          _fechaHasta = picked;
-          // Si la fecha final es menor que la inicial, actualizar la inicial
-          if (_fechaHasta.isBefore(_fechaDesde)) {
-            _fechaDesde = _fechaHasta;
-          }
-        }
-        _aplicarFiltros();
+        _error = 'Error al cargar movimientos: $e';
+        _isLoading = false;
       });
     }
   }
 
   void _aplicarFiltros() {
-    final String searchQuery = _searchController.text.toLowerCase();
+    List<MovimientoInventario> filtrados = List.from(_movimientos);
+
+    // Filtro por rango de fechas
+    filtrados = filtrados.where((movimiento) {
+      final fechaMovimiento = movimiento.fecha;
+      return fechaMovimiento.isAfter(_fechaDesde.subtract(Duration(days: 1))) &&
+          fechaMovimiento.isBefore(_fechaHasta.add(Duration(days: 1)));
+    }).toList();
+
+    // Filtro por producto
+    if (_productoSeleccionado != 'Todos los productos') {
+      filtrados = filtrados.where((movimiento) {
+        return movimiento.productoNombre.toLowerCase().contains(
+          _productoSeleccionado.toLowerCase(),
+        );
+      }).toList();
+    }
+
+    // Filtro por tipo de movimiento
+    if (_tipoMovimientoSeleccionado != '-- Tipo --') {
+      filtrados = filtrados.where((movimiento) {
+        return movimiento.tipoMovimiento.toLowerCase().contains(
+          _tipoMovimientoSeleccionado.toLowerCase(),
+        );
+      }).toList();
+    }
+
+    // Filtro por texto de búsqueda
+    final searchQuery = _searchController.text.toLowerCase();
+    if (searchQuery.isNotEmpty) {
+      filtrados = filtrados.where((movimiento) {
+        return movimiento.productoNombre.toLowerCase().contains(searchQuery) ||
+            movimiento.tipoMovimiento.toLowerCase().contains(searchQuery);
+      }).toList();
+    }
+
+    // Ordenar por fecha descendente (más recientes primero)
+    filtrados.sort((a, b) => b.fecha.compareTo(a.fecha));
 
     setState(() {
-      _movimientosFiltrados = _movimientos.where((movimiento) {
-        // Filtrar por rango de fechas
-        final fechaEnRango =
-            (movimiento.fecha.isAfter(_fechaDesde) ||
-                movimiento.fecha.isAtSameMomentAs(_fechaDesde)) &&
-            (movimiento.fecha.isBefore(_fechaHasta.add(Duration(days: 1))) ||
-                movimiento.fecha.isAtSameMomentAs(_fechaHasta));
-
-        // Filtrar por búsqueda de texto
-        final matchText =
-            searchQuery.isEmpty ||
-            movimiento.productoNombre.toLowerCase().contains(searchQuery) ||
-            (movimiento.proveedor?.toLowerCase().contains(searchQuery) ??
-                false);
-
-        // Filtrar por producto
-        final matchProducto =
-            _productoSeleccionado == 'Todos los productos' ||
-            movimiento.productoNombre == _productoSeleccionado;
-
-        // Filtrar por tipo de movimiento
-        final matchTipo =
-            _tipoMovimientoSeleccionado == '-- Tipo --' ||
-            movimiento.tipoMovimiento == _tipoMovimientoSeleccionado;
-
-        return fechaEnRango && matchText && matchProducto && matchTipo;
-      }).toList();
-
-      // Ordenar por fecha, más recientes primero
-      _movimientosFiltrados.sort((a, b) => b.fecha.compareTo(a.fecha));
+      _movimientosFiltrados = filtrados;
     });
   }
 
-  // Obtener lista de productos
+  Future<void> _seleccionarFecha(BuildContext context, bool esDesde) async {
+    final DateTime? fechaSeleccionada = await showDatePicker(
+      context: context,
+      initialDate: esDesde ? _fechaDesde : _fechaHasta,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(Duration(days: 365)),
+    );
+
+    if (fechaSeleccionada != null) {
+      setState(() {
+        if (esDesde) {
+          _fechaDesde = fechaSeleccionada;
+        } else {
+          _fechaHasta = fechaSeleccionada;
+        }
+      });
+      _aplicarFiltros();
+    }
+  }
+
+  // Obtener lista de productos disponibles
   List<String> get _productosDisponibles {
     Set<String> productos = {'Todos los productos'};
     for (var movimiento in _movimientos) {
@@ -178,11 +163,15 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
         backgroundColor: cardBg,
         title: Text(
           'Historial de Inventario',
-          style: TextStyle(color: textDark),
+          style: TextStyle(
+            color: textDark,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         actions: [
           IconButton(
-            icon: Icon(Icons.refresh),
+            icon: Icon(Icons.refresh, color: textDark),
             onPressed: _cargarMovimientos,
             tooltip: 'Actualizar datos',
           ),
@@ -190,194 +179,231 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
       ),
       body: Column(
         children: [
-          // Filtros de fecha
-          Padding(
-            padding: EdgeInsets.all(16.0),
-            child: Row(
+          // Filtros compactos
+          Container(
+            padding: EdgeInsets.all(12.0),
+            decoration: BoxDecoration(
+              color: cardBg.withOpacity(0.7),
+              border: Border(
+                bottom: BorderSide(color: Colors.grey.withOpacity(0.3)),
+              ),
+            ),
+            child: Column(
               children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => _seleccionarFecha(context, true),
-                    child: Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 12,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white12,
-                        borderRadius: BorderRadius.circular(8.0),
-                      ),
-                      child: Row(
-                        children: [
-                          Text('Desde', style: TextStyle(color: textDark)),
-                          SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              DateFormat(kDateFormat).format(_fechaDesde),
-                              style: TextStyle(color: primary),
-                              textAlign: TextAlign.right,
-                            ),
+                // Primera fila: Fechas
+                Row(
+                  children: [
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => _seleccionarFecha(context, true),
+                        child: Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 12,
                           ),
-                          Icon(Icons.calendar_today, size: 16, color: primary),
-                        ],
+                          decoration: BoxDecoration(
+                            color: Colors.white12,
+                            borderRadius: BorderRadius.circular(8.0),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.calendar_today,
+                                size: 16,
+                                color: primary,
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                'Desde:',
+                                style: TextStyle(color: textDark, fontSize: 12),
+                              ),
+                              SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  DateFormat(kDateFormat).format(_fechaDesde),
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                  textAlign: TextAlign.right,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
-                  ),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => _seleccionarFecha(context, false),
+                        child: Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white12,
+                            borderRadius: BorderRadius.circular(8.0),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.calendar_today,
+                                size: 16,
+                                color: primary,
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                'Hasta:',
+                                style: TextStyle(color: textDark, fontSize: 12),
+                              ),
+                              SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  DateFormat(kDateFormat).format(_fechaHasta),
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                  textAlign: TextAlign.right,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                SizedBox(width: 8),
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => _seleccionarFecha(context, false),
-                    child: Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 12,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white12,
-                        borderRadius: BorderRadius.circular(8.0),
-                      ),
-                      child: Row(
-                        children: [
-                          Text('Hasta', style: TextStyle(color: textDark)),
-                          SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              DateFormat(kDateFormat).format(_fechaHasta),
-                              style: TextStyle(color: primary),
-                              textAlign: TextAlign.right,
-                            ),
-                          ),
-                          Icon(Icons.calendar_today, size: 16, color: primary),
-                        ],
+                SizedBox(height: 8),
+                // Segunda fila: Filtros y búsqueda
+                Row(
+                  children: [
+                    // Filtro por producto
+                    Expanded(
+                      flex: 2,
+                      child: Container(
+                        padding: EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.white12,
+                          borderRadius: BorderRadius.circular(8.0),
+                        ),
+                        child: DropdownButton<String>(
+                          isExpanded: true,
+                          value: _productoSeleccionado,
+                          items: _productosDisponibles.map((producto) {
+                            return DropdownMenuItem(
+                              value: producto,
+                              child: Text(
+                                producto,
+                                style: TextStyle(
+                                  color: producto == 'Todos los productos'
+                                      ? Colors.grey
+                                      : textDark,
+                                  fontSize: 12,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (value) {
+                            setState(() {
+                              _productoSeleccionado = value!;
+                              _aplicarFiltros();
+                            });
+                          },
+                          dropdownColor: cardBg,
+                          style: TextStyle(color: textDark),
+                          underline: Container(),
+                        ),
                       ),
                     ),
-                  ),
+                    SizedBox(width: 8),
+                    // Filtro por tipo
+                    Expanded(
+                      flex: 1,
+                      child: Container(
+                        padding: EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.white12,
+                          borderRadius: BorderRadius.circular(8.0),
+                        ),
+                        child: DropdownButton<String>(
+                          isExpanded: true,
+                          value: _tipoMovimientoSeleccionado,
+                          items: _tiposMovimientoDisponibles.map((tipo) {
+                            return DropdownMenuItem(
+                              value: tipo,
+                              child: Text(
+                                tipo,
+                                style: TextStyle(
+                                  color: tipo == '-- Tipo --'
+                                      ? Colors.grey
+                                      : textDark,
+                                  fontSize: 12,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (value) {
+                            setState(() {
+                              _tipoMovimientoSeleccionado = value!;
+                              _aplicarFiltros();
+                            });
+                          },
+                          dropdownColor: cardBg,
+                          style: TextStyle(color: textDark),
+                          underline: Container(),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                    // Campo de búsqueda
+                    Expanded(
+                      flex: 2,
+                      child: TextField(
+                        controller: _searchController,
+                        onChanged: (_) => _aplicarFiltros(),
+                        decoration: InputDecoration(
+                          hintText: 'Buscar...',
+                          hintStyle: TextStyle(
+                            color: Colors.grey,
+                            fontSize: 12,
+                          ),
+                          prefixIcon: Icon(
+                            Icons.search,
+                            size: 18,
+                            color: Colors.grey,
+                          ),
+                          filled: true,
+                          fillColor: Colors.white12,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8.0),
+                            borderSide: BorderSide.none,
+                          ),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                        ),
+                        style: TextStyle(color: textDark, fontSize: 12),
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: primary,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                      ),
+                      onPressed: _aplicarFiltros,
+                      child: Icon(Icons.search, color: Colors.white, size: 18),
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
 
-          // Filtros de producto y tipo
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16.0),
-            child: Row(
-              children: [
-                // Filtro por producto
-                Expanded(
-                  child: Container(
-                    padding: EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.white12,
-                      borderRadius: BorderRadius.circular(8.0),
-                    ),
-                    child: DropdownButton<String>(
-                      isExpanded: true,
-                      value: _productoSeleccionado,
-                      items: _productosDisponibles.map((producto) {
-                        return DropdownMenuItem(
-                          value: producto,
-                          child: Text(
-                            producto,
-                            style: TextStyle(
-                              color: producto == 'Todos los productos'
-                                  ? Colors.grey
-                                  : textDark,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        );
-                      }).toList(),
-                      onChanged: (value) {
-                        setState(() {
-                          _productoSeleccionado = value!;
-                          _aplicarFiltros();
-                        });
-                      },
-                      dropdownColor: cardBg,
-                      style: TextStyle(color: textDark),
-                      underline: Container(),
-                    ),
-                  ),
-                ),
-                SizedBox(width: 8),
-                // Filtro por tipo de movimiento
-                Expanded(
-                  child: Container(
-                    padding: EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.white12,
-                      borderRadius: BorderRadius.circular(8.0),
-                    ),
-                    child: DropdownButton<String>(
-                      isExpanded: true,
-                      value: _tipoMovimientoSeleccionado,
-                      items: _tiposMovimientoDisponibles.map((tipo) {
-                        return DropdownMenuItem(
-                          value: tipo,
-                          child: Text(
-                            tipo,
-                            style: TextStyle(
-                              color: tipo == '-- Tipo --'
-                                  ? Colors.grey
-                                  : textDark,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        );
-                      }).toList(),
-                      onChanged: (value) {
-                        setState(() {
-                          _tipoMovimientoSeleccionado = value!;
-                          _aplicarFiltros();
-                        });
-                      },
-                      dropdownColor: cardBg,
-                      style: TextStyle(color: textDark),
-                      underline: Container(),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Buscador
-          Padding(
-            padding: EdgeInsets.all(16.0),
-            child: TextField(
-              controller: _searchController,
-              onChanged: (_) => _aplicarFiltros(),
-              decoration: InputDecoration(
-                hintText: 'Buscar...',
-                prefixIcon: Icon(Icons.search),
-                filled: true,
-                fillColor: Colors.white12,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8.0),
-                ),
-              ),
-              style: TextStyle(color: textDark),
-            ),
-          ),
-
-          // Botón de búsqueda
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16.0),
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: primary,
-                padding: EdgeInsets.symmetric(vertical: 12),
-                minimumSize: Size(double.infinity, 50),
-              ),
-              onPressed: _aplicarFiltros,
-              child: Text('Buscar', style: TextStyle(fontSize: 16)),
-            ),
-          ),
-
-          SizedBox(height: 16),
-
-          // Resultados
+          // TABLA QUE OCUPA TODO EL ANCHO Y ALTO DISPONIBLE
           Expanded(
             child: _isLoading
                 ? LoadingIndicator()
@@ -389,127 +415,323 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                 ? Center(
                     child: Text(
                       'No se encontraron movimientos',
-                      style: TextStyle(color: textDark),
+                      style: TextStyle(color: textDark, fontSize: 16),
                     ),
                   )
-                : SingleChildScrollView(
-                    scrollDirection: Axis.vertical,
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: DataTable(
-                        headingRowColor: MaterialStateProperty.all(
-                          cardBg.withOpacity(0.7),
-                        ),
-                        dataRowColor: MaterialStateProperty.all(
-                          cardBg.withOpacity(0.3),
-                        ),
-                        columns: [
-                          DataColumn(
-                            label: Text(
-                              'Fecha',
-                              style: TextStyle(color: textDark),
-                            ),
-                          ),
-                          DataColumn(
-                            label: Text(
-                              'Producto',
-                              style: TextStyle(color: textDark),
-                            ),
-                          ),
-                          DataColumn(
-                            label: Text(
-                              'Tipo',
-                              style: TextStyle(color: textDark),
-                            ),
-                          ),
-                          DataColumn(
-                            label: Text(
-                              'Stock Inicial',
-                              style: TextStyle(color: textDark),
-                            ),
-                          ),
-                          DataColumn(
-                            label: Text(
-                              'Cantidad',
-                              style: TextStyle(color: textDark),
-                            ),
-                          ),
-                          DataColumn(
-                            label: Text(
-                              'Stock Final',
-                              style: TextStyle(color: textDark),
-                            ),
-                          ),
-                        ],
-                        rows: _movimientosFiltrados.map((movimiento) {
-                          bool esEntrada = movimiento.tipoMovimiento
-                              .toLowerCase()
-                              .contains('entrada');
-                          bool esSalida = movimiento.tipoMovimiento
-                              .toLowerCase()
-                              .contains('salida');
-
-                          // Calcular stock inicial y final
-                          double stockInicial = movimiento.cantidadAnterior;
-                          double stockFinal = movimiento.cantidadNueva;
-
-                          return DataRow(
-                            cells: [
-                              DataCell(
-                                Text(
-                                  DateFormat(
-                                    '${kDateFormat} HH:mm',
-                                  ).format(movimiento.fecha),
-                                  style: TextStyle(color: textDark),
-                                ),
-                              ),
-                              DataCell(
-                                Text(
-                                  movimiento.productoNombre,
-                                  style: TextStyle(color: textDark),
-                                ),
-                              ),
-                              DataCell(
-                                Text(
-                                  movimiento.tipoMovimiento,
-                                  style: TextStyle(
-                                    color: esEntrada
-                                        ? Colors.green
-                                        : (esSalida ? Colors.red : textDark),
+                : LayoutBuilder(
+                    builder: (context, constraints) {
+                      return Container(
+                        width: constraints.maxWidth,
+                        height: constraints.maxHeight,
+                        color: cardBg,
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: SizedBox(
+                            width: MediaQuery.of(context).size.width,
+                            child: Column(
+                              children: [
+                                // ENCABEZADO FIJO GRANDE
+                                Container(
+                                  height: 80,
+                                  width: double.infinity,
+                                  decoration: BoxDecoration(
+                                    color: primary.withOpacity(0.2),
+                                    border: Border(
+                                      bottom: BorderSide(
+                                        color: Colors.grey.withOpacity(0.5),
+                                        width: 2,
+                                      ),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        flex: 3,
+                                        child: Center(
+                                          child: Text(
+                                            'FECHA',
+                                            style: TextStyle(
+                                              color: textDark,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 18,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      Expanded(
+                                        flex: 4,
+                                        child: Center(
+                                          child: Text(
+                                            'PRODUCTO',
+                                            style: TextStyle(
+                                              color: textDark,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 18,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      Expanded(
+                                        flex: 3,
+                                        child: Center(
+                                          child: Text(
+                                            'TIPO',
+                                            style: TextStyle(
+                                              color: textDark,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 18,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      Expanded(
+                                        flex: 2,
+                                        child: Container(
+                                          padding: EdgeInsets.symmetric(
+                                            horizontal: 16,
+                                            vertical: 8,
+                                          ),
+                                          child: Text(
+                                            'Stock Inicial',
+                                            style: TextStyle(
+                                              color: textDark,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16,
+                                            ),
+                                            textAlign: TextAlign.center,
+                                          ),
+                                        ),
+                                      ),
+                                      Expanded(
+                                        flex: 1,
+                                        child: Container(
+                                          padding: EdgeInsets.symmetric(
+                                            horizontal: 16,
+                                            vertical: 8,
+                                          ),
+                                          child: Text(
+                                            'Cantidad',
+                                            style: TextStyle(
+                                              color: textDark,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16,
+                                            ),
+                                            textAlign: TextAlign.center,
+                                          ),
+                                        ),
+                                      ),
+                                      Expanded(
+                                        flex: 1,
+                                        child: Container(
+                                          padding: EdgeInsets.symmetric(
+                                            horizontal: 16,
+                                            vertical: 8,
+                                          ),
+                                          child: Text(
+                                            'Stock Final',
+                                            style: TextStyle(
+                                              color: textDark,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16,
+                                            ),
+                                            textAlign: TextAlign.center,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                              ),
-                              DataCell(
-                                Text(
-                                  stockInicial.toString(),
-                                  style: TextStyle(color: textDark),
-                                ),
-                              ),
-                              DataCell(
-                                Text(
-                                  (esEntrada ? '+' : '-') +
-                                      movimiento.cantidadMovimiento
-                                          .abs()
-                                          .toString(),
-                                  style: TextStyle(
-                                    color: esEntrada
-                                        ? Colors.green
-                                        : Colors.red,
-                                    fontWeight: FontWeight.bold,
+                                // CONTENIDO QUE OCUPA TODO EL RESTO
+                                Expanded(
+                                  child: ListView.builder(
+                                    itemCount: _movimientosFiltrados.length,
+                                    itemBuilder: (context, index) {
+                                      final movimiento =
+                                          _movimientosFiltrados[index];
+                                      bool esEntrada = movimiento.tipoMovimiento
+                                          .toLowerCase()
+                                          .contains('entrada');
+                                      bool esSalida = movimiento.tipoMovimiento
+                                          .toLowerCase()
+                                          .contains('salida');
+
+                                      Color colorCantidad = textDark;
+                                      if (esEntrada) {
+                                        colorCantidad = Colors.green;
+                                      } else if (esSalida) {
+                                        colorCantidad = Colors.red;
+                                      }
+
+                                      return Container(
+                                        height: 80, // Filas MÁS GRANDES
+                                        decoration: BoxDecoration(
+                                          color: index % 2 == 0
+                                              ? Colors.transparent
+                                              : Colors.white.withOpacity(0.02),
+                                          border: Border(
+                                            bottom: BorderSide(
+                                              color: Colors.grey.withOpacity(
+                                                0.1,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Expanded(
+                                              flex: 2,
+                                              child: Container(
+                                                padding: EdgeInsets.symmetric(
+                                                  horizontal: 16,
+                                                  vertical: 8,
+                                                ),
+                                                child: Text(
+                                                  DateFormat(
+                                                    'dd/MM/yyyy\nHH:mm',
+                                                  ).format(movimiento.fecha),
+                                                  style: TextStyle(
+                                                    color: textDark,
+                                                    fontSize:
+                                                        15, // TEXTO MÁS GRANDE
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                            Expanded(
+                                              flex: 3,
+                                              child: Container(
+                                                padding: EdgeInsets.symmetric(
+                                                  horizontal: 16,
+                                                  vertical: 8,
+                                                ),
+                                                child: Text(
+                                                  movimiento.productoNombre,
+                                                  style: TextStyle(
+                                                    color: textDark,
+                                                    fontSize:
+                                                        15, // TEXTO MÁS GRANDE
+                                                  ),
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  maxLines: 2,
+                                                ),
+                                              ),
+                                            ),
+                                            Expanded(
+                                              flex: 2,
+                                              child: Container(
+                                                padding: EdgeInsets.symmetric(
+                                                  horizontal: 16,
+                                                  vertical: 8,
+                                                ),
+                                                child: Container(
+                                                  padding: EdgeInsets.symmetric(
+                                                    horizontal: 12,
+                                                    vertical: 6,
+                                                  ),
+                                                  decoration: BoxDecoration(
+                                                    color: esEntrada
+                                                        ? Colors.green
+                                                              .withOpacity(0.2)
+                                                        : esSalida
+                                                        ? Colors.red
+                                                              .withOpacity(0.2)
+                                                        : Colors.grey
+                                                              .withOpacity(0.2),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          12,
+                                                        ),
+                                                  ),
+                                                  child: Text(
+                                                    movimiento.tipoMovimiento,
+                                                    style: TextStyle(
+                                                      color: esEntrada
+                                                          ? Colors.green
+                                                          : esSalida
+                                                          ? Colors.red
+                                                          : textDark,
+                                                      fontSize: 13,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
+                                                    textAlign: TextAlign.center,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                            Expanded(
+                                              flex: 1,
+                                              child: Container(
+                                                padding: EdgeInsets.symmetric(
+                                                  horizontal: 16,
+                                                  vertical: 8,
+                                                ),
+                                                child: Text(
+                                                  '${movimiento.cantidadAnterior.toStringAsFixed(0)}',
+                                                  style: TextStyle(
+                                                    color: textDark,
+                                                    fontSize:
+                                                        15, // TEXTO MÁS GRANDE
+                                                  ),
+                                                  textAlign: TextAlign.center,
+                                                ),
+                                              ),
+                                            ),
+                                            Expanded(
+                                              flex: 1,
+                                              child: Container(
+                                                padding: EdgeInsets.symmetric(
+                                                  horizontal: 16,
+                                                  vertical: 8,
+                                                ),
+                                                child: Text(
+                                                  '${esEntrada
+                                                      ? '+'
+                                                      : esSalida
+                                                      ? '-'
+                                                      : ''}${movimiento.cantidadMovimiento.toStringAsFixed(0)}',
+                                                  style: TextStyle(
+                                                    color: colorCantidad,
+                                                    fontSize:
+                                                        15, // TEXTO MÁS GRANDE
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                  textAlign: TextAlign.center,
+                                                ),
+                                              ),
+                                            ),
+                                            Expanded(
+                                              flex: 1,
+                                              child: Container(
+                                                padding: EdgeInsets.symmetric(
+                                                  horizontal: 16,
+                                                  vertical: 8,
+                                                ),
+                                                child: Text(
+                                                  '${movimiento.cantidadNueva.toStringAsFixed(0)}',
+                                                  style: TextStyle(
+                                                    color: textDark,
+                                                    fontSize:
+                                                        15, // TEXTO MÁS GRANDE
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                  textAlign: TextAlign.center,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    },
                                   ),
                                 ),
-                              ),
-                              DataCell(
-                                Text(
-                                  stockFinal.toString(),
-                                  style: TextStyle(color: textDark),
-                                ),
-                              ),
-                            ],
-                          );
-                        }).toList(),
-                      ),
-                    ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
                   ),
           ),
         ],

@@ -6,6 +6,7 @@ import '../models/categoria.dart';
 import '../models/ingrediente.dart';
 import '../services/producto_service.dart';
 import '../services/ingrediente_service.dart';
+import '../utils/format_utils.dart';
 
 class ProductosScreen extends StatefulWidget {
   @override
@@ -22,11 +23,18 @@ class _ProductosScreenState extends State<ProductosScreen> {
   String? _error;
   TextEditingController _searchController = TextEditingController();
   String? _selectedCategoriaId;
+  Future<List<Producto>>? _productosFuture;
 
   @override
   void initState() {
     super.initState();
-    _cargarDatos();
+  _cargarDatos(); // Cargar datos al iniciar
+    // Actualizar la lista de productos cuando cambia el texto de búsqueda
+    _searchController.addListener(() {
+      setState(() {
+        _productosFuture = _filtrarProductos();
+      });
+    });
   }
 
   Future<void> _cargarDatos() async {
@@ -50,6 +58,8 @@ class _ProductosScreenState extends State<ProductosScreen> {
           _productos = productos;
           _ingredientesCarnes = ingredientesCarnes;
           _isLoading = false;
+          // Inicializar el future para cargar los productos
+          _productosFuture = _filtrarProductos();
         });
       }
     } catch (e) {
@@ -233,6 +243,8 @@ class _ProductosScreenState extends State<ProductosScreen> {
                             onSelected: (bool selected) {
                               setState(() {
                                 _selectedCategoriaId = null;
+                                // Actualizar future para realizar la nueva búsqueda
+                                _productosFuture = _filtrarProductos();
                               });
                             },
                             selected: _selectedCategoriaId == null,
@@ -259,6 +271,8 @@ class _ProductosScreenState extends State<ProductosScreen> {
                                   _selectedCategoriaId = selected
                                       ? categoria.id
                                       : null;
+                                  // Actualizar future para realizar la nueva búsqueda con la categoría seleccionada
+                                  _productosFuture = _filtrarProductos();
                                 });
                               },
                               selected: _selectedCategoriaId == categoria.id,
@@ -276,7 +290,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
           // Lista de productos
           Expanded(
             child: FutureBuilder<List<Producto>>(
-              future: _filtrarProductos(),
+              future: _productosFuture ??= _filtrarProductos(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return Center(
@@ -339,6 +353,14 @@ class _ProductosScreenState extends State<ProductosScreen> {
     final Color textLight = Color(0xFFE0E0E0);
     final Color primary = Color(0xFFFF6B00);
 
+    // Buscar la categoría por ID (solo usando producto.categoria)
+    String categoriaNombre = 'Adicional';
+    if (producto.categoria != null && producto.categoria!.nombre.isNotEmpty) {
+      categoriaNombre = producto.categoria!.nombre;
+    } else {
+      categoriaNombre = 'Adicional';
+    }
+
     return Card(
       color: cardBg,
       margin: EdgeInsets.only(bottom: 12),
@@ -366,25 +388,31 @@ class _ProductosScreenState extends State<ProductosScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SizedBox(height: 4),
-            Text(
-              '\$${producto.precio.toStringAsFixed(0)}',
-              style: TextStyle(color: primary, fontWeight: FontWeight.bold),
+            Row(
+              children: [
+                Text(
+                  formatCurrency(producto.precio),
+                  style: TextStyle(color: primary, fontWeight: FontWeight.bold),
+                ),
+                SizedBox(width: 12),
+                Text(
+                  'Costo: ' + formatCurrency(producto.costo),
+                  style: TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold, fontSize: 13),
+                ),
+              ],
             ),
             SizedBox(height: 4),
-            if (producto.categoria != null)
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: primary.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(4),
+            Row(
+              children: [
+                Icon(Icons.category, color: Colors.orange, size: 16),
+                SizedBox(width: 4),
+                Text(
+                  categoriaNombre,
+                  style: TextStyle(color: Colors.orange, fontWeight: FontWeight.w600, fontSize: 13),
                 ),
-                child: Text(
-                  producto.categoria!.nombre,
-                  style: TextStyle(color: primary, fontSize: 12),
-                ),
-              ),
-            if (producto.descripcion != null &&
-                producto.descripcion!.isNotEmpty)
+              ],
+            ),
+            if (producto.descripcion != null && producto.descripcion!.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
                 child: Text(
@@ -578,7 +606,20 @@ class _ProductosScreenState extends State<ProductosScreen> {
 
     bool tieneVariantes = isEditing ? producto.tieneVariantes : false;
     String estado = isEditing ? producto.estado : 'Activo';
-    String? selectedCategoriaId = isEditing ? producto.categoria?.id : null;
+    // If editing, try to get the category ID either from the categoria object or from the API response
+    String? selectedCategoriaId;
+    if (isEditing) {
+      if (producto.categoria != null) {
+        final exists = _categorias.any((c) => c.id == producto.categoria!.id);
+        if (exists) {
+          selectedCategoriaId = producto.categoria!.id;
+          print('✅ Categoría seleccionada del objeto categoria: $selectedCategoriaId');
+        } else {
+          selectedCategoriaId = null;
+          print('⚠️ La categoría del producto no existe en la lista, se asigna null');
+        }
+      }
+    }
     String? selectedImageUrl = isEditing ? producto.imagenUrl : null;
     String? tempImagePath;
     List<String> ingredientesSeleccionados = isEditing
@@ -1378,6 +1419,39 @@ class _ProductosScreenState extends State<ProductosScreen> {
 
                     // Crear o actualizar el producto
                     try {
+                      // Check if we have a category selected
+                      if (selectedCategoriaId != null &&
+                          categoriaSeleccionada == null) {
+                        // Try to find the category in the list
+                        try {
+                          categoriaSeleccionada = _categorias.firstWhere(
+                            (c) => c.id == selectedCategoriaId,
+                          );
+                          print(
+                            '✅ Encontrada la categoría para el producto: ${categoriaSeleccionada.nombre}',
+                          );
+                        } catch (e) {
+                          print(
+                            '⚠️ No se pudo encontrar la categoría con ID: $selectedCategoriaId',
+                          );
+                          // Create a temporary category object with the ID and the name from the dropdown
+                          final selectedCategoryName = _categorias
+                              .firstWhere(
+                                (c) => c.id == selectedCategoriaId,
+                                orElse: () => Categoria(
+                                  id: selectedCategoriaId!,
+                                  nombre: 'Adicionales',
+                                ),
+                              )
+                              .nombre;
+
+                          categoriaSeleccionada = Categoria(
+                            id: selectedCategoriaId!,
+                            nombre: selectedCategoryName,
+                          );
+                        }
+                      }
+
                       if (isEditing) {
                         // Actualizar producto existente
                         final updatedProducto = Producto(

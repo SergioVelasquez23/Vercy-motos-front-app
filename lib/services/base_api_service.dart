@@ -2,63 +2,99 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../models/api_response.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode;
 // ignore: uri_does_not_exist
 import 'dart:html'
-    if (dart.library.io) 'package:serch_restapp/utils/html_stub.dart'
+    if (dart.library.io) 'package:kronos_restbar/utils/html_stub.dart'
     as html;
 import '../config/api_config.dart';
 
+/// Clase base para todos los servicios de API
+/// Centraliza la lógica común de autenticación, headers y manejo de errores
 class BaseApiService {
   static final BaseApiService _instance = BaseApiService._internal();
   factory BaseApiService() => _instance;
   BaseApiService._internal();
 
-  // Método para forzar una reconexión
+  // Cliente HTTP reutilizable
+  http.Client _httpClient = http.Client();
+  final FlutterSecureStorage _storage = const FlutterSecureStorage();
+  static const Duration _defaultTimeout = Duration(seconds: 15);
+
+  /// Método para forzar una reconexión
   void resetConnection() {
     _httpClient.close();
     _httpClient = http.Client();
   }
 
+  /// Obtiene la URL base de la API
   String get baseUrl => ApiConfig.instance.baseUrl;
-  final storage = FlutterSecureStorage();
-  // Using a non-final variable to allow reset
-  http.Client _httpClient = http.Client();
 
-  // Headers con autenticación y seguridad mejorada
-  Future<Map<String, String>> _getHeaders() async {
-    String? token;
-
-    // Try to get token from storage based on platform
+  /// Obtiene el token de autenticación desde el almacenamiento seguro
+  Future<String?> getToken() async {
     try {
       if (kIsWeb) {
-        // Para web, usamos localStorage
-        token = html.window.localStorage['jwt_token'];
+        return html.window.localStorage['jwt_token'];
       } else {
-        // Para móvil, usamos FlutterSecureStorage
-        token = await storage.read(key: 'jwt_token');
+        return await _storage.read(key: 'jwt_token');
       }
     } catch (e) {
-      // Error silencioso al leer token
+      if (kDebugMode) {
+        print('⚠️ Error obteniendo token: $e');
+      }
+      return null;
     }
+  }
 
-    // Obtener cabeceras de seguridad base
-    final baseHeaders = {
+  /// Construye la URL completa para un endpoint
+  /// Maneja correctamente rutas que ya incluyen /api/ y las que no
+  String buildUrl(String endpoint) {
+    // Normalizar el endpoint eliminando barras iniciales o finales extras
+    String normalizedEndpoint = endpoint.trim();
+    
+    // Si el endpoint ya empieza con /api/, lo usamos tal como está
+    if (normalizedEndpoint.startsWith('/api/')) {
+      return '$baseUrl$normalizedEndpoint';
+    }
+    
+    // Si empieza solo con /, agregamos api después del baseUrl
+    if (normalizedEndpoint.startsWith('/')) {
+      return '$baseUrl/api$normalizedEndpoint';
+    }
+    
+    // Si no empieza con /, agregamos /api/ completo
+    return '$baseUrl/api/$normalizedEndpoint';
+  }
+
+  /// Genera headers con autenticación y configuración de seguridad
+  Future<Map<String, String>> getHeaders() async {
+    final String? token = await getToken();
+    
+    final Map<String, String> headers = {
       'Content-Type': 'application/json',
       if (token != null) 'Authorization': 'Bearer $token',
     };
 
-    // Añadir cabeceras de seguridad adicionales
-    final secureHeaders = ApiConfig.instance.getSecureHeaders(token: token);
-    baseHeaders.addAll(secureHeaders);
+    // Añadir headers de seguridad
+    headers.addAll(ApiConfig.instance.getSecurityHeaders());
+    
+    return headers;
+  }
 
-    // Añadir cabeceras de seguridad HTTP
-    baseHeaders.addAll({
-      'X-Content-Type-Options': 'nosniff',
-      'X-XSS-Protection': '1; mode=block',
-    });
-
-    return baseHeaders;
+  /// Maneja errores de respuesta HTTP de manera estandarizada
+  Exception handleErrorResponse(http.Response response) {
+    try {
+      final Map<String, dynamic> data = json.decode(response.body);
+      if (data['error'] != null) {
+        return Exception(data['error']);
+      }
+      if (data['message'] != null) {
+        return Exception(data['message']);
+      }
+    } catch (e) {
+      // Si no podemos parsear el JSON, usamos mensaje genérico
+    }
+    return Exception('Error HTTP ${response.statusCode}');
   }
 
   // Método GET genérico
@@ -68,8 +104,12 @@ class BaseApiService {
     Duration timeout = const Duration(seconds: 10),
   }) async {
     try {
-      final headers = await _getHeaders();
-      final url = '$baseUrl/api$endpoint';
+      final headers = await getHeaders();
+      final url = buildUrl(endpoint);
+      
+      if (kDebugMode) {
+        print('🔗 GET Request: $url');
+      }
 
       // Usar cliente seguro
       final response = await _httpClient
@@ -78,23 +118,33 @@ class BaseApiService {
 
       return _handleResponse<T>(response, fromJson);
     } catch (e) {
+      if (kDebugMode) {
+        print('❌ GET Error: $e');
+      }
       return ApiResponse<T>(
         success: false,
         message: 'Error de conexión: $e',
         timestamp: DateTime.now().toIso8601String(),
       );
     }
-  } // Método GET para listas
+  }
 
+  // Método GET para listas
   Future<ApiResponse<List<T>>> getList<T>(
     String endpoint,
     T Function(Map<String, dynamic>) fromJson, {
     Duration timeout = const Duration(seconds: 10),
   }) async {
     try {
-      final headers = await _getHeaders();
+      final headers = await getHeaders();
+      final url = buildUrl(endpoint);
+      
+      if (kDebugMode) {
+        print('📋 GET List Request: $url');
+      }
+      
       final response = await _httpClient
-          .get(Uri.parse('$baseUrl/api$endpoint'), headers: headers)
+          .get(Uri.parse(url), headers: headers)
           .timeout(timeout);
 
       if (response.statusCode == 200) {
@@ -108,6 +158,9 @@ class BaseApiService {
         );
       }
     } catch (e) {
+      if (kDebugMode) {
+        print('❌ GET List Error: $e');
+      }
       return ApiResponse<List<T>>(
         success: false,
         message: 'Error de conexión: $e',
@@ -124,11 +177,17 @@ class BaseApiService {
     Duration timeout = const Duration(seconds: 10),
   }) async {
     try {
-      final headers = await _getHeaders();
+      final headers = await getHeaders();
+      final url = buildUrl(endpoint);
+      
+      if (kDebugMode) {
+        print('📝 POST Request: $url');
+        print('📝 POST Data: ${json.encode(data)}');
+      }
 
       final response = await _httpClient
           .post(
-            Uri.parse('$baseUrl/api$endpoint'),
+            Uri.parse(url),
             headers: headers,
             body: json.encode(data),
           )
@@ -136,6 +195,9 @@ class BaseApiService {
 
       return _handleResponse<T>(response, fromJson);
     } catch (e) {
+      if (kDebugMode) {
+        print('❌ POST Error: $e');
+      }
       return ApiResponse<T>(
         success: false,
         message: 'Error de conexión: $e',
@@ -152,11 +214,17 @@ class BaseApiService {
     Duration timeout = const Duration(seconds: 10),
   }) async {
     try {
-      final headers = await _getHeaders();
+      final headers = await getHeaders();
+      final url = buildUrl(endpoint);
+      
+      if (kDebugMode) {
+        print('✏️ PUT Request: $url');
+        print('✏️ PUT Data: ${json.encode(data)}');
+      }
 
       final response = await _httpClient
           .put(
-            Uri.parse('$baseUrl/api$endpoint'),
+            Uri.parse(url),
             headers: headers,
             body: json.encode(data),
           )
@@ -164,6 +232,9 @@ class BaseApiService {
 
       return _handleResponse<T>(response, fromJson);
     } catch (e) {
+      if (kDebugMode) {
+        print('❌ PUT Error: $e');
+      }
       return ApiResponse<T>(
         success: false,
         message: 'Error de conexión: $e',
@@ -178,14 +249,19 @@ class BaseApiService {
     Duration timeout = const Duration(seconds: 10),
   }) async {
     try {
-      final headers = await _getHeaders();
+      final headers = await getHeaders();
+      final url = buildUrl(endpoint);
 
       // Agregar encabezados de seguridad adicionales
       final securityHeaders = ApiConfig.instance.getSecurityHeaders();
       headers.addAll(securityHeaders);
+      
+      if (kDebugMode) {
+        print('🗑️ DELETE Request: $url');
+      }
 
       final response = await _httpClient
-          .delete(Uri.parse('$baseUrl/api$endpoint'), headers: headers)
+          .delete(Uri.parse(url), headers: headers)
           .timeout(timeout);
 
       if (response.statusCode == 200) {
@@ -204,6 +280,9 @@ class BaseApiService {
         );
       }
     } catch (e) {
+      if (kDebugMode) {
+        print('❌ DELETE Error: $e');
+      }
       return ApiResponse<void>(
         success: false,
         message: 'Error de conexión: $e',

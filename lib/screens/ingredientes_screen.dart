@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../config/constants.dart';
-import '../services/inventario_service.dart';
-import '../models/inventario.dart';
+import '../services/ingrediente_service.dart';
+import '../services/producto_service.dart';
+import '../models/ingrediente.dart';
+import '../models/categoria.dart';
 import '../widgets/loading_indicator.dart';
 
 class IngredientesScreen extends StatefulWidget {
@@ -10,9 +12,11 @@ class IngredientesScreen extends StatefulWidget {
 }
 
 class _IngredientesScreenState extends State<IngredientesScreen> {
-  final InventarioService _inventarioService = InventarioService();
-  List<Inventario> _ingredientes = [];
-  List<Inventario> _ingredientesFiltrados = [];
+  final IngredienteService _ingredienteService = IngredienteService();
+  final ProductoService _productoService = ProductoService();
+  List<Ingrediente> _ingredientes = [];
+  List<Ingrediente> _ingredientesFiltrados = [];
+  List<Categoria> _categorias = [];
   bool _isLoading = true;
   String _error = '';
   final TextEditingController _searchController = TextEditingController();
@@ -34,15 +38,18 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final ingredientes = await _inventarioService.getInventario();
+      final ingredientes = await _ingredienteService.getAllIngredientes();
+      final categorias = await _productoService.getCategorias();
+
       setState(() {
         _ingredientes = ingredientes;
         _ingredientesFiltrados = ingredientes;
+        _categorias = categorias;
         _error = '';
       });
     } catch (e) {
       setState(() => _error = kErrorCargaDatos);
-      print('Error cargando ingredientes: $e');
+      print('Error cargando datos: $e');
     } finally {
       setState(() => _isLoading = false);
     }
@@ -77,7 +84,7 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
     return categorias.toList()..sort();
   }
 
-  Future<void> _confirmarEliminarIngrediente(Inventario ingrediente) async {
+  Future<void> _confirmarEliminarIngrediente(Ingrediente ingrediente) async {
     final confirmado = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -105,7 +112,7 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
 
     if (confirmado == true) {
       try {
-        await _inventarioService.deleteIngrediente(ingrediente.id);
+        await _ingredienteService.deleteIngrediente(ingrediente.id);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Ingrediente eliminado correctamente')),
         );
@@ -122,31 +129,32 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
     }
   }
 
-  void _mostrarDialogoNuevoIngrediente([Inventario? ingrediente]) {
+  String _obtenerNombreCategoria(String categoriaId) {
+    try {
+      final categoria = _categorias.firstWhere((cat) => cat.id == categoriaId);
+      return categoria.nombre;
+    } catch (e) {
+      return categoriaId; // Si no encuentra la categoría, devuelve el ID
+    }
+  }
+
+  void _mostrarDialogoNuevoIngrediente([Ingrediente? ingrediente]) {
     final _formKey = GlobalKey<FormState>();
     final nombreController = TextEditingController(
       text: ingrediente?.nombre ?? '',
     );
-    final codigoController = TextEditingController(
-      text: ingrediente?.codigo ?? '',
-    );
-    final categoriaController = TextEditingController(
-      text: ingrediente?.categoria ?? '',
-    );
     final unidadController = TextEditingController(
       text: ingrediente?.unidad ?? '',
     );
-    final precioController = TextEditingController(
-      text: ingrediente?.precioCompra.toString() ?? '',
+    final costoController = TextEditingController(
+      text: ingrediente?.costo.toString() ?? '',
     );
-    final stockActualController = TextEditingController(
-      text: ingrediente?.stockActual.toString() ?? '',
-    );
-    final stockMinimoController = TextEditingController(
-      text: ingrediente?.stockMinimo.toString() ?? '',
+    final cantidadController = TextEditingController(
+      text: (ingrediente?.stockActual ?? ingrediente?.cantidad ?? 0).toString(),
     );
 
     bool esDescontable = ingrediente?.descontable ?? true;
+    String? categoriaSeleccionada = ingrediente?.categoria;
 
     showDialog(
       context: context,
@@ -179,26 +187,8 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
                     },
                   ),
                   SizedBox(height: 16),
-                  TextFormField(
-                    controller: codigoController,
-                    decoration: InputDecoration(
-                      labelText: 'Código*',
-                      filled: true,
-                      fillColor: Colors.white10,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    style: TextStyle(color: Color(kTextDark)),
-                    validator: (value) {
-                      if (value?.isEmpty ?? true) return 'Campo requerido';
-                      if (value!.length < 2) return 'Mínimo 2 caracteres';
-                      return null;
-                    },
-                  ),
-                  SizedBox(height: 16),
-                  TextFormField(
-                    controller: categoriaController,
+                  DropdownButtonFormField<String>(
+                    value: categoriaSeleccionada,
                     decoration: InputDecoration(
                       labelText: 'Categoría*',
                       filled: true,
@@ -208,6 +198,21 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
                       ),
                     ),
                     style: TextStyle(color: Color(kTextDark)),
+                    dropdownColor: Colors.grey[800],
+                    items: _categorias.map((categoria) {
+                      return DropdownMenuItem<String>(
+                        value: categoria.id,
+                        child: Text(
+                          categoria.nombre,
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      setDialogState(() {
+                        categoriaSeleccionada = value;
+                      });
+                    },
                     validator: (value) =>
                         value?.isEmpty ?? true ? 'Campo requerido' : null,
                   ),
@@ -229,9 +234,9 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
                   ),
                   SizedBox(height: 16),
                   TextFormField(
-                    controller: precioController,
+                    controller: costoController,
                     decoration: InputDecoration(
-                      labelText: 'Precio de compra*',
+                      labelText: 'Costo*',
                       filled: true,
                       fillColor: Colors.white10,
                       border: OutlineInputBorder(
@@ -245,17 +250,17 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
                     style: TextStyle(color: Color(kTextDark)),
                     validator: (value) {
                       if (value?.isEmpty ?? true) return 'Campo requerido';
-                      final precio = double.tryParse(value!);
-                      if (precio == null) return 'Ingrese un número válido';
-                      if (precio <= 0) return 'El precio debe ser mayor a 0';
+                      final costo = double.tryParse(value!);
+                      if (costo == null) return 'Ingrese un número válido';
+                      if (costo <= 0) return 'El costo debe ser mayor a 0';
                       return null;
                     },
                   ),
                   SizedBox(height: 16),
                   TextFormField(
-                    controller: stockActualController,
+                    controller: cantidadController,
                     decoration: InputDecoration(
-                      labelText: 'Stock actual*',
+                      labelText: 'Cantidad*',
                       filled: true,
                       fillColor: Colors.white10,
                       border: OutlineInputBorder(
@@ -268,34 +273,10 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
                     style: TextStyle(color: Color(kTextDark)),
                     validator: (value) {
                       if (value?.isEmpty ?? true) return 'Campo requerido';
-                      final stock = double.tryParse(value!);
-                      if (stock == null) return 'Ingrese un número válido';
-                      if (stock < 0) return 'El stock no puede ser negativo';
-                      return null;
-                    },
-                  ),
-                  SizedBox(height: 16),
-                  TextFormField(
-                    controller: stockMinimoController,
-                    decoration: InputDecoration(
-                      labelText: 'Stock mínimo*',
-                      filled: true,
-                      fillColor: Colors.white10,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      helperText: 'Nivel mínimo para alertas',
-                    ),
-                    keyboardType: TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    style: TextStyle(color: Color(kTextDark)),
-                    validator: (value) {
-                      if (value?.isEmpty ?? true) return 'Campo requerido';
-                      final stockMin = double.tryParse(value!);
-                      if (stockMin == null) return 'Ingrese un número válido';
-                      if (stockMin < 0)
-                        return 'El stock mínimo no puede ser negativo';
+                      final cantidad = double.tryParse(value!);
+                      if (cantidad == null) return 'Ingrese un número válido';
+                      if (cantidad < 0)
+                        return 'La cantidad no puede ser negativa';
                       return null;
                     },
                   ),
@@ -340,22 +321,20 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
               onPressed: () async {
                 if (_formKey.currentState?.validate() ?? false) {
                   try {
-                    final nuevoIngrediente = Inventario(
+                    final nuevoIngrediente = Ingrediente(
                       id: ingrediente?.id ?? '',
                       nombre: nombreController.text,
-                      codigo: codigoController.text,
-                      categoria: categoriaController.text,
+                      categoria: categoriaSeleccionada ?? '',
                       unidad: unidadController.text,
-                      precioCompra: double.parse(precioController.text),
-                      stockActual: double.parse(stockActualController.text),
-                      stockMinimo: double.parse(stockMinimoController.text),
-                      estado: ingrediente?.estado ?? 'ACTIVO',
+                      costo: double.parse(costoController.text),
+                      cantidad: double.parse(cantidadController.text),
+                      estado: ingrediente?.estado ?? 'Activo',
                       descontable: esDescontable,
                     );
 
                     if (ingrediente == null) {
                       // Nuevo ingrediente
-                      await _inventarioService.createIngrediente(
+                      await _ingredienteService.createIngrediente(
                         nuevoIngrediente,
                       );
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -363,8 +342,7 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
                       );
                     } else {
                       // Editar ingrediente
-                      await _inventarioService.updateIngrediente(
-                        ingrediente.id,
+                      await _ingredienteService.updateIngrediente(
                         nuevoIngrediente,
                       );
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -494,8 +472,8 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
                     itemBuilder: (context, index) {
                       final item = _ingredientesFiltrados[index];
                       bool esStockBajo =
-                          item.stockActual <= item.stockMinimo ||
-                          item.stockActual <= kStockBajoUmbral;
+                          item.stock <= item.stockMin ||
+                          item.stock <= 10; // Umbral para ingredientes
 
                       return Card(
                         margin: EdgeInsets.symmetric(
@@ -515,7 +493,7 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Categoría: ${item.categoria} | Unidad: ${item.unidad}',
+                                'Categoría: ${_obtenerNombreCategoria(item.categoria)} | Unidad: ${item.unidad}',
                                 style: TextStyle(color: Color(kTextLight)),
                               ),
                               SizedBox(height: 4),
@@ -555,7 +533,7 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
                                   Text(
-                                    'Stock: ${item.stockActual}',
+                                    'Stock: ${item.stock} ${item.unidad}',
                                     style: TextStyle(
                                       color: esStockBajo
                                           ? Colors.red
@@ -566,7 +544,7 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
                                     ),
                                   ),
                                   Text(
-                                    'Precio: \$${item.precioCompra.toStringAsFixed(2)}',
+                                    'Costo: \$${item.costo.toStringAsFixed(2)}',
                                     style: TextStyle(color: Color(kTextLight)),
                                   ),
                                 ],

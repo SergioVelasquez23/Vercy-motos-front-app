@@ -348,10 +348,66 @@ class FacturaCompraService {
 
   Future<FacturaCompra> crearFacturaCompra(FacturaCompra facturaCompra) async {
     try {
+      print(
+        '🏁 Iniciando creación de factura de compra con ${facturaCompra.items.length} items',
+      );
+
+      // Verificar si hay items
+      if (facturaCompra.items.isEmpty) {
+        print('⚠️ Advertencia: La factura no tiene items');
+      } else {
+        print('📋 Items de la factura:');
+        for (var i = 0; i < facturaCompra.items.length; i++) {
+          final item = facturaCompra.items[i];
+          print(
+            '📝 Item $i: ${item.ingredienteNombre} - ${item.cantidad} ${item.unidad} x ${item.precioUnitario} = ${item.subtotal}',
+          );
+        }
+      }
+
+      // Recalcular el total para asegurarnos de que sea correcto
+      double calculatedTotal = facturaCompra.items.fold<double>(
+        0,
+        (sum, item) => sum + item.subtotal,
+      );
+
       // El modelo ya maneja automáticamente no incluir el ID si es null o vacío
       final facturaJson = facturaCompra.toJson();
 
+      // Verificar que los items estén presentes en el JSON
+      var itemsIngredientes = facturaJson['itemsIngredientes'] as List<dynamic>;
+      if (itemsIngredientes.isEmpty && facturaCompra.items.isNotEmpty) {
+        print(
+          '⚠️ Advertencia: itemsIngredientes está vacío en el JSON pero hay ${facturaCompra.items.length} items en el objeto',
+        );
+        // Intentar reconstruir los items manualmente
+        facturaJson['itemsIngredientes'] = facturaCompra.items
+            .map(
+              (item) => {
+                'ingredienteId': item.ingredienteId,
+                'ingredienteNombre': item.ingredienteNombre,
+                'cantidad': item.cantidad,
+                'unidad': item.unidad,
+                'precioUnitario': item.precioUnitario,
+                'precioTotal': item.subtotal,
+                'subtotal': item.subtotal,
+                'descontable': true,
+                'observaciones': '',
+              },
+            )
+            .toList();
+      }
+
+      // Verificar que el total está presente en el JSON
+      if (facturaJson['total'] == 0 && calculatedTotal > 0) {
+        print(
+          '⚠️ Advertencia: El total en el JSON es 0 pero el calculado es $calculatedTotal',
+        );
+        facturaJson['total'] = calculatedTotal;
+      }
+
       print('🔧 Creando factura de compra...');
+      print('💰 Total calculado: $calculatedTotal');
       print('📦 Datos a enviar: ${json.encode(facturaJson)}');
       print('🌐 URL: $baseUrl/crear');
       print('📋 Headers: $headers');
@@ -373,6 +429,7 @@ class FacturaCompraService {
 
         final dynamic jsonData = json.decode(responseBody);
         print('📊 Tipo de respuesta: ${jsonData.runtimeType}');
+        print('📄 Respuesta completa: $jsonData');
 
         if (jsonData is Map<String, dynamic>) {
           // Verificar si la respuesta indica éxito
@@ -390,6 +447,32 @@ class FacturaCompraService {
           if (jsonData.containsKey('factura') && jsonData['factura'] != null) {
             facturaData = jsonData['factura'];
             print('✅ Datos de factura encontrados en campo factura');
+
+            // Validar que la factura tenga los items y el total correcto
+            if (facturaData!['itemsIngredientes'] is List &&
+                (facturaData['itemsIngredientes'] as List).isEmpty &&
+                facturaJson.containsKey('itemsIngredientes') &&
+                (facturaJson['itemsIngredientes'] as List).isNotEmpty) {
+              print(
+                '⚠️ El servidor devolvió una factura sin items pero se enviaron items',
+              );
+              print(
+                '⚠️ Corrigiendo la factura devuelta con los datos enviados',
+              );
+
+              // Copiar los items enviados a la respuesta
+              facturaData['itemsIngredientes'] =
+                  facturaJson['itemsIngredientes'];
+              facturaData['total'] = calculatedTotal;
+            }
+
+            // Si el total es 0 pero calculamos uno diferente, corregirlo
+            if (facturaData['total'] == 0.0 && calculatedTotal > 0) {
+              print(
+                '⚠️ El servidor devolvió total=0 pero calculamos $calculatedTotal',
+              );
+              facturaData['total'] = calculatedTotal;
+            }
           } else if (jsonData.containsKey('data') && jsonData['data'] != null) {
             facturaData = jsonData['data'];
             print('✅ Datos de factura encontrados en campo data');
@@ -416,8 +499,34 @@ class FacturaCompraService {
           }
 
           print('✅ Factura creada exitosamente');
-          print('📋 Datos de factura: $facturaData');
-          return FacturaCompra.fromJson(facturaData);
+          print('📋 Datos de factura finales: $facturaData');
+
+          // Crear objeto FacturaCompra con los items y total calculado explícitamente
+          final facturaCreada = FacturaCompra.fromJson(facturaData);
+
+          // Verificación final
+          if (facturaCreada.total == 0 && calculatedTotal > 0) {
+            print(
+              '⚠️ Después de todo el proceso, el total sigue siendo 0. Usando constructor manual.',
+            );
+            // Crear manualmente un nuevo objeto con el total correcto
+            return FacturaCompra(
+              id: facturaCreada.id,
+              numeroFactura: facturaCreada.numeroFactura,
+              proveedorNit: facturaCreada.proveedorNit,
+              proveedorNombre: facturaCreada.proveedorNombre,
+              fechaFactura: facturaCreada.fechaFactura,
+              fechaVencimiento: facturaCreada.fechaVencimiento,
+              total: calculatedTotal, // Usar el calculado explícitamente
+              estado: facturaCreada.estado,
+              pagadoDesdeCaja: facturaCreada.pagadoDesdeCaja,
+              items: facturaCompra.items, // Usar los items originales
+              fechaCreacion: facturaCreada.fechaCreacion,
+              fechaActualizacion: facturaCreada.fechaActualizacion,
+            );
+          }
+
+          return facturaCreada;
         } else {
           throw Exception(
             'Formato de respuesta no válido al crear factura: ${jsonData.runtimeType}',

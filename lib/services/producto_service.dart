@@ -336,18 +336,27 @@ class ProductoService {
     try {
       final headers = await _getHeaders();
       Map<String, String> queryParams = {};
-      if (query.isNotEmpty) queryParams['q'] = query;
+      // Usar 'nombre' en lugar de 'q' para el nuevo endpoint de filtrado
+      if (query.isNotEmpty) queryParams['nombre'] = query;
       if (categoriaId != null) queryParams['categoriaId'] = categoriaId;
 
       final uri = Uri.parse(
-        '$baseUrl/api/productos/buscar',
+        '$baseUrl/api/productos/filtrar', // Usar nuevo endpoint de filtrado
       ).replace(queryParameters: queryParams);
       final response = await http
           .get(uri, headers: headers)
           .timeout(Duration(seconds: 10));
 
       if (response.statusCode == 200) {
-        final List<dynamic> jsonList = json.decode(response.body);
+        // Extraer los datos del campo 'data' de la respuesta ApiResponse
+        final jsonBody = json.decode(response.body);
+        if (!jsonBody['success']) {
+          throw Exception(
+            jsonBody['message'] ?? 'Error en la respuesta del servidor',
+          );
+        }
+
+        final List<dynamic> jsonList = jsonBody['data'];
         print('✅ Productos encontrados: ${jsonList.length}');
         return jsonList.map((json) => Producto.fromJson(json)).toList();
       } else {
@@ -365,13 +374,23 @@ class ProductoService {
       final headers = await _getHeaders();
       final response = await http
           .get(
-            Uri.parse('$baseUrl/api/productos?categoriaId=$categoriaId'),
+            Uri.parse(
+              '$baseUrl/api/productos/filtrar?categoriaId=$categoriaId',
+            ),
             headers: headers,
           )
           .timeout(Duration(seconds: 10));
 
       if (response.statusCode == 200) {
-        final List<dynamic> jsonList = json.decode(response.body);
+        // Extraer los datos del campo 'data' de la respuesta ApiResponse
+        final jsonBody = json.decode(response.body);
+        if (!jsonBody['success']) {
+          throw Exception(
+            jsonBody['message'] ?? 'Error en la respuesta del servidor',
+          );
+        }
+
+        final List<dynamic> jsonList = jsonBody['data'];
         print('✅ Productos por categoría cargados: ${jsonList.length}');
         return jsonList.map((json) => Producto.fromJson(json)).toList();
       } else {

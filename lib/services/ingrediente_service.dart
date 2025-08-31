@@ -158,4 +158,103 @@ class IngredienteService {
       throw Exception('Error de conexión: $e');
     }
   }
+
+  // Crear ingrediente
+  Future<Ingrediente> createIngrediente(Ingrediente ingrediente) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/ingredientes'),
+        headers: headers,
+        body: json.encode(ingrediente.toJson()),
+      );
+
+      print(
+        'IngredienteService - createIngrediente response: ${response.statusCode}',
+      );
+      print('IngredienteService - createIngrediente body: ${response.body}');
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        if (responseData is Map<String, dynamic>) {
+          if (responseData.containsKey('data')) {
+            return Ingrediente.fromJson(responseData['data']);
+          } else {
+            return Ingrediente.fromJson(responseData);
+          }
+        } else {
+          throw Exception('Formato de respuesta inválido');
+        }
+      } else {
+        throw Exception('Error al crear ingrediente: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error creando ingrediente: $e');
+      throw Exception('Error de conexión: $e');
+    }
+  }
+
+  // Actualizar ingrediente
+  Future<Ingrediente> updateIngrediente(Ingrediente ingrediente) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.put(
+        Uri.parse('$baseUrl/api/ingredientes/${ingrediente.id}'),
+        headers: headers,
+        body: json.encode(ingrediente.toJson()),
+      );
+
+      print(
+        'IngredienteService - updateIngrediente response: ${response.statusCode}',
+      );
+      print('IngredienteService - updateIngrediente body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        if (responseData is Map<String, dynamic>) {
+          if (responseData.containsKey('data')) {
+            return Ingrediente.fromJson(responseData['data']);
+          } else {
+            return Ingrediente.fromJson(responseData);
+          }
+        } else {
+          throw Exception('Formato de respuesta inválido');
+        }
+      } else {
+        throw Exception(
+          'Error al actualizar ingrediente: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      print('Error actualizando ingrediente: $e');
+      throw Exception('Error de conexión: $e');
+    }
+  }
+
+  // Eliminar ingrediente
+  Future<bool> deleteIngrediente(String id) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.delete(
+        Uri.parse('$baseUrl/api/ingredientes/$id'),
+        headers: headers,
+      );
+
+      print(
+        'IngredienteService - deleteIngrediente response: ${response.statusCode}',
+      );
+      print('IngredienteService - deleteIngrediente body: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        return true;
+      } else {
+        throw Exception(
+          'Error al eliminar ingrediente: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      print('Error eliminando ingrediente: $e');
+      throw Exception('Error de conexión: $e');
+    }
+  }
 }

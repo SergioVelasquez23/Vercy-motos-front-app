@@ -517,17 +517,6 @@ class _CategoriasScreenState extends State<CategoriasScreen> {
                   Navigator.of(context).pop(ImageSource.gallery);
                 },
               ),
-              ListTile(
-                leading: Icon(Icons.image, color: primary),
-                title: Text(
-                  'Usar imagen predeterminada',
-                  style: TextStyle(color: textLight),
-                ),
-                onTap: () {
-                  // Usar la imagen predeterminada
-                  Navigator.of(context).pop();
-                },
-              ),
             ],
           ),
         );

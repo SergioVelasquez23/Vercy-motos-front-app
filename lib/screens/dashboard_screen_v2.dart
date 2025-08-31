@@ -7,7 +7,6 @@ import 'mesas_screen.dart';
 import 'pedidos_screen_fusion.dart';
 import 'cuadre_caja_screen.dart';
 import 'documentos_mesa_screen.dart';
-import 'inventario_screen.dart';
 import 'ingredientes_screen.dart';
 import 'facturas_compras_screen.dart';
 import 'recetas_screen.dart';
@@ -825,24 +824,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
       navItems.add(
         _buildDropdownNavItem(Icons.inventory_2_outlined, 'Inventario', 4, [
           PopupMenuItem<String>(
-            value: 'inventario',
-            onTap: () {
-              Future.delayed(Duration.zero, () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => InventarioScreen()),
-                );
-              });
-            },
-            child: Row(
-              children: [
-                Icon(Icons.inventory, color: primary, size: 18),
-                SizedBox(width: 8),
-                Text('General', style: TextStyle(color: textDark)),
-              ],
-            ),
-          ),
-          PopupMenuItem<String>(
             value: 'historial',
             onTap: () {
               Future.delayed(Duration.zero, () {
@@ -1043,10 +1024,10 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       // Direct access to main inventory screen via icon
       onCanceled: () {
-        // Navigate to Inventory main screen if menu is opened and then canceled
+        // Navigate to Ingredients screen if menu is opened and then canceled
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => InventarioScreen()),
+          MaterialPageRoute(builder: (context) => IngredientesScreen()),
         );
       },
       child: Container(

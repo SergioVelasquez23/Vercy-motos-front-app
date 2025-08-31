@@ -21,6 +21,7 @@ class DocumentoMesa {
   final String? pagadoPor;
   final double? propina;
   final Color? colorIdentificacion;
+  final String estado; // Campo explícito para estado
 
   DocumentoMesa({
     this.id,
@@ -40,6 +41,7 @@ class DocumentoMesa {
     this.pagadoPor,
     this.propina,
     this.colorIdentificacion,
+    this.estado = 'Pendiente', // Valor por defecto para estado
   });
 
   // Propiedades calculadas para la UI
@@ -83,6 +85,7 @@ class DocumentoMesa {
     String? pagadoPor,
     double? propina,
     Color? colorIdentificacion,
+    String? estado,
   }) {
     return DocumentoMesa(
       id: id ?? this.id,
@@ -102,6 +105,7 @@ class DocumentoMesa {
       pagadoPor: pagadoPor ?? this.pagadoPor,
       propina: propina ?? this.propina,
       colorIdentificacion: colorIdentificacion ?? this.colorIdentificacion,
+      estado: estado ?? this.estado,
     );
   }
 
@@ -118,6 +122,11 @@ class DocumentoMesa {
       'pedidos': pedidos.map((p) => p.toJson()).toList(),
       'pagado': pagado,
       'anulado': anulado,
+      'estado': pagado
+          ? 'Pagado'
+          : (anulado
+                ? 'Anulado'
+                : 'Pendiente'), // Asegurar que el estado siempre esté presente
       if (motivoAnulacion != null) 'motivoAnulacion': motivoAnulacion,
       if (fechaCreacion != null)
         'fechaCreacion': fechaCreacion!.toIso8601String(),
@@ -144,6 +153,41 @@ class DocumentoMesa {
       return null;
     }
 
+    // Determinar si el documento está pagado considerando múltiples indicadores
+    bool isPagado = false;
+    if (json['pagado'] == true) {
+      isPagado = true;
+    } else if (json['estado'] != null &&
+        (json['estado'].toString().toLowerCase() == 'pagado' ||
+            json['estado'].toString().toLowerCase() == 'paid')) {
+      // Si el estado es "Pagado" o "Paid", el documento está pagado
+      isPagado = true;
+    } else if (json['formaPago'] != null &&
+        json['formaPago'].toString().isNotEmpty) {
+      // Si tiene forma de pago especificada, probablemente esté pagado
+      isPagado = true;
+    } else if (json['fechaPago'] != null) {
+      // Si tiene fecha de pago, definitivamente está pagado
+      isPagado = true;
+    }
+
+    // Log para debug
+    print('📄 DocumentoMesa fromJson: ${json['numeroDocumento']}');
+    print('  - Estado recibido: ${json['estado']}');
+    print('  - Forma de pago: ${json['formaPago']}');
+    print('  - Fecha de pago: ${json['fechaPago']}');
+    print('  - Pagado (flag): ${json['pagado']}');
+    print('  - isPagado (calculado): $isPagado');
+
+    // Si tenemos un documento pagado pero no tenemos forma de pago, asignar un valor por defecto
+    String? formaPago = json['formaPago'];
+    if (isPagado && (formaPago == null || formaPago.isEmpty)) {
+      print(
+        '⚠️ Documento pagado sin forma de pago especificada. Asignando efectivo por defecto.',
+      );
+      formaPago = 'efectivo';
+    }
+
     return DocumentoMesa(
       id: json['_id'] ?? json['id'],
       numeroDocumento: json['numeroDocumento'] ?? '',
@@ -157,13 +201,14 @@ class DocumentoMesa {
       pedidos:
           (json['pedidos'] as List?)?.map((p) => Pedido.fromJson(p)).toList() ??
           [],
-      pagado: json['pagado'] ?? false,
+      pagado: isPagado,
       anulado: json['anulado'] ?? false,
       motivoAnulacion: json['motivoAnulacion'],
       fechaCreacion:
           parseDateTime(json['fechaCreacion']) ?? parseDateTime(json['fecha']),
       fechaPago: parseDateTime(json['fechaPago']),
-      formaPago: json['formaPago'],
+      formaPago:
+          formaPago, // Usamos la variable formaPago que puede tener un valor por defecto
       pagadoPor: json['pagadoPor'],
       propina: json['propina'] != null
           ? (json['propina'] as num).toDouble()

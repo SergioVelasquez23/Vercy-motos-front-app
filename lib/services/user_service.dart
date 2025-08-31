@@ -44,8 +44,20 @@ class UserService {
       );
 
       if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
-        return data.map((json) => User.fromJson(json)).toList();
+        final decoded = json.decode(response.body);
+        if (decoded is List) {
+          return decoded.map((json) => User.fromJson(json)).toList();
+        } else if (decoded is Map) {
+          if (decoded.containsKey('data') && decoded['data'] is List) {
+            return (decoded['data'] as List).map((json) => User.fromJson(json)).toList();
+          } else if (decoded.containsKey('error')) {
+            throw Exception('Error del backend: ${decoded['error']}');
+          } else {
+            throw Exception('Respuesta inesperada del backend: $decoded');
+          }
+        } else {
+          throw Exception('Respuesta inesperada del backend: $decoded');
+        }
       } else {
         throw Exception('Error al cargar usuarios: ${response.statusCode}');
       }

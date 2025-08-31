@@ -136,8 +136,10 @@ class Producto {
     'tieneVariantes': tieneVariantes,
     'estado': estado,
     'imagenUrl': imagenUrl,
-    // Eliminamos la serialización del objeto categoria completo
-    'categoriaId': categoria?.id, // Solo enviamos el ID de la categoría
+    // Enviamos tanto el ID como el nombre de la categoría
+    'categoriaId': categoria?.id,
+    'categoriaNombre':
+        categoria?.nombre, // Incluimos el nombre para mantener consistencia
     'descripcion': descripcion,
     'cantidad': cantidad,
     'nota': nota,
@@ -166,6 +168,17 @@ class Producto {
       imagenUrl: json['imagenUrl']?.toString(),
       categoria: json['categoria'] != null
           ? Categoria.fromJson(json['categoria'])
+          : json['categoriaId'] != null && json['categoriaNombre'] != null
+          ? Categoria(
+              id: json['categoriaId'].toString(),
+              nombre: json['categoriaNombre'].toString(),
+            )
+          : json['categoriaId'] != null
+          ? Categoria(
+              id: json['categoriaId'].toString(),
+              nombre:
+                  'Adicionales', // Default name that makes more sense in context
+            )
           : null,
       descripcion: json['descripcion']?.toString(),
       cantidad: json['cantidad'] ?? 1,

@@ -17,8 +17,11 @@ import '../services/notification_service.dart';
 import '../services/pdf_service.dart';
 import '../config/api_config.dart';
 import '../providers/user_provider.dart';
+import '../utils/format_utils.dart';
+import '../utils/impresion_mixin.dart';
+import '../models/producto.dart';
 import 'pedido_screen.dart';
-import 'documentos_mesa_screen.dart';
+import './documentos_mesa_screen.dart'; // Cambiando la forma de importar
 import 'package:share_plus/share_plus.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -30,10 +33,19 @@ class MesasScreen extends StatefulWidget {
   State<MesasScreen> createState() => _MesasScreenState();
 }
 
-class _MesasScreenState extends State<MesasScreen> {
+class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
   final MesaService _mesaService = MesaService();
   final PedidoService _pedidoService = PedidoService();
   final DocumentoMesaService _documentoMesaService = DocumentoMesaService();
+
+  String _getProductoNombre(dynamic producto) {
+    if (producto == null) return "Producto desconocido";
+    if (producto is Producto) return producto.nombre;
+    if (producto is Map<String, dynamic>) {
+      return Producto.fromJson(producto).nombre;
+    }
+    return "Producto desconocido";
+  }
   final ImpresionService _impresionService = ImpresionService();
   final PDFService _pdfService = PDFService();
   List<Mesa> mesas = [];
@@ -47,6 +59,10 @@ class _MesasScreenState extends State<MesasScreen> {
   static const _cardBg = Color(0xFF252525);
   static const _textLight = Color(0xFFE0E0E0);
   static const _primary = Color(0xFFFF6B00);
+
+  // Banderas para evitar procesamiento múltiple
+  bool _procesandoPago = false;
+  bool _creandoFactura = false;
 
   @override
   void initState() {
@@ -223,7 +239,7 @@ class _MesasScreenState extends State<MesasScreen> {
                               style: const TextStyle(color: Color(0xFFE0E0E0)),
                             ),
                             subtitle: Text(
-                              'Total: \$${pedido.total.toStringAsFixed(2)}',
+                              'Total: ${formatCurrency(pedido.total)}',
                               style: TextStyle(
                                 color: const Color(0xFFE0E0E0).withOpacity(0.7),
                               ),
@@ -655,7 +671,7 @@ class _MesasScreenState extends State<MesasScreen> {
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Text(
-                                    '\$${mesa.total.toStringAsFixed(0)}',
+                                    formatCurrency(mesa.total),
                                     style: TextStyle(
                                       fontSize: 9,
                                       color: _primary,
@@ -669,7 +685,7 @@ class _MesasScreenState extends State<MesasScreen> {
                             ),
                           )
                         : Text(
-                            '\$${mesa.total.toStringAsFixed(0)}',
+                            formatCurrency(mesa.total),
                             style: TextStyle(
                               fontSize: 9,
                               color: _primary,
@@ -693,6 +709,11 @@ class _MesasScreenState extends State<MesasScreen> {
         TextEditingController();
     TextEditingController _descuentoValorController = TextEditingController();
     TextEditingController _propinaController = TextEditingController();
+
+    // Reseteamos la bandera de procesamiento al comenzar
+    setState(() {
+      _procesandoPago = false;
+    });
 
     // NUEVAS VARIABLES PARA LAS OPCIONES MOVIDAS
     bool _esCortesia = false;
@@ -914,7 +935,7 @@ class _MesasScreenState extends State<MesasScreen> {
                                           CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          '${item.cantidad}x ${item.producto?.nombre ?? "Producto desconocido"}',
+                                          '${item.cantidad}x ${_getProductoNombre(item.producto)}',
                                           style: TextStyle(
                                             color: _textLight,
                                             fontWeight:
@@ -1300,7 +1321,7 @@ class _MesasScreenState extends State<MesasScreen> {
                                         ),
                                       ),
                                       Text(
-                                        '\$${subtotal.toStringAsFixed(0)}',
+                                        formatCurrency(subtotal),
                                         style: TextStyle(
                                           color: _textLight,
                                           fontSize: 16,
@@ -1323,7 +1344,7 @@ class _MesasScreenState extends State<MesasScreen> {
                                           ),
                                         ),
                                         Text(
-                                          '\$${propinaMonto.toStringAsFixed(0)}',
+                                          formatCurrency(propinaMonto),
                                           style: TextStyle(
                                             color: _textLight,
                                             fontSize: 16,
@@ -1353,7 +1374,7 @@ class _MesasScreenState extends State<MesasScreen> {
                                         ),
                                       ),
                                       Text(
-                                        '\$${total.toStringAsFixed(0)}',
+                                        formatCurrency(total),
                                         style: TextStyle(
                                           color: _primary,
                                           fontSize: 26,
@@ -1562,9 +1583,26 @@ class _MesasScreenState extends State<MesasScreen> {
                             final mesaSeleccionada =
                                 await _mostrarDialogoSeleccionMesa();
                             if (mesaSeleccionada != null) {
-                              setState(() {
-                                _mesaDestinoId = mesaSeleccionada.id;
-                              });
+                              try {
+                                // Llama a la función de mover mesa aquí
+                                await MesaController().moverMesa(mesa, mesaSeleccionada);
+                                // Recarga las mesas y cierra el diálogo
+                                await _loadMesas();
+                                Navigator.pop(context);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Pedido movido a la mesa ${mesaSeleccionada.nombre}'),
+                                    backgroundColor: Colors.green,
+                                  ),
+                                );
+                              } catch (e) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Error al mover el pedido: $e'),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              }
                             }
                           },
                           child: Container(
@@ -1687,22 +1725,55 @@ class _MesasScreenState extends State<MesasScreen> {
                       Expanded(
                         flex: 2,
                         child: ElevatedButton.icon(
-                          onPressed: () {
-                            Navigator.pop(context, {
-                              'medioPago': _medioPago,
-                              'incluyePropina': _incluyePropina,
-                              'descuentoPorcentaje':
-                                  _descuentoPorcentajeController.text,
-                              'descuentoValor': _descuentoValorController.text,
-                              'propina': _propinaController.text,
-                              'esCortesia': _esCortesia,
-                              'esConsumoInterno': _esConsumoInterno,
-                              'mesaDestinoId': _mesaDestinoId,
-                              'billetesRecibidos': _billetesSeleccionados,
-                            });
-                          },
-                          icon: Icon(Icons.payment, size: 20),
-                          label: Text('Confirmar Pago'),
+                          onPressed: _procesandoPago
+                              ? null // Desactivar botón si está procesando
+                              : () {
+                                  setState(() {
+                                    _procesandoPago =
+                                        true; // Activar flag para evitar doble click
+                                  });
+
+                                  // Devolver resultado después de un pequeño delay
+                                  Future.delayed(
+                                    Duration(milliseconds: 300),
+                                    () {
+                                      if (mounted) {
+                                        Navigator.pop(context, {
+                                          'medioPago': _medioPago,
+                                          'incluyePropina': _incluyePropina,
+                                          'descuentoPorcentaje':
+                                              _descuentoPorcentajeController
+                                                  .text,
+                                          'descuentoValor':
+                                              _descuentoValorController.text,
+                                          'propina': _propinaController.text,
+                                          'esCortesia': _esCortesia,
+                                          'esConsumoInterno': _esConsumoInterno,
+                                          'mesaDestinoId': _mesaDestinoId,
+                                          'billetesRecibidos':
+                                              _billetesSeleccionados,
+                                        });
+                                      }
+                                    },
+                                  );
+                                },
+                          icon: _procesandoPago
+                              ? SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white,
+                                    ),
+                                    strokeWidth: 2.0,
+                                  ),
+                                )
+                              : Icon(Icons.payment, size: 20),
+                          label: Text(
+                            _procesandoPago
+                                ? 'Procesando...'
+                                : 'Confirmar Pago',
+                          ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: _primary,
                             foregroundColor: Colors.white,
@@ -1721,10 +1792,22 @@ class _MesasScreenState extends State<MesasScreen> {
             ),
           ),
         ),
-      ),
-    );
+      );
 
     if (formResult != null) {
+      // Evitar múltiples procesamientos
+      if (_procesandoPago) {
+        print(
+          '⚠️ Ya hay un pago en proceso. Evitando procesamiento duplicado.',
+        );
+        return;
+      }
+
+      // Marcar que estamos procesando
+      setState(() {
+        _procesandoPago = true;
+      });
+
       try {
         // Manejar las opciones especiales
         bool esCortesia = formResult['esCortesia'] ?? false;
@@ -1800,9 +1883,20 @@ class _MesasScreenState extends State<MesasScreen> {
         print('  - Pagado por: $usuarioPago');
         print('  - Tipo final del pedido: ${pedido.tipo}');
 
+        // Validar forma de pago
+        String medioPago = formResult['medioPago'] ?? 'efectivo';
+        if (medioPago != 'efectivo' && medioPago != 'transferencia') {
+          print(
+            '⚠️ Forma de pago no reconocida: "$medioPago". Usando efectivo por defecto.',
+          );
+          medioPago = 'efectivo';
+        }
+
+        print('💲 Forma de pago seleccionada: $medioPago');
+
         await _pedidoService.pagarPedido(
           pedido.id,
-          formaPago: formResult['medioPago'],
+          formaPago: medioPago,
           propina: propina,
           procesadoPor: usuarioPago, // Cambio de 'pagadoPor' a 'procesadoPor'
           esCortesia: esCortesia,
@@ -1820,6 +1914,7 @@ class _MesasScreenState extends State<MesasScreen> {
 
         // CREAR FACTURA AUTOMÁTICAMENTE DESPUÉS DEL PAGO EXITOSO
         print('📄 Creando factura automática para pedido pagado...');
+        print('💰 Método de pago seleccionado: ${formResult['medioPago']}');
         await _crearFacturaPedido(
           pedido.id,
           formaPago: formResult['medioPago'],
@@ -1883,7 +1978,17 @@ class _MesasScreenState extends State<MesasScreen> {
           ),
         );
         _loadMesas(); // Recargar las mesas
+
+        // Resetear la bandera de procesamiento después de completar
+        setState(() {
+          _procesandoPago = false;
+        });
       } catch (e) {
+        // Resetear la bandera de procesamiento en caso de error
+        setState(() {
+          _procesandoPago = false;
+        });
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error al procesar el pago: $e'),
@@ -1891,6 +1996,11 @@ class _MesasScreenState extends State<MesasScreen> {
           ),
         );
       }
+    } else {
+      // Si el usuario canceló el diálogo, resetear el procesamiento
+      setState(() {
+        _procesandoPago = false;
+      });
     }
   }
 
@@ -2015,12 +2125,14 @@ class _MesasScreenState extends State<MesasScreen> {
 
     try {
       // Generar resumen desde el backend usando el nuevo endpoint
-      final resumen = await _impresionService.generarResumenPedido(pedido.id);
+      var resumenNullable = await _impresionService.generarResumenPedido(
+        pedido.id,
+      );
 
-      // Cerrar diálogo de carga
-      Navigator.of(context).pop();
+      if (resumenNullable == null) {
+        // Cerrar diálogo de carga
+        Navigator.of(context).pop();
 
-      if (resumen == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('No se pudo generar el resumen del pedido'),
@@ -2029,6 +2141,12 @@ class _MesasScreenState extends State<MesasScreen> {
         );
         return;
       }
+
+      // Actualizar resumen con información del negocio
+      final resumen = await actualizarConInfoNegocio(resumenNullable);
+
+      // Cerrar diálogo de carga
+      Navigator.of(context).pop();
 
       // Mostrar diálogo con resumen - trabajando directamente con los datos del endpoint
       showDialog(
@@ -2215,636 +2333,641 @@ class _MesasScreenState extends State<MesasScreen> {
           ),
         ),
       );
-    } catch (e) {
-      // Cerrar diálogo de carga si está abierto
-      Navigator.of(context).pop();
 
+    if (formResult != null) {
+      // Evitar múltiples procesamientos
+      if (_procesandoPago) {
+        print(
+          '⚠️ Ya hay un pago en proceso. Evitando procesamiento duplicado.',
+        );
+        return;
+      }
+
+      // Marcar que estamos procesando
+      setState(() {
+        _procesandoPago = true;
+      });
+
+      try {
+        // Manejar las opciones especiales
+        bool esCortesia = formResult['esCortesia'] ?? false;
+        bool esConsumoInterno = formResult['esConsumoInterno'] ?? false;
+        String? mesaDestinoId = formResult['mesaDestinoId'];
+
+        // Preparar datos de pago
+        double propina = 0.0;
+        // Calcular propina basada en el porcentaje ingresado
+        double propinaPercentage =
+            double.tryParse(formResult['propina'] ?? '0') ?? 0.0;
+        if (propinaPercentage > 0) {
+          propina = (pedido.total * propinaPercentage / 100).roundToDouble();
+        }
+
+        print(
+          '📝 Procesando pago del pedido: "${pedido.id}" - Mesa: ${mesa.nombre}',
+        );
+        print('🎯 Opciones seleccionadas:');
+        print('  - Es cortesía: $esCortesia');
+        print('  - Es consumo interno: $esConsumoInterno');
+        print('  - Mesa destino: $mesaDestinoId');
+        print('  - Tipo actual del pedido: ${pedido.tipo}');
+
+        if (pedido.id.isEmpty) {
+          throw Exception('El ID del pedido es inválido o está vacío');
+        }
+
+        print('🆔 ID del pedido confirmado: "${pedido.id}"');
+
+        // Obtener el usuario actual para el pago
+        final userProvider = Provider.of<UserProvider>(context, listen: false);
+        final usuarioPago = userProvider.userName ?? 'Usuario Desconocido';
+
+        // PRIMERO: Cambiar el tipo de pedido si es necesario
+        if (esCortesia || esConsumoInterno) {
+          try {
+            TipoPedido nuevoTipo = esCortesia
+                ? TipoPedido.cortesia
+                : TipoPedido.interno;
+            print('🔄 Cambiando tipo de pedido a: $nuevoTipo');
+            print('  - Pedido ID: ${pedido.id}');
+            print('  - Tipo anterior: ${pedido.tipo}');
+
+            await _pedidoService.actualizarTipoPedido(pedido.id, nuevoTipo);
+
+            // Actualizar el objeto pedido local
+            pedido.tipo = nuevoTipo;
+
+            print('✅ Tipo de pedido actualizado correctamente');
+            print('  - Nuevo tipo asignado: $nuevoTipo');
+            print('  - Tipo en objeto local: ${pedido.tipo}');
+
+            // Esperar un momento para que el backend procese el cambio
+            await Future.delayed(Duration(milliseconds: 300));
+          } catch (e) {
+            print('❌ Error al cambiar tipo de pedido: $e');
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Error al actualizar tipo de pedido: $e'),
+                backgroundColor: Colors.red,
+              ),
+            );
+            Navigator.of(context).pop();
+            return; // Salir si falla el cambio de tipo
+          }
+        }
+
+        // SEGUNDO: Pagar el pedido (sin cambiar tipo aquí)
+        print('💰 Iniciando proceso de pago...');
+        print('  - Forma de pago: ${formResult['medioPago']}');
+        print('  - Propina: $propina');
+        print('  - Pagado por: $usuarioPago');
+        print('  - Tipo final del pedido: ${pedido.tipo}');
+
+        // Validar forma de pago
+        String medioPago = formResult['medioPago'] ?? 'efectivo';
+        if (medioPago != 'efectivo' && medioPago != 'transferencia') {
+          print(
+            '⚠️ Forma de pago no reconocida: "$medioPago". Usando efectivo por defecto.',
+          );
+          medioPago = 'efectivo';
+        }
+
+        print('💲 Forma de pago seleccionada: $medioPago');
+
+        await _pedidoService.pagarPedido(
+          pedido.id,
+          formaPago: medioPago,
+          propina: propina,
+          procesadoPor: usuarioPago, // Cambio de 'pagadoPor' a 'procesadoPor'
+          esCortesia: esCortesia,
+          esConsumoInterno: esConsumoInterno,
+          motivoCortesia: esCortesia ? 'Pedido procesado como cortesía' : null,
+          tipoConsumoInterno: esConsumoInterno ? 'empleado' : null,
+        );
+
+        print('✅ Pago procesado exitosamente');
+
+        // Actualizar el objeto pedido con el estado devuelto por el servidor
+        pedido.estado = EstadoPedido.pagado;
+        print('  - Estado actualizado a: ${pedido.estado}');
+        print('  - Tipo final confirmado: ${pedido.tipo}');
+
+        // CREAR FACTURA AUTOMÁTICAMENTE DESPUÉS DEL PAGO EXITOSO
+        print('📄 Creando factura automática para pedido pagado...');
+        print('💰 Método de pago seleccionado: ${formResult['medioPago']}');
+        await _crearFacturaPedido(
+          pedido.id,
+          formaPago: formResult['medioPago'],
+          propina: propina,
+          pagadoPor: usuarioPago,
+        );
+
+        // Manejar opciones especiales antes de liberar la mesa
+        if (mesaDestinoId != null) {
+          // Mover a otra mesa
+          try {
+            final mesasDisponibles = await _mesaService.getMesas();
+            final mesaDestino = mesasDisponibles.firstWhere(
+              (m) => m.id == mesaDestinoId,
+            );
+
+            mesaDestino.ocupada = true;
+            mesaDestino.total = pedido.total;
+            await _mesaService.updateMesa(mesaDestino);
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Pedido movido a la mesa ${mesaDestino.nombre} y pagado',
+                ),
+                backgroundColor: Colors.green,
+              ),
+            );
+          } catch (e) {
+            print('Error moviendo pedido a otra mesa: $e');
+          }
+        }
+
+        // Liberar la mesa después del pago exitoso
+        try {
+          mesa.ocupada = false;
+          mesa.productos = [];
+          mesa.total = 0.0;
+          await _mesaService.updateMesa(mesa);
+          print('✅ Mesa ${mesa.nombre} liberada después del pago');
+        } catch (e) {
+          print('❌ Error al liberar mesa después del pago: $e');
+        }
+
+        // Notificar el cambio para actualizar el dashboard
+        NotificationService().notificarCambioPedido(pedido);
+
+        // Notificar que se debe actualizar la lista de documentos
+        _notificarActualizacionDocumentos(pedido);
+
+        String tipoTexto = '';
+        if (esCortesia) tipoTexto = ' (Cortesía)';
+        if (esConsumoInterno) tipoTexto = ' (Consumo Interno)';
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Pedido pagado y documento generado exitosamente$tipoTexto',
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+        _loadMesas(); // Recargar las mesas
+
+        // Resetear la bandera de procesamiento después de completar
+        setState(() {
+          _procesandoPago = false;
+        });
+      } catch (e) {
+        // Resetear la bandera de procesamiento en caso de error
+        setState(() {
+          _procesandoPago = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al procesar el pago: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } else {
+      // Si el usuario canceló el diálogo, resetear el procesamiento
+      setState(() {
+        _procesandoPago = false;
+      });
+    }
+  }
+
+  // Notificar actualización de documentos
+  Future<void> _notificarActualizacionDocumentos(Pedido pedido) async {
+    try {
+      print(
+        '📄 Notificando actualización de documentos para pedido: ${pedido.id}',
+      );
+
+      // Aquí puedes agregar lógica adicional si necesitas comunicación
+      // entre pantallas para actualizar los documentos en tiempo real
+
+      // Por ejemplo, usando un EventBus o Stream si lo tienes configurado
+      // EventBus().fire(DocumentoActualizadoEvent(pedido.id));
+    } catch (e) {
+      print('❌ Error notificando actualización de documentos: $e');
+    }
+  }
+
+  Future<Mesa?> _mostrarDialogoSeleccionMesa() async {
+    try {
+      // Cargar la lista de mesas disponibles
+      final mesas = await _mesaService.getMesas();
+
+      // Filtrar mesas especiales y la mesa actual
+      final mesasDisponibles = mesas
+          .where(
+            (mesa) => ![
+              'DOMICILIO',
+              'CAJA',
+              'MESA AUXILIAR',
+            ].contains(mesa.nombre.toUpperCase()),
+          )
+          .toList();
+
+      if (mesasDisponibles.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('No hay otras mesas disponibles'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return null;
+      }
+
+      // Mostrar diálogo de selección
+      final mesaSeleccionada = await showDialog<Mesa>(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            backgroundColor: _cardBg,
+            title: Text(
+              'Seleccionar mesa destino',
+              style: TextStyle(color: _textLight),
+            ),
+            content: Container(
+              width: double.maxFinite,
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: mesasDisponibles.length,
+                itemBuilder: (context, index) {
+                  final mesa = mesasDisponibles[index];
+                  return ListTile(
+                    title: Text(
+                      mesa.nombre,
+                      style: TextStyle(color: _textLight),
+                    ),
+                    subtitle: Text(
+                      mesa.ocupada ? 'Ocupada' : 'Libre',
+                      style: TextStyle(
+                        color: mesa.ocupada ? Colors.orange : Colors.green,
+                      ),
+                    ),
+                    onTap: () => Navigator.of(context).pop(mesa),
+                  );
+                },
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text('Cancelar', style: TextStyle(color: _textLight)),
+              ),
+            ],
+          );
+        },
+      );
+
+      return mesaSeleccionada;
+    } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error generando resumen: $e'),
+          content: Text('Error al cargar las mesas: $e'),
           backgroundColor: Colors.red,
         ),
       );
+      return null;
     }
   }
 
-  // Método auxiliar para construir items de producto con ingredientes (nuevo endpoint)
-  Widget _buildProductoItemConIngredientes(Map<String, dynamic> producto) {
-    return Container(
-      padding: EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Información del producto
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${producto['cantidad'] ?? 1}x ${producto['nombre'] ?? 'Producto desconocido'}',
-                      style: TextStyle(
-                        color: _textLight,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    if (producto['observaciones'] != null &&
-                        producto['observaciones'].toString().isNotEmpty)
-                      Padding(
-                        padding: EdgeInsets.only(top: 4),
-                        child: Text(
-                          'Observaciones: ${producto['observaciones']}',
-                          style: TextStyle(
-                            color: _textLight.withOpacity(0.8),
-                            fontSize: 12,
-                            fontStyle: FontStyle.italic,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              Text(
-                '\$${((producto['precio'] ?? 0.0) * (producto['cantidad'] ?? 1)).toStringAsFixed(0)}',
-                style: TextStyle(
-                  color: _primary,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-
-          // Ingredientes requeridos
-          if (producto['ingredientesRequeridos'] != null &&
-              (producto['ingredientesRequeridos'] as List).isNotEmpty)
-            Padding(
-              padding: EdgeInsets.only(top: 8, left: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Ingredientes requeridos:',
-                    style: TextStyle(
-                      color: _textLight.withOpacity(0.9),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  SizedBox(height: 4),
-                  ...(producto['ingredientesRequeridos'] as List)
-                      .map(
-                        (ingrediente) => Padding(
-                          padding: EdgeInsets.only(left: 8, bottom: 2),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 4,
-                                height: 4,
-                                decoration: BoxDecoration(
-                                  color: Colors.green,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                              SizedBox(width: 6),
-                              Text(
-                                '${ingrediente['nombre']} (${ingrediente['cantidad']} ${ingrediente['unidad'] ?? ''})',
-                                style: TextStyle(
-                                  color: _textLight.withOpacity(0.8),
-                                  fontSize: 11,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      )
-                      .toList(),
-                ],
-              ),
+  // Método para mostrar resumen e imprimir factura
+  void _mostrarResumenImpresion(Pedido pedido) async {
+    // Mostrar indicador de carga
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: _cardBg,
+        content: Row(
+          children: [
+            CircularProgressIndicator(color: _primary),
+            SizedBox(width: 20),
+            Text(
+              'Generando resumen de impresión...',
+              style: TextStyle(color: _textLight),
             ),
-
-          // Ingredientes opcionales
-          if (producto['ingredientesOpcionales'] != null &&
-              (producto['ingredientesOpcionales'] as List).isNotEmpty)
-            Padding(
-              padding: EdgeInsets.only(top: 8, left: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Ingredientes opcionales:',
-                    style: TextStyle(
-                      color: _textLight.withOpacity(0.9),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  SizedBox(height: 4),
-                  ...(producto['ingredientesOpcionales'] as List)
-                      .map(
-                        (ingrediente) => Padding(
-                          padding: EdgeInsets.only(left: 8, bottom: 2),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 4,
-                                height: 4,
-                                decoration: BoxDecoration(
-                                  color: Colors.blue,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                              SizedBox(width: 6),
-                              Text(
-                                '${ingrediente['nombre']} (${ingrediente['cantidad']} ${ingrediente['unidad'] ?? ''})',
-                                style: TextStyle(
-                                  color: _textLight.withOpacity(0.8),
-                                  fontSize: 11,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      )
-                      .toList(),
-                ],
-              ),
-            ),
-
-          SizedBox(height: 8),
-          Divider(color: _textLight.withOpacity(0.1), height: 1),
-        ],
+          ],
+        ),
       ),
     );
-  }
 
-  // Método auxiliar para construir secciones del resumen
-  Widget _buildSeccionResumen(String titulo, List<String> contenido) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          titulo,
-          style: TextStyle(
-            color: _primary,
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
+    try {
+      // Generar resumen desde el backend usando el nuevo endpoint
+      var resumenNullable = await _impresionService.generarResumenPedido(
+        pedido.id,
+      );
+
+      if (resumenNullable == null) {
+        // Cerrar diálogo de carga
+        Navigator.of(context).pop();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('No se pudo generar el resumen del pedido'),
+            backgroundColor: Colors.red,
           ),
-        ),
-        SizedBox(height: 4),
-        ...contenido
-            .map(
-              (linea) => Text(
-                linea,
-                style: TextStyle(color: _textLight, fontSize: 13),
-              ),
-            )
-            .toList(),
-        SizedBox(height: 12),
-      ],
-    );
-  }
+        );
+        return;
+      }
 
-  // Método auxiliar para construir items de producto
-  Widget _buildProductoItem(Map<String, dynamic> producto) {
-    return Container(
-      padding: EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 30,
-                child: Text(
-                  '${producto['cantidad']}x',
-                  style: TextStyle(
-                    color: _textLight,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      producto['nombre'] ?? 'Producto desconocido',
-                      style: TextStyle(
-                        color: _textLight,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    if (producto['observaciones'] != null &&
-                        producto['observaciones'].toString().isNotEmpty)
+      // Actualizar resumen con información del negocio
+      final resumen = await actualizarConInfoNegocio(resumenNullable);
+
+      // Cerrar diálogo de carga
+      Navigator.of(context).pop();
+
+      // Mostrar diálogo con resumen - trabajando directamente con los datos del endpoint
+      showDialog(
+        context: context,
+        builder: (context) => Dialog(
+          backgroundColor: _cardBg,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
+          child: Container(
+            width: MediaQuery.of(context).size.width * 0.9,
+            padding: EdgeInsets.all(20),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Encabezado
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
                       Text(
-                        '  • ${producto['observaciones']}',
+                        'Resumen del Pedido',
                         style: TextStyle(
-                          color: _textLight.withOpacity(0.7),
-                          fontSize: 12,
-                          fontStyle: FontStyle.italic,
+                          color: _textLight,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                    // Mostrar ingredientes si están disponibles
-                    if (producto['ingredientes'] != null &&
-                        (producto['ingredientes'] as List).isNotEmpty) ...[
-                      SizedBox(height: 4),
-                      Text(
-                        'Ingredientes:',
-                        style: TextStyle(
-                          color: _textLight.withOpacity(0.8),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                        ),
+                      IconButton(
+                        icon: Icon(Icons.close, color: _textLight),
+                        onPressed: () => Navigator.pop(context),
                       ),
-                      ...(producto['ingredientes'] as List)
-                          .map<Widget>(
-                            (ing) => Text(
-                              '  - ${ing['nombre']}: ${ing['cantidad']} ${ing['unidad']}',
-                              style: TextStyle(
-                                color: _textLight.withOpacity(0.6),
-                                fontSize: 10,
-                              ),
-                            ),
-                          )
-                          .toList(),
                     ],
-                  ],
-                ),
-              ),
-              Text(
-                '\$${producto['subtotal'].toStringAsFixed(0)}',
-                style: TextStyle(
-                  color: _textLight,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 4),
-          Divider(color: _textLight.withOpacity(0.1), height: 1),
-        ],
-      ),
-    );
-  }
+                  ),
+                  Divider(color: _textLight.withOpacity(0.3)),
+                  SizedBox(height: 16),
 
-  // Método para imprimir resumen de pedido (usando nuevo endpoint)
-  Future<void> _imprimirResumenPedido(Map<String, dynamic> resumen) async {
-    try {
-      // Mostrar opciones de impresión/compartir
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          backgroundColor: _cardBg,
-          title: Text(
-            'Opciones de Impresión',
-            style: TextStyle(color: _textLight),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Resumen de Pedido #${resumen['pedidoId'] ?? 'N/A'}',
-                style: TextStyle(color: _textLight),
+                  // Información del restaurante
+                  _buildSeccionResumen('RESTAURANTE', [
+                    resumen['nombreRestaurante'] ?? 'SOPA Y CARBÓN',
+                    resumen['direccionRestaurante'] ??
+                        'Dirección del restaurante',
+                    'Tel: ${resumen['telefonoRestaurante'] ?? 'Teléfono'}',
+                  ]),
+
+                  // Información del pedido
+                  _buildSeccionResumen('INFORMACIÓN DEL PEDIDO', [
+                    'Pedido: ${resumen['pedidoId'] ?? 'N/A'}',
+                    'Fecha: ${resumen['fecha'] ?? 'N/A'}',
+                    'Hora: ${resumen['hora'] ?? 'N/A'}',
+                    if (resumen['mesa'] != null) 'Mesa: ${resumen['mesa']}',
+                    if (resumen['mesero'] != null)
+                      'Mesero: ${resumen['mesero']}',
+                    if (resumen['tipo'] != null) 'Tipo: ${resumen['tipo']}',
+                  ]),
+
+                  // Detalle de productos
+                  Text(
+                    'DETALLE DE PRODUCTOS:',
+                    style: TextStyle(
+                      color: _textLight,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+
+                  Container(
+                    constraints: BoxConstraints(maxHeight: 350),
+                    child: SingleChildScrollView(
+                      child: Column(
+                        children: (resumen['productos'] as List? ?? [])
+                            .map<Widget>(
+                              (producto) =>
+                                  _buildProductoItemConIngredientes(producto),
+                            )
+                            .toList(),
+                      ),
+                    ),
+                  ),
+
+                  SizedBox(height: 16),
+                  Divider(color: _textLight.withOpacity(0.3)),
+
+                  // Total
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'TOTAL:',
+                        style: TextStyle(
+                          color: _textLight,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        '\$${(resumen['total'] ?? 0.0).toStringAsFixed(0)}',
+                        style: TextStyle(
+                          color: _primary,
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  SizedBox(height: 24),
+
+                  // Botones de acción
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      ElevatedButton.icon(
+                        onPressed: () async {
+                          await _imprimirResumenPedido(resumen);
+                        },
+                        icon: Icon(Icons.print, size: 18),
+                        label: Text('Imprimir'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                        ),
+                      ),
+                      ElevatedButton.icon(
+                        onPressed: () async {
+                          await _compartirResumenPedido(resumen);
+                        },
+                        icon: Icon(Icons.share, size: 18),
+                        label: Text('Compartir'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue,
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                        ),
+                      ),
+                      ElevatedButton.icon(
+                        onPressed: () async {
+                          Navigator.pop(context); // Cerrar diálogo actual
+
+                          // Solicitar información de pago antes de crear la factura
+                          final formResult = await _mostrarDialogoSimplePago();
+
+                          if (formResult != null) {
+                            await _crearFacturaPedido(
+                              resumen['pedidoId'],
+                              formaPago: formResult['medioPago'],
+                              propina: formResult['propina'] ?? 0.0,
+                              pagadoPor: formResult['pagadoPor'],
+                            );
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Factura creada exitosamente'),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                          }
+                        },
+                        icon: Icon(Icons.receipt_long, size: 18),
+                        label: Text('Facturar'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange,
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-              SizedBox(height: 16),
-              ListTile(
-                leading: Icon(Icons.print, color: _primary),
-                title: Text('Imprimir', style: TextStyle(color: _textLight)),
-                subtitle: Text(
-                  'Usar impresora del sistema',
-                  style: TextStyle(color: _textLight.withOpacity(0.7)),
-                ),
-                onTap: () async {
-                  Navigator.pop(context);
-                  try {
-                    await _pdfService.mostrarDialogoImpresion(
-                      resumen: resumen,
-                      esFactura: false,
-                    );
-                    _mostrarMensajeExito('PDF enviado a impresión');
-                  } catch (e) {
-                    _mostrarMensajeError('Error al imprimir: $e');
-                  }
-                },
-              ),
-              Divider(color: _textLight.withOpacity(0.3)),
-              ListTile(
-                leading: Icon(Icons.preview, color: _primary),
-                title: Text(
-                  'Vista Previa',
-                  style: TextStyle(color: _textLight),
-                ),
-                subtitle: Text(
-                  'Ver antes de imprimir',
-                  style: TextStyle(color: _textLight.withOpacity(0.7)),
-                ),
-                onTap: () async {
-                  Navigator.pop(context);
-                  try {
-                    await _pdfService.mostrarVistaPrevia(
-                      resumen: resumen,
-                      esFactura: false,
-                    );
-                  } catch (e) {
-                    _mostrarMensajeError('Error en vista previa: $e');
-                  }
-                },
-              ),
-              Divider(color: _textLight.withOpacity(0.3)),
-              ListTile(
-                leading: Icon(Icons.share, color: _primary),
-                title: Text(
-                  'Compartir PDF',
-                  style: TextStyle(color: _textLight),
-                ),
-                subtitle: Text(
-                  'Enviar por WhatsApp, email, etc.',
-                  style: TextStyle(color: _textLight.withOpacity(0.7)),
-                ),
-                onTap: () async {
-                  Navigator.pop(context);
-                  try {
-                    await _pdfService.compartirPDF(
-                      resumen: resumen,
-                      esFactura: false,
-                    );
-                  } catch (e) {
-                    _mostrarMensajeError('Error al compartir: $e');
-                  }
-                },
-              ),
-              Divider(color: _textLight.withOpacity(0.3)),
-              ListTile(
-                leading: Icon(Icons.save, color: _primary),
-                title: Text('Guardar PDF', style: TextStyle(color: _textLight)),
-                subtitle: Text(
-                  'Almacenar en el dispositivo',
-                  style: TextStyle(color: _textLight.withOpacity(0.7)),
-                ),
-                onTap: () async {
-                  Navigator.pop(context);
-                  try {
-                    final file = await _pdfService.guardarPDF(
-                      resumen: resumen,
-                      esFactura: false,
-                    );
-                    _mostrarMensajeExito('PDF guardado: ${file.path}');
-                  } catch (e) {
-                    _mostrarMensajeError('Error al guardar: $e');
-                  }
-                },
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('Cancelar', style: TextStyle(color: _textLight)),
             ),
-          ],
+          ),
         ),
       );
-    } catch (e) {
-      _mostrarMensajeError('Error generando opciones: $e');
-    }
-  }
 
-  // Método para compartir resumen de pedido
-  Future<void> _compartirResumenPedido(Map<String, dynamic> resumen) async {
-    try {
-      // PASO 1: Guardar el resumen como documento en el módulo de documentos
-      print('💾 Guardando resumen como documento antes de compartir...');
-
-      final userProvider = Provider.of<UserProvider>(context, listen: false);
-      final atendidoPor = userProvider.userName ?? 'Usuario Desconocido';
-
-      // TODO: Implementar guardado de documento usando FacturaService
-      // final documentoGuardado = await _facturaService
-      //     .guardarDocumentoDesdeResumen(
-      //       resumen: resumen,
-      //       tipoDocumento:
-      //           'Recibo', // Es un recibo porque es compartir, no factura oficial
-      //       pedidoId: resumen['pedidoId']?.toString() ?? '',
-      //       medioPago: 'N/A', // Se definirá cuando se pague
-      //       atendidoPor: atendidoPor,
-      //       observaciones: 'Documento generado al compartir resumen de pedido',
-      //     );
-
-      // TODO: Check if document was saved
-      // if (documentoGuardado != null) {
-      //   print('✅ Documento guardado correctamente en módulo documentos');
-      // } else {
-      //   print(
-      //     '⚠️ No se pudo guardar el documento, pero continuamos con compartir',
-      //   );
-      // }
-
-      // PASO 2: Compartir el PDF como antes
-      await _pdfService.compartirPDF(resumen: resumen, esFactura: false);
-      _mostrarMensajeExito('Resumen compartido y guardado en documentos');
-    } catch (e) {
-      print('❌ Error en _compartirResumenPedido: $e');
-      _mostrarMensajeError('Error compartiendo resumen: $e');
-    }
-  }
-
-  // Método para crear factura automáticamente al pagar - SIMPLIFICADO
-  Future<void> _crearFacturaPedido(
-    String pedidoId, {
-    String? formaPago,
-    double? propina,
-    String? pagadoPor,
-  }) async {
-    try {
-      print('🧾 Creando documento para pedido: $pedidoId');
-
-      // PASO 1: Obtener los datos del pedido para saber la mesa
-      final pedidoResponse = await http.get(
-        Uri.parse('${ApiConfig().baseUrl}/api/pedidos/$pedidoId'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-      );
-
-      if (pedidoResponse.statusCode != 200) {
-        print('❌ Error obteniendo pedido: ${pedidoResponse.statusCode}');
+    if (formResult != null) {
+      // Evitar múltiples procesamientos
+      if (_procesandoPago) {
+        print(
+          '⚠️ Ya hay un pago en proceso. Evitando procesamiento duplicado.',
+        );
         return;
       }
 
-      final pedidoData = json.decode(pedidoResponse.body);
-      final pedido = pedidoData['data'] ?? pedidoData;
-      final mesaNombre = pedido['mesa'] ?? 'GENERAL';
+      // Marcar que estamos procesando
+      setState(() {
+        _procesandoPago = true;
+      });
 
-      print('📍 Mesa: $mesaNombre');
+      try {
+        // Manejar las opciones especiales
+        bool esCortesia = formResult['esCortesia'] ?? false;
+        bool esConsumoInterno = formResult['esConsumoInterno'] ?? false;
+        String? mesaDestinoId = formResult['mesaDestinoId'];
 
-      // PASO 2: Generar resumen completo del pedido
-      final resumen = await _impresionService.generarResumenPedido(pedidoId);
+        // Preparar datos de pago
+        double propina = 0.0;
+        // Calcular propina basada en el porcentaje ingresado
+        double propinaPercentage =
+            double.tryParse(formResult['propina'] ?? '0') ?? 0.0;
+        if (propinaPercentage > 0) {
+          propina = (pedido.total * propinaPercentage / 100).roundToDouble();
+        }
 
-      if (resumen == null) {
-        print('❌ No se pudo generar resumen del pedido');
-        return;
-      }
-
-      // PASO 3: Crear el documento usando el endpoint correcto documentos-mesa
-      final documentoData = {
-        'mesaNombre': mesaNombre,
-        'vendedor':
-            Provider.of<UserProvider>(context, listen: false).userName ??
-            'Sistema',
-        'pedidosIds': [pedidoId],
-        'resumenPedido': resumen,
-        'tipoDocumento': 'Factura',
-        'observaciones': 'Factura generada automáticamente al procesar pago',
-        // Incluir información del pago si está disponible
-        if (formaPago != null) 'formaPago': formaPago,
-        if (propina != null && propina > 0) 'propina': propina,
-        if (pagadoPor != null) 'pagadoPor': pagadoPor,
-        'pagado': true,
-        'fechaPago': DateTime.now().toIso8601String(),
-      };
-
-      // Debug: Verificar qué datos se están enviando
-      print('📤 Enviando documento al backend:');
-      print('  - mesaNombre: $mesaNombre');
-      print('  - formaPago: $formaPago');
-      print('  - pagadoPor: $pagadoPor');
-      print('  - propina: $propina');
-      print('  - JSON completo: ${json.encode(documentoData)}');
-
-      final response = await http.post(
-        Uri.parse('${ApiConfig().baseUrl}/api/documentos-mesa'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: json.encode(documentoData),
-      );
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final responseData = json.decode(response.body);
-        final documento = responseData['data'] ?? responseData;
         print(
-          '✅ Documento creado: ${documento['numeroDocumento'] ?? documento['_id']}',
+          '📝 Procesando pago del pedido: "${pedido.id}" - Mesa: ${mesa.nombre}',
         );
-      } else {
-        print(
-          '❌ Error creando documento: ${response.statusCode} - ${response.body}',
-        );
-      }
-    } catch (e) {
-      print('❌ Error en _crearFacturaPedido: $e');
-    }
-  }
+        print('🎯 Opciones seleccionadas:');
+        print('  - Es cortesía: $esCortesia');
+        print('  - Es consumo interno: $esConsumoInterno');
+        print('  - Mesa destino: $mesaDestinoId');
+        print('  - Tipo actual del pedido: ${pedido.tipo}');
 
-  // Método para imprimir factura oficial
-  Future<void> _imprimirFacturaOficial(Map<String, dynamic> factura) async {
-    try {
-      // Mostrar opciones de impresión/compartir para factura
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          backgroundColor: _cardBg,
-          title: Text(
-            'Opciones de Factura',
-            style: TextStyle(color: _textLight),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Factura #${factura['numero'] ?? 'N/A'}',
-                style: TextStyle(color: _textLight),
+        if (pedido.id.isEmpty) {
+          throw Exception('El ID del pedido es inválido o está vacío');
+        }
+
+        print('🆔 ID del pedido confirmado: "${pedido.id}"');
+
+        // Obtener el usuario actual para el pago
+        final userProvider = Provider.of<UserProvider>(context, listen: false);
+        final usuarioPago = userProvider.userName ?? 'Usuario Desconocido';
+
+        // PRIMERO: Cambiar el tipo de pedido si es necesario
+        if (esCortesia || esConsumoInterno) {
+          try {
+            TipoPedido nuevoTipo = esCortesia
+                ? TipoPedido.cortesia
+                : TipoPedido.interno;
+            print('🔄 Cambiando tipo de pedido a: $nuevoTipo');
+            print('  - Pedido ID: ${pedido.id}');
+            print('  - Tipo anterior: ${pedido.tipo}');
+
+            await _pedidoService.actualizarTipoPedido(pedido.id, nuevoTipo);
+
+            // Actualizar el objeto pedido local
+            pedido.tipo = nuevoTipo;
+
+            print('✅ Tipo de pedido actualizado correctamente');
+            print('  - Nuevo tipo asignado: $nuevoTipo');
+            print('  - Tipo en objeto local: ${pedido.tipo}');
+
+            // Esperar un momento para que el backend procese el cambio
+            await Future.delayed(Duration(milliseconds: 300));
+          } catch (e) {
+            print('❌ Error al cambiar tipo de pedido: $e');
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Error al actualizar tipo de pedido: $e'),
+                backgroundColor: Colors.red,
               ),
-              SizedBox(height: 16),
-              ListTile(
-                leading: Icon(Icons.print, color: _primary),
-                title: Text(
-                  'Imprimir Factura',
-                  style: TextStyle(color: _textLight),
-                ),
-                subtitle: Text(
-                  'Usar impresora del sistema',
-                  style: TextStyle(color: _textLight.withOpacity(0.7)),
-                ),
-                onTap: () async {
-                  Navigator.pop(context);
-                  try {
-                    await _pdfService.mostrarDialogoImpresion(
-                      resumen: factura,
-                      esFactura: true,
-                    );
-                    _mostrarMensajeExito('Factura enviada a impresión');
-                  } catch (e) {
-                    _mostrarMensajeError('Error al imprimir: $e');
-                  }
-                },
-              ),
-              Divider(color: _textLight.withOpacity(0.3)),
-              ListTile(
-                leading: Icon(Icons.preview, color: _primary),
-                title: Text(
-                  'Vista Previa',
-                  style: TextStyle(color: _textLight),
-                ),
-                subtitle: Text(
-                  'Ver factura antes de imprimir',
-                  style: TextStyle(color: _textLight.withOpacity(0.7)),
-                ),
-                onTap: () async {
-                  Navigator.pop(context);
-                  try {
-                    await _pdfService.mostrarVistaPrevia(
-                      resumen: factura,
-                      esFactura: true,
-                    );
-                  } catch (e) {
-                    _mostrarMensajeError('Error en vista previa: $e');
-                  }
-                },
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('Cancelar', style: TextStyle(color: _textLight)),
-            ),
-          ],
-        ),
-      );
-    } catch (e) {
-      _mostrarMensajeError('Error generando opciones: $e');
-    }
-  }
+            );
+            Navigator.of(context).pop();
+            return; // Salir si falla el cambio de tipo
+          }
+        }
 
-  // Método para compartir factura oficial
-  Future<void> _compartirFacturaOficial(Map<String, dynamic> factura) async {
-    try {
-      await _pdfService.compartirPDF(resumen: factura, esFactura: true);
-      _mostrarMensajeExito('Factura compartida exitosamente');
-    } catch (e) {
-      _mostrarMensajeError('Error compartiendo factura: $e');
-    }
-  }
+        // SEGUNDO: Pagar el pedido (sin cambiar tipo aquí)
+        print('💰 Iniciando proceso de pago...');
+        print('  - Forma de pago: ${formResult['medioPago']}');
+        print('  - Propina: $propina');
+        print('  - Pagado por: $usuarioPago');
+        print('  - Tipo final del pedido: ${pedido.tipo}');
 
-  // Método para imprimir pedido
-  Future<void> _imprimirPedido(Map<String, dynamic> resumen) async {
-    try {
-      final textoImpresion = _impresionService.generarTextoImpresion(resumen);
-
-      // En una app real, aquí se enviaría a una impresora
-      // Por ahora, mostraremos el texto en un diálogo
-      showDialog(
-        context: context,
+        // Validar forma de pago
+        String medioPago = formResult['medioPago'] ?? 'efectivo';
+        if (medioPago != 'efectivo' && medioPago != 'transferencia') {
+          print(
+            '⚠️ Forma de pago no reconocida: "$medioPago". Usando efectivo por defecto.',
         builder: (context) => AlertDialog(
           backgroundColor: _cardBg,
           title: Text(
@@ -4178,7 +4301,7 @@ class _MesasScreenState extends State<MesasScreen> {
                                         bottom: 2,
                                       ),
                                       child: Text(
-                                        '• ${item.cantidad}x ${item.producto?.nombre ?? "Producto"} - \$${(item.precio * item.cantidad).toStringAsFixed(0)}',
+                                        '• ${item.cantidad}x ${_getProductoNombre(item.producto)} - \$${(item.precio * item.cantidad).toStringAsFixed(0)}',
                                         style: TextStyle(
                                           color: _textLight.withOpacity(0.8),
                                           fontSize: 13,
@@ -4203,36 +4326,87 @@ class _MesasScreenState extends State<MesasScreen> {
 
                               SizedBox(height: 12),
 
-                              // Botón de pago (solo para admins)
-                              if (Provider.of<UserProvider>(
-                                context,
-                                listen: false,
-                              ).isAdmin)
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: ElevatedButton(
-                                    onPressed: () {
-                                      Navigator.pop(context); // Cerrar el modal
-                                      _mostrarDialogoPago(mesa, pedido);
-                                    },
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: _primary,
-                                      foregroundColor: Colors.white,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8),
+                              // Fila de botones para acciones
+                              Row(
+                                children: [
+                                  // Botón para editar pedido/agregar productos
+                                  Expanded(
+                                    child: ElevatedButton(
+                                      onPressed: () {
+                                        Navigator.pop(
+                                          context,
+                                        ); // Cerrar el modal
+                                        _editarPedidoExistente(mesa, pedido);
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.teal,
+                                        foregroundColor: Colors.white,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Icon(Icons.edit, size: 18),
+                                          SizedBox(width: 8),
+                                          Text(
+                                            Provider.of<UserProvider>(
+                                                  context,
+                                                  listen: false,
+                                                ).isAdmin
+                                                ? 'Editar Pedido'
+                                                : 'Agregar Productos',
+                                            style: TextStyle(fontSize: 13),
+                                          ),
+                                        ],
                                       ),
                                     ),
-                                    child: Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Icon(Icons.payment, size: 18),
-                                        SizedBox(width: 8),
-                                        Text('Procesar Pago'),
-                                      ],
-                                    ),
                                   ),
-                                ),
+
+                                  SizedBox(width: 8),
+
+                                  // Botón de pago (solo para admins)
+                                  if (Provider.of<UserProvider>(
+                                    context,
+                                    listen: false,
+                                  ).isAdmin)
+                                    Expanded(
+                                      child: ElevatedButton(
+                                        onPressed: () {
+                                          Navigator.pop(
+                                            context,
+                                          ); // Cerrar el modal
+                                          _mostrarDialogoPago(mesa, pedido);
+                                        },
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: _primary,
+                                          foregroundColor: Colors.white,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                          ),
+                                        ),
+                                        child: Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Icon(Icons.payment, size: 18),
+                                            SizedBox(width: 8),
+                                            Text(
+                                              'Procesar Pago',
+                                              style: TextStyle(fontSize: 13),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
                             ],
                           ),
                         ),
@@ -4288,6 +4462,44 @@ class _MesasScreenState extends State<MesasScreen> {
         ),
       );
     }
+  }
+
+  // Método para editar un pedido existente o agregar productos
+  void _editarPedidoExistente(Mesa mesa, Pedido pedido) {
+    // Logging detallado para debug
+    print('🔍 Editando pedido existente:');
+    print('  - ID: ${pedido.id}');
+    print('  - Mesa: ${mesa.nombre}');
+    print('  - Estado: ${pedido.estado}');
+    print('  - Total: ${pedido.total}');
+    print('  - Items: ${pedido.items.length}');
+
+    // Imprimir los primeros items para diagnóstico
+    if (pedido.items.isNotEmpty) {
+      print('📝 Detalles de los primeros items:');
+      for (var i = 0; i < pedido.items.length && i < 3; i++) {
+        final item = pedido.items[i];
+        print('  Item ${i + 1}:');
+        print('    - ProductoID: ${item.productoId}');
+        print('    - Nombre: ${_getProductoNombre(item.producto)}');
+        print('    - Cantidad: ${item.cantidad}');
+        print('    - Precio: ${item.precio}');
+      }
+    }
+
+    // Navega a la pantalla de PedidoScreen pasando tanto la mesa como el pedido existente
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PedidoScreen(
+          mesa: mesa,
+          pedidoExistente: pedido, // Pasamos el pedido existente para editarlo
+        ),
+      ),
+    ).then((_) {
+      // Recargar las mesas cuando regrese de la pantalla de pedido
+      _loadMesas();
+    });
   }
 
   // Métodos de utilidad para mostrar mensajes

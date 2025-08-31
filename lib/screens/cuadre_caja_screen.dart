@@ -7,6 +7,8 @@ import '../models/resumen_cierre.dart';
 import '../services/cuadre_caja_service.dart';
 import '../services/gasto_service.dart';
 import '../services/resumen_cierre_service.dart';
+import 'ingresos_caja_screen.dart';
+import '../utils/format_utils.dart';
 import 'gastos_screen.dart';
 import 'tipos_gasto_screen.dart';
 import 'package:http/http.dart' as http;
@@ -412,6 +414,11 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                     context,
                     MaterialPageRoute(builder: (context) => GastosScreen()),
                   );
+                } else if (value == 'ingresos_caja') {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => IngresosCajaScreen()),
+                  );
                 } else if (value == 'tipos_gasto') {
                   Navigator.push(
                     context,
@@ -426,10 +433,17 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                     children: [
                       Icon(Icons.receipt_long, color: primary),
                       SizedBox(width: 8),
-                      Text(
-                        'Gestión de Gastos',
-                        style: TextStyle(color: textDark),
-                      ),
+                      Text('Gestión de Gastos', style: TextStyle(color: textDark)),
+                    ],
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'ingresos_caja',
+                  child: Row(
+                    children: [
+                      Icon(Icons.attach_money, color: Colors.green),
+                      SizedBox(width: 8),
+                      Text('Ingresos de Caja', style: TextStyle(color: textDark)),
                     ],
                   ),
                 ),
@@ -819,7 +833,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                             ),
                             DataCell(
                               Text(
-                                '\$ ${cuadre.fondoInicial.toStringAsFixed(0)}',
+                                formatCurrency(cuadre.fondoInicial),
                                 style: TextStyle(color: textDark),
                               ),
                             ),
@@ -1287,7 +1301,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                             Padding(
                               padding: const EdgeInsets.all(8.0),
                               child: Text(
-                                "\$ ${_totalIngresos.toStringAsFixed(0)}",
+                                formatCurrency(_totalIngresos),
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   color: primary,
@@ -1336,7 +1350,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                           style: TextStyle(color: textDark),
                         ),
                         Text(
-                          "\$ ${_cuadreActual!.fondoInicial.toStringAsFixed(0)}",
+                          formatCurrency(_cuadreActual!.fondoInicial),
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             color: textDark,
@@ -1447,11 +1461,13 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                                           // Autocompletar los campos de ventas
                                           setState(() {
                                             _montoEfectivoController.text =
-                                                efectivoEsperado
-                                                    .toStringAsFixed(0);
+                                                formatNumberWithDots(
+                                                  efectivoEsperado,
+                                                );
                                             _montoTransferenciasController
-                                                .text = transferenciasEsperadas
-                                                .toStringAsFixed(0);
+                                                .text = formatNumberWithDots(
+                                              transferenciasEsperadas,
+                                            );
                                           });
                                           _actualizarTotales();
 
@@ -1521,7 +1537,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                                   style: TextStyle(color: textDark),
                                 ),
                                 Text(
-                                  "\$ ${efectivoEsperado.toStringAsFixed(0)}",
+                                  formatCurrency(efectivoEsperado),
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
                                     color: tieneError ? Colors.red : primary,
@@ -1540,7 +1556,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                                   style: TextStyle(color: textDark),
                                 ),
                                 Text(
-                                  "\$ ${transferenciasEsperadas.toStringAsFixed(0)}",
+                                  formatCurrency(transferenciasEsperadas),
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
                                     color: tieneError
@@ -1577,7 +1593,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                                         ),
                                       ),
                                       Text(
-                                        "\$ ${totalEsperado.toStringAsFixed(0)}",
+                                        formatCurrency(totalEsperado),
                                         style: TextStyle(
                                           fontWeight: FontWeight.bold,
                                           color: tieneError
@@ -1604,7 +1620,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                                           ),
                                         ),
                                         Text(
-                                          "\$ ${_totalIngresos.toStringAsFixed(0)}",
+                                          formatCurrency(_totalIngresos),
                                           style: TextStyle(
                                             fontWeight: FontWeight.bold,
                                             color: primary,
@@ -1626,7 +1642,9 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                                           ),
                                         ),
                                         Text(
-                                          "\$ ${(_totalIngresos - totalEsperado).toStringAsFixed(0)}",
+                                          formatCurrency(
+                                            _totalIngresos - totalEsperado,
+                                          ),
                                           style: TextStyle(
                                             fontWeight: FontWeight.bold,
                                             color:
@@ -2153,24 +2171,24 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
           ["", ""],
           [
             "Inicial + ventas efectivo",
-            "\$ ${(inicial + ventasEfectivo).toStringAsFixed(0)}",
+            formatCurrency(inicial + ventasEfectivo),
           ],
-          ["Transferencias", "\$ ${ventasTransferencias.toStringAsFixed(0)}"],
+          ["Transferencias", formatCurrency(ventasTransferencias)],
           [
             "Total inicial + ventas + transferencias",
-            "\$ ${(inicial + totalVentas).toStringAsFixed(0)}",
+            formatCurrency(inicial + totalVentas),
           ],
-          ["Pagos facturas de compras", "-\$ ${facturas.toStringAsFixed(0)}"],
-          ["Total Gastos", "-\$ ${gastos.toStringAsFixed(0)}"],
-          ["Total Efectivo en caja", "\$ ${totalEfectivo.toStringAsFixed(0)}"],
+          ["Pagos facturas de compras", "-" + formatCurrency(facturas)],
+          ["Total Gastos", "-" + formatCurrency(gastos)],
+          ["Total Efectivo en caja", formatCurrency(totalEfectivo)],
           ["", ""],
-          ["Debe tener en efectivo", "\$ ${totalEfectivo.toStringAsFixed(0)}"],
+          ["Debe tener en efectivo", formatCurrency(totalEfectivo)],
           [
             "Debe tener en transferencias",
-            "\$ ${ventasTransferencias.toStringAsFixed(0)}",
+            formatCurrency(ventasTransferencias),
           ],
           ["", ""],
-          ["Domicilios", "\$ 0"],
+          // Eliminado: Domicilios
         ]);
       },
     );
@@ -2390,20 +2408,13 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                               _buildInfoCardFallback([
                                 [
                                   'Fondo inicial',
-                                  '\$ ${cuadre.fondoInicial.toStringAsFixed(0)}',
+                                  formatCurrency(cuadre.fondoInicial),
                                 ],
                                 [
                                   'Efectivo esperado',
-                                  '\$ ${cuadre.efectivoEsperado.toStringAsFixed(0)}',
+                                  formatCurrency(cuadre.efectivoEsperado),
                                 ],
-                                [
-                                  'Efectivo declarado',
-                                  '\$ ${cuadre.efectivoDeclarado.toStringAsFixed(0)}',
-                                ],
-                                [
-                                  'Diferencia',
-                                  '\$ ${(cuadre.efectivoDeclarado - cuadre.efectivoEsperado).toStringAsFixed(0)}',
-                                ],
+                                // Eliminado: Efectivo declarado y diferencia
                               ]),
                               SizedBox(height: 20),
 
@@ -2538,39 +2549,22 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
           // Resumen financiero
           _buildSeccionTitulo('Resumen Financiero'),
           _buildInfoCard([
-            [
-              'Fondo inicial',
-              '\$${resumen.cuadreInfo.fondoInicial.toStringAsFixed(2)}',
-            ],
-            [
-              'Total ventas',
-              '\$${resumen.resumenFinal.totalVentas.toStringAsFixed(2)}',
-            ],
-            [
-              'Total gastos',
-              '\$${resumen.resumenFinal.totalGastos.toStringAsFixed(2)}',
-            ],
+            ['Fondo inicial', formatCurrency(resumen.cuadreInfo.fondoInicial)],
+            ['Total ventas', formatCurrency(resumen.resumenFinal.totalVentas)],
+            ['Ingresos de caja', formatCurrency(resumen.movimientosEfectivo.ingresosEfectivo)],
+            ['Total gastos', formatCurrency(resumen.resumenFinal.totalGastos)],
             [
               'Total compras',
-              '\$${resumen.resumenFinal.totalCompras.toStringAsFixed(2)}',
+              formatCurrency(resumen.resumenFinal.totalCompras),
             ],
             [
               'Utilidad bruta',
-              '\$${resumen.resumenFinal.utilidadBruta.toStringAsFixed(2)}',
+              formatCurrency(resumen.resumenFinal.utilidadBruta),
             ],
             [
               'Efectivo esperado',
-              '\$${resumen.resumenFinal.efectivoEsperado.toStringAsFixed(2)}',
+              formatCurrency(resumen.resumenFinal.efectivoEsperado),
             ],
-            [
-              'Efectivo declarado',
-              '\$${resumen.resumenFinal.efectivoDeclarado.toStringAsFixed(2)}',
-            ],
-            [
-              'Diferencia',
-              '\$${resumen.resumenFinal.diferencia.toStringAsFixed(2)}',
-            ],
-            ['Cuadrado', resumen.resumenFinal.cuadrado ? 'Sí' : 'No'],
           ]),
 
           SizedBox(height: 20),
@@ -2587,6 +2581,10 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
               '\$${resumen.movimientosEfectivo.ventasEfectivo.toStringAsFixed(2)}',
             ],
             [
+              'Ingresos de caja',
+              '\$${resumen.movimientosEfectivo.ingresosEfectivo.toStringAsFixed(2)}',
+            ],
+            [
               'Gastos en efectivo',
               '\$${resumen.movimientosEfectivo.gastosEfectivo.toStringAsFixed(2)}',
             ],
@@ -2598,19 +2596,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
               'Efectivo esperado',
               '\$${resumen.movimientosEfectivo.efectivoEsperado.toStringAsFixed(2)}',
             ],
-            [
-              'Efectivo declarado',
-              '\$${resumen.movimientosEfectivo.efectivoDeclarado.toStringAsFixed(2)}',
-            ],
-            [
-              'Diferencia',
-              '\$${resumen.movimientosEfectivo.diferencia.toStringAsFixed(2)}',
-            ],
-            [
-              'Tolerancia',
-              '\$${resumen.movimientosEfectivo.tolerancia.toStringAsFixed(2)}',
-            ],
-            ['Cuadrado', resumen.movimientosEfectivo.cuadrado ? 'Sí' : 'No'],
+            // Eliminado: Efectivo declarado, diferencia, tolerancia y cuadrado
           ]),
 
           SizedBox(height: 20),
@@ -2798,7 +2784,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                   Expanded(
                     flex: 1,
                     child: Text(
-                      '\$${pedido.total.toStringAsFixed(0)}',
+                      formatCurrency(pedido.total),
                       style: TextStyle(color: textDark),
                     ),
                   ),

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/pedido.dart';
+import '../models/producto.dart';
 import '../services/pedido_service.dart';
 import '../providers/user_provider.dart';
+import '../utils/format_utils.dart';
 
 class PedidosScreenFusion extends StatefulWidget {
   const PedidosScreenFusion({Key? key}) : super(key: key);
@@ -13,6 +15,15 @@ class PedidosScreenFusion extends StatefulWidget {
 
 class _PedidosScreenFusionState extends State<PedidosScreenFusion>
     with TickerProviderStateMixin {
+  
+  String _getProductoNombre(dynamic producto) {
+    if (producto == null) return "Producto desconocido";
+    if (producto is Producto) return producto.nombre;
+    if (producto is Map<String, dynamic>) {
+      return Producto.fromJson(producto).nombre;
+    }
+    return "Producto desconocido";
+  }
   final Color primary = Color(0xFFFF6B00);
   final Color bgDark = Color(0xFF1E1E1E);
   final Color cardBg = Color(0xFF252525);
@@ -583,24 +594,24 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
             )
           : Column(
               children: [
-                // Barra de estadísticas
+                // Barra de estadísticas ultra compacta
                 Container(
-                  margin: EdgeInsets.all(16),
-                  padding: EdgeInsets.all(16),
+                  margin: EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8), // AUMENTA estos valores
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        primary.withOpacity(0.1),
-                        primary.withOpacity(0.05),
+                        primary.withOpacity(0.08), // puedes subir opacidad para más color
+                        primary.withOpacity(0.03),
                       ],
                       begin: Alignment.centerLeft,
                       end: Alignment.centerRight,
                     ),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: primary.withOpacity(0.2)),
+                    borderRadius: BorderRadius.circular(8), // un poco más grande
+                    border: Border.all(color: primary.withOpacity(0.07)),
                   ),
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
                       _buildStatItem(
                         'Total',
@@ -614,17 +625,22 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                       ),
                       _buildStatItem(
                         'Valor Total',
-                        '\$${_pedidosFiltrados.fold<double>(0, (sum, p) => sum + p.total).toStringAsFixed(0)}',
+                        formatCurrency(
+                          _pedidosFiltrados.fold<double>(
+                            0,
+                            (sum, p) => sum + p.total,
+                          ),
+                        ),
                         Icons.attach_money,
                       ),
                     ],
                   ),
                 ),
 
-                // Lista de pedidos
+                // Lista de pedidos compacta y scrollable
                 Expanded(
                   child: ListView.builder(
-                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     itemCount: _pedidosFiltrados.length,
                     itemBuilder: (context, index) {
                       final pedido = _pedidosFiltrados[index];
@@ -640,38 +656,46 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
   Widget _buildPedidoCard(Pedido pedido) {
     return Card(
       color: cardBg,
-      margin: EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 2), // antes 4
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: primary.withOpacity(0.2)),
+        borderRadius: BorderRadius.circular(3), // antes 6
+        side: BorderSide(color: primary.withOpacity(0.08)),
       ),
       child: ExpansionTile(
-        tilePadding: EdgeInsets.all(20),
-        childrenPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        tilePadding: EdgeInsets.all(3), // antes 6
+        childrenPadding: EdgeInsets.symmetric(horizontal: 3, vertical: 2), // antes 6,4
         backgroundColor: cardBg,
         collapsedBackgroundColor: cardBg,
         iconColor: primary,
         collapsedIconColor: primary,
         leading: Container(
-          width: 50,
-          height: 50,
+          width: 96, // más ancho
+          height: 36, // más alto
           decoration: BoxDecoration(
-            color: primary.withOpacity(0.2),
-            borderRadius: BorderRadius.circular(12),
+            color: primary.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(7),
           ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.restaurant, color: primary, size: 20),
-              Text(
-                pedido.mesa,
-                style: TextStyle(
-                  color: primary,
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.restaurant, color: primary, size: 18),
+                SizedBox(height: 2),
+                Flexible(
+                  child: Text(
+                    pedido.mesa,
+                    style: TextStyle(
+                      color: primary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                    textAlign: TextAlign.center,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
         title: Column(
@@ -682,7 +706,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Expanded(
-                  flex: 2,
+                  flex: 1, // antes 2, ahora más angosto
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -690,13 +714,13 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                         'ID: ${pedido.id}',
                         style: TextStyle(
                           color: textDark,
-                          fontSize: 16,
+                          fontSize: 11,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       Text(
                         'Mesa: ${pedido.mesa}',
-                        style: TextStyle(color: textLight, fontSize: 14),
+                        style: TextStyle(color: textLight, fontSize: 9),
                       ),
                     ],
                   ),
@@ -711,50 +735,50 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                         if (pedido.tipo != TipoPedido.normal) ...[
                           Container(
                             padding: EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
+                              horizontal: 5,
+                              vertical: 2,
                             ),
                             decoration: BoxDecoration(
                               color: _getTipoColor(pedido.tipo),
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(7),
                             ),
                             child: Text(
                               _getTipoTexto(pedido.tipo),
                               style: TextStyle(
                                 color: Colors.white,
-                                fontSize: 10,
+                                fontSize: 7,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
                           ),
-                          SizedBox(width: 4),
+                          SizedBox(width: 2),
                         ],
                         Container(
                           padding: EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 6,
+                            horizontal: 6,
+                            vertical: 3,
                           ),
                           decoration: BoxDecoration(
                             color: _getEstadoColor(pedido.estado),
-                            borderRadius: BorderRadius.circular(15),
+                            borderRadius: BorderRadius.circular(9),
                           ),
                           child: Text(
                             _getEstadoTexto(pedido.estado),
                             style: TextStyle(
                               color: Colors.white,
-                              fontSize: 12,
+                              fontSize: 8,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                         ),
                       ],
                     ),
-                    SizedBox(height: 4),
+                    SizedBox(height: 2),
                     Text(
                       '\$${pedido.total.toStringAsFixed(0)}',
                       style: TextStyle(
                         color: primary,
-                        fontSize: 20,
+                        fontSize: 12,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -766,10 +790,10 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
 
             // Segunda fila: Info detallada en formato tabla
             Container(
-              padding: EdgeInsets.all(12),
+              padding: EdgeInsets.all(6), // antes 12
               decoration: BoxDecoration(
                 color: cardBg.withOpacity(0.5),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(4), // antes 8
                 border: Border.all(color: primary.withOpacity(0.1)),
               ),
               child: Column(
@@ -796,7 +820,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                               '🔍 Debug Primer producto ID: ${pedido.items.first.productoId}',
                             );
                             print(
-                              '🔍 Debug Primer producto nombre: ${pedido.items.first.producto?.nombre}',
+                              '🔍 Debug Primer producto nombre: ${_getProductoNombre(pedido.items.first.producto)}',
                             );
                           }
 
@@ -832,9 +856,9 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
 
                           // Prioridad: objeto producto > productoNombre del JSON > ID
                           String nombreProducto;
-                          if (primerItem.producto?.nombre != null &&
-                              primerItem.producto!.nombre.isNotEmpty) {
-                            nombreProducto = primerItem.producto!.nombre;
+                          if (_getProductoNombre(primerItem.producto) != "Producto desconocido" &&
+                              _getProductoNombre(primerItem.producto) != "Producto desconocido") {
+                            nombreProducto = _getProductoNombre(primerItem.producto);
                           } else {
                             // Intentar usar productoNombre del JSON como fallback
                             // Este campo viene del backend en el JSON
@@ -985,7 +1009,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                             Expanded(
                               flex: 3,
                               child: Text(
-                                item.producto?.nombre ?? 'Producto desconocido',
+                                _getProductoNombre(item.producto),
                                 style: TextStyle(
                                   color: textDark,
                                   fontSize: 14,
@@ -1209,38 +1233,34 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
 
   // Método auxiliar para construir items de estadísticas
   Widget _buildStatItem(String label, String value, IconData icon) {
-    return Column(
-      children: [
-        Container(
-          padding: EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: primary.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Icon(icon, color: primary, size: 24),
+  return Column(
+    children: [
+      Container(
+        padding: EdgeInsets.all(8), // antes 4
+        decoration: BoxDecoration(
+          color: primary.withOpacity(0.15),
+          borderRadius: BorderRadius.circular(8),
         ),
-        SizedBox(height: 8),
-        Text(
-          value,
-          style: TextStyle(
-            color: primary,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
+        child: Icon(icon, color: primary, size: 20), // antes 11
+      ),
+      SizedBox(height: 4), // antes 2
+      Text(
+        value,
+        style: TextStyle(
+          color: primary,
+          fontSize: 16, // antes 8
+          fontWeight: FontWeight.bold,
         ),
-        Text(
-          label,
-          style: TextStyle(
-            color: textLight,
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-          ),
+      ),
+      Text(
+        label,
+        style: TextStyle(
+          color: textLight,
+          fontSize: 10, // antes 6
+          fontWeight: FontWeight.w500,
         ),
-      ],
-    );
-  }
-
-  // Los métodos _mostrarDialogoPago y _mostrarDialogoCancelacion han sido eliminados
-  // porque la funcionalidad de pago y cancelación de pedidos
-  // debe manejarse exclusivamente desde la pantalla de mesas (mesas_screen.dart)
+      ),
+    ],
+  );
+}
 }

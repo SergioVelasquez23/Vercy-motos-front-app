@@ -15,8 +15,8 @@ class PedidoHelper {
       productoId: producto.id,
       cantidad: cantidad,
       notas: notas,
-      precio: producto.precio,
-      producto: producto,
+      precioUnitario: producto.precio,
+      productoNombre: producto.nombre,
     );
   }
 

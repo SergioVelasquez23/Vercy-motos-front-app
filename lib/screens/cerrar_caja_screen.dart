@@ -4,6 +4,7 @@ import '../providers/user_provider.dart';
 import '../models/cuadre_caja.dart';
 import '../services/cuadre_caja_service.dart';
 import '../services/pedido_service.dart';
+import '../utils/format_utils.dart';
 
 class CerrarCajaScreen extends StatefulWidget {
   @override
@@ -346,18 +347,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
       return;
     }
 
-    if (_efectivoDeclaradoController.text.isEmpty) {
-      _mostrarError('Por favor ingrese el efectivo declarado');
-      return;
-    }
-
-    final efectivoDeclarado = double.tryParse(
-      _efectivoDeclaradoController.text,
-    );
-    if (efectivoDeclarado == null || efectivoDeclarado < 0) {
-      _mostrarError('El efectivo declarado debe ser un valor válido positivo');
-      return;
-    }
+  // Eliminado: No se requiere efectivo declarado
 
     // Mostrar confirmación
     final confirmar = await _mostrarDialogoConfirmacion();
@@ -374,7 +364,6 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
       final cuadre = await _cuadreCajaService.updateCuadre(
         _cajaActual!.id!,
         responsable: responsable,
-        efectivoDeclarado: efectivoDeclarado,
         observaciones: 'Caja cerrada - ${_observacionesController.text}',
         cerrarCaja: true,
         estado: 'cerrada',
@@ -440,7 +429,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
                     style: TextStyle(color: textLight),
                   ),
                   Text(
-                    'Monto inicial: \$${(_cajaActual?.fondoInicial ?? 0).toStringAsFixed(0)}',
+                    'Monto inicial: ${formatCurrency(_cajaActual?.fondoInicial ?? 0)}',
                     style: TextStyle(color: textLight),
                   ),
                   Text(
@@ -456,15 +445,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
                           : Colors.grey,
                     ),
                   ),
-                  // Siempre mostrar domicilios
-                  Text(
-                    'Ventas domicilio: \$${_totalDomicilios.toStringAsFixed(0)}',
-                    style: TextStyle(
-                      color: _totalDomicilios > 0
-                          ? Colors.orange[300]
-                          : Colors.grey,
-                    ),
-                  ),
+                  // Eliminado: No mostrar ventas a domicilio
                   if (_totalGastos > 0)
                     Text(
                       'Total gastos: \$${_totalGastos.toStringAsFixed(0)}',
@@ -472,7 +453,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
                     ),
                   Divider(color: Colors.grey.withOpacity(0.3)),
                   Text(
-                    'Cálculo: ${(_cajaActual?.fondoInicial ?? 0).toStringAsFixed(0)} + ${_ventasEfectivo.toStringAsFixed(0)} + ${_totalDomicilios.toStringAsFixed(0)} - ${_totalGastos.toStringAsFixed(0)}',
+                    'Cálculo: ${(_cajaActual?.fondoInicial ?? 0).toStringAsFixed(0)} + ${_ventasEfectivo.toStringAsFixed(0)} - ${_totalGastos.toStringAsFixed(0)}',
                     style: TextStyle(color: Colors.grey),
                   ),
                   Text(
@@ -482,18 +463,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  SizedBox(height: 8),
-                  Text(
-                    'Efectivo declarado: \$${_efectivoDeclaradoController.text}',
-                    style: TextStyle(color: textLight),
-                  ),
-                  Text(
-                    'Diferencia: \$${_diferencia.toStringAsFixed(0)}',
-                    style: TextStyle(
-                      color: _diferencia >= 0 ? Colors.green : Colors.red,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  // Eliminado: No mostrar efectivo declarado ni diferencia
                 ],
               ),
               actions: [
@@ -716,7 +686,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
                             ),
                             _buildInfoRow(
                               'Monto inicial:',
-                              '\$${_cajaActual!.fondoInicial.toStringAsFixed(0)}',
+                              formatCurrency(_cajaActual!.fondoInicial),
                             ),
                           ],
                         ),
@@ -747,17 +717,17 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
                             SizedBox(height: 12),
                             _buildInfoRow(
                               'Monto inicial:',
-                              '\$${_cajaActual!.fondoInicial.toStringAsFixed(0)}',
+                              formatCurrency(_cajaActual!.fondoInicial),
                             ),
                             _buildInfoRow(
                               'Ventas en efectivo:',
-                              '\$${_ventasEfectivo.toStringAsFixed(0)}',
+                              formatCurrency(_ventasEfectivo),
                               valueColor: Colors.blue,
                             ),
                             // Mostrar transferencias (siempre mostrar, aunque sea 0)
                             _buildInfoRow(
                               'Ventas en transferencias:',
-                              '\$${_transferenciasEsperadas.toStringAsFixed(0)}',
+                              formatCurrency(_transferenciasEsperadas),
                               valueColor: _transferenciasEsperadas > 0
                                   ? Colors.green
                                   : Colors.grey,
@@ -766,13 +736,13 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
                             if (_totalGastos > 0)
                               _buildInfoRow(
                                 'Total gastos:',
-                                '\$${_totalGastos.toStringAsFixed(0)}',
+                                formatCurrency(_totalGastos),
                                 valueColor: Colors.red,
                               ),
                             // Mostrar domicilios siempre (como las transferencias)
                             _buildInfoRow(
                               'Ventas domicilio:',
-                              '\$${_totalDomicilios.toStringAsFixed(0)}',
+                              formatCurrency(_totalDomicilios),
                               valueColor: _totalDomicilios > 0
                                   ? Colors.orange
                                   : Colors.grey,
@@ -786,7 +756,9 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
                             ],
                             _buildInfoRow(
                               'Total esperado en caja:',
-                              '\$${(_cajaActual!.fondoInicial + _efectivoEsperado).toStringAsFixed(0)}',
+                              formatCurrency(
+                                _cajaActual!.fondoInicial + _efectivoEsperado,
+                              ),
                               valueColor: Colors.green,
                             ),
                           ],
@@ -795,127 +767,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
                     ),
                     SizedBox(height: 20),
 
-                    // Efectivo declarado
-                    Card(
-                      elevation: 4,
-                      color: cardBg,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Padding(
-                        padding: EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Efectivo Declarado *',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: textDark,
-                              ),
-                            ),
-                            SizedBox(height: 10),
-                            TextFormField(
-                              controller: _efectivoDeclaradoController,
-                              keyboardType: TextInputType.numberWithOptions(
-                                decimal: true,
-                              ),
-                              style: TextStyle(color: textDark),
-                              decoration: InputDecoration(
-                                labelText: 'Ingrese el efectivo contado',
-                                labelStyle: TextStyle(color: textLight),
-                                border: OutlineInputBorder(),
-                                prefixIcon: Icon(
-                                  Icons.attach_money,
-                                  color: primary,
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderSide: BorderSide(color: primary),
-                                ),
-                              ),
-                            ),
-                            SizedBox(height: 8),
-                            Text(
-                              'Este es el dinero físico que tiene en caja',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: textLight,
-                                fontStyle: FontStyle.italic,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: 20),
-
-                    // Diferencia
-                    if (_efectivoDeclaradoController.text.isNotEmpty) ...[
-                      Card(
-                        elevation: 4,
-                        color: _diferencia >= 0
-                            ? Colors.green.shade900
-                            : Colors.red.shade900,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Padding(
-                          padding: EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Icon(
-                                    _diferencia >= 0
-                                        ? Icons.check_circle
-                                        : Icons.warning,
-                                    color: _diferencia >= 0
-                                        ? Colors.green.shade300
-                                        : Colors.red.shade300,
-                                  ),
-                                  SizedBox(width: 8),
-                                  Text(
-                                    _diferencia >= 0 ? 'SOBRANTE' : 'FALTANTE',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                      color: _diferencia >= 0
-                                          ? Colors.green.shade100
-                                          : Colors.red.shade100,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              SizedBox(height: 12),
-                              Text(
-                                'Diferencia: \$${_diferencia.abs().toStringAsFixed(0)}',
-                                style: TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                  color: _diferencia >= 0
-                                      ? Colors.green.shade100
-                                      : Colors.red.shade100,
-                                ),
-                              ),
-                              SizedBox(height: 8),
-                              Text(
-                                _diferencia >= 0
-                                    ? 'Hay más dinero del esperado'
-                                    : 'Falta dinero respecto a lo esperado',
-                                style: TextStyle(
-                                  color: _diferencia >= 0
-                                      ? Colors.green.shade200
-                                      : Colors.red.shade200,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: 20),
-                    ],
+                    // Eliminado: No se requiere efectivo declarado ni diferencia
 
                     // Observaciones
                     Card(

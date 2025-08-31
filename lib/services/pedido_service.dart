@@ -677,10 +677,10 @@ class PedidoService {
           // Si tenemos el producto completo, lo usamos
           pedido.items[i] = ItemPedido(
             productoId: item.productoId,
-            producto: producto,
+            productoNombre: producto.nombre,
             cantidad: item.cantidad,
             notas: item.notas,
-            precio: producto.precio,
+            precioUnitario: producto.precio,
           );
           print('✅ Item actualizado con producto completo: ${producto.nombre}');
         } else if (item.producto == null) {
@@ -712,10 +712,10 @@ class PedidoService {
 
           pedido.items[i] = ItemPedido(
             productoId: item.productoId,
-            producto: productoBasico,
+            productoNombre: productoBasico.nombre,
             cantidad: item.cantidad,
             notas: item.notas,
-            precio: item.precio,
+            precioUnitario: item.precioUnitario,
           );
           print('⚠️ Item actualizado con producto básico: $nombreProducto');
         }
@@ -900,8 +900,22 @@ class PedidoService {
 
       // Solo incluir campos específicos para pagos normales
       if (tipoPago == 'pagado') {
+        // Validar forma de pago
+        if (formaPago != 'efectivo' && formaPago != 'transferencia') {
+          print(
+            '⚠️ Forma de pago en pagarPedido no reconocida: "$formaPago". Usando efectivo por defecto.',
+          );
+          formaPago = 'efectivo';
+        }
+
         pagarData['formaPago'] = formaPago;
         pagarData['propina'] = propina;
+        pagarData['pagado'] = true;
+        pagarData['estado'] = 'Pagado'; // Asegurar que el estado sea explícito
+        pagarData['fechaPago'] = DateTime.now().toIso8601String();
+
+        // Log adicional para forma de pago
+        print('💵 Forma de pago configurada: $formaPago');
       }
 
       // Solo incluir motivoCortesia para cortesías
