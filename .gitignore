@@ -1,6 +1,3 @@
-# Flutter/Dart/Android build artifacts
-build/
-android/app/build/
 # Miscellaneous
 *.class
 *.log
