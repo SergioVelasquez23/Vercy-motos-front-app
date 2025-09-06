@@ -3,7 +3,7 @@ import '../models/tipo_gasto.dart';
 import '../services/gasto_service.dart';
 
 class TiposGastoScreen extends StatefulWidget {
-  const TiposGastoScreen({Key? key}) : super(key: key);
+  const TiposGastoScreen({super.key});
 
   @override
   _TiposGastoScreenState createState() => _TiposGastoScreenState();

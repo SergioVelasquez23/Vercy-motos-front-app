@@ -57,9 +57,9 @@ mixin ImpresionMixin<T extends StatefulWidget> on State<T> {
         if (resumen != null && negocioInfo != null) {
           resumen['nombreRestaurante'] = negocioInfo.nombre;
           resumen['direccionRestaurante'] =
-              '${negocioInfo.direccion ?? ''}${(negocioInfo.ciudad?.isNotEmpty ?? false) ? ', ${negocioInfo.ciudad}' : ''}${(negocioInfo.departamento?.isNotEmpty ?? false) ? ', ${negocioInfo.departamento}' : ''}';
+              '${negocioInfo.direccion ?? ''}${(negocioInfo.ciudad.isNotEmpty ?? false) ? ', ${negocioInfo.ciudad}' : ''}${(negocioInfo.departamento.isNotEmpty ?? false) ? ', ${negocioInfo.departamento}' : ''}';
           resumen['telefonoRestaurante'] = negocioInfo.telefono ?? '';
-          if (negocioInfo.email?.isNotEmpty == true) {
+          if (negocioInfo.email.isNotEmpty == true) {
             resumen['emailRestaurante'] = negocioInfo.email ?? '';
           }
           if (negocioInfo.nit?.isNotEmpty == true) {
@@ -107,8 +107,8 @@ mixin ImpresionMixin<T extends StatefulWidget> on State<T> {
         'direccionRestaurante': negocioInfo != null
             ? '${negocioInfo.direccion}, ${negocioInfo.ciudad}, ${negocioInfo.departamento}'
             : 'Dirección del restaurante',
-    'telefonoRestaurante':
-      negocioInfo?.telefono ?? 'Teléfono del restaurante',
+        'telefonoRestaurante':
+            negocioInfo?.telefono ?? 'Teléfono del restaurante',
         'pedidoId': documento.numeroDocumento,
         'fecha':
             '${documento.fecha.year}-${documento.fecha.month.toString().padLeft(2, '0')}-${documento.fecha.day.toString().padLeft(2, '0')}',
@@ -121,12 +121,12 @@ mixin ImpresionMixin<T extends StatefulWidget> on State<T> {
       };
 
       // Agregar información adicional del negocio si está disponible
-      if (negocioInfo?.email?.isNotEmpty == true) {
-  resumen['emailRestaurante'] = negocioInfo!.email ?? '';
+      if (negocioInfo?.email.isNotEmpty == true) {
+        resumen['emailRestaurante'] = negocioInfo!.email ?? '';
       }
 
       if (negocioInfo?.nit?.isNotEmpty == true) {
-  resumen['nitRestaurante'] = negocioInfo!.nit ?? '';
+        resumen['nitRestaurante'] = negocioInfo!.nit ?? '';
       }
 
       // Agregar información de pago si está disponible
@@ -199,7 +199,7 @@ mixin ImpresionMixin<T extends StatefulWidget> on State<T> {
           'Opciones de impresión',
           style: TextStyle(color: _textLight),
         ),
-        content: Container(
+        content: SizedBox(
           width: double.maxFinite,
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -325,10 +325,10 @@ mixin ImpresionMixin<T extends StatefulWidget> on State<T> {
       if (negocioInfo != null) {
         resumen['nombreRestaurante'] = negocioInfo.nombre;
         resumen['direccionRestaurante'] =
-            '${negocioInfo.direccion ?? ''}${(negocioInfo.ciudad?.isNotEmpty ?? false) ? ', ${negocioInfo.ciudad}' : ''}${(negocioInfo.departamento?.isNotEmpty ?? false) ? ', ${negocioInfo.departamento}' : ''}';
-  resumen['telefonoRestaurante'] = negocioInfo.telefono ?? '';
+            '${negocioInfo.direccion ?? ''}${(negocioInfo.ciudad.isNotEmpty ?? false) ? ', ${negocioInfo.ciudad}' : ''}${(negocioInfo.departamento.isNotEmpty ?? false) ? ', ${negocioInfo.departamento}' : ''}';
+        resumen['telefonoRestaurante'] = negocioInfo.telefono ?? '';
 
-        if (negocioInfo.email?.isNotEmpty == true) {
+        if (negocioInfo.email.isNotEmpty == true) {
           resumen['emailRestaurante'] = negocioInfo.email ?? '';
         }
 
@@ -375,7 +375,7 @@ mixin ImpresionMixin<T extends StatefulWidget> on State<T> {
             'Compartir Documento',
             style: TextStyle(color: _textLight),
           ),
-          content: Container(
+          content: SizedBox(
             width: double.maxFinite,
             height: 300,
             child: SingleChildScrollView(

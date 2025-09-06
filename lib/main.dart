@@ -27,6 +27,8 @@ void main() async {
 }
 
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     // Initialize user from stored token
@@ -48,7 +50,6 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.dark(
           primary: Color(0xFFFF6B00),
           secondary: Color(0xFFFF8800),
-          background: Color(0xFF1E1E1E),
           surface: Color(0xFF252525),
         ),
         cardColor: Color(0xFF252525),

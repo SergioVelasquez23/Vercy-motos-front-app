@@ -48,19 +48,17 @@ class ItemPedido {
     }
 
     // Handle the case where we don't have a product name but have other data
-    if (finalProducto == null) {
-      finalProducto = Producto(
-        id: json['productoId'] ?? '',
-        nombre: json['productoNombre'] ?? 'Producto sin nombre',
-        precio:
-            json['precio']?.toDouble() ??
-            json['precioUnitario']?.toDouble() ??
-            0.0,
-        costo: 0.0,
-        utilidad: 0.0,
-        cantidad: 0,
-      );
-    }
+    finalProducto ??= Producto(
+      id: json['productoId'] ?? '',
+      nombre: json['productoNombre'] ?? 'Producto sin nombre',
+      precio:
+          json['precio']?.toDouble() ??
+          json['precioUnitario']?.toDouble() ??
+          0.0,
+      costo: 0.0,
+      utilidad: 0.0,
+      cantidad: 0,
+    );
 
     return ItemPedido(
       productoId: json['productoId'] ?? '',

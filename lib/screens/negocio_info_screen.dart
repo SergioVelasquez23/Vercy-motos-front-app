@@ -5,7 +5,7 @@ import '../models/negocio_info.dart';
 import '../services/negocio_info_service.dart';
 
 class NegocioInfoScreen extends StatefulWidget {
-  const NegocioInfoScreen({Key? key}) : super(key: key);
+  const NegocioInfoScreen({super.key});
 
   @override
   State<NegocioInfoScreen> createState() => _NegocioInfoScreenState();
@@ -24,12 +24,12 @@ class _NegocioInfoScreenState extends State<NegocioInfoScreen> {
   final _telefonoController = TextEditingController();
   final _paginaWebController = TextEditingController();
   final _costosEnvioController = TextEditingController();
-    final _prefijoController = TextEditingController(); // Keep this
-    final _numeroInicioController = TextEditingController(); // Keep this
-    final _porcentajePropinaController = TextEditingController(); // Keep this
-    final _nombreDocumentoController = TextEditingController(); // Keep this
-    final _nota1Controller = TextEditingController(); // Keep this
-    final _nota2Controller = TextEditingController(); // Keep this
+  final _prefijoController = TextEditingController(); // Keep this
+  final _numeroInicioController = TextEditingController(); // Keep this
+  final _porcentajePropinaController = TextEditingController(); // Keep this
+  final _nombreDocumentoController = TextEditingController(); // Keep this
+  final _nota1Controller = TextEditingController(); // Keep this
+  final _nota2Controller = TextEditingController(); // Keep this
 
   // Variables de estado
   bool _isLoading = true;
@@ -93,8 +93,8 @@ class _NegocioInfoScreenState extends State<NegocioInfoScreen> {
         _llenarFormulario(info);
       } else {
         // Si no hay información, usar valores por defecto
-    _numeroInicioController.text = '1';
-    _prefijoController.text = 'F';
+        _numeroInicioController.text = '1';
+        _prefijoController.text = 'F';
       }
 
       setState(() {
@@ -123,26 +123,30 @@ class _NegocioInfoScreenState extends State<NegocioInfoScreen> {
     _costosEnvioController.text = info.costosEnvio?.toString() ?? '';
     _prefijoController.text = info.prefijo ?? '';
     _numeroInicioController.text = info.numeroInicio?.toString() ?? '';
-    _porcentajePropinaController.text = info.porcentajePropinaSugerida?.toString() ?? '';
+    _porcentajePropinaController.text =
+        info.porcentajePropinaSugerida?.toString() ?? '';
     _nombreDocumentoController.text = info.nombreDocumento ?? '';
     _nota1Controller.text = info.nota1 ?? '';
     _nota2Controller.text = info.nota2 ?? '';
 
-    _selectedPais = paises.contains(info.pais) && (info.pais?.isNotEmpty ?? false)
-        ? info.pais!
+    _selectedPais =
+        paises.contains(info.pais) && (info.pais.isNotEmpty ?? false)
+        ? info.pais
         : paises.first;
     _selectedDepartamento =
-        departamentos.contains(info.departamento) && (info.departamento?.isNotEmpty ?? false)
-        ? info.departamento!
+        departamentos.contains(info.departamento) &&
+            (info.departamento.isNotEmpty ?? false)
+        ? info.departamento
         : departamentos.first;
     _selectedTipoDocumento =
-        tiposDocumento.contains(info.tipoDocumento) && (info.tipoDocumento?.isNotEmpty ?? false)
-        ? info.tipoDocumento!
+        tiposDocumento.contains(info.tipoDocumento) &&
+            (info.tipoDocumento.isNotEmpty ?? false)
+        ? info.tipoDocumento
         : tiposDocumento.first;
 
-  _productosConIngredientes = info.productosConIngredientes ?? false;
-  _utilizoMesas = info.utilizoMesas ?? false;
-  _envioADomicilio = info.envioADomicilio ?? false;
+    _productosConIngredientes = info.productosConIngredientes ?? false;
+    _utilizoMesas = info.utilizoMesas ?? false;
+    _envioADomicilio = info.envioADomicilio ?? false;
   }
 
   Future<void> _seleccionarLogo() async {
@@ -187,30 +191,51 @@ class _NegocioInfoScreenState extends State<NegocioInfoScreen> {
         id: _currentInfo?.id,
         nombre: _nombreController.text.trim(),
         nitDoc: _nitController.text.trim(),
-        contacto: _contactoController.text.trim().isEmpty ? '' : _contactoController.text.trim(),
-        email: _emailController.text.trim().isEmpty ? '' : _emailController.text.trim(),
-        direccion: _direccionController.text.trim().isEmpty ? '' : _direccionController.text.trim(),
+        contacto: _contactoController.text.trim().isEmpty
+            ? ''
+            : _contactoController.text.trim(),
+        email: _emailController.text.trim().isEmpty
+            ? ''
+            : _emailController.text.trim(),
+        direccion: _direccionController.text.trim().isEmpty
+            ? ''
+            : _direccionController.text.trim(),
         pais: _selectedPais,
         departamento: _selectedDepartamento,
         ciudad: '',
         tieneProductosConIngredientes: _productosConIngredientes,
         utilizaMesas: _utilizoMesas,
-  realizaDomicilios: _envioADomicilio ?? false,
-        telefono: _telefonoController.text.trim().isEmpty ? null : _telefonoController.text.trim(),
-        paginaWeb: _paginaWebController.text.trim().isEmpty ? null : _paginaWebController.text.trim(),
+        realizaDomicilios: _envioADomicilio ?? false,
+        telefono: _telefonoController.text.trim().isEmpty
+            ? null
+            : _telefonoController.text.trim(),
+        paginaWeb: _paginaWebController.text.trim().isEmpty
+            ? null
+            : _paginaWebController.text.trim(),
         productosConIngredientes: _productosConIngredientes,
         utilizoMesas: _utilizoMesas,
         envioADomicilio: _envioADomicilio,
         costosEnvio: double.tryParse(_costosEnvioController.text.trim()),
         tipoDocumento: _selectedTipoDocumento,
-  prefijoDocumento: _prefijoController.text.trim(),
-  numeroInicialDocumento: int.tryParse(_numeroInicioController.text.trim()) ?? 0,
-        prefijo: _prefijoController.text.trim().isEmpty ? null : _prefijoController.text.trim(),
+        prefijoDocumento: _prefijoController.text.trim(),
+        numeroInicialDocumento:
+            int.tryParse(_numeroInicioController.text.trim()) ?? 0,
+        prefijo: _prefijoController.text.trim().isEmpty
+            ? null
+            : _prefijoController.text.trim(),
         numeroInicio: int.tryParse(_numeroInicioController.text.trim()),
-        porcentajePropinaSugerida: double.tryParse(_porcentajePropinaController.text.trim()),
-        nombreDocumento: _nombreDocumentoController.text.trim().isEmpty ? null : _nombreDocumentoController.text.trim(),
-        nota1: _nota1Controller.text.trim().isEmpty ? null : _nota1Controller.text.trim(),
-        nota2: _nota2Controller.text.trim().isEmpty ? null : _nota2Controller.text.trim(),
+        porcentajePropinaSugerida: double.tryParse(
+          _porcentajePropinaController.text.trim(),
+        ),
+        nombreDocumento: _nombreDocumentoController.text.trim().isEmpty
+            ? null
+            : _nombreDocumentoController.text.trim(),
+        nota1: _nota1Controller.text.trim().isEmpty
+            ? null
+            : _nota1Controller.text.trim(),
+        nota2: _nota2Controller.text.trim().isEmpty
+            ? null
+            : _nota2Controller.text.trim(),
         logoUrl: logoUrl,
         fechaCreacion: _currentInfo?.fechaCreacion ?? DateTime.now(),
         fechaActualizacion: DateTime.now(),
@@ -300,8 +325,8 @@ class _NegocioInfoScreenState extends State<NegocioInfoScreen> {
           SizedBox(height: 24),
           ElevatedButton(
             onPressed: _cargarInformacion,
-            child: Text('Reintentar'),
             style: ElevatedButton.styleFrom(backgroundColor: _primary),
+            child: Text('Reintentar'),
           ),
         ],
       ),
@@ -558,7 +583,8 @@ class _NegocioInfoScreenState extends State<NegocioInfoScreen> {
               title: 'Productos con ingredientes',
               subtitle: 'Los productos tienen recetas con ingredientes',
               value: _productosConIngredientes,
-              onChanged: (value) => setState(() => _productosConIngredientes = value),
+              onChanged: (value) =>
+                  setState(() => _productosConIngredientes = value),
               icon: Icons.restaurant_menu,
             ),
 
@@ -614,8 +640,8 @@ class _NegocioInfoScreenState extends State<NegocioInfoScreen> {
             SizedBox(height: 16),
 
             // Prefijo
-              _buildCampoTexto(
-                controller: _prefijoController,
+            _buildCampoTexto(
+              controller: _prefijoController,
               label: 'Prefijo de Documento',
               hint: 'F',
               icon: Icons.tag,
@@ -625,16 +651,17 @@ class _NegocioInfoScreenState extends State<NegocioInfoScreen> {
             SizedBox(height: 16),
 
             // Número inicial
-              _buildCampoTexto(
-                controller: _numeroInicioController,
+            _buildCampoTexto(
+              controller: _numeroInicioController,
               label: 'Número Inicial',
               hint: '1',
               icon: Icons.numbers,
               keyboardType: TextInputType.number,
               validator: (value) {
                 if (value?.isEmpty == true) return 'Número inicial requerido';
-                if (int.tryParse(value!) == null)
+                if (int.tryParse(value!) == null) {
                   return 'Debe ser un número válido';
+                }
                 return null;
               },
             ),
@@ -743,7 +770,7 @@ class _NegocioInfoScreenState extends State<NegocioInfoScreen> {
             border: Border.all(color: Colors.grey[600]!),
           ),
           child: DropdownButtonFormField<String>(
-            value: value,
+            initialValue: value,
             onChanged: onChanged,
             style: TextStyle(color: _textLight),
             dropdownColor: _cardBg,
@@ -799,7 +826,11 @@ class _NegocioInfoScreenState extends State<NegocioInfoScreen> {
               ],
             ),
           ),
-          Switch(value: value, onChanged: onChanged, activeColor: _primary),
+          Switch(
+            value: value,
+            onChanged: onChanged,
+            activeThumbColor: _primary,
+          ),
         ],
       ),
     );

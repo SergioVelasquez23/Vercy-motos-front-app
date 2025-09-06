@@ -1,12 +1,11 @@
 import '../models/user.dart';
 import 'base/http_api_service.dart';
-import 'base/base_api_service.dart';
 
-/// UserService refactorizado usando BaseApiService
-/// 
+/// UserService refactorizado usando HttpApiService
+///
 /// Esta versión elimina todo el código HTTP duplicado y se enfoca
 /// únicamente en la lógica específica de usuarios.
-/// 
+///
 /// BENEFICIOS:
 /// - 80% menos líneas de código
 /// - Manejo de errores centralizado y consistente
@@ -17,7 +16,7 @@ class UserService {
   factory UserService() => _instance;
   UserService._internal();
 
-  final BaseApiService _apiService = HttpApiService();
+  final HttpApiService _apiService = HttpApiService();
 
   /// Obtiene todos los usuarios
   Future<List<User>> getUsers() async {
@@ -44,7 +43,9 @@ class UserService {
   /// Obtiene un usuario por ID
   Future<User?> getUserById(String id) async {
     try {
-      final data = await _apiService.get<Map<String, dynamic>>('/api/users/$id');
+      final data = await _apiService.get<Map<String, dynamic>>(
+        '/api/users/$id',
+      );
       return User.fromJson(data);
     } on ApiException catch (e) {
       if (e.statusCode == 404) {

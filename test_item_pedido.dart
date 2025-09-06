@@ -3,7 +3,7 @@
 import 'dart:io';
 
 /// Script para ejecutar las pruebas de compatibilidad del modelo ItemPedido
-/// 
+///
 /// Este script valida que el modelo unificado funcione correctamente
 /// entre Flutter y el backend Java.
 ///
@@ -19,11 +19,11 @@ Future<void> main(List<String> arguments) async {
   }
 
   final isQuickMode = arguments.contains('--quick') || arguments.contains('-q');
-  
+
   print('=' * 60);
   print('🧪 PRUEBAS DE COMPATIBILIDAD - ItemPedido Unificado');
   print('=' * 60);
-  
+
   if (isQuickMode) {
     print('⚡ Modo rápido activado - Solo pruebas esenciales\n');
   }
@@ -32,11 +32,13 @@ Future<void> main(List<String> arguments) async {
     // Verificar que estamos en el directorio correcto
     final currentDir = Directory.current.path;
     print('📂 Directorio: $currentDir');
-    
+
     final pubspecFile = File('pubspec.yaml');
     if (!pubspecFile.existsSync()) {
       print('❌ Error: No se encontró pubspec.yaml');
-      print('💡 Ejecuta este script desde el directorio raíz del proyecto Flutter');
+      print(
+        '💡 Ejecuta este script desde el directorio raíz del proyecto Flutter',
+      );
       exit(1);
     }
 
@@ -44,7 +46,9 @@ Future<void> main(List<String> arguments) async {
     final testFile = File('test/item_pedido_compatibility_test.dart');
     if (!testFile.existsSync()) {
       print('❌ Error: No se encontró el archivo de pruebas');
-      print('💡 Asegúrate de que existe test/item_pedido_compatibility_test.dart');
+      print(
+        '💡 Asegúrate de que existe test/item_pedido_compatibility_test.dart',
+      );
       exit(1);
     }
 
@@ -54,20 +58,19 @@ Future<void> main(List<String> arguments) async {
     // Ejecutar las pruebas usando dart test
     await _runTests(isQuickMode);
 
-    print('\n' + '=' * 60);
+    print('\n${'=' * 60}');
     print('🎉 ¡Pruebas completadas exitosamente!');
     print('✅ El modelo ItemPedido unificado está listo para usar');
     print('=' * 60);
-
   } catch (e) {
     print('\n❌ Error durante la ejecución de pruebas:');
     print('   $e');
-    
+
     print('\n💡 Consejos para solucionar problemas:');
     print('   • Ejecuta "flutter pub get" para instalar dependencias');
     print('   • Verifica que el directorio test/ exista');
     print('   • Asegúrate de tener la dependencia "test" en pubspec.yaml');
-    
+
     exit(1);
   }
 }
@@ -77,20 +80,23 @@ Future<void> _runTests(bool isQuickMode) async {
 
   // Comando base para ejecutar las pruebas
   List<String> args = ['test', 'test/item_pedido_compatibility_test.dart'];
-  
+
   if (isQuickMode) {
     // En modo rápido, ejecutar solo pruebas esenciales
-    args.addAll(['--name', 'Creación y Constructores|Serialización JSON|Validaciones']);
+    args.addAll([
+      '--name',
+      'Creación y Constructores|Serialización JSON|Validaciones',
+    ]);
   }
 
   // Ejecutar las pruebas
   final result = await Process.run('dart', args);
-  
+
   // Mostrar la salida
   if (result.stdout.isNotEmpty) {
     print(result.stdout);
   }
-  
+
   if (result.stderr.isNotEmpty) {
     print('⚠️ Advertencias/Errores:');
     print(result.stderr);

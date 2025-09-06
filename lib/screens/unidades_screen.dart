@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../config/constants.dart';
 
 class UnidadesScreen extends StatefulWidget {
+  const UnidadesScreen({super.key});
+
   @override
   _UnidadesScreenState createState() => _UnidadesScreenState();
 }
@@ -9,10 +11,10 @@ class UnidadesScreen extends StatefulWidget {
 class _UnidadesScreenState extends State<UnidadesScreen> {
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _nuevaUnidadController = TextEditingController();
-  bool _isLoading = false;
+  final bool _isLoading = false;
 
   // Datos de ejemplo para unidades (en un entorno real, estos vendrían de una API)
-  List<String> _unidades = ['Kg', 'Gr', 'Unidad', 'Lb', 'Oz', 'Lt', 'ml'];
+  final List<String> _unidades = ['Kg', 'Gr', 'Unidad', 'Lb', 'Oz', 'Lt', 'ml'];
 
   List<String> _unidadesFiltradas = [];
 
@@ -248,8 +250,8 @@ class _UnidadesScreenState extends State<UnidadesScreen> {
       floatingActionButton: FloatingActionButton(
         backgroundColor: primary,
         onPressed: _mostrarDialogoNuevaUnidad,
-        child: Icon(Icons.add),
         tooltip: 'Añadir nueva unidad',
+        child: Icon(Icons.add),
       ),
     );
   }

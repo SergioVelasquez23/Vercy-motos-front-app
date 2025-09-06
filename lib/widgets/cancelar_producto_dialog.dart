@@ -11,11 +11,11 @@ class CancelarProductoDialog extends StatefulWidget {
   final VoidCallback? onProductoCancelado;
 
   const CancelarProductoDialog({
-    Key? key,
+    super.key,
     required this.pedidoId,
     required this.producto,
     this.onProductoCancelado,
-  }) : super(key: key);
+  });
 
   @override
   _CancelarProductoDialogState createState() => _CancelarProductoDialogState();
@@ -224,13 +224,13 @@ class _CancelarProductoDialogState extends State<CancelarProductoDialog> {
               children: [
                 ElevatedButton(
                   onPressed: () => Navigator.of(context).pop(false),
-                  child: Text('No cancelar'),
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.grey),
+                  child: Text('No cancelar'),
                 ),
                 ElevatedButton(
                   onPressed: () => Navigator.of(context).pop(true),
-                  child: Text('Cancelar producto'),
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                  child: Text('Cancelar producto'),
                 ),
               ],
             ),
@@ -251,7 +251,7 @@ class _CancelarProductoDialogState extends State<CancelarProductoDialog> {
           SizedBox(height: 8),
 
           DropdownButtonFormField<String>(
-            value: _motivoSeleccionado,
+            initialValue: _motivoSeleccionado,
             decoration: InputDecoration(
               border: OutlineInputBorder(),
               contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -434,11 +434,12 @@ class _CancelarProductoDialogState extends State<CancelarProductoDialog> {
                   onPressed: _isCanceling
                       ? null
                       : () => Navigator.of(context).pop(false),
-                  child: Text('Cancelar'),
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.grey),
+                  child: Text('Cancelar'),
                 ),
                 ElevatedButton(
                   onPressed: _isCanceling ? null : _cancelarProducto,
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
                   child: _isCanceling
                       ? Row(
                           mainAxisSize: MainAxisSize.min,
@@ -453,7 +454,6 @@ class _CancelarProductoDialogState extends State<CancelarProductoDialog> {
                           ],
                         )
                       : Text('Confirmar cancelación'),
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
                 ),
               ],
             ),

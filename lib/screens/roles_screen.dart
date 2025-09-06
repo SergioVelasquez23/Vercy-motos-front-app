@@ -3,7 +3,7 @@ import '../models/role.dart';
 import '../services/role_service.dart';
 
 class RolesScreen extends StatefulWidget {
-  const RolesScreen({Key? key}) : super(key: key);
+  const RolesScreen({super.key});
 
   @override
   State<RolesScreen> createState() => _RolesScreenState();

@@ -121,7 +121,7 @@ class ReportesService {
     } catch (e) {
       print('❌ Excepción en getVentasPorCategoria: $e');
       // Si el endpoint no existe aún, podemos devolver datos simulados temporales
-      throw e;
+      rethrow;
     }
   }
 

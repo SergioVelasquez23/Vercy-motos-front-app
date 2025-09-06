@@ -17,6 +17,7 @@ import 'configuracion_screen.dart';
 import '../config/constants.dart';
 import '../services/reportes_service.dart';
 import '../services/pedido_service.dart';
+import '../services/websocket_service.dart';
 import '../models/dashboard_data.dart';
 import '../providers/user_provider.dart';
 
@@ -29,6 +30,8 @@ class InfoCardItem {
 }
 
 class DashboardScreenV2 extends StatefulWidget {
+  const DashboardScreenV2({super.key});
+
   @override
   _DashboardScreenV2State createState() => _DashboardScreenV2State();
 }
@@ -44,6 +47,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
 
   late StreamSubscription<bool> _pedidoCompletadoSubscription;
   late StreamSubscription<bool> _pedidoPagadoSubscription;
+  late StreamSubscription<WebSocketEventData> _webSocketSubscription;
   late Timer _autoRefreshTimer;
   int _selectedIndex = 0;
   bool _isLoading = true;
@@ -51,6 +55,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
   // Servicios
   final ReportesService _reportesService = ReportesService();
   final PedidoService _pedidoService = PedidoService();
+  final WebSocketService _webSocketService = WebSocketService();
 
   // Datos del dashboard
   DashboardData? _dashboardData;
@@ -82,21 +87,29 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
       // Solo cargar datos si el usuario es admin
       if (userProvider.isAdmin) {
         _cargarDatos();
+        _setupWebSocket();
 
         // Suscribirse al stream de eventos de pedidos completados
         _pedidoCompletadoSubscription = _pedidoService.onPedidoCompletado
             .listen((_) {
-              _cargarDatos();
+              print('🔔 Pedido completado - WebSocket se encargará de la actualización');
             });
 
         // Suscribirse al stream de eventos de pedidos pagados
         _pedidoPagadoSubscription = _pedidoService.onPedidoPagado.listen((_) {
-          _cargarDatos();
+          print('🔔 Pedido pagado - WebSocket se encargará de la actualización');
         });
 
-        // Timer para actualizar automáticamente cada 30 segundos
-        _autoRefreshTimer = Timer.periodic(Duration(seconds: 30), (timer) {
-          _cargarDatos();
+        // Timer de respaldo (cada 5 minutos) en caso de que WebSocket falle
+        _autoRefreshTimer = Timer.periodic(Duration(minutes: 5), (timer) {
+          if (!_webSocketService.isConnected) {
+            print('🔄 WebSocket desconectado, recargando datos por timer de respaldo');
+            _cargarDatos();
+            // Actualizar UI para mostrar estado desconectado
+            if (mounted) {
+              setState(() {});
+            }
+          }
         });
       }
     });
@@ -121,11 +134,12 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
 
-    // Solo recargar datos cuando la app vuelve a estar activa
+    // Solo reconectar WebSocket cuando la app vuelve a estar activa
     if (state == AppLifecycleState.resumed && mounted) {
       final userProvider = Provider.of<UserProvider>(context, listen: false);
-      if (userProvider.isAdmin) {
-        _cargarDatos();
+      if (userProvider.isAdmin && !_webSocketService.isConnected) {
+        print('🔄 App resumida - Reconectando WebSocket si es necesario');
+        _webSocketService.reconnect();
       }
     }
   }
@@ -137,7 +151,12 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
 
     _pedidoCompletadoSubscription.cancel();
     _pedidoPagadoSubscription.cancel();
+    _webSocketSubscription.cancel();
     _autoRefreshTimer.cancel();
+    
+    // Desconectar WebSocket si estamos saliendo del dashboard
+    _webSocketService.disconnect();
+    
     super.dispose();
   }
 
@@ -211,6 +230,65 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
     }
   }
 
+  /// Configurar conexión WebSocket y suscribirse a eventos
+  Future<void> _setupWebSocket() async {
+    try {
+      // Conectar al WebSocket
+      await _webSocketService.connect();
+      
+      // Actualizar UI para mostrar estado conectado
+      if (mounted) {
+        setState(() {});
+      }
+      
+      // Suscribirse a eventos del dashboard
+      _webSocketSubscription = _webSocketService.dashboardEvents.listen(
+        (WebSocketEventData eventData) {
+          print('🔔 Evento WebSocket recibido: ${eventData.event}');
+          
+          // Recargar datos según el tipo de evento
+          switch (eventData.event) {
+            case WebSocketEvent.dashboardUpdate:
+              print('📊 Actualizando dashboard completo');
+              _cargarDatos();
+              break;
+              
+            case WebSocketEvent.pedidoCreado:
+            case WebSocketEvent.pedidoPagado:
+            case WebSocketEvent.pedidoCancelado:
+              print('🛒 Actualizando por cambio de pedido');
+              // Actualizar solo partes específicas para mejor rendimiento
+              _cargarEstadisticas();
+              _cargarUltimosPedidos();
+              _cargarPedidosPorHora();
+              break;
+              
+            case WebSocketEvent.inventarioActualizado:
+              print('📦 Actualizando por cambio de inventario');
+              _cargarTopProductos();
+              break;
+              
+            default:
+              print('ℹ️ Evento no manejado: ${eventData.event}');
+          }
+        },
+        onError: (error) {
+          print('❌ Error en WebSocket: $error');
+          // Actualizar UI para mostrar estado desconectado
+          if (mounted) {
+            setState(() {});
+          }
+          // El WebSocket service maneja la reconexión automáticamente
+        },
+      );
+      
+      print('✅ WebSocket configurado correctamente para dashboard');
+    } catch (e) {
+      print('❌ Error configurando WebSocket: $e');
+      // Continuar con el timer de respaldo si falla WebSocket
+    }
+  }
+
   Future<void> _cargarEstadisticas() async {
     try {
       // Obtener datos del dashboard desde el servicio
@@ -253,7 +331,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         final egresos = item['egresos'];
         final porcentaje = egresos / ingresos * 100;
         print(
-          '  ${item['mes']}: Ingresos=\$${ingresos}, Egresos=\$${egresos} (${porcentaje.toStringAsFixed(1)}%)',
+          '  ${item['mes']}: Ingresos=\$$ingresos, Egresos=\$$egresos (${porcentaje.toStringAsFixed(1)}%)',
         );
       }
 
@@ -741,6 +819,47 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
             ),
           ),
           Spacer(),
+          // Indicador de estado WebSocket
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: _webSocketService.isConnected 
+                ? Colors.green.withOpacity(0.2) 
+                : Colors.red.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: _webSocketService.isConnected 
+                  ? Colors.green 
+                  : Colors.red,
+                width: 1,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: _webSocketService.isConnected 
+                      ? Colors.green 
+                      : Colors.red,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                SizedBox(width: 6),
+                Text(
+                  _webSocketService.isConnected ? 'En vivo' : 'Desconectado',
+                  style: TextStyle(
+                    color: Colors.white, 
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(width: 12),
           Container(
             padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
@@ -1073,7 +1192,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
 
   Widget _buildStatsCards() {
     if (_dashboardData == null) {
-      return Container(
+      return SizedBox(
         height: 200,
         child: Center(
           child: Column(
@@ -1172,7 +1291,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
 
   Widget _buildInfoCards() {
     if (_dashboardData == null) {
-      return Container(
+      return SizedBox(
         height: 150,
         child: Center(
           child: Column(
@@ -1220,7 +1339,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
             ],
           ),
           SizedBox(height: 16),
-          Container(
+          SizedBox(
             height: 200,
             child: _ingresosVsEgresos.isEmpty
                 ? Center(
@@ -1373,7 +1492,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
             style: TextStyle(color: textLight, fontSize: 12),
           ),
           SizedBox(height: 20),
-          Container(
+          SizedBox(
             height: 160,
             child: _topProductos.isEmpty
                 ? Center(
@@ -1410,7 +1529,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                   ),
           ),
           SizedBox(height: 16),
-          Container(
+          SizedBox(
             height: 100,
             child: _topProductos.isEmpty
                 ? Center(
@@ -1500,7 +1619,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
             ],
           ),
           SizedBox(height: 24), // Más espacio
-          Container(
+          SizedBox(
             height: 280, // Gráfico más alto
             child: _pedidosPorHora.isEmpty
                 ? Center(
@@ -1636,7 +1755,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
             ],
           ),
           SizedBox(height: 20), // Más espacio
-          Container(
+          SizedBox(
             height: 320, // Lista más alta
             child: _ultimosPedidos.isEmpty
                 ? Center(
@@ -1784,7 +1903,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
             ],
           ),
           SizedBox(height: 20), // Más espacio
-          Container(
+          SizedBox(
             height: 320, // Lista más alta
             child: _vendedoresDelMes.isEmpty
                 ? Center(
@@ -2006,7 +2125,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      '${percentage}%',
+                      '$percentage%',
                       style: TextStyle(
                         color: color,
                         fontSize: 12,
@@ -2070,7 +2189,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
             ],
           ),
           SizedBox(height: 16),
-          Container(
+          SizedBox(
             height: 150,
             child: _ventasPorDia.isEmpty
                 ? Center(child: CircularProgressIndicator(color: primary))

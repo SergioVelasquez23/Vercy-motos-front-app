@@ -2,6 +2,7 @@
 /// Proporciona una implementación ficticia de window.localStorage
 ///
 /// Este archivo se usa cuando se compila para plataformas que no son web
+library;
 
 class Window {
   final LocalStorage localStorage = LocalStorage();

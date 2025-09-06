@@ -6,6 +6,8 @@ import '../services/inventario_service.dart';
 import '../widgets/loading_indicator.dart';
 
 class HistorialInventarioScreen extends StatefulWidget {
+  const HistorialInventarioScreen({super.key});
+
   @override
   _HistorialInventarioScreenState createState() =>
       _HistorialInventarioScreenState();
@@ -668,7 +670,8 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                                                   vertical: 8,
                                                 ),
                                                 child: Text(
-                                                  '${movimiento.cantidadAnterior.toStringAsFixed(0)}',
+                                                  movimiento.cantidadAnterior
+                                                      .toStringAsFixed(0),
                                                   style: TextStyle(
                                                     color: textDark,
                                                     fontSize:
@@ -709,7 +712,8 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                                                   vertical: 8,
                                                 ),
                                                 child: Text(
-                                                  '${movimiento.cantidadNueva.toStringAsFixed(0)}',
+                                                  movimiento.cantidadNueva
+                                                      .toStringAsFixed(0),
                                                   style: TextStyle(
                                                     color: textDark,
                                                     fontSize:

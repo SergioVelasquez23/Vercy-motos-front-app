@@ -126,7 +126,7 @@ class ImpresionService {
     Map<String, dynamic> resumen, {
     bool esFactura = false,
   }) {
-    final StringBuffer texto = new StringBuffer();
+    final StringBuffer texto = StringBuffer();
 
     try {
       // Encabezado

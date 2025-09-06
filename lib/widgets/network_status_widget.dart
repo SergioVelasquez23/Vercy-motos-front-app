@@ -7,31 +7,30 @@ import '../config/api_config_new.dart';
 class NetworkStatusWidget extends StatefulWidget {
   final bool showFullDetails;
   final VoidCallback? onStatusChanged;
-  
+
   const NetworkStatusWidget({
-    Key? key,
+    super.key,
     this.showFullDetails = false,
     this.onStatusChanged,
-  }) : super(key: key);
+  });
 
   @override
   _NetworkStatusWidgetState createState() => _NetworkStatusWidgetState();
 }
 
-class _NetworkStatusWidgetState extends State<NetworkStatusWidget> 
+class _NetworkStatusWidgetState extends State<NetworkStatusWidget>
     with SingleTickerProviderStateMixin {
-  
   final _networkService = NetworkDiscoveryService();
   late AnimationController _animationController;
   late Animation<double> _rotationAnimation;
-  
+
   String? _currentServerIp;
   String? _baseUrl;
   String? _environment;
   bool _isConnected = false;
   bool _isSearching = false;
   String _statusMessage = 'Verificando conexión...';
-  
+
   @override
   void initState() {
     super.initState();
@@ -43,35 +42,35 @@ class _NetworkStatusWidgetState extends State<NetworkStatusWidget>
       begin: 0.0,
       end: 1.0,
     ).animate(_animationController);
-    
+
     _checkNetworkStatus();
   }
-  
+
   @override
   void dispose() {
     _animationController.dispose();
     super.dispose();
   }
-  
+
   /// Verificar el estado actual de la red
   Future<void> _checkNetworkStatus() async {
     setState(() {
       _isSearching = true;
       _statusMessage = 'Verificando conexión...';
     });
-    
+
     try {
       // Inicializar ApiConfig
       final apiConfig = ApiConfig();
       await apiConfig.initialize();
-      
+
       // Obtener información de configuración
       _environment = apiConfig.environmentName;
       _baseUrl = apiConfig.baseUrl;
-      
+
       // Verificar si hay una IP del servidor conocida
       _currentServerIp = _networkService.lastKnownServerIp;
-      
+
       if (_currentServerIp != null) {
         _isConnected = true;
         _statusMessage = 'Conectado al servidor';
@@ -79,71 +78,68 @@ class _NetworkStatusWidgetState extends State<NetworkStatusWidget>
         _isConnected = false;
         _statusMessage = 'No hay servidor conocido';
       }
-      
     } catch (e) {
       _isConnected = false;
       _statusMessage = 'Error de configuración: ${e.toString()}';
     }
-    
+
     setState(() {
       _isSearching = false;
     });
-    
+
     // Notificar cambio de estado
     widget.onStatusChanged?.call();
   }
-  
+
   /// Buscar servidor manualmente
   Future<void> _searchForServer() async {
     setState(() {
       _isSearching = true;
       _statusMessage = 'Buscando servidor...';
     });
-    
+
     _animationController.repeat();
-    
+
     try {
       // Limpiar cache y buscar de nuevo
       _networkService.clearCache();
       final serverIp = await _networkService.discoverServerIp();
-      
+
       if (serverIp != null) {
         _currentServerIp = serverIp;
         _isConnected = true;
         _statusMessage = 'Servidor encontrado!';
-        
+
         // Actualizar base URL
         final baseUrl = await _networkService.getServerBaseUrl();
         if (baseUrl != null) {
           _baseUrl = baseUrl;
         }
-        
+
         // Mostrar feedback positivo
         _showSnackBar('✅ Servidor encontrado en $serverIp', Colors.green);
-        
       } else {
         _isConnected = false;
         _statusMessage = 'No se encontró servidor';
         _showSnackBar('❌ No se encontró ningún servidor', Colors.orange);
       }
-      
     } catch (e) {
       _isConnected = false;
       _statusMessage = 'Error en búsqueda: ${e.toString()}';
       _showSnackBar('❌ Error: ${e.toString()}', Colors.red);
     }
-    
+
     _animationController.stop();
     _animationController.reset();
-    
+
     setState(() {
       _isSearching = false;
     });
-    
+
     // Notificar cambio de estado
     widget.onStatusChanged?.call();
   }
-  
+
   /// Mostrar mensaje en SnackBar
   void _showSnackBar(String message, Color color) {
     if (mounted) {
@@ -156,7 +152,7 @@ class _NetworkStatusWidgetState extends State<NetworkStatusWidget>
       );
     }
   }
-  
+
   /// Construir indicador de estado simple
   Widget _buildSimpleStatus() {
     return Container(
@@ -193,7 +189,9 @@ class _NetworkStatusWidgetState extends State<NetworkStatusWidget>
               : Icon(
                   _isConnected ? Icons.wifi : Icons.wifi_off,
                   size: 12,
-                  color: _isConnected ? Colors.green.shade600 : Colors.orange.shade600,
+                  color: _isConnected
+                      ? Colors.green.shade600
+                      : Colors.orange.shade600,
                 ),
           const SizedBox(width: 4),
           Text(
@@ -201,14 +199,16 @@ class _NetworkStatusWidgetState extends State<NetworkStatusWidget>
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w500,
-              color: _isConnected ? Colors.green.shade700 : Colors.orange.shade700,
+              color: _isConnected
+                  ? Colors.green.shade700
+                  : Colors.orange.shade700,
             ),
           ),
         ],
       ),
     );
   }
-  
+
   /// Construir panel de detalles completo
   Widget _buildDetailedStatus() {
     return Card(
@@ -246,14 +246,15 @@ class _NetworkStatusWidgetState extends State<NetworkStatusWidget>
                     children: [
                       Text(
                         'Estado de Conexión',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
                       ),
                       Text(
                         _statusMessage,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: _isConnected ? Colors.green.shade700 : Colors.orange.shade700,
+                          color: _isConnected
+                              ? Colors.green.shade700
+                              : Colors.orange.shade700,
                         ),
                       ),
                     ],
@@ -261,18 +262,21 @@ class _NetworkStatusWidgetState extends State<NetworkStatusWidget>
                 ),
               ],
             ),
-            
+
             const SizedBox(height: 16),
             const Divider(),
-            
+
             // Detalles de configuración
             _buildInfoRow('Ambiente', _environment ?? 'No configurado'),
             _buildInfoRow('Servidor IP', _currentServerIp ?? 'No detectado'),
             _buildInfoRow('URL Base', _baseUrl ?? 'No disponible'),
-            _buildInfoRow('Cache', _networkService.hasValidCache ? 'Válido' : 'No válido'),
-            
+            _buildInfoRow(
+              'Cache',
+              _networkService.hasValidCache ? 'Válido' : 'No válido',
+            ),
+
             const SizedBox(height: 16),
-            
+
             // Botones de acción
             Row(
               children: [
@@ -280,7 +284,9 @@ class _NetworkStatusWidgetState extends State<NetworkStatusWidget>
                   child: ElevatedButton.icon(
                     onPressed: _isSearching ? null : _searchForServer,
                     icon: const Icon(Icons.search, size: 18),
-                    label: Text(_isSearching ? 'Buscando...' : 'Buscar Servidor'),
+                    label: Text(
+                      _isSearching ? 'Buscando...' : 'Buscar Servidor',
+                    ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blue.shade600,
                       foregroundColor: Colors.white,
@@ -304,7 +310,7 @@ class _NetworkStatusWidgetState extends State<NetworkStatusWidget>
       ),
     );
   }
-  
+
   /// Construir fila de información
   Widget _buildInfoRow(String label, String value) {
     return Padding(
@@ -324,27 +330,25 @@ class _NetworkStatusWidgetState extends State<NetworkStatusWidget>
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(
-                fontWeight: FontWeight.w400,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.w400),
             ),
           ),
         ],
       ),
     );
   }
-  
+
   @override
   Widget build(BuildContext context) {
-    return widget.showFullDetails 
-        ? _buildDetailedStatus() 
+    return widget.showFullDetails
+        ? _buildDetailedStatus()
         : _buildSimpleStatus();
   }
 }
 
 /// Widget flotante que se puede usar en cualquier pantalla
 class FloatingNetworkStatus extends StatefulWidget {
-  const FloatingNetworkStatus({Key? key}) : super(key: key);
+  const FloatingNetworkStatus({super.key});
 
   @override
   _FloatingNetworkStatusState createState() => _FloatingNetworkStatusState();
@@ -352,7 +356,7 @@ class FloatingNetworkStatus extends StatefulWidget {
 
 class _FloatingNetworkStatusState extends State<FloatingNetworkStatus> {
   bool _showDetails = false;
-  
+
   @override
   Widget build(BuildContext context) {
     return Positioned(

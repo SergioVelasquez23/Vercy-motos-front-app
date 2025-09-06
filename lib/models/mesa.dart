@@ -37,7 +37,7 @@ class Mesa {
        _ocupada = ocupada,
        _total = total,
        _productos = productos ?? [],
-       _pedidoActual = pedidoActual {}
+       _pedidoActual = pedidoActual;
 
   Mesa copyWith({
     String? id,
@@ -48,12 +48,12 @@ class Mesa {
     Pedido? pedidoActual,
   }) {
     return Mesa(
-      id: id ?? this._id,
-      nombre: nombre ?? this._nombre,
-      ocupada: ocupada ?? this._ocupada,
-      total: total ?? this._total,
-      productos: productos ?? List.from(this._productos),
-      pedidoActual: pedidoActual ?? this._pedidoActual,
+      id: id ?? _id,
+      nombre: nombre ?? _nombre,
+      ocupada: ocupada ?? _ocupada,
+      total: total ?? _total,
+      productos: productos ?? List.from(_productos),
+      pedidoActual: pedidoActual ?? _pedidoActual,
     );
   }
 

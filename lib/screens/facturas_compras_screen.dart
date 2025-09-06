@@ -7,6 +7,8 @@ import '../services/ingrediente_service.dart';
 import '../services/proveedor_service.dart';
 
 class FacturasComprasScreen extends StatefulWidget {
+  const FacturasComprasScreen({super.key});
+
   @override
   _FacturasComprasScreenState createState() => _FacturasComprasScreenState();
 }
@@ -556,6 +558,8 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
 }
 
 class CrearFacturaCompraScreen extends StatefulWidget {
+  const CrearFacturaCompraScreen({super.key});
+
   @override
   _CrearFacturaCompraScreenState createState() =>
       _CrearFacturaCompraScreenState();
@@ -572,7 +576,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
 
   DateTime _fechaFactura = DateTime.now();
   DateTime _fechaVencimiento = DateTime.now().add(Duration(days: 30));
-  List<ItemFacturaCompra> _items = [];
+  final List<ItemFacturaCompra> _items = [];
   List<Ingrediente> _ingredientes = [];
   List<Proveedor> _proveedores = [];
   Proveedor? _proveedorSeleccionado;
@@ -791,7 +795,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
             ),
             SizedBox(height: 16),
             DropdownButtonFormField<Proveedor>(
-              value: _proveedorSeleccionado,
+              initialValue: _proveedorSeleccionado,
               style: TextStyle(color: textDark),
               decoration: InputDecoration(
                 labelText: 'Proveedor',
@@ -823,7 +827,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                       style: TextStyle(color: textDark),
                     ),
                   );
-                }).toList(),
+                }),
               ],
               onChanged: (Proveedor? valor) {
                 setState(() {
@@ -902,7 +906,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                   _pagadoDesdeCaja = value;
                 });
               },
-              activeColor: primary,
+              activeThumbColor: primary,
               activeTrackColor: primary.withOpacity(0.3),
             ),
           ],
@@ -1047,7 +1051,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                     ),
                   ),
                 );
-              }).toList(),
+              }),
           ],
         ),
       ),
@@ -1342,8 +1346,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
 class DetalleFacturaCompraScreen extends StatelessWidget {
   final FacturaCompra factura;
 
-  const DetalleFacturaCompraScreen({Key? key, required this.factura})
-    : super(key: key);
+  const DetalleFacturaCompraScreen({super.key, required this.factura});
 
   // Método auxiliar para determinar si una factura debe considerarse como pagada
   bool _estaFacturaPagada(FacturaCompra factura) {
@@ -1482,31 +1485,29 @@ class DetalleFacturaCompraScreen extends StatelessWidget {
               ),
             ),
             SizedBox(height: 16),
-            ...factura.items
-                .map(
-                  (item) => Card(
-                    color: bgDark,
-                    margin: EdgeInsets.only(bottom: 8),
-                    child: ListTile(
-                      title: Text(
-                        item.ingredienteNombre,
-                        style: TextStyle(color: textDark),
-                      ),
-                      subtitle: Text(
-                        '${item.cantidad} ${item.unidad} x \$${item.precioUnitario.toStringAsFixed(0)}',
-                        style: TextStyle(color: textLight),
-                      ),
-                      trailing: Text(
-                        '\$${item.subtotal.toStringAsFixed(0)}',
-                        style: TextStyle(
-                          color: primary,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+            ...factura.items.map(
+              (item) => Card(
+                color: bgDark,
+                margin: EdgeInsets.only(bottom: 8),
+                child: ListTile(
+                  title: Text(
+                    item.ingredienteNombre,
+                    style: TextStyle(color: textDark),
+                  ),
+                  subtitle: Text(
+                    '${item.cantidad} ${item.unidad} x \$${item.precioUnitario.toStringAsFixed(0)}',
+                    style: TextStyle(color: textLight),
+                  ),
+                  trailing: Text(
+                    '\$${item.subtotal.toStringAsFixed(0)}',
+                    style: TextStyle(
+                      color: primary,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                )
-                .toList(),
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -1633,14 +1634,14 @@ class _DialogoAgregarItem extends StatefulWidget {
   final Color textLight;
 
   const _DialogoAgregarItem({
-    Key? key,
+    super.key,
     required this.ingredientes,
     required this.onItemAgregado,
     required this.primary,
     required this.cardBg,
     required this.textDark,
     required this.textLight,
-  }) : super(key: key);
+  });
 
   @override
   _DialogoAgregarItemState createState() => _DialogoAgregarItemState();

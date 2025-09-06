@@ -1,16 +1,15 @@
 import 'dart:async';
 import '../models/pedido.dart';
-import '../models/item_pedido.dart';
 import '../utils/pedido_helper.dart';
 import 'base/http_api_service.dart';
 import 'base/base_api_service.dart';
 import 'inventario_service.dart'; // Mantener dependencia existente
 
 /// PedidoService refactorizado usando BaseApiService
-/// 
+///
 /// Este servicio demuestra cómo migrar lógica de negocio compleja
 /// manteniendo la funcionalidad existente pero eliminando duplicación.
-/// 
+///
 /// BENEFICIOS DEMOSTRADOS:
 /// - Separación clara entre lógica HTTP y lógica de negocio
 /// - Manejo consistente de errores
@@ -76,7 +75,9 @@ class PedidoService {
           .replaceAll(RegExp(r'\\s+'), ' ')
           .trim();
 
-      final data = await _apiService.get<dynamic>('/api/pedidos/mesa/$nombreLimpio');
+      final data = await _apiService.get<dynamic>(
+        '/api/pedidos/mesa/$nombreLimpio',
+      );
       return _parseListResponse(data);
     } on ApiException {
       rethrow;
@@ -215,12 +216,16 @@ class PedidoService {
       }
 
       // Campos específicos para cortesías
-      if (tipoPago == 'cortesia' && motivoCortesia != null && motivoCortesia.isNotEmpty) {
+      if (tipoPago == 'cortesia' &&
+          motivoCortesia != null &&
+          motivoCortesia.isNotEmpty) {
         pagarData['motivoCortesia'] = motivoCortesia;
       }
 
       // Campos específicos para consumo interno
-      if (tipoPago == 'consumo_interno' && tipoConsumoInterno != null && tipoConsumoInterno.isNotEmpty) {
+      if (tipoPago == 'consumo_interno' &&
+          tipoConsumoInterno != null &&
+          tipoConsumoInterno.isNotEmpty) {
         pagarData['tipoConsumoInterno'] = tipoConsumoInterno;
       }
 
@@ -248,7 +253,7 @@ class PedidoService {
   }) async {
     try {
       final queryParams = <String, String>{};
-      
+
       if (fechaInicio != null) {
         queryParams['fechaInicio'] = fechaInicio.toIso8601String();
       }
@@ -262,7 +267,8 @@ class PedidoService {
         parser: (responseData) {
           // Manejar la estructura específica de esta respuesta
           if (responseData is Map<String, dynamic>) {
-            if (responseData['success'] == true && responseData['data'] != null) {
+            if (responseData['success'] == true &&
+                responseData['data'] != null) {
               final dataMap = responseData['data'] as Map<String, dynamic>;
               final total = dataMap['total'];
               return {'total': total is num ? total.toDouble() : 0.0};
@@ -316,7 +322,9 @@ class PedidoService {
       } else if (responseData is List) {
         jsonList = responseData;
       } else {
-        throw ApiException('Formato de respuesta inesperado: ${responseData.runtimeType}');
+        throw ApiException(
+          'Formato de respuesta inesperado: ${responseData.runtimeType}',
+        );
       }
 
       // Convertir JSON a objetos Pedido

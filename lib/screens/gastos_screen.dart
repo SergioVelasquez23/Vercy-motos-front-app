@@ -10,7 +10,7 @@ import '../services/cuadre_caja_service.dart';
 class GastosScreen extends StatefulWidget {
   final String? cuadreCajaId;
 
-  const GastosScreen({Key? key, this.cuadreCajaId}) : super(key: key);
+  const GastosScreen({super.key, this.cuadreCajaId});
 
   @override
   _GastosScreenState createState() => _GastosScreenState();
@@ -370,7 +370,7 @@ class _GastosScreenState extends State<GastosScreen> {
                       labelStyle: TextStyle(color: textLight),
                       border: OutlineInputBorder(),
                     ),
-                    value: _selectedCuadreId,
+                    initialValue: _selectedCuadreId,
                     dropdownColor: cardBg,
                     style: TextStyle(color: textDark),
                     items: _cuadresDisponibles.map((cuadre) {
@@ -394,7 +394,7 @@ class _GastosScreenState extends State<GastosScreen> {
                       labelStyle: TextStyle(color: textLight),
                       border: OutlineInputBorder(),
                     ),
-                    value: _selectedTipoGastoId,
+                    initialValue: _selectedTipoGastoId,
                     dropdownColor: cardBg,
                     style: TextStyle(color: textDark),
                     items: _tiposGasto.map((tipo) {
@@ -441,7 +441,7 @@ class _GastosScreenState extends State<GastosScreen> {
                       labelStyle: TextStyle(color: textLight),
                       border: OutlineInputBorder(),
                     ),
-                    value: _selectedFormaPago,
+                    initialValue: _selectedFormaPago,
                     dropdownColor: cardBg,
                     style: TextStyle(color: textDark),
                     items: _formasPago.map((forma) {
@@ -539,7 +539,7 @@ class _GastosScreenState extends State<GastosScreen> {
                   labelStyle: TextStyle(color: textLight),
                   border: OutlineInputBorder(),
                 ),
-                value: _selectedCuadreId,
+                initialValue: _selectedCuadreId,
                 dropdownColor: cardBg,
                 style: TextStyle(color: textDark),
                 items: [
@@ -552,7 +552,7 @@ class _GastosScreenState extends State<GastosScreen> {
                       value: cuadre.id,
                       child: Text('${cuadre.nombre} - ${cuadre.responsable}'),
                     );
-                  }).toList(),
+                  }),
                 ],
                 onChanged: (value) {
                   setState(() => _selectedCuadreId = value);

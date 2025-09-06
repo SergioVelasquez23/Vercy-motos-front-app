@@ -7,6 +7,8 @@ import '../models/producto.dart';
 import '../services/producto_service.dart';
 
 class CategoriasScreen extends StatefulWidget {
+  const CategoriasScreen({super.key});
+
   @override
   _CategoriasScreenState createState() => _CategoriasScreenState();
 }
@@ -329,7 +331,7 @@ class _CategoriasScreenState extends State<CategoriasScreen> {
                                         fit: BoxFit.cover,
                                         errorBuilder: (context, error, stackTrace) {
                                           print(
-                                            'Error mostrando imagen: $error, URL: ${tempImagePath!.length > 50 ? tempImagePath!.substring(0, 50) + '...' : tempImagePath}',
+                                            'Error mostrando imagen: $error, URL: ${tempImagePath!.length > 50 ? '${tempImagePath!.substring(0, 50)}...' : tempImagePath}',
                                           );
                                           return Container(
                                             width: double.infinity,

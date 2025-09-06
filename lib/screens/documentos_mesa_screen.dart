@@ -11,7 +11,7 @@ import 'pedido_screen.dart';
 class DocumentosMesaScreen extends StatefulWidget {
   final Mesa? mesa; // Puede ser nulo para mostrar todos los documentos
 
-  const DocumentosMesaScreen({Key? key, this.mesa}) : super(key: key);
+  const DocumentosMesaScreen({super.key, this.mesa});
 
   @override
   State<DocumentosMesaScreen> createState() => _DocumentosMesaScreenState();
@@ -54,7 +54,7 @@ class _DocumentosMesaScreenState extends State<DocumentosMesaScreen>
               surface: _cardBg,
               onSurface: _textLight,
             ),
-            dialogBackgroundColor: _cardBg,
+            dialogTheme: DialogThemeData(backgroundColor: _cardBg),
           ),
           child: child!,
         );
@@ -488,199 +488,197 @@ class _DocumentosMesaScreenState extends State<DocumentosMesaScreen>
             child: SingleChildScrollView(
               scrollDirection: Axis.vertical,
               child: DataTable(
-          columnSpacing: 18, // Menos espacio entre columnas
-          horizontalMargin: 8, // Margen horizontal menor
-          dataRowHeight: 44, // Filas más compactas
-          headingRowHeight: 48, // Encabezado más compacto
-          headingRowColor: MaterialStateProperty.all(
-            _primary.withOpacity(0.1),
-          ),
-          dataRowColor: MaterialStateProperty.resolveWith<Color?>((Set<MaterialState> states) {
-            if (states.contains(MaterialState.selected)) {
-              return _primary.withOpacity(0.2);
-            }
-            return null;
-          }),
-          columns: [
-            DataColumn(
-              label: Text(
-                'No.',
-                style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 15,
+                columnSpacing: 18, // Menos espacio entre columnas
+                horizontalMargin: 8, // Margen horizontal menor
+                dataRowHeight: 44, // Filas más compactas
+                headingRowHeight: 48, // Encabezado más compacto
+                headingRowColor: WidgetStateProperty.all(
+                  _primary.withOpacity(0.1),
                 ),
-              ),
-            ),
-            DataColumn(
-              label: Text(
-                'Mesa',
-                style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 15,
-                ),
-              ),
-            ),
-            DataColumn(
-              label: Text(
-                'Facturador',
-                style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 15,
-                ),
-              ),
-            ),
-            DataColumn(
-              label: Text(
-                'Estado',
-                style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 15,
-                ),
-              ),
-            ),
-            DataColumn(
-              label: Text(
-                'Medio de Pago',
-                style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 15,
-                ),
-              ),
-            ),
-            DataColumn(
-              label: Text(
-                'Total',
-                style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 15,
-                ),
-              ),
-            ),
-            DataColumn(
-              label: Text(
-                'Fecha',
-                style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 15,
-                ),
-              ),
-            ),
-            DataColumn(
-              label: Text(
-                'Acciones',
-                style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 15,
-                ),
-              ),
-            ),
-          ],
-          rows: documentosAMostrar.map((documento) {
-            return DataRow(
-              cells: [
-                DataCell(
-            Text(
-              documento.numeroDocumento,
-              style: TextStyle(fontSize: 14),
-            ),
-                ),
-                DataCell(
-            Text(
-              documento.mesaNombre,
-              style: TextStyle(fontSize: 14),
-            ),
-                ),
-                DataCell(
-            Text(
-              documento.vendedor,
-              style: TextStyle(fontSize: 14),
-            ),
-                ),
-                DataCell(
-            Container(
-              padding: EdgeInsets.symmetric(
-                horizontal: 8,
-                vertical: 4,
-              ),
-              decoration: BoxDecoration(
-                color: documento.estadoColor.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                documento.estadoTexto,
-                style: TextStyle(
-                  color: documento.estadoColor,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-                ),
-                DataCell(
-            Text(
-              documento.formaPago ?? 'Sin especificar',
-              style: TextStyle(
-                fontSize: 14,
-                color: documento.formaPago == null
-              ? _textLight.withOpacity(0.6)
-              : _textLight,
-                fontStyle: documento.formaPago == null
-              ? FontStyle.italic
-              : FontStyle.normal,
-              ),
-            ),
-                ),
-                DataCell(
-            Text(
-              formatCurrency(documento.total),
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-                ),
-                DataCell(
-            Text(
-              documento.fechaFormateada,
-              style: TextStyle(fontSize: 14),
-            ),
-                ),
-                DataCell(
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  icon: Icon(
-              Icons.visibility,
-              color: _primary,
+                dataRowColor: WidgetStateProperty.resolveWith<Color?>((
+                  Set<WidgetState> states,
+                ) {
+                  if (states.contains(WidgetState.selected)) {
+                    return _primary.withOpacity(0.2);
+                  }
+                  return null;
+                }),
+                columns: [
+                  DataColumn(
+                    label: Text(
+                      'No.',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                    ),
                   ),
-                  onPressed: () =>
-                _verDetalleDocumento(documento),
-                  tooltip: 'Ver detalle',
-                  iconSize: 28,
-                  splashRadius: 26,
-                ),
-                IconButton(
-                  icon: Icon(Icons.print, color: Colors.blue),
-                  onPressed: () =>
-                _mostrarDialogoImpresion(documento),
-                  tooltip: 'Imprimir',
-                  iconSize: 28,
-                  splashRadius: 26,
-                ),
-              ],
-            ),
-                ),
-              ],
-            );
-          }).toList(),
+                  DataColumn(
+                    label: Text(
+                      'Mesa',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ),
+                  DataColumn(
+                    label: Text(
+                      'Facturador',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ),
+                  DataColumn(
+                    label: Text(
+                      'Estado',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ),
+                  DataColumn(
+                    label: Text(
+                      'Medio de Pago',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ),
+                  DataColumn(
+                    label: Text(
+                      'Total',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ),
+                  DataColumn(
+                    label: Text(
+                      'Fecha',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ),
+                  DataColumn(
+                    label: Text(
+                      'Acciones',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ),
+                ],
+                rows: documentosAMostrar.map((documento) {
+                  return DataRow(
+                    cells: [
+                      DataCell(
+                        Text(
+                          documento.numeroDocumento,
+                          style: TextStyle(fontSize: 14),
+                        ),
+                      ),
+                      DataCell(
+                        Text(
+                          documento.mesaNombre,
+                          style: TextStyle(fontSize: 14),
+                        ),
+                      ),
+                      DataCell(
+                        Text(
+                          documento.vendedor,
+                          style: TextStyle(fontSize: 14),
+                        ),
+                      ),
+                      DataCell(
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: documento.estadoColor.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            documento.estadoTexto,
+                            style: TextStyle(
+                              color: documento.estadoColor,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ),
+                      DataCell(
+                        Text(
+                          documento.formaPago ?? 'Sin especificar',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: documento.formaPago == null
+                                ? _textLight.withOpacity(0.6)
+                                : _textLight,
+                            fontStyle: documento.formaPago == null
+                                ? FontStyle.italic
+                                : FontStyle.normal,
+                          ),
+                        ),
+                      ),
+                      DataCell(
+                        Text(
+                          formatCurrency(documento.total),
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      DataCell(
+                        Text(
+                          documento.fechaFormateada,
+                          style: TextStyle(fontSize: 14),
+                        ),
+                      ),
+                      DataCell(
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: Icon(Icons.visibility, color: _primary),
+                              onPressed: () => _verDetalleDocumento(documento),
+                              tooltip: 'Ver detalle',
+                              iconSize: 28,
+                              splashRadius: 26,
+                            ),
+                            IconButton(
+                              icon: Icon(Icons.print, color: Colors.blue),
+                              onPressed: () =>
+                                  _mostrarDialogoImpresion(documento),
+                              tooltip: 'Imprimir',
+                              iconSize: 28,
+                              splashRadius: 26,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  );
+                }).toList(),
               ),
             ),
           ),
         ),
       ],
-      );
-    }
+    );
+  }
 
   void _verDetalleDocumento(DocumentoMesa documento) {
     showDialog(

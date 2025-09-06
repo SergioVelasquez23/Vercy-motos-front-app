@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'producto.dart';
 import 'item_pedido.dart'; // Importar el ItemPedido correcto
 
 enum TipoPedido { normal, rt, interno, cancelado, cortesia, domicilio }
@@ -54,6 +53,7 @@ class Pedido {
   String? formaPago;
   bool incluyePropina;
   double descuento;
+  String? cuadreId; // ID del cuadre de caja al que pertenece este pedido
 
   void setFormaPago(String formaPago) {
     this.formaPago = formaPago;
@@ -85,6 +85,7 @@ class Pedido {
     this.formaPago,
     this.incluyePropina = false,
     this.descuento = 0,
+    this.cuadreId, // ID del cuadre de caja (opcional pero recomendado)
   });
 
   String get tipoTexto {
@@ -165,6 +166,7 @@ class Pedido {
     'formaPago': formaPago,
     'incluyePropina': incluyePropina,
     'descuento': descuento,
+    if (cuadreId != null) 'cuadreId': cuadreId, // Añadimos el cuadreId si existe
   };
 
   factory Pedido.fromJson(Map<String, dynamic> json) {
@@ -194,6 +196,7 @@ class Pedido {
       formaPago: json['formaPago'],
       incluyePropina: json['incluyePropina'] ?? false,
       descuento: (json['descuento'] ?? 0).toDouble(),
+      cuadreId: json['cuadreId']?.toString(), // Capturamos el ID del cuadre de caja
     );
   }
 }

@@ -1,10 +1,9 @@
 import 'dart:io';
-import 'package:http/http.dart' as http;
 import 'endpoints_config_new.dart';
 import '../services/network_discovery_service.dart';
 
 /// Configuración centralizada mejorada para la API
-/// 
+///
 /// MEJORAS IMPLEMENTADAS:
 /// - Detección automática de IP del servidor
 /// - Soporte para variables de entorno
@@ -51,20 +50,20 @@ class ApiConfig {
   static const int requestTimeout = 15; // Timeout en segundos
 
   /// Inicializa la configuración de la API
-  /// 
+  ///
   /// Este método debe ser llamado al inicio de la aplicación
   Future<void> initialize() async {
     if (_initialized) return;
 
     print('🔧 Inicializando ApiConfig...');
-    
+
     try {
       // Determinar URL base usando múltiples estrategias
       _cachedBaseUrl = await _determineBaseUrl();
-      
+
       // Inicializar EndpointsConfig con la URL base
       _endpointsConfig = EndpointsConfig(_cachedBaseUrl!);
-      
+
       _initialized = true;
       print('✅ ApiConfig inicializado correctamente');
       print('📡 URL base: $_cachedBaseUrl');
@@ -81,7 +80,7 @@ class ApiConfig {
   /// Determina la URL base usando múltiples estrategias
   Future<String> _determineBaseUrl() async {
     final environment = currentEnvironment;
-    
+
     print('🌍 Ambiente actual: ${environment.name}');
 
     // Estrategia 1: Variable de entorno explícita
@@ -116,14 +115,14 @@ class ApiConfig {
     // Prioridad de variables de entorno
     final envVars = [
       'API_BASE_URL',
-      'BACKEND_URL', 
+      'BACKEND_URL',
       'SERVER_URL',
       'APP_SERVER_URL',
     ];
 
     for (final envVar in envVars) {
-      final url = Platform.environment[envVar] ?? 
-                  String.fromEnvironment(envVar);
+      final url =
+          Platform.environment[envVar] ?? String.fromEnvironment(envVar);
       if (url.isNotEmpty) {
         return url;
       }
@@ -135,7 +134,7 @@ class ApiConfig {
   /// Obtiene URL fallback basada en ambiente
   String _getFallbackUrl() {
     final environment = currentEnvironment;
-    
+
     // URLs fallback por ambiente
     final fallbackUrls = {
       'development': 'http://localhost:${environment.defaultPort}',
@@ -143,8 +142,8 @@ class ApiConfig {
       'production': 'http://api.sopacarbon.com:${environment.defaultPort}',
     };
 
-    return fallbackUrls[environmentName] ?? 
-           'http://localhost:${environment.defaultPort}';
+    return fallbackUrls[environmentName] ??
+        'http://localhost:${environment.defaultPort}';
   }
 
   /// Valida si una URL está accesible
@@ -164,21 +163,26 @@ class ApiConfig {
 
   /// Obtiene el nombre del ambiente actual
   String get environmentName {
-    return Platform.environment['FLUTTER_ENV'] ?? 
-           Platform.environment['NODE_ENV'] ??
-           const String.fromEnvironment('FLUTTER_ENV', defaultValue: 'development');
+    return Platform.environment['FLUTTER_ENV'] ??
+        Platform.environment['NODE_ENV'] ??
+        const String.fromEnvironment(
+          'FLUTTER_ENV',
+          defaultValue: 'development',
+        );
   }
 
   /// Determina si estamos en entorno de desarrollo
   bool get isDevelopment => environmentName == 'development';
 
-  /// Determina si estamos en entorno de producción  
+  /// Determina si estamos en entorno de producción
   bool get isProduction => environmentName == 'production';
 
   /// Obtiene la URL base actual
   String get baseUrl {
     if (!_initialized) {
-      throw StateError('ApiConfig no ha sido inicializado. Llama a initialize() primero.');
+      throw StateError(
+        'ApiConfig no ha sido inicializado. Llama a initialize() primero.',
+      );
     }
     return _cachedBaseUrl!;
   }
@@ -186,7 +190,9 @@ class ApiConfig {
   /// Acceso a los endpoints organizados por categoría
   EndpointsConfig get endpoints {
     if (!_initialized) {
-      throw StateError('ApiConfig no ha sido inicializado. Llama a initialize() primero.');
+      throw StateError(
+        'ApiConfig no ha sido inicializado. Llama a initialize() primero.',
+      );
     }
     return _endpointsConfig;
   }

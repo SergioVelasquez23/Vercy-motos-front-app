@@ -9,6 +9,8 @@ import '../services/ingrediente_service.dart';
 import '../utils/format_utils.dart';
 
 class ProductosScreen extends StatefulWidget {
+  const ProductosScreen({super.key});
+
   @override
   _ProductosScreenState createState() => _ProductosScreenState();
 }
@@ -21,14 +23,14 @@ class _ProductosScreenState extends State<ProductosScreen> {
   List<Ingrediente> _ingredientesCarnes = [];
   bool _isLoading = true;
   String? _error;
-  TextEditingController _searchController = TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
   String? _selectedCategoriaId;
   Future<List<Producto>>? _productosFuture;
 
   @override
   void initState() {
     super.initState();
-  _cargarDatos(); // Cargar datos al iniciar
+    _cargarDatos(); // Cargar datos al iniciar
     // Actualizar la lista de productos cuando cambia el texto de búsqueda
     _searchController.addListener(() {
       setState(() {
@@ -218,7 +220,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                 ),
                 SizedBox(height: 10),
                 // Filtro de categorías
-                Container(
+                SizedBox(
                   height: 50,
                   child: Scrollbar(
                     scrollbarOrientation: ScrollbarOrientation.bottom,
@@ -278,7 +280,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                               selected: _selectedCategoriaId == categoria.id,
                             ),
                           );
-                        }).toList(),
+                        }),
                       ],
                     ),
                   ),
@@ -396,8 +398,12 @@ class _ProductosScreenState extends State<ProductosScreen> {
                 ),
                 SizedBox(width: 12),
                 Text(
-                  'Costo: ' + formatCurrency(producto.costo),
-                  style: TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold, fontSize: 13),
+                  'Costo: ${formatCurrency(producto.costo)}',
+                  style: TextStyle(
+                    color: Colors.blueAccent,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
                 ),
               ],
             ),
@@ -408,11 +414,16 @@ class _ProductosScreenState extends State<ProductosScreen> {
                 SizedBox(width: 4),
                 Text(
                   categoriaNombre,
-                  style: TextStyle(color: Colors.orange, fontWeight: FontWeight.w600, fontSize: 13),
+                  style: TextStyle(
+                    color: Colors.orange,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
                 ),
               ],
             ),
-            if (producto.descripcion != null && producto.descripcion!.isNotEmpty)
+            if (producto.descripcion != null &&
+                producto.descripcion!.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
                 child: Text(
@@ -613,10 +624,14 @@ class _ProductosScreenState extends State<ProductosScreen> {
         final exists = _categorias.any((c) => c.id == producto.categoria!.id);
         if (exists) {
           selectedCategoriaId = producto.categoria!.id;
-          print('✅ Categoría seleccionada del objeto categoria: $selectedCategoriaId');
+          print(
+            '✅ Categoría seleccionada del objeto categoria: $selectedCategoriaId',
+          );
         } else {
           selectedCategoriaId = null;
-          print('⚠️ La categoría del producto no existe en la lista, se asigna null');
+          print(
+            '⚠️ La categoría del producto no existe en la lista, se asigna null',
+          );
         }
       }
     }
@@ -907,7 +922,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
 
                     // Categoría
                     DropdownButtonFormField<String>(
-                      value: selectedCategoriaId,
+                      initialValue: selectedCategoriaId,
                       style: TextStyle(color: textLight),
                       dropdownColor: cardBg,
                       decoration: InputDecoration(
@@ -956,7 +971,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                               tieneVariantes = value;
                             });
                           },
-                          activeColor: primary,
+                          activeThumbColor: primary,
                         ),
                       ],
                     ),
@@ -964,7 +979,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
 
                     // Tipo de producto (siempre visible)
                     DropdownButtonFormField<String>(
-                      value: tipoProducto,
+                      initialValue: tipoProducto,
                       style: TextStyle(color: textLight),
                       dropdownColor: cardBg,
                       decoration: InputDecoration(
@@ -1221,7 +1236,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
 
                     // Estado del producto
                     DropdownButtonFormField<String>(
-                      value: estado,
+                      initialValue: estado,
                       style: TextStyle(color: textLight),
                       dropdownColor: cardBg,
                       decoration: InputDecoration(
@@ -1886,7 +1901,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   DropdownButtonFormField<Ingrediente>(
-                    value: selectedIngrediente,
+                    initialValue: selectedIngrediente,
                     onChanged: (Ingrediente? value) {
                       dialogSetState(() {
                         selectedIngrediente = value;
@@ -2004,7 +2019,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
             'Seleccionar Ingredientes',
             style: TextStyle(color: textLight),
           ),
-          content: Container(
+          content: SizedBox(
             width: double.maxFinite,
             height: 400,
             child: Column(

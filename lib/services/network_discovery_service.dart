@@ -2,11 +2,12 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 
 /// Servicio para detectar automáticamente la IP del servidor backend
-/// 
+///
 /// Este servicio elimina la necesidad de hardcodear IPs y permite
 /// que la aplicación funcione automáticamente en diferentes redes.
 class NetworkDiscoveryService {
-  static final NetworkDiscoveryService _instance = NetworkDiscoveryService._internal();
+  static final NetworkDiscoveryService _instance =
+      NetworkDiscoveryService._internal();
   factory NetworkDiscoveryService() => _instance;
   NetworkDiscoveryService._internal();
 
@@ -17,12 +18,12 @@ class NetworkDiscoveryService {
 
   // Puertos comunes donde puede estar el backend
   static const List<int> _commonPorts = [8081, 8080, 3000, 8000];
-  
+
   // Timeout para cada intento de conexión
   static const Duration _connectionTimeout = Duration(seconds: 2);
 
   /// Obtiene la IP del servidor backend automáticamente
-  /// 
+  ///
   /// Estrategia de búsqueda:
   /// 1. Si hay cache válido, lo retorna
   /// 2. Obtiene la IP local del dispositivo
@@ -59,7 +60,7 @@ class NetworkDiscoveryService {
 
       // 4. Buscar servidor en la red local
       final serverIp = await _scanNetworkForServer(networkSegment);
-      
+
       if (serverIp != null) {
         _cachedServerIp = serverIp;
         _lastDiscoveryTime = DateTime.now();
@@ -79,7 +80,7 @@ class NetworkDiscoveryService {
   Future<String?> getServerBaseUrl() async {
     final ip = await discoverServerIp();
     if (ip == null) return null;
-    
+
     // Determinar el puerto correcto
     for (final port in _commonPorts) {
       final baseUrl = 'http://$ip:$port';
@@ -88,7 +89,7 @@ class NetworkDiscoveryService {
         return baseUrl;
       }
     }
-    
+
     // Si no funciona con puertos comunes, usar el primero por defecto
     final defaultUrl = 'http://$ip:${_commonPorts.first}';
     print('⚠️ Usando URL por defecto: $defaultUrl');
@@ -106,8 +107,8 @@ class NetworkDiscoveryService {
 
       for (final interface in interfaces) {
         for (final addr in interface.addresses) {
-          if (addr.address.startsWith('192.168.') || 
-              addr.address.startsWith('10.') || 
+          if (addr.address.startsWith('192.168.') ||
+              addr.address.startsWith('10.') ||
               addr.address.startsWith('172.')) {
             return addr.address;
           }
@@ -135,10 +136,10 @@ class NetworkDiscoveryService {
   /// Escanea la red local buscando el servidor
   Future<String?> _scanNetworkForServer(String networkSegment) async {
     print('🔍 Escaneando red $networkSegment.x...');
-    
+
     // Lista de IPs comunes donde suele estar el servidor
     final commonServerIps = [
-      '$networkSegment.1',   // Gateway/Router
+      '$networkSegment.1', // Gateway/Router
       '$networkSegment.100', // IP común de servidor
       '$networkSegment.101',
       '$networkSegment.231', // La IP actual hardcodeada
@@ -156,7 +157,8 @@ class NetworkDiscoveryService {
 
     // Si no funciona, escanear rango más amplio (pero limitado)
     print('🔍 Escaneando rango extendido...');
-    for (int i = 1; i <= 254; i += 10) { // Saltos de 10 para ser más rápido
+    for (int i = 1; i <= 254; i += 10) {
+      // Saltos de 10 para ser más rápido
       final ip = '$networkSegment.$i';
       if (await _testServerConnection('http://$ip:8081')) {
         return ip;
@@ -179,16 +181,15 @@ class NetworkDiscoveryService {
         '$baseUrl/api/public/security/loginmed-no-auth',
         '$baseUrl/api/health',
         '$baseUrl/actuator/health',
-        '$baseUrl',
+        baseUrl,
       ];
 
       for (final endpoint in testEndpoints) {
         try {
-          final response = await http.get(
-            Uri.parse(endpoint),
-            headers: {'Accept': 'application/json'},
-          ).timeout(_connectionTimeout);
-          
+          final response = await http
+              .get(Uri.parse(endpoint), headers: {'Accept': 'application/json'})
+              .timeout(_connectionTimeout);
+
           // Considerar válido si responde (aunque sea con error)
           if (response.statusCode < 500) {
             print('✅ Servidor responde en: $endpoint');
@@ -199,7 +200,7 @@ class NetworkDiscoveryService {
           continue;
         }
       }
-      
+
       return false;
     } catch (e) {
       return false;
@@ -211,7 +212,7 @@ class NetworkDiscoveryService {
     if (_cachedServerIp == null || _lastDiscoveryTime == null) {
       return false;
     }
-    
+
     final now = DateTime.now();
     return now.difference(_lastDiscoveryTime!) < _cacheValidTime;
   }

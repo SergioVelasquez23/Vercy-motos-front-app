@@ -16,12 +16,12 @@ class RoleBasedWidget extends StatelessWidget {
   /// - fallback: Widget to show if the user doesn't have the required roles (null hides completely)
   /// - requireAll: If true, the user must have ALL the specified roles. If false, ANY role is sufficient.
   const RoleBasedWidget({
-    Key? key,
+    super.key,
     required this.child,
     required this.allowedRoles,
     this.fallback,
     this.requireAll = false,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

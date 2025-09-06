@@ -7,6 +7,8 @@ import '../models/categoria.dart';
 import '../widgets/loading_indicator.dart';
 
 class IngredientesScreen extends StatefulWidget {
+  const IngredientesScreen({super.key});
+
   @override
   _IngredientesScreenState createState() => _IngredientesScreenState();
 }
@@ -139,7 +141,7 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
   }
 
   void _mostrarDialogoNuevoIngrediente([Ingrediente? ingrediente]) {
-    final _formKey = GlobalKey<FormState>();
+    final formKey = GlobalKey<FormState>();
     final nombreController = TextEditingController(
       text: ingrediente?.nombre ?? '',
     );
@@ -165,7 +167,7 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
           ),
           content: SingleChildScrollView(
             child: Form(
-              key: _formKey,
+              key: formKey,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -188,7 +190,7 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
                   ),
                   SizedBox(height: 16),
                   DropdownButtonFormField<String>(
-                    value: categoriaSeleccionada,
+                    initialValue: categoriaSeleccionada,
                     decoration: InputDecoration(
                       labelText: 'Categoría*',
                       filled: true,
@@ -275,8 +277,9 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
                       if (value?.isEmpty ?? true) return 'Campo requerido';
                       final cantidad = double.tryParse(value!);
                       if (cantidad == null) return 'Ingrese un número válido';
-                      if (cantidad < 0)
+                      if (cantidad < 0) {
                         return 'La cantidad no puede ser negativa';
+                      }
                       return null;
                     },
                   ),
@@ -319,7 +322,7 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
             ),
             TextButton(
               onPressed: () async {
-                if (_formKey.currentState?.validate() ?? false) {
+                if (formKey.currentState?.validate() ?? false) {
                   try {
                     final nuevoIngrediente = Ingrediente(
                       id: ingrediente?.id ?? '',

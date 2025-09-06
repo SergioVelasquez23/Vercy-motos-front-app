@@ -48,6 +48,7 @@ dependencies:
   printing: ^5.11.0
   path_provider: ^2.1.2
   url_launcher: ^6.2.4
+  web_socket_channel: ^3.0.1
 
 dev_dependencies:
   flutter_test:

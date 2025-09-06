@@ -192,6 +192,37 @@ class CuadreCajaService {
     }
   }
 
+  // Obtener la caja activa actual (primera caja abierta)
+  Future<CuadreCaja?> getCajaActiva() async {
+    try {
+      print('🔍 Buscando caja activa...');
+      final cajasAbiertas = await getCajasAbiertas();
+      
+      if (cajasAbiertas.isEmpty) {
+        print('⚠️ No se encontró ninguna caja abierta');
+        return null;
+      }
+
+      final cajaActiva = cajasAbiertas.first;
+      print('✅ Caja activa encontrada: ${cajaActiva.id} - ${cajaActiva.nombre}');
+      return cajaActiva;
+    } catch (e) {
+      print('❌ Error al obtener caja activa: $e');
+      return null;
+    }
+  }
+
+  // Validar si hay una caja abierta (método de conveniencia)
+  Future<bool> hayCajaAbierta() async {
+    try {
+      final cajaActiva = await getCajaActiva();
+      return cajaActiva != null;
+    } catch (e) {
+      print('❌ Error validando caja abierta: $e');
+      return false;
+    }
+  }
+
   // Obtener efectivo esperado con logging detallado
   Future<Map<String, dynamic>> getEfectivoEsperado() async {
     try {
@@ -245,20 +276,28 @@ class CuadreCajaService {
     try {
       print('🔧 Iniciando cálculo manual del efectivo esperado...');
 
-      // Intentar obtener datos de múltiples endpoints
+      // Usar el nuevo método que obtiene datos por cuadre activo
       Map<String, dynamic>? ventasData;
 
       try {
-        ventasData = await getVentasPorTipoPago();
-        print('✅ Datos de ventas por tipo de pago obtenidos exitosamente');
+        ventasData = await getVentasPorCuadreActivo();
+        print('✅ Datos de ventas del cuadre activo obtenidos exitosamente');
       } catch (e) {
-        print('⚠️ Error al obtener ventas por tipo de pago: $e');
-
+        print('⚠️ Error al obtener ventas del cuadre activo: $e');
+        
+        // Fallback a los métodos antiguos
         try {
-          ventasData = await getDetallesVentas();
-          print('✅ Datos de ventas obtenidos exitosamente');
-        } catch (e) {
-          print('⚠️ Error al obtener detalles de ventas: $e');
+          ventasData = await getVentasPorCuadreActivo();
+          print('✅ Datos de ventas por fecha obtenidos como fallback');
+        } catch (e2) {
+          print('⚠️ Error al obtener ventas por fecha: $e2');
+          
+          try {
+            ventasData = await getDetallesVentas();
+            print('✅ Datos de ventas obtenidos exitosamente');
+          } catch (e3) {
+            print('⚠️ Error al obtener detalles de ventas: $e3');
+          }
         }
       }
 
@@ -620,68 +659,90 @@ class CuadreCajaService {
     }
   }
 
-  // Obtener ventas específicamente por tipo de pago usando el endpoint del backend
-  Future<Map<String, dynamic>> getVentasPorTipoPago() async {
+  // Obtener ventas por cuadre de caja activo en lugar de por fecha
+  Future<Map<String, dynamic>> getVentasPorCuadreActivo() async {
     try {
-      print('🔍 Obteniendo ventas por tipo de pago desde pedidos...');
+      print('🔍 Obteniendo ventas del cuadre de caja activo...');
       final headers = await _getHeaders();
-
-      // Obtener fechas del día actual
-      final DateTime now = DateTime.now();
-      final DateTime startOfDay = DateTime(now.year, now.month, now.day);
-      final DateTime endOfDay = DateTime(
-        now.year,
-        now.month,
-        now.day,
-        23,
-        59,
-        59,
-      );
-
+      
+      // Obtener la caja activa
+      final cajaActiva = await getCajaActiva();
+      if (cajaActiva == null) {
+        print('⚠️ No hay caja activa para obtener ventas');
+        return {
+          'total': 0.0,
+          'efectivo': 0.0,
+          'transferencias': 0.0,
+          'tarjeta': 0.0,
+          'otros': 0.0,
+        };
+      }
+      
+      print('💰 Obteniendo pedidos pagados del cuadre: ${cajaActiva.id}');
       final response = await http.get(
-        Uri.parse(
-          '$baseUrl/api/pedidos/total-ventas?fechaInicio=${startOfDay.toIso8601String()}&fechaFin=${endOfDay.toIso8601String()}',
-        ),
+        Uri.parse('$baseUrl/api/pedidos/cuadre/${cajaActiva.id}/pagados'),
         headers: headers,
       );
 
-      print('📡 Respuesta ventas por tipo - Status: ${response.statusCode}');
+      print('📡 Respuesta pedidos de cuadre - Status: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
-        print('✅ Datos de ventas por tipo recibidos: $responseData');
+        print('✅ Pedidos del cuadre recibidos: $responseData');
 
-        final data = responseData['data'];
+        // Procesar pedidos para calcular totales por tipo de pago
+        final List<dynamic> pedidos = responseData['data'] ?? [];
+        double totalEfectivo = 0.0;
+        double totalTransferencias = 0.0;
+        double totalTarjeta = 0.0;
+        double totalOtros = 0.0;
+        
+        for (var pedidoJson in pedidos) {
+          final double totalPedido = (pedidoJson['totalPagado'] ?? pedidoJson['total'] ?? 0).toDouble();
+          final String formaPago = (pedidoJson['formaPago'] ?? 'otros').toString().toLowerCase();
+          
+          switch (formaPago) {
+            case 'efectivo':
+              totalEfectivo += totalPedido;
+              break;
+            case 'transferencia':
+              totalTransferencias += totalPedido;
+              break;
+            case 'tarjeta':
+              totalTarjeta += totalPedido;
+              break;
+            default:
+              totalOtros += totalPedido;
+          }
+        }
+        
+        final double total = totalEfectivo + totalTransferencias + totalTarjeta + totalOtros;
+        
+        print('📊 Resumen de ventas del cuadre ${cajaActiva.id}:');
+        print('  - Efectivo: \$${totalEfectivo.toStringAsFixed(2)}');
+        print('  - Transferencias: \$${totalTransferencias.toStringAsFixed(2)}');
+        print('  - Tarjetas: \$${totalTarjeta.toStringAsFixed(2)}');
+        print('  - Otros: \$${totalOtros.toStringAsFixed(2)}');
+        print('  - Total: \$${total.toStringAsFixed(2)}');
+        
         return {
-          'total': (data['total'] ?? 0.0).toDouble(),
-          'efectivo': (data['totalEfectivo'] ?? 0.0).toDouble(),
-          'transferencias': (data['totalTransferencia'] ?? 0.0).toDouble(),
-          'tarjeta': (data['totalTarjeta'] ?? 0.0).toDouble(),
-          'otros': (data['totalOtros'] ?? 0.0).toDouble(),
+          'total': total,
+          'efectivo': totalEfectivo,
+          'transferencias': totalTransferencias,
+          'tarjeta': totalTarjeta,
+          'otros': totalOtros,
         };
       } else {
-        print('❌ Error al obtener ventas por tipo: ${response.statusCode}');
+        print('❌ Error al obtener pedidos del cuadre: ${response.statusCode}');
         print('📝 Body de error: ${response.body}');
-
-        // Fallback al endpoint de cuadre de caja si existe
-        try {
-          final fallbackResponse = await http.get(
-            Uri.parse('$baseUrl/api/cuadres-caja/ventas-por-tipo-pago'),
-            headers: headers,
-          );
-
-          if (fallbackResponse.statusCode == 200) {
-            final fallbackData = json.decode(fallbackResponse.body);
-            print('✅ Datos obtenidos del fallback: $fallbackData');
-            return fallbackData['data'];
-          }
-        } catch (fallbackError) {
-          print('⚠️ Fallback también falló: $fallbackError');
-        }
-
-        throw Exception(
-          'Error al obtener ventas por tipo de pago: ${response.statusCode}',
-        );
+        
+        return {
+          'total': 0.0,
+          'efectivo': 0.0,
+          'transferencias': 0.0,
+          'tarjeta': 0.0,
+          'otros': 0.0,
+        };
       }
     } catch (e) {
       print('💥 Error en getVentasPorTipoPago: $e');
@@ -716,6 +777,12 @@ class CuadreCajaService {
       print('💥 Error en getResumenVentasHoy: $e');
       throw Exception('Error de conexión: $e');
     }
+  }
+
+  // Método para compatibilidad con código legacy - alias de getVentasPorCuadreActivo
+  Future<Map<String, dynamic>> getVentasPorTipoPago() async {
+    print('🔄 getVentasPorTipoPago() - redirigiendo a getVentasPorCuadreActivo()');
+    return await getVentasPorCuadreActivo();
   }
 
   // Obtener información completa del cuadre actual incluyendo contadores

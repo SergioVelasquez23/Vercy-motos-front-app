@@ -10,14 +10,14 @@ class ResponsiveOrdersChart extends StatelessWidget {
   final Function(String) onPeriodChanged;
 
   const ResponsiveOrdersChart({
-    Key? key,
+    super.key,
     required this.pedidosPorHora,
     required this.primaryColor,
     required this.textColor,
     required this.backgroundColor,
     required this.selectedPeriod,
     required this.onPeriodChanged,
-  }) : super(key: key);
+  });
 
   double _getMaxPedidosHora() {
     if (pedidosPorHora.isEmpty) return 10;
@@ -113,7 +113,7 @@ class ResponsiveOrdersChart extends StatelessWidget {
                   ? 30
                   : (isMobile ? 35 : 45);
 
-              return Container(
+              return SizedBox(
                 height: chartHeight,
                 child: pedidosPorHora.isEmpty
                     ? Center(

@@ -6,7 +6,7 @@ import '../services/role_service.dart';
 import '../services/user_role_service.dart';
 
 class UsersScreen extends StatefulWidget {
-  const UsersScreen({Key? key}) : super(key: key);
+  const UsersScreen({super.key});
 
   @override
   State<UsersScreen> createState() => _UsersScreenState();
@@ -412,7 +412,7 @@ class _UsersScreenState extends State<UsersScreen> {
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
-                value: selectedRoleId,
+                initialValue: selectedRoleId,
                 dropdownColor: Colors.grey[800],
                 style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(

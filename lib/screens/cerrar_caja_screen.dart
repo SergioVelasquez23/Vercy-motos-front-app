@@ -7,6 +7,8 @@ import '../services/pedido_service.dart';
 import '../utils/format_utils.dart';
 
 class CerrarCajaScreen extends StatefulWidget {
+  const CerrarCajaScreen({super.key});
+
   @override
   _CerrarCajaScreenState createState() => _CerrarCajaScreenState();
 }
@@ -260,12 +262,12 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
 
           // Log del cálculo para depuración
           print(
-            '💰 Recálculo: efectivo=${_ventasEfectivo} + domicilios=${_totalDomicilios} - gastos=${_totalGastos} = ${_efectivoEsperado}',
+            '💰 Recálculo: efectivo=$_ventasEfectivo + domicilios=$_totalDomicilios - gastos=$_totalGastos = $_efectivoEsperado',
           );
 
           print(
-            '💰 Ventas efectivo actualizado: $_ventasEfectivo, ' +
-                'Domicilios: $_totalDomicilios, ' +
+            '💰 Ventas efectivo actualizado: $_ventasEfectivo, '
+                    'Domicilios: $_totalDomicilios, ' +
                 'Efectivo esperado (tras gastos): $_efectivoEsperado',
           );
         });
@@ -287,7 +289,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
       print('Ventas otros: \$${detallesVentas['ventasOtros']}');
       print('Total gastos: \$${detallesVentas['totalGastos']}');
       print('Total domicilios: ${detallesVentas['totalDomicilios']}');
-      print('Efectivo esperado por ventas: \$${_efectivoEsperado}');
+      print('Efectivo esperado por ventas: \$$_efectivoEsperado');
       print(
         'Total efectivo en caja: \$${detallesVentas['totalEfectivoEnCaja']}',
       );
@@ -347,7 +349,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
       return;
     }
 
-  // Eliminado: No se requiere efectivo declarado
+    // Eliminado: No se requiere efectivo declarado
 
     // Mostrar confirmación
     final confirmar = await _mostrarDialogoConfirmacion();

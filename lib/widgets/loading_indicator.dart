@@ -4,7 +4,7 @@ class LoadingIndicator extends StatelessWidget {
   final Color? color;
   final double size;
 
-  LoadingIndicator({this.color, this.size = 40.0});
+  const LoadingIndicator({super.key, this.color, this.size = 40.0});
 
   @override
   Widget build(BuildContext context) {

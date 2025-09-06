@@ -1,14 +1,14 @@
 /// Modelo ItemPedido unificado para Flutter
-/// 
+///
 /// Versión 2.0 - Completamente compatible con backend Java
-/// 
+///
 /// CARACTERÍSTICAS PRINCIPALES:
 /// ✅ Un solo campo de precio: precioUnitario
 /// ✅ Subtotal siempre calculado automáticamente
 /// ✅ Validaciones incorporadas
 /// ✅ Serialización/deserialización robusta
 /// ✅ Compatibilidad total con ItemPedido.java
-/// 
+///
 /// CAMPOS ELIMINADOS DE VERSIONES ANTERIORES:
 /// ❌ precio (ambiguo) -> ahora precioUnitario
 /// ❌ subtotal almacenado -> ahora calculado
@@ -16,22 +16,22 @@
 ///
 /// AUTOR: Sistema de Mejoras Arquitectónicas
 /// FECHA: Agosto 2025
+library;
 
 class ItemPedidoUnified {
-  
   // 🏷️ IDENTIFICACIÓN
-  final String? id;                         // Opcional, generado por backend
-  
+  final String? id; // Opcional, generado por backend
+
   // 🔗 REFERENCIA A PRODUCTO
-  final String productoId;                  // ID del producto (requerido)
-  final String? productoNombre;             // Cache del nombre (opcional)
-  
+  final String productoId; // ID del producto (requerido)
+  final String? productoNombre; // Cache del nombre (opcional)
+
   // 📊 CANTIDADES Y PRECIOS
-  final int cantidad;                       // Cantidad pedida (requerido)
-  final double precioUnitario;              // ÚNICO campo precio (requerido)
-  
+  final int cantidad; // Cantidad pedida (requerido)
+  final double precioUnitario; // ÚNICO campo precio (requerido)
+
   // 📝 INFORMACIÓN ADICIONAL
-  final String? notas;                      // Notas especiales (opcional)
+  final String? notas; // Notas especiales (opcional)
   final List<String> ingredientesSeleccionados; // Ingredientes customizados
 
   // 🏗️ CONSTRUCTOR PRINCIPAL
@@ -54,13 +54,13 @@ class ItemPedidoUnified {
     String? notas,
     List<String> ingredientesSeleccionados = const [],
   }) : this(
-    productoId: productoId,
-    productoNombre: productoNombre,
-    cantidad: cantidad,
-    precioUnitario: precioUnitario,
-    notas: notas,
-    ingredientesSeleccionados: ingredientesSeleccionados,
-  );
+         productoId: productoId,
+         productoNombre: productoNombre,
+         cantidad: cantidad,
+         precioUnitario: precioUnitario,
+         notas: notas,
+         ingredientesSeleccionados: ingredientesSeleccionados,
+       );
 
   // 🧮 CÁLCULOS AUTOMÁTICOS
   /// Subtotal calculado automáticamente
@@ -84,7 +84,8 @@ class ItemPedidoUnified {
       cantidad: cantidad ?? this.cantidad,
       precioUnitario: precioUnitario ?? this.precioUnitario,
       notas: notas ?? this.notas,
-      ingredientesSeleccionados: ingredientesSeleccionados ?? this.ingredientesSeleccionados,
+      ingredientesSeleccionados:
+          ingredientesSeleccionados ?? this.ingredientesSeleccionados,
     );
   }
 
@@ -134,7 +135,7 @@ class ItemPedidoUnified {
           : const [],
     );
   }
-  
+
   // Utilitario para convertir diferentes tipos a double
   static double _parseToDouble(dynamic value) {
     if (value == null) return 0.0;
@@ -149,7 +150,7 @@ class ItemPedidoUnified {
     }
     return 0.0;
   }
-  
+
   // Utilitario para convertir diferentes tipos a int
   static int _parseToInt(dynamic value) {
     if (value == null) return 1;
@@ -173,32 +174,31 @@ class ItemPedidoUnified {
   Map<String, dynamic> toMap() => toJson();
 
   // 🔄 DESDE MAPA DE BASE DE DATOS
-  factory ItemPedidoUnified.fromMap(Map<String, dynamic> map) => ItemPedidoUnified.fromJson(map);
+  factory ItemPedidoUnified.fromMap(Map<String, dynamic> map) =>
+      ItemPedidoUnified.fromJson(map);
 
   // 🧪 VALIDACIONES
   /// Verifica si el item es válido
   bool get isValid {
-    return productoId.isNotEmpty && 
-           cantidad > 0 && 
-           precioUnitario >= 0;
+    return productoId.isNotEmpty && cantidad > 0 && precioUnitario >= 0;
   }
 
   /// Lista de errores de validación
   List<String> get validationErrors {
     final List<String> errors = [];
-    
+
     if (productoId.isEmpty) {
       errors.add('ProductoId es requerido');
     }
-    
+
     if (cantidad <= 0) {
       errors.add('Cantidad debe ser mayor a 0');
     }
-    
+
     if (precioUnitario < 0) {
       errors.add('Precio unitario no puede ser negativo');
     }
-    
+
     return errors;
   }
 
@@ -228,7 +228,7 @@ class ItemPedidoUnified {
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
-    
+
     return other is ItemPedidoUnified &&
         other.id == id &&
         other.productoId == productoId &&
@@ -246,7 +246,8 @@ class ItemPedidoUnified {
   double get precioTotal => subtotal;
 
   /// Verifica si este item tiene ingredientes personalizados
-  bool get tieneIngredientesPersonalizados => ingredientesSeleccionados.isNotEmpty;
+  bool get tieneIngredientesPersonalizados =>
+      ingredientesSeleccionados.isNotEmpty;
 
   /// Verifica si tiene notas especiales
   bool get tieneNotas => notas != null && notas!.isNotEmpty;
@@ -332,7 +333,7 @@ class ItemPedidoUnifiedFactory {
   /// Crear desde JSON con manejo robusto de errores
   static ItemPedidoUnified? fromJsonSafe(Map<String, dynamic>? json) {
     if (json == null) return null;
-    
+
     try {
       return ItemPedidoUnified.fromJson(json);
     } catch (e) {
@@ -344,7 +345,7 @@ class ItemPedidoUnifiedFactory {
   /// Crear lista desde JSON array con manejo de errores
   static List<ItemPedidoUnified> fromJsonList(List<dynamic>? jsonList) {
     if (jsonList == null) return [];
-    
+
     return jsonList
         .cast<Map<String, dynamic>>()
         .map(fromJsonSafe)

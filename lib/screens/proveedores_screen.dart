@@ -4,6 +4,8 @@ import '../models/proveedor.dart';
 import '../services/proveedor_service.dart';
 
 class ProveedoresScreen extends StatefulWidget {
+  const ProveedoresScreen({super.key});
+
   @override
   _ProveedoresScreenState createState() => _ProveedoresScreenState();
 }
@@ -557,8 +559,8 @@ class _ProveedoresScreenState extends State<ProveedoresScreen> {
       floatingActionButton: FloatingActionButton(
         backgroundColor: primary,
         onPressed: _mostrarDialogoNuevoProveedor,
-        child: Icon(Icons.add),
         tooltip: 'Añadir nuevo proveedor',
+        child: Icon(Icons.add),
       ),
     );
   }

@@ -6,7 +6,7 @@ import '../models/mesa.dart';
 import '../services/mesa_service.dart';
 
 class ConfiguracionScreen extends StatefulWidget {
-  const ConfiguracionScreen({Key? key}) : super(key: key);
+  const ConfiguracionScreen({super.key});
 
   @override
   State<ConfiguracionScreen> createState() => _ConfiguracionScreenState();
@@ -75,7 +75,7 @@ class _ConfiguracionScreenState extends State<ConfiguracionScreen>
 
 // Pantalla de configuración de mesas
 class MesasConfigScreen extends StatefulWidget {
-  const MesasConfigScreen({Key? key}) : super(key: key);
+  const MesasConfigScreen({super.key});
 
   @override
   State<MesasConfigScreen> createState() => _MesasConfigScreenState();

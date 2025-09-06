@@ -15,6 +15,8 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 class CuadreCajaScreen extends StatefulWidget {
+  const CuadreCajaScreen({super.key});
+
   @override
   _CuadreCajaScreenState createState() => _CuadreCajaScreenState();
 }
@@ -417,7 +419,9 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                 } else if (value == 'ingresos_caja') {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => IngresosCajaScreen()),
+                    MaterialPageRoute(
+                      builder: (context) => IngresosCajaScreen(),
+                    ),
                   );
                 } else if (value == 'tipos_gasto') {
                   Navigator.push(
@@ -433,7 +437,10 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                     children: [
                       Icon(Icons.receipt_long, color: primary),
                       SizedBox(width: 8),
-                      Text('Gestión de Gastos', style: TextStyle(color: textDark)),
+                      Text(
+                        'Gestión de Gastos',
+                        style: TextStyle(color: textDark),
+                      ),
                     ],
                   ),
                 ),
@@ -443,7 +450,10 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                     children: [
                       Icon(Icons.attach_money, color: Colors.green),
                       SizedBox(width: 8),
-                      Text('Ingresos de Caja', style: TextStyle(color: textDark)),
+                      Text(
+                        'Ingresos de Caja',
+                        style: TextStyle(color: textDark),
+                      ),
                     ],
                   ),
                 ),
@@ -586,7 +596,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                             ),
                           ),
                           style: TextStyle(color: textDark),
-                          value: _selectedCaja,
+                          initialValue: _selectedCaja,
                           hint: Text(
                             '-- Caja --',
                             style: TextStyle(color: textLight),
@@ -618,7 +628,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                             ),
                           ),
                           style: TextStyle(color: textDark),
-                          value: _selectedResponsable,
+                          initialValue: _selectedResponsable,
                           hint: Text(
                             '-- Responsable --',
                             style: TextStyle(color: textLight),
@@ -650,7 +660,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                             ),
                           ),
                           style: TextStyle(color: textDark),
-                          value: _selectedEstado,
+                          initialValue: _selectedEstado,
                           hint: Text(
                             '-- Estado --',
                             style: TextStyle(color: textLight),
@@ -709,15 +719,15 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                     style: TextStyle(color: Colors.red),
                   ),
                 )
-              : Container(
+              : SizedBox(
                   width: double.infinity,
                   child: SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: DataTable(
-                      headingRowColor: MaterialStateProperty.all(
+                      headingRowColor: WidgetStateProperty.all(
                         Colors.black.withOpacity(0.3),
                       ),
-                      dataRowColor: MaterialStateProperty.all(
+                      dataRowColor: WidgetStateProperty.all(
                         cardBg.withOpacity(0.7),
                       ),
                       columns: [
@@ -986,7 +996,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                               vertical: 15,
                             ),
                           ),
-                          value: _selectedCajero,
+                          initialValue: _selectedCajero,
                           hint: Text("-- Seleccione --"),
                           onChanged: (String? newValue) {
                             setState(() {
@@ -1082,8 +1092,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                                   ],
                                 ),
                               ),
-                            )
-                            .toList(),
+                            ),
                       ],
                     ),
                   ),
@@ -1873,7 +1882,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                         _cerrarCajaSwitch = value;
                       });
                     },
-                    activeColor: primary,
+                    activeThumbColor: primary,
                   ),
                 ],
               ),
@@ -1919,7 +1928,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(15),
           ),
-          child: Container(
+          child: SizedBox(
             width: MediaQuery.of(context).size.width * 0.9,
             height: MediaQuery.of(context).size.height * 0.9,
             child: Column(
@@ -2049,24 +2058,18 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
           ),
         ),
         SizedBox(height: 10),
-        ...contenido
-            .map(
-              (item) => Padding(
-                padding: EdgeInsets.only(bottom: 4),
-                child: Text(item, style: TextStyle(color: textDark)),
-              ),
-            )
-            .toList(),
+        ...contenido.map(
+          (item) => Padding(
+            padding: EdgeInsets.only(bottom: 4),
+            child: Text(item, style: TextStyle(color: textDark)),
+          ),
+        ),
       ],
     );
   }
 
   // Helper para construir tablas de detalle
-  Widget _buildTablaDetalle(
-    String titulo,
-    List<List<String>> filas, {
-    List<String>? encabezados,
-  }) {
+  Widget _buildTablaDetalle(String titulo, List<List<String>> filas) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -2178,8 +2181,8 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
             "Total inicial + ventas + transferencias",
             formatCurrency(inicial + totalVentas),
           ],
-          ["Pagos facturas de compras", "-" + formatCurrency(facturas)],
-          ["Total Gastos", "-" + formatCurrency(gastos)],
+          ["Pagos facturas de compras", "-${formatCurrency(facturas)}"],
+          ["Total Gastos", "-${formatCurrency(gastos)}"],
           ["Total Efectivo en caja", formatCurrency(totalEfectivo)],
           ["", ""],
           ["Debe tener en efectivo", formatCurrency(totalEfectivo)],
@@ -2232,7 +2235,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(15),
           ),
-          child: Container(
+          child: SizedBox(
             width: MediaQuery.of(context).size.width * 0.9,
             height: MediaQuery.of(context).size.height * 0.9,
             child: Column(
@@ -2551,7 +2554,10 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
           _buildInfoCard([
             ['Fondo inicial', formatCurrency(resumen.cuadreInfo.fondoInicial)],
             ['Total ventas', formatCurrency(resumen.resumenFinal.totalVentas)],
-            ['Ingresos de caja', formatCurrency(resumen.movimientosEfectivo.ingresosEfectivo)],
+            [
+              'Ingresos de caja',
+              formatCurrency(resumen.movimientosEfectivo.ingresosEfectivo),
+            ],
             ['Total gastos', formatCurrency(resumen.resumenFinal.totalGastos)],
             [
               'Total compras',
@@ -2684,7 +2690,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                 _buildTableCell('\$${entry.value.toStringAsFixed(2)}'),
               ],
             );
-          }).toList(),
+          }),
         ],
       ),
     );
@@ -2791,7 +2797,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                 ],
               ),
             );
-          }).toList(),
+          }),
           if (pedidos.length > 10)
             Container(
               padding: EdgeInsets.all(12),

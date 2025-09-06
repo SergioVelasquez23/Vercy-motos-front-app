@@ -10,6 +10,7 @@ import '../models/producto.dart';
 import '../models/item_pedido.dart';
 import '../models/cancelar_producto_request.dart'; // Para cancelaciones selectivas
 import '../config/api_config.dart';
+import '../services/cuadre_caja_service.dart'; // Para validar caja abierta
 
 class PedidoService {
   static final PedidoService _instance = PedidoService._internal();
@@ -22,6 +23,7 @@ class PedidoService {
   Stream<bool> get onPedidoPagado => _pedidoPagadoController.stream;
 
   final InventarioService _inventarioService = InventarioService();
+  final CuadreCajaService _cuadreCajaService = CuadreCajaService();
 
   PedidoService._internal() {
     print('🔧 PedidoService: Inicializando servicio y StreamControllers');
@@ -168,9 +170,24 @@ class PedidoService {
     }
   }
 
-  // Crear nuevo pedido
+  // Crear nuevo pedido (método legacy - ahora usa validación de caja)
   Future<Pedido> crearPedido(Pedido pedido) async {
     try {
+      // VALIDACIÓN: Verificar que hay una caja abierta antes de crear el pedido
+      print('🔍 Validando que hay una caja abierta...');
+      final cajaActiva = await _cuadreCajaService.getCajaActiva();
+      
+      if (cajaActiva == null) {
+        print('❌ No hay caja abierta para crear pedido');
+        throw Exception(
+          'No se puede crear un pedido sin una caja abierta. Debe abrir una caja antes de registrar pedidos.',
+        );
+      }
+      
+      // Asignar cuadreId al pedido automáticamente
+      pedido.cuadreId = cajaActiva.id;
+      print('✅ Pedido vinculado a cuadre: ${cajaActiva.id} - ${cajaActiva.nombre}');
+      
       final headers = await _getHeaders();
       final response = await http.post(
         Uri.parse('$baseUrl/api/pedidos'),
@@ -191,6 +208,21 @@ class PedidoService {
   // Crear un nuevo pedido
   Future<Pedido> createPedido(Pedido pedido) async {
     try {
+      // VALIDACIÓN: Verificar que hay una caja abierta antes de crear el pedido
+      print('🔍 Validando que hay una caja abierta...');
+      final cajaActiva = await _cuadreCajaService.getCajaActiva();
+      
+      if (cajaActiva == null) {
+        print('❌ No hay caja abierta para crear pedido');
+        throw Exception(
+          'No se puede crear un pedido sin una caja abierta. Debe abrir una caja antes de registrar pedidos.',
+        );
+      }
+      
+      // Asignar cuadreId al pedido automáticamente
+      pedido.cuadreId = cajaActiva.id;
+      print('✅ Pedido vinculado a cuadre: ${cajaActiva.id} - ${cajaActiva.nombre}');
+
       // Validar que los items del pedido sean válidos
       if (pedido.items.isEmpty) {
         throw Exception('El pedido debe tener al menos un item');
@@ -367,18 +399,22 @@ class PedidoService {
       // Construir query parameters
       Map<String, String> queryParams = {};
       if (tipo != null) queryParams['tipo'] = tipo.toString().split('.').last;
-      if (estado != null)
+      if (estado != null) {
         queryParams['estado'] = estado.toString().split('.').last;
+      }
       if (mesa != null) queryParams['mesa'] = mesa;
       if (cliente != null) queryParams['cliente'] = cliente;
       if (mesero != null) queryParams['mesero'] = mesero;
       if (plataforma != null) queryParams['plataforma'] = plataforma;
-      if (fechaInicio != null)
+      if (fechaInicio != null) {
         queryParams['fechaInicio'] = fechaInicio.toIso8601String();
-      if (fechaFin != null)
+      }
+      if (fechaFin != null) {
         queryParams['fechaFin'] = fechaFin.toIso8601String();
-      if (busqueda != null && busqueda.isNotEmpty)
+      }
+      if (busqueda != null && busqueda.isNotEmpty) {
         queryParams['busqueda'] = busqueda;
+      }
 
       final uri = Uri.parse(
         '$baseUrl/api/pedidos/filtrar',
@@ -427,10 +463,12 @@ class PedidoService {
       final headers = await _getHeaders();
 
       Map<String, String> queryParams = {};
-      if (fechaInicio != null)
+      if (fechaInicio != null) {
         queryParams['fechaInicio'] = fechaInicio.toIso8601String();
-      if (fechaFin != null)
+      }
+      if (fechaFin != null) {
         queryParams['fechaFin'] = fechaFin.toIso8601String();
+      }
 
       final uri = Uri.parse(
         '$baseUrl/api/pedidos/total-ventas',
@@ -456,7 +494,7 @@ class PedidoService {
             return 0.0;
           }
 
-          if (!(jsonData['data'] is Map)) {
+          if (jsonData['data'] is! Map) {
             print(
               '⚠️ getTotalVentas: data no es un objeto: ${jsonData['data']}',
             );
@@ -956,13 +994,18 @@ class PedidoService {
           // Notificar que se pagó un pedido para actualizar el dashboard
           _pedidoPagadoController.add(true);
           print('🔔 PedidoService: Notificación de pago enviada');
+          print('✅ PedidoService: Pago completado exitosamente');
 
           return pedidoPagado;
         } else {
-          throw Exception('Formato de respuesta inválido');
+          print('❌ PedidoService: Formato de respuesta inválido: ${response.body}');
+          throw Exception('Formato de respuesta inválido: ${responseData['message'] ?? 'Sin mensaje'}');
         }
       } else {
-        throw Exception('Error al pagar pedido: ${response.statusCode}');
+        print('❌ PedidoService: Error HTTP ${response.statusCode}: ${response.body}');
+        final errorData = json.decode(response.body);
+        String errorMessage = errorData['message'] ?? 'Error desconocido';
+        throw Exception('Error al pagar pedido (${response.statusCode}): $errorMessage');
       }
     } catch (e) {
       print('❌ Error pagando pedido: $e');
@@ -1010,6 +1053,57 @@ class PedidoService {
     } catch (e) {
       print('❌ Error cancelando producto con ingredientes: $e');
       throw Exception('Error al cancelar producto con ingredientes: $e');
+    }
+  }
+
+  // Mover un pedido de una mesa a otra
+  Future<Pedido> moverPedidoAMesa(
+    String pedidoId,
+    String nuevaMesa, {
+    String? nombrePedido,
+  }) async {
+    try {
+      final headers = await _getHeaders();
+      
+      final Map<String, dynamic> requestData = {
+        'nuevaMesa': nuevaMesa,
+      };
+      
+      if (nombrePedido != null && nombrePedido.isNotEmpty) {
+        requestData['nombrePedido'] = nombrePedido;
+      }
+      
+      print('🚚 Moviendo pedido $pedidoId a mesa: $nuevaMesa');
+      if (nombrePedido != null) {
+        print('  - Nombre del pedido: $nombrePedido');
+      }
+      
+      final response = await http.put(
+        Uri.parse('$baseUrl/api/pedidos/$pedidoId/mover-mesa'),
+        headers: headers,
+        body: json.encode(requestData),
+      );
+      
+      print('Mover pedido response: ${response.statusCode}');
+      print('Mover pedido body: ${response.body}');
+      
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        if (responseData['success'] == true && responseData['data'] != null) {
+          final pedidoMovido = Pedido.fromJson(responseData['data']);
+          print('✅ Pedido movido exitosamente a $nuevaMesa');
+          return pedidoMovido;
+        } else {
+          throw Exception('Formato de respuesta inválido');
+        }
+      } else {
+        final errorData = json.decode(response.body);
+        String errorMessage = errorData['message'] ?? 'Error desconocido';
+        throw Exception('Error al mover pedido (${response.statusCode}): $errorMessage');
+      }
+    } catch (e) {
+      print('❌ Error moviendo pedido: $e');
+      throw Exception('Error moviendo pedido: $e');
     }
   }
 }

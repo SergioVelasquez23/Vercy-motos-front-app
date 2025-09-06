@@ -1,9 +1,9 @@
 import 'package:test/test.dart';
-import '../lib/models/item_pedido_unified.dart';
+import 'package:kronos_restbar/models/item_pedido_unified.dart';
 import 'dart:convert';
 
 /// Suite completa de pruebas de compatibilidad ItemPedido
-/// 
+///
 /// Estas pruebas validan que el modelo Flutter funcione correctamente
 /// con datos que podrían venir del backend Java y viceversa.
 ///
@@ -17,7 +17,6 @@ import 'dart:convert';
 
 void main() {
   group('ItemPedidoUnified - Pruebas de Compatibilidad', () {
-    
     // 🧪 DATOS DE PRUEBA
     const sampleItemData = {
       'id': 'item_123',
@@ -49,7 +48,6 @@ void main() {
     };
 
     group('Creación y Constructores', () {
-      
       test('Constructor principal con parámetros requeridos', () {
         final item = ItemPedidoUnified(
           productoId: 'prod_123',
@@ -97,7 +95,6 @@ void main() {
     });
 
     group('Serialización JSON', () {
-      
       test('toJson() incluye todos los campos', () {
         final item = ItemPedidoUnified(
           id: 'test_id',
@@ -138,7 +135,6 @@ void main() {
     });
 
     group('Deserialización JSON', () {
-      
       test('fromJson() con datos completos', () {
         final item = ItemPedidoUnified.fromJson(sampleItemData);
 
@@ -196,10 +192,9 @@ void main() {
     });
 
     group('Factory con Manejo de Errores', () {
-      
       test('fromJsonSafe() con JSON válido', () {
         final item = ItemPedidoUnifiedFactory.fromJsonSafe(sampleItemData);
-        
+
         expect(item, isNotNull);
         expect(item!.productoId, 'prod_456');
         expect(item.subtotal, 31.98);
@@ -207,7 +202,7 @@ void main() {
 
       test('fromJsonSafe() con JSON nulo', () {
         final item = ItemPedidoUnifiedFactory.fromJsonSafe(null);
-        
+
         expect(item, isNull);
       });
 
@@ -227,7 +222,6 @@ void main() {
     });
 
     group('Validaciones', () {
-      
       test('isValid retorna true para datos válidos', () {
         final item = ItemPedidoUnified(
           productoId: 'valid_id',
@@ -269,7 +263,10 @@ void main() {
         );
 
         expect(item.isValid, isFalse);
-        expect(item.validationErrors, contains('Precio unitario no puede ser negativo'));
+        expect(
+          item.validationErrors,
+          contains('Precio unitario no puede ser negativo'),
+        );
       });
 
       test('validate() lanza excepción para datos inválidos', () {
@@ -284,7 +281,6 @@ void main() {
     });
 
     group('Cálculos Automáticos', () {
-      
       test('subtotal se calcula correctamente', () {
         final item = ItemPedidoUnified(
           productoId: 'prod_123',
@@ -309,7 +305,6 @@ void main() {
     });
 
     group('Métodos Utilitarios', () {
-      
       test('descripcionCorta sin cantidad múltiple', () {
         final item = ItemPedidoUnified(
           productoId: 'prod_123',
@@ -349,7 +344,7 @@ void main() {
           cantidad: 1,
           precioUnitario: 10.00,
         );
-        
+
         final item2 = ItemPedidoUnified(
           productoId: 'prod_123',
           cantidad: 1,
@@ -367,7 +362,7 @@ void main() {
           cantidad: 1,
           precioUnitario: 10.00,
         );
-        
+
         final item2 = ItemPedidoUnified(
           productoId: 'prod_123',
           cantidad: 1,
@@ -381,7 +376,6 @@ void main() {
     });
 
     group('Métodos de Copia', () {
-      
       test('copyWith() cambia campos especificados', () {
         final original = ItemPedidoUnified(
           productoId: 'prod_123',
@@ -390,10 +384,7 @@ void main() {
           precioUnitario: 10.00,
         );
 
-        final copy = original.copyWith(
-          cantidad: 3,
-          notas: 'Nueva nota',
-        );
+        final copy = original.copyWith(cantidad: 3, notas: 'Nueva nota');
 
         expect(copy.productoId, 'prod_123'); // Sin cambio
         expect(copy.productoNombre, 'Original'); // Sin cambio
@@ -405,11 +396,18 @@ void main() {
     });
 
     group('Extensiones de Lista', () {
-      
       test('totalGeneral calcula suma de subtotales', () {
         final items = [
-          ItemPedidoUnified(productoId: '1', cantidad: 2, precioUnitario: 10.00),
-          ItemPedidoUnified(productoId: '2', cantidad: 1, precioUnitario: 15.50),
+          ItemPedidoUnified(
+            productoId: '1',
+            cantidad: 2,
+            precioUnitario: 10.00,
+          ),
+          ItemPedidoUnified(
+            productoId: '2',
+            cantidad: 1,
+            precioUnitario: 15.50,
+          ),
           ItemPedidoUnified(productoId: '3', cantidad: 3, precioUnitario: 8.75),
         ];
 
@@ -418,8 +416,16 @@ void main() {
 
       test('cantidadTotal suma todas las cantidades', () {
         final items = [
-          ItemPedidoUnified(productoId: '1', cantidad: 2, precioUnitario: 10.00),
-          ItemPedidoUnified(productoId: '2', cantidad: 1, precioUnitario: 15.50),
+          ItemPedidoUnified(
+            productoId: '1',
+            cantidad: 2,
+            precioUnitario: 10.00,
+          ),
+          ItemPedidoUnified(
+            productoId: '2',
+            cantidad: 1,
+            precioUnitario: 15.50,
+          ),
           ItemPedidoUnified(productoId: '3', cantidad: 3, precioUnitario: 8.75),
         ];
 
@@ -428,9 +434,21 @@ void main() {
 
       test('porProducto filtra por ID de producto', () {
         final items = [
-          ItemPedidoUnified(productoId: 'A', cantidad: 1, precioUnitario: 10.00),
-          ItemPedidoUnified(productoId: 'B', cantidad: 2, precioUnitario: 15.00),
-          ItemPedidoUnified(productoId: 'A', cantidad: 1, precioUnitario: 12.00),
+          ItemPedidoUnified(
+            productoId: 'A',
+            cantidad: 1,
+            precioUnitario: 10.00,
+          ),
+          ItemPedidoUnified(
+            productoId: 'B',
+            cantidad: 2,
+            precioUnitario: 15.00,
+          ),
+          ItemPedidoUnified(
+            productoId: 'A',
+            cantidad: 1,
+            precioUnitario: 12.00,
+          ),
         ];
 
         final itemsA = items.porProducto('A');
@@ -441,19 +459,19 @@ void main() {
       test('conIngredientesPersonalizados filtra correctamente', () {
         final items = [
           ItemPedidoUnified(
-            productoId: '1', 
-            cantidad: 1, 
+            productoId: '1',
+            cantidad: 1,
             precioUnitario: 10.00,
             ingredientesSeleccionados: ['queso'],
           ),
           ItemPedidoUnified(
-            productoId: '2', 
-            cantidad: 1, 
+            productoId: '2',
+            cantidad: 1,
             precioUnitario: 15.00,
           ),
           ItemPedidoUnified(
-            productoId: '3', 
-            cantidad: 1, 
+            productoId: '3',
+            cantidad: 1,
             precioUnitario: 8.00,
             ingredientesSeleccionados: ['tomate', 'lechuga'],
           ),
@@ -461,12 +479,14 @@ void main() {
 
         final conIngredientes = items.conIngredientesPersonalizados;
         expect(conIngredientes, hasLength(2));
-        expect(conIngredientes.every((item) => item.tieneIngredientesPersonalizados), isTrue);
+        expect(
+          conIngredientes.every((item) => item.tieneIngredientesPersonalizados),
+          isTrue,
+        );
       });
     });
 
     group('Compatibilidad con Tipos de Datos', () {
-      
       test('maneja números enteros como double', () {
         final jsonData = {
           'productoId': 'prod_123',
@@ -493,7 +513,6 @@ void main() {
     });
 
     group('Casos Edge', () {
-      
       test('maneja lista de ingredientes nula', () {
         final jsonData = {
           'productoId': 'prod_123',
@@ -538,36 +557,44 @@ void main() {
   });
 
   group('Pruebas de Rendimiento', () {
-    
     test('creación masiva de items', () {
       final stopwatch = Stopwatch()..start();
-      
-      final items = List.generate(1000, (index) => ItemPedidoUnified(
-        productoId: 'prod_$index',
-        cantidad: index % 5 + 1,
-        precioUnitario: (index % 50) + 0.99,
-      ));
+
+      final items = List.generate(
+        1000,
+        (index) => ItemPedidoUnified(
+          productoId: 'prod_$index',
+          cantidad: index % 5 + 1,
+          precioUnitario: (index % 50) + 0.99,
+        ),
+      );
 
       stopwatch.stop();
-      
+
       expect(items, hasLength(1000));
       expect(stopwatch.elapsedMilliseconds, lessThan(100)); // Menos de 100ms
-      
+
       // Verificar que todos los cálculos son correctos
       final total = items.totalGeneral;
       expect(total, greaterThan(0));
     });
 
     test('serialización masiva JSON', () {
-      final items = List.generate(100, (index) => ItemPedidoUnified(
-        id: 'item_$index',
-        productoId: 'prod_$index',
-        productoNombre: 'Producto $index',
-        cantidad: index % 3 + 1,
-        precioUnitario: index * 1.5 + 5.99,
-        notas: 'Notas $index',
-        ingredientesSeleccionados: ['ingrediente_${index}_1', 'ingrediente_${index}_2'],
-      ));
+      final items = List.generate(
+        100,
+        (index) => ItemPedidoUnified(
+          id: 'item_$index',
+          productoId: 'prod_$index',
+          productoNombre: 'Producto $index',
+          cantidad: index % 3 + 1,
+          precioUnitario: index * 1.5 + 5.99,
+          notas: 'Notas $index',
+          ingredientesSeleccionados: [
+            'ingrediente_${index}_1',
+            'ingrediente_${index}_2',
+          ],
+        ),
+      );
 
       final stopwatch = Stopwatch()..start();
       final jsonList = items.map((item) => item.toJson()).toList();

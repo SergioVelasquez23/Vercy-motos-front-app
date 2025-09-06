@@ -179,13 +179,14 @@ class PDFService {
   ) {
     final productos = resumen['productos'] ?? resumen['detalleProductos'] ?? [];
 
-    if (productos is! List)
+    if (productos is! List) {
       return [
         pw.Text(
           'No hay productos',
           style: pw.TextStyle(font: font, fontSize: 10),
         ),
       ];
+    }
 
     return productos.map<pw.Widget>((producto) {
       final cantidad = producto['cantidad'] ?? 1;

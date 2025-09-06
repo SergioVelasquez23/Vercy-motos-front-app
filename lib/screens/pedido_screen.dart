@@ -20,7 +20,7 @@ class PedidoScreen extends StatefulWidget {
   final Mesa mesa;
   final Pedido? pedidoExistente; // Pedido existente para editar (opcional)
 
-  PedidoScreen({required this.mesa, this.pedidoExistente});
+  const PedidoScreen({super.key, required this.mesa, this.pedidoExistente});
 
   @override
   _PedidoScreenState createState() => _PedidoScreenState();
@@ -34,27 +34,35 @@ class _PedidoScreenState extends State<PedidoScreen> {
   /// Helper method to convert dynamic to Producto
   /// If forceNonNull is true, returns a default Producto instead of null for invalid inputs
   /// If productoId is provided, it will be used in case a default Producto needs to be created
-  Producto? _getProductoFromItem(dynamic producto, {String? productoId, bool forceNonNull = false}) {
+  Producto? _getProductoFromItem(
+    dynamic producto, {
+    String? productoId,
+    bool forceNonNull = false,
+  }) {
     if (producto == null) {
-      return forceNonNull ? Producto(
-        id: productoId ?? "",
-        nombre: "Producto desconocido",
-        precio: 0,
-        costo: 0,
-        utilidad: 0,
-      ) : null;
+      return forceNonNull
+          ? Producto(
+              id: productoId ?? "",
+              nombre: "Producto desconocido",
+              precio: 0,
+              costo: 0,
+              utilidad: 0,
+            )
+          : null;
     }
     if (producto is Producto) return producto;
     if (producto is Map<String, dynamic>) {
       return Producto.fromJson(producto);
     }
-    return forceNonNull ? Producto(
-      id: productoId ?? "",
-      nombre: "Producto desconocido",
-      precio: 0,
-      costo: 0,
-      utilidad: 0,
-    ) : null;
+    return forceNonNull
+        ? Producto(
+            id: productoId ?? "",
+            nombre: "Producto desconocido",
+            precio: 0,
+            costo: 0,
+            utilidad: 0,
+          )
+        : null;
   }
 
   List<Producto> productosMesa = [];
@@ -122,7 +130,7 @@ class _PedidoScreenState extends State<PedidoScreen> {
         });
 
         // Si el texto de búsqueda es suficientemente largo, o si hay una categoría seleccionada, realizar búsqueda API
-        if ((query.isNotEmpty && query.length >= 1) ||
+        if ((query.isNotEmpty && query.isNotEmpty) ||
             categoriaSelecionadaId != null) {
           _searchProductosAPI(query);
         } else {
@@ -330,7 +338,7 @@ class _PedidoScreenState extends State<PedidoScreen> {
                 style: TextStyle(fontSize: 16),
               ),
               content: SingleChildScrollView(
-                child: Container(
+                child: SizedBox(
                   width: double.maxFinite,
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -412,7 +420,7 @@ class _PedidoScreenState extends State<PedidoScreen> {
                                 ),
                               ),
                             );
-                          }).toList(),
+                          }),
                           SizedBox(height: 16),
                         ],
 
@@ -446,7 +454,7 @@ class _PedidoScreenState extends State<PedidoScreen> {
                               dense: true,
                               contentPadding: EdgeInsets.zero,
                             );
-                          }).toList(),
+                          }),
                           SizedBox(height: 16),
                         ],
 
@@ -507,7 +515,7 @@ class _PedidoScreenState extends State<PedidoScreen> {
                               dense: true,
                               contentPadding: EdgeInsets.zero,
                             );
-                          }).toList(),
+                          }),
                           SizedBox(height: 16),
                         ],
                       ],
@@ -630,7 +638,10 @@ class _PedidoScreenState extends State<PedidoScreen> {
         );
 
         for (var item in pedidoExistente!.items) {
-          final productoObj = _getProductoFromItem(item.producto, productoId: item.productoId);
+          final productoObj = _getProductoFromItem(
+            item.producto,
+            productoId: item.productoId,
+          );
           print(
             '📦 Cargando producto: ${productoObj?.nombre ?? "Sin nombre"} (ID: ${item.productoId})',
           );
@@ -695,7 +706,10 @@ class _PedidoScreenState extends State<PedidoScreen> {
             for (var item in pedidoExistente!.items) {
               if (item.producto != null) {
                 // Crear una copia del producto con la cantidad y notas del item
-                final productoOriginal = _getProductoFromItem(item.producto, forceNonNull: true)!;
+                final productoOriginal = _getProductoFromItem(
+                  item.producto,
+                  forceNonNull: true,
+                )!;
                 final productoParaMesa = Producto(
                   id: productoOriginal.id,
                   nombre: productoOriginal.nombre,
@@ -930,8 +944,9 @@ class _PedidoScreenState extends State<PedidoScreen> {
         }
 
         // Si no hay notas especiales ni ingredientes, no agregar el producto
-        if (notasEspeciales == null && ingredientesSeleccionados.isEmpty)
+        if (notasEspeciales == null && ingredientesSeleccionados.isEmpty) {
           return;
+        }
       }
     }
 
@@ -1508,7 +1523,7 @@ class _PedidoScreenState extends State<PedidoScreen> {
                             selected: categoriaSelecionadaId == categoria.id,
                           ),
                         );
-                      }).toList(),
+                      }),
                     ],
                   ),
                 ),
@@ -1986,7 +2001,7 @@ class _PedidoScreenState extends State<PedidoScreen> {
                   _calcularTotal();
                 });
               },
-              activeColor: primary,
+              activeThumbColor: primary,
             )
           else
             SizedBox(width: 50), // Espacio reservado para mantener alineación

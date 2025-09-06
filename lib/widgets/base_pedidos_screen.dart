@@ -7,11 +7,11 @@ abstract class BasePedidosScreen extends StatefulWidget {
   final IconData titleIcon;
 
   const BasePedidosScreen({
-    Key? key,
+    super.key,
     required this.title,
     required this.themeColor,
     required this.titleIcon,
-  }) : super(key: key);
+  });
 }
 
 abstract class BasePedidosScreenState<T extends BasePedidosScreen>

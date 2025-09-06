@@ -5,8 +5,7 @@ import '../services/reportes_service.dart';
 class ReportesScreen extends StatefulWidget {
   final int initialReportIndex;
 
-  const ReportesScreen({Key? key, this.initialReportIndex = 0})
-    : super(key: key);
+  const ReportesScreen({super.key, this.initialReportIndex = 0});
 
   @override
   _ReportesScreenState createState() => _ReportesScreenState();
@@ -487,7 +486,7 @@ class _ReportesScreenState extends State<ReportesScreen>
                     ),
                     style: TextStyle(color: textDark),
                     dropdownColor: cardBg,
-                    value: _periodoSeleccionado,
+                    initialValue: _periodoSeleccionado,
                     onChanged: (String? value) {
                       if (value != null) {
                         setState(() {
@@ -656,7 +655,7 @@ class _ReportesScreenState extends State<ReportesScreen>
                       ),
                       style: TextStyle(color: textDark),
                       dropdownColor: cardBg,
-                      value: _selectedCategoria,
+                      initialValue: _selectedCategoria,
                       hint: Text('Todas', style: TextStyle(color: textLight)),
                       onChanged: (String? value) {
                         setState(() {
@@ -694,7 +693,7 @@ class _ReportesScreenState extends State<ReportesScreen>
                       ),
                       style: TextStyle(color: textDark),
                       dropdownColor: cardBg,
-                      value: _selectedProducto,
+                      initialValue: _selectedProducto,
                       hint: Text('Todos', style: TextStyle(color: textLight)),
                       onChanged: (String? value) {
                         setState(() {
@@ -737,7 +736,7 @@ class _ReportesScreenState extends State<ReportesScreen>
                       ),
                       style: TextStyle(color: textDark),
                       dropdownColor: cardBg,
-                      value: _selectedCliente,
+                      initialValue: _selectedCliente,
                       hint: Text('Todos', style: TextStyle(color: textLight)),
                       onChanged: (String? value) {
                         setState(() {
@@ -775,7 +774,7 @@ class _ReportesScreenState extends State<ReportesScreen>
                       ),
                       style: TextStyle(color: textDark),
                       dropdownColor: cardBg,
-                      value: _selectedFormaPago,
+                      initialValue: _selectedFormaPago,
                       hint: Text('Todas', style: TextStyle(color: textLight)),
                       onChanged: (String? value) {
                         setState(() {
@@ -879,10 +878,10 @@ class _ReportesScreenState extends State<ReportesScreen>
                       SizedBox(height: 16),
                       ElevatedButton(
                         onPressed: _cargarDatos,
-                        child: Text('Reintentar'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: primary,
                         ),
+                        child: Text('Reintentar'),
                       ),
                     ],
                   ),
@@ -991,7 +990,7 @@ class _ReportesScreenState extends State<ReportesScreen>
                   ),
                 ),
                 SizedBox(height: 16),
-                Container(
+                SizedBox(
                   height: 250,
                   child: _ventasPorDia.isEmpty
                       ? Center(
@@ -1067,7 +1066,7 @@ class _ReportesScreenState extends State<ReportesScreen>
                   ),
                 ),
                 SizedBox(height: 16),
-                Container(
+                SizedBox(
                   height: 300,
                   child: _ventasCategoria.isEmpty
                       ? Center(
@@ -1092,7 +1091,7 @@ class _ReportesScreenState extends State<ReportesScreen>
     String? subtitle,
     required IconData icon,
   }) {
-    return Container(
+    return SizedBox(
       width: MediaQuery.of(context).size.width > 600
           ? (MediaQuery.of(context).size.width / 2) - 24
           : MediaQuery.of(context).size.width - 32,
@@ -1315,10 +1314,10 @@ class _ReportesScreenState extends State<ReportesScreen>
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: DataTable(
-          headingRowColor: MaterialStateProperty.all(
+          headingRowColor: WidgetStateProperty.all(
             Colors.black.withOpacity(0.3),
           ),
-          dataRowColor: MaterialStateProperty.all(cardBg.withOpacity(0.7)),
+          dataRowColor: WidgetStateProperty.all(cardBg.withOpacity(0.7)),
           columns: [
             DataColumn(
               label: Text(
@@ -1501,8 +1500,8 @@ class _ReportesScreenState extends State<ReportesScreen>
                   SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: _cargarDatos,
-                    child: Text('Reintentar'),
                     style: ElevatedButton.styleFrom(backgroundColor: primary),
+                    child: Text('Reintentar'),
                   ),
                 ],
               ),
@@ -1544,7 +1543,7 @@ class _ReportesScreenState extends State<ReportesScreen>
                                 style: TextStyle(color: primary),
                               ),
                               SizedBox(height: 20),
-                              Container(
+                              SizedBox(
                                 height: 300,
                                 child: _buildBarChartVentas(),
                               ),
@@ -1585,8 +1584,8 @@ class _ReportesScreenState extends State<ReportesScreen>
                   SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: _cargarDatos,
-                    child: Text('Reintentar'),
                     style: ElevatedButton.styleFrom(backgroundColor: primary),
+                    child: Text('Reintentar'),
                   ),
                 ],
               ),
@@ -1663,8 +1662,8 @@ class _ReportesScreenState extends State<ReportesScreen>
                   SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: _cargarDatos,
-                    child: Text('Reintentar'),
                     style: ElevatedButton.styleFrom(backgroundColor: primary),
+                    child: Text('Reintentar'),
                   ),
                 ],
               ),
@@ -1706,8 +1705,8 @@ class _ReportesScreenState extends State<ReportesScreen>
                           ),
                         );
                       },
-                      child: Text('Implementar API de pedidos'),
                       style: ElevatedButton.styleFrom(backgroundColor: primary),
+                      child: Text('Implementar API de pedidos'),
                     ),
                   ],
                 ),
@@ -1745,8 +1744,8 @@ class _ReportesScreenState extends State<ReportesScreen>
                   SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: _cargarDatos,
-                    child: Text('Reintentar'),
                     style: ElevatedButton.styleFrom(backgroundColor: primary),
+                    child: Text('Reintentar'),
                   ),
                 ],
               ),
@@ -1788,8 +1787,8 @@ class _ReportesScreenState extends State<ReportesScreen>
                           ),
                         );
                       },
-                      child: Text('Implementar API de clientes'),
                       style: ElevatedButton.styleFrom(backgroundColor: primary),
+                      child: Text('Implementar API de clientes'),
                     ),
                   ],
                 ),
@@ -1874,10 +1873,10 @@ class _ReportesScreenState extends State<ReportesScreen>
                         SizedBox(height: 16),
                         ElevatedButton(
                           onPressed: _cargarReporteUtilidad,
-                          child: Text('Reintentar'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: primary,
                           ),
+                          child: Text('Reintentar'),
                         ),
                       ],
                     ),
@@ -1943,7 +1942,7 @@ class _ReportesScreenState extends State<ReportesScreen>
                                 ),
                               ),
                               SizedBox(height: 20),
-                              Container(
+                              SizedBox(
                                 height: 300,
                                 child: BarChart(
                                   BarChartData(
@@ -2257,7 +2256,7 @@ class _ReportesScreenState extends State<ReportesScreen>
       ),
       style: TextStyle(color: textDark),
       dropdownColor: cardBg,
-      value: _periodoSeleccionado,
+      initialValue: _periodoSeleccionado,
       onChanged: (String? value) {
         if (value != null) {
           setState(() {

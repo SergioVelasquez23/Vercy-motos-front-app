@@ -7,7 +7,7 @@ import '../providers/user_provider.dart';
 import '../utils/format_utils.dart';
 
 class PedidosScreenFusion extends StatefulWidget {
-  const PedidosScreenFusion({Key? key}) : super(key: key);
+  const PedidosScreenFusion({super.key});
 
   @override
   _PedidosScreenFusionState createState() => _PedidosScreenFusionState();
@@ -15,7 +15,6 @@ class PedidosScreenFusion extends StatefulWidget {
 
 class _PedidosScreenFusionState extends State<PedidosScreenFusion>
     with TickerProviderStateMixin {
-  
   String _getProductoNombre(dynamic producto) {
     if (producto == null) return "Producto desconocido";
     if (producto is Producto) return producto.nombre;
@@ -24,6 +23,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
     }
     return "Producto desconocido";
   }
+
   final Color primary = Color(0xFFFF6B00);
   final Color bgDark = Color(0xFF1E1E1E);
   final Color cardBg = Color(0xFF252525);
@@ -597,17 +597,24 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                 // Barra de estadísticas ultra compacta
                 Container(
                   margin: EdgeInsets.symmetric(horizontal: 3, vertical: 1),
-                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8), // AUMENTA estos valores
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ), // AUMENTA estos valores
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        primary.withOpacity(0.08), // puedes subir opacidad para más color
+                        primary.withOpacity(
+                          0.08,
+                        ), // puedes subir opacidad para más color
                         primary.withOpacity(0.03),
                       ],
                       begin: Alignment.centerLeft,
                       end: Alignment.centerRight,
                     ),
-                    borderRadius: BorderRadius.circular(8), // un poco más grande
+                    borderRadius: BorderRadius.circular(
+                      8,
+                    ), // un poco más grande
                     border: Border.all(color: primary.withOpacity(0.07)),
                   ),
                   child: Row(
@@ -663,7 +670,10 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
       ),
       child: ExpansionTile(
         tilePadding: EdgeInsets.all(3), // antes 6
-        childrenPadding: EdgeInsets.symmetric(horizontal: 3, vertical: 2), // antes 6,4
+        childrenPadding: EdgeInsets.symmetric(
+          horizontal: 3,
+          vertical: 2,
+        ), // antes 6,4
         backgroundColor: cardBg,
         collapsedBackgroundColor: cardBg,
         iconColor: primary,
@@ -856,9 +866,13 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
 
                           // Prioridad: objeto producto > productoNombre del JSON > ID
                           String nombreProducto;
-                          if (_getProductoNombre(primerItem.producto) != "Producto desconocido" &&
-                              _getProductoNombre(primerItem.producto) != "Producto desconocido") {
-                            nombreProducto = _getProductoNombre(primerItem.producto);
+                          if (_getProductoNombre(primerItem.producto) !=
+                                  "Producto desconocido" &&
+                              _getProductoNombre(primerItem.producto) !=
+                                  "Producto desconocido") {
+                            nombreProducto = _getProductoNombre(
+                              primerItem.producto,
+                            );
                           } else {
                             // Intentar usar productoNombre del JSON como fallback
                             // Este campo viene del backend en el JSON
@@ -1096,7 +1110,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                       ],
                     ),
                   );
-                }).toList(),
+                }),
 
                 // Total del pedido
                 SizedBox(height: 16),
@@ -1233,34 +1247,34 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
 
   // Método auxiliar para construir items de estadísticas
   Widget _buildStatItem(String label, String value, IconData icon) {
-  return Column(
-    children: [
-      Container(
-        padding: EdgeInsets.all(8), // antes 4
-        decoration: BoxDecoration(
-          color: primary.withOpacity(0.15),
-          borderRadius: BorderRadius.circular(8),
+    return Column(
+      children: [
+        Container(
+          padding: EdgeInsets.all(8), // antes 4
+          decoration: BoxDecoration(
+            color: primary.withOpacity(0.15),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, color: primary, size: 20), // antes 11
         ),
-        child: Icon(icon, color: primary, size: 20), // antes 11
-      ),
-      SizedBox(height: 4), // antes 2
-      Text(
-        value,
-        style: TextStyle(
-          color: primary,
-          fontSize: 16, // antes 8
-          fontWeight: FontWeight.bold,
+        SizedBox(height: 4), // antes 2
+        Text(
+          value,
+          style: TextStyle(
+            color: primary,
+            fontSize: 16, // antes 8
+            fontWeight: FontWeight.bold,
+          ),
         ),
-      ),
-      Text(
-        label,
-        style: TextStyle(
-          color: textLight,
-          fontSize: 10, // antes 6
-          fontWeight: FontWeight.w500,
+        Text(
+          label,
+          style: TextStyle(
+            color: textLight,
+            fontSize: 10, // antes 6
+            fontWeight: FontWeight.w500,
+          ),
         ),
-      ),
-    ],
-  );
-}
+      ],
+    );
+  }
 }

@@ -1,10 +1,10 @@
 import '../models/producto.dart';
 
 /// Modelo ItemPedido unificado con backend Java
-/// 
+///
 /// Esta versión elimina la ambigüedad en precios y mantiene
 /// consistencia total con el modelo Java.
-/// 
+///
 /// CAMBIOS PRINCIPALES:
 /// - precio → precioUnitario (consistencia con Java)
 /// - Agregado id y productoNombre para compatibilidad
@@ -12,21 +12,20 @@ import '../models/producto.dart';
 /// - Mejor validación y manejo de errores
 /// - Compatibilidad con formato JSON del backend
 class ItemPedido {
-  
   // 🏷️ IDENTIFICACIÓN
-  final String? id;                           // Opcional, generado por BD
-  
+  final String? id; // Opcional, generado por BD
+
   // 🔗 REFERENCIA A PRODUCTO
-  final String productoId;                    // ID del producto (requerido)
-  final String? productoNombre;               // Cache del nombre (opcional)
-  final Producto? producto;                   // Referencia completa (opcional, para UI)
-  
-  // 📊 CANTIDADES Y PRECIOS  
-  final int cantidad;                         // Cantidad pedida (requerido)
-  final double precioUnitario;                // ÚNICO precio (requerido)
-  
+  final String productoId; // ID del producto (requerido)
+  final String? productoNombre; // Cache del nombre (opcional)
+  final Producto? producto; // Referencia completa (opcional, para UI)
+
+  // 📊 CANTIDADES Y PRECIOS
+  final int cantidad; // Cantidad pedida (requerido)
+  final double precioUnitario; // ÚNICO precio (requerido)
+
   // 📝 INFORMACIÓN ADICIONAL
-  final String? notas;                        // Notas especiales (opcional)
+  final String? notas; // Notas especiales (opcional)
   final List<String> ingredientesSeleccionados; // Ingredientes customizados
 
   // 🏗️ CONSTRUCTOR
@@ -52,7 +51,7 @@ class ItemPedido {
     if (productoNombre != null) 'productoNombre': productoNombre,
     'cantidad': cantidad,
     'precioUnitario': precioUnitario,
-    'subtotal': subtotal,  // Incluido para compatibilidad, pero calculado
+    'subtotal': subtotal, // Incluido para compatibilidad, pero calculado
     if (notas != null && notas!.isNotEmpty) 'notas': notas,
     'ingredientesSeleccionados': ingredientesSeleccionados,
   };
@@ -61,7 +60,7 @@ class ItemPedido {
   factory ItemPedido.fromJson(Map<String, dynamic> json, {Producto? producto}) {
     // Manejar diferentes formatos de precio por compatibilidad con datos existentes
     double precio = 0.0;
-    
+
     // Prioridad: precioUnitario > precio > subtotal/cantidad
     if (json.containsKey('precioUnitario')) {
       precio = (json['precioUnitario'] as num).toDouble();
@@ -131,7 +130,8 @@ class ItemPedido {
       cantidad: cantidad ?? this.cantidad,
       precioUnitario: precioUnitario ?? this.precioUnitario,
       notas: notas ?? this.notas,
-      ingredientesSeleccionados: ingredientesSeleccionados ?? this.ingredientesSeleccionados,
+      ingredientesSeleccionados:
+          ingredientesSeleccionados ?? this.ingredientesSeleccionados,
     );
   }
 
@@ -157,7 +157,7 @@ class ItemPedido {
 
   // 🔍 MÉTODOS UTILITARIOS
   @override
-  String toString() => 
+  String toString() =>
       'ItemPedido(id: $id, productoId: $productoId, cantidad: $cantidad, precioUnitario: $precioUnitario, subtotal: ${subtotal.toStringAsFixed(2)})';
 
   @override
@@ -172,10 +172,8 @@ class ItemPedido {
   int get hashCode => id.hashCode ^ productoId.hashCode;
 
   // 🧪 MÉTODOS DE VALIDACIÓN
-  bool get isValid => 
-      productoId.isNotEmpty && 
-      cantidad > 0 && 
-      precioUnitario >= 0;
+  bool get isValid =>
+      productoId.isNotEmpty && cantidad > 0 && precioUnitario >= 0;
 
   List<String> get validationErrors {
     final errors = <String>[];
@@ -198,7 +196,8 @@ class ItemPedido {
   }
 
   /// Indica si tiene ingredientes seleccionados
-  bool get tieneIngredientesSeleccionados => ingredientesSeleccionados.isNotEmpty;
+  bool get tieneIngredientesSeleccionados =>
+      ingredientesSeleccionados.isNotEmpty;
 
   /// Indica si tiene notas especiales
   bool get tieneNotas => notas != null && notas!.isNotEmpty;
@@ -207,15 +206,15 @@ class ItemPedido {
   String get resumen {
     final buffer = StringBuffer();
     buffer.write('${cantidad}x $nombreProducto');
-    
+
     if (tieneNotas) {
-      buffer.write(' (${notas})');
+      buffer.write(' ($notas)');
     }
-    
+
     if (tieneIngredientesSeleccionados) {
       buffer.write(' +${ingredientesSeleccionados.length} ing.');
     }
-    
+
     return buffer.toString();
   }
 }

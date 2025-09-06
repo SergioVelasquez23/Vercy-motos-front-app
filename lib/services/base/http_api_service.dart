@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import '../config/api_config.dart';
+import '../../config/api_config.dart';
 import 'base_api_service.dart';
 
 /// Excepción personalizada para errores de API
@@ -17,7 +17,7 @@ class ApiException implements Exception {
 }
 
 /// Implementación concreta del BaseApiService
-/// 
+///
 /// Esta clase contiene toda la lógica HTTP común que estaba duplicada
 /// en más de 20 servicios diferentes. Centraliza:
 /// - Manejo de headers de autenticación
@@ -65,11 +65,15 @@ class HttpApiService extends BaseApiService {
       case 401:
         // Token expirado o inválido
         await _storage.delete(key: 'jwt_token');
-        throw ApiException('Sesión expirada. Por favor inicia sesión nuevamente.',
-            statusCode: 401);
+        throw ApiException(
+          'Sesión expirada. Por favor inicia sesión nuevamente.',
+          statusCode: 401,
+        );
       case 403:
-        throw ApiException('No tienes permisos para realizar esta acción.',
-            statusCode: 403);
+        throw ApiException(
+          'No tienes permisos para realizar esta acción.',
+          statusCode: 403,
+        );
       case 404:
         throw ApiException('Recurso no encontrado.', statusCode: 404);
       case 422:
@@ -81,13 +85,19 @@ class HttpApiService extends BaseApiService {
       default:
         final errorData = _tryParseJson(response.body);
         final message = errorData?['message'] ?? 'Error desconocido.';
-        throw ApiException(message,
-            statusCode: response.statusCode, responseData: errorData);
+        throw ApiException(
+          message,
+          statusCode: response.statusCode,
+          responseData: errorData,
+        );
     }
   }
 
   /// Parsea una respuesta exitosa
-  T _parseSuccessResponse<T>(String responseBody, T Function(dynamic data)? parser) {
+  T _parseSuccessResponse<T>(
+    String responseBody,
+    T Function(dynamic data)? parser,
+  ) {
     final responseData = json.decode(responseBody);
 
     // Si hay un parser personalizado, usarlo
@@ -97,7 +107,8 @@ class HttpApiService extends BaseApiService {
 
     // Manejo estándar de respuestas de la API
     if (responseData is Map<String, dynamic>) {
-      if (responseData.containsKey('success') && responseData['success'] == true) {
+      if (responseData.containsKey('success') &&
+          responseData['success'] == true) {
         // Respuesta con wrapper estándar
         if (responseData.containsKey('data')) {
           return responseData['data'] as T;
@@ -241,16 +252,17 @@ class HttpApiService extends BaseApiService {
 
   /// Construye la URI completa a partir del endpoint y parámetros
   Uri _buildUri(String endpoint, [Map<String, String>? queryParams]) {
-    final fullUrl = endpoint.startsWith('http') ? endpoint : '$baseUrl$endpoint';
+    final fullUrl = endpoint.startsWith('http')
+        ? endpoint
+        : '$baseUrl$endpoint';
     final uri = Uri.parse(fullUrl);
-    
+
     if (queryParams != null && queryParams.isNotEmpty) {
-      return uri.replace(queryParameters: {
-        ...uri.queryParameters,
-        ...queryParams,
-      });
+      return uri.replace(
+        queryParameters: {...uri.queryParameters, ...queryParams},
+      );
     }
-    
+
     return uri;
   }
 

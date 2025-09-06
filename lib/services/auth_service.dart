@@ -208,14 +208,16 @@ class AuthService {
       }
     } catch (e) {
       print('❌ Error guardando token: $e');
-      throw e; // Re-lanzar la excepción para manejarla en el nivel superior
+      rethrow; // Re-lanzar la excepción para manejarla en el nivel superior
     }
   }
 
   // Método para verificar si un token es válido
   Future<bool> verificarToken(String token) async {
     try {
-      print('🔍 Verificando token en: ${ApiConfig.instance.endpoints.auth.userInfo}');
+      print(
+        '🔍 Verificando token en: ${ApiConfig.instance.endpoints.auth.userInfo}',
+      );
       print(
         '🔍 Token (primeros 20 caracteres): ${token.substring(0, token.length > 20 ? 20 : token.length)}...',
       );

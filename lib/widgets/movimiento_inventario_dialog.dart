@@ -11,7 +11,8 @@ class MovimientoInventarioDialog extends StatefulWidget {
   final List<Inventario> inventarioItems;
   final MovimientoInventario? movimientoExistente;
 
-  MovimientoInventarioDialog({
+  const MovimientoInventarioDialog({
+    super.key,
     required this.inventarioItems,
     this.movimientoExistente,
   });
@@ -194,14 +195,14 @@ class _MovimientoInventarioDialogState
                   Expanded(
                     child: TextButton(
                       onPressed: () => _selectDate(context),
-                      child: Text(
-                        '${_fecha.day}/${_fecha.month}/${_fecha.year}',
-                        style: TextStyle(color: primary),
-                      ),
                       style: TextButton.styleFrom(
                         backgroundColor: Colors.white10,
                         padding: EdgeInsets.symmetric(vertical: 16),
                         alignment: Alignment.centerLeft,
+                      ),
+                      child: Text(
+                        '${_fecha.day}/${_fecha.month}/${_fecha.year}',
+                        style: TextStyle(color: primary),
                       ),
                     ),
                   ),
@@ -403,7 +404,7 @@ class _MovimientoInventarioDialogState
                             }
                             if (double.parse(value) >
                                 kMaximoCantidadInventario) {
-                              return 'Máximo ${kMaximoCantidadInventario}';
+                              return 'Máximo $kMaximoCantidadInventario';
                             }
                             return null;
                           },
@@ -462,6 +463,7 @@ class _MovimientoInventarioDialogState
         ),
         ElevatedButton(
           onPressed: _isLoading ? null : _guardarMovimiento,
+          style: ElevatedButton.styleFrom(backgroundColor: primary),
           child: _isLoading
               ? SizedBox(
                   width: 20,
@@ -472,7 +474,6 @@ class _MovimientoInventarioDialogState
                   ),
                 )
               : Text('Guardar cambios'),
-          style: ElevatedButton.styleFrom(backgroundColor: primary),
         ),
       ],
     );

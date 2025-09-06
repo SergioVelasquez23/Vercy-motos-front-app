@@ -5,6 +5,8 @@ import '../models/cuadre_caja.dart';
 import '../services/cuadre_caja_service.dart';
 
 class AbrirCajaScreen extends StatefulWidget {
+  const AbrirCajaScreen({super.key});
+
   @override
   _AbrirCajaScreenState createState() => _AbrirCajaScreenState();
 }
@@ -350,7 +352,7 @@ class _AbrirCajaScreenState extends State<AbrirCajaScreen> {
                                 ),
                               ),
                               style: TextStyle(color: textDark),
-                              value: _selectedCaja,
+                              initialValue: _selectedCaja,
                               items: ['Caja Principal', 'Caja Secundaria']
                                   .map<DropdownMenuItem<String>>((
                                     String value,

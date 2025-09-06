@@ -3,6 +3,8 @@ import '../models/ingreso_caja.dart';
 import '../services/ingreso_caja_service.dart';
 
 class IngresosCajaScreen extends StatefulWidget {
+  const IngresosCajaScreen({super.key});
+
   @override
   _IngresosCajaScreenState createState() => _IngresosCajaScreenState();
 }
@@ -23,9 +25,9 @@ class _IngresosCajaScreenState extends State<IngresosCajaScreen> {
     try {
       _ingresos = await _service.obtenerTodos();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al cargar ingresos: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error al cargar ingresos: $e')));
     }
     setState(() => _loading = false);
   }
@@ -33,9 +35,7 @@ class _IngresosCajaScreenState extends State<IngresosCajaScreen> {
   void _mostrarDialogoNuevoIngreso() async {
     final result = await showDialog<IngresoCaja>(
       context: context,
-      builder: (context) => Dialog(
-        child: _IngresoCajaForm(),
-      ),
+      builder: (context) => Dialog(child: _IngresoCajaForm()),
     );
     if (result != null) {
       await _service.registrarIngreso(result);
@@ -63,7 +63,8 @@ class _IngresosCajaScreenState extends State<IngresosCajaScreen> {
                   return ListTile(
                     title: Text(ingreso.concepto),
                     subtitle: Text(
-                        'Monto: ${ingreso.monto} | Forma: ${ingreso.formaPago}\n${ingreso.fechaIngreso.toLocal()}'),
+                      'Monto: ${ingreso.monto} | Forma: ${ingreso.formaPago}\n${ingreso.fechaIngreso.toLocal()}',
+                    ),
                     trailing: IconButton(
                       icon: Icon(Icons.delete, color: Colors.red),
                       onPressed: () => _eliminarIngreso(ingreso.id!),
@@ -74,8 +75,8 @@ class _IngresosCajaScreenState extends State<IngresosCajaScreen> {
             ),
       floatingActionButton: FloatingActionButton(
         onPressed: _mostrarDialogoNuevoIngreso,
-        child: Icon(Icons.add),
         tooltip: 'Nuevo ingreso',
+        child: Icon(Icons.add),
       ),
     );
   }
@@ -104,7 +105,10 @@ class _IngresoCajaFormState extends State<_IngresoCajaForm> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Nuevo Ingreso', style: TextStyle(fontWeight: FontWeight.bold)),
+              Text(
+                'Nuevo Ingreso',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
               TextFormField(
                 decoration: InputDecoration(labelText: 'Concepto'),
                 validator: (v) => v == null || v.isEmpty ? 'Requerido' : null,
@@ -113,11 +117,13 @@ class _IngresoCajaFormState extends State<_IngresoCajaForm> {
               TextFormField(
                 decoration: InputDecoration(labelText: 'Monto'),
                 keyboardType: TextInputType.number,
-                validator: (v) => v == null || double.tryParse(v) == null ? 'Monto válido' : null,
+                validator: (v) => v == null || double.tryParse(v) == null
+                    ? 'Monto válido'
+                    : null,
                 onSaved: (v) => monto = double.parse(v!),
               ),
               DropdownButtonFormField<String>(
-                value: formaPago,
+                initialValue: formaPago,
                 items: ['Efectivo', 'Transferencia', 'Otro']
                     .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                     .toList(),
@@ -161,7 +167,7 @@ class _IngresoCajaFormState extends State<_IngresoCajaForm> {
                     child: Text('Guardar'),
                   ),
                 ],
-              )
+              ),
             ],
           ),
         ),

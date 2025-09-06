@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import '../config/constants.dart';
 
 class RecetasScreen extends StatefulWidget {
+  const RecetasScreen({super.key});
+
   @override
   _RecetasScreenState createState() => _RecetasScreenState();
 }
 
 class _RecetasScreenState extends State<RecetasScreen> {
-  bool _isLoading = false;
+  final bool _isLoading = false;
   final TextEditingController _searchController = TextEditingController();
 
   // Datos de ejemplo para recetas (en un entorno real, estos vendrían de una API)
@@ -276,8 +278,8 @@ class _RecetasScreenState extends State<RecetasScreen> {
       floatingActionButton: FloatingActionButton(
         backgroundColor: primary,
         onPressed: _mostrarDialogoNuevaReceta,
-        child: Icon(Icons.add),
         tooltip: 'Crear nueva receta',
+        child: Icon(Icons.add),
       ),
     );
   }

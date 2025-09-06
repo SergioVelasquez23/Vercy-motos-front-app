@@ -118,7 +118,7 @@ class DocumentoMesaEndpoints {
 
     final query = params.isEmpty
         ? ''
-        : '?' + params.entries.map((e) => '${e.key}=${e.value}').join('&');
+        : '?${params.entries.map((e) => '${e.key}=${e.value}').join('&')}';
 
     return '$base$query';
   }

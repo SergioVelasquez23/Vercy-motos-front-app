@@ -4,6 +4,8 @@ import '../services/auth_service.dart';
 import '../providers/user_provider.dart';
 
 class LoginScreen extends StatefulWidget {
+  const LoginScreen({super.key});
+
   @override
   _LoginScreenState createState() => _LoginScreenState();
 }
@@ -687,7 +689,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                           SizedBox(height: 16),
-                          Container(
+                          SizedBox(
                             width: double.infinity,
                             height: 45,
                             child: ElevatedButton(
