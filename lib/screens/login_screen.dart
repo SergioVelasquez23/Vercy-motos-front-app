@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../providers/user_provider.dart';
+import '../theme/app_theme.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -18,11 +19,6 @@ class _LoginScreenState extends State<LoginScreen> {
       TextEditingController();
 
   Future<void> _showRegisterDialog() async {
-    final Color primary = Color(0xFFFF6B00);
-    final Color bgDark = Color(0xFF1E1E1E);
-    final Color cardBg = Color(0xFF252525);
-    final Color textDark = Color(0xFFE0E0E0);
-    final Color textLight = Color(0xFFA0A0A0);
 
     String? registerError;
     bool isLoading = false;
@@ -35,20 +31,13 @@ class _LoginScreenState extends State<LoginScreen> {
             return Dialog(
               backgroundColor: Colors.transparent,
               child: Container(
-                constraints: BoxConstraints(maxWidth: 400),
-                padding: EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: cardBg,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.3),
-                      blurRadius: 15,
-                      spreadRadius: 2,
-                      offset: Offset(0, 5),
-                    ),
-                  ],
+                constraints: BoxConstraints(
+                  maxWidth: context.isMobile ? double.infinity : 400,
+                  maxHeight: MediaQuery.of(context).size.height * 0.9,
                 ),
+                margin: EdgeInsets.all(context.responsivePadding),
+                padding: EdgeInsets.all(AppTheme.spacingLarge),
+                decoration: AppTheme.elevatedCardDecoration,
                 child: SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -56,131 +45,140 @@ class _LoginScreenState extends State<LoginScreen> {
                       // Título
                       Row(
                         children: [
-                          Icon(Icons.person_add, color: primary, size: 24),
-                          SizedBox(width: 12),
+                          Container(
+                            padding: EdgeInsets.all(AppTheme.spacingSmall),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primary.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                            ),
+                            child: Icon(Icons.person_add, color: AppTheme.primary, size: 24),
+                          ),
+                          SizedBox(width: AppTheme.spacingMedium),
                           Text(
                             'Crear cuenta',
-                            style: TextStyle(
-                              color: textDark,
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                            ),
+                            style: AppTheme.headlineMedium,
                           ),
                         ],
                       ),
-                      SizedBox(height: 24),
+                      SizedBox(height: AppTheme.spacingLarge),
 
                       // Campo Nombre
-                      Container(
-                        decoration: BoxDecoration(
-                          color: bgDark,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: textLight.withOpacity(0.2),
-                            width: 1,
+                      TextFormField(
+                        controller: registerNameController,
+                        style: AppTheme.bodyMedium,
+                        decoration: InputDecoration(
+                          labelText: 'Nombre completo',
+                          labelStyle: AppTheme.labelMedium.copyWith(color: AppTheme.textSecondary),
+                          prefixIcon: Icon(
+                            Icons.person_outline,
+                            color: AppTheme.primary,
                           ),
-                        ),
-                        child: TextField(
-                          controller: registerNameController,
-                          style: TextStyle(color: textDark),
-                          decoration: InputDecoration(
-                            labelText: 'Nombre completo',
-                            labelStyle: TextStyle(color: textLight),
-                            prefixIcon: Icon(
-                              Icons.person_outline,
-                              color: primary,
-                            ),
-                            border: InputBorder.none,
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 16,
-                            ),
+                          filled: true,
+                          fillColor: AppTheme.surfaceDark,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                            borderSide: BorderSide(color: AppTheme.textMuted.withOpacity(0.3)),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                            borderSide: BorderSide(color: AppTheme.textMuted.withOpacity(0.3)),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                            borderSide: BorderSide(color: AppTheme.primary, width: 2),
                           ),
                         ),
                       ),
-                      SizedBox(height: 16),
+                      SizedBox(height: AppTheme.spacingMedium),
 
                       // Campo Email
-                      Container(
-                        decoration: BoxDecoration(
-                          color: bgDark,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: textLight.withOpacity(0.2),
-                            width: 1,
+                      TextFormField(
+                        controller: registerEmailController,
+                        keyboardType: TextInputType.emailAddress,
+                        style: AppTheme.bodyMedium,
+                        decoration: InputDecoration(
+                          labelText: 'Correo electrónico',
+                          labelStyle: AppTheme.labelMedium.copyWith(color: AppTheme.textSecondary),
+                          prefixIcon: Icon(
+                            Icons.email_outlined,
+                            color: AppTheme.primary,
                           ),
-                        ),
-                        child: TextField(
-                          controller: registerEmailController,
-                          style: TextStyle(color: textDark),
-                          decoration: InputDecoration(
-                            labelText: 'Correo electrónico',
-                            labelStyle: TextStyle(color: textLight),
-                            prefixIcon: Icon(
-                              Icons.email_outlined,
-                              color: primary,
-                            ),
-                            border: InputBorder.none,
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 16,
-                            ),
+                          filled: true,
+                          fillColor: AppTheme.surfaceDark,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                            borderSide: BorderSide(color: AppTheme.textMuted.withOpacity(0.3)),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                            borderSide: BorderSide(color: AppTheme.textMuted.withOpacity(0.3)),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                            borderSide: BorderSide(color: AppTheme.primary, width: 2),
                           ),
                         ),
                       ),
-                      SizedBox(height: 16),
+                      SizedBox(height: AppTheme.spacingMedium),
 
                       // Campo Contraseña
-                      Container(
-                        decoration: BoxDecoration(
-                          color: bgDark,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: textLight.withOpacity(0.2),
-                            width: 1,
+                      TextFormField(
+                        controller: registerPasswordController,
+                        obscureText: true,
+                        style: AppTheme.bodyMedium,
+                        decoration: InputDecoration(
+                          labelText: 'Contraseña',
+                          labelStyle: AppTheme.labelMedium.copyWith(color: AppTheme.textSecondary),
+                          prefixIcon: Icon(
+                            Icons.lock_outline,
+                            color: AppTheme.primary,
                           ),
-                        ),
-                        child: TextField(
-                          controller: registerPasswordController,
-                          obscureText: true,
-                          style: TextStyle(color: textDark),
-                          decoration: InputDecoration(
-                            labelText: 'Contraseña',
-                            labelStyle: TextStyle(color: textLight),
-                            prefixIcon: Icon(
-                              Icons.lock_outline,
-                              color: primary,
-                            ),
-                            border: InputBorder.none,
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 16,
-                            ),
+                          filled: true,
+                          fillColor: AppTheme.surfaceDark,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                            borderSide: BorderSide(color: AppTheme.textMuted.withOpacity(0.3)),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                            borderSide: BorderSide(color: AppTheme.textMuted.withOpacity(0.3)),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                            borderSide: BorderSide(color: AppTheme.primary, width: 2),
                           ),
                         ),
                       ),
 
                       if (registerError != null) ...[
-                        SizedBox(height: 16),
+                        SizedBox(height: AppTheme.spacingMedium),
                         Container(
                           width: double.infinity,
-                          padding: EdgeInsets.all(12),
+                          padding: EdgeInsets.all(AppTheme.spacingMedium),
                           decoration: BoxDecoration(
-                            color: Colors.red.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
+                            color: AppTheme.error.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
                             border: Border.all(
-                              color: Colors.red.withOpacity(0.3),
+                              color: AppTheme.error.withOpacity(0.3),
                               width: 1,
                             ),
                           ),
-                          child: Text(
-                            registerError!,
-                            style: TextStyle(color: Colors.red, fontSize: 13),
+                          child: Row(
+                            children: [
+                              Icon(Icons.error_outline, color: AppTheme.error, size: 20),
+                              SizedBox(width: AppTheme.spacingSmall),
+                              Expanded(
+                                child: Text(
+                                  registerError!,
+                                  style: AppTheme.bodySmall.copyWith(color: AppTheme.error),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
 
-                      SizedBox(height: 24),
+                      SizedBox(height: AppTheme.spacingLarge),
 
                       // Botones
                       Row(
@@ -188,82 +186,59 @@ class _LoginScreenState extends State<LoginScreen> {
                           Expanded(
                             child: TextButton(
                               onPressed: () => Navigator.pop(context),
-                              style: TextButton.styleFrom(
-                                padding: EdgeInsets.symmetric(vertical: 12),
-                              ),
+                              style: AppTheme.secondaryButtonStyle,
                               child: Text(
                                 'Cancelar',
-                                style: TextStyle(
-                                  color: textLight,
-                                  fontSize: 16,
-                                ),
+                                style: AppTheme.labelLarge.copyWith(color: AppTheme.textSecondary),
                               ),
                             ),
                           ),
-                          SizedBox(width: 16),
+                          SizedBox(width: AppTheme.spacingMedium),
                           Expanded(
                             flex: 2,
-                            child: Container(
-                              height: 45,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(12),
-                                gradient: LinearGradient(
-                                  colors: [primary, Color(0xFFFF8533)],
-                                  begin: Alignment.centerLeft,
-                                  end: Alignment.centerRight,
-                                ),
-                              ),
-                              child: ElevatedButton(
-                                onPressed: isLoading
-                                    ? null
-                                    : () async {
-                                        setState(() => isLoading = true);
-                                        final result = await authService
-                                            .registerUser(
-                                              registerNameController.text,
-                                              registerEmailController.text,
-                                              registerPasswordController.text,
-                                            );
-                                        setState(() => isLoading = false);
-                                        if (result == true) {
-                                          Navigator.pop(context);
-                                          setState(() {
-                                            errorMessage =
-                                                'Usuario registrado correctamente. Ahora puedes iniciar sesión.';
-                                          });
-                                        } else {
-                                          setState(() {
-                                            registerError = result is String
-                                                ? result
-                                                : 'Error al registrar usuario.';
-                                          });
-                                        }
-                                      },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.transparent,
-                                  shadowColor: Colors.transparent,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                                child: isLoading
-                                    ? SizedBox(
-                                        width: 20,
-                                        height: 20,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: Colors.white,
-                                        ),
-                                      )
-                                    : Text(
-                                        'Registrarse',
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                        ),
+                            child: ElevatedButton(
+                              onPressed: isLoading
+                                  ? null
+                                  : () async {
+                                      setState(() => isLoading = true);
+                                      final result = await authService
+                                          .registerUser(
+                                            registerNameController.text,
+                                            registerEmailController.text,
+                                            registerPasswordController.text,
+                                          );
+                                      setState(() => isLoading = false);
+                                      if (result == true) {
+                                        Navigator.pop(context);
+                                        setState(() {
+                                          errorMessage =
+                                              'Usuario registrado correctamente. Ahora puedes iniciar sesión.';
+                                        });
+                                      } else {
+                                        setState(() {
+                                          registerError = result is String
+                                              ? result
+                                              : 'Error al registrar usuario.';
+                                        });
+                                      }
+                                    },
+                              style: AppTheme.primaryButtonStyle,
+                              child: isLoading
+                                  ? SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
                                       ),
-                              ),
+                                    )
+                                  : Text(
+                                      'Registrarse',
+                                      style: AppTheme.labelLarge.copyWith(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
                             ),
                           ),
                         ],
@@ -416,74 +391,48 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final Color primary = Color(0xFFFF6B00);
-    final Color bgDark = Color(0xFF1E1E1E);
-    final Color cardBg = Color(0xFF252525);
-    final Color textDark = Color(0xFFE0E0E0);
-    final Color textLight = Color(0xFFA0A0A0);
-
     return Scaffold(
-      backgroundColor: bgDark,
+      backgroundColor: AppTheme.backgroundDark,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
+            padding: EdgeInsets.all(context.responsivePadding),
             child: Container(
-              constraints: BoxConstraints(maxWidth: 400),
+              constraints: BoxConstraints(
+                maxWidth: context.isMobile ? double.infinity : 400,
+              ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   // Logo elegante con sombra
                   Container(
-                    padding: EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: cardBg,
-                      borderRadius: BorderRadius.circular(25),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.3),
-                          blurRadius: 15,
-                          spreadRadius: 2,
-                          offset: Offset(0, 5),
-                        ),
-                      ],
-                    ),
+                    padding: EdgeInsets.all(AppTheme.spacingLarge),
+                    decoration: AppTheme.elevatedCardDecoration,
                     child: Container(
-                      width: 140,
-                      height: 140,
+                      width: context.isMobile ? 120 : 140,
+                      height: context.isMobile ? 120 : 140,
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
                         border: Border.all(
-                          color: primary.withOpacity(0.2),
+                          color: AppTheme.primary.withOpacity(0.2),
                           width: 2,
                         ),
                       ),
                       child: ClipRRect(
-                        borderRadius: BorderRadius.circular(18),
+                        borderRadius: BorderRadius.circular(AppTheme.radiusLarge - 2),
                         child: Image.asset(
                           'images/logo.png',
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) {
-                            // Intentar con el logo otra vez, o usar un ícono simple
                             return Container(
                               decoration: BoxDecoration(
-                                color: primary.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(18),
+                                color: AppTheme.primary.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(AppTheme.radiusLarge - 2),
                               ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(18),
-                                child: Image.asset(
-                                  'images/logo.png',
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    // Fallback final si el logo no carga
-                                    return Icon(
-                                      Icons.restaurant,
-                                      color: primary,
-                                      size: 190,
-                                    );
-                                  },
-                                ),
+                              child: Icon(
+                                Icons.restaurant,
+                                color: AppTheme.primary,
+                                size: context.isMobile ? 60 : 70,
                               ),
                             );
                           },
@@ -492,165 +441,127 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
 
-                  SizedBox(height: 40),
+                  SizedBox(height: AppTheme.spacingXLarge),
 
                   // Tarjeta principal de login
                   Container(
-                    padding: EdgeInsets.all(32),
-                    decoration: BoxDecoration(
-                      color: cardBg,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
-                          blurRadius: 10,
-                          spreadRadius: 1,
-                          offset: Offset(0, 3),
-                        ),
-                      ],
-                    ),
+                    padding: EdgeInsets.all(context.isMobile ? AppTheme.spacingLarge : AppTheme.spacingXLarge),
+                    decoration: AppTheme.elevatedCardDecoration,
                     child: Column(
                       children: [
                         // Título elegante
                         Text(
                           'Bienvenido',
-                          style: TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                            color: textDark,
-                            letterSpacing: 1.2,
+                          style: AppTheme.headlineLarge.copyWith(
+                            fontSize: context.isMobile ? 24 : 28,
                           ),
                         ),
-                        SizedBox(height: 8),
+                        SizedBox(height: AppTheme.spacingSmall),
                         Text(
                           'Ingresa a tu cuenta',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: textLight,
-                            letterSpacing: 0.5,
+                          style: AppTheme.bodyLarge.copyWith(
+                            color: AppTheme.textSecondary,
                           ),
                         ),
-                        SizedBox(height: 32),
+                        SizedBox(height: AppTheme.spacingXLarge),
 
                         // Campo de email
-                        Container(
-                          decoration: BoxDecoration(
-                            color: bgDark,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: textLight.withOpacity(0.2),
-                              width: 1,
+                        TextFormField(
+                          controller: emailController,
+                          keyboardType: TextInputType.emailAddress,
+                          style: AppTheme.bodyMedium,
+                          decoration: InputDecoration(
+                            labelText: 'Correo electrónico',
+                            labelStyle: AppTheme.labelMedium.copyWith(color: AppTheme.textSecondary),
+                            prefixIcon: Icon(
+                              Icons.email_outlined,
+                              color: AppTheme.primary,
                             ),
-                          ),
-                          child: TextField(
-                            controller: emailController,
-                            style: TextStyle(color: textDark),
-                            decoration: InputDecoration(
-                              labelText: 'Correo electrónico',
-                              labelStyle: TextStyle(color: textLight),
-                              prefixIcon: Icon(
-                                Icons.email_outlined,
-                                color: primary,
-                              ),
-                              border: InputBorder.none,
-                              contentPadding: EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 16,
-                              ),
+                            filled: true,
+                            fillColor: AppTheme.surfaceDark,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                              borderSide: BorderSide(color: AppTheme.textMuted.withOpacity(0.3)),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                              borderSide: BorderSide(color: AppTheme.textMuted.withOpacity(0.3)),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                              borderSide: BorderSide(color: AppTheme.primary, width: 2),
                             ),
                           ),
                         ),
 
-                        SizedBox(height: 16),
+                        SizedBox(height: AppTheme.spacingMedium),
 
                         // Campo de contraseña
-                        Container(
-                          decoration: BoxDecoration(
-                            color: bgDark,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: textLight.withOpacity(0.2),
-                              width: 1,
+                        TextFormField(
+                          controller: passwordController,
+                          obscureText: true,
+                          style: AppTheme.bodyMedium,
+                          decoration: InputDecoration(
+                            labelText: 'Contraseña',
+                            labelStyle: AppTheme.labelMedium.copyWith(color: AppTheme.textSecondary),
+                            prefixIcon: Icon(
+                              Icons.lock_outline,
+                              color: AppTheme.primary,
                             ),
-                          ),
-                          child: TextField(
-                            controller: passwordController,
-                            obscureText: true,
-                            style: TextStyle(color: textDark),
-                            decoration: InputDecoration(
-                              labelText: 'Contraseña',
-                              labelStyle: TextStyle(color: textLight),
-                              prefixIcon: Icon(
-                                Icons.lock_outline,
-                                color: primary,
-                              ),
-                              border: InputBorder.none,
-                              contentPadding: EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 16,
-                              ),
+                            filled: true,
+                            fillColor: AppTheme.surfaceDark,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                              borderSide: BorderSide(color: AppTheme.textMuted.withOpacity(0.3)),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                              borderSide: BorderSide(color: AppTheme.textMuted.withOpacity(0.3)),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                              borderSide: BorderSide(color: AppTheme.primary, width: 2),
                             ),
                           ),
                         ),
 
-                        SizedBox(height: 24),
+                        SizedBox(height: AppTheme.spacingLarge),
 
                         // Botón de login elegante
-                        Container(
+                        SizedBox(
                           width: double.infinity,
                           height: 50,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            gradient: LinearGradient(
-                              colors: [primary, Color(0xFFFF8533)],
-                              begin: Alignment.centerLeft,
-                              end: Alignment.centerRight,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: primary.withOpacity(0.3),
-                                blurRadius: 8,
-                                spreadRadius: 1,
-                                offset: Offset(0, 3),
-                              ),
-                            ],
-                          ),
                           child: ElevatedButton(
                             onPressed: _login,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.transparent,
-                              shadowColor: Colors.transparent,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
+                            style: AppTheme.primaryButtonStyle.copyWith(
+                              elevation: MaterialStateProperty.all(4),
                             ),
                             child: Text(
                               'Iniciar Sesión',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
+                              style: AppTheme.labelLarge.copyWith(
                                 color: Colors.white,
-                                letterSpacing: 0.5,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                           ),
                         ),
 
-                        SizedBox(height: 16),
+                        SizedBox(height: AppTheme.spacingMedium),
 
                         // Enlace de registro
                         TextButton(
                           onPressed: _showRegisterDialog,
+                          style: AppTheme.secondaryButtonStyle,
                           child: RichText(
                             text: TextSpan(
                               text: '¿No tienes cuenta? ',
-                              style: TextStyle(color: textLight),
+                              style: AppTheme.bodyMedium.copyWith(color: AppTheme.textSecondary),
                               children: [
                                 TextSpan(
                                   text: 'Regístrate',
-                                  style: TextStyle(
-                                    color: primary,
-                                    fontWeight: FontWeight.bold,
+                                  style: AppTheme.bodyMedium.copyWith(
+                                    color: AppTheme.primary,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
                               ],
@@ -660,52 +571,53 @@ class _LoginScreenState extends State<LoginScreen> {
 
                         // Campo de código de verificación (si es necesario)
                         if (showCodeField) ...[
-                          SizedBox(height: 20),
-                          Container(
-                            decoration: BoxDecoration(
-                              color: bgDark,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: Colors.amber.withOpacity(0.3),
-                                width: 1,
+                          SizedBox(height: AppTheme.spacingLarge),
+                          TextFormField(
+                            controller: codeController,
+                            keyboardType: TextInputType.number,
+                            style: AppTheme.bodyMedium,
+                            decoration: InputDecoration(
+                              labelText: 'Código de verificación',
+                              labelStyle: AppTheme.labelMedium.copyWith(color: AppTheme.textSecondary),
+                              prefixIcon: Icon(
+                                Icons.security,
+                                color: AppTheme.warning,
                               ),
-                            ),
-                            child: TextField(
-                              controller: codeController,
-                              style: TextStyle(color: textDark),
-                              decoration: InputDecoration(
-                                labelText: 'Código de verificación',
-                                labelStyle: TextStyle(color: textLight),
-                                prefixIcon: Icon(
-                                  Icons.security,
-                                  color: Colors.amber,
-                                ),
-                                border: InputBorder.none,
-                                contentPadding: EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 16,
-                                ),
+                              filled: true,
+                              fillColor: AppTheme.surfaceDark,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                                borderSide: BorderSide(color: AppTheme.warning.withOpacity(0.3)),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                                borderSide: BorderSide(color: AppTheme.warning.withOpacity(0.3)),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                                borderSide: BorderSide(color: AppTheme.warning, width: 2),
                               ),
                             ),
                           ),
-                          SizedBox(height: 16),
+                          SizedBox(height: AppTheme.spacingMedium),
                           SizedBox(
                             width: double.infinity,
                             height: 45,
                             child: ElevatedButton(
                               onPressed: _validateCode,
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.amber,
+                                backgroundColor: AppTheme.warning,
+                                foregroundColor: Colors.black,
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
                                 ),
+                                elevation: 2,
                               ),
                               child: Text(
                                 'Validar Código',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
+                                style: AppTheme.labelMedium.copyWith(
                                   color: Colors.black,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ),
@@ -714,15 +626,15 @@ class _LoginScreenState extends State<LoginScreen> {
 
                         // Mensaje de error elegante
                         if (errorMessage != null) ...[
-                          SizedBox(height: 20),
+                          SizedBox(height: AppTheme.spacingLarge),
                           Container(
                             width: double.infinity,
-                            padding: EdgeInsets.all(16),
+                            padding: EdgeInsets.all(AppTheme.spacingMedium),
                             decoration: BoxDecoration(
-                              color: Colors.red.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(12),
+                              color: AppTheme.error.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
                               border: Border.all(
-                                color: Colors.red.withOpacity(0.3),
+                                color: AppTheme.error.withOpacity(0.3),
                                 width: 1,
                               ),
                             ),
@@ -730,16 +642,15 @@ class _LoginScreenState extends State<LoginScreen> {
                               children: [
                                 Icon(
                                   Icons.error_outline,
-                                  color: Colors.red,
+                                  color: AppTheme.error,
                                   size: 20,
                                 ),
-                                SizedBox(width: 12),
+                                SizedBox(width: AppTheme.spacingSmall),
                                 Expanded(
                                   child: Text(
                                     errorMessage!,
-                                    style: TextStyle(
-                                      color: Colors.red,
-                                      fontSize: 14,
+                                    style: AppTheme.bodySmall.copyWith(
+                                      color: AppTheme.error,
                                     ),
                                   ),
                                 ),

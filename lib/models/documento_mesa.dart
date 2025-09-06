@@ -188,6 +188,20 @@ class DocumentoMesa {
       formaPago = 'efectivo';
     }
 
+    // Determinar el estado correcto basado en el JSON y el flag pagado
+    String estadoFinal;
+    if (json['estado'] != null && json['estado'].toString().isNotEmpty) {
+      estadoFinal = json['estado'].toString();
+    } else if (isPagado) {
+      estadoFinal = 'Pagado';
+    } else if (json['anulado'] == true) {
+      estadoFinal = 'Anulado';
+    } else {
+      estadoFinal = 'Pendiente';
+    }
+    
+    print('  - Estado final asignado: $estadoFinal');
+
     return DocumentoMesa(
       id: json['_id'] ?? json['id'],
       numeroDocumento: json['numeroDocumento'] ?? '',
@@ -213,6 +227,7 @@ class DocumentoMesa {
       propina: json['propina'] != null
           ? (json['propina'] as num).toDouble()
           : null,
+      estado: estadoFinal, // ✅ Usar el estado determinado correctamente
     );
   }
 

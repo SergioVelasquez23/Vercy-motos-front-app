@@ -5,6 +5,7 @@ import '../models/producto.dart';
 import '../services/pedido_service.dart';
 import '../providers/user_provider.dart';
 import '../utils/format_utils.dart';
+import '../theme/app_theme.dart';
 
 class PedidosScreenFusion extends StatefulWidget {
   const PedidosScreenFusion({super.key});
@@ -24,12 +25,13 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
     return "Producto desconocido";
   }
 
-  final Color primary = Color(0xFFFF6B00);
-  final Color bgDark = Color(0xFF1E1E1E);
-  final Color cardBg = Color(0xFF252525);
-  final Color textDark = Color(0xFFE0E0E0);
-  final Color textLight = Color(0xFFA0A0A0);
-  final Color accentOrange = Color(0xFFFF8800);
+  // Colores del tema ahora se usan desde AppTheme
+  // Variables de compatibilidad temporal para evitar errores de compilación
+  Color get primary => AppTheme.primary;
+  Color get cardBg => AppTheme.cardBg;
+  Color get textDark => AppTheme.textDark;     // Ahora es blanco desde el tema
+  Color get textLight => AppTheme.textLight;   // Ahora es gris claro con buen contraste
+  Color get bgDark => AppTheme.backgroundDark;
 
   final TextEditingController _busquedaController = TextEditingController();
   late TabController _tabController;
@@ -122,13 +124,13 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
   Color _getEstadoColor(EstadoPedido estado) {
     switch (estado) {
       case EstadoPedido.activo:
-        return Colors.green;
+        return AppTheme.success;
       case EstadoPedido.pagado:
-        return Colors.blue;
+        return AppTheme.info;
       case EstadoPedido.cancelado:
-        return Colors.red;
+        return AppTheme.error;
       case EstadoPedido.cortesia:
-        return Colors.green;
+        return AppTheme.success;
     }
   }
 
@@ -148,17 +150,17 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
   Color _getTipoColor(TipoPedido tipo) {
     switch (tipo) {
       case TipoPedido.normal:
-        return Colors.blue;
+        return AppTheme.info;
       case TipoPedido.cortesia:
-        return Colors.green;
+        return AppTheme.success;
       case TipoPedido.interno:
-        return Colors.purple;
+        return AppTheme.accent;
       case TipoPedido.rt:
-        return Colors.orange;
+        return AppTheme.warning;
       case TipoPedido.cancelado:
-        return Colors.red;
+        return AppTheme.error;
       case TipoPedido.domicilio:
-        return Colors.cyan;
+        return AppTheme.primary;
     }
   }
 
@@ -249,16 +251,16 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          backgroundColor: cardBg,
-          title: Text('Cancelar Pedido', style: TextStyle(color: textDark)),
+          backgroundColor: AppTheme.cardBg,
+          title: Text('Cancelar Pedido', style: AppTheme.headlineMedium),
           content: Text(
             '¿Estás seguro de que quieres cancelar el pedido de la mesa ${pedido.mesa}?',
-            style: TextStyle(color: textLight),
+            style: AppTheme.bodyMedium,
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: Text('No', style: TextStyle(color: textLight)),
+              child: Text('No', style: TextStyle(color: AppTheme.textSecondary)),
             ),
             ElevatedButton(
               onPressed: () => Navigator.of(context).pop(true),
@@ -334,94 +336,78 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
     }
 
     return Scaffold(
-      backgroundColor: bgDark,
+      backgroundColor: AppTheme.backgroundDark,
       appBar: AppBar(
-        backgroundColor: bgDark,
+        backgroundColor: AppTheme.primary,
         elevation: 0,
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [bgDark, cardBg],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-            ),
-          ),
-        ),
         title: Row(
           children: [
             Container(
               padding: EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: primary.withOpacity(0.2),
+                color: AppTheme.primary.withOpacity(0.2),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(Icons.receipt_long, color: primary, size: 24),
+              child: Icon(Icons.receipt_long, color: Colors.white, size: 24),
             ),
             SizedBox(width: 12),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Gestión de Pedidos',
-                  style: TextStyle(
-                    color: textDark,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  'Administración completa',
+                  style: AppTheme.headlineSmall.copyWith(color: Colors.white),
                 ),
                 Text(
-                  'Administración completa',
-                  style: TextStyle(color: textLight, fontSize: 12),
+                  'Gestión de Pedidos',
+                  style: AppTheme.bodySmall.copyWith(color: Colors.white70),
                 ),
               ],
             ),
           ],
         ),
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: textDark),
-          onPressed: () => Navigator.pop(context),
+          icon: Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.of(context).pop(),
         ),
         actions: [
           Container(
-            margin: EdgeInsets.only(right: 8),
+            margin: EdgeInsets.only(right: 16),
+            padding: EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(8),
+            ),
             child: IconButton(
-              icon: Container(
-                padding: EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: primary.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(Icons.refresh, color: primary, size: 20),
-              ),
+              icon: Icon(Icons.refresh, color: Colors.white, size: 20),
               onPressed: _cargarPedidos,
-              tooltip: 'Actualizar pedidos',
             ),
           ),
         ],
         bottom: PreferredSize(
-          preferredSize: Size.fromHeight(140), // Más altura
+          preferredSize: Size.fromHeight(120), // Reducido de 140 a 120
           child: Column(
             children: [
               // Barra de búsqueda mejorada
               Container(
-                margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                margin: EdgeInsets.symmetric(horizontal: 16, vertical: 6), // Reducido de 8 a 6
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 3), // Reducido padding
                 decoration: BoxDecoration(
-                  color: cardBg,
+                  color: AppTheme.cardBg,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: primary.withOpacity(0.2)),
+                  border: Border.all(color: AppTheme.primary.withOpacity(0.2)),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.search, color: primary, size: 20),
+                    Icon(Icons.search, color: AppTheme.primary, size: 20),
                     SizedBox(width: 12),
                     Expanded(
                       child: TextField(
                         controller: _busquedaController,
-                        style: TextStyle(color: textDark, fontSize: 16),
+                        style: TextStyle(color: AppTheme.textPrimary, fontSize: 16),
                         decoration: InputDecoration(
                           hintText: 'Buscar por ID, cliente, mesa o mesero...',
-                          hintStyle: TextStyle(color: textLight, fontSize: 14),
+                          hintStyle: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
                           border: InputBorder.none,
                         ),
                       ),
@@ -432,7 +418,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                           _busquedaController.clear();
                           _aplicarFiltros();
                         },
-                        icon: Icon(Icons.clear, color: textLight, size: 18),
+                        icon: Icon(Icons.clear, color: AppTheme.textSecondary, size: 18),
                       ),
                   ],
                 ),
@@ -443,15 +429,22 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                 margin: EdgeInsets.symmetric(horizontal: 8),
                 child: TabBar(
                   controller: _tabController,
-                  indicatorColor: primary,
-                  indicatorWeight: 3,
-                  indicatorSize: TabBarIndicatorSize.tab,
+                  indicatorColor: AppTheme.primary,
+                  indicatorWeight: 2,  // Reducido de 3 a 2 para ser menos invasivo
+                  indicatorSize: TabBarIndicatorSize.label,  // Solo bajo el texto, no toda la pestaña
                   isScrollable: true,
-                  labelColor: primary,
-                  unselectedLabelColor: textLight,
+                  labelColor: Colors.white,  // Blanco sólido para que se vea sobre naranja
+                  unselectedLabelColor: Colors.white.withOpacity(0.7), // Mejor contraste
                   labelStyle: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
+                    shadows: [
+                      Shadow(
+                        offset: Offset(0, 1),
+                        blurRadius: 2,
+                        color: Colors.black.withOpacity(0.5),
+                      ),
+                    ],
                   ),
                   unselectedLabelStyle: TextStyle(
                     fontWeight: FontWeight.normal,
@@ -511,7 +504,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                   ],
                 ),
               ),
-              SizedBox(height: 8),
+              SizedBox(height: 4), // Reducido de 8 a 4
             ],
           ),
         ),
@@ -594,28 +587,24 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
             )
           : Column(
               children: [
-                // Barra de estadísticas ultra compacta
+                // Barra de estadísticas compacta
                 Container(
-                  margin: EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+                  margin: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                   padding: EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ), // AUMENTA estos valores
+                    horizontal: 8,
+                    vertical: 4,
+                  ), // Reducido de 12,8 a 8,4
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        primary.withOpacity(
-                          0.08,
-                        ), // puedes subir opacidad para más color
-                        primary.withOpacity(0.03),
+                        primary.withOpacity(0.06), // Reducido opacidad
+                        primary.withOpacity(0.02),
                       ],
                       begin: Alignment.centerLeft,
                       end: Alignment.centerRight,
                     ),
-                    borderRadius: BorderRadius.circular(
-                      8,
-                    ), // un poco más grande
-                    border: Border.all(color: primary.withOpacity(0.07)),
+                    borderRadius: BorderRadius.circular(6), // Reducido de 8 a 6
+                    border: Border.all(color: primary.withOpacity(0.05)),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -1248,21 +1237,22 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
   // Método auxiliar para construir items de estadísticas
   Widget _buildStatItem(String label, String value, IconData icon) {
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          padding: EdgeInsets.all(8), // antes 4
+          padding: EdgeInsets.all(4), // Reducido de 8 a 4
           decoration: BoxDecoration(
-            color: primary.withOpacity(0.15),
-            borderRadius: BorderRadius.circular(8),
+            color: primary.withOpacity(0.12),
+            borderRadius: BorderRadius.circular(6), // Reducido de 8 a 6
           ),
-          child: Icon(icon, color: primary, size: 20), // antes 11
+          child: Icon(icon, color: primary, size: 16), // Reducido de 20 a 16
         ),
-        SizedBox(height: 4), // antes 2
+        SizedBox(height: 2), // Reducido de 4 a 2
         Text(
           value,
           style: TextStyle(
             color: primary,
-            fontSize: 16, // antes 8
+            fontSize: 14, // Reducido de 16 a 14
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -1270,7 +1260,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
           label,
           style: TextStyle(
             color: textLight,
-            fontSize: 10, // antes 6
+            fontSize: 9, // Reducido de 10 a 9
             fontWeight: FontWeight.w500,
           ),
         ),

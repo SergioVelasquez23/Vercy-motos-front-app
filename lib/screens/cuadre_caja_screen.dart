@@ -11,8 +11,11 @@ import 'ingresos_caja_screen.dart';
 import '../utils/format_utils.dart';
 import 'gastos_screen.dart';
 import 'tipos_gasto_screen.dart';
+import 'movimientos_cuadre_screen.dart';
+import 'contador_efectivo_screen.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import '../theme/app_theme.dart';
 
 class CuadreCajaScreen extends StatefulWidget {
   const CuadreCajaScreen({super.key});
@@ -23,12 +26,13 @@ class CuadreCajaScreen extends StatefulWidget {
 
 class _CuadreCajaScreenState extends State<CuadreCajaScreen>
     with SingleTickerProviderStateMixin {
-  final Color primary = Color(0xFFFF6B00); // Color naranja fuego
-  final Color bgDark = Color(0xFF1E1E1E); // Color de fondo negro
-  final Color cardBg = Color(0xFF252525); // Color de tarjetas
-  final Color textDark = Color(0xFFE0E0E0); // Color de texto claro
-  final Color textLight = Color(0xFFA0A0A0); // Color de texto más suave
-  final Color accentOrange = Color(0xFFFF8800); // Naranja más brillante
+  // Getters para compatibilidad temporal con AppTheme
+  Color get primary => AppTheme.primary;
+  Color get bgDark => AppTheme.backgroundDark;
+  Color get cardBg => AppTheme.cardBg;
+  Color get textDark => AppTheme.textDark;
+  Color get textLight => AppTheme.textLight;
+  Color get accentOrange => AppTheme.accent;
 
   // Services
   final GastoService _gastoService = GastoService();
@@ -62,7 +66,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
 
   // Services
   final CuadreCajaService _cuadreCajaService = CuadreCajaService();
-  final String baseUrl = 'http://192.168.20.24:8081';
+  final String baseUrl = 'http://192.168.1.44:8081';
 
   // Filtros
   String? _selectedCaja;
@@ -326,6 +330,49 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
     );
   }
 
+  void _mostrarMovimientosCuadre(CuadreCaja cuadre) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => MovimientosCuadreScreen(cuadre: cuadre),
+      ),
+    );
+  }
+
+  void _abrirContadorEfectivo({bool paraEfectivo = true}) async {
+    final resultado = await Navigator.push<double>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ContadorEfectivoScreen(
+          onTotalCalculado: (total) {
+            // Callback que se ejecuta cuando se usa el total
+            if (paraEfectivo) {
+              setState(() {
+                _montoEfectivoController.text = total.toStringAsFixed(0);
+              });
+            } else {
+              setState(() {
+                _montoTransferenciasController.text = total.toStringAsFixed(0);
+              });
+            }
+            _actualizarTotales();
+          },
+        ),
+      ),
+    );
+
+    if (resultado != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Total de ${formatCurrency(resultado)} ${paraEfectivo ? 'agregado al efectivo' : 'agregado a transferencias'}',
+          ),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     // Check if user has admin permissions
@@ -428,6 +475,8 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                     context,
                     MaterialPageRoute(builder: (context) => TiposGastoScreen()),
                   );
+                } else if (value == 'contador_efectivo') {
+                  _abrirContadorEfectivo();
                 }
               },
               itemBuilder: (context) => [
@@ -465,6 +514,19 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                       SizedBox(width: 8),
                       Text(
                         'Tipos de Gastos',
+                        style: TextStyle(color: textDark),
+                      ),
+                    ],
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'contador_efectivo',
+                  child: Row(
+                    children: [
+                      Icon(Icons.calculate, color: Colors.blue),
+                      SizedBox(width: 8),
+                      Text(
+                        'Contador de Efectivo',
                         style: TextStyle(color: textDark),
                       ),
                     ],
@@ -812,6 +874,15 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                             ),
                           ),
                         ),
+                        DataColumn(
+                          label: Text(
+                            'Movimientos',
+                            style: TextStyle(
+                              color: textDark,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
                       ],
                       rows: _cuadresCaja.map((cuadre) {
                         return DataRow(
@@ -888,6 +959,23 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                                 onPressed: () {
                                   _imprimirInventario(cuadre);
                                 },
+                              ),
+                            ),
+                            DataCell(
+                              ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.blue,
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  elevation: 3,
+                                ),
+                                onPressed: () {
+                                  _mostrarMovimientosCuadre(cuadre);
+                                },
+                                icon: Icon(Icons.account_balance_wallet, size: 16),
+                                label: Text('Ver', style: TextStyle(fontSize: 12)),
                               ),
                             ),
                           ],
@@ -1221,8 +1309,9 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                     ),
                     child: Table(
                       columnWidths: {
-                        0: FlexColumnWidth(1),
-                        1: FlexColumnWidth(1),
+                        0: FlexColumnWidth(2),
+                        1: FlexColumnWidth(3),
+                        2: FlexColumnWidth(1),
                       },
                       border: TableBorder.all(
                         color: Colors.grey.shade800,
@@ -1243,6 +1332,14 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                               child: Text(
                                 "Ventas",
                                 style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Text(
+                                "Contador",
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                                textAlign: TextAlign.center,
                               ),
                             ),
                           ],
@@ -1269,6 +1366,24 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                                 onChanged: (_) => _actualizarTotales(),
                               ),
                             ),
+                            Padding(
+                              padding: const EdgeInsets.all(4.0),
+                              child: IconButton(
+                                icon: Icon(
+                                  Icons.calculate,
+                                  color: Colors.green,
+                                  size: 20,
+                                ),
+                                onPressed: () => _abrirContadorEfectivo(paraEfectivo: true),
+                                tooltip: 'Contador de billetes y monedas',
+                                style: IconButton.styleFrom(
+                                  backgroundColor: Colors.green.withOpacity(0.1),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                ),
+                              ),
+                            ),
                           ],
                         ),
                         TableRow(
@@ -1291,6 +1406,22 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                                   border: OutlineInputBorder(),
                                 ),
                                 onChanged: (_) => _actualizarTotales(),
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.all(4.0),
+                              child: Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Icon(
+                                  Icons.credit_card,
+                                  color: Colors.grey,
+                                  size: 20,
+                                ),
                               ),
                             ),
                           ],
@@ -1318,6 +1449,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                                 ),
                               ),
                             ),
+                            Container(),
                           ],
                         ),
                       ],

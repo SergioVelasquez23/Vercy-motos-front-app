@@ -8,7 +8,7 @@ class EndpointsConfig {
   EndpointsConfig._internal();
 
   // URL base por defecto (simplificada)
-  String get baseUrl => _customBaseUrl ?? 'http://192.168.20.24:8081';
+  String get baseUrl => _customBaseUrl ?? 'http://192.168.1.44:8081';
 
   // Variable para almacenar una URL base personalizada
   String? _customBaseUrl;

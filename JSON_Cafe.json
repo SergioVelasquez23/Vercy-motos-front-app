@@ -1,0 +1,38 @@
+[
+  {
+    "nombre": "Postre",
+    "precio": 7000,
+    "costo": 0,
+    "utilidad": 7000,
+    "categoriaId": "688e55735b11ec6a26b76f94",
+    "descripcion": "Postre especial del café",
+    "estado": "Activo",
+    "tieneVariantes": false,
+    "tieneIngredientes": false,
+    "tipoProducto": "individual"
+  },
+  {
+    "nombre": "TE CHAI",
+    "precio": 7000,
+    "costo": 0,
+    "utilidad": 7000,
+    "categoriaId": "688e55735b11ec6a26b76f94",
+    "descripcion": "Té Chai aromático y especiado",
+    "estado": "Activo",
+    "tieneVariantes": false,
+    "tieneIngredientes": false,
+    "tipoProducto": "individual"
+  },
+  {
+    "nombre": "TORTA CASERA",
+    "precio": 5000,
+    "costo": 0,
+    "utilidad": 5000,
+    "categoriaId": "688e55735b11ec6a26b76f94",
+    "descripcion": "Torta casera recién horneada",
+    "estado": "Activo",
+    "tieneVariantes": false,
+    "tieneIngredientes": false,
+    "tipoProducto": "individual"
+  }
+]

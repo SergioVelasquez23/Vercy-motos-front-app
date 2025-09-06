@@ -1,0 +1,227 @@
+{
+  "info": {
+    "name": "Sopa y Carbón - Productos API",
+    "description": "Colección para manejar productos del restaurante",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://192.168.1.44:8081",
+      "description": "URL base del servidor"
+    },
+    {
+      "key": "jwt_token",
+      "value": "",
+      "description": "Token JWT para autenticación"
+    }
+  ],
+  "item": [
+    {
+      "name": "🗂️ Obtener Categorías",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{jwt_token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/categorias",
+          "host": ["{{base_url}}"],
+          "path": ["api", "categorias"]
+        },
+        "description": "Obtiene todas las categorías con sus IDs"
+      }
+    },
+    {
+      "name": "📦 Crear Producto Individual",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{jwt_token}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nombre\": \"NOMBRE_PRODUCTO\",\n  \"precio\": 15000,\n  \"costo\": 8000,\n  \"utilidad\": 7000,\n  \"categoriaId\": \"ID_CATEGORIA\",\n  \"descripcion\": \"Descripción del producto\",\n  \"estado\": \"Activo\",\n  \"tieneVariantes\": false,\n  \"tieneIngredientes\": false,\n  \"tipoProducto\": \"individual\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/productos",
+          "host": ["{{base_url}}"],
+          "path": ["api", "productos"]
+        },
+        "description": "Crea un producto individual"
+      }
+    },
+    {
+      "name": "📦 Carga Masiva de Productos",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{jwt_token}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "[\n  {\n    \"nombre\": \"Producto 1\",\n    \"precio\": 15000,\n    \"costo\": 8000,\n    \"utilidad\": 7000,\n    \"categoriaId\": \"ID_CATEGORIA\",\n    \"descripcion\": \"Descripción producto 1\",\n    \"estado\": \"Activo\",\n    \"tieneVariantes\": false,\n    \"tieneIngredientes\": false,\n    \"tipoProducto\": \"individual\"\n  },\n  {\n    \"nombre\": \"Producto 2\",\n    \"precio\": 18000,\n    \"costo\": 10000,\n    \"utilidad\": 8000,\n    \"categoriaId\": \"ID_CATEGORIA\",\n    \"descripcion\": \"Descripción producto 2\",\n    \"estado\": \"Activo\",\n    \"tieneVariantes\": false,\n    \"tieneIngredientes\": false,\n    \"tipoProducto\": \"individual\"\n  }\n]"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/productos/batch",
+          "host": ["{{base_url}}"],
+          "path": ["api", "productos", "batch"]
+        },
+        "description": "Carga múltiples productos de una vez (si el endpoint existe)"
+      }
+    },
+    {
+      "name": "🍽️ Template Platos Principales",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{jwt_token}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nombre\": \"Bandeja Paisa\",\n  \"precio\": 28000,\n  \"costo\": 15000,\n  \"utilidad\": 13000,\n  \"categoriaId\": \"ID_PLATOS_PRINCIPALES\",\n  \"descripcion\": \"Plato tradicional con frijoles, arroz, carne, chicharrón, huevo, aguacate y arepa\",\n  \"estado\": \"Activo\",\n  \"tieneVariantes\": false,\n  \"tieneIngredientes\": true,\n  \"tipoProducto\": \"individual\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/productos",
+          "host": ["{{base_url}}"],
+          "path": ["api", "productos"]
+        },
+        "description": "Template para platos principales"
+      }
+    },
+    {
+      "name": "🥤 Template Bebidas",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{jwt_token}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nombre\": \"Jugo Natural de Naranja\",\n  \"precio\": 6000,\n  \"costo\": 2000,\n  \"utilidad\": 4000,\n  \"categoriaId\": \"ID_BEBIDAS\",\n  \"descripcion\": \"Jugo natural de naranja fresco\",\n  \"estado\": \"Activo\",\n  \"tieneVariantes\": false,\n  \"tieneIngredientes\": false,\n  \"tipoProducto\": \"individual\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/productos",
+          "host": ["{{base_url}}"],
+          "path": ["api", "productos"]
+        },
+        "description": "Template para bebidas"
+      }
+    },
+    {
+      "name": "🍰 Template Postres",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{jwt_token}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nombre\": \"Flan de Caramelo\",\n  \"precio\": 8000,\n  \"costo\": 3000,\n  \"utilidad\": 5000,\n  \"categoriaId\": \"ID_POSTRES\",\n  \"descripcion\": \"Postre tradicional con caramelo\",\n  \"estado\": \"Activo\",\n  \"tieneVariantes\": false,\n  \"tieneIngredientes\": false,\n  \"tipoProducto\": \"individual\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/productos",
+          "host": ["{{base_url}}"],
+          "path": ["api", "productos"]
+        },
+        "description": "Template para postres"
+      }
+    },
+    {
+      "name": "🍲 Template Sopas",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{jwt_token}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nombre\": \"Ajiaco Santafereño\",\n  \"precio\": 22000,\n  \"costo\": 12000,\n  \"utilidad\": 10000,\n  \"categoriaId\": \"ID_SOPAS\",\n  \"descripcion\": \"Sopa tradicional con pollo, mazorca, papa, guascas y alcaparras\",\n  \"estado\": \"Activo\",\n  \"tieneVariantes\": false,\n  \"tieneIngredientes\": true,\n  \"tipoProducto\": \"individual\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/productos",
+          "host": ["{{base_url}}"],
+          "path": ["api", "productos"]
+        },
+        "description": "Template para sopas"
+      }
+    },
+    {
+      "name": "📋 Obtener Todos los Productos",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{jwt_token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/productos",
+          "host": ["{{base_url}}"],
+          "path": ["api", "productos"]
+        },
+        "description": "Obtiene todos los productos existentes"
+      }
+    }
+  ]
+}

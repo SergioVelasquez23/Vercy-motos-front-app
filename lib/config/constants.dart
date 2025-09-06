@@ -2,7 +2,7 @@
 
 // Configuración de API
 const String kApiUrl =
-    'http://192.168.20.24:8081'; // URL corregida para coincidir con el resto de endpoints
+    'http://192.168.1.44:8081'; // URL corregida para coincidir con el resto de endpoints
 
 // Colores principales de la aplicación
 const kPrimaryColor = 0xFFFF6B00;

@@ -5,6 +5,7 @@ import '../services/producto_service.dart';
 import '../models/ingrediente.dart';
 import '../models/categoria.dart';
 import '../widgets/loading_indicator.dart';
+import '../theme/app_theme.dart';
 
 class IngredientesScreen extends StatefulWidget {
   const IngredientesScreen({super.key});
@@ -90,23 +91,24 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
     final confirmado = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: Color(kCardBackgroundDark),
+        backgroundColor: AppTheme.cardBg,
         title: Text(
           '¿Eliminar ingrediente?',
-          style: TextStyle(color: Color(kTextDark)),
+          style: AppTheme.headlineMedium,
         ),
         content: Text(
           '¿Está seguro que desea eliminar el ingrediente "${ingrediente.nombre}"? Esta acción no se puede deshacer.',
-          style: TextStyle(color: Color(kTextLight)),
+          style: AppTheme.bodyMedium,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
+            style: AppTheme.secondaryButtonStyle,
             child: Text('Cancelar'),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: Text('Eliminar', style: TextStyle(color: Colors.red)),
+            child: Text('Eliminar', style: TextStyle(color: AppTheme.error)),
           ),
         ],
       ),
@@ -162,8 +164,10 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: AppTheme.cardBg,
           title: Text(
             ingrediente == null ? 'Nuevo Ingrediente' : 'Editar Ingrediente',
+            style: AppTheme.headlineMedium,
           ),
           content: SingleChildScrollView(
             child: Form(
@@ -181,7 +185,7 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    style: TextStyle(color: Color(kTextDark)),
+                    style: AppTheme.bodyMedium,
                     validator: (value) {
                       if (value?.isEmpty ?? true) return 'Campo requerido';
                       if (value!.length < 3) return 'Mínimo 3 caracteres';
@@ -199,14 +203,14 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    style: TextStyle(color: Color(kTextDark)),
-                    dropdownColor: Colors.grey[800],
+                    style: AppTheme.bodyMedium,
+                    dropdownColor: AppTheme.cardBg,
                     items: _categorias.map((categoria) {
                       return DropdownMenuItem<String>(
                         value: categoria.id,
                         child: Text(
                           categoria.nombre,
-                          style: const TextStyle(color: Colors.white),
+                          style: AppTheme.bodyMedium,
                         ),
                       );
                     }).toList(),
@@ -230,7 +234,7 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
                       ),
                       helperText: 'Ejemplo: kg, g, l, ml, unidad',
                     ),
-                    style: TextStyle(color: Color(kTextDark)),
+                    style: AppTheme.bodyMedium,
                     validator: (value) =>
                         value?.isEmpty ?? true ? 'Campo requerido' : null,
                   ),
@@ -249,7 +253,7 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
                     keyboardType: TextInputType.numberWithOptions(
                       decimal: true,
                     ),
-                    style: TextStyle(color: Color(kTextDark)),
+                    style: AppTheme.bodyMedium,
                     validator: (value) {
                       if (value?.isEmpty ?? true) return 'Campo requerido';
                       final costo = double.tryParse(value!);
@@ -272,7 +276,7 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
                     keyboardType: TextInputType.numberWithOptions(
                       decimal: true,
                     ),
-                    style: TextStyle(color: Color(kTextDark)),
+                    style: AppTheme.bodyMedium,
                     validator: (value) {
                       if (value?.isEmpty ?? true) return 'Campo requerido';
                       final cantidad = double.tryParse(value!);
@@ -297,7 +301,7 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
                       Expanded(
                         child: Text(
                           'Descontable del inventario',
-                          style: TextStyle(color: Color(kTextDark)),
+                          style: AppTheme.bodyMedium,
                         ),
                       ),
                     ],
@@ -318,6 +322,7 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
+              style: AppTheme.secondaryButtonStyle,
               child: Text('Cancelar'),
             ),
             TextButton(
@@ -363,6 +368,7 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
                   }
                 }
               },
+              style: AppTheme.primaryButtonStyle,
               child: Text('Guardar'),
             ),
           ],
@@ -373,16 +379,11 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final Color primary = Color(kPrimaryColor);
-    final Color bgDark = Color(kBackgroundDark);
-    final Color cardBg = Color(kCardBackgroundDark);
-    final Color textDark = Color(kTextDark);
-
     return Scaffold(
-      backgroundColor: bgDark,
+      backgroundColor: AppTheme.backgroundDark,
       appBar: AppBar(
-        backgroundColor: cardBg,
-        title: Text('Ingredientes', style: TextStyle(color: textDark)),
+        backgroundColor: AppTheme.backgroundDark,
+        title: Text('Ingredientes', style: AppTheme.headlineSmall),
         actions: [
           IconButton(
             icon: Icon(Icons.refresh),
@@ -412,7 +413,7 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
                         borderRadius: BorderRadius.circular(8.0),
                       ),
                     ),
-                    style: TextStyle(color: textDark),
+                    style: AppTheme.bodyMedium,
                   ),
                 ),
                 SizedBox(width: 8.0),
@@ -434,7 +435,7 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
                             style: TextStyle(
                               color: categoria == 'Todas'
                                   ? Colors.grey
-                                  : textDark,
+                                  : AppTheme.textDark,
                             ),
                           ),
                         );
@@ -445,8 +446,8 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
                           _filtrarIngredientes();
                         });
                       },
-                      dropdownColor: cardBg,
-                      style: TextStyle(color: textDark),
+                      dropdownColor: AppTheme.cardBg,
+                      style: AppTheme.bodyMedium,
                       underline: Container(),
                     ),
                   ),
@@ -467,7 +468,7 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
                 ? Center(
                     child: Text(
                       'No hay ingredientes registrados',
-                      style: TextStyle(color: textDark),
+                      style: AppTheme.bodyMedium,
                     ),
                   )
                 : ListView.builder(
@@ -483,12 +484,11 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
                           horizontal: 16,
                           vertical: 4,
                         ),
-                        color: cardBg,
+                        color: AppTheme.cardBg,
                         child: ListTile(
                           title: Text(
                             item.nombre,
-                            style: TextStyle(
-                              color: textDark,
+                            style: AppTheme.headlineSmall.copyWith(
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -497,7 +497,7 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
                             children: [
                               Text(
                                 'Categoría: ${_obtenerNombreCategoria(item.categoria)} | Unidad: ${item.unidad}',
-                                style: TextStyle(color: Color(kTextLight)),
+                                style: AppTheme.bodySmall,
                               ),
                               SizedBox(height: 4),
                               Row(
@@ -540,7 +540,7 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
                                     style: TextStyle(
                                       color: esStockBajo
                                           ? Colors.red
-                                          : textDark,
+                                          : AppTheme.textDark,
                                       fontWeight: esStockBajo
                                           ? FontWeight.bold
                                           : FontWeight.normal,
@@ -548,13 +548,13 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
                                   ),
                                   Text(
                                     'Costo: \$${item.costo.toStringAsFixed(2)}',
-                                    style: TextStyle(color: Color(kTextLight)),
+                                    style: AppTheme.bodySmall,
                                   ),
                                 ],
                               ),
                               SizedBox(width: 8),
                               IconButton(
-                                icon: Icon(Icons.edit, color: primary),
+                                icon: Icon(Icons.edit, color: AppTheme.primary),
                                 onPressed: () =>
                                     _mostrarDialogoNuevoIngrediente(item),
                                 tooltip: 'Editar ingrediente',
@@ -575,7 +575,7 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        backgroundColor: primary,
+        backgroundColor: AppTheme.primary,
         onPressed: () => _mostrarDialogoNuevoIngrediente(),
         child: Icon(Icons.add),
       ),

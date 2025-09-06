@@ -1,0 +1,33 @@
+📋 CATEGORÍAS DISPONIBLES EN TU RESTAURANTE:
+===============================================
+
+📂 Adicionales
+   ID: 687aa7b92137296a22a65feb
+
+🔥 Bebidas calientes  ← ¡LA QUE NECESITAMOS!
+   ID: 688e550a5b11ec6a26b76f92
+
+🧊 Bebidas frias
+   ID: 688e55225b11ec6a26b76f93
+
+☕ Cafe
+   ID: 688e55735b11ec6a26b76f94
+
+===============================================
+
+✅ LISTO: He actualizado el JSON con el ID correcto de "Bebidas calientes"
+   ID usado: 688e550a5b11ec6a26b76f92
+
+📋 PRÓXIMOS PASOS:
+1. Abre Postman
+2. Usa "📦 Carga Masiva de Productos"  
+3. Copia TODO el contenido de JSON_Bebidas_Calientes.json
+4. Pega en el Body de Postman
+5. ¡Send!
+
+Los 5 productos de Bebidas Calientes se cargarán instantáneamente:
+- ☕ Aromática ($2,000)
+- ☕ Café con Leche ($3,500)
+- 🍫 Chocolate ($5,500)
+- 🥤 Milo Caliente ($4,500)
+- ☕ Tinto ($2,000)

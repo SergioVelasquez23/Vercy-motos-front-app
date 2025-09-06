@@ -536,6 +536,43 @@ class PedidoService {
     }
   }
 
+  // Obtener un pedido por su ID
+  Future<Pedido?> getPedidoById(String pedidoId) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/pedidos/$pedidoId'),
+        headers: headers,
+      );
+
+      print('getPedidoById response: ${response.statusCode}');
+      print('getPedidoById body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        
+        // Manejar respuesta con wrapper de éxito
+        if (responseData is Map<String, dynamic>) {
+          if (responseData['success'] == true && responseData['data'] != null) {
+            return Pedido.fromJson(responseData['data']);
+          } else if (responseData.containsKey('_id') || responseData.containsKey('id')) {
+            // Respuesta directa sin wrapper
+            return Pedido.fromJson(responseData);
+          }
+        }
+        
+        print('⚠️ Formato de respuesta inesperado: $responseData');
+        return null;
+      } else {
+        print('❌ Error al obtener pedido por ID: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      print('❌ Exception in getPedidoById: $e');
+      return null;
+    }
+  }
+
   // Obtener pedidos por mesa
   Future<List<Pedido>> getPedidosByMesa(String nombreMesa) async {
     try {

@@ -5,6 +5,7 @@ import '../models/proveedor.dart';
 import '../services/factura_compra_service.dart';
 import '../services/ingrediente_service.dart';
 import '../services/proveedor_service.dart';
+import '../theme/app_theme.dart';
 
 class FacturasComprasScreen extends StatefulWidget {
   const FacturasComprasScreen({super.key});
@@ -24,11 +25,13 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
   String? _filtroProveedor;
   String _filtroPagoCaja = 'TODOS'; // TODOS, PAGADAS_CAJA, NO_PAGADAS_CAJA
 
-  final Color primary = Color(0xFFFF6B00);
-  final Color bgDark = Color(0xFF1E1E1E);
-  final Color cardBg = Color(0xFF252525);
-  final Color textDark = Color(0xFFE0E0E0);
-  final Color textLight = Color(0xFFA0A0A0);
+  // Usando AppTheme para colores consistentes
+  // Variables de compatibilidad temporal
+  Color get primary => AppTheme.primary;
+  Color get cardBg => AppTheme.cardBg;
+  Color get textDark => AppTheme.textPrimary;
+  Color get textLight => AppTheme.textSecondary;
+  Color get bgDark => AppTheme.backgroundDark;
 
   @override
   void initState() {
@@ -173,18 +176,18 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: bgDark,
+      backgroundColor: AppTheme.backgroundDark,
       appBar: AppBar(
         title: Text(
           'Facturas de Compras',
-          style: TextStyle(color: textDark, fontWeight: FontWeight.bold),
+          style: AppTheme.headlineMedium,
         ),
-        backgroundColor: bgDark,
+        backgroundColor: AppTheme.backgroundDark,
         elevation: 0,
-        iconTheme: IconThemeData(color: textDark),
+        iconTheme: IconThemeData(color: AppTheme.textPrimary),
         actions: [
           IconButton(
-            icon: Icon(Icons.refresh, color: textDark),
+            icon: Icon(Icons.refresh, color: AppTheme.textPrimary),
             onPressed: _cargarFacturas,
           ),
         ],
@@ -194,7 +197,7 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
           _buildFiltros(),
           Expanded(
             child: _isLoading
-                ? Center(child: CircularProgressIndicator(color: primary))
+                ? Center(child: CircularProgressIndicator(color: AppTheme.primary))
                 : _facturasFiltradas.isEmpty
                 ? _buildEmptyState()
                 : _buildListaFacturas(),

@@ -1,5 +1,6 @@
 class IngresoCaja {
   final String? id;
+  final String? cuadreCajaId;  // ID del cuadre de caja al que pertenece
   final String concepto;
   final double monto;
   final String formaPago;
@@ -9,6 +10,7 @@ class IngresoCaja {
 
   IngresoCaja({
     this.id,
+    this.cuadreCajaId,
     required this.concepto,
     required this.monto,
     required this.formaPago,
@@ -19,6 +21,7 @@ class IngresoCaja {
 
   factory IngresoCaja.fromJson(Map<String, dynamic> json) => IngresoCaja(
         id: json['_id'] ?? json['id'],
+        cuadreCajaId: json['cuadreCajaId'],
         concepto: json['concepto'],
         monto: (json['monto'] as num).toDouble(),
         formaPago: json['formaPago'],
@@ -29,6 +32,7 @@ class IngresoCaja {
 
   Map<String, dynamic> toJson() => {
         'id': id,
+        if (cuadreCajaId != null) 'cuadreCajaId': cuadreCajaId,
         'concepto': concepto,
         'monto': monto,
         'formaPago': formaPago,

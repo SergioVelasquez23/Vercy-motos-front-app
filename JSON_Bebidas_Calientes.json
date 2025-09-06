@@ -1,0 +1,63 @@
+[
+  {
+    "nombre": "Aromática",
+    "precio": 2000,
+    "costo": 0,
+    "utilidad": 2000,
+    "categoriaId": "688e550a5b11ec6a26b76f92",
+    "descripcion": "Aromática tradicional, bebida caliente herbal reconfortante",
+    "estado": "Activo",
+    "tieneVariantes": false,
+    "tieneIngredientes": false,
+    "tipoProducto": "individual"
+  },
+  {
+    "nombre": "Cafe con Leche",
+    "precio": 3500,
+    "costo": 0,
+    "utilidad": 3500,
+    "categoriaId": "688e550a5b11ec6a26b76f92",
+    "descripcion": "Café con leche caliente, cremoso y reconfortante",
+    "estado": "Activo",
+    "tieneVariantes": false,
+    "tieneIngredientes": false,
+    "tipoProducto": "individual"
+  },
+  {
+    "nombre": "Chocolate",
+    "precio": 5500,
+    "costo": 0,
+    "utilidad": 5500,
+    "categoriaId": "688e550a5b11ec6a26b76f92",
+2",
+    "descripcion": "Chocolate caliente cremoso y delicioso",
+    "estado": "Activo",
+    "tieneVariantes": false,
+    "tieneIngredientes": false,
+    "tipoProducto": "individual"
+  },
+  {
+    "nombre": "Milo Caliente",
+    "precio": 4500,
+    "costo": 0,
+    "utilidad": 4500,
+    "categoriaId": "688e550a5b11ec6a26b76f92",
+    "descripcion": "Bebida de malta Milo caliente, nutritiva y energizante",
+    "estado": "Activo",
+    "tieneVariantes": false,
+    "tieneIngredientes": false,
+    "tipoProducto": "individual"
+  },
+  {
+    "nombre": "Tinto",
+    "precio": 2000,
+    "costo": 0,
+    "utilidad": 2000,
+    "categoriaId": "688e550a5b11ec6a26b76f92",
+    "descripcion": "Café tinto tradicional colombiano, fuerte y aromático",
+    "estado": "Activo",
+    "tieneVariantes": false,
+    "tieneIngredientes": false,
+    "tipoProducto": "individual"
+  }
+]

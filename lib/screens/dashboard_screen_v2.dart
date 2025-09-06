@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:provider/provider.dart';
 import 'dart:async';
+import '../theme/app_theme.dart';
 import 'productos_screen.dart';
 import 'mesas_screen.dart';
 import 'pedidos_screen_fusion.dart';
@@ -38,12 +39,6 @@ class DashboardScreenV2 extends StatefulWidget {
 
 class _DashboardScreenV2State extends State<DashboardScreenV2>
     with WidgetsBindingObserver {
-  final Color primary = Color(kPrimaryColor);
-  final Color bgDark = Color(kBackgroundDark);
-  final Color cardBg = Color(kCardBackgroundDark);
-  final Color textDark = Color(kTextDark);
-  final Color textLight = Color(kTextLight);
-  final Color accentOrange = Color(0xFFFF8800);
 
   late StreamSubscription<bool> _pedidoCompletadoSubscription;
   late StreamSubscription<bool> _pedidoPagadoSubscription;
@@ -416,21 +411,60 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
 
   Future<void> _cargarUltimosPedidos() async {
     try {
-      // Obtener últimos 10 pedidos desde el backend
-      final ultimosPedidos = await _reportesService.getUltimosPedidos(10);
+      // Opción 1: Obtener desde reportes service (si funciona)
+      List<Map<String, dynamic>> ultimosPedidos;
+      try {
+        ultimosPedidos = await _reportesService.getUltimosPedidos(10);
+      } catch (e) {
+        print('⚠️ Error con reportes service, usando PedidoService: $e');
+        // Opción 2: Fallback usando PedidoService directamente
+        final pedidos = await _pedidoService.getAllPedidos();
+        ultimosPedidos = pedidos.take(10).map((pedido) => {
+          'pedidoId': pedido.id,
+          'mesa': pedido.mesa,
+          'producto': pedido.items.isNotEmpty ? pedido.items.first.productoNombre ?? 'Producto N/A' : 'Sin productos',
+          'fecha': pedido.fecha.toIso8601String(),
+          'cantidad': pedido.items.fold(0, (sum, item) => sum + item.cantidad),
+          'estado': pedido.estadoTexto,
+          'vendedor': pedido.mesero,
+          'precio': pedido.items.isNotEmpty ? pedido.items.first.precioUnitario : 0.0,
+          'subtotal': pedido.total,
+          'total': pedido.total,
+          'tipo': pedido.tipoTexto,
+          'notas': pedido.notas ?? '',
+        }).toList();
+      }
 
       // Validar y limpiar los datos antes de usarlos
       final pedidosValidados = ultimosPedidos.map((pedido) {
+        // Calcular valores si no están presentes o son 0
+        final cantidad = (pedido['cantidad'] as num?)?.toInt() ?? 1;
+        final precioUnitario = (pedido['precio'] as num?)?.toDouble() ?? 0.0;
+        final subtotalOriginal = (pedido['subtotal'] as num?)?.toDouble() ?? 0.0;
+        final totalOriginal = (pedido['total'] as num?)?.toDouble() ?? 0.0;
+        
+        // Usar el mayor valor entre subtotal y total, o calcular si ambos son 0
+        double subtotalFinal;
+        if (subtotalOriginal > 0) {
+          subtotalFinal = subtotalOriginal;
+        } else if (totalOriginal > 0) {
+          subtotalFinal = totalOriginal;
+        } else if (precioUnitario > 0) {
+          subtotalFinal = precioUnitario * cantidad;
+        } else {
+          subtotalFinal = 0.0;
+        }
+        
         return {
           'pedidoId': pedido['pedidoId'] ?? 'N/A',
           'mesa': pedido['mesa'] ?? 'N/A',
           'producto': pedido['producto'] ?? 'Producto N/A',
           'fecha': pedido['fecha'] ?? DateTime.now().toString(),
-          'cantidad': pedido['cantidad'] ?? 1,
+          'cantidad': cantidad,
           'estado': pedido['estado'] ?? 'pendiente',
-          'vendedor': pedido['vendedor'] ?? 'N/A',
-          'precio': (pedido['precio'] as num?)?.toDouble() ?? 0.0,
-          'subtotal': (pedido['subtotal'] as num?)?.toDouble() ?? 0.0,
+          'vendedor': pedido['vendedor'] ?? pedido['mesero'] ?? 'N/A',
+          'precio': precioUnitario,
+          'subtotal': subtotalFinal,
           'tipo': pedido['tipo'] ?? 'Normal',
           'notas': pedido['notas'] ?? '',
         };
@@ -497,36 +531,36 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          backgroundColor: cardBg,
+          backgroundColor: AppTheme.cardBg,
           title: Text(
             'Editar Objetivo - $titulo',
-            style: TextStyle(color: textDark),
+            style: TextStyle(color: AppTheme.textPrimary),
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
                 'Ingrese el nuevo objetivo de ventas:',
-                style: TextStyle(color: textLight),
+                style: TextStyle(color: AppTheme.textSecondary),
               ),
               SizedBox(height: 16),
               TextField(
                 controller: controller,
                 keyboardType: TextInputType.number,
-                style: TextStyle(color: textDark),
+                style: TextStyle(color: AppTheme.textPrimary),
                 decoration: InputDecoration(
                   labelText: 'Objetivo (\$)',
-                  labelStyle: TextStyle(color: textLight),
+                  labelStyle: TextStyle(color: AppTheme.textSecondary),
                   prefixText: '\$',
-                  prefixStyle: TextStyle(color: textLight),
+                  prefixStyle: TextStyle(color: AppTheme.textSecondary),
                   border: OutlineInputBorder(
-                    borderSide: BorderSide(color: textLight),
+                    borderSide: BorderSide(color: AppTheme.textSecondary),
                   ),
                   enabledBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: textLight),
+                    borderSide: BorderSide(color: AppTheme.textSecondary),
                   ),
                   focusedBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: primary),
+                    borderSide: BorderSide(color: AppTheme.primary),
                   ),
                 ),
               ),
@@ -535,7 +569,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: Text('Cancelar', style: TextStyle(color: textLight)),
+              child: Text('Cancelar', style: TextStyle(color: AppTheme.textSecondary)),
             ),
             ElevatedButton(
               onPressed: () {
@@ -555,7 +589,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                 }
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: primary,
+                backgroundColor: AppTheme.primary,
                 foregroundColor: Colors.white,
               ),
               child: Text('Guardar'),
@@ -662,13 +696,13 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         Navigator.pushReplacementNamed(context, '/mesas');
       });
       return Scaffold(
-        backgroundColor: bgDark,
+        backgroundColor: AppTheme.backgroundDark,
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(primary),
+                valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primary),
               ),
               SizedBox(height: 16),
               Text(
@@ -682,7 +716,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
     }
 
     return Scaffold(
-      backgroundColor: bgDark,
+      backgroundColor: AppTheme.backgroundDark,
       body: SafeArea(
         child: Column(
           children: [
@@ -694,7 +728,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                         ? Center(
                             child: CircularProgressIndicator(
                               valueColor: AlwaysStoppedAnimation<Color>(
-                                primary,
+                                AppTheme.primary,
                               ),
                             ),
                           )
@@ -702,52 +736,63 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                             onRefresh: _cargarDatos,
                             child: SingleChildScrollView(
                               physics: AlwaysScrollableScrollPhysics(),
-                              padding: EdgeInsets.all(
-                                32.0,
-                              ), // Más padding general
+                              padding: EdgeInsets.all(context.responsivePadding),
                               child: Column(
                                 children: [
                                   // Cards de estadísticas principales
-                                  _buildStatsCards(),
-                                  SizedBox(height: 40), // Más espacio
+                                  _buildStatsCards(context),
+                                  SizedBox(height: AppTheme.spacingXLarge),
                                   // Gráfico de pedidos por hora (más prominente)
-                                  _buildPedidosPorHoraChart(),
-                                  SizedBox(height: 40),
+                                  _buildPedidosPorHoraChart(context),
+                                  SizedBox(height: AppTheme.spacingXLarge),
 
-                                  // Fila de gráficos: Ingresos vs Egresos y Top Productos
-                                  Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Expanded(
-                                        child: _buildIngresosVsEgresosChart(),
-                                      ),
-                                      SizedBox(width: 32), // Más espacio
-                                      Expanded(
-                                        child: _buildTopProductosChart(),
-                                      ),
-                                    ],
-                                  ),
-                                  SizedBox(height: 40),
+                                  // Gráficos en fila o columna según el dispositivo
+                                  context.isMobile
+                                      ? Column(
+                                          children: [
+                                            _buildIngresosVsEgresosChart(context),
+                                            SizedBox(height: AppTheme.spacingLarge),
+                                            _buildTopProductosChart(context),
+                                          ],
+                                        )
+                                      : Row(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Expanded(
+                                              child: _buildIngresosVsEgresosChart(context),
+                                            ),
+                                            SizedBox(width: AppTheme.spacingXLarge),
+                                            Expanded(
+                                              child: _buildTopProductosChart(context),
+                                            ),
+                                          ],
+                                        ),
+                                  SizedBox(height: AppTheme.spacingXLarge),
 
-                                  // Fila principal: Últimos pedidos y Vendedores
-                                  Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Expanded(
-                                        flex: 3, // Más espacio para pedidos
-                                        child: _buildUltimosPedidos(),
-                                      ),
-                                      SizedBox(width: 32), // Más espacio
-                                      Expanded(
-                                        flex:
-                                            2, // Menos espacio para vendedores
-                                        child: _buildVendedoresDelMes(),
-                                      ),
-                                    ],
-                                  ),
-                                  SizedBox(height: 40), // Espacio final
+                                  // Últimos pedidos y vendedores responsivos
+                                  context.isMobile
+                                      ? Column(
+                                          children: [
+                                            _buildUltimosPedidos(context),
+                                            SizedBox(height: AppTheme.spacingLarge),
+                                            _buildVendedoresDelMes(context),
+                                          ],
+                                        )
+                                      : Row(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Expanded(
+                                              flex: 3,
+                                              child: _buildUltimosPedidos(context),
+                                            ),
+                                            SizedBox(width: AppTheme.spacingXLarge),
+                                            Expanded(
+                                              flex: 2,
+                                              child: _buildVendedoresDelMes(context),
+                                            ),
+                                          ],
+                                        ),
+                                  SizedBox(height: AppTheme.spacingXLarge),
                                 ],
                               ),
                             ),
@@ -778,7 +823,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                               Navigator.pushReplacementNamed(context, '/mesas');
                             },
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: primary,
+                              backgroundColor: AppTheme.primary,
                               padding: EdgeInsets.symmetric(
                                 horizontal: 32,
                                 vertical: 16,
@@ -805,7 +850,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
   Widget _buildTopBar() {
     return Container(
       padding: EdgeInsets.all(16.0),
-      color: primary,
+      color: AppTheme.primary,
       child: Row(
         children: [
           Icon(Icons.restaurant_menu, color: Colors.white, size: 24),
@@ -887,7 +932,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
 
     return Container(
       height: 60,
-      color: cardBg,
+      color: AppTheme.cardBg,
       child: Scrollbar(
         scrollbarOrientation: ScrollbarOrientation.bottom,
         thumbVisibility: true,
@@ -958,7 +1003,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
               children: [
                 Icon(Icons.history, color: Colors.blue, size: 18),
                 SizedBox(width: 8),
-                Text('Historial', style: TextStyle(color: textDark)),
+                Text('Historial', style: TextStyle(color: AppTheme.textPrimary)),
               ],
             ),
           ),
@@ -976,7 +1021,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
               children: [
                 Icon(Icons.restaurant_menu, color: Colors.green, size: 18),
                 SizedBox(width: 8),
-                Text('Ingredientes', style: TextStyle(color: textDark)),
+                Text('Ingredientes', style: TextStyle(color: AppTheme.textPrimary)),
               ],
             ),
           ),
@@ -994,7 +1039,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
               children: [
                 Icon(Icons.menu_book, color: Colors.orange, size: 18),
                 SizedBox(width: 8),
-                Text('Recetas', style: TextStyle(color: textDark)),
+                Text('Recetas', style: TextStyle(color: AppTheme.textPrimary)),
               ],
             ),
           ),
@@ -1012,7 +1057,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
               children: [
                 Icon(Icons.local_shipping, color: Colors.purple, size: 18),
                 SizedBox(width: 8),
-                Text('Proveedores', style: TextStyle(color: textDark)),
+                Text('Proveedores', style: TextStyle(color: AppTheme.textPrimary)),
               ],
             ),
           ),
@@ -1030,7 +1075,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
               children: [
                 Icon(Icons.straighten, color: Colors.teal, size: 18),
                 SizedBox(width: 8),
-                Text('Unidades', style: TextStyle(color: textDark)),
+                Text('Unidades', style: TextStyle(color: AppTheme.textPrimary)),
               ],
             ),
           ),
@@ -1099,18 +1144,18 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         margin: EdgeInsets.symmetric(horizontal: 4),
         decoration: BoxDecoration(
-          color: isSelected ? primary : Colors.transparent,
+          color: isSelected ? AppTheme.primary : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: isSelected ? Colors.white : textLight, size: 20),
+            Icon(icon, color: isSelected ? Colors.white : AppTheme.textSecondary, size: 20),
             SizedBox(height: 4),
             Text(
               label,
               style: TextStyle(
-                color: isSelected ? Colors.white : textLight,
+                color: isSelected ? Colors.white : AppTheme.textSecondary,
                 fontSize: 10,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
               ),
@@ -1153,7 +1198,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         margin: EdgeInsets.symmetric(horizontal: 4),
         decoration: BoxDecoration(
-          color: isSelected ? primary : Colors.transparent,
+          color: isSelected ? AppTheme.primary : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
         ),
         child: Column(
@@ -1164,13 +1209,13 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
               children: [
                 Icon(
                   icon,
-                  color: isSelected ? Colors.white : textLight,
+                  color: isSelected ? Colors.white : AppTheme.textSecondary,
                   size: 20,
                 ),
                 SizedBox(width: 4),
                 Icon(
                   Icons.arrow_drop_down,
-                  color: isSelected ? Colors.white : textLight,
+                  color: isSelected ? Colors.white : AppTheme.textSecondary,
                   size: 14,
                 ),
               ],
@@ -1179,7 +1224,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
             Text(
               label,
               style: TextStyle(
-                color: isSelected ? Colors.white : textLight,
+                color: isSelected ? Colors.white : AppTheme.textSecondary,
                 fontSize: 10,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
               ),
@@ -1190,7 +1235,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
     );
   }
 
-  Widget _buildStatsCards() {
+  Widget _buildStatsCards(BuildContext context) {
     if (_dashboardData == null) {
       return SizedBox(
         height: 200,
@@ -1199,12 +1244,12 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(primary),
+                valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primary),
               ),
-              SizedBox(height: 16),
+              SizedBox(height: AppTheme.spacingMedium),
               Text(
                 'Cargando estadísticas del dashboard...',
-                style: TextStyle(color: textLight, fontSize: 14),
+                style: AppTheme.bodyMedium.copyWith(color: AppTheme.textSecondary),
               ),
             ],
           ),
@@ -1212,12 +1257,81 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
       );
     }
 
+    // Responsivo: En móvil, usar columnas; en escritorio, usar filas
+    if (context.isMobile) {
+      return Column(
+        children: [
+          _buildStatCard(
+            context,
+            title: 'Facturado Hoy',
+            value: '\$${_formatNumber(_dashboardData!.ventasHoy.total)}',
+            objective:
+                'Objetivo: \$${_formatNumber(_obtenerObjetivoActual('hoy'))}',
+            percentage:
+                (_dashboardData!.ventasHoy.total /
+                        _obtenerObjetivoActual('hoy') *
+                        100)
+                    .round(),
+            color: AppTheme.primary,
+            periodo: 'hoy',
+          ),
+          SizedBox(height: AppTheme.spacingMedium),
+          _buildStatCard(
+            context,
+            title: 'Últimos 7 días',
+            value: '\$${_formatNumber(_dashboardData!.ventas7Dias.total)}',
+            objective:
+                'Objetivo: \$${_formatNumber(_obtenerObjetivoActual('semana'))}',
+            percentage:
+                (_dashboardData!.ventas7Dias.total /
+                        _obtenerObjetivoActual('semana') *
+                        100)
+                    .round(),
+            color: AppTheme.warning,
+            periodo: 'semana',
+          ),
+          SizedBox(height: AppTheme.spacingMedium),
+          _buildStatCard(
+            context,
+            title: 'Últimos 30 días',
+            value: '\$${_formatNumber(_dashboardData!.ventas30Dias.total)}',
+            objective:
+                'Objetivo: \$${_formatNumber(_obtenerObjetivoActual('mes'))}',
+            percentage:
+                (_dashboardData!.ventas30Dias.total /
+                        _obtenerObjetivoActual('mes') *
+                        100)
+                    .round(),
+            color: AppTheme.success,
+            periodo: 'mes',
+          ),
+          SizedBox(height: AppTheme.spacingMedium),
+          _buildStatCard(
+            context,
+            title: 'Año actual',
+            value: '\$${_formatNumber(_dashboardData!.ventasAnio.total)}',
+            objective:
+                'Objetivo: \$${_formatNumber(_obtenerObjetivoActual('año'))}',
+            percentage:
+                (_dashboardData!.ventasAnio.total /
+                        _obtenerObjetivoActual('año') *
+                        100)
+                    .round(),
+            color: AppTheme.info,
+            periodo: 'año',
+          ),
+        ],
+      );
+    }
+    
+    // Versión tablet/escritorio
     return Column(
       children: [
         Row(
           children: [
             Expanded(
               child: _buildStatCard(
+                context,
                 title: 'Facturado Hoy',
                 value: '\$${_formatNumber(_dashboardData!.ventasHoy.total)}',
                 objective:
@@ -1227,13 +1341,14 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                             _obtenerObjetivoActual('hoy') *
                             100)
                         .round(),
-                color: primary,
+                color: AppTheme.primary,
                 periodo: 'hoy',
               ),
             ),
-            SizedBox(width: 24), // Más espacio horizontal
+            SizedBox(width: context.isTablet ? AppTheme.spacingMedium : AppTheme.spacingLarge),
             Expanded(
               child: _buildStatCard(
+                context,
                 title: 'Últimos 7 días',
                 value: '\$${_formatNumber(_dashboardData!.ventas7Dias.total)}',
                 objective:
@@ -1243,17 +1358,18 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                             _obtenerObjetivoActual('semana') *
                             100)
                         .round(),
-                color: accentOrange,
+                color: AppTheme.warning,
                 periodo: 'semana',
               ),
             ),
           ],
         ),
-        SizedBox(height: 24), // Más espacio vertical
+        SizedBox(height: AppTheme.spacingLarge),
         Row(
           children: [
             Expanded(
               child: _buildStatCard(
+                context,
                 title: 'Últimos 30 días',
                 value: '\$${_formatNumber(_dashboardData!.ventas30Dias.total)}',
                 objective:
@@ -1263,13 +1379,14 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                             _obtenerObjetivoActual('mes') *
                             100)
                         .round(),
-                color: Colors.green,
+                color: AppTheme.success,
                 periodo: 'mes',
               ),
             ),
-            SizedBox(width: 24), // Más espacio horizontal
+            SizedBox(width: context.isTablet ? AppTheme.spacingMedium : AppTheme.spacingLarge),
             Expanded(
               child: _buildStatCard(
+                context,
                 title: 'Año actual',
                 value: '\$${_formatNumber(_dashboardData!.ventasAnio.total)}',
                 objective:
@@ -1279,7 +1396,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                             _obtenerObjetivoActual('año') *
                             100)
                         .round(),
-                color: Colors.blue,
+                color: AppTheme.info,
                 periodo: 'año',
               ),
             ),
@@ -1298,12 +1415,12 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(primary),
+                valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primary),
               ),
               SizedBox(height: 16),
               Text(
                 'Cargando información adicional...',
-                style: TextStyle(color: textLight, fontSize: 14),
+                style: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
               ),
             ],
           ),
@@ -1314,13 +1431,10 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
     return SizedBox.shrink(); // Widgets removidos
   }
 
-  Widget _buildIngresosVsEgresosChart() {
+  Widget _buildIngresosVsEgresosChart(BuildContext context) {
     return Container(
-      padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: cardBg,
-        borderRadius: BorderRadius.circular(12),
-      ),
+      padding: EdgeInsets.all(context.isMobile ? AppTheme.spacingMedium : AppTheme.spacingLarge),
+      decoration: AppTheme.cardDecoration,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1331,7 +1445,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
               Text(
                 'INGRESOS VS EGRESOS',
                 style: TextStyle(
-                  color: textDark,
+                  color: AppTheme.textPrimary,
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                 ),
@@ -1346,11 +1460,11 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        CircularProgressIndicator(color: primary),
+                        CircularProgressIndicator(color: AppTheme.primary),
                         SizedBox(height: 8),
                         Text(
                           'Cargando datos...',
-                          style: TextStyle(color: textLight, fontSize: 12),
+                          style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
                         ),
                       ],
                     ),
@@ -1387,7 +1501,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                                 return Text(
                                   _ingresosVsEgresos[value.toInt()]['mes'],
                                   style: TextStyle(
-                                    color: textLight,
+                                    color: AppTheme.textSecondary,
                                     fontSize: 10,
                                   ),
                                 );
@@ -1403,7 +1517,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                             getTitlesWidget: (value, meta) {
                               return Text(
                                 '${(value / 1000).toInt()}K',
-                                style: TextStyle(color: textLight, fontSize: 8),
+                                style: TextStyle(color: AppTheme.textSecondary, fontSize: 8),
                               );
                             },
                           ),
@@ -1462,13 +1576,10 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
     );
   }
 
-  Widget _buildTopProductosChart() {
+  Widget _buildTopProductosChart(BuildContext context) {
     return Container(
-      padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: cardBg,
-        borderRadius: BorderRadius.circular(12),
-      ),
+      padding: EdgeInsets.all(context.isMobile ? AppTheme.spacingMedium : AppTheme.spacingLarge),
+      decoration: AppTheme.cardDecoration,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1479,7 +1590,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
               Text(
                 'TOP 5',
                 style: TextStyle(
-                  color: textDark,
+                  color: AppTheme.textPrimary,
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                 ),
@@ -1489,7 +1600,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
           SizedBox(height: 4),
           Text(
             'PRODUCTOS MES ACTUAL',
-            style: TextStyle(color: textLight, fontSize: 12),
+            style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
           ),
           SizedBox(height: 20),
           SizedBox(
@@ -1499,11 +1610,11 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        CircularProgressIndicator(color: primary),
+                        CircularProgressIndicator(color: AppTheme.primary),
                         SizedBox(height: 8),
                         Text(
                           'Cargando productos...',
-                          style: TextStyle(color: textLight, fontSize: 12),
+                          style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
                         ),
                       ],
                     ),
@@ -1535,7 +1646,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                 ? Center(
                     child: Text(
                       'No hay datos de productos',
-                      style: TextStyle(color: textLight, fontSize: 12),
+                      style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
                     ),
                   )
                 : ListView(
@@ -1557,7 +1668,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                               child: Text(
                                 producto['nombre'] ?? 'Producto',
                                 style: TextStyle(
-                                  color: textLight,
+                                  color: AppTheme.textSecondary,
                                   fontSize: 10,
                                 ),
                                 overflow: TextOverflow.ellipsis,
@@ -1566,7 +1677,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                             Text(
                               '${(producto['porcentaje'] ?? 0).toInt()}%',
                               style: TextStyle(
-                                color: textDark,
+                                color: AppTheme.textPrimary,
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -1582,20 +1693,10 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
     );
   }
 
-  Widget _buildPedidosPorHoraChart() {
+  Widget _buildPedidosPorHoraChart(BuildContext context) {
     return Container(
-      padding: EdgeInsets.all(24), // Más padding
-      decoration: BoxDecoration(
-        color: cardBg,
-        borderRadius: BorderRadius.circular(16), // Bordes más redondeados
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 8,
-            offset: Offset(0, 2),
-          ),
-        ],
-      ),
+      padding: EdgeInsets.all(context.isMobile ? AppTheme.spacingMedium : AppTheme.spacingXLarge),
+      decoration: AppTheme.elevatedCardDecoration,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1603,14 +1704,14 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
             children: [
               Icon(
                 Icons.access_time,
-                color: accentOrange,
+                color: AppTheme.warning,
                 size: 16,
               ), // Ícono más grande
               SizedBox(width: 12),
               Text(
                 'PEDIDOS POR HORA',
                 style: TextStyle(
-                  color: textDark,
+                  color: AppTheme.textPrimary,
                   fontSize: 16, // Título más grande
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.5,
@@ -1626,11 +1727,11 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        CircularProgressIndicator(color: primary),
+                        CircularProgressIndicator(color: AppTheme.primary),
                         SizedBox(height: 8),
                         Text(
                           'Cargando pedidos...',
-                          style: TextStyle(color: textLight, fontSize: 12),
+                          style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
                         ),
                       ],
                     ),
@@ -1661,7 +1762,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                                     _pedidosPorHora[value.toInt()]['hora'] ??
                                         '',
                                     style: TextStyle(
-                                      color: textLight,
+                                      color: AppTheme.textSecondary,
                                       fontSize: 10,
                                     ),
                                   );
@@ -1678,7 +1779,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                             getTitlesWidget: (value, meta) {
                               return Text(
                                 '${value.toInt()}',
-                                style: TextStyle(color: textLight, fontSize: 8),
+                                style: TextStyle(color: AppTheme.textSecondary, fontSize: 8),
                               );
                             },
                           ),
@@ -1701,12 +1802,12 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                             );
                           }).toList(),
                           isCurved: true,
-                          color: accentOrange,
+                          color: AppTheme.warning,
                           barWidth: 3,
                           dotData: FlDotData(show: false),
                           belowBarData: BarAreaData(
                             show: true,
-                            color: accentOrange.withOpacity(0.2),
+                            color: AppTheme.warning.withOpacity(0.2),
                           ),
                         ),
                       ],
@@ -1718,20 +1819,10 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
     );
   }
 
-  Widget _buildUltimosPedidos() {
+  Widget _buildUltimosPedidos(BuildContext context) {
     return Container(
-      padding: EdgeInsets.all(24), // Más padding
-      decoration: BoxDecoration(
-        color: cardBg,
-        borderRadius: BorderRadius.circular(16), // Bordes más redondeados
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 8,
-            offset: Offset(0, 2),
-          ),
-        ],
-      ),
+      padding: EdgeInsets.all(context.isMobile ? AppTheme.spacingMedium : AppTheme.spacingXLarge),
+      decoration: AppTheme.elevatedCardDecoration,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1746,7 +1837,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
               Text(
                 'ÚLTIMOS PEDIDOS',
                 style: TextStyle(
-                  color: textDark,
+                  color: AppTheme.textPrimary,
                   fontSize: 16, // Título más grande
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.5,
@@ -1762,11 +1853,11 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        CircularProgressIndicator(color: primary),
+                        CircularProgressIndicator(color: AppTheme.primary),
                         SizedBox(height: 12),
                         Text(
                           'Cargando pedidos...',
-                          style: TextStyle(color: textLight, fontSize: 14),
+                          style: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
                         ),
                       ],
                     ),
@@ -1782,7 +1873,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                         child: Container(
                           padding: EdgeInsets.all(16), // Más padding interno
                           decoration: BoxDecoration(
-                            color: bgDark,
+                            color: AppTheme.backgroundDark,
                             borderRadius: BorderRadius.circular(
                               12,
                             ), // Bordes más redondeados
@@ -1807,7 +1898,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                                   Text(
                                     'Mesa ${pedido['mesa'] ?? 'N/A'}',
                                     style: TextStyle(
-                                      color: textDark,
+                                      color: AppTheme.textPrimary,
                                       fontSize: 14, // Texto más grande
                                       fontWeight: FontWeight.bold,
                                     ),
@@ -1826,7 +1917,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                               Text(
                                 pedido['producto'] ?? 'Producto N/A',
                                 style: TextStyle(
-                                  color: textLight,
+                                  color: AppTheme.textSecondary,
                                   fontSize: 13, // Texto más grande
                                 ),
                                 maxLines: 2, // Más líneas para producto
@@ -1840,14 +1931,14 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                                   Text(
                                     _extraerHoraDeFecha(pedido['fecha']),
                                     style: TextStyle(
-                                      color: textLight,
+                                      color: AppTheme.textSecondary,
                                       fontSize: 12, // Texto más grande
                                     ),
                                   ),
                                   Text(
                                     '\$${_formatCurrency(pedido['subtotal'] ?? 0)}',
                                     style: TextStyle(
-                                      color: accentOrange,
+                                      color: AppTheme.warning,
                                       fontSize: 11,
                                       fontWeight: FontWeight.bold,
                                     ),
@@ -1866,20 +1957,10 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
     );
   }
 
-  Widget _buildVendedoresDelMes() {
+  Widget _buildVendedoresDelMes(BuildContext context) {
     return Container(
-      padding: EdgeInsets.all(24), // Más padding
-      decoration: BoxDecoration(
-        color: cardBg,
-        borderRadius: BorderRadius.circular(16), // Bordes más redondeados
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 8,
-            offset: Offset(0, 2),
-          ),
-        ],
-      ),
+      padding: EdgeInsets.all(context.isMobile ? AppTheme.spacingMedium : AppTheme.spacingXLarge),
+      decoration: AppTheme.elevatedCardDecoration,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1887,34 +1968,35 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
             children: [
               Icon(
                 Icons.star,
-                color: Colors.amber,
-                size: 16,
-              ), // Ícono más grande
-              SizedBox(width: 12),
+                color: AppTheme.warning,
+                size: context.isMobile ? 16 : 18,
+              ),
+              SizedBox(width: AppTheme.spacingMedium),
               Text(
                 'TOP VENDEDORES',
-                style: TextStyle(
-                  color: textDark,
-                  fontSize: 16, // Título más grande
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: AppTheme.textPrimary,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.5,
                 ),
               ),
             ],
           ),
-          SizedBox(height: 20), // Más espacio
+          SizedBox(height: AppTheme.spacingLarge),
           SizedBox(
-            height: 320, // Lista más alta
+            height: context.isMobile ? 280 : 320,
             child: _vendedoresDelMes.isEmpty
                 ? Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        CircularProgressIndicator(color: primary),
-                        SizedBox(height: 12),
+                        CircularProgressIndicator(color: AppTheme.primary),
+                        SizedBox(height: AppTheme.spacingMedium),
                         Text(
                           'Cargando vendedores...',
-                          style: TextStyle(color: textLight, fontSize: 12),
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: AppTheme.textSecondary,
+                          ),
                         ),
                       ],
                     ),
@@ -1925,31 +2007,19 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                       final vendedor = _vendedoresDelMes[index];
                       final puesto = index + 1;
                       return Padding(
-                        padding: EdgeInsets.only(bottom: 12), // Más espacio
+                        padding: EdgeInsets.only(bottom: AppTheme.spacingMedium),
                         child: Container(
-                          padding: EdgeInsets.all(16), // Más padding
+                          padding: EdgeInsets.all(context.isMobile ? AppTheme.spacingMedium : AppTheme.spacingLarge),
                           decoration: BoxDecoration(
-                            color: bgDark,
-                            borderRadius: BorderRadius.circular(
-                              12,
-                            ), // Bordes más redondeados
+                            color: AppTheme.cardBg,
+                            borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
                             border: Border.all(
                               color: puesto <= 3
-                                  ? Colors.amber
-                                  : Colors.grey.withOpacity(0.2),
-                              width: puesto <= 3
-                                  ? 2
-                                  : 1, // Bordes más gruesos para top 3
+                                  ? AppTheme.warning
+                                  : AppTheme.textMuted.withOpacity(0.3),
+                              width: puesto <= 3 ? 2 : 1,
                             ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: puesto <= 3
-                                    ? Colors.amber.withOpacity(0.1)
-                                    : Colors.black.withOpacity(0.05),
-                                blurRadius: puesto <= 3 ? 6 : 4,
-                                offset: Offset(0, 2),
-                              ),
-                            ],
+                            boxShadow: AppTheme.cardShadow,
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1957,8 +2027,8 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                               Row(
                                 children: [
                                   Container(
-                                    width: 28, // Círculo más grande
-                                    height: 28,
+                                    width: context.isMobile ? 26 : 28,
+                                    height: context.isMobile ? 26 : 28,
                                     decoration: BoxDecoration(
                                       color: _getPuestoColor(puesto),
                                       shape: BoxShape.circle,
@@ -1966,21 +2036,19 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                                     child: Center(
                                       child: Text(
                                         '$puesto',
-                                        style: TextStyle(
+                                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
                                           color: Colors.white,
-                                          fontSize: 12, // Número más grande
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
                                     ),
                                   ),
-                                  SizedBox(width: 12), // Más espacio
+                                  SizedBox(width: AppTheme.spacingMedium),
                                   Expanded(
                                     child: Text(
                                       vendedor['nombre'] ?? 'N/A',
-                                      style: TextStyle(
-                                        color: textDark,
-                                        fontSize: 14, // Texto más grande
+                                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                        color: AppTheme.textPrimary,
                                         fontWeight: FontWeight.bold,
                                       ),
                                       overflow: TextOverflow.ellipsis,
@@ -1988,21 +2056,19 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                                   ),
                                 ],
                               ),
-                              SizedBox(height: 10), // Más espacio
+                              SizedBox(height: AppTheme.spacingSmall),
                               Text(
                                 '\$${_formatCurrency(vendedor['totalVentas'] ?? 0)}',
-                                style: TextStyle(
-                                  color: accentOrange,
-                                  fontSize: 16, // Texto más grande
+                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  color: AppTheme.warning,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                              SizedBox(height: 4), // Más espacio
+                              SizedBox(height: AppTheme.spacingXSmall),
                               Text(
                                 '${vendedor['cantidadPedidos'] ?? 0} pedidos',
-                                style: TextStyle(
-                                  color: textLight,
-                                  fontSize: 12, // Texto más grande
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: AppTheme.textSecondary,
                                 ),
                               ),
                             ],
@@ -2026,7 +2092,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
       case 'cancelado':
         return Colors.red;
       default:
-        return textLight;
+        return AppTheme.textSecondary;
     }
   }
 
@@ -2069,21 +2135,18 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
     }
   }
 
-  Widget _buildStatCard({
+  Widget _buildStatCard(
+    BuildContext context, {
     required String title,
     required String value,
     required String objective,
     required int percentage,
     required Color color,
-    String? periodo, // Nuevo parámetro para identificar el período
+    String? periodo,
   }) {
     return Container(
-      padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: cardBg,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.withOpacity(0.3)),
-      ),
+      padding: EdgeInsets.all(context.isMobile ? AppTheme.spacingMedium : AppTheme.spacingLarge),
+      decoration: AppTheme.elevatedCardDecoration,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -2093,9 +2156,8 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
               Expanded(
                 child: Text(
                   title,
-                  style: TextStyle(
-                    color: textLight,
-                    fontSize: 12,
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: AppTheme.textSecondary,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -2109,26 +2171,28 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                       onTap: () =>
                           _mostrarDialogoEditarObjetivo(periodo, title),
                       child: Container(
-                        padding: EdgeInsets.all(4),
+                        padding: EdgeInsets.all(AppTheme.spacingXSmall),
                         decoration: BoxDecoration(
                           color: color.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(6),
+                          borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
                         ),
                         child: Icon(Icons.edit, size: 14, color: color),
                       ),
                     ),
-                  if (periodo != null) SizedBox(width: 6),
+                  if (periodo != null) SizedBox(width: AppTheme.spacingSmall),
                   Container(
-                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: AppTheme.spacingSmall,
+                      vertical: AppTheme.spacingXSmall,
+                    ),
                     decoration: BoxDecoration(
                       color: color.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
                     ),
                     child: Text(
                       '$percentage%',
-                      style: TextStyle(
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
                         color: color,
-                        fontSize: 12,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -2137,25 +2201,29 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
               ),
             ],
           ),
-          SizedBox(height: 8),
+          SizedBox(height: AppTheme.spacingSmall),
           Text(
             value,
-            style: TextStyle(
-              color: textDark,
-              fontSize: 18,
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              color: AppTheme.textPrimary,
               fontWeight: FontWeight.bold,
             ),
           ),
-          SizedBox(height: 4),
-          Text(objective, style: TextStyle(color: textLight, fontSize: 10)),
-          SizedBox(height: 8),
+          SizedBox(height: AppTheme.spacingXSmall),
+          Text(
+            objective,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: AppTheme.textSecondary,
+            ),
+          ),
+          SizedBox(height: AppTheme.spacingSmall),
           SizedBox(
-            width: 80,
-            height: 80,
+            width: context.isMobile ? 70 : 80,
+            height: context.isMobile ? 70 : 80,
             child: CircularProgressIndicator(
               value: percentage / 100,
-              strokeWidth: 8,
-              backgroundColor: Colors.grey.withOpacity(0.3),
+              strokeWidth: context.isMobile ? 6 : 8,
+              backgroundColor: AppTheme.textMuted.withOpacity(0.3),
               valueColor: AlwaysStoppedAnimation<Color>(color),
             ),
           ),
@@ -2164,35 +2232,31 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
     );
   }
 
-  Widget _buildRecentSales() {
+  Widget _buildRecentSales(BuildContext context) {
     return Container(
-      padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: cardBg,
-        borderRadius: BorderRadius.circular(12),
-      ),
+      padding: EdgeInsets.all(context.isMobile ? AppTheme.spacingMedium : AppTheme.spacingLarge),
+      decoration: AppTheme.elevatedCardDecoration,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(Icons.circle, color: primary, size: 12),
-              SizedBox(width: 8),
+              Icon(Icons.circle, color: AppTheme.primary, size: 12),
+              SizedBox(width: AppTheme.spacingSmall),
               Text(
                 'FACTURADO ÚLTIMOS 7 DÍAS',
-                style: TextStyle(
-                  color: textDark,
-                  fontSize: 14,
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: AppTheme.textPrimary,
                   fontWeight: FontWeight.w600,
                 ),
               ),
             ],
           ),
-          SizedBox(height: 16),
+          SizedBox(height: AppTheme.spacingMedium),
           SizedBox(
-            height: 150,
+            height: context.isMobile ? 120 : 150,
             child: _ventasPorDia.isEmpty
-                ? Center(child: CircularProgressIndicator(color: primary))
+                ? Center(child: CircularProgressIndicator(color: AppTheme.primary))
                 : BarChart(
                     BarChartData(
                       alignment: BarChartAlignment.spaceAround,
@@ -2244,7 +2308,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                                   child: Text(
                                     dia,
                                     style: TextStyle(
-                                      color: textLight,
+                                      color: AppTheme.textSecondary,
                                       fontSize: 10,
                                       fontWeight: FontWeight.w500,
                                     ),
@@ -2266,7 +2330,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                               return Text(
                                 '\$${_formatCurrency(value)}',
                                 style: TextStyle(
-                                  color: textLight,
+                                  color: AppTheme.textSecondary,
                                   fontSize: 9,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -2317,7 +2381,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                           barRods: [
                             BarChartRodData(
                               toY: ventas,
-                              color: primary,
+                              color: AppTheme.primary,
                               width: 25,
                               borderRadius: BorderRadius.circular(4),
                             ),
@@ -2385,7 +2449,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         SizedBox(width: 8),
-        Text(label, style: TextStyle(color: textLight, fontSize: 12)),
+        Text(label, style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
       ],
     );
   }

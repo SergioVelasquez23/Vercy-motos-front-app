@@ -7,6 +7,7 @@ import '../utils/negocio_info_cache.dart';
 import '../utils/format_utils.dart';
 import '../utils/impresion_mixin.dart';
 import 'pedido_screen.dart';
+import '../theme/app_theme.dart';
 
 class DocumentosMesaScreen extends StatefulWidget {
   final Mesa? mesa; // Puede ser nulo para mostrar todos los documentos
@@ -29,11 +30,11 @@ class _DocumentosMesaScreenState extends State<DocumentosMesaScreen>
   DateTime? _fechaFin;
   final TextEditingController _searchController = TextEditingController();
 
-  // Constantes de diseño
-  static const Color _primary = Color(0xFFFF6B00);
-  static const Color _bgDark = Color(0xFF121212);
-  static const Color _cardBg = Color(0xFF1E1E1E);
-  static const Color _textLight = Color(0xFFE0E0E0);
+  // Getters para compatibilidad con AppTheme
+  Color get _primary => AppTheme.primary;
+  Color get _bgDark => AppTheme.backgroundDark;
+  Color get _cardBg => AppTheme.cardBg;
+  Color get _textLight => AppTheme.textLight;
 
   // Variables para modo global o por mesa
   bool get _esModoPorMesa => widget.mesa != null;
@@ -49,12 +50,12 @@ class _DocumentosMesaScreenState extends State<DocumentosMesaScreen>
         return Theme(
           data: ThemeData.dark().copyWith(
             colorScheme: ColorScheme.dark(
-              primary: _primary,
-              onPrimary: Colors.white,
-              surface: _cardBg,
-              onSurface: _textLight,
+              primary: AppTheme.primary,
+              onPrimary: AppTheme.textDark,
+              surface: AppTheme.cardBg,
+              onSurface: AppTheme.textLight,
             ),
-            dialogTheme: DialogThemeData(backgroundColor: _cardBg),
+            dialogTheme: DialogThemeData(backgroundColor: AppTheme.cardBg),
           ),
           child: child!,
         );
@@ -148,9 +149,9 @@ class _DocumentosMesaScreenState extends State<DocumentosMesaScreen>
           _esModoPorMesa
               ? "${widget.mesa!.nombre} - Documentos"
               : "Documentos de Mesas",
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: AppTheme.headlineSmall.copyWith(fontWeight: FontWeight.bold),
         ),
-        backgroundColor: _primary,
+        backgroundColor: AppTheme.backgroundDark,
         elevation: 0,
         actions: [
           IconButton(icon: Icon(Icons.refresh), onPressed: _cargarDocumentos),
@@ -159,7 +160,9 @@ class _DocumentosMesaScreenState extends State<DocumentosMesaScreen>
         ],
         bottom: TabBar(
           controller: _tabController,
-          indicatorColor: Colors.white,
+          indicatorColor: AppTheme.primary,
+          labelColor: AppTheme.textDark,
+          unselectedLabelColor: AppTheme.textLight,
           tabs: [
             Tab(text: 'Todos (${_documentos.length})'),
             Tab(text: 'Pendientes (${_documentosPendientes.length})'),

@@ -4,12 +4,14 @@ import 'package:provider/provider.dart';
 import 'dart:async';
 import 'dart:io';
 import 'dart:convert';
+import '../theme/app_theme.dart';
 import '../models/mesa.dart';
 import '../models/pedido.dart';
 import '../models/documento_mesa.dart';
 import '../services/pedido_service.dart';
 import '../services/mesa_service.dart';
 import '../services/documento_mesa_service.dart';
+import '../services/documento_automatico_service.dart';
 import '../services/impresion_service.dart';
 import '../services/notification_service.dart';
 import '../providers/user_provider.dart';
@@ -20,6 +22,7 @@ import 'documentos_mesa_screen.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+import 'package:cross_file/cross_file.dart';
 
 class MesasScreen extends StatefulWidget {
   const MesasScreen({super.key});
@@ -32,6 +35,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
   final MesaService _mesaService = MesaService();
   final PedidoService _pedidoService = PedidoService();
   final DocumentoMesaService _documentoMesaService = DocumentoMesaService();
+  final DocumentoAutomaticoService _documentoAutomaticoService = DocumentoAutomaticoService();
 
   final ImpresionService _impresionService = ImpresionService();
   List<Mesa> mesas = [];
@@ -42,9 +46,21 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
   late StreamSubscription<bool> _pedidoCompletadoSubscription;
   late StreamSubscription<bool> _pedidoPagadoSubscription;
 
-  static const _cardBg = Color(0xFF252525);
-  static const _textLight = Color(0xFFE0E0E0);
+  // Paleta de colores mejorada
+  static const _backgroundDark = Color(0xFF1A1A1A);
+  static const _surfaceDark = Color(0xFF2A2A2A);
+  static const _cardBg = Color(0xFF313131);
+  static const _cardElevated = Color(0xFF3A3A3A);
+  static const _textPrimary = Color(0xFFFFFFFF);
+  static const _textSecondary = Color(0xFFB0B0B0);
+  static const _textMuted = Color(0xFF808080);
   static const _primary = Color(0xFFFF6B00);
+  static const _primaryLight = Color(0xFFFF8F3D);
+  static const _primaryDark = Color(0xFFE55A00);
+  static const _success = Color(0xFF4CAF50);
+  static const _warning = Color(0xFFFF9800);
+  static const _error = Color(0xFFF44336);
+  static const _accent = Color(0xFF03DAC6);
 
   // Banderas para evitar procesamiento múltiple
   bool _procesandoPago = false;
@@ -83,17 +99,33 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
   // Método para construir sección de título
   Widget _buildSeccionTitulo(String titulo) {
     return Container(
-      padding: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      padding: EdgeInsets.symmetric(vertical: 12, horizontal: 18),
       decoration: BoxDecoration(
-        color: _primary.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
+        gradient: LinearGradient(
+          colors: [_primary.withOpacity(0.15), _primary.withOpacity(0.05)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: _primary.withOpacity(0.3),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: _primary.withOpacity(0.1),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
       ),
       child: Text(
         titulo,
         style: TextStyle(
           color: _primary,
-          fontSize: 16,
-          fontWeight: FontWeight.bold,
+          fontSize: 17,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.5,
         ),
       ),
     );
@@ -101,26 +133,43 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
 
   // Método para construir fila de información
   Widget _buildInfoRow(IconData icono, String etiqueta, String valor) {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: 4),
+    return Container(
+      margin: EdgeInsets.symmetric(vertical: 6),
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: _surfaceDark.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: _textMuted.withOpacity(0.2),
+          width: 0.5,
+        ),
+      ),
       child: Row(
         children: [
-          Icon(icono, size: 16, color: _textLight.withOpacity(0.7)),
-          SizedBox(width: 8),
+          Container(
+            padding: EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: _primary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Icon(icono, size: 14, color: _primary),
+          ),
+          SizedBox(width: 12),
           Text(
             '$etiqueta: ',
             style: TextStyle(
-              color: _textLight.withOpacity(0.7),
-              fontSize: 12,
+              color: _textSecondary,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
             ),
           ),
           Expanded(
             child: Text(
               valor,
               style: TextStyle(
-                color: _textLight,
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
+                color: _textPrimary,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
@@ -131,31 +180,66 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
 
   // Método auxiliar para construir sección de resumen
   Widget _buildSeccionResumen(String titulo, List<String> items) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          titulo,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-            color: _primary,
-          ),
+    return Container(
+      margin: EdgeInsets.only(bottom: 16),
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _cardElevated,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: _primary.withOpacity(0.2),
+          width: 1,
         ),
-        SizedBox(height: 8),
-        ...items.map((item) => Padding(
-              padding: EdgeInsets.only(bottom: 4),
-              child: Text(
-                item,
-              style: TextStyle(fontSize: 12, color: _textLight),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: _primary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              titulo,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: _primary,
+                letterSpacing: 0.3,
               ),
-            )),
-        SizedBox(height: 16),
-      ],
+            ),
+          ),
+          SizedBox(height: 12),
+          ...items.map((item) => Container(
+                margin: EdgeInsets.only(bottom: 8),
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: _surfaceDark.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  item,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: _textPrimary,
+                    height: 1.3,
+                  ),
+                ),
+              )),
+        ],
+      ),
     );
   }
 
-  /// Crea una factura para un pedido
+  /// Crea una factura/documento automáticamente para un pedido pagado
   Future<void> _crearFacturaPedido(
     String pedidoId, {
     String? formaPago,
@@ -163,43 +247,76 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
     String? pagadoPor,
   }) async {
     try {
-      print('📄 Creando factura para pedido: $pedidoId');
+      print('📄 Creando documento automático para pedido: $pedidoId');
       
-      // Crear datos de la factura
-      final facturaData = {
-        'pedidoId': pedidoId,
-        'formaPago': formaPago ?? 'efectivo',
-        'propina': propina ?? 0.0,
-        'fecha': DateTime.now().toIso8601String(),
-        'usuario': pagadoPor ?? 'Usuario',
-      };
-
-      // TODO: Implementar servicio de facturas cuando esté disponible
-      print('✅ Datos de factura preparados para pedido: $pedidoId');
-      print('💰 Forma de pago: ${facturaData['formaPago']}');
-      print('💸 Propina: ${facturaData['propina']}');
+      // Obtener el pedido completo para extraer información
+      final pedido = await _pedidoService.getPedidoById(pedidoId);
       
-      print('✅ Factura creada exitosamente para pedido: $pedidoId');
-      
-      // Mostrar mensaje de éxito
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('✅ Factura creada exitosamente'),
-            backgroundColor: Colors.green,
-          ),
-        );
+      if (pedido == null) {
+        throw Exception('No se encontró el pedido con ID: $pedidoId');
       }
+      
+      // Obtener el usuario actual
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      final vendedor = userProvider.userName ?? 'Sistema';
+      
+      // Validar forma de pago
+      String formapagoValidada = formaPago ?? 'efectivo';
+      if (formapagoValidada != 'efectivo' && formapagoValidada != 'transferencia') {
+        print('⚠️ Forma de pago no reconocida: "$formapagoValidada". Usando efectivo por defecto.');
+        formapagoValidada = 'efectivo';
+      }
+      
+      print('💰 Datos del documento:');
+      print('  - Mesa: ${pedido.mesa}');
+      print('  - Forma de pago: $formapagoValidada');
+      print('  - Propina: ${propina ?? 0.0}');
+      print('  - Pagado por: ${pagadoPor ?? vendedor}');
+      
+      // Crear documento usando el servicio real
+      final documento = await _documentoMesaService.crearDocumento(
+        mesaNombre: pedido.mesa,
+        vendedor: vendedor,
+        pedidosIds: [pedidoId],
+        formaPago: formapagoValidada,
+        pagadoPor: pagadoPor ?? vendedor,
+        propina: propina ?? 0.0,
+        pagado: true,
+        estado: 'Pagado',
+        fechaPago: DateTime.now(),
+      );
+      
+      if (documento != null) {
+        print('✅ Documento creado exitosamente con ID: ${documento.id}');
+        print('  - Número: ${documento.numeroDocumento}');
+        print('  - Total: \$${documento.total}');
+        
+        // Mostrar mensaje de éxito
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('✅ Documento ${documento.numeroDocumento} creado exitosamente'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+      } else {
+        throw Exception('El servicio de documentos devolvió null');
+      }
+      
     } catch (e) {
-      print('❌ Error creando factura: $e');
+      print('❌ Error creando documento automático: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('❌ Error creando factura: $e'),
+            content: Text('❌ Error creando documento: $e'),
             backgroundColor: Colors.red,
+            duration: Duration(seconds: 4),
           ),
         );
       }
+      // No lanzar la excepción para que no interrumpa el flujo de pago
     }
   }
 
@@ -211,42 +328,154 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
       // Mostrar vista previa antes de imprimir
       showDialog(
         context: context,
-        builder: (context) => AlertDialog(
-          backgroundColor: _cardBg,
-          title: Text(
-            'Vista Previa de Impresión',
-            style: TextStyle(color: _textLight),
-          ),
-          content: SizedBox(
+        builder: (context) => Dialog(
+          backgroundColor: Colors.transparent,
+          child: Container(
             width: double.maxFinite,
-            child: SingleChildScrollView(
-              child: Text(
-                textoImpresion,
-                style: TextStyle(
-                  color: _textLight,
-                  fontFamily: 'monospace',
-                  fontSize: 12,
-                ),
+            constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.8),
+            decoration: BoxDecoration(
+              color: _cardElevated,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: _primary.withOpacity(0.3),
+                width: 1,
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.3),
+                  blurRadius: 20,
+                  offset: Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Encabezado del diálogo
+                Container(
+                  padding: EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [_primary.withOpacity(0.1), _primary.withOpacity(0.05)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(20),
+                      topRight: Radius.circular(20),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: _primary.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(Icons.print, color: _primary, size: 24),
+                      ),
+                      SizedBox(width: 16),
+                      Expanded(
+                        child: Text(
+                          'Vista Previa de Impresión',
+                          style: TextStyle(
+                            color: _textPrimary,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Contenido del diálogo
+                Flexible(
+                  child: Container(
+                    padding: EdgeInsets.all(20),
+                    child: Container(
+                      padding: EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: _backgroundDark,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: _textMuted.withOpacity(0.3),
+                          width: 1,
+                        ),
+                      ),
+                      child: SingleChildScrollView(
+                        child: Text(
+                          textoImpresion,
+                          style: TextStyle(
+                            color: _textPrimary,
+                            fontFamily: 'monospace',
+                            fontSize: 13,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                // Botones de acción
+                Container(
+                  padding: EdgeInsets.all(20),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        child: Text(
+                          'Cerrar',
+                          style: TextStyle(
+                            color: _textSecondary,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 12),
+                      ElevatedButton(
+                        onPressed: () async {
+                          Navigator.pop(context);
+                          await imprimirDocumento(resumen);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _primary,
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.print, size: 18),
+                            SizedBox(width: 8),
+                            Text(
+                              'Imprimir',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('Cerrar', style: TextStyle(color: _textLight)),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                Navigator.pop(context);
-                await imprimirDocumento(resumen);
-              },
-              child: Text('Imprimir'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _primary,
-                foregroundColor: Colors.white,
-              ),
-            ),
-          ],
         ),
       );
     } catch (e) {
@@ -259,8 +488,74 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
     }
   }
 
-  // Método para compartir resumen de pedido  
-  Future<void> _compartirResumenPedido(Map<String, dynamic> resumen) async {
+  // Método para mostrar opciones de compartir
+  Future<void> _mostrarOpcionesCompartir(Map<String, dynamic> resumen) async {
+    return showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: _cardBg,
+        title: Text(
+          'Compartir Resumen',
+          style: TextStyle(color: _textPrimary),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '¿Cómo deseas compartir este resumen?',
+              style: TextStyle(color: _textPrimary),
+            ),
+            SizedBox(height: 20),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancelar'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _generarYCompartirPDF(resumen);
+            },
+            icon: Icon(Icons.picture_as_pdf),
+            label: Text('PDF'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+          ),
+          ElevatedButton.icon(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _compartirTexto(resumen);
+            },
+            icon: Icon(Icons.text_fields),
+            label: Text('Texto'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+            ),
+          ),
+          ElevatedButton.icon(
+            onPressed: () async {
+              Navigator.pop(context);
+              await imprimirDocumento(resumen);
+            },
+            icon: Icon(Icons.print),
+            label: Text('Imprimir'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Método para compartir como texto simple
+  Future<void> _compartirTexto(Map<String, dynamic> resumen) async {
     try {
       final textoImpresion = _impresionService.generarTextoImpresion(resumen);
       await Share.share(
@@ -277,6 +572,317 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
     }
   }
 
+  // Método para generar y compartir PDF
+  Future<void> _generarYCompartirPDF(Map<String, dynamic> resumen) async {
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          backgroundColor: _cardBg,
+          content: Row(
+            children: [
+              CircularProgressIndicator(color: _primary),
+              SizedBox(width: 20),
+              Text(
+                'Generando PDF...',
+                style: TextStyle(color: _textPrimary),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      final pdf = pw.Document();
+      
+      pdf.addPage(
+        pw.Page(
+          build: (pw.Context context) {
+            final textoImpresion = _impresionService.generarTextoImpresion(resumen);
+            return pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text('Resumen de Pedido', 
+                  style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+                pw.SizedBox(height: 20),
+                pw.Text(textoImpresion, style: pw.TextStyle(fontSize: 10)),
+              ],
+            );
+          },
+        ),
+      );
+
+      final pdfBytes = await pdf.save();
+      
+      // Guardar temporalmente el PDF
+      final tempDir = Directory.systemTemp;
+      final fileName = 'resumen_pedido_${resumen['pedidoId']}_${DateTime.now().millisecondsSinceEpoch}.pdf';
+      final file = File('${tempDir.path}/$fileName');
+      await file.writeAsBytes(pdfBytes);
+
+      Navigator.pop(context); // Cerrar diálogo de carga
+
+      // Compartir el archivo PDF
+      await Share.shareXFiles(
+        [XFile(file.path)],
+        subject: 'Resumen de Pedido - ${resumen['pedidoId']}',
+      );
+
+    } catch (e) {
+      if (Navigator.canPop(context)) {
+        Navigator.pop(context);
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error generando PDF: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  // Método para marcar como deuda
+  Future<void> _marcarComoDeuda(Map<String, dynamic> resumen) async {
+    String nombreDeudor = '';
+    String observaciones = '';
+    
+    final resultado = await showDialog<Map<String, String>>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: _cardBg,
+        title: Row(
+          children: [
+            Icon(Icons.account_balance_wallet, color: Colors.orange),
+            SizedBox(width: 8),
+            Text(
+              'Registrar Deuda',
+              style: TextStyle(color: _textPrimary),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Total a deber: \$${(resumen['total'] ?? 0.0).toStringAsFixed(0)}',
+              style: TextStyle(
+                color: Colors.orange,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: 20),
+            TextField(
+              style: TextStyle(color: _textPrimary),
+              decoration: InputDecoration(
+                labelText: 'Nombre del deudor (opcional)',
+                labelStyle: TextStyle(color: _textSecondary),
+                border: OutlineInputBorder(),
+                filled: true,
+                fillColor: _surfaceDark,
+              ),
+              onChanged: (value) => nombreDeudor = value,
+            ),
+            SizedBox(height: 16),
+            TextField(
+              style: TextStyle(color: _textPrimary),
+              maxLines: 3,
+              decoration: InputDecoration(
+                labelText: 'Observaciones (opcional)',
+                labelStyle: TextStyle(color: _textSecondary),
+                border: OutlineInputBorder(),
+                filled: true,
+                fillColor: _surfaceDark,
+              ),
+              onChanged: (value) => observaciones = value,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context, {
+                'nombreDeudor': nombreDeudor,
+                'observaciones': observaciones,
+              });
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.orange,
+              foregroundColor: Colors.white,
+            ),
+            child: Text('Registrar Deuda'),
+          ),
+        ],
+      ),
+    );
+
+    if (resultado != null) {
+      await _guardarDeuda(resumen, resultado['nombreDeudor'] ?? '', resultado['observaciones'] ?? '');
+    }
+  }
+
+  // Método para guardar la deuda
+  Future<void> _guardarDeuda(Map<String, dynamic> resumen, String nombreDeudor, String observaciones) async {
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          backgroundColor: _cardBg,
+          content: Row(
+            children: [
+              CircularProgressIndicator(color: _primary),
+              SizedBox(width: 20),
+              Text(
+                'Registrando deuda...',
+                style: TextStyle(color: _textPrimary),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      // Crear el registro de deuda
+      final deuda = {
+        'pedidoId': resumen['pedidoId'],
+        'mesa': resumen['mesa'] ?? 'Mesa Auxiliar',
+        'total': resumen['total'] ?? 0.0,
+        'nombreDeudor': nombreDeudor.isNotEmpty ? nombreDeudor : 'Cliente sin nombre',
+        'observaciones': observaciones,
+        'fechaCreacion': DateTime.now().toIso8601String(),
+        'estado': 'pendiente',
+        'vendedor': resumen['mesero'] ?? 'Sistema',
+        'productos': resumen['productos'] ?? [],
+      };
+
+      // Guardar en el servicio de deudas (necesitaría implementar este servicio)
+      await _guardarDeudaEnServicio(deuda);
+      
+      Navigator.pop(context); // Cerrar diálogo de carga
+      Navigator.pop(context); // Cerrar diálogo de resumen
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('✅ Deuda registrada exitosamente'),
+          backgroundColor: Colors.orange,
+          action: SnackBarAction(
+            label: 'Ver Deudas',
+            textColor: Colors.white,
+            onPressed: () => _mostrarDeudas(),
+          ),
+        ),
+      );
+
+    } catch (e) {
+      if (Navigator.canPop(context)) {
+        Navigator.pop(context);
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Error registrando deuda: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  // Método para guardar deuda en servicio (placeholder)
+  Future<void> _guardarDeudaEnServicio(Map<String, dynamic> deuda) async {
+    try {
+      // Simular guardado en base de datos local o archivo
+      // En una implementación real, esto debería enviar a tu backend
+      print('📁 Guardando deuda: ${jsonEncode(deuda)}');
+      
+      // Simular delay de red
+      await Future.delayed(Duration(milliseconds: 500));
+      
+      print('✅ Deuda guardada exitosamente');
+    } catch (e) {
+      print('❌ Error guardando deuda: $e');
+      throw Exception('Error guardando deuda: $e');
+    }
+  }
+
+  // Método para mostrar lista de deudas
+  Future<void> _mostrarDeudas() async {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: _cardBg,
+        title: Row(
+          children: [
+            Icon(Icons.account_balance_wallet, color: Colors.orange),
+            SizedBox(width: 8),
+            Text(
+              'Deudas Pendientes',
+              style: TextStyle(color: _textPrimary),
+            ),
+          ],
+        ),
+        content: Container(
+          width: double.maxFinite,
+          height: 400,
+          child: Column(
+            children: [
+              Text(
+                'Funcionalidad en desarrollo',
+                style: TextStyle(color: _textSecondary),
+              ),
+              SizedBox(height: 20),
+              Text(
+                'Próximamente podrás ver y gestionar',
+                style: TextStyle(color: _textSecondary),
+              ),
+              Text(
+                'todas las deudas pendientes aquí',
+                style: TextStyle(color: _textSecondary),
+              ),
+              SizedBox(height: 20),
+              Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: _surfaceDark,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                ),
+                child: Column(
+                  children: [
+                    Icon(Icons.construction, color: Colors.orange, size: 32),
+                    SizedBox(height: 8),
+                    Text(
+                      'Características planificadas:',
+                      style: TextStyle(
+                        color: _textPrimary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    Text('• Lista de deudas por mesa', style: TextStyle(color: _textSecondary, fontSize: 12)),
+                    Text('• Búsqueda por nombre del deudor', style: TextStyle(color: _textSecondary, fontSize: 12)),
+                    Text('• Marcar como pagado', style: TextStyle(color: _textSecondary, fontSize: 12)),
+                    Text('• Historial de pagos', style: TextStyle(color: _textSecondary, fontSize: 12)),
+                    Text('• Reportes de deudas', style: TextStyle(color: _textSecondary, fontSize: 12)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cerrar'),
+          ),
+        ],
+      ),
+    );
+  }
+
   // Método para mostrar diálogo simple de pago
   Future<Map<String, dynamic>?> _mostrarDialogoSimplePago() async {
     String medioPago = 'efectivo';
@@ -287,87 +893,232 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
       context: context,
       barrierDismissible: false,
       builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          backgroundColor: _cardBg,
-          title: Text(
-            'Información de Pago',
-            style: TextStyle(color: _textLight),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              DropdownButtonFormField<String>(
-                value: medioPago,
-                decoration: InputDecoration(
-                  labelText: 'Método de Pago',
-                  labelStyle: TextStyle(color: _textLight),
-                  enabledBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: _textLight.withOpacity(0.3)),
-                  ),
-                ),
-                dropdownColor: _cardBg,
-                style: TextStyle(color: _textLight),
-                items: ['efectivo', 'tarjeta', 'transferencia', 'cortesia']
-                    .map((String value) => DropdownMenuItem<String>(
-                          value: value,
-                          child: Text(value),
-                        ))
-                    .toList(),
-                onChanged: (String? newValue) {
-                  setState(() => medioPago = newValue!);
-                },
+        builder: (context, setState) => Dialog(
+          backgroundColor: Colors.transparent,
+          child: Container(
+            width: double.maxFinite,
+            constraints: BoxConstraints(maxWidth: 400),
+            decoration: BoxDecoration(
+              color: _cardElevated,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: _primary.withOpacity(0.3),
+                width: 1,
               ),
-              SizedBox(height: 16),
-              TextFormField(
-                decoration: InputDecoration(
-                  labelText: 'Propina',
-                  labelStyle: TextStyle(color: _textLight),
-                  enabledBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: _textLight.withOpacity(0.3)),
-                  ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.3),
+                  blurRadius: 20,
+                  offset: Offset(0, 10),
                 ),
-                style: TextStyle(color: _textLight),
-                keyboardType: TextInputType.number,
-                onChanged: (value) {
-                  propina = double.tryParse(value) ?? 0.0;
-                },
-              ),
-              SizedBox(height: 16),
-              TextFormField(
-                decoration: InputDecoration(
-                  labelText: 'Pagado por',
-                  labelStyle: TextStyle(color: _textLight),
-                  enabledBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: _textLight.withOpacity(0.3)),
-                  ),
-                ),
-                style: TextStyle(color: _textLight),
-                onChanged: (value) {
-                  pagadoPor = value;
-                },
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('Cancelar', style: TextStyle(color: _textLight)),
+              ],
             ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context, {
-                  'medioPago': medioPago,
-                  'propina': propina,
-                  'pagadoPor': pagadoPor,
-                });
-              },
-              child: Text('Continuar'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _primary,
-                foregroundColor: Colors.white,
-              ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Encabezado
+                Container(
+                  padding: EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [_primary.withOpacity(0.15), _primary.withOpacity(0.05)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(20),
+                      topRight: Radius.circular(20),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: _primary.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(Icons.payment, color: _primary, size: 24),
+                      ),
+                      SizedBox(width: 16),
+                      Expanded(
+                        child: Text(
+                          'Información de Pago',
+                          style: TextStyle(
+                            color: _textPrimary,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Contenido
+                Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Column(
+                    children: [
+                      // Dropdown de método de pago
+                      Container(
+                        decoration: BoxDecoration(
+                          color: _surfaceDark,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: _textMuted.withOpacity(0.3),
+                            width: 1,
+                          ),
+                        ),
+                        child: DropdownButtonFormField<String>(
+                          value: medioPago,
+                          decoration: InputDecoration(
+                            labelText: 'Método de Pago',
+                            labelStyle: TextStyle(
+                              color: _textSecondary,
+                              fontSize: 14,
+                            ),
+                            border: InputBorder.none,
+                            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                          ),
+                          dropdownColor: _cardElevated,
+                          style: TextStyle(color: _textPrimary, fontSize: 15),
+                          icon: Icon(Icons.keyboard_arrow_down, color: _primary),
+                          items: ['efectivo', 'tarjeta', 'transferencia', 'cortesia']
+                              .map((String value) => DropdownMenuItem<String>(
+                                    value: value,
+                                    child: Text(
+                                      value.toUpperCase(),
+                                      style: TextStyle(fontWeight: FontWeight.w500),
+                                    ),
+                                  ))
+                              .toList(),
+                          onChanged: (String? newValue) {
+                            setState(() => medioPago = newValue!);
+                          },
+                        ),
+                      ),
+                      SizedBox(height: 20),
+                      // Campo de propina
+                      Container(
+                        decoration: BoxDecoration(
+                          color: _surfaceDark,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: _textMuted.withOpacity(0.3),
+                            width: 1,
+                          ),
+                        ),
+                        child: TextFormField(
+                          decoration: InputDecoration(
+                            labelText: 'Propina',
+                            labelStyle: TextStyle(
+                              color: _textSecondary,
+                              fontSize: 14,
+                            ),
+                            prefixIcon: Icon(Icons.monetization_on, color: _primary),
+                            border: InputBorder.none,
+                            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                          ),
+                          style: TextStyle(color: _textPrimary, fontSize: 15),
+                          keyboardType: TextInputType.number,
+                          onChanged: (value) {
+                            propina = double.tryParse(value) ?? 0.0;
+                          },
+                        ),
+                      ),
+                      SizedBox(height: 20),
+                      // Campo pagado por
+                      Container(
+                        decoration: BoxDecoration(
+                          color: _surfaceDark,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: _textMuted.withOpacity(0.3),
+                            width: 1,
+                          ),
+                        ),
+                        child: TextFormField(
+                          decoration: InputDecoration(
+                            labelText: 'Pagado por',
+                            labelStyle: TextStyle(
+                              color: _textSecondary,
+                              fontSize: 14,
+                            ),
+                            prefixIcon: Icon(Icons.person, color: _primary),
+                            border: InputBorder.none,
+                            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                          ),
+                          style: TextStyle(color: _textPrimary, fontSize: 15),
+                          onChanged: (value) {
+                            pagadoPor = value;
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Botones de acción
+                Container(
+                  padding: EdgeInsets.fromLTRB(24, 0, 24, 24),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        child: Text(
+                          'Cancelar',
+                          style: TextStyle(
+                            color: _textSecondary,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 12),
+                      ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(context, {
+                            'medioPago': medioPago,
+                            'propina': propina,
+                            'pagadoPor': pagadoPor,
+                          });
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _primary,
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.check, size: 18),
+                            SizedBox(width: 8),
+                            Text(
+                              'Continuar',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -381,7 +1132,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
       decoration: BoxDecoration(
         color: _cardBg.withOpacity(0.5),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: _textLight.withOpacity(0.2)),
+        border: Border.all(color: _textMuted.withOpacity(0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -393,7 +1144,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                 child: Text(
                   '${producto['cantidad']}x ${producto['nombre'] ?? 'Producto'}',
                   style: TextStyle(
-                    color: _textLight,
+                    color: _textPrimary,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -413,7 +1164,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
             Text(
               'Ingredientes: ${(producto['ingredientes'] as List).join(', ')}',
               style: TextStyle(
-                color: _textLight.withOpacity(0.7),
+                color: _textSecondary,
                 fontSize: 12,
                 fontStyle: FontStyle.italic,
               ),
@@ -725,64 +1476,191 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
   void _mostrarMenuMesa(Mesa mesa) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: _cardBg,
+      backgroundColor: Colors.transparent,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) {
         return Container(
-          padding: EdgeInsets.symmetric(vertical: 20),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [_cardElevated, _cardBg],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            border: Border(
+              top: BorderSide(
+                color: _primary.withOpacity(0.3),
+                width: 2,
+              ),
+            ),
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                'Mesa ${mesa.nombre}',
-                style: TextStyle(
-                  color: _textLight,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+              // Handle bar
+              Container(
+                margin: EdgeInsets.only(top: 12),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: _textMuted,
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              SizedBox(height: 20),
-              ListTile(
-                leading: Icon(Icons.sync, color: _primary),
-                title: Text(
-                  'Sincronizar estado con pedidos',
-                  style: TextStyle(color: _textLight),
+              // Título
+              Container(
+                padding: EdgeInsets.all(24),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: _primary.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        Icons.table_restaurant,
+                        color: _primary,
+                        size: 24,
+                      ),
+                    ),
+                    SizedBox(width: 16),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Mesa ${mesa.nombre}',
+                          style: TextStyle(
+                            color: _textPrimary,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Text(
+                          mesa.ocupada ? 'Ocupada' : 'Disponible',
+                          style: TextStyle(
+                            color: mesa.ocupada ? _error : _success,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-                onTap: () {
-                  Navigator.pop(context);
-                  _sincronizarMesa(mesa);
-                },
               ),
-              if (mesa.ocupada) ...[
-                ListTile(
-                  leading: Icon(Icons.cleaning_services, color: _primary),
-                  title: Text(
-                    'Vaciar mesa manualmente',
-                    style: TextStyle(color: _textLight),
-                  ),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _vaciarMesaManualmente(mesa);
-                  },
+              // Opciones del menú
+              Padding(
+                padding: EdgeInsets.fromLTRB(16, 0, 16, 24),
+                child: Column(
+                  children: [
+                    _buildMenuOption(
+                      icon: Icons.sync,
+                      title: 'Sincronizar estado',
+                      subtitle: 'Actualizar estado con pedidos',
+                      onTap: () {
+                        Navigator.pop(context);
+                        _sincronizarMesa(mesa);
+                      },
+                    ),
+                    if (mesa.ocupada) ...[
+                      SizedBox(height: 8),
+                      _buildMenuOption(
+                        icon: Icons.cleaning_services,
+                        title: 'Vaciar mesa',
+                        subtitle: 'Liberar mesa manualmente',
+                        onTap: () {
+                          Navigator.pop(context);
+                          _vaciarMesaManualmente(mesa);
+                        },
+                        isDestructive: true,
+                      ),
+                      SizedBox(height: 8),
+                      _buildMenuOption(
+                        icon: Icons.description_outlined,
+                        title: 'Crear documento',
+                        subtitle: 'Agrupar pedidos de la mesa',
+                        onTap: () {
+                          Navigator.pop(context);
+                          _crearDocumentoMesa(mesa);
+                        },
+                      ),
+                    ],
+                  ],
                 ),
-                ListTile(
-                  leading: Icon(Icons.description_outlined, color: _primary),
-                  title: Text(
-                    'Crear documento de mesa',
-                    style: TextStyle(color: _textLight),
-                  ),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _crearDocumentoMesa(mesa);
-                  },
-                ),
-              ],
+              ),
             ],
           ),
         );
       },
+    );
+  }
+
+  Widget _buildMenuOption({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+    bool isDestructive = false,
+  }) {
+    final color = isDestructive ? _error : _primary;
+    
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: _surfaceDark.withOpacity(0.5),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: color.withOpacity(0.2),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, color: color, size: 20),
+            ),
+            SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      color: _textPrimary,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: _textSecondary,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.arrow_forward_ios,
+              color: _textMuted,
+              size: 16,
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -793,11 +1671,11 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
         backgroundColor: _cardBg,
         title: Text(
           '¿Restaurar todas las mesas?',
-          style: TextStyle(color: _textLight),
+          style: TextStyle(color: _textPrimary),
         ),
         content: Text(
           'Esta acción marcará TODAS las mesas como disponibles y eliminará todos los productos asociados. Esta operación es útil cuando se han eliminado manualmente los pedidos de la base de datos y las mesas han quedado desincronizadas.\n\n¿Desea continuar?',
-          style: TextStyle(color: _textLight),
+          style: TextStyle(color: _textPrimary),
         ),
         actions: [
           TextButton(
@@ -852,10 +1730,10 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: _cardBg,
-        title: Text('¿Vaciar mesa?', style: TextStyle(color: _textLight)),
+        title: Text('¿Vaciar mesa?', style: TextStyle(color: _textPrimary)),
         content: Text(
           'Esta acción marcará la mesa como disponible y eliminará todos los productos asociados. Esto NO afectará a los pedidos existentes en el sistema.',
-          style: TextStyle(color: _textLight),
+          style: TextStyle(color: _textPrimary),
         ),
         actions: [
           TextButton(
@@ -929,151 +1807,226 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
 
   Widget _buildMesaCard(Mesa mesa) {
     bool isOcupada = mesa.ocupada;
-    Color statusColor = isOcupada ? Colors.red : Colors.green;
+    Color statusColor = isOcupada ? AppTheme.error : AppTheme.success;
     final userProvider = Provider.of<UserProvider>(context, listen: false);
     bool canProcessPayment =
         userProvider.isAdmin && isOcupada && mesa.total > 0;
 
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => PedidoScreen(mesa: mesa)),
-        );
-      },
-      onLongPress: userProvider.isAdmin ? () => _mostrarMenuMesa(mesa) : null,
-      child: Container(
-        decoration: BoxDecoration(
-          color: _cardBg,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: _primary.withOpacity(0.2), width: 1),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.15),
-              blurRadius: 6,
-              offset: Offset(0, 3),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => PedidoScreen(mesa: mesa)),
+            );
+          },
+          onLongPress: userProvider.isAdmin ? () => _mostrarMenuMesa(mesa) : null,
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: isOcupada ? AppTheme.cardGradient : null,
+              color: isOcupada ? null : AppTheme.cardBg,
+              borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
+              border: Border.all(
+                color: isOcupada 
+                  ? AppTheme.primary.withOpacity(0.6)
+                  : statusColor.withOpacity(0.3),
+                width: 2,
+              ),
+              boxShadow: [
+                ...AppTheme.cardShadow,
+                if (isOcupada) ...AppTheme.primaryShadow,
+              ],
             ),
-          ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
-          child: Column(
-            mainAxisSize: MainAxisSize
-                .min, // Prevent overflow by allowing column to shrink
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              // Línea de estado en la parte superior izquierda
-              Row(
+            child: Padding(
+              padding: EdgeInsets.all(constraints.maxWidth * 0.08), // Padding responsivo
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
+                  // Indicador de estado superior
                   Container(
-                    width: 4,
-                    height: 16,
+                    width: double.infinity,
+                    height: 3,
                     decoration: BoxDecoration(
                       color: statusColor,
-                      borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(12),
-                        bottomRight: Radius.circular(4),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusSmall / 2),
+                    ),
+                  ),
+                  // Icono de mesa
+                  Flexible(
+                    child: Container(
+                      padding: EdgeInsets.all(constraints.maxWidth * 0.08),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primary.withOpacity(0.15),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: AppTheme.primary.withOpacity(0.3),
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Icon(
+                        Icons.table_restaurant,
+                        color: AppTheme.primary,
+                        size: constraints.maxWidth * 0.2, // Tamaño responsivo
                       ),
                     ),
                   ),
-                  SizedBox(width: 4),
-                ],
-              ),
-              // Icono de mesa
-              Container(
-                padding: EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: _primary.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(Icons.table_restaurant, color: _primary, size: 16),
-              ),
-              // Nombre de la mesa
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  mesa.nombre,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: _textLight,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-              // Estado y total si existe
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    isOcupada ? 'Ocupada' : 'Disponible',
-                    style: TextStyle(
-                      fontSize: 9,
-                      color: statusColor,
-                      fontWeight: FontWeight.w500,
+                  // Nombre de la mesa
+                  Flexible(
+                    child: Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: AppTheme.spacingSmall,
+                        vertical: AppTheme.spacingXSmall,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppTheme.surfaceDark.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                      ),
+                      child: Text(
+                        mesa.nombre,
+                        style: AppTheme.bodyMedium.copyWith(
+                          fontWeight: FontWeight.w700,
+                          fontSize: constraints.maxWidth * 0.13, // Responsivo
+                        ),
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   ),
-                  if (mesa.total > 0) ...[
-                    canProcessPayment
-                        ? GestureDetector(
-                            onTap: () async {
-                              // Solo para admins: procesar pago al tocar el precio
-                              final pedido = await _obtenerPedidoActivoDeMesa(
-                                mesa,
-                              );
-                              if (pedido != null) {
-                                _mostrarDialogoPago(mesa, pedido);
-                              } else {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      'No se encontró un pedido activo para esta mesa',
-                                    ),
-                                  ),
-                                );
-                              }
-                            },
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: _primary.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 4,
-                                vertical: 1,
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    formatCurrency(mesa.total),
-                                    style: TextStyle(
-                                      fontSize: 9,
-                                      color: _primary,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  SizedBox(width: 2),
-                                  Icon(Icons.payment, size: 8, color: _primary),
-                                ],
-                              ),
-                            ),
-                          )
-                        : Text(
-                            formatCurrency(mesa.total),
-                            style: TextStyle(
-                              fontSize: 9,
-                              color: _primary,
-                              fontWeight: FontWeight.bold,
+                  // Estado
+                  Flexible(
+                    child: Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: AppTheme.spacingXSmall,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: statusColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
+                        border: Border.all(
+                          color: statusColor.withOpacity(0.4),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 4,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: statusColor,
+                              shape: BoxShape.circle,
                             ),
                           ),
-                  ],
+                          SizedBox(width: AppTheme.spacingXSmall),
+                          Flexible(
+                            child: Text(
+                              isOcupada ? 'Ocupada' : 'Disponible',
+                              style: AppTheme.labelMedium.copyWith(
+                                color: statusColor,
+                                fontWeight: FontWeight.w600,
+                                fontSize: constraints.maxWidth * 0.09,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  // Total si existe
+                  if (mesa.total > 0)
+                    Flexible(
+                      child: canProcessPayment
+                          ? GestureDetector(
+                              onTap: () async {
+                                final pedido = await _obtenerPedidoActivoDeMesa(mesa);
+                                if (pedido != null) {
+                                  _mostrarDialogoPago(mesa, pedido);
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        'No se encontró un pedido activo para esta mesa',
+                                      ),
+                                      backgroundColor: AppTheme.error,
+                                    ),
+                                  );
+                                }
+                              },
+                              child: Container(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: AppTheme.spacingSmall,
+                                  vertical: AppTheme.spacingXSmall,
+                                ),
+                                decoration: BoxDecoration(
+                                  gradient: AppTheme.primaryGradient,
+                                  borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                                  border: Border.all(
+                                    color: Colors.white.withOpacity(0.3),
+                                    width: 1,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.payment, 
+                                      size: constraints.maxWidth * 0.08, 
+                                      color: Colors.white,
+                                    ),
+                                    SizedBox(width: 2),
+                                    Flexible(
+                                      child: Text(
+                                        formatCurrency(mesa.total),
+                                        style: AppTheme.labelMedium.copyWith(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: constraints.maxWidth * 0.08,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            )
+                          : Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: AppTheme.spacingSmall,
+                                vertical: AppTheme.spacingXSmall,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppTheme.primary.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                                border: Border.all(
+                                  color: AppTheme.primary.withOpacity(0.3),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Text(
+                                formatCurrency(mesa.total),
+                                style: AppTheme.labelMedium.copyWith(
+                                  color: AppTheme.primary,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: constraints.maxWidth * 0.09,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                    ),
                 ],
               ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      }
     );
   }
 
@@ -1195,7 +2148,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
             SizedBox(width: 20),
             Text(
               'Cargando información de productos...',
-              style: TextStyle(color: _textLight),
+              style: TextStyle(color: _textPrimary),
             ),
           ],
         ),
@@ -1239,7 +2192,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                         Text(
                           'Procesar Pago',
                           style: TextStyle(
-                            color: _textLight,
+                            color: _textPrimary,
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
                           ),
@@ -1312,7 +2265,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                         Text(
                                           '${item.cantidad}x ${item.productoNombre ?? 'Producto'}',
                                           style: TextStyle(
-                                            color: _textLight,
+                                            color: _textPrimary,
                                             fontWeight:
                                                 FontWeight.w600, // Más peso
                                             fontSize: 15, // Texto más grande
@@ -1324,7 +2277,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                           Text(
                                             item.notas!,
                                             style: TextStyle(
-                                              color: _textLight.withOpacity(
+                                              color: _textPrimary.withOpacity(
                                                 0.7,
                                               ),
                                               fontSize: 13,
@@ -1380,7 +2333,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                     border: Border.all(
                                       color: medioPago0 == 'efectivo'
                                           ? _primary
-                                          : _textLight.withOpacity(0.3),
+                                          : _textMuted,
                                       width: 2,
                                     ),
                                   ),
@@ -1390,7 +2343,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                         Icons.money,
                                         color: medioPago0 == 'efectivo'
                                             ? _primary
-                                            : _textLight.withOpacity(0.6),
+                                            : _textSecondary,
                                         size: 24,
                                       ),
                                       SizedBox(height: 8),
@@ -1399,7 +2352,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                         style: TextStyle(
                                           color: medioPago0 == 'efectivo'
                                               ? _primary
-                                              : _textLight.withOpacity(0.8),
+                                              : _textSecondary,
                                           fontWeight: FontWeight.w600,
                                           fontSize: 14,
                                         ),
@@ -1425,7 +2378,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                     border: Border.all(
                                       color: medioPago0 == 'transferencia'
                                           ? _primary
-                                          : _textLight.withOpacity(0.3),
+                                          : _textMuted,
                                       width: 2,
                                     ),
                                   ),
@@ -1435,7 +2388,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                         Icons.credit_card,
                                         color: medioPago0 == 'transferencia'
                                             ? _primary
-                                            : _textLight.withOpacity(0.6),
+                                            : _textSecondary,
                                         size: 24,
                                       ),
                                       SizedBox(height: 8),
@@ -1445,7 +2398,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                         style: TextStyle(
                                           color: medioPago0 == 'transferencia'
                                               ? _primary
-                                              : _textLight.withOpacity(0.8),
+                                              : _textSecondary,
                                           fontWeight: FontWeight.w600,
                                           fontSize: 14,
                                         ),
@@ -1481,11 +2434,11 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                             controller: billetesController,
                             decoration: InputDecoration(
                               labelText: 'Total recibido',
-                              labelStyle: TextStyle(color: _textLight),
+                              labelStyle: TextStyle(color: _textPrimary),
                               prefixText: '\$',
                               enabledBorder: OutlineInputBorder(
                                 borderSide: BorderSide(
-                                  color: _textLight.withOpacity(0.3),
+                                  color: _textMuted,
                                 ),
                                 borderRadius: BorderRadius.circular(12),
                               ),
@@ -1497,7 +2450,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                 borderRadius: BorderRadius.circular(12),
                               ),
                             ),
-                            style: TextStyle(color: _textLight, fontSize: 16),
+                            style: TextStyle(color: _textPrimary, fontSize: 16),
                             keyboardType: TextInputType.number,
                             onChanged: (value) {
                               setState(() {
@@ -1514,7 +2467,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                           Text(
                             'O selecciona los billetes:',
                             style: TextStyle(
-                              color: _textLight,
+                              color: _textPrimary,
                               fontWeight: FontWeight.w600,
                               fontSize: 16,
                             ),
@@ -1628,12 +2581,12 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                           controller: propinaController,
                           decoration: InputDecoration(
                             labelText: 'Propina (%)',
-                            labelStyle: TextStyle(color: _textLight),
+                            labelStyle: TextStyle(color: _textPrimary),
                             suffixText: '%',
                             prefixIcon: Icon(Icons.star, color: _primary),
                             enabledBorder: OutlineInputBorder(
                               borderSide: BorderSide(
-                                color: _textLight.withOpacity(0.3),
+                                color: _textMuted,
                               ),
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -1642,7 +2595,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ),
-                          style: TextStyle(color: _textLight, fontSize: 16),
+                          style: TextStyle(color: _textPrimary, fontSize: 16),
                           keyboardType: TextInputType.number,
                           onChanged: (value) {
                             setState(() {
@@ -1691,14 +2644,14 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                       Text(
                                         'Subtotal:',
                                         style: TextStyle(
-                                          color: _textLight,
+                                          color: _textPrimary,
                                           fontSize: 16,
                                         ),
                                       ),
                                       Text(
                                         formatCurrency(subtotal),
                                         style: TextStyle(
-                                          color: _textLight,
+                                          color: _textPrimary,
                                           fontSize: 16,
                                           fontWeight: FontWeight.w500,
                                         ),
@@ -1714,14 +2667,14 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                         Text(
                                           'Propina ($propinaPercent%):',
                                           style: TextStyle(
-                                            color: _textLight,
+                                            color: _textPrimary,
                                             fontSize: 16,
                                           ),
                                         ),
                                         Text(
                                           formatCurrency(propinaMonto),
                                           style: TextStyle(
-                                            color: _textLight,
+                                            color: _textPrimary,
                                             fontSize: 16,
                                             fontWeight: FontWeight.w500,
                                           ),
@@ -1742,7 +2695,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                       Text(
                                         'TOTAL:',
                                         style: TextStyle(
-                                          color: _textLight,
+                                          color: _textPrimary,
                                           fontSize: 22,
                                           fontWeight: FontWeight.bold,
                                           letterSpacing: 1.2,
@@ -1778,14 +2731,14 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                               Text(
                                                 'Recibido:',
                                                 style: TextStyle(
-                                                  color: _textLight,
+                                                  color: _textPrimary,
                                                   fontSize: 15,
                                                 ),
                                               ),
                                               Text(
                                                 '\$${billetesSeleccionados.toStringAsFixed(0)}',
                                                 style: TextStyle(
-                                                  color: _textLight,
+                                                  color: _textPrimary,
                                                   fontSize: 15,
                                                   fontWeight: FontWeight.bold,
                                                 ),
@@ -1800,7 +2753,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                               Text(
                                                 'Cambio:',
                                                 style: TextStyle(
-                                                  color: _textLight,
+                                                  color: _textPrimary,
                                                   fontSize: 17,
                                                   fontWeight: FontWeight.bold,
                                                 ),
@@ -1861,7 +2814,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                             border: Border.all(
                               color: esCortesia0
                                   ? _primary
-                                  : _textLight.withOpacity(0.2),
+                                  : _textPrimary.withOpacity(0.2),
                             ),
                           ),
                           child: Row(
@@ -1870,7 +2823,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                 Icons.card_giftcard,
                                 color: esCortesia0
                                     ? _primary
-                                    : _textLight.withOpacity(0.6),
+                                    : _textSecondary,
                                 size: 24,
                               ),
                               SizedBox(width: 16),
@@ -1878,7 +2831,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                 child: Text(
                                   'Es cortesía',
                                   style: TextStyle(
-                                    color: _textLight,
+                                    color: _textPrimary,
                                     fontSize: 16,
                                     fontWeight: FontWeight.w500,
                                   ),
@@ -1912,7 +2865,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                             border: Border.all(
                               color: esConsumoInterno0
                                   ? _primary
-                                  : _textLight.withOpacity(0.2),
+                                  : _textPrimary.withOpacity(0.2),
                             ),
                           ),
                           child: Row(
@@ -1921,7 +2874,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                 Icons.people,
                                 color: esConsumoInterno0
                                     ? _primary
-                                    : _textLight.withOpacity(0.6),
+                                    : _textSecondary,
                                 size: 24,
                               ),
                               SizedBox(width: 16),
@@ -1929,7 +2882,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                 child: Text(
                                   'Consumo interno',
                                   style: TextStyle(
-                                    color: _textLight,
+                                    color: _textPrimary,
                                     fontSize: 16,
                                     fontWeight: FontWeight.w500,
                                   ),
@@ -1991,7 +2944,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                               border: Border.all(
                                 color: mesaDestinoId0 != null
                                     ? _primary
-                                    : _textLight.withOpacity(0.2),
+                                    : _textPrimary.withOpacity(0.2),
                               ),
                             ),
                             child: Row(
@@ -2000,7 +2953,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                   Icons.swap_horiz,
                                   color: mesaDestinoId0 != null
                                       ? _primary
-                                      : _textLight.withOpacity(0.6),
+                                      : _textSecondary,
                                   size: 24,
                                 ),
                                 SizedBox(width: 16),
@@ -2008,7 +2961,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                   child: Text(
                                     'Mover a otra mesa',
                                     style: TextStyle(
-                                      color: _textLight,
+                                      color: _textPrimary,
                                       fontSize: 16,
                                       fontWeight: FontWeight.w500,
                                     ),
@@ -2036,7 +2989,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                 SizedBox(width: 12),
                                 Icon(
                                   Icons.chevron_right,
-                                  color: _textLight.withOpacity(0.6),
+                                  color: _textSecondary,
                                   size: 20,
                                 ),
                               ],
@@ -2077,13 +3030,13 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                         child: OutlinedButton(
                           onPressed: () => Navigator.pop(context),
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: _textLight,
+                            foregroundColor: _textPrimary,
                             padding: EdgeInsets.symmetric(vertical: 16),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(15),
                             ),
                             side: BorderSide(
-                              color: _textLight.withOpacity(0.3),
+                              color: _textMuted,
                             ),
                           ),
                           child: Text(
@@ -2257,19 +3210,29 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
         print('  - Estado actualizado a: ${pedido.estado}');
         print('  - Tipo final confirmado: ${pedido.tipo}');
 
-        // CREAR FACTURA AUTOMÁTICAMENTE DESPUÉS DEL PAGO EXITOSO
-        print('📄 Creando factura automática para pedido pagado...');
+        // CREAR DOCUMENTO AUTOMÁTICAMENTE DESPUÉS DEL PAGO EXITOSO
+        print('📄 Creando documento automático para pedido pagado...');
         print('💰 Método de pago seleccionado: ${formResult['medioPago']}');
-        await _crearFacturaPedido(
-          pedido.id,
-          formaPago: formResult['medioPago'],
-          propina: propina,
-          pagadoPor: usuarioPago,
-        );
+        try {
+          final documento = await _documentoAutomaticoService.generarDocumentoAutomatico(
+            pedidoId: pedido.id,
+            vendedor: usuarioPago,
+            formaPago: formResult['medioPago'],
+            propina: propina,
+            pagadoPor: usuarioPago,
+          );
+          
+          if (documento != null) {
+            print('✅ Documento automático generado: ${documento.numeroDocumento}');
+          }
+        } catch (e) {
+          print('⚠️ Error generando documento automático: $e');
+          // No interrumpir el flujo de pago por error en documento
+        }
 
         // Manejar opciones especiales antes de liberar la mesa
         if (mesaDestinoId != null) {
-          // Mover a otra mesa usando la nueva API
+          // Mover a otra mesa usando la nueva API y actualizar documento
           try {
             final mesasDisponibles = await _mesaService.getMesas();
             final mesaDestino = mesasDisponibles.firstWhere(
@@ -2284,11 +3247,32 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
             );
 
             print('🚚 Pedido movido correctamente a ${mesaDestino.nombre}');
+            
+            // Actualizar la mesa en el objeto pedido para el documento
+            pedido.mesa = mesaDestino.nombre;
+            
+            // Generar documento para el movimiento usando el nuevo servicio
+            try {
+              final documentoMovimiento = await _documentoAutomaticoService.generarDocumentoMovimiento(
+                pedidoId: pedido.id,
+                mesaOrigen: mesa.nombre,
+                mesaDestino: mesaDestino.nombre,
+                vendedor: usuarioPago,
+                formaPago: formResult['medioPago'],
+                propina: propina,
+              );
+              
+              if (documentoMovimiento != null) {
+                print('✅ Documento de movimiento generado: ${documentoMovimiento.numeroDocumento}');
+              }
+            } catch (e) {
+              print('⚠️ Error generando documento de movimiento: $e');
+            }
 
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(
-                  'Pedido movido a ${mesaDestino.nombre} y pagado',
+                  'Pedido movido a ${mesaDestino.nombre} y documento actualizado',
                 ),
                 backgroundColor: Colors.green,
               ),
@@ -2351,6 +3335,136 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
     }
   }
 
+  /// Actualiza el documento tras mover un pedido entre mesas
+  Future<void> _actualizarDocumentoTrasMovimiento(
+    Pedido pedido,
+    String mesaOrigen,
+    String mesaDestino,
+    String formaPago,
+    double propina,
+    String pagadoPor,
+  ) async {
+    try {
+      print('📄 Actualizando documento tras movimiento de pedido...');
+      print('  - Pedido ID: ${pedido.id}');
+      print('  - De mesa: $mesaOrigen');
+      print('  - A mesa: $mesaDestino');
+      
+      // Verificar si ya existe un documento para este pedido
+      final documentosOrigen = await _documentoMesaService.getDocumentosPorMesa(mesaOrigen);
+      final documentoExistente = documentosOrigen.where(
+        (doc) => doc.pedidosIds.contains(pedido.id)
+      ).firstOrNull;
+      
+      if (documentoExistente != null) {
+        print('⚠️ Ya existe un documento para este pedido en mesa origen: ${documentoExistente.numeroDocumento}');
+        print('  - El documento queda asociado a la mesa original para mantenimiento de registros');
+        
+        // Opcional: Crear un nuevo documento en la mesa destino que referencie el movimiento
+        await _crearDocumentoMovimiento(
+          pedido,
+          mesaDestino,
+          documentoExistente,
+          pagadoPor,
+        );
+      } else {
+        // No existe documento previo, crear uno nuevo en la mesa destino
+        print('🆕 Creando nuevo documento en mesa destino...');
+        await _crearFacturaPedidoEnMesa(
+          pedido.id,
+          mesaDestino,
+          formaPago: formaPago,
+          propina: propina,
+          pagadoPor: pagadoPor,
+        );
+      }
+      
+      print('✅ Documentos actualizados correctamente tras movimiento');
+      
+    } catch (e) {
+      print('❌ Error actualizando documento tras movimiento: $e');
+      // No lanzar excepción para no interrumpir el flujo principal
+    }
+  }
+  
+  /// Crea un documento de referencia para un pedido movido
+  Future<void> _crearDocumentoMovimiento(
+    Pedido pedido,
+    String mesaDestino,
+    DocumentoMesa documentoOriginal,
+    String pagadoPor,
+  ) async {
+    try {
+      print('🔄 Creando documento de referencia para movimiento...');
+      
+      // Crear un documento que indique el movimiento
+      final documentoMovimiento = await _documentoMesaService.crearDocumento(
+        mesaNombre: mesaDestino,
+        vendedor: pagadoPor,
+        pedidosIds: [pedido.id],
+        formaPago: documentoOriginal.formaPago ?? 'efectivo',
+        pagadoPor: pagadoPor,
+        propina: documentoOriginal.propina ?? 0.0,
+        pagado: true,
+        estado: 'Movido de ${documentoOriginal.mesaNombre}',
+        fechaPago: DateTime.now(),
+      );
+      
+      if (documentoMovimiento != null) {
+        print('✅ Documento de movimiento creado: ${documentoMovimiento.numeroDocumento}');
+      }
+      
+    } catch (e) {
+      print('❌ Error creando documento de movimiento: $e');
+    }
+  }
+  
+  /// Crea una factura/documento para un pedido en una mesa específica
+  Future<void> _crearFacturaPedidoEnMesa(
+    String pedidoId,
+    String mesaNombre, {
+    String? formaPago,
+    double? propina,
+    String? pagadoPor,
+  }) async {
+    try {
+      print('📄 Creando documento para pedido $pedidoId en mesa $mesaNombre');
+      
+      // Obtener el usuario actual si no se especifica
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      final vendedor = pagadoPor ?? userProvider.userName ?? 'Sistema';
+      
+      // Validar forma de pago
+      String formapagoValidada = formaPago ?? 'efectivo';
+      if (formapagoValidada != 'efectivo' && formapagoValidada != 'transferencia') {
+        formapagoValidada = 'efectivo';
+      }
+      
+      // Crear documento usando el servicio
+      final documento = await _documentoMesaService.crearDocumento(
+        mesaNombre: mesaNombre,
+        vendedor: vendedor,
+        pedidosIds: [pedidoId],
+        formaPago: formapagoValidada,
+        pagadoPor: vendedor,
+        propina: propina ?? 0.0,
+        pagado: true,
+        estado: 'Pagado',
+        fechaPago: DateTime.now(),
+      );
+      
+      if (documento != null) {
+        print('✅ Documento creado en mesa $mesaNombre: ${documento.numeroDocumento}');
+      } else {
+        throw Exception('No se pudo crear el documento');
+      }
+      
+    } catch (e) {
+      print('❌ Error creando documento en mesa específica: $e');
+      throw e;
+    }
+  }
+
   // Notificar actualización de documentos
   Future<void> _notificarActualizacionDocumentos(Pedido pedido) async {
     try {
@@ -2394,7 +3508,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
             backgroundColor: _cardBg,
             title: Text(
               'Seleccionar mesa destino',
-              style: TextStyle(color: _textLight),
+              style: TextStyle(color: _textPrimary),
             ),
             content: SizedBox(
               width: double.maxFinite,
@@ -2406,7 +3520,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                   return ListTile(
                     title: Text(
                       mesa.nombre,
-                      style: TextStyle(color: _textLight),
+                      style: TextStyle(color: _textPrimary),
                     ),
                     subtitle: Text(
                       mesa.ocupada ? 'Ocupada' : 'Libre',
@@ -2422,7 +3536,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
-                child: Text('Cancelar', style: TextStyle(color: _textLight)),
+                child: Text('Cancelar', style: TextStyle(color: _textPrimary)),
               ),
             ],
           );
@@ -2455,7 +3569,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
             SizedBox(width: 20),
             Text(
               'Generando resumen de impresión...',
-              style: TextStyle(color: _textLight),
+              style: TextStyle(color: _textPrimary),
             ),
           ],
         ),
@@ -2510,18 +3624,18 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                       Text(
                         'Resumen del Pedido',
                         style: TextStyle(
-                          color: _textLight,
+                          color: _textPrimary,
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       IconButton(
-                        icon: Icon(Icons.close, color: _textLight),
+                        icon: Icon(Icons.close, color: _textPrimary),
                         onPressed: () => Navigator.pop(context),
                       ),
                     ],
                   ),
-                  Divider(color: _textLight.withOpacity(0.3)),
+                  Divider(color: _textMuted),
                   SizedBox(height: 16),
 
                   // Información del restaurante
@@ -2547,7 +3661,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                   Text(
                     'DETALLE DE PRODUCTOS:',
                     style: TextStyle(
-                      color: _textLight,
+                      color: _textPrimary,
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
@@ -2569,7 +3683,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                   ),
 
                   SizedBox(height: 16),
-                  Divider(color: _textLight.withOpacity(0.3)),
+                  Divider(color: _textMuted),
 
                   // Total
                   Row(
@@ -2578,7 +3692,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                       Text(
                         'TOTAL:',
                         style: TextStyle(
-                          color: _textLight,
+                          color: _textPrimary,
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                         ),
@@ -2617,7 +3731,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                       ),
                       ElevatedButton.icon(
                         onPressed: () async {
-                          await _compartirResumenPedido(resumen);
+                          await _mostrarOpcionesCompartir(resumen);
                         },
                         icon: Icon(Icons.share, size: 18),
                         label: Text('Compartir'),
@@ -2738,7 +3852,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
             backgroundColor: _cardBg,
             title: Text(
               'Seleccionar mesa destino',
-              style: TextStyle(color: _textLight),
+              style: TextStyle(color: _textPrimary),
             ),
             content: SizedBox(
               width: double.maxFinite,
@@ -2750,7 +3864,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                   return ListTile(
                     title: Text(
                       mesa.nombre,
-                      style: TextStyle(color: _textLight),
+                      style: TextStyle(color: _textPrimary),
                     ),
                     subtitle: Text(
                       mesa.ocupada ? 'Ocupada' : 'Libre',
@@ -2766,7 +3880,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
-                child: Text('Cancelar', style: TextStyle(color: _textLight)),
+                child: Text('Cancelar', style: TextStyle(color: _textPrimary)),
               ),
             ],
           );
@@ -2799,7 +3913,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
             SizedBox(width: 20),
             Text(
               'Generando resumen de impresión...',
-              style: TextStyle(color: _textLight),
+              style: TextStyle(color: _textPrimary),
             ),
           ],
         ),
@@ -2854,18 +3968,18 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                       Text(
                         'Resumen del Pedido',
                         style: TextStyle(
-                          color: _textLight,
+                          color: _textPrimary,
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       IconButton(
-                        icon: Icon(Icons.close, color: _textLight),
+                        icon: Icon(Icons.close, color: _textPrimary),
                         onPressed: () => Navigator.pop(context),
                       ),
                     ],
                   ),
-                  Divider(color: _textLight.withOpacity(0.3)),
+                  Divider(color: _textMuted),
                   SizedBox(height: 16),
 
                   // Información del restaurante
@@ -2891,7 +4005,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                   Text(
                     'DETALLE DE PRODUCTOS:',
                     style: TextStyle(
-                      color: _textLight,
+                      color: _textPrimary,
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
@@ -2913,7 +4027,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                   ),
 
                   SizedBox(height: 16),
-                  Divider(color: _textLight.withOpacity(0.3)),
+                  Divider(color: _textMuted),
 
                   // Total
                   Row(
@@ -2922,7 +4036,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                       Text(
                         'TOTAL:',
                         style: TextStyle(
-                          color: _textLight,
+                          color: _textPrimary,
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                         ),
@@ -2961,7 +4075,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                       ),
                       ElevatedButton.icon(
                         onPressed: () async {
-                          await _compartirResumenPedido(resumen);
+                          await _mostrarOpcionesCompartir(resumen);
                         },
                         icon: Icon(Icons.share, size: 18),
                         label: Text('Compartir'),
@@ -2976,31 +4090,10 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                       ),
                       ElevatedButton.icon(
                         onPressed: () async {
-                          Navigator.pop(context); // Cerrar diálogo actual
-
-                          // Solicitar información de pago antes de crear la factura
-                          // Comentar temporalmente hasta implementar el diálogo
-                          // final formResult = await mostrarDialogoSimplePago();
-                          final formResult = {'medioPago': 'efectivo'}; // Temporal
-
-                          if (formResult != null) {
-                            await _crearFacturaPedido(
-                              resumen['pedidoId'],
-                              formaPago: formResult['medioPago'],
-                              propina: double.tryParse(formResult['propina']?.toString() ?? '0') ?? 0.0,
-                              pagadoPor: formResult['pagadoPor'],
-                            );
-
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Factura creada exitosamente'),
-                                backgroundColor: Colors.green,
-                              ),
-                            );
-                          }
+                          await _marcarComoDeuda(resumen);
                         },
-                        icon: Icon(Icons.receipt_long, size: 18),
-                        label: Text('Facturar'),
+                        icon: Icon(Icons.account_balance_wallet, size: 18),
+                        label: Text('Debe'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.orange,
                           foregroundColor: Colors.white,
@@ -3068,7 +4161,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
               SizedBox(width: 20),
               Text(
                 'Enviando a impresora...',
-                style: TextStyle(color: _textLight),
+                style: TextStyle(color: _textPrimary),
               ),
             ],
           ),
@@ -3105,14 +4198,14 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
         backgroundColor: _cardBg,
         title: Text(
           'Opciones de Impresión',
-          style: TextStyle(color: _textLight),
+          style: TextStyle(color: _textPrimary),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               '¿Cómo deseas imprimir este documento?',
-              style: TextStyle(color: _textLight),
+              style: TextStyle(color: _textPrimary),
             ),
             SizedBox(height: 20),
           ],
@@ -3170,13 +4263,13 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: _cardBg,
-        title: Text('$tipo Generado', style: TextStyle(color: _textLight)),
+        title: Text('$tipo Generado', style: TextStyle(color: _textPrimary)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               'Archivo guardado como:',
-              style: TextStyle(color: _textLight),
+              style: TextStyle(color: _textPrimary),
             ),
             SizedBox(height: 8),
             Text(
@@ -3189,7 +4282,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
             SizedBox(height: 16),
             Text(
               'Opciones:',
-              style: TextStyle(color: _textLight),
+              style: TextStyle(color: _textPrimary),
             ),
           ],
         ),
@@ -3245,14 +4338,14 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
         context: context,
         builder: (context) => AlertDialog(
           backgroundColor: _cardBg,
-          title: Text('Abrir Archivo', style: TextStyle(color: _textLight)),
+          title: Text('Abrir Archivo', style: TextStyle(color: _textPrimary)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 'El archivo se encuentra en:',
-                style: TextStyle(color: _textLight),
+                style: TextStyle(color: _textPrimary),
               ),
               SizedBox(height: 8),
               Container(
@@ -3273,16 +4366,16 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
               SizedBox(height: 16),
               Text(
                 'Para abrir el archivo:',
-                style: TextStyle(color: _textLight, fontWeight: FontWeight.bold),
+                style: TextStyle(color: _textPrimary, fontWeight: FontWeight.bold),
               ),
               SizedBox(height: 8),
               Text(
                 '1. Navega a la carpeta Downloads',
-                style: TextStyle(color: _textLight),
+                style: TextStyle(color: _textPrimary),
               ),
               Text(
                 '2. Busca el archivo y ábrelo con tu aplicación preferida',
-                style: TextStyle(color: _textLight),
+                style: TextStyle(color: _textPrimary),
               ),
               SizedBox(height: 8),
               Row(
@@ -3380,7 +4473,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
               SizedBox(width: 20),
               Text(
                 'Generando documento PDF...',
-                style: TextStyle(color: _textLight),
+                style: TextStyle(color: _textPrimary),
               ),
             ],
           ),
@@ -3431,7 +4524,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
               SizedBox(width: 20),
               Text(
                 'Generando documento de texto...',
-                style: TextStyle(color: _textLight),
+                style: TextStyle(color: _textPrimary),
               ),
             ],
           ),
@@ -3510,7 +4603,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
         backgroundColor: _cardBg,
         title: Text(
           'Factura Creada Exitosamente',
-          style: TextStyle(color: _textLight),
+          style: TextStyle(color: _textPrimary),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -3519,7 +4612,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
             SizedBox(height: 16),
             Text(
               'Factura ${factura['numero']} ha sido creada correctamente.',
-              style: TextStyle(color: _textLight),
+              style: TextStyle(color: _textPrimary),
               textAlign: TextAlign.center,
             ),
             SizedBox(height: 8),
@@ -3573,13 +4666,13 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: _cardBg,
-        title: Text('Factura Generada', style: TextStyle(color: _textLight)),
+        title: Text('Factura Generada', style: TextStyle(color: _textPrimary)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               'Número: ${factura['numero']}',
-              style: TextStyle(color: _textLight, fontSize: 16),
+              style: TextStyle(color: _textPrimary, fontSize: 16),
             ),
             Text(
               'Total: \$${factura['total'].toStringAsFixed(0)}',
@@ -3654,83 +4747,179 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[900],
+      backgroundColor: AppTheme.backgroundDark,
       appBar: AppBar(
-        title: Text('Mesas'),
-        backgroundColor: _primary,
+        title: Text(
+          'Mesas',
+          style: AppTheme.headlineMedium,
+        ),
+        backgroundColor: AppTheme.primary,
+        elevation: 0,
+        centerTitle: true,
         actions: [
           // Botón para mostrar resumen rápido de documentos del día
-          IconButton(
-            icon: Stack(
-              children: [
-                Icon(Icons.receipt_long),
-                FutureBuilder<int>(
-                  future: obtenerConteoDocumentosHoy(),
-                  builder: (context, snapshot) {
-                    if (snapshot.hasData && snapshot.data! > 0) {
-                      return Positioned(
-                        right: 0,
-                        top: 0,
-                        child: Container(
-                          padding: EdgeInsets.all(2),
-                          decoration: BoxDecoration(
-                            color: Colors.red,
-                            borderRadius: BorderRadius.circular(8),
+          Container(
+            margin: EdgeInsets.only(right: AppTheme.spacingSmall),
+            child: IconButton(
+              icon: Stack(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                    ),
+                    child: Icon(Icons.receipt_long, size: 20),
+                  ),
+                  FutureBuilder<int>(
+                    future: obtenerConteoDocumentosHoy(),
+                    builder: (context, snapshot) {
+                      if (snapshot.hasData && snapshot.data! > 0) {
+                        return Positioned(
+                          right: 0,
+                          top: 0,
+                          child: Container(
+                            padding: EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: AppTheme.error,
+                              borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                            ),
+                            constraints: BoxConstraints(
+                              minWidth: 18,
+                              minHeight: 18,
+                            ),
+                            child: Text(
+                              '${snapshot.data}',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
                           ),
-                          constraints: BoxConstraints(
-                            minWidth: 16,
-                            minHeight: 16,
+                        );
+                      }
+                      return SizedBox.shrink();
+                    },
+                  ),
+                ],
+              ),
+              tooltip: 'Ver documentos del día',
+              onPressed: () => navegarADocumentos(),
+            ),
+          ),
+          Container(
+            margin: EdgeInsets.only(right: AppTheme.spacingSmall),
+            child: IconButton(
+              icon: Container(
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                ),
+                child: Icon(Icons.refresh, size: 20),
+              ),
+              onPressed: _loadMesas,
+              tooltip: 'Actualizar mesas',
+            ),
+          ),
+        ],
+      ),
+      body: isLoading
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(AppTheme.spacingLarge),
+                    decoration: AppTheme.cardDecoration,
+                    child: CircularProgressIndicator(
+                      color: AppTheme.primary,
+                      strokeWidth: 3,
+                    ),
+                  ),
+                  SizedBox(height: AppTheme.spacingLarge),
+                  Text(
+                    'Cargando mesas...',
+                    style: AppTheme.bodyLarge,
+                  ),
+                ],
+              ),
+            )
+          : errorMessage != null
+              ? Center(
+                  child: Container(
+                    margin: EdgeInsets.all(AppTheme.spacingLarge),
+                    padding: EdgeInsets.all(AppTheme.spacingXLarge),
+                    decoration: AppTheme.elevatedCardDecoration.copyWith(
+                      border: Border.all(
+                        color: AppTheme.error.withOpacity(0.3),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(AppTheme.spacingMedium),
+                          decoration: BoxDecoration(
+                            color: AppTheme.error.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(50),
+                          ),
+                          child: Icon(Icons.error_outline, color: AppTheme.error, size: 48),
+                        ),
+                        SizedBox(height: AppTheme.spacingLarge),
+                        Text(
+                          'Error al cargar mesas',
+                          style: AppTheme.headlineMedium,
+                          textAlign: TextAlign.center,
+                        ),
+                        SizedBox(height: AppTheme.spacingMedium),
+                        Container(
+                          padding: EdgeInsets.all(AppTheme.spacingMedium),
+                          decoration: BoxDecoration(
+                            color: AppTheme.surfaceDark,
+                            borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
                           ),
                           child: Text(
-                            '${snapshot.data}',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
+                            errorMessage!,
+                            style: AppTheme.bodyMedium.copyWith(color: AppTheme.textSecondary),
                             textAlign: TextAlign.center,
                           ),
                         ),
-                      );
-                    }
-                    return SizedBox.shrink();
-                  },
-                ),
-              ],
-            ),
-            tooltip: 'Ver documentos del día',
-            onPressed: () => navegarADocumentos(),
-          ),
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _loadMesas),
-        ],
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : errorMessage != null
-                ? Center(child: Text(errorMessage!))
-                : buildMesasLayout(),
-          ),
-        ],
-      ),
+                        SizedBox(height: AppTheme.spacingLarge),
+                        ElevatedButton(
+                          onPressed: _loadMesas,
+                          style: AppTheme.primaryButtonStyle,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.refresh, size: 20),
+                              SizedBox(width: AppTheme.spacingSmall),
+                              Text('Reintentar'),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              : buildMesasLayout(),
     );
   }
 
   Widget buildMesasLayout() {
     return LayoutBuilder(
       builder: (context, constraints) {
-        double responsivePadding = getResponsivePadding(constraints.maxWidth);
-
         return SingleChildScrollView(
-          padding: EdgeInsets.all(responsivePadding),
+          padding: EdgeInsets.all(context.responsivePadding),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Mesas especiales en la parte superior
               buildMesasEspeciales(),
-              SizedBox(height: responsivePadding * 1.5),
+              SizedBox(height: AppTheme.spacingXLarge),
 
               // Mesas organizadas por filas (A1-A10, B1-B10, etc.)
               buildMesasPorFilas(),
@@ -3750,9 +4939,9 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
   Widget buildMesasEspeciales() {
     return LayoutBuilder(
       builder: (context, constraints) {
-        double screenWidth = constraints.maxWidth;
-        double especialHeight = getResponsiveEspecialHeight(screenWidth);
-
+        // Definir altura responsive
+        double especialHeight = context.isMobile ? 100 : context.isTablet ? 120 : 140;
+        
         return Column(
           children: [
             // Primera fila: Domicilio y Caja
@@ -3767,7 +4956,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                     height: especialHeight,
                   ),
                 ),
-                SizedBox(width: getResponsiveMargin(screenWidth)),
+                SizedBox(width: AppTheme.spacingMedium),
                 Expanded(
                   child: buildMesaEspecial(
                     'Caja',
@@ -3779,20 +4968,25 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                 ),
               ],
             ),
-            SizedBox(height: getResponsiveMargin(screenWidth)),
-            // Segunda fila: Mesa Auxiliar centrada
+            SizedBox(height: AppTheme.spacingMedium),
+            // Segunda fila: Mesa Auxiliar y Deudas
             Row(
               children: [
                 Expanded(
                   child: buildMesaEspecial(
-                    'Mesa\nAuxiliar',
+                    'Mesa Auxiliar',
                     Icons.table_restaurant,
                     'disponible',
                     () => crearPedido('Mesa Auxiliar'),
                     height: especialHeight,
                   ),
                 ),
-                Expanded(child: SizedBox()), // Espacio vacío para centrar
+                SizedBox(width: AppTheme.spacingMedium),
+                Expanded(
+                  child: buildMesaDeudas(
+                    height: especialHeight,
+                  ),
+                ),
               ],
             ),
           ],
@@ -3818,116 +5012,255 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
               .toList();
         }
 
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            double screenWidth = constraints.maxWidth;
-            double iconSize = getResponsiveIconSize(screenWidth);
-            double fontSize = getResponsiveFontSize(screenWidth, 10);
-            double statusFontSize = getResponsiveFontSize(screenWidth, 7);
+        // Determinar el estado basado en pedidos activos
+        bool tienePedidos = pedidosActivos.isNotEmpty;
+        Color statusColor = tienePedidos ? AppTheme.error : AppTheme.success;
+        String estadoTexto = tienePedidos
+            ? '${pedidosActivos.length} pedido${pedidosActivos.length > 1 ? 's' : ''}'
+            : 'Disponible';
 
-            // Determinar el estado basado en pedidos activos
-            bool tienePedidos = pedidosActivos.isNotEmpty;
-            Color statusColor = tienePedidos ? Colors.red : Colors.green;
-            String estadoTexto = tienePedidos
-                ? '${pedidosActivos.length} pedido${pedidosActivos.length > 1 ? 's' : ''}'
-                : 'Disponible';
+        // Calcular total de todos los pedidos activos
+        double totalGeneral = pedidosActivos.fold(
+          0.0,
+          (sum, pedido) => sum + pedido.total,
+        );
 
-            // Calcular total de todos los pedidos activos
-            double totalGeneral = pedidosActivos.fold(
-              0.0,
-              (sum, pedido) => sum + pedido.total,
-            );
-
-            return GestureDetector(
-              onTap: onTap,
-              child: Container(
-                height: height,
-                decoration: BoxDecoration(
-                  color: _cardBg,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: _primary.withOpacity(0.3),
-                    width: 1,
+        return GestureDetector(
+          onTap: onTap,
+          child: Container(
+            height: height,
+            decoration: AppTheme.cardDecoration.copyWith(
+              gradient: tienePedidos 
+                ? LinearGradient(
+                    colors: [AppTheme.cardBg, AppTheme.cardElevated],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  )
+                : null,
+              border: Border.all(
+                color: tienePedidos 
+                  ? AppTheme.primary.withOpacity(0.5)
+                  : AppTheme.success.withOpacity(0.3),
+                width: 1.5,
+              ),
+            ),
+            child: Padding(
+              padding: EdgeInsets.all(AppTheme.spacingMedium),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  // Icono principal
+                  Container(
+                    padding: EdgeInsets.all(context.isMobile ? 8 : 12),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primary.withOpacity(0.15),
+                      shape: BoxShape.circle,
+                      boxShadow: AppTheme.primaryShadow,
+                    ),
+                    child: Icon(
+                      icono, 
+                      color: AppTheme.primary, 
+                      size: context.isMobile ? 20 : context.isTablet ? 24 : 28,
+                    ),
                   ),
+                  // Nombre de la mesa especial
+                  Flexible(
+                    child: Text(
+                      nombre,
+                      textAlign: TextAlign.center,
+                      style: AppTheme.bodyLarge.copyWith(
+                        fontSize: context.isMobile ? 14 : context.isTablet ? 16 : 18,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  // Estado
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: AppTheme.spacingSmall, 
+                      vertical: AppTheme.spacingXSmall,
+                    ),
+                    decoration: BoxDecoration(
+                      color: statusColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                      border: Border.all(
+                        color: statusColor.withOpacity(0.3),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 6,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            color: statusColor,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        SizedBox(width: AppTheme.spacingXSmall),
+                        Flexible(
+                          child: Text(
+                            estadoTexto,
+                            style: AppTheme.labelMedium.copyWith(
+                              color: statusColor,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Total si existe
+                  if (totalGeneral > 0)
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: AppTheme.spacingSmall,
+                        vertical: AppTheme.spacingXSmall,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primary.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                      ),
+                      child: Text(
+                        '\$${totalGeneral.toStringAsFixed(0)}',
+                        style: AppTheme.labelMedium.copyWith(
+                          color: AppTheme.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // Widget especial para mostrar deudas pendientes
+  Widget buildMesaDeudas({required double height}) {
+    return GestureDetector(
+      onTap: () => _mostrarDeudas(),
+      child: Container(
+        height: height,
+        decoration: AppTheme.cardDecoration.copyWith(
+          gradient: LinearGradient(
+            colors: [Colors.orange.withOpacity(0.1), Colors.orange.withOpacity(0.05)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          border: Border.all(
+            color: Colors.orange.withOpacity(0.4),
+            width: 1.5,
+          ),
+        ),
+        child: Padding(
+          padding: EdgeInsets.all(AppTheme.spacingMedium),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              // Icono principal
+              Container(
+                padding: EdgeInsets.all(context.isMobile ? 8 : 12),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.15),
+                  shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 3,
-                      offset: Offset(0, 1),
+                      color: Colors.orange.withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: Offset(0, 2),
                     ),
                   ],
                 ),
-                child: Column(
+                child: Icon(
+                  Icons.account_balance_wallet, 
+                  color: Colors.orange, 
+                  size: context.isMobile ? 20 : context.isTablet ? 24 : 28,
+                ),
+              ),
+              // Nombre
+              Flexible(
+                child: Text(
+                  'Deudas',
+                  textAlign: TextAlign.center,
+                  style: AppTheme.bodyLarge.copyWith(
+                    fontSize: context.isMobile ? 14 : context.isTablet ? 16 : 18,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              // Estado
+              Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: AppTheme.spacingSmall, 
+                  vertical: AppTheme.spacingXSmall,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                  border: Border.all(
+                    color: Colors.orange.withOpacity(0.3),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
                   mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Container(
-                      padding: EdgeInsets.all(6),
+                      width: 6,
+                      height: 6,
                       decoration: BoxDecoration(
-                        color: _primary.withOpacity(0.1),
+                        color: Colors.orange,
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(icono, color: _primary, size: iconSize),
                     ),
-                    SizedBox(height: 4),
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 4),
-                        child: Text(
-                          nombre,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: _textLight,
-                            fontSize: fontSize,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: 2),
-                    Container(
-                      padding: EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                      decoration: BoxDecoration(
-                        color: statusColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
+                    SizedBox(width: AppTheme.spacingXSmall),
+                    Flexible(
                       child: Text(
-                        estadoTexto,
-                        style: TextStyle(
-                          color: statusColor,
-                          fontSize: statusFontSize,
+                        'Pendientes',
+                        style: AppTheme.labelMedium.copyWith(
+                          color: Colors.orange,
+                          fontWeight: FontWeight.w600,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    if (totalGeneral > 0) ...[
-                      SizedBox(height: 2),
-                      Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 4,
-                          vertical: 1,
-                        ),
-                        decoration: BoxDecoration(
-                          color: _primary.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          '\$${totalGeneral.toStringAsFixed(0)}',
-                          style: TextStyle(
-                            color: _primary,
-                            fontSize: statusFontSize,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
                   ],
                 ),
               ),
-            );
-          },
-        );
-      },
+              // Placeholder para futuro contador de deudas
+              Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: AppTheme.spacingSmall,
+                  vertical: AppTheme.spacingXSmall,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                ),
+                child: Text(
+                  'Ver todas',
+                  style: AppTheme.labelMedium.copyWith(
+                    color: Colors.orange,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -3969,17 +5302,18 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Calcular tamaños responsivos
-        double screenWidth = constraints.maxWidth;
-        double cardWidth = getResponsiveCardWidth(screenWidth);
-        double cardHeight = getResponsiveCardHeight(screenWidth);
-        double horizontalMargin = getResponsiveMargin(screenWidth);
+        // Tamaños responsivos usando AppTheme y extension
+        double cardWidth = context.isMobile ? 90 : context.isTablet ? 110 : 130;
+        double cardHeight = context.isMobile ? 120 : context.isTablet ? 140 : 160;
 
         return Scrollbar(
-          scrollbarOrientation: ScrollbarOrientation.bottom,
           thumbVisibility: true,
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
+            padding: EdgeInsets.symmetric(
+              horizontal: AppTheme.spacingSmall,
+              vertical: AppTheme.spacingMedium,
+            ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: letrasOrdenadas.map((letra) {
@@ -3998,24 +5332,32 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                 });
 
                 return Container(
-                  margin: EdgeInsets.only(right: horizontalMargin),
+                  margin: EdgeInsets.only(right: AppTheme.spacingLarge),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      // Título de la columna (letra)
-                      Padding(
-                        padding: EdgeInsets.symmetric(vertical: 8),
+                      // Título de la columna (letra) mejorado
+                      Container(
+                        margin: EdgeInsets.only(bottom: AppTheme.spacingMedium),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: AppTheme.spacingMedium,
+                          vertical: AppTheme.spacingSmall,
+                        ),
+                        decoration: BoxDecoration(
+                          gradient: AppTheme.primaryGradient,
+                          borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
+                          boxShadow: AppTheme.primaryShadow,
+                        ),
                         child: Text(
                           'Fila $letra',
-                          style: TextStyle(
-                            color: _primary,
-                            fontSize: getResponsiveFontSize(screenWidth, 16),
-                            fontWeight: FontWeight.bold,
+                          style: AppTheme.bodyLarge.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            fontSize: context.responsiveFontSize + 2,
                           ),
                         ),
                       ),
-
-                      // Mesas de la letra organizadas verticalmente (A1, A2, A3... A10)
+                      // Mesas de la letra organizadas verticalmente
                       Column(
                         children: mesasDeLaLetra
                             .map(
@@ -4023,7 +5365,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                 width: cardWidth,
                                 height: cardHeight,
                                 margin: EdgeInsets.only(
-                                  bottom: horizontalMargin * 0.75,
+                                  bottom: AppTheme.spacingMedium,
                                 ),
                                 child: _buildMesaCard(mesa),
                               ),
@@ -4125,13 +5467,13 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                     Text(
                       'Pedidos Activos - ${mesa.nombre}',
                       style: TextStyle(
-                        color: _textLight,
+                        color: _textPrimary,
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     IconButton(
-                      icon: Icon(Icons.close, color: _textLight),
+                      icon: Icon(Icons.close, color: _textPrimary),
                       onPressed: () => Navigator.pop(context),
                     ),
                   ],
@@ -4165,7 +5507,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                     child: Text(
                                       pedido.cliente ?? 'Pedido ${index + 1}',
                                       style: TextStyle(
-                                        color: _textLight,
+                                        color: _textPrimary,
                                         fontWeight: FontWeight.bold,
                                         fontSize: 16,
                                       ),
@@ -4200,7 +5542,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                   Text(
                                     'Mesero: ${pedido.mesero}',
                                     style: TextStyle(
-                                      color: _textLight.withOpacity(0.8),
+                                      color: _textSecondary,
                                     ),
                                   ),
                                   SizedBox(width: 16),
@@ -4213,7 +5555,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                   Text(
                                     '${pedido.fecha.hour.toString().padLeft(2, '0')}:${pedido.fecha.minute.toString().padLeft(2, '0')}',
                                     style: TextStyle(
-                                      color: _textLight.withOpacity(0.8),
+                                      color: _textSecondary,
                                     ),
                                   ),
                                 ],
@@ -4231,7 +5573,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                       child: Text(
                                         pedido.notas!,
                                         style: TextStyle(
-                                          color: _textLight.withOpacity(0.7),
+                                          color: _textSecondary,
                                         ),
                                       ),
                                     ),
@@ -4245,7 +5587,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                               Text(
                                 'Items (${pedido.items.length}):',
                                 style: TextStyle(
-                                  color: _textLight,
+                                  color: _textPrimary,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -4261,7 +5603,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                       child: Text(
                                         '• ${item.cantidad}x ${item.productoNombre ?? 'Producto'} - \$${(item.precioUnitario * item.cantidad).toStringAsFixed(0)}',
                                         style: TextStyle(
-                                          color: _textLight.withOpacity(0.8),
+                                          color: _textSecondary,
                                           fontSize: 13,
                                         ),
                                       ),
@@ -4275,7 +5617,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                   child: Text(
                                     '... y ${pedido.items.length - 3} más',
                                     style: TextStyle(
-                                      color: _textLight.withOpacity(0.6),
+                                      color: _textSecondary,
                                       fontSize: 12,
                                       fontStyle: FontStyle.italic,
                                     ),
@@ -4504,7 +5846,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
     return Text(
       titulo,
       style: TextStyle(
-        color: _textLight,
+        color: _textPrimary,
         fontSize: 18,
         fontWeight: FontWeight.bold,
         letterSpacing: 0.5,
@@ -4519,13 +5861,13 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
         SizedBox(width: 12),
         Text(
           '$etiqueta: ',
-          style: TextStyle(color: _textLight.withOpacity(0.8), fontSize: 14),
+          style: TextStyle(color: _textSecondary, fontSize: 14),
         ),
         Expanded(
           child: Text(
             valor,
             style: TextStyle(
-              color: _textLight,
+              color: _textPrimary,
               fontSize: 14,
               fontWeight: FontWeight.w500,
             ),
@@ -4630,7 +5972,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                       Text(
                         'Información de Facturación',
                         style: TextStyle(
-                          color: _textLight,
+                          color: _textPrimary,
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
                         ),
@@ -4644,7 +5986,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                 Text(
                   'Método de Pago',
                   style: TextStyle(
-                    color: _textLight,
+                    color: _textPrimary,
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                   ),
@@ -4665,7 +6007,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                             border: Border.all(
                               color: medioPago == 'efectivo'
                                   ? _primary
-                                  : _textLight.withOpacity(0.3),
+                                  : _textMuted,
                               width: 2,
                             ),
                           ),
@@ -4675,7 +6017,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                 Icons.money,
                                 color: medioPago == 'efectivo'
                                     ? _primary
-                                    : _textLight.withOpacity(0.6),
+                                    : _textSecondary,
                                 size: 24,
                               ),
                               SizedBox(height: 8),
@@ -4684,7 +6026,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                 style: TextStyle(
                                   color: medioPago == 'efectivo'
                                       ? _primary
-                                      : _textLight.withOpacity(0.6),
+                                      : _textSecondary,
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -4709,7 +6051,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                             border: Border.all(
                               color: medioPago == 'transferencia'
                                   ? _primary
-                                  : _textLight.withOpacity(0.3),
+                                  : _textMuted,
                               width: 2,
                             ),
                           ),
@@ -4719,7 +6061,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                 Icons.account_balance,
                                 color: medioPago == 'transferencia'
                                     ? _primary
-                                    : _textLight.withOpacity(0.6),
+                                    : _textSecondary,
                                 size: 24,
                               ),
                               SizedBox(height: 8),
@@ -4728,7 +6070,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                 style: TextStyle(
                                   color: medioPago == 'transferencia'
                                       ? _primary
-                                      : _textLight.withOpacity(0.6),
+                                      : _textSecondary,
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -4746,7 +6088,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                 Text(
                   'Pagado por (opcional)',
                   style: TextStyle(
-                    color: _textLight,
+                    color: _textPrimary,
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                   ),
@@ -4754,22 +6096,22 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                 SizedBox(height: 8),
                 TextField(
                   onChanged: (value) => pagadoPor = value,
-                  style: TextStyle(color: _textLight),
+                  style: TextStyle(color: _textPrimary),
                   decoration: InputDecoration(
                     hintText: 'Nombre del cliente o facturador',
-                    hintStyle: TextStyle(color: _textLight.withOpacity(0.5)),
+                    hintStyle: TextStyle(color: _textSecondary),
                     filled: true,
                     fillColor: _cardBg.withOpacity(0.3),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(
-                        color: _textLight.withOpacity(0.3),
+                        color: _textMuted,
                       ),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(
-                        color: _textLight.withOpacity(0.3),
+                        color: _textMuted,
                       ),
                     ),
                     focusedBorder: OutlineInputBorder(
@@ -4784,7 +6126,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                 Text(
                   'Propina (opcional)',
                   style: TextStyle(
-                    color: _textLight,
+                    color: _textPrimary,
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                   ),
@@ -4793,10 +6135,10 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                 TextField(
                   onChanged: (value) => propina = double.tryParse(value) ?? 0.0,
                   keyboardType: TextInputType.number,
-                  style: TextStyle(color: _textLight),
+                  style: TextStyle(color: _textPrimary),
                   decoration: InputDecoration(
                     hintText: '0',
-                    hintStyle: TextStyle(color: _textLight.withOpacity(0.5)),
+                    hintStyle: TextStyle(color: _textSecondary),
                     prefixText: '\$ ',
                     prefixStyle: TextStyle(color: _primary),
                     filled: true,
@@ -4804,13 +6146,13 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(
-                        color: _textLight.withOpacity(0.3),
+                        color: _textMuted,
                       ),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(
-                        color: _textLight.withOpacity(0.3),
+                        color: _textMuted,
                       ),
                     ),
                     focusedBorder: OutlineInputBorder(
@@ -4829,7 +6171,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                         onPressed: () => Navigator.of(context).pop(null),
                         child: Text(
                           'Cancelar',
-                          style: TextStyle(color: _textLight),
+                          style: TextStyle(color: _textPrimary),
                         ),
                       ),
                     ),

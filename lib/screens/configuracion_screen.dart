@@ -4,6 +4,7 @@ import 'roles_screen.dart';
 import 'negocio_info_screen.dart';
 import '../models/mesa.dart';
 import '../services/mesa_service.dart';
+import '../theme/app_theme.dart';
 
 class ConfiguracionScreen extends StatefulWidget {
   const ConfiguracionScreen({super.key});
@@ -31,27 +32,23 @@ class _ConfiguracionScreenState extends State<ConfiguracionScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
+      backgroundColor: AppTheme.backgroundDark,
       appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.surface,
+        backgroundColor: AppTheme.backgroundDark,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: Icon(Icons.arrow_back, color: AppTheme.textDark),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           'Configuración',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
+          style: AppTheme.headlineMedium,
         ),
         bottom: TabBar(
           controller: _tabController,
-          indicatorColor: const Color(0xFFFF6B00),
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.grey[400],
+          indicatorColor: AppTheme.primary,
+          labelColor: AppTheme.textDark,
+          unselectedLabelColor: AppTheme.textLight,
           tabs: const [
             Tab(icon: Icon(Icons.people), text: 'Usuarios'),
             Tab(icon: Icon(Icons.admin_panel_settings), text: 'Roles'),
@@ -139,7 +136,7 @@ class _MesasConfigScreenState extends State<MesasConfigScreen> {
         // Barra superior con búsqueda y botón agregar
         Container(
           padding: const EdgeInsets.all(16),
-          color: Colors.grey[900],
+          color: AppTheme.cardBg,
           child: Column(
             children: [
               Row(
@@ -147,23 +144,21 @@ class _MesasConfigScreenState extends State<MesasConfigScreen> {
                   Expanded(
                     child: TextField(
                       controller: _searchController,
-                      style: const TextStyle(color: Colors.white),
+                      style: AppTheme.bodyMedium,
                       decoration: InputDecoration(
                         hintText: 'Buscar mesas...',
-                        hintStyle: TextStyle(color: Colors.grey[400]),
-                        prefixIcon: Icon(Icons.search, color: Colors.grey[400]),
+                        hintStyle: AppTheme.bodySmall,
+                        prefixIcon: Icon(Icons.search, color: AppTheme.textLight),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(color: Colors.grey[600]!),
+                          borderSide: BorderSide(color: AppTheme.textLight),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
-                          borderSide: const BorderSide(
-                            color: Color(0xFFFF6B00),
-                          ),
+                          borderSide: BorderSide(color: AppTheme.primary),
                         ),
                         filled: true,
-                        fillColor: Colors.grey[800],
+                        fillColor: AppTheme.backgroundDark,
                       ),
                       onChanged: (value) {
                         setState(() {
@@ -175,9 +170,9 @@ class _MesasConfigScreenState extends State<MesasConfigScreen> {
                   const SizedBox(width: 12),
                   FloatingActionButton(
                     onPressed: () => _mostrarDialogoMesa(),
-                    backgroundColor: const Color(0xFFFF6B00),
+                    backgroundColor: AppTheme.primary,
                     mini: true,
-                    child: const Icon(Icons.add, color: Colors.white),
+                    child: Icon(Icons.add, color: AppTheme.textDark),
                   ),
                 ],
               ),
@@ -187,18 +182,18 @@ class _MesasConfigScreenState extends State<MesasConfigScreen> {
                 children: [
                   Text(
                     'Total: ${_filteredMesas.length} mesas',
-                    style: TextStyle(color: Colors.grey[400], fontSize: 14),
+                    style: AppTheme.bodySmall,
                   ),
                   TextButton(
                     onPressed: _cargarMesas,
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.refresh, color: Colors.grey[400], size: 16),
+                        Icon(Icons.refresh, color: AppTheme.textLight, size: 16),
                         const SizedBox(width: 4),
                         Text(
                           'Actualizar',
-                          style: TextStyle(color: Colors.grey[400]),
+                          style: AppTheme.bodySmall,
                         ),
                       ],
                     ),
@@ -211,8 +206,8 @@ class _MesasConfigScreenState extends State<MesasConfigScreen> {
         // Lista de mesas
         Expanded(
           child: _isLoading
-              ? const Center(
-                  child: CircularProgressIndicator(color: Color(0xFFFF6B00)),
+              ? Center(
+                  child: CircularProgressIndicator(color: AppTheme.primary),
                 )
               : _filteredMesas.isEmpty
               ? Center(
@@ -222,21 +217,21 @@ class _MesasConfigScreenState extends State<MesasConfigScreen> {
                       Icon(
                         Icons.table_restaurant,
                         size: 64,
-                        color: Colors.grey[400],
+                        color: AppTheme.textLight,
                       ),
                       const SizedBox(height: 16),
                       Text(
                         _searchText.isEmpty
                             ? 'No hay mesas registradas'
                             : 'No se encontraron mesas',
-                        style: TextStyle(fontSize: 16, color: Colors.grey[400]),
+                        style: AppTheme.bodyLarge,
                       ),
                     ],
                   ),
                 )
               : RefreshIndicator(
                   onRefresh: _cargarMesas,
-                  color: const Color(0xFFFF6B00),
+                  color: AppTheme.primary,
                   child: ListView.builder(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     itemCount: _filteredMesas.length,
@@ -253,7 +248,7 @@ class _MesasConfigScreenState extends State<MesasConfigScreen> {
 
   Widget _buildMesaCard(Mesa mesa) {
     return Card(
-      color: Colors.grey[850],
+      color: AppTheme.cardBg,
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
@@ -279,9 +274,7 @@ class _MesasConfigScreenState extends State<MesasConfigScreen> {
                     children: [
                       Text(
                         mesa.nombre,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
+                        style: AppTheme.headlineSmall.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -322,7 +315,7 @@ class _MesasConfigScreenState extends State<MesasConfigScreen> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.grey[800],
+                  color: AppTheme.backgroundDark,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
@@ -330,13 +323,12 @@ class _MesasConfigScreenState extends State<MesasConfigScreen> {
                   children: [
                     Text(
                       'Total cuenta:',
-                      style: TextStyle(color: Colors.grey[300], fontSize: 14),
+                      style: AppTheme.bodySmall,
                     ),
                     Text(
                       '\$${mesa.total.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                        color: Color(0xFFFF6B00),
-                        fontSize: 14,
+                      style: AppTheme.bodyMedium.copyWith(
+                        color: AppTheme.primary,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -350,7 +342,7 @@ class _MesasConfigScreenState extends State<MesasConfigScreen> {
               children: [
                 IconButton(
                   onPressed: () => _mostrarDialogoMesa(mesa: mesa),
-                  icon: const Icon(Icons.edit, color: Color(0xFFFF6B00)),
+                  icon: Icon(Icons.edit, color: AppTheme.primary),
                   tooltip: 'Editar Mesa',
                 ),
                 IconButton(
@@ -373,10 +365,10 @@ class _MesasConfigScreenState extends State<MesasConfigScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: Colors.grey[900],
+        backgroundColor: AppTheme.cardBg,
         title: Text(
           isEditing ? 'Editar Mesa' : 'Nueva Mesa',
-          style: const TextStyle(color: Colors.white),
+          style: AppTheme.headlineMedium,
         ),
         content: SingleChildScrollView(
           child: Column(
@@ -384,17 +376,17 @@ class _MesasConfigScreenState extends State<MesasConfigScreen> {
             children: [
               TextField(
                 controller: nombreController,
-                style: const TextStyle(color: Colors.white),
+                style: AppTheme.bodyMedium,
                 decoration: InputDecoration(
                   labelText: 'Nombre de la Mesa *',
-                  labelStyle: const TextStyle(color: Colors.grey),
+                  labelStyle: AppTheme.bodySmall,
                   hintText: 'Ej: Mesa 1, Mesa VIP, Terraza A...',
-                  hintStyle: TextStyle(color: Colors.grey[500]),
+                  hintStyle: AppTheme.bodySmall,
                   enabledBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: Colors.grey[600]!),
+                    borderSide: BorderSide(color: AppTheme.textLight),
                   ),
-                  focusedBorder: const OutlineInputBorder(
-                    borderSide: BorderSide(color: Color(0xFFFF6B00)),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: AppTheme.primary),
                   ),
                 ),
               ),
@@ -404,7 +396,8 @@ class _MesasConfigScreenState extends State<MesasConfigScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cancelar', style: TextStyle(color: Colors.grey[400])),
+            style: AppTheme.secondaryButtonStyle,
+            child: Text('Cancelar'),
           ),
           ElevatedButton(
             onPressed: () => _guardarMesa(
@@ -412,12 +405,10 @@ class _MesasConfigScreenState extends State<MesasConfigScreen> {
               mesa: mesa,
               nombre: nombreController.text.trim(),
             ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFFF6B00),
-            ),
+            style: AppTheme.primaryButtonStyle,
             child: Text(
               isEditing ? 'Actualizar' : 'Crear',
-              style: const TextStyle(color: Colors.white),
+              style: AppTheme.bodyMedium,
             ),
           ),
         ],
@@ -487,26 +478,27 @@ class _MesasConfigScreenState extends State<MesasConfigScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: Colors.grey[900],
-        title: const Text(
+        backgroundColor: AppTheme.cardBg,
+        title: Text(
           'Confirmar eliminación',
-          style: TextStyle(color: Colors.white),
+          style: AppTheme.headlineMedium,
         ),
         content: Text(
           '¿Está seguro de que desea eliminar la mesa "${mesa.nombre}"?',
-          style: const TextStyle(color: Colors.white),
+          style: AppTheme.bodyMedium,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cancelar', style: TextStyle(color: Colors.grey[400])),
+            style: AppTheme.secondaryButtonStyle,
+            child: Text('Cancelar'),
           ),
           ElevatedButton(
             onPressed: () => _eliminarMesa(mesa),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text(
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.error),
+            child: Text(
               'Eliminar',
-              style: TextStyle(color: Colors.white),
+              style: AppTheme.bodyMedium,
             ),
           ),
         ],

@@ -33,4 +33,33 @@ class IngresoCajaService {
       throw Exception('Error al eliminar ingreso');
     }
   }
+
+  // Obtener ingresos por cuadre de caja - MÉTODO PRINCIPAL PARA LA NUEVA FUNCIONALIDAD
+  Future<List<IngresoCaja>> obtenerPorCuadreCaja(String cuadreId) async {
+    try {
+      print('IngresoCajaService - Obteniendo ingresos para cuadre: $cuadreId');
+      final resp = await http.get(
+        Uri.parse('$_baseUrl/api/ingresos-caja/por-caja/$cuadreId'),
+      );
+      
+      print('IngresoCajaService - Response status: ${resp.statusCode}');
+      
+      if (resp.statusCode == 200) {
+        final List data = json.decode(resp.body);
+        final ingresos = data.map((e) => IngresoCaja.fromJson(e)).toList();
+        
+        // Ordenar por fecha descendente (más recientes primero)
+        ingresos.sort((a, b) => b.fechaIngreso.compareTo(a.fechaIngreso));
+        
+        print('IngresoCajaService - Ingresos encontrados: ${ingresos.length}');
+        return ingresos;
+      } else {
+        print('IngresoCajaService - Error: ${resp.statusCode} - ${resp.body}');
+        throw Exception('Error al obtener ingresos del cuadre: ${resp.statusCode}');
+      }
+    } catch (e) {
+      print('IngresoCajaService - Exception: $e');
+      throw Exception('Error de conexión: $e');
+    }
+  }
 }
