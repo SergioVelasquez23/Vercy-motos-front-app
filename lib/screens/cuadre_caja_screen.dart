@@ -66,7 +66,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
 
   // Services
   final CuadreCajaService _cuadreCajaService = CuadreCajaService();
-  final String baseUrl = 'http://192.168.1.44:8081';
+  final String baseUrl = 'https://sopa-y-carbon.onrender.com';
 
   // Filtros
   String? _selectedCaja;

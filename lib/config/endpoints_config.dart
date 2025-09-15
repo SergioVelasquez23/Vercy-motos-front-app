@@ -8,7 +8,7 @@ class EndpointsConfig {
   EndpointsConfig._internal();
 
   // URL base por defecto (simplificada)
-  String get baseUrl => _customBaseUrl ?? 'http://192.168.1.44:8081';
+  String get baseUrl => _customBaseUrl ?? 'https://sopa-y-carbon.onrender.com';
 
   // Variable para almacenar una URL base personalizada
   String? _customBaseUrl;

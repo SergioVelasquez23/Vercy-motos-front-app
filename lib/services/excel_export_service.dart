@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:excel/excel.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -49,7 +48,6 @@ class ExcelExportService {
         fontFamily: getFontFamily(FontFamily.Calibri),
         fontSize: 11,
         bold: true,
-        backgroundColorHex: ExcelColor.lightGray,
       );
 
       CellStyle dataStyle = CellStyle(
@@ -70,30 +68,44 @@ class ExcelExportService {
         CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow),
         CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: currentRow),
       );
-      var titleCell = sheetObject.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow));
-      titleCell.value = const TextCellValue('CONTADOR DE EFECTIVO');
+      var titleCell = sheetObject.cell(
+        CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow),
+      );
+      titleCell.value = TextCellValue('CONTADOR DE EFECTIVO');
       titleCell.cellStyle = titleStyle;
       currentRow += 2;
 
       // INFORMACIÓN GENERAL
-      var infoCell1 = sheetObject.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow));
-      infoCell1.value = TextCellValue('Fecha: ${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}');
+      var infoCell1 = sheetObject.cell(
+        CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow),
+      );
+      infoCell1.value = TextCellValue(
+        'Fecha: ${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}',
+      );
       infoCell1.cellStyle = dataStyle;
 
-      var infoCell2 = sheetObject.cell(CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: currentRow));
-      infoCell2.value = TextCellValue('Hora: ${DateTime.now().hour.toString().padLeft(2, '0')}:${DateTime.now().minute.toString().padLeft(2, '0')}');
+      var infoCell2 = sheetObject.cell(
+        CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: currentRow),
+      );
+      infoCell2.value = TextCellValue(
+        'Hora: ${DateTime.now().hour.toString().padLeft(2, '0')}:${DateTime.now().minute.toString().padLeft(2, '0')}',
+      );
       infoCell2.cellStyle = dataStyle;
       currentRow++;
 
       if (nombreUsuario != null && nombreUsuario.isNotEmpty) {
-        var userCell = sheetObject.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow));
+        var userCell = sheetObject.cell(
+          CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow),
+        );
         userCell.value = TextCellValue('Usuario: $nombreUsuario');
         userCell.cellStyle = dataStyle;
         currentRow++;
       }
 
       if (observaciones != null && observaciones.isNotEmpty) {
-        var obsCell = sheetObject.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow));
+        var obsCell = sheetObject.cell(
+          CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow),
+        );
         obsCell.value = TextCellValue('Observaciones: $observaciones');
         obsCell.cellStyle = dataStyle;
         currentRow++;
@@ -104,7 +116,9 @@ class ExcelExportService {
       // ENCABEZADOS
       var headers = ['Tipo', 'Denominación', 'Cantidad', 'Subtotal'];
       for (int i = 0; i < headers.length; i++) {
-        var headerCell = sheetObject.cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: currentRow));
+        var headerCell = sheetObject.cell(
+          CellIndex.indexByColumnRow(columnIndex: i, rowIndex: currentRow),
+        );
         headerCell.value = TextCellValue(headers[i]);
         headerCell.cellStyle = headerStyle;
       }
@@ -113,7 +127,7 @@ class ExcelExportService {
       // SEPARAR BILLETES Y MONEDAS
       var billetes = denominaciones.where((d) => d.tipo == 'billete').toList();
       var monedas = denominaciones.where((d) => d.tipo == 'moneda').toList();
-      
+
       double totalBilletes = 0;
       double totalMonedas = 0;
 
@@ -124,30 +138,40 @@ class ExcelExportService {
           CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow),
           CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: currentRow),
         );
-        var billetesTitle = sheetObject.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow));
-        billetesTitle.value = const TextCellValue('BILLETES');
+        var billetesTitle = sheetObject.cell(
+          CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow),
+        );
+        billetesTitle.value = TextCellValue('BILLETES');
         billetesTitle.cellStyle = subtotalStyle;
         currentRow++;
 
         for (var billete in billetes) {
           if (billete.cantidad > 0) {
             // Tipo
-            var tipoCell = sheetObject.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow));
+            var tipoCell = sheetObject.cell(
+              CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow),
+            );
             tipoCell.value = TextCellValue(billete.tipo.toUpperCase());
             tipoCell.cellStyle = dataStyle;
 
             // Denominación
-            var denomCell = sheetObject.cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: currentRow));
+            var denomCell = sheetObject.cell(
+              CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: currentRow),
+            );
             denomCell.value = TextCellValue(billete.valorFormateado);
             denomCell.cellStyle = dataStyle;
 
             // Cantidad
-            var cantCell = sheetObject.cell(CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: currentRow));
+            var cantCell = sheetObject.cell(
+              CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: currentRow),
+            );
             cantCell.value = IntCellValue(billete.cantidad);
             cantCell.cellStyle = dataStyle;
 
             // Subtotal
-            var subtotalCell = sheetObject.cell(CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: currentRow));
+            var subtotalCell = sheetObject.cell(
+              CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: currentRow),
+            );
             subtotalCell.value = TextCellValue(formatCurrency(billete.total));
             subtotalCell.cellStyle = dataStyle;
 
@@ -157,11 +181,15 @@ class ExcelExportService {
         }
 
         // Total billetes
-        var totalBilletesCell1 = sheetObject.cell(CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: currentRow));
-        totalBilletesCell1.value = const TextCellValue('TOTAL BILLETES:');
+        var totalBilletesCell1 = sheetObject.cell(
+          CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: currentRow),
+        );
+        totalBilletesCell1.value = TextCellValue('TOTAL BILLETES:');
         totalBilletesCell1.cellStyle = subtotalStyle;
 
-        var totalBilletesCell2 = sheetObject.cell(CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: currentRow));
+        var totalBilletesCell2 = sheetObject.cell(
+          CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: currentRow),
+        );
         totalBilletesCell2.value = TextCellValue(formatCurrency(totalBilletes));
         totalBilletesCell2.cellStyle = subtotalStyle;
         currentRow += 2;
@@ -174,30 +202,40 @@ class ExcelExportService {
           CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow),
           CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: currentRow),
         );
-        var monedasTitle = sheetObject.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow));
-        monedasTitle.value = const TextCellValue('MONEDAS');
+        var monedasTitle = sheetObject.cell(
+          CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow),
+        );
+        monedasTitle.value = TextCellValue('MONEDAS');
         monedasTitle.cellStyle = subtotalStyle;
         currentRow++;
 
         for (var moneda in monedas) {
           if (moneda.cantidad > 0) {
             // Tipo
-            var tipoCell = sheetObject.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow));
+            var tipoCell = sheetObject.cell(
+              CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow),
+            );
             tipoCell.value = TextCellValue(moneda.tipo.toUpperCase());
             tipoCell.cellStyle = dataStyle;
 
             // Denominación
-            var denomCell = sheetObject.cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: currentRow));
+            var denomCell = sheetObject.cell(
+              CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: currentRow),
+            );
             denomCell.value = TextCellValue(moneda.valorFormateado);
             denomCell.cellStyle = dataStyle;
 
             // Cantidad
-            var cantCell = sheetObject.cell(CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: currentRow));
+            var cantCell = sheetObject.cell(
+              CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: currentRow),
+            );
             cantCell.value = IntCellValue(moneda.cantidad);
             cantCell.cellStyle = dataStyle;
 
             // Subtotal
-            var subtotalCell = sheetObject.cell(CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: currentRow));
+            var subtotalCell = sheetObject.cell(
+              CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: currentRow),
+            );
             subtotalCell.value = TextCellValue(formatCurrency(moneda.total));
             subtotalCell.cellStyle = dataStyle;
 
@@ -207,11 +245,15 @@ class ExcelExportService {
         }
 
         // Total monedas
-        var totalMonedasCell1 = sheetObject.cell(CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: currentRow));
-        totalMonedasCell1.value = const TextCellValue('TOTAL MONEDAS:');
+        var totalMonedasCell1 = sheetObject.cell(
+          CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: currentRow),
+        );
+        totalMonedasCell1.value = TextCellValue('TOTAL MONEDAS:');
         totalMonedasCell1.cellStyle = subtotalStyle;
 
-        var totalMonedasCell2 = sheetObject.cell(CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: currentRow));
+        var totalMonedasCell2 = sheetObject.cell(
+          CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: currentRow),
+        );
         totalMonedasCell2.value = TextCellValue(formatCurrency(totalMonedas));
         totalMonedasCell2.cellStyle = subtotalStyle;
         currentRow += 2;
@@ -222,12 +264,18 @@ class ExcelExportService {
         CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow),
         CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: currentRow),
       );
-      var totalGeneralCell1 = sheetObject.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow));
-      totalGeneralCell1.value = const TextCellValue('TOTAL GENERAL:');
+      var totalGeneralCell1 = sheetObject.cell(
+        CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: currentRow),
+      );
+      totalGeneralCell1.value = TextCellValue('TOTAL GENERAL:');
       totalGeneralCell1.cellStyle = totalStyle;
 
-      var totalGeneralCell2 = sheetObject.cell(CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: currentRow));
-      totalGeneralCell2.value = TextCellValue(formatCurrency(totalBilletes + totalMonedas));
+      var totalGeneralCell2 = sheetObject.cell(
+        CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: currentRow),
+      );
+      totalGeneralCell2.value = TextCellValue(
+        formatCurrency(totalBilletes + totalMonedas),
+      );
       totalGeneralCell2.cellStyle = totalStyle;
 
       // Generar el archivo
@@ -242,9 +290,8 @@ class ExcelExportService {
 
       // Guardar archivo
       String? filePath = await _saveExcelFile(fileBytes, fileName);
-      
-      return filePath;
 
+      return filePath;
     } catch (e) {
       print('❌ Error exportando Excel: $e');
       return null;
@@ -252,7 +299,10 @@ class ExcelExportService {
   }
 
   /// Guarda el archivo Excel en el dispositivo
-  static Future<String?> _saveExcelFile(List<int> fileBytes, String fileName) async {
+  static Future<String?> _saveExcelFile(
+    List<int> fileBytes,
+    String fileName,
+  ) async {
     try {
       // Solicitar permisos de almacenamiento
       if (Platform.isAndroid) {
@@ -288,7 +338,6 @@ class ExcelExportService {
 
       print('✅ Archivo Excel guardado en: $filePath');
       return filePath;
-
     } catch (e) {
       print('❌ Error guardando archivo: $e');
       return null;
@@ -301,7 +350,8 @@ class ExcelExportService {
       final XFile file = XFile(filePath);
       await Share.shareXFiles(
         [file],
-        text: 'Contador de Efectivo - ${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}',
+        text:
+            'Contador de Efectivo - ${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}',
         subject: 'Reporte de Contador de Efectivo',
       );
       return true;
@@ -317,11 +367,17 @@ class ExcelExportService {
   }
 
   /// Calcula estadísticas del conteo
-  static Map<String, dynamic> calcularEstadisticas(List<DenominacionEfectivo> denominaciones) {
+  static Map<String, dynamic> calcularEstadisticas(
+    List<DenominacionEfectivo> denominaciones,
+  ) {
     int totalItems = denominaciones.where((d) => d.cantidad > 0).length;
-    int totalBilletes = denominaciones.where((d) => d.tipo == 'billete' && d.cantidad > 0).length;
-    int totalMonedas = denominaciones.where((d) => d.tipo == 'moneda' && d.cantidad > 0).length;
-    
+    int totalBilletes = denominaciones
+        .where((d) => d.tipo == 'billete' && d.cantidad > 0)
+        .length;
+    int totalMonedas = denominaciones
+        .where((d) => d.tipo == 'moneda' && d.cantidad > 0)
+        .length;
+
     double valorTotal = ContadorEfectivo.calcularTotal(denominaciones);
     var totalesPorTipo = ContadorEfectivo.obtenerTotalesPorTipo(denominaciones);
 
