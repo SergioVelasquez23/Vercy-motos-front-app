@@ -12,14 +12,151 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  // Controladores para registro
+  // Services and Controllers
+  final AuthService authService = AuthService();
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+  final TextEditingController codeController = TextEditingController();
   final TextEditingController registerNameController = TextEditingController();
   final TextEditingController registerEmailController = TextEditingController();
   final TextEditingController registerPasswordController =
       TextEditingController();
 
-  Future<void> _showRegisterDialog() async {
+  // State variables
+  bool showCodeField = false;
+  String? errorMessage;
 
+  @override
+  void initState() {
+    super.initState();
+    print('🟢 LoginScreen initState: pantalla de login inicializada');
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    print('🟡 LoginScreen didChangeDependencies: dependencias cargadas');
+  }
+
+  @override
+  void dispose() {
+    emailController.dispose();
+    passwordController.dispose();
+    codeController.dispose();
+    registerNameController.dispose();
+    registerEmailController.dispose();
+    registerPasswordController.dispose();
+    print('🔴 LoginScreen dispose: pantalla de login destruida');
+    super.dispose();
+  }
+
+  void _login() async {
+    setState(() {
+      errorMessage = null;
+    });
+
+    try {
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+
+      print('🔐 Intentando iniciar sesión...');
+      final response = await authService.iniciarSesionWithResponse(
+        context,
+        emailController.text,
+        passwordController.text,
+      );
+      print('Respuesta del backend: $response');
+
+      if (response != null) {
+        if (response['error'] != null) {
+          setState(() {
+            errorMessage = response['error'];
+          });
+        } else if (response['requiresCode'] == true) {
+          setState(() {
+            showCodeField = true;
+          });
+        } else if (response['token'] != null) {
+          print('✅ Login exitoso, token recibido');
+          final token = response['token'];
+
+          print(
+            '⚡ Procesando login directamente, omitiendo verificación de token',
+          );
+
+          try {
+            await userProvider.setToken(token);
+            await Future.delayed(Duration(milliseconds: 100));
+
+            print('👤 Verificación final de roles:');
+            print('👤 isMesero: ${userProvider.isMesero}');
+            print('👤 isAdmin: ${userProvider.isAdmin}');
+            print('👤 roles: ${userProvider.roles}');
+
+            if (userProvider.isMesero && !userProvider.isAdmin) {
+              print('👤 ✅ Usuario es mesero, redirigiendo a mesas');
+              Navigator.pushReplacementNamed(context, '/mesas');
+            } else {
+              print('👤 ✅ Usuario es admin, redirigiendo a dashboard');
+              Navigator.pushReplacementNamed(context, '/dashboard');
+            }
+          } catch (e) {
+            print('❌ Error al procesar roles: $e');
+            setState(() {
+              errorMessage = 'Error interno. Inténtalo de nuevo.';
+            });
+          }
+        }
+      } else {
+        setState(() {
+          errorMessage = 'Error de conexión. Inténtalo de nuevo.';
+        });
+      }
+    } catch (e) {
+      print('❌ Error en login: $e');
+      setState(() {
+        errorMessage = 'Error inesperado: $e';
+      });
+    }
+  }
+
+  void _validateCode() async {
+    setState(() {
+      errorMessage = null;
+    });
+
+    try {
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      final response = await authService.validarCodigo(codeController.text);
+      if (response != null && response['token'] != null) {
+        await userProvider.setToken(response['token']);
+
+        await Future.delayed(Duration(milliseconds: 100));
+
+        print('👤 Verificación final de roles en validación código:');
+        print('👤 isMesero: ${userProvider.isMesero}');
+        print('👤 isAdmin: ${userProvider.isAdmin}');
+        print('👤 roles: ${userProvider.roles}');
+
+        if (userProvider.isMesero && !userProvider.isAdmin) {
+          print('👤 ✅ Usuario es mesero, redirigiendo a mesas');
+          Navigator.pushReplacementNamed(context, '/mesas');
+        } else {
+          print('👤 ✅ Usuario es admin, redirigiendo a dashboard');
+          Navigator.pushReplacementNamed(context, '/dashboard');
+        }
+      } else {
+        setState(() {
+          errorMessage = 'Código incorrecto o expirado.';
+        });
+      }
+    } catch (e) {
+      setState(() {
+        errorMessage = 'Error: $e';
+      });
+    }
+  }
+
+  Future<void> _showRegisterDialog() async {
     String? registerError;
     bool isLoading = false;
     await showDialog(
@@ -42,203 +179,167 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Título
                       Row(
                         children: [
                           Container(
                             padding: EdgeInsets.all(AppTheme.spacingSmall),
                             decoration: BoxDecoration(
                               color: AppTheme.primary.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                              borderRadius: BorderRadius.circular(
+                                AppTheme.radiusSmall,
+                              ),
                             ),
-                            child: Icon(Icons.person_add, color: AppTheme.primary, size: 24),
+                            child: Icon(
+                              Icons.person_add,
+                              color: AppTheme.primary,
+                              size: 24,
+                            ),
                           ),
                           SizedBox(width: AppTheme.spacingMedium),
-                          Text(
-                            'Crear cuenta',
-                            style: AppTheme.headlineMedium,
-                          ),
+                          Text('Crear cuenta', style: AppTheme.headlineMedium),
                         ],
                       ),
                       SizedBox(height: AppTheme.spacingLarge),
-
-                      // Campo Nombre
+                      if (registerError != null) ...[
+                        Container(
+                          width: double.infinity,
+                          padding: EdgeInsets.all(AppTheme.spacingMedium),
+                          decoration: BoxDecoration(
+                            color: AppTheme.error.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(
+                              AppTheme.radiusMedium,
+                            ),
+                            border: Border.all(
+                              color: AppTheme.error.withOpacity(0.3),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.error_outline,
+                                color: AppTheme.error,
+                                size: 20,
+                              ),
+                              SizedBox(width: AppTheme.spacingSmall),
+                              Expanded(
+                                child: Text(
+                                  registerError!,
+                                  style: AppTheme.bodySmall.copyWith(
+                                    color: AppTheme.error,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(height: AppTheme.spacingMedium),
+                      ],
                       TextFormField(
                         controller: registerNameController,
                         style: AppTheme.bodyMedium,
                         decoration: InputDecoration(
                           labelText: 'Nombre completo',
-                          labelStyle: AppTheme.labelMedium.copyWith(color: AppTheme.textSecondary),
                           prefixIcon: Icon(
                             Icons.person_outline,
                             color: AppTheme.primary,
                           ),
-                          filled: true,
-                          fillColor: AppTheme.surfaceDark,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                            borderSide: BorderSide(color: AppTheme.textMuted.withOpacity(0.3)),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                            borderSide: BorderSide(color: AppTheme.textMuted.withOpacity(0.3)),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                            borderSide: BorderSide(color: AppTheme.primary, width: 2),
-                          ),
                         ),
                       ),
                       SizedBox(height: AppTheme.spacingMedium),
-
-                      // Campo Email
                       TextFormField(
                         controller: registerEmailController,
                         keyboardType: TextInputType.emailAddress,
                         style: AppTheme.bodyMedium,
                         decoration: InputDecoration(
                           labelText: 'Correo electrónico',
-                          labelStyle: AppTheme.labelMedium.copyWith(color: AppTheme.textSecondary),
                           prefixIcon: Icon(
                             Icons.email_outlined,
                             color: AppTheme.primary,
                           ),
-                          filled: true,
-                          fillColor: AppTheme.surfaceDark,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                            borderSide: BorderSide(color: AppTheme.textMuted.withOpacity(0.3)),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                            borderSide: BorderSide(color: AppTheme.textMuted.withOpacity(0.3)),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                            borderSide: BorderSide(color: AppTheme.primary, width: 2),
-                          ),
                         ),
                       ),
                       SizedBox(height: AppTheme.spacingMedium),
-
-                      // Campo Contraseña
                       TextFormField(
                         controller: registerPasswordController,
                         obscureText: true,
                         style: AppTheme.bodyMedium,
                         decoration: InputDecoration(
                           labelText: 'Contraseña',
-                          labelStyle: AppTheme.labelMedium.copyWith(color: AppTheme.textSecondary),
                           prefixIcon: Icon(
                             Icons.lock_outline,
                             color: AppTheme.primary,
                           ),
-                          filled: true,
-                          fillColor: AppTheme.surfaceDark,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                            borderSide: BorderSide(color: AppTheme.textMuted.withOpacity(0.3)),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                            borderSide: BorderSide(color: AppTheme.textMuted.withOpacity(0.3)),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                            borderSide: BorderSide(color: AppTheme.primary, width: 2),
-                          ),
                         ),
                       ),
-
-                      if (registerError != null) ...[
-                        SizedBox(height: AppTheme.spacingMedium),
-                        Container(
-                          width: double.infinity,
-                          padding: EdgeInsets.all(AppTheme.spacingMedium),
-                          decoration: BoxDecoration(
-                            color: AppTheme.error.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-                            border: Border.all(
-                              color: AppTheme.error.withOpacity(0.3),
-                              width: 1,
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(Icons.error_outline, color: AppTheme.error, size: 20),
-                              SizedBox(width: AppTheme.spacingSmall),
-                              Expanded(
-                                child: Text(
-                                  registerError!,
-                                  style: AppTheme.bodySmall.copyWith(color: AppTheme.error),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-
                       SizedBox(height: AppTheme.spacingLarge),
-
-                      // Botones
                       Row(
                         children: [
                           Expanded(
                             child: TextButton(
                               onPressed: () => Navigator.pop(context),
-                              style: AppTheme.secondaryButtonStyle,
-                              child: Text(
-                                'Cancelar',
-                                style: AppTheme.labelLarge.copyWith(color: AppTheme.textSecondary),
-                              ),
+                              child: Text('Cancelar'),
                             ),
                           ),
                           SizedBox(width: AppTheme.spacingMedium),
                           Expanded(
-                            flex: 2,
                             child: ElevatedButton(
                               onPressed: isLoading
                                   ? null
                                   : () async {
-                                      setState(() => isLoading = true);
-                                      final result = await authService
-                                          .registerUser(
-                                            registerNameController.text,
-                                            registerEmailController.text,
-                                            registerPasswordController.text,
+                                      setState(() {
+                                        isLoading = true;
+                                        registerError = null;
+                                      });
+
+                                      try {
+                                        final result = await authService
+                                            .registerUser(
+                                              registerNameController.text,
+                                              registerEmailController.text,
+                                              registerPasswordController.text,
+                                            );
+
+                                        if (result['success'] == true) {
+                                          Navigator.pop(context);
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                'Cuenta creada exitosamente',
+                                              ),
+                                              backgroundColor: AppTheme.success,
+                                            ),
                                           );
-                                      setState(() => isLoading = false);
-                                      if (result == true) {
-                                        Navigator.pop(context);
+                                          registerNameController.clear();
+                                          registerEmailController.clear();
+                                          registerPasswordController.clear();
+                                        } else {
+                                          setState(() {
+                                            registerError =
+                                                result['message'] ??
+                                                'Error al crear la cuenta';
+                                          });
+                                        }
+                                      } catch (e) {
                                         setState(() {
-                                          errorMessage =
-                                              'Usuario registrado correctamente. Ahora puedes iniciar sesión.';
+                                          registerError = 'Error: $e';
                                         });
-                                      } else {
+                                      } finally {
                                         setState(() {
-                                          registerError = result is String
-                                              ? result
-                                              : 'Error al registrar usuario.';
+                                          isLoading = false;
                                         });
                                       }
                                     },
-                              style: AppTheme.primaryButtonStyle,
                               child: isLoading
                                   ? SizedBox(
                                       width: 20,
                                       height: 20,
                                       child: CircularProgressIndicator(
                                         strokeWidth: 2,
-                                        color: Colors.white,
                                       ),
                                     )
-                                  : Text(
-                                      'Registrarse',
-                                      style: AppTheme.labelLarge.copyWith(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
+                                  : Text('Crear cuenta'),
                             ),
                           ),
                         ],
@@ -254,143 +355,9 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  final AuthService authService = AuthService();
-  final TextEditingController emailController = TextEditingController();
-  final TextEditingController passwordController = TextEditingController();
-  final TextEditingController codeController = TextEditingController();
-
-  bool showCodeField = false;
-  String? errorMessage;
-
-  void _login() async {
-    setState(() {
-      errorMessage = null;
-    });
-
-    try {
-      final userProvider = Provider.of<UserProvider>(context, listen: false);
-
-      print('🔐 Intentando iniciar sesión...');
-      final response = await authService.iniciarSesionWithResponse(
-        context,
-        emailController.text,
-        passwordController.text,
-      );
-      print('Respuesta del backend: $response');
-
-      if (response != null) {
-        if (response['error'] != null) {
-          // Mostrar error específico devuelto por el servicio
-          setState(() {
-            errorMessage = response['error'];
-          });
-        } else if (response['requiresCode'] == true) {
-          // Mostrar campo de código si es necesario
-          setState(() {
-            showCodeField = true;
-          });
-        } else if (response['token'] != null) {
-          print('✅ Login exitoso, token recibido');
-          final token = response['token'];
-
-          // Saltarse la verificación del token y proceder directamente
-          print(
-            '⚡ Procesando login directamente, omitiendo verificación de token',
-          );
-
-          try {
-            // Obtener información del usuario del response
-            final usuario = response['user'];
-            print('👤 Información del usuario: $usuario');
-
-            // Update user provider with token
-            await userProvider.setToken(token);
-            print('✅ Token guardado en UserProvider');
-
-            // Esperar un poco para que se procesen los roles del JWT
-            await Future.delayed(Duration(milliseconds: 100));
-
-            // Verificar roles nuevamente después del delay
-            print('👤 Verificación final de roles:');
-            print('👤 isMesero: ${userProvider.isMesero}');
-            print('👤 isAdmin: ${userProvider.isAdmin}');
-            print('👤 roles: ${userProvider.roles}');
-
-            // Redirigir según el rol del usuario
-            if (userProvider.isMesero && !userProvider.isAdmin) {
-              print('👤 ✅ Usuario es mesero, redirigiendo a mesas');
-              Navigator.pushReplacementNamed(context, '/mesas');
-            } else {
-              print('👤 ✅ Usuario es admin, redirigiendo a dashboard');
-              Navigator.pushReplacementNamed(context, '/dashboard');
-            }
-          } catch (e) {
-            print('❌ Error procesando login: $e');
-            setState(() {
-              errorMessage = 'Error procesando autenticación: $e';
-            });
-          }
-        } else {
-          setState(() {
-            errorMessage = 'Usuario o contraseña incorrectos.';
-          });
-        }
-      } else {
-        setState(() {
-          errorMessage = 'No se pudo procesar la respuesta del servidor.';
-        });
-      }
-    } catch (e) {
-      print('❌ Excepción durante el login: $e');
-      setState(() {
-        errorMessage = 'Error de conexión: $e';
-      });
-    }
-  }
-
-  void _validateCode() async {
-    setState(() {
-      errorMessage = null;
-    });
-
-    try {
-      final userProvider = Provider.of<UserProvider>(context, listen: false);
-      final response = await authService.validarCodigo(codeController.text);
-      if (response != null && response['token'] != null) {
-        // Update the UserProvider with token instead of just saving it
-        await userProvider.setToken(response['token']);
-
-        // Esperar un poco para que se procesen los roles del JWT
-        await Future.delayed(Duration(milliseconds: 100));
-
-        // Verificar roles nuevamente después del delay
-        print('👤 Verificación final de roles en validación código:');
-        print('👤 isMesero: ${userProvider.isMesero}');
-        print('👤 isAdmin: ${userProvider.isAdmin}');
-        print('👤 roles: ${userProvider.roles}');
-
-        // Redirigir según el rol del usuario
-        if (userProvider.isMesero && !userProvider.isAdmin) {
-          print('👤 ✅ Usuario es mesero, redirigiendo a mesas');
-          Navigator.pushReplacementNamed(context, '/mesas');
-        } else {
-          print('👤 ✅ Usuario es admin, redirigiendo a dashboard');
-          Navigator.pushReplacementNamed(context, '/dashboard');
-        }
-      } else {
-        setState(() {
-          errorMessage = 'Código incorrecto o expirado.';
-        });
-      }
-    } catch (e) {
-      setState(() {
-        errorMessage = 'Error: $e';
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
+    print('🔵 LoginScreen build: construyendo pantalla de login');
     return Scaffold(
       backgroundColor: AppTheme.backgroundDark,
       body: SafeArea(
@@ -412,14 +379,18 @@ class _LoginScreenState extends State<LoginScreen> {
                       width: context.isMobile ? 120 : 140,
                       height: context.isMobile ? 120 : 140,
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
+                        borderRadius: BorderRadius.circular(
+                          AppTheme.radiusLarge,
+                        ),
                         border: Border.all(
                           color: AppTheme.primary.withOpacity(0.2),
                           width: 2,
                         ),
                       ),
                       child: ClipRRect(
-                        borderRadius: BorderRadius.circular(AppTheme.radiusLarge - 2),
+                        borderRadius: BorderRadius.circular(
+                          AppTheme.radiusLarge - 2,
+                        ),
                         child: Image.asset(
                           'images/logo.png',
                           fit: BoxFit.cover,
@@ -427,7 +398,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             return Container(
                               decoration: BoxDecoration(
                                 color: AppTheme.primary.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(AppTheme.radiusLarge - 2),
+                                borderRadius: BorderRadius.circular(
+                                  AppTheme.radiusLarge - 2,
+                                ),
                               ),
                               child: Icon(
                                 Icons.restaurant,
@@ -445,7 +418,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
                   // Tarjeta principal de login
                   Container(
-                    padding: EdgeInsets.all(context.isMobile ? AppTheme.spacingLarge : AppTheme.spacingXLarge),
+                    padding: EdgeInsets.all(
+                      context.isMobile
+                          ? AppTheme.spacingLarge
+                          : AppTheme.spacingXLarge,
+                    ),
                     decoration: AppTheme.elevatedCardDecoration,
                     child: Column(
                       children: [
@@ -472,7 +449,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           style: AppTheme.bodyMedium,
                           decoration: InputDecoration(
                             labelText: 'Correo electrónico',
-                            labelStyle: AppTheme.labelMedium.copyWith(color: AppTheme.textSecondary),
+                            labelStyle: AppTheme.labelMedium.copyWith(
+                              color: AppTheme.textSecondary,
+                            ),
                             prefixIcon: Icon(
                               Icons.email_outlined,
                               color: AppTheme.primary,
@@ -480,16 +459,29 @@ class _LoginScreenState extends State<LoginScreen> {
                             filled: true,
                             fillColor: AppTheme.surfaceDark,
                             border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                              borderSide: BorderSide(color: AppTheme.textMuted.withOpacity(0.3)),
+                              borderRadius: BorderRadius.circular(
+                                AppTheme.radiusMedium,
+                              ),
+                              borderSide: BorderSide(
+                                color: AppTheme.textMuted.withOpacity(0.3),
+                              ),
                             ),
                             enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                              borderSide: BorderSide(color: AppTheme.textMuted.withOpacity(0.3)),
+                              borderRadius: BorderRadius.circular(
+                                AppTheme.radiusMedium,
+                              ),
+                              borderSide: BorderSide(
+                                color: AppTheme.textMuted.withOpacity(0.3),
+                              ),
                             ),
                             focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                              borderSide: BorderSide(color: AppTheme.primary, width: 2),
+                              borderRadius: BorderRadius.circular(
+                                AppTheme.radiusMedium,
+                              ),
+                              borderSide: BorderSide(
+                                color: AppTheme.primary,
+                                width: 2,
+                              ),
                             ),
                           ),
                         ),
@@ -503,7 +495,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           style: AppTheme.bodyMedium,
                           decoration: InputDecoration(
                             labelText: 'Contraseña',
-                            labelStyle: AppTheme.labelMedium.copyWith(color: AppTheme.textSecondary),
+                            labelStyle: AppTheme.labelMedium.copyWith(
+                              color: AppTheme.textSecondary,
+                            ),
                             prefixIcon: Icon(
                               Icons.lock_outline,
                               color: AppTheme.primary,
@@ -511,16 +505,29 @@ class _LoginScreenState extends State<LoginScreen> {
                             filled: true,
                             fillColor: AppTheme.surfaceDark,
                             border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                              borderSide: BorderSide(color: AppTheme.textMuted.withOpacity(0.3)),
+                              borderRadius: BorderRadius.circular(
+                                AppTheme.radiusMedium,
+                              ),
+                              borderSide: BorderSide(
+                                color: AppTheme.textMuted.withOpacity(0.3),
+                              ),
                             ),
                             enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                              borderSide: BorderSide(color: AppTheme.textMuted.withOpacity(0.3)),
+                              borderRadius: BorderRadius.circular(
+                                AppTheme.radiusMedium,
+                              ),
+                              borderSide: BorderSide(
+                                color: AppTheme.textMuted.withOpacity(0.3),
+                              ),
                             ),
                             focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                              borderSide: BorderSide(color: AppTheme.primary, width: 2),
+                              borderRadius: BorderRadius.circular(
+                                AppTheme.radiusMedium,
+                              ),
+                              borderSide: BorderSide(
+                                color: AppTheme.primary,
+                                width: 2,
+                              ),
                             ),
                           ),
                         ),
@@ -555,7 +562,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: RichText(
                             text: TextSpan(
                               text: '¿No tienes cuenta? ',
-                              style: AppTheme.bodyMedium.copyWith(color: AppTheme.textSecondary),
+                              style: AppTheme.bodyMedium.copyWith(
+                                color: AppTheme.textSecondary,
+                              ),
                               children: [
                                 TextSpan(
                                   text: 'Regístrate',
@@ -578,7 +587,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             style: AppTheme.bodyMedium,
                             decoration: InputDecoration(
                               labelText: 'Código de verificación',
-                              labelStyle: AppTheme.labelMedium.copyWith(color: AppTheme.textSecondary),
+                              labelStyle: AppTheme.labelMedium.copyWith(
+                                color: AppTheme.textSecondary,
+                              ),
                               prefixIcon: Icon(
                                 Icons.security,
                                 color: AppTheme.warning,
@@ -586,16 +597,29 @@ class _LoginScreenState extends State<LoginScreen> {
                               filled: true,
                               fillColor: AppTheme.surfaceDark,
                               border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                                borderSide: BorderSide(color: AppTheme.warning.withOpacity(0.3)),
+                                borderRadius: BorderRadius.circular(
+                                  AppTheme.radiusMedium,
+                                ),
+                                borderSide: BorderSide(
+                                  color: AppTheme.warning.withOpacity(0.3),
+                                ),
                               ),
                               enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                                borderSide: BorderSide(color: AppTheme.warning.withOpacity(0.3)),
+                                borderRadius: BorderRadius.circular(
+                                  AppTheme.radiusMedium,
+                                ),
+                                borderSide: BorderSide(
+                                  color: AppTheme.warning.withOpacity(0.3),
+                                ),
                               ),
                               focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                                borderSide: BorderSide(color: AppTheme.warning, width: 2),
+                                borderRadius: BorderRadius.circular(
+                                  AppTheme.radiusMedium,
+                                ),
+                                borderSide: BorderSide(
+                                  color: AppTheme.warning,
+                                  width: 2,
+                                ),
                               ),
                             ),
                           ),
@@ -609,7 +633,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                 backgroundColor: AppTheme.warning,
                                 foregroundColor: Colors.black,
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                                  borderRadius: BorderRadius.circular(
+                                    AppTheme.radiusMedium,
+                                  ),
                                 ),
                                 elevation: 2,
                               ),
@@ -632,7 +658,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             padding: EdgeInsets.all(AppTheme.spacingMedium),
                             decoration: BoxDecoration(
                               color: AppTheme.error.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                              borderRadius: BorderRadius.circular(
+                                AppTheme.radiusMedium,
+                              ),
                               border: Border.all(
                                 color: AppTheme.error.withOpacity(0.3),
                                 width: 1,

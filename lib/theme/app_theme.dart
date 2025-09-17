@@ -8,19 +8,25 @@ class AppTheme {
   static const Color surfaceDark = Color(0xFF2A2A2A);
   static const Color cardBg = Color(0xFF313131);
   static const Color cardElevated = Color(0xFF3A3A3A);
-  
+
   // ===== COLORES DE TEXTO =====
   static const Color textPrimary = Color(0xFFFFFFFF);
-  static const Color textSecondary = Color(0xFFE0E0E0);  // Mejorado de B0B0B0 a E0E0E0 para mejor contraste
-  static const Color textMuted = Color(0xFFC0C0C0);      // Mejorado de 808080 a C0C0C0 para mejor legibilidad
-  static const Color textDark = Color(0xFFFFFFFF);       // Blanco para fondos oscuros
-  static const Color textLight = Color(0xFFE8E8E8);      // Gris muy claro para excelente contraste
-  
+  static const Color textSecondary = Color(
+    0xFFE0E0E0,
+  ); // Mejorado de B0B0B0 a E0E0E0 para mejor contraste
+  static const Color textMuted = Color(
+    0xFFC0C0C0,
+  ); // Mejorado de 808080 a C0C0C0 para mejor legibilidad
+  static const Color textDark = Color(0xFFFFFFFF); // Blanco para fondos oscuros
+  static const Color textLight = Color(
+    0xFFE8E8E8,
+  ); // Gris muy claro para excelente contraste
+
   // ===== COLORES DE ACENTO =====
   static const Color primary = Color(0xFFFF6B00);
   static const Color primaryLight = Color(0xFFFF8F3D);
   static const Color primaryDark = Color(0xFFE55A00);
-  
+
   // ===== COLORES DE ESTADO =====
   static const Color success = Color(0xFF4CAF50);
   static const Color warning = Color(0xFFFF9800);
@@ -34,7 +40,7 @@ class AppTheme {
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
-  
+
   static const LinearGradient cardGradient = LinearGradient(
     colors: [cardBg, cardElevated],
     begin: Alignment.topLeft,
@@ -49,7 +55,7 @@ class AppTheme {
       offset: const Offset(0, 4),
     ),
   ];
-  
+
   static List<BoxShadow> get elevatedShadow => [
     BoxShadow(
       color: Colors.black.withOpacity(0.3),
@@ -57,7 +63,7 @@ class AppTheme {
       offset: const Offset(0, 10),
     ),
   ];
-  
+
   static List<BoxShadow> get primaryShadow => [
     BoxShadow(
       color: primary.withOpacity(0.3),
@@ -86,47 +92,47 @@ class AppTheme {
     fontWeight: FontWeight.w700,
     letterSpacing: 0.5,
   );
-  
+
   static const TextStyle headlineMedium = TextStyle(
     color: textPrimary,
     fontSize: 20,
     fontWeight: FontWeight.w600,
     letterSpacing: 0.3,
   );
-  
+
   static const TextStyle headlineSmall = TextStyle(
     color: textPrimary,
     fontSize: 18,
     fontWeight: FontWeight.w600,
   );
-  
+
   static const TextStyle bodyLarge = TextStyle(
     color: textPrimary,
     fontSize: 16,
     fontWeight: FontWeight.w500,
     height: 1.4,
   );
-  
+
   static const TextStyle bodyMedium = TextStyle(
     color: textPrimary,
     fontSize: 14,
     fontWeight: FontWeight.w400,
     height: 1.3,
   );
-  
+
   static const TextStyle bodySmall = TextStyle(
     color: textSecondary,
     fontSize: 12,
     fontWeight: FontWeight.w400,
     height: 1.2,
   );
-  
+
   static const TextStyle labelLarge = TextStyle(
     color: textSecondary,
     fontSize: 14,
     fontWeight: FontWeight.w500,
   );
-  
+
   static const TextStyle labelMedium = TextStyle(
     color: textSecondary,
     fontSize: 12,
@@ -137,30 +143,21 @@ class AppTheme {
   static BoxDecoration get cardDecoration => BoxDecoration(
     color: cardBg,
     borderRadius: BorderRadius.circular(radiusMedium),
-    border: Border.all(
-      color: textMuted.withOpacity(0.2),
-      width: 1,
-    ),
+    border: Border.all(color: textMuted.withOpacity(0.2), width: 1),
     boxShadow: cardShadow,
   );
-  
+
   static BoxDecoration get elevatedCardDecoration => BoxDecoration(
     gradient: cardGradient,
     borderRadius: BorderRadius.circular(radiusLarge),
-    border: Border.all(
-      color: primary.withOpacity(0.3),
-      width: 1.5,
-    ),
+    border: Border.all(color: primary.withOpacity(0.3), width: 1.5),
     boxShadow: elevatedShadow,
   );
-  
+
   static BoxDecoration get inputDecoration => BoxDecoration(
     color: surfaceDark,
     borderRadius: BorderRadius.circular(radiusMedium),
-    border: Border.all(
-      color: textMuted.withOpacity(0.3),
-      width: 1,
-    ),
+    border: Border.all(color: textMuted.withOpacity(0.3), width: 1),
   );
 
   // ===== ESTILOS DE BOTÓN =====
@@ -175,12 +172,9 @@ class AppTheme {
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(radiusMedium),
     ),
-    textStyle: const TextStyle(
-      fontSize: 16,
-      fontWeight: FontWeight.w600,
-    ),
+    textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
   );
-  
+
   static ButtonStyle get secondaryButtonStyle => TextButton.styleFrom(
     foregroundColor: textSecondary,
     padding: const EdgeInsets.symmetric(
@@ -190,10 +184,7 @@ class AppTheme {
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(radiusMedium),
     ),
-    textStyle: const TextStyle(
-      fontSize: 16,
-      fontWeight: FontWeight.w500,
-    ),
+    textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
   );
 
   // ===== UTILIDADES =====
@@ -216,14 +207,14 @@ class AppTheme {
         return textMuted;
     }
   }
-  
-  static EdgeInsetsGeometry get defaultPadding => 
+
+  static EdgeInsetsGeometry get defaultPadding =>
       const EdgeInsets.all(spacingMedium);
-  
-  static EdgeInsetsGeometry get largePadding => 
+
+  static EdgeInsetsGeometry get largePadding =>
       const EdgeInsets.all(spacingLarge);
-  
-  static EdgeInsetsGeometry get smallPadding => 
+
+  static EdgeInsetsGeometry get smallPadding =>
       const EdgeInsets.all(spacingSmall);
 
   // ===== TEMA MATERIAL =====
@@ -233,6 +224,7 @@ class AppTheme {
     scaffoldBackgroundColor: backgroundDark,
     cardColor: cardBg,
     dividerColor: textMuted.withOpacity(0.2),
+    fontFamily: 'Roboto',
     appBarTheme: const AppBarTheme(
       backgroundColor: primary,
       foregroundColor: Colors.white,
@@ -240,12 +232,8 @@ class AppTheme {
       centerTitle: true,
       titleTextStyle: headlineMedium,
     ),
-    elevatedButtonTheme: ElevatedButtonThemeData(
-      style: primaryButtonStyle,
-    ),
-    textButtonTheme: TextButtonThemeData(
-      style: secondaryButtonStyle,
-    ),
+    elevatedButtonTheme: ElevatedButtonThemeData(style: primaryButtonStyle),
+    textButtonTheme: TextButtonThemeData(style: secondaryButtonStyle),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: surfaceDark,
@@ -282,9 +270,7 @@ class AppTheme {
     bottomSheetTheme: BottomSheetThemeData(
       backgroundColor: cardElevated,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(radiusXLarge),
-        ),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(radiusXLarge)),
       ),
     ),
   );
@@ -297,14 +283,22 @@ extension ThemeExtension on BuildContext {
   bool get isMobile => screenWidth < 600;
   bool get isTablet => screenWidth >= 600 && screenWidth < 1200;
   bool get isDesktop => screenWidth >= 1200;
-  
+
   // Espaciado responsive
-  double get responsivePadding => isMobile ? 16 : isTablet ? 24 : 32;
+  double get responsivePadding => isMobile
+      ? 16
+      : isTablet
+      ? 24
+      : 32;
   double get responsiveRadius => isMobile ? 12 : 16;
-  
+
   // Columnas responsive para grids
-  int get responsiveColumns => isMobile ? 2 : isTablet ? 3 : 5;
-  
+  int get responsiveColumns => isMobile
+      ? 2
+      : isTablet
+      ? 3
+      : 5;
+
   // Tamaños de fuente responsive
   double get responsiveFontSize => isMobile ? 14 : 16;
   double get responsiveHeadlineSize => isMobile ? 20 : 24;

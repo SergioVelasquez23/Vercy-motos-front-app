@@ -27,6 +27,23 @@
   <meta name="apple-mobile-web-app-title" content="Kronos restobar">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
+  <!-- Precarga de fuentes locales Roboto -->
+  <style>
+    @font-face {
+      font-family: 'Roboto';
+      src: url('assets/fonts/Roboto-Regular.ttf') format('truetype');
+      font-weight: normal;
+      font-style: normal;
+    }
+
+    @font-face {
+      font-family: 'Roboto';
+      src: url('assets/fonts/Roboto-Bold.ttf') format('truetype');
+      font-weight: bold;
+      font-style: normal;
+    }
+  </style>
+
   <!-- Favicon -->
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
   <link rel="alternate icon" type="image/png" href="favicon.png" />
@@ -43,7 +60,7 @@
   <link rel="manifest" href="manifest.json">
 
   <script>
-    // El valor a continuación lo inyecta flutter build, no lo toques.
+    // The value below is injected by flutter build, do not touch.
     var serviceWorkerVersion = "{{flutter_service_worker_version}}";
   </script>
   <!-- Este script añade el código de inicialización JS de Flutter -->
