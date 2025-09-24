@@ -1,465 +1,359 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../models/cancelar_producto_request.dart';
-import '../models/producto.dart';
-import '../services/pedido_service.dart';
-import '../providers/user_provider.dart';
+import '../models/item_pedido.dart';
+import '../theme/app_theme.dart';
+import '../utils/format_utils.dart';
 
 class CancelarProductoDialog extends StatefulWidget {
-  final String pedidoId;
-  final Producto producto;
-  final VoidCallback? onProductoCancelado;
+  final List<ItemPedido> items;
+  final String mesaId;
+  final String mesaNombre;
+  final String usuarioId;
+  final String usuarioNombre;
+  final Function(List<ItemPedido> itemsCancelados, String motivo)?
+  onProductosCancelados;
 
   const CancelarProductoDialog({
-    super.key,
-    required this.pedidoId,
-    required this.producto,
-    this.onProductoCancelado,
-  });
+    Key? key,
+    required this.items,
+    required this.mesaId,
+    required this.mesaNombre,
+    required this.usuarioId,
+    required this.usuarioNombre,
+    this.onProductosCancelados,
+  }) : super(key: key);
 
   @override
-  _CancelarProductoDialogState createState() => _CancelarProductoDialogState();
+  State<CancelarProductoDialog> createState() => _CancelarProductoDialogState();
 }
 
 class _CancelarProductoDialogState extends State<CancelarProductoDialog> {
-  final PedidoService _pedidoService = PedidoService();
-  final TextEditingController _motivoController = TextEditingController();
-
-  List<IngredienteDevolucion> _ingredientes = [];
-  bool _isLoading = true;
-  bool _isCanceling = false;
-  String? _error;
+  late Map<String, bool> itemsSeleccionados;
+  String motivoCancelacion = 'Error en pedido';
+  TextEditingController observacionesController = TextEditingController();
 
   // Motivos predefinidos
-  final List<String> _motivosPredefinidos = [
-    'Cambio de cliente',
-    'Error en el pedido',
+  final List<String> motivosDisponibles = [
+    'Error en pedido',
+    'Cliente cambió de opinión',
     'Producto no disponible',
-    'Solicitud del cliente',
-    'Error del sistema',
-    'Otro motivo',
+    'Problema en cocina',
+    'Demora excesiva',
+    'Otro',
   ];
-
-  String _motivoSeleccionado = 'Cambio de cliente';
-  final Map<String, String> _motivosNoDevolucion = {
-    'Ya fue preparado': 'El ingrediente ya fue procesado/cocinado',
-    'Producto perecedero': 'No se puede devolver por higiene',
-    'Ingrediente contaminado':
-        'El ingrediente fue expuesto y no es reutilizable',
-    'Política de la casa': 'Por política no se devuelve este ingrediente',
-  };
 
   @override
   void initState() {
     super.initState();
-    _cargarIngredientes();
-  }
-
-  @override
-  void dispose() {
-    _motivoController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _cargarIngredientes() async {
-    try {
-      setState(() {
-        _isLoading = true;
-        _error = null;
-      });
-
-      final ingredientes = await _pedidoService
-          .obtenerIngredientesParaDevolucion(
-            widget.pedidoId,
-            widget.producto.id,
-          );
-
-      setState(() {
-        _ingredientes = ingredientes;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _error = 'Error al cargar ingredientes: $e';
-        _isLoading = false;
-      });
+    // Inicializar ningún item seleccionado por defecto
+    itemsSeleccionados = {};
+    for (int i = 0; i < widget.items.length; i++) {
+      itemsSeleccionados[i.toString()] = false;
     }
   }
 
-  Future<void> _cancelarProducto() async {
-    if (_ingredientes.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('No hay ingredientes para procesar'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-
-    final userProvider = Provider.of<UserProvider>(context, listen: false);
-    final responsable = userProvider.userName ?? 'Usuario desconocido';
-
-    // Determinar motivo final
-    String motivoFinal = _motivoSeleccionado;
-    if (_motivoSeleccionado == 'Otro motivo' &&
-        _motivoController.text.isNotEmpty) {
-      motivoFinal = _motivoController.text.trim();
-    }
-
-    final request = CancelarProductoRequest(
-      pedidoId: widget.pedidoId,
-      productoId: widget.producto.id,
-      ingredientes: _ingredientes,
-      motivo: motivoFinal,
-      responsable: responsable,
-    );
-
-    try {
-      setState(() => _isCanceling = true);
-
-      await _pedidoService.cancelarProductoConIngredientes(request);
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Producto cancelado correctamente'),
-          backgroundColor: Colors.green,
-        ),
-      );
-
-      if (widget.onProductoCancelado != null) {
-        widget.onProductoCancelado!();
+  List<ItemPedido> get itemsSeleccionadosList {
+    List<ItemPedido> items = [];
+    for (int i = 0; i < widget.items.length; i++) {
+      if (itemsSeleccionados[i.toString()] == true) {
+        items.add(widget.items[i]);
       }
-
-      Navigator.of(context).pop(true);
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al cancelar producto: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    } finally {
-      setState(() => _isCanceling = false);
     }
+    return items;
+  }
+
+  double get totalACancelar {
+    double total = 0.0;
+    for (int i = 0; i < widget.items.length; i++) {
+      if (itemsSeleccionados[i.toString()] == true) {
+        final item = widget.items[i];
+        total += item.precioUnitario * item.cantidad;
+      }
+    }
+    return total;
   }
 
   @override
   Widget build(BuildContext context) {
     return Dialog(
+      backgroundColor: AppTheme.cardBg,
       child: Container(
         width: MediaQuery.of(context).size.width * 0.9,
         height: MediaQuery.of(context).size.height * 0.8,
-        padding: EdgeInsets.all(20),
+        padding: const EdgeInsets.all(20),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Header
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
+                Icon(Icons.cancel_outlined, color: Colors.red, size: 28),
+                const SizedBox(width: 12),
                 Expanded(
-                  child: Text(
-                    'Cancelar: ${widget.producto.nombre}',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Cancelar Productos',
+                        style: AppTheme.headlineMedium.copyWith(
+                          color: Colors.red,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        'Mesa: ${widget.mesaNombre}',
+                        style: AppTheme.bodySmall,
+                      ),
+                    ],
                   ),
                 ),
                 IconButton(
-                  icon: Icon(Icons.close),
-                  onPressed: () => Navigator.of(context).pop(false),
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: Icon(Icons.close, color: AppTheme.textDark),
                 ),
               ],
             ),
 
-            Divider(),
+            const SizedBox(height: 20),
 
-            // Contenido
+            // Lista de productos
             Expanded(
-              child: _isLoading
-                  ? Center(child: CircularProgressIndicator())
-                  : _error != null
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.error, color: Colors.red, size: 48),
-                          SizedBox(height: 16),
-                          Text(_error!, textAlign: TextAlign.center),
-                          SizedBox(height: 16),
-                          ElevatedButton(
-                            onPressed: _cargarIngredientes,
-                            child: Text('Reintentar'),
-                          ),
-                        ],
-                      ),
-                    )
-                  : _buildContenido(),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildContenido() {
-    if (_ingredientes.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.info_outline, size: 48, color: Colors.blue),
-            SizedBox(height: 16),
-            Text(
-              'Este producto no tiene ingredientes descontados del inventario',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 16),
-            ),
-            SizedBox(height: 16),
-            Text(
-              '¿Deseas cancelar el producto directamente?',
-              textAlign: TextAlign.center,
-            ),
-            SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                ElevatedButton(
-                  onPressed: () => Navigator.of(context).pop(false),
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.grey),
-                  child: Text('No cancelar'),
-                ),
-                ElevatedButton(
-                  onPressed: () => Navigator.of(context).pop(true),
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                  child: Text('Cancelar producto'),
-                ),
-              ],
-            ),
-          ],
-        ),
-      );
-    }
-
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Selección de motivo
-          Text(
-            'Motivo de cancelación:',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-          SizedBox(height: 8),
-
-          DropdownButtonFormField<String>(
-            initialValue: _motivoSeleccionado,
-            decoration: InputDecoration(
-              border: OutlineInputBorder(),
-              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            ),
-            items: _motivosPredefinidos.map((motivo) {
-              return DropdownMenuItem(value: motivo, child: Text(motivo));
-            }).toList(),
-            onChanged: (value) {
-              setState(() {
-                _motivoSeleccionado = value!;
-              });
-            },
-          ),
-
-          // Campo de texto para "Otro motivo"
-          if (_motivoSeleccionado == 'Otro motivo') ...[
-            SizedBox(height: 12),
-            TextField(
-              controller: _motivoController,
-              decoration: InputDecoration(
-                labelText: 'Especifica el motivo',
-                border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-              ),
-              maxLines: 2,
-            ),
-          ],
-
-          SizedBox(height: 20),
-
-          // Lista de ingredientes
-          Text(
-            'Ingredientes descontados del inventario:',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-          SizedBox(height: 8),
-
-          Text(
-            'Selecciona cuáles ingredientes deseas devolver al inventario:',
-            style: TextStyle(color: Colors.grey[600]),
-          ),
-          SizedBox(height: 12),
-
-          // Cards de ingredientes
-          ..._ingredientes.map(
-            (ingrediente) => _buildIngredienteCard(ingrediente),
-          ),
-
-          SizedBox(height: 20),
-
-          // Resumen
-          _buildResumen(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildIngredienteCard(IngredienteDevolucion ingrediente) {
-    return Card(
-      margin: EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    ingrediente.nombre,
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                ),
-                Switch(
-                  value: ingrediente.devolver,
-                  onChanged: (value) {
-                    setState(() {
-                      int index = _ingredientes.indexOf(ingrediente);
-                      _ingredientes[index] = ingrediente.copyWith(
-                        devolver: value,
-                      );
-                    });
-                  },
-                ),
-              ],
-            ),
-
-            SizedBox(height: 8),
-
-            Text(
-              'Cantidad descontada: ${ingrediente.cantidadDescontada} ${ingrediente.unidad}',
-              style: TextStyle(color: Colors.grey[600]),
-            ),
-
-            if (ingrediente.cantidadADevolver !=
-                ingrediente.cantidadDescontada) ...[
-              Text(
-                'Cantidad a devolver: ${ingrediente.cantidadADevolver} ${ingrediente.unidad}',
-                style: TextStyle(color: Colors.blue[600]),
-              ),
-            ],
-
-            // Motivo de no devolución
-            if (!ingrediente.devolver) ...[
-              SizedBox(height: 8),
-              Text(
-                'Motivo de no devolución:',
-                style: TextStyle(fontWeight: FontWeight.w500),
-              ),
-              SizedBox(height: 4),
-              DropdownButton<String>(
-                value: ingrediente.motivoNoDevolucion ?? 'Ya fue preparado',
-                isExpanded: true,
-                items: _motivosNoDevolucion.entries.map((entry) {
-                  return DropdownMenuItem(
-                    value: entry.key,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(entry.key),
-                        Text(
-                          entry.value,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                      ],
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Seleccionar productos a cancelar:',
+                    style: AppTheme.bodyLarge.copyWith(
+                      fontWeight: FontWeight.w600,
                     ),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // Lista de productos con checkboxes
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: AppTheme.textLight.withValues(alpha: 0.3),
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: ListView.builder(
+                        itemCount: widget.items.length,
+                        itemBuilder: (context, index) {
+                          final item = widget.items[index];
+                          final isSelected =
+                              itemsSeleccionados[index.toString()] ?? false;
+
+                          return Container(
+                            decoration: BoxDecoration(
+                              border: index > 0
+                                  ? Border(
+                                      top: BorderSide(
+                                        color: AppTheme.textLight.withValues(
+                                          alpha: 0.2,
+                                        ),
+                                      ),
+                                    )
+                                  : null,
+                            ),
+                            child: CheckboxListTile(
+                              value: isSelected,
+                              onChanged: (bool? value) {
+                                setState(() {
+                                  itemsSeleccionados[index.toString()] =
+                                      value ?? false;
+                                });
+                              },
+                              activeColor: Colors.red,
+                              title: Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          '${item.cantidad}x ${item.productoNombre ?? 'Producto sin nombre'}',
+                                          style: AppTheme.bodyMedium.copyWith(
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        if (item.notas != null &&
+                                            item.notas!.isNotEmpty)
+                                          Text(
+                                            item.notas!,
+                                            style: AppTheme.bodySmall,
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                  Text(
+                                    formatCurrency(
+                                      item.precioUnitario * item.cantidad,
+                                    ),
+                                    style: AppTheme.bodyMedium.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.red,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              controlAffinity: ListTileControlAffinity.leading,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // Motivo de cancelación
+            Text(
+              'Motivo de cancelación:',
+              style: AppTheme.bodyLarge.copyWith(fontWeight: FontWeight.w600),
+            ),
+
+            const SizedBox(height: 8),
+
+            Container(
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: AppTheme.textLight.withValues(alpha: 0.3),
+                ),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: DropdownButton<String>(
+                value: motivoCancelacion,
+                isExpanded: true,
+                underline: const SizedBox(),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                items: motivosDisponibles.map((motivo) {
+                  return DropdownMenuItem<String>(
+                    value: motivo,
+                    child: Text(motivo, style: AppTheme.bodyMedium),
                   );
                 }).toList(),
-                onChanged: (value) {
+                onChanged: (String? newValue) {
                   setState(() {
-                    int index = _ingredientes.indexOf(ingrediente);
-                    _ingredientes[index] = ingrediente.copyWith(
-                      motivoNoDevolucion: value,
-                    );
+                    motivoCancelacion = newValue!;
                   });
                 },
               ),
-            ],
+            ),
+
+            const SizedBox(height: 16),
+
+            // Observaciones
+            Text(
+              'Observaciones (opcional):',
+              style: AppTheme.bodyLarge.copyWith(fontWeight: FontWeight.w600),
+            ),
+
+            const SizedBox(height: 8),
+
+            TextField(
+              controller: observacionesController,
+              style: AppTheme.bodyMedium,
+              maxLines: 2,
+              decoration: InputDecoration(
+                hintText: 'Agregar comentarios adicionales...',
+                hintStyle: AppTheme.bodySmall,
+                border: OutlineInputBorder(
+                  borderSide: BorderSide(
+                    color: AppTheme.textLight.withValues(alpha: 0.3),
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: Colors.red),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // Total y botones
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppTheme.backgroundDark,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Total a cancelar:',
+                        style: AppTheme.bodyLarge.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Text(
+                        formatCurrency(totalACancelar),
+                        style: AppTheme.headlineSmall.copyWith(
+                          color: Colors.red,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          style: AppTheme.secondaryButtonStyle,
+                          child: Text('Cancelar'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: itemsSeleccionadosList.isEmpty
+                              ? null
+                              : () {
+                                  widget.onProductosCancelados?.call(
+                                    itemsSeleccionadosList,
+                                    motivoCancelacion,
+                                  );
+                                  Navigator.of(context).pop();
+                                },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                          ),
+                          child: Text(
+                            'Confirmar Cancelación',
+                            style: AppTheme.bodyMedium.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildResumen() {
-    final ingredientesADevolver = _ingredientes.where((i) => i.devolver).length;
-    final ingredientesNoDevolver = _ingredientes
-        .where((i) => !i.devolver)
-        .length;
-
-    return Card(
-      color: Colors.blue[50],
-      child: Padding(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Resumen:',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 8),
-            Text(
-              '• $ingredientesADevolver ingredientes se devolverán al inventario',
-            ),
-            Text('• $ingredientesNoDevolver ingredientes NO se devolverán'),
-            SizedBox(height: 12),
-
-            // Botones de acción
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                ElevatedButton(
-                  onPressed: _isCanceling
-                      ? null
-                      : () => Navigator.of(context).pop(false),
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.grey),
-                  child: Text('Cancelar'),
-                ),
-                ElevatedButton(
-                  onPressed: _isCanceling ? null : _cancelarProducto,
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                  child: _isCanceling
-                      ? Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            ),
-                            SizedBox(width: 8),
-                            Text('Procesando...'),
-                          ],
-                        )
-                      : Text('Confirmar cancelación'),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
+  @override
+  void dispose() {
+    observacionesController.dispose();
+    super.dispose();
   }
 }

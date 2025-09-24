@@ -30,6 +30,8 @@ class ItemPedido extends ItemPedidoUnified {
     required super.precioUnitario,
     super.notas,
     super.ingredientesSeleccionados = const [],
+    super.agregadoPor,
+    super.fechaAgregado,
   });
 
   // 🏗️ CONSTRUCTOR DE COMPATIBILIDAD (para código legacy)
@@ -40,6 +42,8 @@ class ItemPedido extends ItemPedidoUnified {
     super.notas,
     super.ingredientesSeleccionados,
     super.productoNombre,
+    super.agregadoPor,
+    super.fechaAgregado,
   }) : super(precioUnitario: precio);
 
   // 🔄 FACTORY FROM JSON (Compatible con múltiples formatos)
@@ -60,6 +64,10 @@ class ItemPedido extends ItemPedidoUnified {
       ingredientesSeleccionados: json['ingredientesSeleccionados'] != null
           ? List<String>.from(json['ingredientesSeleccionados'])
           : const [],
+      agregadoPor: json['agregadoPor']?.toString(),
+      fechaAgregado: json['fechaAgregado'] != null
+          ? DateTime.tryParse(json['fechaAgregado'].toString())
+          : null,
     );
   }
 
@@ -174,6 +182,8 @@ class ItemPedido extends ItemPedidoUnified {
     String? notas,
     List<String>? ingredientesSeleccionados,
     String? productoNombre,
+    String? agregadoPor,
+    DateTime? fechaAgregado,
   }) {
     return ItemPedido(
       productoId: productoId ?? this.productoId,
@@ -183,6 +193,8 @@ class ItemPedido extends ItemPedidoUnified {
       notas: notas ?? this.notas,
       ingredientesSeleccionados:
           ingredientesSeleccionados ?? this.ingredientesSeleccionados,
+      agregadoPor: agregadoPor ?? this.agregadoPor,
+      fechaAgregado: fechaAgregado ?? this.fechaAgregado,
     );
   }
 }

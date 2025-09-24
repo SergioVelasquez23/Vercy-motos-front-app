@@ -3,6 +3,7 @@ import 'users_screen.dart';
 import 'roles_screen.dart';
 import 'negocio_info_screen.dart';
 import '../models/mesa.dart';
+import '../models/tipo_mesa.dart';
 import '../services/mesa_service.dart';
 import '../theme/app_theme.dart';
 
@@ -40,30 +41,45 @@ class _ConfiguracionScreenState extends State<ConfiguracionScreen>
           icon: Icon(Icons.arrow_back, color: AppTheme.textDark),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text(
-          'Configuración',
-          style: AppTheme.headlineMedium,
-        ),
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: AppTheme.primary,
-          labelColor: AppTheme.textDark,
-          unselectedLabelColor: AppTheme.textLight,
-          tabs: const [
-            Tab(icon: Icon(Icons.people), text: 'Usuarios'),
-            Tab(icon: Icon(Icons.admin_panel_settings), text: 'Roles'),
-            Tab(icon: Icon(Icons.table_restaurant), text: 'Mesas'),
-            Tab(icon: Icon(Icons.business), text: 'Negocio'),
-          ],
-        ),
+        title: Text('Configuración', style: AppTheme.headlineMedium),
       ),
-      body: TabBarView(
-        controller: _tabController,
+      body: Column(
         children: [
-          UsersScreen(),
-          RolesScreen(),
-          MesasConfigScreen(),
-          NegocioInfoScreen(),
+          // Tabs movidos del AppBar al body (ahora scrolleable)
+          Container(
+            decoration: BoxDecoration(
+              color: AppTheme.backgroundDark,
+              border: Border(
+                bottom: BorderSide(
+                  color: AppTheme.primary.withOpacity(0.2),
+                  width: 1,
+                ),
+              ),
+            ),
+            child: TabBar(
+              controller: _tabController,
+              indicatorColor: AppTheme.primary,
+              labelColor: AppTheme.textDark,
+              unselectedLabelColor: AppTheme.textLight,
+              tabs: const [
+                Tab(icon: Icon(Icons.people), text: 'Usuarios'),
+                Tab(icon: Icon(Icons.admin_panel_settings), text: 'Roles'),
+                Tab(icon: Icon(Icons.table_restaurant), text: 'Mesas'),
+                Tab(icon: Icon(Icons.business), text: 'Negocio'),
+              ],
+            ),
+          ),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                UsersScreen(),
+                RolesScreen(),
+                MesasConfigScreen(),
+                NegocioInfoScreen(),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -148,7 +164,10 @@ class _MesasConfigScreenState extends State<MesasConfigScreen> {
                       decoration: InputDecoration(
                         hintText: 'Buscar mesas...',
                         hintStyle: AppTheme.bodySmall,
-                        prefixIcon: Icon(Icons.search, color: AppTheme.textLight),
+                        prefixIcon: Icon(
+                          Icons.search,
+                          color: AppTheme.textLight,
+                        ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
                           borderSide: BorderSide(color: AppTheme.textLight),
@@ -189,12 +208,13 @@ class _MesasConfigScreenState extends State<MesasConfigScreen> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.refresh, color: AppTheme.textLight, size: 16),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Actualizar',
-                          style: AppTheme.bodySmall,
+                        Icon(
+                          Icons.refresh,
+                          color: AppTheme.textLight,
+                          size: 16,
                         ),
+                        const SizedBox(width: 4),
+                        Text('Actualizar', style: AppTheme.bodySmall),
                       ],
                     ),
                   ),
@@ -321,10 +341,7 @@ class _MesasConfigScreenState extends State<MesasConfigScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      'Total cuenta:',
-                      style: AppTheme.bodySmall,
-                    ),
+                    Text('Total cuenta:', style: AppTheme.bodySmall),
                     Text(
                       '\$${mesa.total.toStringAsFixed(2)}',
                       style: AppTheme.bodyMedium.copyWith(
@@ -361,57 +378,160 @@ class _MesasConfigScreenState extends State<MesasConfigScreen> {
   void _mostrarDialogoMesa({Mesa? mesa}) {
     final isEditing = mesa != null;
     final nombreController = TextEditingController(text: mesa?.nombre ?? '');
+    TipoMesa tipoSeleccionado = mesa?.tipo ?? TipoMesa.normal;
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.cardBg,
-        title: Text(
-          isEditing ? 'Editar Mesa' : 'Nueva Mesa',
-          style: AppTheme.headlineMedium,
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nombreController,
-                style: AppTheme.bodyMedium,
-                decoration: InputDecoration(
-                  labelText: 'Nombre de la Mesa *',
-                  labelStyle: AppTheme.bodySmall,
-                  hintText: 'Ej: Mesa 1, Mesa VIP, Terraza A...',
-                  hintStyle: AppTheme.bodySmall,
-                  enabledBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: AppTheme.textLight),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: AppTheme.primary),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          backgroundColor: AppTheme.cardBg,
+          title: Text(
+            isEditing ? 'Editar Mesa' : 'Nueva Mesa',
+            style: AppTheme.headlineMedium,
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nombreController,
+                  style: AppTheme.bodyMedium,
+                  decoration: InputDecoration(
+                    labelText: 'Nombre de la Mesa *',
+                    labelStyle: AppTheme.bodySmall,
+                    hintText: 'Ej: Mesa 1, Mesa VIP, Terraza A...',
+                    hintStyle: AppTheme.bodySmall,
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: AppTheme.textLight),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: AppTheme.primary),
+                    ),
                   ),
                 ),
+                const SizedBox(height: 16),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Tipo de Mesa *',
+                      style: AppTheme.bodySmall.copyWith(
+                        color: AppTheme.textLight,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: AppTheme.textLight),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<TipoMesa>(
+                          value: tipoSeleccionado,
+                          isExpanded: true,
+                          style: AppTheme.bodyMedium,
+                          dropdownColor: AppTheme.cardBg,
+                          onChanged: (TipoMesa? newValue) {
+                            if (newValue != null) {
+                              setState(() {
+                                tipoSeleccionado = newValue;
+                              });
+                            }
+                          },
+                          items: TipoMesa.values.map((TipoMesa tipo) {
+                            return DropdownMenuItem<TipoMesa>(
+                              value: tipo,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    tipo.nombre,
+                                    style: AppTheme.bodyMedium.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  Text(
+                                    tipo.descripcion,
+                                    style: AppTheme.bodySmall.copyWith(
+                                      color: AppTheme.textLight,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: tipoSeleccionado == TipoMesa.especial
+                            ? AppTheme.primary.withOpacity(0.1)
+                            : AppTheme.surfaceDark.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: tipoSeleccionado == TipoMesa.especial
+                              ? AppTheme.primary.withOpacity(0.3)
+                              : AppTheme.textLight.withOpacity(0.3),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            tipoSeleccionado == TipoMesa.especial
+                                ? Icons.star
+                                : Icons.table_restaurant,
+                            color: tipoSeleccionado == TipoMesa.especial
+                                ? AppTheme.primary
+                                : AppTheme.textLight,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              tipoSeleccionado == TipoMesa.especial
+                                  ? 'Esta mesa tendrá características especiales'
+                                  : 'Mesa estándar para servicio regular',
+                              style: AppTheme.bodySmall.copyWith(
+                                color: tipoSeleccionado == TipoMesa.especial
+                                    ? AppTheme.primary
+                                    : AppTheme.textLight,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              style: AppTheme.secondaryButtonStyle,
+              child: Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () => _guardarMesa(
+                isEditing: isEditing,
+                mesa: mesa,
+                nombre: nombreController.text.trim(),
+                tipo: tipoSeleccionado,
               ),
-            ],
-          ),
+              style: AppTheme.primaryButtonStyle,
+              child: Text(
+                isEditing ? 'Actualizar' : 'Crear',
+                style: AppTheme.bodyMedium,
+              ),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            style: AppTheme.secondaryButtonStyle,
-            child: Text('Cancelar'),
-          ),
-          ElevatedButton(
-            onPressed: () => _guardarMesa(
-              isEditing: isEditing,
-              mesa: mesa,
-              nombre: nombreController.text.trim(),
-            ),
-            style: AppTheme.primaryButtonStyle,
-            child: Text(
-              isEditing ? 'Actualizar' : 'Crear',
-              style: AppTheme.bodyMedium,
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -420,46 +540,53 @@ class _MesasConfigScreenState extends State<MesasConfigScreen> {
     required bool isEditing,
     Mesa? mesa,
     required String nombre,
+    required TipoMesa tipo,
   }) async {
     // Validaciones
     if (nombre.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('El nombre de la mesa es obligatorio'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('El nombre de la mesa es obligatorio'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
       return;
     }
-
     try {
       Mesa newMesa;
 
       if (isEditing) {
         // Actualizar mesa existente
-        newMesa = mesa!.copyWith(nombre: nombre);
+        newMesa = mesa!.copyWith(nombre: nombre, tipo: tipo);
         await _mesaService.updateMesa(newMesa);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Mesa actualizada correctamente'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Mesa actualizada correctamente'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
       } else {
         // Crear nueva mesa
         newMesa = Mesa(
           id: '', // Se generará en el backend
           nombre: nombre,
+          tipo: tipo,
           ocupada: false,
           total: 0.0,
         );
         await _mesaService.createMesa(newMesa);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Mesa creada correctamente'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Mesa creada correctamente'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
       }
 
       Navigator.pop(context);
@@ -479,10 +606,7 @@ class _MesasConfigScreenState extends State<MesasConfigScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppTheme.cardBg,
-        title: Text(
-          'Confirmar eliminación',
-          style: AppTheme.headlineMedium,
-        ),
+        title: Text('Confirmar eliminación', style: AppTheme.headlineMedium),
         content: Text(
           '¿Está seguro de que desea eliminar la mesa "${mesa.nombre}"?',
           style: AppTheme.bodyMedium,
@@ -496,10 +620,7 @@ class _MesasConfigScreenState extends State<MesasConfigScreen> {
           ElevatedButton(
             onPressed: () => _eliminarMesa(mesa),
             style: ElevatedButton.styleFrom(backgroundColor: AppTheme.error),
-            child: Text(
-              'Eliminar',
-              style: AppTheme.bodyMedium,
-            ),
+            child: Text('Eliminar', style: AppTheme.bodyMedium),
           ),
         ],
       ),

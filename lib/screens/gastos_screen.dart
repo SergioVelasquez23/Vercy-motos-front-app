@@ -91,7 +91,9 @@ class _GastosScreenState extends State<GastosScreen> {
   Future<void> _loadTiposGasto() async {
     try {
       final tipos = await _gastoService.getAllTiposGasto();
-      setState(() => _tiposGasto = tipos);
+      if (mounted) {
+        setState(() => _tiposGasto = tipos);
+      }
     } catch (e) {
       print('Error loading tipos gasto: $e');
     }
@@ -101,9 +103,11 @@ class _GastosScreenState extends State<GastosScreen> {
     try {
       // Obtener solo cuadres abiertos (no cerrados)
       final allCuadres = await _cuadreCajaService.getAllCuadres();
-      setState(() {
-        _cuadresDisponibles = allCuadres.where((c) => !c.cerrada).toList();
-      });
+      if (mounted) {
+        setState(() {
+          _cuadresDisponibles = allCuadres.where((c) => !c.cerrada).toList();
+        });
+      }
     } catch (e) {
       print('Error loading cuadres: $e');
     }
@@ -297,15 +301,19 @@ class _GastosScreenState extends State<GastosScreen> {
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red),
-    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message), backgroundColor: Colors.red),
+      );
+    }
   }
 
   void _showSuccess(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.green),
-    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message), backgroundColor: Colors.green),
+      );
+    }
   }
 
   @override

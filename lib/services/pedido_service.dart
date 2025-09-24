@@ -176,18 +176,20 @@ class PedidoService {
       // VALIDACIÓN: Verificar que hay una caja abierta antes de crear el pedido
       print('🔍 Validando que hay una caja abierta...');
       final cajaActiva = await _cuadreCajaService.getCajaActiva();
-      
+
       if (cajaActiva == null) {
         print('❌ No hay caja abierta para crear pedido');
         throw Exception(
           'No se puede crear un pedido sin una caja abierta. Debe abrir una caja antes de registrar pedidos.',
         );
       }
-      
+
       // Asignar cuadreId al pedido automáticamente
       pedido.cuadreId = cajaActiva.id;
-      print('✅ Pedido vinculado a cuadre: ${cajaActiva.id} - ${cajaActiva.nombre}');
-      
+      print(
+        '✅ Pedido vinculado a cuadre: ${cajaActiva.id} - ${cajaActiva.nombre}',
+      );
+
       final headers = await _getHeaders();
       final response = await http.post(
         Uri.parse('$baseUrl/api/pedidos'),
@@ -211,17 +213,19 @@ class PedidoService {
       // VALIDACIÓN: Verificar que hay una caja abierta antes de crear el pedido
       print('🔍 Validando que hay una caja abierta...');
       final cajaActiva = await _cuadreCajaService.getCajaActiva();
-      
+
       if (cajaActiva == null) {
         print('❌ No hay caja abierta para crear pedido');
         throw Exception(
           'No se puede crear un pedido sin una caja abierta. Debe abrir una caja antes de registrar pedidos.',
         );
       }
-      
+
       // Asignar cuadreId al pedido automáticamente
       pedido.cuadreId = cajaActiva.id;
-      print('✅ Pedido vinculado a cuadre: ${cajaActiva.id} - ${cajaActiva.nombre}');
+      print(
+        '✅ Pedido vinculado a cuadre: ${cajaActiva.id} - ${cajaActiva.nombre}',
+      );
 
       // Validar que los items del pedido sean válidos
       if (pedido.items.isEmpty) {
@@ -550,17 +554,18 @@ class PedidoService {
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
-        
+
         // Manejar respuesta con wrapper de éxito
         if (responseData is Map<String, dynamic>) {
           if (responseData['success'] == true && responseData['data'] != null) {
             return Pedido.fromJson(responseData['data']);
-          } else if (responseData.containsKey('_id') || responseData.containsKey('id')) {
+          } else if (responseData.containsKey('_id') ||
+              responseData.containsKey('id')) {
             // Respuesta directa sin wrapper
             return Pedido.fromJson(responseData);
           }
         }
-        
+
         print('⚠️ Formato de respuesta inesperado: $responseData');
         return null;
       } else {
@@ -589,16 +594,8 @@ class PedidoService {
         headers: headers,
       );
 
-      print('getPedidosByMesa response: ${response.statusCode}');
-      print('getPedidosByMesa body: ${response.body}');
-      print('Original mesa name: $nombreMesa');
-      print('Cleaned mesa name: $nombreLimpio');
-      print('Encoded mesa name: $encodedNombreMesa');
-      print('Full URL: $baseUrl/api/pedidos/mesa/$encodedNombreMesa');
-
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
-        print('Decoded response data: $responseData');
 
         // Manejar tanto respuesta directa como respuesta con wrapper
         final List<dynamic> jsonList;
@@ -610,22 +607,13 @@ class PedidoService {
           jsonList = [];
         }
 
-        print('JSON list length: ${jsonList.length}');
-        if (jsonList.isNotEmpty) {
-          print('First item: ${jsonList.first}');
-        }
-
         final pedidos = jsonList
             .map((json) {
               try {
-                print('Parsing pedido JSON: $json');
                 final pedido = Pedido.fromJson(json);
-                print(
-                  'Pedido parsed successfully: ID=${pedido.id}, Mesa=${pedido.mesa}, Estado=${pedido.estado}',
-                );
                 return pedido;
               } catch (e) {
-                print('Error parsing pedido: $e');
+                print('❌ Error parsing pedido: $e');
                 print('JSON causing error: $json');
                 return null;
               }
@@ -634,7 +622,6 @@ class PedidoService {
             .cast<Pedido>()
             .toList();
 
-        print('Parsed pedidos count: ${pedidos.length}');
         return pedidos;
       } else {
         throw Exception(
@@ -642,7 +629,7 @@ class PedidoService {
         );
       }
     } catch (e) {
-      print('Exception in getPedidosByMesa: $e');
+      print('❌ Exception in getPedidosByMesa: $e');
       throw Exception('Error de conexión: $e');
     }
   }
@@ -714,7 +701,6 @@ class PedidoService {
         if (!productosMap.containsKey(item.productoId)) {
           // Validar que el ID del producto no sea vacío
           if (item.productoId.isEmpty) {
-            print('⚠️ Saltando producto con ID inválido');
             continue;
           }
 
@@ -723,10 +709,8 @@ class PedidoService {
               item.productoId,
             );
             if (producto != null) {
-              print('✅ Producto cargado: ${producto.nombre}');
               productosMap[item.productoId] = producto;
             } else {
-              print('⚠️ Producto no encontrado: ${item.productoId}');
               // Crear un producto ficticio para evitar errores en la UI
               productosMap[item.productoId] = Producto(
                 id: item.productoId,
@@ -757,7 +741,6 @@ class PedidoService {
             notas: item.notas,
             precioUnitario: producto.precio,
           );
-          print('✅ Item actualizado con producto completo: ${producto.nombre}');
         } else if (item.producto == null) {
           // Si no tenemos el producto, pero tenemos nombre en el JSON, creamos un producto básico
           String nombreProducto = "Producto desconocido";
@@ -769,7 +752,6 @@ class PedidoService {
             );
             if (nombreInfo != null && nombreInfo.isNotEmpty) {
               nombreProducto = nombreInfo;
-              print('✅ Nombre de producto recuperado: $nombreProducto');
             }
           } catch (e) {
             print('❌ Error obteniendo nombre del producto: $e');
@@ -792,7 +774,6 @@ class PedidoService {
             notas: item.notas,
             precioUnitario: item.precioUnitario,
           );
-          print('⚠️ Item actualizado con producto básico: $nombreProducto');
         }
       }
     } catch (e) {
@@ -1035,17 +1016,108 @@ class PedidoService {
 
           return pedidoPagado;
         } else {
-          print('❌ PedidoService: Formato de respuesta inválido: ${response.body}');
-          throw Exception('Formato de respuesta inválido: ${responseData['message'] ?? 'Sin mensaje'}');
+          print(
+            '❌ PedidoService: Formato de respuesta inválido: ${response.body}',
+          );
+          throw Exception(
+            'Formato de respuesta inválido: ${responseData['message'] ?? 'Sin mensaje'}',
+          );
         }
       } else {
-        print('❌ PedidoService: Error HTTP ${response.statusCode}: ${response.body}');
+        print(
+          '❌ PedidoService: Error HTTP ${response.statusCode}: ${response.body}',
+        );
         final errorData = json.decode(response.body);
         String errorMessage = errorData['message'] ?? 'Error desconocido';
-        throw Exception('Error al pagar pedido (${response.statusCode}): $errorMessage');
+        throw Exception(
+          'Error al pagar pedido (${response.statusCode}): $errorMessage',
+        );
       }
     } catch (e) {
       print('❌ Error pagando pedido: $e');
+      throw Exception('Error de conexión: $e');
+    }
+  }
+
+  // Pagar productos específicos de un pedido (pago parcial)
+  Future<Map<String, dynamic>> pagarProductosParciales(
+    String pedidoId, {
+    required List<ItemPedido> itemsSeleccionados,
+    String formaPago = 'efectivo',
+    double propina = 0.0,
+    String procesadoPor = '',
+    String notas = '',
+  }) async {
+    try {
+      final headers = await _getHeaders();
+
+      // Calcular el total de los items seleccionados
+      double totalSeleccionado = itemsSeleccionados.fold<double>(
+        0.0,
+        (sum, item) => sum + (item.precio * item.cantidad),
+      );
+
+      // Crear lista de IDs de items para el backend
+      List<String> itemIds = itemsSeleccionados
+          .map((item) => item.id ?? '')
+          .where((id) => id.isNotEmpty)
+          .toList();
+
+      final Map<String, dynamic> pagoData = {
+        'itemIds': itemIds,
+        'formaPago': formaPago,
+        'propina': propina,
+        'procesadoPor': procesadoPor,
+        'notas': notas,
+        'totalCalculado': totalSeleccionado + propina,
+        'fechaPago': DateTime.now().toIso8601String(),
+      };
+
+      print('🚀 Datos para pago parcial:');
+      print('  - Pedido ID: $pedidoId');
+      print('  - Items seleccionados: ${itemIds.length}');
+      print('  - Total calculado: ${totalSeleccionado + propina}');
+      print('  - Datos completos: ${json.encode(pagoData)}');
+
+      final response = await http.put(
+        Uri.parse('$baseUrl/api/pedidos/$pedidoId/pagar-parcial'),
+        headers: headers,
+        body: json.encode(pagoData),
+      );
+
+      print('Pago parcial response: ${response.statusCode}');
+      print('Pago parcial body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        if (responseData['success'] == true) {
+          // Notificar que se procesó un pago
+          _pedidoPagadoController.add(true);
+          print('🔔 PedidoService: Notificación de pago parcial enviada');
+          print('✅ PedidoService: Pago parcial completado exitosamente');
+
+          return {
+            'success': true,
+            'pedidoActualizado': responseData['data']['pedidoActualizado'],
+            'documentoCreado': responseData['data']['documentoCreado'],
+            'itemsPagados': itemsSeleccionados.length,
+            'totalPagado': totalSeleccionado + propina,
+            'cambio': responseData['data']['cambio'] ?? 0.0,
+          };
+        } else {
+          throw Exception(
+            'Formato de respuesta inválido: ${responseData['message'] ?? 'Sin mensaje'}',
+          );
+        }
+      } else {
+        final errorData = json.decode(response.body);
+        String errorMessage = errorData['message'] ?? 'Error desconocido';
+        throw Exception(
+          'Error al procesar pago parcial (${response.statusCode}): $errorMessage',
+        );
+      }
+    } catch (e) {
+      print('❌ Error en pago parcial: $e');
       throw Exception('Error de conexión: $e');
     }
   }
@@ -1101,29 +1173,27 @@ class PedidoService {
   }) async {
     try {
       final headers = await _getHeaders();
-      
-      final Map<String, dynamic> requestData = {
-        'nuevaMesa': nuevaMesa,
-      };
-      
+
+      final Map<String, dynamic> requestData = {'nuevaMesa': nuevaMesa};
+
       if (nombrePedido != null && nombrePedido.isNotEmpty) {
         requestData['nombrePedido'] = nombrePedido;
       }
-      
+
       print('🚚 Moviendo pedido $pedidoId a mesa: $nuevaMesa');
       if (nombrePedido != null) {
         print('  - Nombre del pedido: $nombrePedido');
       }
-      
+
       final response = await http.put(
         Uri.parse('$baseUrl/api/pedidos/$pedidoId/mover-mesa'),
         headers: headers,
         body: json.encode(requestData),
       );
-      
+
       print('Mover pedido response: ${response.statusCode}');
       print('Mover pedido body: ${response.body}');
-      
+
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
         if (responseData['success'] == true && responseData['data'] != null) {
@@ -1136,11 +1206,108 @@ class PedidoService {
       } else {
         final errorData = json.decode(response.body);
         String errorMessage = errorData['message'] ?? 'Error desconocido';
-        throw Exception('Error al mover pedido (${response.statusCode}): $errorMessage');
+        throw Exception(
+          'Error al mover pedido (${response.statusCode}): $errorMessage',
+        );
       }
     } catch (e) {
       print('❌ Error moviendo pedido: $e');
       throw Exception('Error moviendo pedido: $e');
+    }
+  }
+
+  /// Mueve productos específicos de un pedido a otra mesa
+  /// Crea automáticamente una nueva orden en la mesa destino si está libre
+  Future<Map<String, dynamic>> moverProductosEspecificos({
+    required String pedidoOrigenId,
+    required String mesaDestinoNombre,
+    required List<ItemPedido> itemsParaMover,
+    required String usuarioId,
+    required String usuarioNombre,
+  }) async {
+    try {
+      print('🔄 Moviendo productos específicos...');
+      print('  - Pedido origen: $pedidoOrigenId');
+      print('  - Mesa destino: $mesaDestinoNombre');
+      print('  - Items a mover: ${itemsParaMover.length}');
+
+      final token = await storage.read(key: 'jwt_token');
+      if (token == null) {
+        throw Exception('Token de autenticación no encontrado');
+      }
+
+      // Preparar datos de los items a mover
+      final itemsData = itemsParaMover
+          .map(
+            (item) => {
+              'itemId': item.id,
+              'cantidad': item.cantidad,
+              'precio': item.precio,
+              'productoId': item.productoId,
+              'productoNombre': item.productoNombre,
+              'notas': item.notas,
+            },
+          )
+          .toList();
+
+      final requestData = {
+        'pedidoOrigenId': pedidoOrigenId,
+        'mesaDestinoNombre': mesaDestinoNombre,
+        'itemsParaMover': itemsData,
+        'usuarioId': usuarioId,
+        'usuarioNombre': usuarioNombre,
+        'timestamp': DateTime.now().toIso8601String(),
+      };
+
+      print('📤 Enviando request: ${json.encode(requestData)}');
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/pedidos/mover-productos-especificos'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: json.encode(requestData),
+      );
+
+      print('📥 Response status: ${response.statusCode}');
+      print('📥 Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+
+        if (responseData['success'] == true) {
+          final data = responseData['data'] ?? {};
+
+          print('✅ Productos movidos exitosamente');
+          print('  - Mesa destino: $mesaDestinoNombre');
+          print('  - Nueva orden creada: ${data['nuevaOrdenCreada'] ?? false}');
+          print(
+            '  - Items movidos: ${data['itemsMovidos'] ?? itemsParaMover.length}',
+          );
+
+          return {
+            'success': true,
+            'nuevaOrdenCreada': data['nuevaOrdenCreada'] ?? false,
+            'itemsMovidos': data['itemsMovidos'] ?? itemsParaMover.length,
+            'pedidoDestinoId': data['pedidoDestinoId'],
+            'message': 'Productos movidos exitosamente a $mesaDestinoNombre',
+          };
+        } else {
+          throw Exception(
+            responseData['message'] ?? 'Error procesando el movimiento',
+          );
+        }
+      } else {
+        final errorData = json.decode(response.body);
+        String errorMessage = errorData['message'] ?? 'Error desconocido';
+        throw Exception(
+          'Error al mover productos (${response.statusCode}): $errorMessage',
+        );
+      }
+    } catch (e) {
+      print('❌ Error moviendo productos específicos: $e');
+      return {'success': false, 'message': 'Error al mover productos: $e'};
     }
   }
 }

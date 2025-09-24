@@ -39,7 +39,6 @@ class DashboardScreenV2 extends StatefulWidget {
 
 class _DashboardScreenV2State extends State<DashboardScreenV2>
     with WidgetsBindingObserver {
-
   late StreamSubscription<bool> _pedidoCompletadoSubscription;
   late StreamSubscription<bool> _pedidoPagadoSubscription;
   late StreamSubscription<WebSocketEventData> _webSocketSubscription;
@@ -85,20 +84,27 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         _setupWebSocket();
 
         // Suscribirse al stream de eventos de pedidos completados
-        _pedidoCompletadoSubscription = _pedidoService.onPedidoCompletado
-            .listen((_) {
-              print('🔔 Pedido completado - WebSocket se encargará de la actualización');
-            });
+        _pedidoCompletadoSubscription = _pedidoService.onPedidoCompletado.listen((
+          _,
+        ) {
+          print(
+            '🔔 Pedido completado - WebSocket se encargará de la actualización',
+          );
+        });
 
         // Suscribirse al stream de eventos de pedidos pagados
         _pedidoPagadoSubscription = _pedidoService.onPedidoPagado.listen((_) {
-          print('🔔 Pedido pagado - WebSocket se encargará de la actualización');
+          print(
+            '🔔 Pedido pagado - WebSocket se encargará de la actualización',
+          );
         });
 
         // Timer de respaldo (cada 5 minutos) en caso de que WebSocket falle
         _autoRefreshTimer = Timer.periodic(Duration(minutes: 5), (timer) {
           if (!_webSocketService.isConnected) {
-            print('🔄 WebSocket desconectado, recargando datos por timer de respaldo');
+            print(
+              '🔄 WebSocket desconectado, recargando datos por timer de respaldo',
+            );
             _cargarDatos();
             // Actualizar UI para mostrar estado desconectado
             if (mounted) {
@@ -133,7 +139,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
     if (state == AppLifecycleState.resumed && mounted) {
       final userProvider = Provider.of<UserProvider>(context, listen: false);
       if (userProvider.isAdmin && !_webSocketService.isConnected) {
-        print('🔄 App resumida - Reconectando WebSocket si es necesario');
         _webSocketService.reconnect();
       }
     }
@@ -148,10 +153,10 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
     _pedidoPagadoSubscription.cancel();
     _webSocketSubscription.cancel();
     _autoRefreshTimer.cancel();
-    
+
     // Desconectar WebSocket si estamos saliendo del dashboard
     _webSocketService.disconnect();
-    
+
     super.dispose();
   }
 
@@ -182,7 +187,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                   'ventas': (item['total'] as num?)?.toDouble() ?? 0.0,
                 };
               }).toList();
-              print('📊 Datos de ventas por día transformados: $_ventasPorDia');
             });
           })
           .catchError((e) {
@@ -230,41 +234,37 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
     try {
       // Conectar al WebSocket
       await _webSocketService.connect();
-      
+
       // Actualizar UI para mostrar estado conectado
       if (mounted) {
         setState(() {});
       }
-      
+
       // Suscribirse a eventos del dashboard
       _webSocketSubscription = _webSocketService.dashboardEvents.listen(
         (WebSocketEventData eventData) {
-          print('🔔 Evento WebSocket recibido: ${eventData.event}');
-          
           // Recargar datos según el tipo de evento
           switch (eventData.event) {
             case WebSocketEvent.dashboardUpdate:
-              print('📊 Actualizando dashboard completo');
               _cargarDatos();
               break;
-              
+
             case WebSocketEvent.pedidoCreado:
             case WebSocketEvent.pedidoPagado:
             case WebSocketEvent.pedidoCancelado:
-              print('🛒 Actualizando por cambio de pedido');
               // Actualizar solo partes específicas para mejor rendimiento
               _cargarEstadisticas();
               _cargarUltimosPedidos();
               _cargarPedidosPorHora();
               break;
-              
+
             case WebSocketEvent.inventarioActualizado:
-              print('📦 Actualizando por cambio de inventario');
               _cargarTopProductos();
               break;
-              
+
             default:
-              print('ℹ️ Evento no manejado: ${eventData.event}');
+              // Evento no manejado
+              break;
           }
         },
         onError: (error) {
@@ -276,8 +276,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
           // El WebSocket service maneja la reconexión automáticamente
         },
       );
-      
-      print('✅ WebSocket configurado correctamente para dashboard');
     } catch (e) {
       print('❌ Error configurando WebSocket: $e');
       // Continuar con el timer de respaldo si falla WebSocket
@@ -318,17 +316,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
     try {
       // Obtener ingresos vs egresos de los últimos 12 meses desde el backend
       final ingresosVsEgresos = await _reportesService.getIngresosVsEgresos(12);
-
-      // 🚨 DEBUG: Mostrar exactamente qué datos vienen del backend
-      print('🔍 DATOS DE INGRESOS VS EGRESOS DEL BACKEND:');
-      for (var item in ingresosVsEgresos) {
-        final ingresos = item['ingresos'];
-        final egresos = item['egresos'];
-        final porcentaje = egresos / ingresos * 100;
-        print(
-          '  ${item['mes']}: Ingresos=\$$ingresos, Egresos=\$$egresos (${porcentaje.toStringAsFixed(1)}%)',
-        );
-      }
 
       if (mounted) {
         setState(() {
@@ -419,20 +406,32 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         print('⚠️ Error con reportes service, usando PedidoService: $e');
         // Opción 2: Fallback usando PedidoService directamente
         final pedidos = await _pedidoService.getAllPedidos();
-        ultimosPedidos = pedidos.take(10).map((pedido) => {
-          'pedidoId': pedido.id,
-          'mesa': pedido.mesa,
-          'producto': pedido.items.isNotEmpty ? pedido.items.first.productoNombre ?? 'Producto N/A' : 'Sin productos',
-          'fecha': pedido.fecha.toIso8601String(),
-          'cantidad': pedido.items.fold(0, (sum, item) => sum + item.cantidad),
-          'estado': pedido.estadoTexto,
-          'vendedor': pedido.mesero,
-          'precio': pedido.items.isNotEmpty ? pedido.items.first.precioUnitario : 0.0,
-          'subtotal': pedido.total,
-          'total': pedido.total,
-          'tipo': pedido.tipoTexto,
-          'notas': pedido.notas ?? '',
-        }).toList();
+        ultimosPedidos = pedidos
+            .take(10)
+            .map(
+              (pedido) => {
+                'pedidoId': pedido.id,
+                'mesa': pedido.mesa,
+                'producto': pedido.items.isNotEmpty
+                    ? pedido.items.first.productoNombre ?? 'Producto N/A'
+                    : 'Sin productos',
+                'fecha': pedido.fecha.toIso8601String(),
+                'cantidad': pedido.items.fold(
+                  0,
+                  (sum, item) => sum + item.cantidad,
+                ),
+                'estado': pedido.estadoTexto,
+                'vendedor': pedido.mesero,
+                'precio': pedido.items.isNotEmpty
+                    ? pedido.items.first.precioUnitario
+                    : 0.0,
+                'subtotal': pedido.total,
+                'total': pedido.total,
+                'tipo': pedido.tipoTexto,
+                'notas': pedido.notas ?? '',
+              },
+            )
+            .toList();
       }
 
       // Validar y limpiar los datos antes de usarlos
@@ -440,9 +439,10 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         // Calcular valores si no están presentes o son 0
         final cantidad = (pedido['cantidad'] as num?)?.toInt() ?? 1;
         final precioUnitario = (pedido['precio'] as num?)?.toDouble() ?? 0.0;
-        final subtotalOriginal = (pedido['subtotal'] as num?)?.toDouble() ?? 0.0;
+        final subtotalOriginal =
+            (pedido['subtotal'] as num?)?.toDouble() ?? 0.0;
         final totalOriginal = (pedido['total'] as num?)?.toDouble() ?? 0.0;
-        
+
         // Usar el mayor valor entre subtotal y total, o calcular si ambos son 0
         double subtotalFinal;
         if (subtotalOriginal > 0) {
@@ -454,7 +454,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         } else {
           subtotalFinal = 0.0;
         }
-        
+
         return {
           'pedidoId': pedido['pedidoId'] ?? 'N/A',
           'mesa': pedido['mesa'] ?? 'N/A',
@@ -569,7 +569,10 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: Text('Cancelar', style: TextStyle(color: AppTheme.textSecondary)),
+              child: Text(
+                'Cancelar',
+                style: TextStyle(color: AppTheme.textSecondary),
+              ),
             ),
             ElevatedButton(
               onPressed: () {
@@ -580,12 +583,14 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                 if (nuevoObjetivo != null && nuevoObjetivo > 0) {
                   Navigator.of(context).pop(nuevoObjetivo);
                 } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Por favor ingrese un valor válido'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Por favor ingrese un valor válido'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
                 }
               },
               style: ElevatedButton.styleFrom(
@@ -641,14 +646,16 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
       );
 
       if (exitoso) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Objetivo de $periodo actualizado a \$${_formatNumber(nuevoObjetivo)}',
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Objetivo de $periodo actualizado a \$${_formatNumber(nuevoObjetivo)}',
+              ),
+              backgroundColor: Colors.green,
             ),
-            backgroundColor: Colors.green,
-          ),
-        );
+          );
+        }
 
         // IMPORTANTE: Recargar datos del dashboard para obtener los objetivos actualizados
         await _cargarDatos();
@@ -664,12 +671,14 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
       setState(() {
         _objetivosTemporales.remove(periodo);
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al actualizar el objetivo: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al actualizar el objetivo: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -736,7 +745,9 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                             onRefresh: _cargarDatos,
                             child: SingleChildScrollView(
                               physics: AlwaysScrollableScrollPhysics(),
-                              padding: EdgeInsets.all(context.responsivePadding),
+                              padding: EdgeInsets.all(
+                                context.responsivePadding,
+                              ),
                               child: Column(
                                 children: [
                                   // Cards de estadísticas principales
@@ -750,20 +761,32 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                                   context.isMobile
                                       ? Column(
                                           children: [
-                                            _buildIngresosVsEgresosChart(context),
-                                            SizedBox(height: AppTheme.spacingLarge),
+                                            _buildIngresosVsEgresosChart(
+                                              context,
+                                            ),
+                                            SizedBox(
+                                              height: AppTheme.spacingLarge,
+                                            ),
                                             _buildTopProductosChart(context),
                                           ],
                                         )
                                       : Row(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
                                             Expanded(
-                                              child: _buildIngresosVsEgresosChart(context),
+                                              child:
+                                                  _buildIngresosVsEgresosChart(
+                                                    context,
+                                                  ),
                                             ),
-                                            SizedBox(width: AppTheme.spacingXLarge),
+                                            SizedBox(
+                                              width: AppTheme.spacingXLarge,
+                                            ),
                                             Expanded(
-                                              child: _buildTopProductosChart(context),
+                                              child: _buildTopProductosChart(
+                                                context,
+                                              ),
                                             ),
                                           ],
                                         ),
@@ -774,21 +797,30 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                                       ? Column(
                                           children: [
                                             _buildUltimosPedidos(context),
-                                            SizedBox(height: AppTheme.spacingLarge),
+                                            SizedBox(
+                                              height: AppTheme.spacingLarge,
+                                            ),
                                             _buildVendedoresDelMes(context),
                                           ],
                                         )
                                       : Row(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
                                             Expanded(
                                               flex: 3,
-                                              child: _buildUltimosPedidos(context),
+                                              child: _buildUltimosPedidos(
+                                                context,
+                                              ),
                                             ),
-                                            SizedBox(width: AppTheme.spacingXLarge),
+                                            SizedBox(
+                                              width: AppTheme.spacingXLarge,
+                                            ),
                                             Expanded(
                                               flex: 2,
-                                              child: _buildVendedoresDelMes(context),
+                                              child: _buildVendedoresDelMes(
+                                                context,
+                                              ),
                                             ),
                                           ],
                                         ),
@@ -868,14 +900,12 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
           Container(
             padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: _webSocketService.isConnected 
-                ? Colors.green.withOpacity(0.2) 
-                : Colors.red.withOpacity(0.2),
+              color: !_isLoading
+                  ? Colors.green.withOpacity(0.2)
+                  : Colors.orange.withOpacity(0.2),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: _webSocketService.isConnected 
-                  ? Colors.green 
-                  : Colors.red,
+                color: !_isLoading ? Colors.green : Colors.orange,
                 width: 1,
               ),
             ),
@@ -886,17 +916,17 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                   width: 8,
                   height: 8,
                   decoration: BoxDecoration(
-                    color: _webSocketService.isConnected 
-                      ? Colors.green 
-                      : Colors.red,
+                    color: !_isLoading ? Colors.green : Colors.orange,
                     shape: BoxShape.circle,
                   ),
                 ),
                 SizedBox(width: 6),
                 Text(
-                  _webSocketService.isConnected ? 'En vivo' : 'Desconectado',
+                  // Mostrar "En vivo" si no está cargando (indica conectividad API)
+                  // WebSocket está deshabilitado temporalmente, usando polling
+                  !_isLoading ? 'En vivo' : 'Conectando...',
                   style: TextStyle(
-                    color: Colors.white, 
+                    color: Colors.white,
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
                   ),
@@ -1003,7 +1033,10 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
               children: [
                 Icon(Icons.history, color: Colors.blue, size: 18),
                 SizedBox(width: 8),
-                Text('Historial', style: TextStyle(color: AppTheme.textPrimary)),
+                Text(
+                  'Historial',
+                  style: TextStyle(color: AppTheme.textPrimary),
+                ),
               ],
             ),
           ),
@@ -1021,7 +1054,10 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
               children: [
                 Icon(Icons.restaurant_menu, color: Colors.green, size: 18),
                 SizedBox(width: 8),
-                Text('Ingredientes', style: TextStyle(color: AppTheme.textPrimary)),
+                Text(
+                  'Ingredientes',
+                  style: TextStyle(color: AppTheme.textPrimary),
+                ),
               ],
             ),
           ),
@@ -1057,7 +1093,10 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
               children: [
                 Icon(Icons.local_shipping, color: Colors.purple, size: 18),
                 SizedBox(width: 8),
-                Text('Proveedores', style: TextStyle(color: AppTheme.textPrimary)),
+                Text(
+                  'Proveedores',
+                  style: TextStyle(color: AppTheme.textPrimary),
+                ),
               ],
             ),
           ),
@@ -1150,7 +1189,11 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: isSelected ? Colors.white : AppTheme.textSecondary, size: 20),
+            Icon(
+              icon,
+              color: isSelected ? Colors.white : AppTheme.textSecondary,
+              size: 20,
+            ),
             SizedBox(height: 4),
             Text(
               label,
@@ -1249,7 +1292,9 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
               SizedBox(height: AppTheme.spacingMedium),
               Text(
                 'Cargando estadísticas del dashboard...',
-                style: AppTheme.bodyMedium.copyWith(color: AppTheme.textSecondary),
+                style: AppTheme.bodyMedium.copyWith(
+                  color: AppTheme.textSecondary,
+                ),
               ),
             ],
           ),
@@ -1323,7 +1368,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         ],
       );
     }
-    
+
     // Versión tablet/escritorio
     return Column(
       children: [
@@ -1345,7 +1390,11 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                 periodo: 'hoy',
               ),
             ),
-            SizedBox(width: context.isTablet ? AppTheme.spacingMedium : AppTheme.spacingLarge),
+            SizedBox(
+              width: context.isTablet
+                  ? AppTheme.spacingMedium
+                  : AppTheme.spacingLarge,
+            ),
             Expanded(
               child: _buildStatCard(
                 context,
@@ -1383,7 +1432,11 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                 periodo: 'mes',
               ),
             ),
-            SizedBox(width: context.isTablet ? AppTheme.spacingMedium : AppTheme.spacingLarge),
+            SizedBox(
+              width: context.isTablet
+                  ? AppTheme.spacingMedium
+                  : AppTheme.spacingLarge,
+            ),
             Expanded(
               child: _buildStatCard(
                 context,
@@ -1433,7 +1486,9 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
 
   Widget _buildIngresosVsEgresosChart(BuildContext context) {
     return Container(
-      padding: EdgeInsets.all(context.isMobile ? AppTheme.spacingMedium : AppTheme.spacingLarge),
+      padding: EdgeInsets.all(
+        context.isMobile ? AppTheme.spacingMedium : AppTheme.spacingLarge,
+      ),
       decoration: AppTheme.cardDecoration,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1464,7 +1519,10 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                         SizedBox(height: 8),
                         Text(
                           'Cargando datos...',
-                          style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                          style: TextStyle(
+                            color: AppTheme.textSecondary,
+                            fontSize: 12,
+                          ),
                         ),
                       ],
                     ),
@@ -1517,7 +1575,10 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                             getTitlesWidget: (value, meta) {
                               return Text(
                                 '${(value / 1000).toInt()}K',
-                                style: TextStyle(color: AppTheme.textSecondary, fontSize: 8),
+                                style: TextStyle(
+                                  color: AppTheme.textSecondary,
+                                  fontSize: 8,
+                                ),
                               );
                             },
                           ),
@@ -1578,7 +1639,9 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
 
   Widget _buildTopProductosChart(BuildContext context) {
     return Container(
-      padding: EdgeInsets.all(context.isMobile ? AppTheme.spacingMedium : AppTheme.spacingLarge),
+      padding: EdgeInsets.all(
+        context.isMobile ? AppTheme.spacingMedium : AppTheme.spacingLarge,
+      ),
       decoration: AppTheme.cardDecoration,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1614,7 +1677,10 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                         SizedBox(height: 8),
                         Text(
                           'Cargando productos...',
-                          style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                          style: TextStyle(
+                            color: AppTheme.textSecondary,
+                            fontSize: 12,
+                          ),
                         ),
                       ],
                     ),
@@ -1646,7 +1712,10 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                 ? Center(
                     child: Text(
                       'No hay datos de productos',
-                      style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                      style: TextStyle(
+                        color: AppTheme.textSecondary,
+                        fontSize: 12,
+                      ),
                     ),
                   )
                 : ListView(
@@ -1695,7 +1764,9 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
 
   Widget _buildPedidosPorHoraChart(BuildContext context) {
     return Container(
-      padding: EdgeInsets.all(context.isMobile ? AppTheme.spacingMedium : AppTheme.spacingXLarge),
+      padding: EdgeInsets.all(
+        context.isMobile ? AppTheme.spacingMedium : AppTheme.spacingXLarge,
+      ),
       decoration: AppTheme.elevatedCardDecoration,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1731,7 +1802,10 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                         SizedBox(height: 8),
                         Text(
                           'Cargando pedidos...',
-                          style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                          style: TextStyle(
+                            color: AppTheme.textSecondary,
+                            fontSize: 12,
+                          ),
                         ),
                       ],
                     ),
@@ -1779,7 +1853,10 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                             getTitlesWidget: (value, meta) {
                               return Text(
                                 '${value.toInt()}',
-                                style: TextStyle(color: AppTheme.textSecondary, fontSize: 8),
+                                style: TextStyle(
+                                  color: AppTheme.textSecondary,
+                                  fontSize: 8,
+                                ),
                               );
                             },
                           ),
@@ -1821,7 +1898,9 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
 
   Widget _buildUltimosPedidos(BuildContext context) {
     return Container(
-      padding: EdgeInsets.all(context.isMobile ? AppTheme.spacingMedium : AppTheme.spacingXLarge),
+      padding: EdgeInsets.all(
+        context.isMobile ? AppTheme.spacingMedium : AppTheme.spacingXLarge,
+      ),
       decoration: AppTheme.elevatedCardDecoration,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1857,7 +1936,10 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                         SizedBox(height: 12),
                         Text(
                           'Cargando pedidos...',
-                          style: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+                          style: TextStyle(
+                            color: AppTheme.textSecondary,
+                            fontSize: 14,
+                          ),
                         ),
                       ],
                     ),
@@ -1959,7 +2041,9 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
 
   Widget _buildVendedoresDelMes(BuildContext context) {
     return Container(
-      padding: EdgeInsets.all(context.isMobile ? AppTheme.spacingMedium : AppTheme.spacingXLarge),
+      padding: EdgeInsets.all(
+        context.isMobile ? AppTheme.spacingMedium : AppTheme.spacingXLarge,
+      ),
       decoration: AppTheme.elevatedCardDecoration,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1994,9 +2078,8 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                         SizedBox(height: AppTheme.spacingMedium),
                         Text(
                           'Cargando vendedores...',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppTheme.textSecondary,
-                          ),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: AppTheme.textSecondary),
                         ),
                       ],
                     ),
@@ -2007,12 +2090,20 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                       final vendedor = _vendedoresDelMes[index];
                       final puesto = index + 1;
                       return Padding(
-                        padding: EdgeInsets.only(bottom: AppTheme.spacingMedium),
+                        padding: EdgeInsets.only(
+                          bottom: AppTheme.spacingMedium,
+                        ),
                         child: Container(
-                          padding: EdgeInsets.all(context.isMobile ? AppTheme.spacingMedium : AppTheme.spacingLarge),
+                          padding: EdgeInsets.all(
+                            context.isMobile
+                                ? AppTheme.spacingMedium
+                                : AppTheme.spacingLarge,
+                          ),
                           decoration: BoxDecoration(
                             color: AppTheme.cardBg,
-                            borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                            borderRadius: BorderRadius.circular(
+                              AppTheme.radiusMedium,
+                            ),
                             border: Border.all(
                               color: puesto <= 3
                                   ? AppTheme.warning
@@ -2036,10 +2127,13 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                                     child: Center(
                                       child: Text(
                                         '$puesto',
-                                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                        ),
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .labelSmall
+                                            ?.copyWith(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.bold,
+                                            ),
                                       ),
                                     ),
                                   ),
@@ -2047,10 +2141,13 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                                   Expanded(
                                     child: Text(
                                       vendedor['nombre'] ?? 'N/A',
-                                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                        color: AppTheme.textPrimary,
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleSmall
+                                          ?.copyWith(
+                                            color: AppTheme.textPrimary,
+                                            fontWeight: FontWeight.bold,
+                                          ),
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
@@ -2059,17 +2156,17 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                               SizedBox(height: AppTheme.spacingSmall),
                               Text(
                                 '\$${_formatCurrency(vendedor['totalVentas'] ?? 0)}',
-                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                  color: AppTheme.warning,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                                style: Theme.of(context).textTheme.titleMedium
+                                    ?.copyWith(
+                                      color: AppTheme.warning,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                               ),
                               SizedBox(height: AppTheme.spacingXSmall),
                               Text(
                                 '${vendedor['cantidadPedidos'] ?? 0} pedidos',
-                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: AppTheme.textSecondary,
-                                ),
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(color: AppTheme.textSecondary),
                               ),
                             ],
                           ),
@@ -2145,7 +2242,9 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
     String? periodo,
   }) {
     return Container(
-      padding: EdgeInsets.all(context.isMobile ? AppTheme.spacingMedium : AppTheme.spacingLarge),
+      padding: EdgeInsets.all(
+        context.isMobile ? AppTheme.spacingMedium : AppTheme.spacingLarge,
+      ),
       decoration: AppTheme.elevatedCardDecoration,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2174,7 +2273,9 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                         padding: EdgeInsets.all(AppTheme.spacingXSmall),
                         decoration: BoxDecoration(
                           color: color.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                          borderRadius: BorderRadius.circular(
+                            AppTheme.radiusSmall,
+                          ),
                         ),
                         child: Icon(Icons.edit, size: 14, color: color),
                       ),
@@ -2212,9 +2313,9 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
           SizedBox(height: AppTheme.spacingXSmall),
           Text(
             objective,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: AppTheme.textSecondary,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.labelSmall?.copyWith(color: AppTheme.textSecondary),
           ),
           SizedBox(height: AppTheme.spacingSmall),
           SizedBox(
@@ -2234,7 +2335,9 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
 
   Widget _buildRecentSales(BuildContext context) {
     return Container(
-      padding: EdgeInsets.all(context.isMobile ? AppTheme.spacingMedium : AppTheme.spacingLarge),
+      padding: EdgeInsets.all(
+        context.isMobile ? AppTheme.spacingMedium : AppTheme.spacingLarge,
+      ),
       decoration: AppTheme.elevatedCardDecoration,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2256,7 +2359,9 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
           SizedBox(
             height: context.isMobile ? 120 : 150,
             child: _ventasPorDia.isEmpty
-                ? Center(child: CircularProgressIndicator(color: AppTheme.primary))
+                ? Center(
+                    child: CircularProgressIndicator(color: AppTheme.primary),
+                  )
                 : BarChart(
                     BarChartData(
                       alignment: BarChartAlignment.spaceAround,
@@ -2449,7 +2554,10 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         SizedBox(width: 8),
-        Text(label, style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+        Text(
+          label,
+          style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+        ),
       ],
     );
   }

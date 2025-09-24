@@ -276,46 +276,66 @@ class _ReportesScreenState extends State<ReportesScreen>
         ),
         backgroundColor: primary,
         elevation: 0,
-        bottom: TabBar(
-          controller: _tabController,
-          isScrollable: true,
-          indicatorColor: Colors.white,
-          indicatorWeight: 3,
-          tabs: [
-            Tab(text: 'Dashboard'),
-            Tab(text: 'Ventas'),
-            Tab(text: 'Productos'),
-            Tab(text: 'Pedidos'),
-            Tab(text: 'Clientes'),
-            Tab(text: 'Utilidad'),
-          ],
-        ),
         actions: [
           IconButton(
             icon: Icon(Icons.save_alt),
             onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Exportando reporte...'),
-                  backgroundColor: primary,
-                ),
-              );
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Exportando reporte...'),
+                    backgroundColor: primary,
+                  ),
+                );
+              }
             },
             tooltip: 'Exportar',
           ),
           SizedBox(width: 16),
         ],
       ),
-      body: TabBarView(
-        controller: _tabController,
-        physics: BouncingScrollPhysics(),
+      body: Column(
         children: [
-          _buildDashboard(),
-          _buildReporteVentas(),
-          _buildReporteProductos(),
-          _buildReportePedidos(),
-          _buildReporteClientes(),
-          _buildReporteUtilidad(),
+          // Tabs movidos del AppBar al body (ahora scrolleable)
+          Container(
+            decoration: BoxDecoration(
+              color: primary,
+              border: Border(
+                bottom: BorderSide(
+                  color: Colors.white.withOpacity(0.2),
+                  width: 1,
+                ),
+              ),
+            ),
+            child: TabBar(
+              controller: _tabController,
+              isScrollable: true,
+              indicatorColor: Colors.white,
+              indicatorWeight: 3,
+              tabs: [
+                Tab(text: 'Dashboard'),
+                Tab(text: 'Ventas'),
+                Tab(text: 'Productos'),
+                Tab(text: 'Pedidos'),
+                Tab(text: 'Clientes'),
+                Tab(text: 'Utilidad'),
+              ],
+            ),
+          ),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              physics: BouncingScrollPhysics(),
+              children: [
+                _buildDashboard(),
+                _buildReporteVentas(),
+                _buildReporteProductos(),
+                _buildReportePedidos(),
+                _buildReporteClientes(),
+                _buildReporteUtilidad(),
+              ],
+            ),
+          ),
         ],
       ),
       drawer: _buildMenuLateral(),
@@ -1306,6 +1326,164 @@ class _ReportesScreenState extends State<ReportesScreen>
       );
     }
 
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Detectar si es móvil usando el breakpoint de 768px
+        bool isMobile = constraints.maxWidth < 768;
+
+        if (isMobile) {
+          return _buildMobileProductList();
+        } else {
+          return _buildDesktopProductTable();
+        }
+      },
+    );
+  }
+
+  Widget _buildMobileProductList() {
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey.shade800),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        children: [
+          // Header para móvil
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.3),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.restaurant_menu, color: textDark, size: 20),
+                SizedBox(width: 8),
+                Text(
+                  'Productos Más Vendidos',
+                  style: TextStyle(
+                    color: textDark,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Lista de productos para móvil
+          Expanded(
+            child: ListView.builder(
+              itemCount: _ventasTopProductos.length,
+              itemBuilder: (context, index) {
+                final producto = _ventasTopProductos[index];
+                return Container(
+                  margin: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: cardBg.withOpacity(0.7),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: Colors.grey.shade800.withOpacity(0.3),
+                      width: 0.5,
+                    ),
+                  ),
+                  child: Padding(
+                    padding: EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Nombre del producto
+                        Row(
+                          children: [
+                            Container(
+                              padding: EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: primary.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Icon(
+                                Icons.restaurant_menu,
+                                color: primary,
+                                size: 16,
+                              ),
+                            ),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                producto['nombre'] ?? 'Sin nombre',
+                                style: TextStyle(
+                                  color: textDark,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 15,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 8),
+                        // Información de cantidad y total
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.shopping_basket,
+                                  color: Colors.blueAccent,
+                                  size: 16,
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Cantidad: ',
+                                  style: TextStyle(
+                                    color: textDark.withOpacity(0.7),
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                Text(
+                                  (producto['cantidad'] ?? 0).toString(),
+                                  style: TextStyle(
+                                    color: Colors.blueAccent,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.attach_money,
+                                  color: Colors.green,
+                                  size: 16,
+                                ),
+                                Text(
+                                  _formatearNumero(producto['total'] ?? 0),
+                                  style: TextStyle(
+                                    color: Colors.green,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDesktopProductTable() {
     return Container(
       decoration: BoxDecoration(
         border: Border.all(color: Colors.grey.shade800),

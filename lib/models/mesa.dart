@@ -1,10 +1,12 @@
 import 'producto.dart';
 import 'pedido.dart';
+import 'tipo_mesa.dart';
 
 /// Modelo de datos para una Mesa en el sistema de pedidos
 class Mesa {
   final String _id;
   final String _nombre;
+  final TipoMesa _tipo;
   bool _ocupada;
   double _total;
   List<Producto> _productos;
@@ -14,6 +16,7 @@ class Mesa {
   String get id => _id;
   String get mongoId => _id;
   String get nombre => _nombre;
+  TipoMesa get tipo => _tipo;
   bool get ocupada => _ocupada;
   double get total => _total;
   List<Producto> get productos => _productos;
@@ -28,12 +31,14 @@ class Mesa {
   Mesa({
     required String id,
     required String nombre,
+    TipoMesa tipo = TipoMesa.normal,
     bool ocupada = false,
     double total = 0.0,
     List<Producto>? productos,
     Pedido? pedidoActual,
   }) : _id = id,
        _nombre = nombre,
+       _tipo = tipo,
        _ocupada = ocupada,
        _total = total,
        _productos = productos ?? [],
@@ -42,6 +47,7 @@ class Mesa {
   Mesa copyWith({
     String? id,
     String? nombre,
+    TipoMesa? tipo,
     bool? ocupada,
     double? total,
     List<Producto>? productos,
@@ -50,6 +56,7 @@ class Mesa {
     return Mesa(
       id: id ?? _id,
       nombre: nombre ?? _nombre,
+      tipo: tipo ?? _tipo,
       ocupada: ocupada ?? _ocupada,
       total: total ?? _total,
       productos: productos ?? List.from(_productos),
@@ -60,6 +67,7 @@ class Mesa {
   Map<String, dynamic> toJson() => {
     '_id': _id,
     'nombre': _nombre,
+    'tipo': _tipo.name,
     'ocupada': _ocupada,
     'total': _total,
     'productos': _productos.map((p) => p.toJson()).toList(),
@@ -70,6 +78,10 @@ class Mesa {
     return Mesa(
       id: json['_id'] ?? '',
       nombre: json['nombre'] ?? '',
+      tipo: TipoMesa.values.firstWhere(
+        (tipo) => tipo.name == json['tipo'],
+        orElse: () => TipoMesa.normal,
+      ),
       ocupada: json['ocupada'] ?? false,
       total: (json['total'] ?? 0.0).toDouble(),
       productos:

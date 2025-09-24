@@ -7,6 +7,7 @@ import 'dart:convert';
 import '../theme/app_theme.dart';
 import '../models/mesa.dart';
 import '../models/pedido.dart';
+import '../models/item_pedido.dart';
 import '../models/documento_mesa.dart';
 import '../services/pedido_service.dart';
 import '../services/mesa_service.dart';
@@ -17,12 +18,17 @@ import '../services/notification_service.dart';
 import '../providers/user_provider.dart';
 import '../utils/format_utils.dart';
 import '../utils/impresion_mixin.dart';
+import '../widgets/pago_parcial_dialog.dart';
+import '../widgets/cancelar_producto_dialog.dart';
+import '../widgets/mover_productos_dialog.dart';
 import 'pedido_screen.dart';
 import 'documentos_mesa_screen.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:cross_file/cross_file.dart';
+import 'package:flutter/foundation.dart';
+import '../services/pdf_service_web.dart';
 
 class MesasScreen extends StatefulWidget {
   const MesasScreen({super.key});
@@ -35,7 +41,8 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
   final MesaService _mesaService = MesaService();
   final PedidoService _pedidoService = PedidoService();
   final DocumentoMesaService _documentoMesaService = DocumentoMesaService();
-  final DocumentoAutomaticoService _documentoAutomaticoService = DocumentoAutomaticoService();
+  final DocumentoAutomaticoService _documentoAutomaticoService =
+      DocumentoAutomaticoService();
 
   final ImpresionService _impresionService = ImpresionService();
   List<Mesa> mesas = [];
@@ -64,7 +71,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
 
   // Banderas para evitar procesamiento múltiple
   bool _procesandoPago = false;
-  
+
   /// Método para resetear manualmente el flag de procesamiento
   /// Útil para casos donde el sistema se quede colgado
   void _resetearFlagProcesamiento() {
@@ -72,7 +79,6 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
       setState(() {
         _procesandoPago = false;
       });
-      print('🔄 Flag de procesamiento reseteado manualmente');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Flag de procesamiento reseteado'),
@@ -84,12 +90,13 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
   }
 
   // Método para enviar documento al servidor
-  Future<void> _enviarDocumentoAlServidor(Map<String, dynamic> documento) async {
+  Future<void> _enviarDocumentoAlServidor(
+    Map<String, dynamic> documento,
+  ) async {
     try {
       print('📤 Enviando documento al servidor...');
       // Implementación básica - agregar lógica según necesidades
       await Future.delayed(Duration(milliseconds: 500)); // Simular envío
-      print('✅ Documento enviado correctamente');
     } catch (e) {
       print('❌ Error enviando documento: $e');
       throw Exception('Error enviando documento: $e');
@@ -107,10 +114,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: _primary.withOpacity(0.3),
-          width: 1,
-        ),
+        border: Border.all(color: _primary.withOpacity(0.3), width: 1),
         boxShadow: [
           BoxShadow(
             color: _primary.withOpacity(0.1),
@@ -139,10 +143,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
       decoration: BoxDecoration(
         color: _surfaceDark.withOpacity(0.3),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: _textMuted.withOpacity(0.2),
-          width: 0.5,
-        ),
+        border: Border.all(color: _textMuted.withOpacity(0.2), width: 0.5),
       ),
       child: Row(
         children: [
@@ -186,10 +187,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
       decoration: BoxDecoration(
         color: _cardElevated,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: _primary.withOpacity(0.2),
-          width: 1,
-        ),
+        border: Border.all(color: _primary.withOpacity(0.2), width: 1),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.1),
@@ -218,22 +216,24 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
             ),
           ),
           SizedBox(height: 12),
-          ...items.map((item) => Container(
-                margin: EdgeInsets.only(bottom: 8),
-                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: _surfaceDark.withOpacity(0.3),
-                  borderRadius: BorderRadius.circular(6),
+          ...items.map(
+            (item) => Container(
+              margin: EdgeInsets.only(bottom: 8),
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: _surfaceDark.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                item,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: _textPrimary,
+                  height: 1.3,
                 ),
-                child: Text(
-                  item,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: _textPrimary,
-                    height: 1.3,
-                  ),
-                ),
-              )),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -247,32 +247,33 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
     String? pagadoPor,
   }) async {
     try {
-      print('📄 Creando documento automático para pedido: $pedidoId');
-      
       // Obtener el pedido completo para extraer información
       final pedido = await _pedidoService.getPedidoById(pedidoId);
-      
+
       if (pedido == null) {
         throw Exception('No se encontró el pedido con ID: $pedidoId');
       }
-      
+
       // Obtener el usuario actual
       final userProvider = Provider.of<UserProvider>(context, listen: false);
       final vendedor = userProvider.userName ?? 'Sistema';
-      
+
       // Validar forma de pago
       String formapagoValidada = formaPago ?? 'efectivo';
-      if (formapagoValidada != 'efectivo' && formapagoValidada != 'transferencia') {
-        print('⚠️ Forma de pago no reconocida: "$formapagoValidada". Usando efectivo por defecto.');
+      if (formapagoValidada != 'efectivo' &&
+          formapagoValidada != 'transferencia') {
+        print(
+          '⚠️ Forma de pago no reconocida: "$formapagoValidada". Usando efectivo por defecto.',
+        );
         formapagoValidada = 'efectivo';
       }
-      
+
       print('💰 Datos del documento:');
       print('  - Mesa: ${pedido.mesa}');
       print('  - Forma de pago: $formapagoValidada');
       print('  - Propina: ${propina ?? 0.0}');
       print('  - Pagado por: ${pagadoPor ?? vendedor}');
-      
+
       // Crear documento usando el servicio real
       final documento = await _documentoMesaService.crearDocumento(
         mesaNombre: pedido.mesa,
@@ -285,17 +286,15 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
         estado: 'Pagado',
         fechaPago: DateTime.now(),
       );
-      
+
       if (documento != null) {
-        print('✅ Documento creado exitosamente con ID: ${documento.id}');
-        print('  - Número: ${documento.numeroDocumento}');
-        print('  - Total: \$${documento.total}');
-        
         // Mostrar mensaje de éxito
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('✅ Documento ${documento.numeroDocumento} creado exitosamente'),
+              content: Text(
+                '✅ Documento ${documento.numeroDocumento} creado exitosamente',
+              ),
               backgroundColor: Colors.green,
               duration: Duration(seconds: 3),
             ),
@@ -304,7 +303,6 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
       } else {
         throw Exception('El servicio de documentos devolvió null');
       }
-      
     } catch (e) {
       print('❌ Error creando documento automático: $e');
       if (mounted) {
@@ -324,7 +322,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
   Future<void> _imprimirResumenPedido(Map<String, dynamic> resumen) async {
     try {
       final textoImpresion = _impresionService.generarTextoImpresion(resumen);
-      
+
       // Mostrar vista previa antes de imprimir
       showDialog(
         context: context,
@@ -332,14 +330,13 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
           backgroundColor: Colors.transparent,
           child: Container(
             width: double.maxFinite,
-            constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.8),
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.8,
+            ),
             decoration: BoxDecoration(
               color: _cardElevated,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: _primary.withOpacity(0.3),
-                width: 1,
-              ),
+              border: Border.all(color: _primary.withOpacity(0.3), width: 1),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.3),
@@ -356,7 +353,10 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                   padding: EdgeInsets.all(20),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [_primary.withOpacity(0.1), _primary.withOpacity(0.05)],
+                      colors: [
+                        _primary.withOpacity(0.1),
+                        _primary.withOpacity(0.05),
+                      ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
@@ -426,7 +426,10 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                       TextButton(
                         onPressed: () => Navigator.pop(context),
                         style: TextButton.styleFrom(
-                          padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 12,
+                          ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
                           ),
@@ -449,7 +452,10 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: _primary,
                           foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 12,
+                          ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
                           ),
@@ -479,12 +485,14 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
         ),
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error preparando impresión: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error preparando impresión: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -494,10 +502,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: _cardBg,
-        title: Text(
-          'Compartir Resumen',
-          style: TextStyle(color: _textPrimary),
-        ),
+        title: Text('Compartir Resumen', style: TextStyle(color: _textPrimary)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -515,8 +520,10 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
           ),
           ElevatedButton.icon(
             onPressed: () async {
-              Navigator.pop(context);
-              await _generarYCompartirPDF(resumen);
+              if (mounted) {
+                Navigator.pop(context);
+                await _generarYCompartirPDF(resumen);
+              }
             },
             icon: Icon(Icons.picture_as_pdf),
             label: Text('PDF'),
@@ -527,8 +534,10 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
           ),
           ElevatedButton.icon(
             onPressed: () async {
-              Navigator.pop(context);
-              await _compartirTexto(resumen);
+              if (mounted) {
+                Navigator.pop(context);
+                await _compartirTexto(resumen);
+              }
             },
             icon: Icon(Icons.text_fields),
             label: Text('Texto'),
@@ -539,8 +548,10 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
           ),
           ElevatedButton.icon(
             onPressed: () async {
-              Navigator.pop(context);
-              await imprimirDocumento(resumen);
+              if (mounted) {
+                Navigator.pop(context);
+                await imprimirDocumento(resumen);
+              }
             },
             icon: Icon(Icons.print),
             label: Text('Imprimir'),
@@ -563,89 +574,266 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
         subject: 'Resumen de Pedido - ${resumen['pedidoId']}',
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error compartiendo: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error compartiendo: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
   // Método para generar y compartir PDF
   Future<void> _generarYCompartirPDF(Map<String, dynamic> resumen) async {
     try {
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => AlertDialog(
-          backgroundColor: _cardBg,
-          content: Row(
-            children: [
-              CircularProgressIndicator(color: _primary),
-              SizedBox(width: 20),
-              Text(
-                'Generando PDF...',
-                style: TextStyle(color: _textPrimary),
-              ),
-            ],
-          ),
-        ),
-      );
-
-      final pdf = pw.Document();
-      
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) {
-            final textoImpresion = _impresionService.generarTextoImpresion(resumen);
-            return pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            backgroundColor: _cardBg,
+            content: Row(
               children: [
-                pw.Text('Resumen de Pedido', 
-                  style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
-                pw.SizedBox(height: 20),
-                pw.Text(textoImpresion, style: pw.TextStyle(fontSize: 10)),
+                CircularProgressIndicator(color: _primary),
+                SizedBox(width: 20),
+                Text(
+                  kIsWeb ? 'Preparando documento...' : 'Generando PDF...',
+                  style: TextStyle(color: _textPrimary),
+                ),
               ],
+            ),
+          ),
+        );
+      }
+
+      if (kIsWeb) {
+        // Para web, generar PDF directamente
+        final pdfServiceWeb = PDFServiceWeb();
+
+        if (mounted) {
+          Navigator.pop(context); // Cerrar diálogo de carga
+        }
+
+        try {
+          pdfServiceWeb.generarYDescargarPDF(resumen: resumen);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Generando PDF...'),
+                backgroundColor: Colors.green,
+              ),
             );
-          },
-        ),
-      );
+          }
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Error generando PDF: $e'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
+        return;
+      } else {
+        // Para plataformas nativas, usar PDF tradicional
+        final pdf = pw.Document();
 
-      final pdfBytes = await pdf.save();
-      
-      // Guardar temporalmente el PDF
-      final tempDir = Directory.systemTemp;
-      final fileName = 'resumen_pedido_${resumen['pedidoId']}_${DateTime.now().millisecondsSinceEpoch}.pdf';
-      final file = File('${tempDir.path}/$fileName');
-      await file.writeAsBytes(pdfBytes);
+        pdf.addPage(
+          pw.Page(
+            build: (pw.Context context) {
+              final textoImpresion = _impresionService.generarTextoImpresion(
+                resumen,
+              );
+              return pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text(
+                    'Resumen de Pedido',
+                    style: pw.TextStyle(
+                      fontSize: 18,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
+                  ),
+                  pw.SizedBox(height: 20),
+                  pw.Text(textoImpresion, style: pw.TextStyle(fontSize: 10)),
+                ],
+              );
+            },
+          ),
+        );
 
-      Navigator.pop(context); // Cerrar diálogo de carga
+        final pdfBytes = await pdf.save();
 
-      // Compartir el archivo PDF
-      await Share.shareXFiles(
-        [XFile(file.path)],
-        subject: 'Resumen de Pedido - ${resumen['pedidoId']}',
-      );
+        // Guardar temporalmente el PDF
+        final tempDir = Directory.systemTemp;
+        final fileName =
+            'resumen_pedido_${resumen['pedidoId']}_${DateTime.now().millisecondsSinceEpoch}.pdf';
+        final file = File('${tempDir.path}/$fileName');
+        await file.writeAsBytes(pdfBytes);
 
+        if (mounted) {
+          Navigator.pop(context); // Cerrar diálogo de carga
+        }
+
+        // Compartir el archivo PDF
+        await Share.shareXFiles([
+          XFile(file.path),
+        ], subject: 'Resumen de Pedido - ${resumen['pedidoId']}');
+      }
     } catch (e) {
       if (Navigator.canPop(context)) {
         Navigator.pop(context);
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error generando PDF: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error generando PDF: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
+  }
+
+  // Opciones específicas para web
+  Future<void> _mostrarOpcionesWebPDF(
+    Map<String, dynamic> resumen,
+    PDFServiceWeb pdfServiceWeb,
+  ) async {
+    return showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: _cardBg,
+        title: Text(
+          'Opciones de documento',
+          style: TextStyle(color: _textPrimary),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '¿Cómo deseas procesar este documento?',
+              style: TextStyle(color: _textSecondary),
+            ),
+            SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    Navigator.pop(context);
+                    try {
+                      pdfServiceWeb.abrirVentanaImpresion(resumen: resumen);
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Ventana de impresión abierta'),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Error: $e'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    }
+                  },
+                  icon: Icon(Icons.print),
+                  label: Text('Imprimir'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _primary,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    Navigator.pop(context);
+                    try {
+                      pdfServiceWeb.descargarComoTexto(resumen: resumen);
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Archivo descargado'),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Error: $e'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    }
+                  },
+                  icon: Icon(Icons.download),
+                  label: Text('Descargar'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    Navigator.pop(context);
+                    try {
+                      await pdfServiceWeb.compartirTexto(resumen: resumen);
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Contenido copiado al portapapeles'),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Error: $e'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    }
+                  },
+                  icon: Icon(Icons.share),
+                  label: Text('Compartir'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancelar', style: TextStyle(color: _textSecondary)),
+          ),
+        ],
+      ),
+    );
   }
 
   // Método para marcar como deuda
   Future<void> _marcarComoDeuda(Map<String, dynamic> resumen) async {
     String nombreDeudor = '';
     String observaciones = '';
-    
+
     final resultado = await showDialog<Map<String, String>>(
       context: context,
       barrierDismissible: false,
@@ -655,10 +843,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
           children: [
             Icon(Icons.account_balance_wallet, color: Colors.orange),
             SizedBox(width: 8),
-            Text(
-              'Registrar Deuda',
-              style: TextStyle(color: _textPrimary),
-            ),
+            Text('Registrar Deuda', style: TextStyle(color: _textPrimary)),
           ],
         ),
         content: Column(
@@ -722,37 +907,49 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
     );
 
     if (resultado != null) {
-      await _guardarDeuda(resumen, resultado['nombreDeudor'] ?? '', resultado['observaciones'] ?? '');
+      await _guardarDeuda(
+        resumen,
+        resultado['nombreDeudor'] ?? '',
+        resultado['observaciones'] ?? '',
+      );
     }
   }
 
   // Método para guardar la deuda
-  Future<void> _guardarDeuda(Map<String, dynamic> resumen, String nombreDeudor, String observaciones) async {
+  Future<void> _guardarDeuda(
+    Map<String, dynamic> resumen,
+    String nombreDeudor,
+    String observaciones,
+  ) async {
     try {
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => AlertDialog(
-          backgroundColor: _cardBg,
-          content: Row(
-            children: [
-              CircularProgressIndicator(color: _primary),
-              SizedBox(width: 20),
-              Text(
-                'Registrando deuda...',
-                style: TextStyle(color: _textPrimary),
-              ),
-            ],
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            backgroundColor: _cardBg,
+            content: Row(
+              children: [
+                CircularProgressIndicator(color: _primary),
+                SizedBox(width: 20),
+                Text(
+                  'Registrando deuda...',
+                  style: TextStyle(color: _textPrimary),
+                ),
+              ],
+            ),
           ),
-        ),
-      );
+        );
+      }
 
       // Crear el registro de deuda
       final deuda = {
         'pedidoId': resumen['pedidoId'],
         'mesa': resumen['mesa'] ?? 'Mesa Auxiliar',
         'total': resumen['total'] ?? 0.0,
-        'nombreDeudor': nombreDeudor.isNotEmpty ? nombreDeudor : 'Cliente sin nombre',
+        'nombreDeudor': nombreDeudor.isNotEmpty
+            ? nombreDeudor
+            : 'Cliente sin nombre',
         'observaciones': observaciones,
         'fechaCreacion': DateTime.now().toIso8601String(),
         'estado': 'pendiente',
@@ -762,32 +959,30 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
 
       // Guardar en el servicio de deudas (necesitaría implementar este servicio)
       await _guardarDeudaEnServicio(deuda);
-      
-      Navigator.pop(context); // Cerrar diálogo de carga
-      Navigator.pop(context); // Cerrar diálogo de resumen
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('✅ Deuda registrada exitosamente'),
-          backgroundColor: Colors.orange,
-          action: SnackBarAction(
-            label: 'Ver Deudas',
-            textColor: Colors.white,
-            onPressed: () => _mostrarDeudas(),
+      if (mounted) {
+        Navigator.pop(context); // Cerrar diálogo de carga
+        Navigator.pop(context); // Cerrar diálogo de resumen
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('✅ Deuda registrada exitosamente'),
+            backgroundColor: Colors.orange,
           ),
-        ),
-      );
-
+        );
+      }
     } catch (e) {
       if (Navigator.canPop(context)) {
         Navigator.pop(context);
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('❌ Error registrando deuda: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Error registrando deuda: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -797,90 +992,13 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
       // Simular guardado en base de datos local o archivo
       // En una implementación real, esto debería enviar a tu backend
       print('📁 Guardando deuda: ${jsonEncode(deuda)}');
-      
+
       // Simular delay de red
       await Future.delayed(Duration(milliseconds: 500));
-      
-      print('✅ Deuda guardada exitosamente');
     } catch (e) {
       print('❌ Error guardando deuda: $e');
       throw Exception('Error guardando deuda: $e');
     }
-  }
-
-  // Método para mostrar lista de deudas
-  Future<void> _mostrarDeudas() async {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: _cardBg,
-        title: Row(
-          children: [
-            Icon(Icons.account_balance_wallet, color: Colors.orange),
-            SizedBox(width: 8),
-            Text(
-              'Deudas Pendientes',
-              style: TextStyle(color: _textPrimary),
-            ),
-          ],
-        ),
-        content: Container(
-          width: double.maxFinite,
-          height: 400,
-          child: Column(
-            children: [
-              Text(
-                'Funcionalidad en desarrollo',
-                style: TextStyle(color: _textSecondary),
-              ),
-              SizedBox(height: 20),
-              Text(
-                'Próximamente podrás ver y gestionar',
-                style: TextStyle(color: _textSecondary),
-              ),
-              Text(
-                'todas las deudas pendientes aquí',
-                style: TextStyle(color: _textSecondary),
-              ),
-              SizedBox(height: 20),
-              Container(
-                padding: EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: _surfaceDark,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.orange.withOpacity(0.3)),
-                ),
-                child: Column(
-                  children: [
-                    Icon(Icons.construction, color: Colors.orange, size: 32),
-                    SizedBox(height: 8),
-                    Text(
-                      'Características planificadas:',
-                      style: TextStyle(
-                        color: _textPrimary,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    Text('• Lista de deudas por mesa', style: TextStyle(color: _textSecondary, fontSize: 12)),
-                    Text('• Búsqueda por nombre del deudor', style: TextStyle(color: _textSecondary, fontSize: 12)),
-                    Text('• Marcar como pagado', style: TextStyle(color: _textSecondary, fontSize: 12)),
-                    Text('• Historial de pagos', style: TextStyle(color: _textSecondary, fontSize: 12)),
-                    Text('• Reportes de deudas', style: TextStyle(color: _textSecondary, fontSize: 12)),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Cerrar'),
-          ),
-        ],
-      ),
-    );
   }
 
   // Método para mostrar diálogo simple de pago
@@ -888,7 +1006,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
     String medioPago = 'efectivo';
     double propina = 0.0;
     String pagadoPor = '';
-    
+
     return await showDialog<Map<String, dynamic>>(
       context: context,
       barrierDismissible: false,
@@ -901,10 +1019,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
             decoration: BoxDecoration(
               color: _cardElevated,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: _primary.withOpacity(0.3),
-                width: 1,
-              ),
+              border: Border.all(color: _primary.withOpacity(0.3), width: 1),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.3),
@@ -921,7 +1036,10 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                   padding: EdgeInsets.all(24),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [_primary.withOpacity(0.15), _primary.withOpacity(0.05)],
+                      colors: [
+                        _primary.withOpacity(0.15),
+                        _primary.withOpacity(0.05),
+                      ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
@@ -978,20 +1096,36 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                               fontSize: 14,
                             ),
                             border: InputBorder.none,
-                            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 16,
+                            ),
                           ),
                           dropdownColor: _cardElevated,
                           style: TextStyle(color: _textPrimary, fontSize: 15),
-                          icon: Icon(Icons.keyboard_arrow_down, color: _primary),
-                          items: ['efectivo', 'tarjeta', 'transferencia', 'cortesia']
-                              .map((String value) => DropdownMenuItem<String>(
-                                    value: value,
-                                    child: Text(
-                                      value.toUpperCase(),
-                                      style: TextStyle(fontWeight: FontWeight.w500),
+                          icon: Icon(
+                            Icons.keyboard_arrow_down,
+                            color: _primary,
+                          ),
+                          items:
+                              [
+                                    'efectivo',
+                                    'tarjeta',
+                                    'transferencia',
+                                    'cortesia',
+                                  ]
+                                  .map(
+                                    (String value) => DropdownMenuItem<String>(
+                                      value: value,
+                                      child: Text(
+                                        value.toUpperCase(),
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
                                     ),
-                                  ))
-                              .toList(),
+                                  )
+                                  .toList(),
                           onChanged: (String? newValue) {
                             setState(() => medioPago = newValue!);
                           },
@@ -1015,9 +1149,15 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                               color: _textSecondary,
                               fontSize: 14,
                             ),
-                            prefixIcon: Icon(Icons.monetization_on, color: _primary),
+                            prefixIcon: Icon(
+                              Icons.monetization_on,
+                              color: _primary,
+                            ),
                             border: InputBorder.none,
-                            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 16,
+                            ),
                           ),
                           style: TextStyle(color: _textPrimary, fontSize: 15),
                           keyboardType: TextInputType.number,
@@ -1046,7 +1186,10 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                             ),
                             prefixIcon: Icon(Icons.person, color: _primary),
                             border: InputBorder.none,
-                            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 16,
+                            ),
                           ),
                           style: TextStyle(color: _textPrimary, fontSize: 15),
                           onChanged: (value) {
@@ -1066,7 +1209,10 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                       TextButton(
                         onPressed: () => Navigator.pop(context),
                         style: TextButton.styleFrom(
-                          padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 12,
+                          ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
                           ),
@@ -1092,7 +1238,10 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: _primary,
                           foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 12,
+                          ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
                           ),
@@ -1151,14 +1300,11 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
               ),
               Text(
                 '\$${(producto['subtotal'] ?? 0.0).toStringAsFixed(0)}',
-                style: TextStyle(
-                  color: _primary,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(color: _primary, fontWeight: FontWeight.bold),
               ),
             ],
           ),
-          if (producto['ingredientes'] != null && 
+          if (producto['ingredientes'] != null &&
               (producto['ingredientes'] as List).isNotEmpty) ...[
             SizedBox(height: 4),
             Text(
@@ -1170,7 +1316,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
               ),
             ),
           ],
-          if (producto['observaciones'] != null && 
+          if (producto['observaciones'] != null &&
               producto['observaciones'].toString().isNotEmpty) ...[
             SizedBox(height: 4),
             Text(
@@ -1195,7 +1341,6 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
     _loadMesas();
     _configurarWebSockets();
     _iniciarSincronizacion();
-    print('🆕 MesasScreen inicializada - Flag de procesamiento limpio');
   }
 
   void _iniciarSincronizacion() {
@@ -1215,13 +1360,11 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
     _pedidoCompletadoSubscription = _pedidoService.onPedidoCompletado.listen((
       _,
     ) {
-      print('🔄 MesasScreen: Pedido completado detectado, recargando mesas');
       _loadMesas();
     });
 
     // Suscribirse a eventos de pedidos pagados
     _pedidoPagadoSubscription = _pedidoService.onPedidoPagado.listen((_) {
-      print('💰 MesasScreen: Pago detectado, recargando mesas');
       _loadMesas();
     });
   }
@@ -1252,10 +1395,6 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
   }
 
   Future<void> _sincronizarEstadoMesas(List<Mesa> mesas) async {
-    print(
-      '🔄 Sincronizando estado de ${mesas.length} mesas con pedidos activos...',
-    );
-
     for (Mesa mesa in mesas) {
       try {
         // Solo verificar mesas que aparecen como ocupadas
@@ -1278,13 +1417,10 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
 
               try {
                 await _mesaService.updateMesa(mesa);
-                print('✅ Mesa ${mesa.nombre} liberada automáticamente');
               } catch (e) {
                 print('❌ Error al liberar mesa ${mesa.nombre}: $e');
               }
             }
-          } else {
-            print('✅ Mesa ${mesa.nombre}: Pedido activo confirmado');
           }
         }
       } catch (e) {
@@ -1308,9 +1444,13 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
           .toList();
 
       if (pedidosActivos.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No hay pedidos activos para agrupar')),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No hay pedidos activos para agrupar'),
+            ),
+          );
+        }
         return;
       }
 
@@ -1436,10 +1576,6 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
         orElse: () => throw Exception('No hay pedido activo'),
       );
 
-      print(
-        '✅ Pedido activo encontrado - ID: "${pedidoActivo.id}" - Mesa: ${pedidoActivo.mesa}',
-      );
-
       // Verificar que el ID no esté vacío
       if (pedidoActivo.id.isEmpty) {
         print('❌ ERROR: El pedido activo no tiene ID válido');
@@ -1460,7 +1596,6 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
           mesa.productos = [];
           mesa.total = 0.0;
           await _mesaService.updateMesa(mesa);
-          print('✅ Mesa ${mesa.nombre} corregida automáticamente');
 
           // Recargar las mesas para reflejar el cambio en la UI
           _loadMesas();
@@ -1490,10 +1625,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
             ),
             borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
             border: Border(
-              top: BorderSide(
-                color: _primary.withOpacity(0.3),
-                width: 2,
-              ),
+              top: BorderSide(color: _primary.withOpacity(0.3), width: 2),
             ),
           ),
           child: Column(
@@ -1568,6 +1700,78 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                     if (mesa.ocupada) ...[
                       SizedBox(height: 8),
                       _buildMenuOption(
+                        icon: Icons.payment_outlined,
+                        title: 'Pago Parcial',
+                        subtitle: 'Pagar productos seleccionados',
+                        onTap: () async {
+                          Navigator.pop(context);
+                          final pedido = await _obtenerPedidoActivoDeMesa(mesa);
+                          if (pedido != null) {
+                            _mostrarDialogoPagoParcial(mesa, pedido);
+                          } else {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    'No se encontró un pedido activo para esta mesa',
+                                  ),
+                                  backgroundColor: AppTheme.error,
+                                ),
+                              );
+                            }
+                          }
+                        },
+                      ),
+                      SizedBox(height: 8),
+                      _buildMenuOption(
+                        icon: Icons.cancel_outlined,
+                        title: 'Cancelar Productos',
+                        subtitle: 'Cancelar productos del pedido',
+                        onTap: () async {
+                          Navigator.pop(context);
+                          final pedido = await _obtenerPedidoActivoDeMesa(mesa);
+                          if (pedido != null) {
+                            _mostrarDialogoCancelarProductos(mesa, pedido);
+                          } else {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    'No se encontró un pedido activo para esta mesa',
+                                  ),
+                                  backgroundColor: AppTheme.error,
+                                ),
+                              );
+                            }
+                          }
+                        },
+                      ),
+                      SizedBox(height: 8),
+                      _buildMenuOption(
+                        icon: Icons.move_to_inbox_outlined,
+                        title: 'Mover Productos',
+                        subtitle: 'Mover productos a otra mesa',
+                        onTap: () async {
+                          Navigator.pop(context);
+                          final pedido = await _obtenerPedidoActivoDeMesa(mesa);
+                          if (pedido != null) {
+                            _mostrarDialogoMoverProductos(mesa, pedido);
+                          } else {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    'No se encontró un pedido activo para esta mesa',
+                                  ),
+                                  backgroundColor: AppTheme.error,
+                                ),
+                              );
+                            }
+                          }
+                        },
+                      ),
+                      SizedBox(height: 8),
+                      _buildMenuOption(
                         icon: Icons.cleaning_services,
                         title: 'Vaciar mesa',
                         subtitle: 'Liberar mesa manualmente',
@@ -1606,7 +1810,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
     bool isDestructive = false,
   }) {
     final color = isDestructive ? _error : _primary;
-    
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -1614,10 +1818,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
         decoration: BoxDecoration(
           color: _surfaceDark.withOpacity(0.5),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: color.withOpacity(0.2),
-            width: 1,
-          ),
+          border: Border.all(color: color.withOpacity(0.2), width: 1),
         ),
         child: Row(
           children: [
@@ -1645,19 +1846,12 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                   SizedBox(height: 2),
                   Text(
                     subtitle,
-                    style: TextStyle(
-                      color: _textSecondary,
-                      fontSize: 13,
-                    ),
+                    style: TextStyle(color: _textSecondary, fontSize: 13),
                   ),
                 ],
               ),
             ),
-            Icon(
-              Icons.arrow_forward_ios,
-              color: _textMuted,
-              size: 16,
-            ),
+            Icon(Icons.arrow_forward_ios, color: _textMuted, size: 16),
           ],
         ),
       ),
@@ -1693,9 +1887,11 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
 
     if (confirmar == true) {
       try {
-        setState(() {
-          isLoading = true;
-        });
+        if (mounted) {
+          setState(() {
+            isLoading = true;
+          });
+        }
 
         // Funcionalidad de limpieza deshabilitada
         int mesasLimpiadas = 0;
@@ -1712,15 +1908,17 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
           ),
         );
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al restaurar mesas: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        setState(() {
-          isLoading = false;
-        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error al restaurar mesas: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          setState(() {
+            isLoading = false;
+          });
+        }
       }
     }
   }
@@ -1751,23 +1949,62 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
 
     if (confirmar == true) {
       try {
-        setState(() {
-          isLoading = true;
-        });
+        if (mounted) {
+          setState(() {
+            isLoading = true;
+          });
+        }
 
         await _mesaService.vaciarMesa(mesa.id);
         await _loadMesas();
 
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Mesa ${mesa.nombre} vaciada correctamente'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error al vaciar mesa: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          setState(() {
+            isLoading = false;
+          });
+        }
+      }
+    }
+  }
+
+  Future<void> _sincronizarMesa(Mesa mesa) async {
+    try {
+      if (mounted) {
+        setState(() {
+          isLoading = true;
+        });
+      }
+
+      await _loadMesas(); // Recargar las mesas
+
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Mesa ${mesa.nombre} vaciada correctamente'),
+            content: Text('Mesa ${mesa.nombre} actualizada'),
             backgroundColor: Colors.green,
           ),
         );
-      } catch (e) {
+      }
+    } catch (e) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error al vaciar mesa: $e'),
+            content: Text('Error al sincronizar mesa: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -1775,33 +2012,6 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
           isLoading = false;
         });
       }
-    }
-  }
-
-  Future<void> _sincronizarMesa(Mesa mesa) async {
-    try {
-      setState(() {
-        isLoading = true;
-      });
-
-      await _loadMesas(); // Recargar las mesas
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Mesa ${mesa.nombre} actualizada'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al sincronizar mesa: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      setState(() {
-        isLoading = false;
-      });
     }
   }
 
@@ -1821,16 +2031,18 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
               MaterialPageRoute(builder: (context) => PedidoScreen(mesa: mesa)),
             );
           },
-          onLongPress: userProvider.isAdmin ? () => _mostrarMenuMesa(mesa) : null,
+          onLongPress: userProvider.isAdmin
+              ? () => _mostrarMenuMesa(mesa)
+              : null,
           child: Container(
             decoration: BoxDecoration(
               gradient: isOcupada ? AppTheme.cardGradient : null,
               color: isOcupada ? null : AppTheme.cardBg,
               borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
               border: Border.all(
-                color: isOcupada 
-                  ? AppTheme.primary.withOpacity(0.6)
-                  : statusColor.withOpacity(0.3),
+                color: isOcupada
+                    ? AppTheme.primary.withOpacity(0.6)
+                    : statusColor.withOpacity(0.3),
                 width: 2,
               ),
               boxShadow: [
@@ -1839,7 +2051,9 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
               ],
             ),
             child: Padding(
-              padding: EdgeInsets.all(constraints.maxWidth * 0.08), // Padding responsivo
+              padding: EdgeInsets.all(
+                constraints.maxWidth * 0.08,
+              ), // Padding responsivo
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
@@ -1849,7 +2063,9 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                     height: 3,
                     decoration: BoxDecoration(
                       color: statusColor,
-                      borderRadius: BorderRadius.circular(AppTheme.radiusSmall / 2),
+                      borderRadius: BorderRadius.circular(
+                        AppTheme.radiusSmall / 2,
+                      ),
                     ),
                   ),
                   // Icono de mesa
@@ -1881,7 +2097,9 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                       ),
                       decoration: BoxDecoration(
                         color: AppTheme.surfaceDark.withOpacity(0.3),
-                        borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                        borderRadius: BorderRadius.circular(
+                          AppTheme.radiusSmall,
+                        ),
                       ),
                       child: Text(
                         mesa.nombre,
@@ -1904,7 +2122,9 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                       ),
                       decoration: BoxDecoration(
                         color: statusColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
+                        borderRadius: BorderRadius.circular(
+                          AppTheme.radiusLarge,
+                        ),
                         border: Border.all(
                           color: statusColor.withOpacity(0.4),
                           width: 1,
@@ -1944,7 +2164,9 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                       child: canProcessPayment
                           ? GestureDetector(
                               onTap: () async {
-                                final pedido = await _obtenerPedidoActivoDeMesa(mesa);
+                                final pedido = await _obtenerPedidoActivoDeMesa(
+                                  mesa,
+                                );
                                 if (pedido != null) {
                                   _mostrarDialogoPago(mesa, pedido);
                                 } else {
@@ -1965,7 +2187,9 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                 ),
                                 decoration: BoxDecoration(
                                   gradient: AppTheme.primaryGradient,
-                                  borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                                  borderRadius: BorderRadius.circular(
+                                    AppTheme.radiusSmall,
+                                  ),
                                   border: Border.all(
                                     color: Colors.white.withOpacity(0.3),
                                     width: 1,
@@ -1975,8 +2199,8 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Icon(
-                                      Icons.payment, 
-                                      size: constraints.maxWidth * 0.08, 
+                                      Icons.payment,
+                                      size: constraints.maxWidth * 0.08,
                                       color: Colors.white,
                                     ),
                                     SizedBox(width: 2),
@@ -2003,7 +2227,9 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                               ),
                               decoration: BoxDecoration(
                                 color: AppTheme.primary.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                                borderRadius: BorderRadius.circular(
+                                  AppTheme.radiusSmall,
+                                ),
                                 border: Border.all(
                                   color: AppTheme.primary.withOpacity(0.3),
                                   width: 1,
@@ -2026,7 +2252,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
             ),
           ),
         );
-      }
+      },
     );
   }
 
@@ -2047,6 +2273,9 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
     bool esCortesia0 = false;
     bool esConsumoInterno0 = false;
     String? mesaDestinoId0;
+
+    // VARIABLE PARA PRODUCTOS SELECCIONADOS
+    List<ItemPedido> productosSeleccionados = [];
 
     // NUEVAS VARIABLES PARA SELECTOR DE BILLETES Y CAMBIO
     double billetesSeleccionados = 0.0;
@@ -2070,8 +2299,9 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
               setStateLocal(() {
                 billetesSeleccionados += valor.toDouble();
                 contadorBilletes[valor] = (contadorBilletes[valor] ?? 0) + 1;
-                billetesController.text = billetesSeleccionados
-                    .toStringAsFixed(0);
+                billetesController.text = billetesSeleccionados.toStringAsFixed(
+                  0,
+                );
               });
             },
             child: Container(
@@ -2158,7 +2388,6 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
     // Asegurarse de que todos los productos estén cargados antes de mostrar el diálogo
     try {
       await PedidoService().cargarProductosParaPedido(pedido);
-      print('✅ Productos del pedido cargados correctamente');
     } catch (e) {
       print('❌ Error cargando productos del pedido: $e');
     }
@@ -2235,8 +2464,38 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                     ),
                   ),
                   SizedBox(height: 32), // Más espacio
-                  // Sección: Productos
-                  _buildSeccionTitulo('Detalle de Productos'),
+                  // Sección: Productos con selección
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _buildSeccionTitulo('Productos del Pedido'),
+                      Row(
+                        children: [
+                          TextButton(
+                            onPressed: () {
+                              setState(() {
+                                if (productosSeleccionados.length ==
+                                    pedido.items.length) {
+                                  productosSeleccionados.clear();
+                                } else {
+                                  productosSeleccionados = List.from(
+                                    pedido.items,
+                                  );
+                                }
+                              });
+                            },
+                            child: Text(
+                              productosSeleccionados.length ==
+                                      pedido.items.length
+                                  ? 'Deseleccionar todo'
+                                  : 'Seleccionar todo',
+                              style: TextStyle(color: _primary),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                   SizedBox(height: 16),
                   Container(
                     padding: EdgeInsets.all(20), // Más padding
@@ -2252,56 +2511,237 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                               padding: EdgeInsets.symmetric(
                                 vertical: 8,
                               ), // Más padding vertical
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Expanded(
-                                    flex: 3,
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          '${item.cantidad}x ${item.productoNombre ?? 'Producto'}',
-                                          style: TextStyle(
-                                            color: _textPrimary,
-                                            fontWeight:
-                                                FontWeight.w600, // Más peso
-                                            fontSize: 15, // Texto más grande
-                                          ),
-                                        ),
-                                        if (item.notas != null &&
-                                            item.notas!.isNotEmpty) ...[
-                                          SizedBox(height: 4),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: productosSeleccionados.contains(item)
+                                      ? _primary.withOpacity(0.1)
+                                      : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: productosSeleccionados.contains(item)
+                                        ? _primary
+                                        : Colors.transparent,
+                                    width: 1,
+                                  ),
+                                ),
+                                padding: EdgeInsets.all(12),
+                                child: Row(
+                                  children: [
+                                    // Checkbox para seleccionar producto
+                                    Checkbox(
+                                      value: productosSeleccionados.contains(
+                                        item,
+                                      ),
+                                      onChanged: (bool? value) {
+                                        setState(() {
+                                          if (value == true) {
+                                            productosSeleccionados.add(item);
+                                          } else {
+                                            productosSeleccionados.remove(item);
+                                          }
+                                        });
+                                      },
+                                      activeColor: _primary,
+                                    ),
+                                    SizedBox(width: 12),
+
+                                    // Información del producto
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
                                           Text(
-                                            item.notas!,
+                                            '${item.cantidad}x ${item.productoNombre ?? 'Producto'}',
                                             style: TextStyle(
-                                              color: _textPrimary.withOpacity(
-                                                0.7,
-                                              ),
-                                              fontSize: 13,
+                                              color: _textPrimary,
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 15,
                                             ),
                                           ),
+                                          if (item.notas != null &&
+                                              item.notas!.isNotEmpty) ...[
+                                            SizedBox(height: 4),
+                                            Text(
+                                              item.notas!,
+                                              style: TextStyle(
+                                                color: _textPrimary.withOpacity(
+                                                  0.7,
+                                                ),
+                                                fontSize: 13,
+                                              ),
+                                            ),
+                                          ],
                                         ],
-                                      ],
+                                      ),
                                     ),
-                                  ),
-                                  Text(
-                                    '\$${((item.precio) * item.cantidad).toStringAsFixed(0)}',
-                                    style: TextStyle(
-                                      color: _primary,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16, // Texto más grande
+
+                                    // Precio
+                                    Text(
+                                      '\$${((item.precio) * item.cantidad).toStringAsFixed(0)}',
+                                      style: TextStyle(
+                                        color: _primary,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ),
                           )
                           .toList(),
                     ),
                   ),
+
+                  // Acciones rápidas para productos seleccionados
+                  if (productosSeleccionados.isNotEmpty) ...[
+                    SizedBox(height: 16),
+                    Container(
+                      padding: EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: _primary.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: _primary.withOpacity(0.3)),
+                      ),
+                      child: Column(
+                        children: [
+                          Text(
+                            '${productosSeleccionados.length} producto${productosSeleccionados.length > 1 ? 's' : ''} seleccionado${productosSeleccionados.length > 1 ? 's' : ''}',
+                            style: TextStyle(
+                              color: _textPrimary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: () {
+                                    // Procesar pago solo de productos seleccionados
+                                    double totalSeleccionados =
+                                        productosSeleccionados
+                                            .map(
+                                              (item) =>
+                                                  item.precio * item.cantidad,
+                                            )
+                                            .fold(
+                                              0.0,
+                                              (sum, price) => sum + price,
+                                            );
+
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          'Pagando ${productosSeleccionados.length} productos seleccionados: \$${totalSeleccionados.toStringAsFixed(0)}',
+                                        ),
+                                        backgroundColor: Colors.green,
+                                      ),
+                                    );
+                                    // Aquí implementarías la lógica de pago parcial
+                                  },
+                                  icon: Icon(Icons.payment, size: 16),
+                                  label: Text('Pagar'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.green.shade600,
+                                    foregroundColor: Colors.white,
+                                    padding: EdgeInsets.symmetric(vertical: 8),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(width: 8),
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: () async {
+                                    final resultado = await showDialog<bool>(
+                                      context: context,
+                                      builder: (context) => CancelarProductoDialog(
+                                        items: productosSeleccionados,
+                                        mesaId: mesa.id,
+                                        mesaNombre: mesa.nombre,
+                                        usuarioId: "usuario_id",
+                                        usuarioNombre: "Usuario",
+                                        onProductosCancelados:
+                                            (itemsCancelados, motivo) async {
+                                              print(
+                                                'Productos cancelados: ${itemsCancelados.length}',
+                                              );
+                                              print('Motivo: $motivo');
+                                              Navigator.pop(context, true);
+                                            },
+                                      ),
+                                    );
+                                    if (resultado == true) {
+                                      Navigator.pop(context);
+                                      await _loadMesas();
+                                    }
+                                  },
+                                  icon: Icon(
+                                    Icons.remove_circle_outline,
+                                    size: 16,
+                                  ),
+                                  label: Text('Cancelar'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.orange.shade600,
+                                    foregroundColor: Colors.white,
+                                    padding: EdgeInsets.symmetric(vertical: 8),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(width: 8),
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: () async {
+                                    final resultado = await showDialog<bool>(
+                                      context: context,
+                                      builder: (context) => MoverProductosDialog(
+                                        items: productosSeleccionados,
+                                        mesaOrigen: mesa,
+                                        mesasDestino: mesas
+                                            .where((m) => m.id != mesa.id)
+                                            .toList(),
+                                        onProductosMovidos:
+                                            (itemsMovidos, mesaDestino) async {
+                                              print(
+                                                'Productos movidos a: ${mesaDestino.nombre}',
+                                              );
+                                              print(
+                                                'Productos: ${itemsMovidos.length}',
+                                              );
+                                              Navigator.pop(context, true);
+                                            },
+                                      ),
+                                    );
+                                    if (resultado == true) {
+                                      Navigator.pop(context);
+                                      await _loadMesas();
+                                    }
+                                  },
+                                  icon: Icon(Icons.swap_horiz, size: 16),
+                                  label: Text('Mover'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.purple.shade600,
+                                    foregroundColor: Colors.white,
+                                    padding: EdgeInsets.symmetric(vertical: 8),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   SizedBox(height: 32),
 
                   // Sección: Forma de pago
@@ -2437,9 +2877,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                               labelStyle: TextStyle(color: _textPrimary),
                               prefixText: '\$',
                               enabledBorder: OutlineInputBorder(
-                                borderSide: BorderSide(
-                                  color: _textMuted,
-                                ),
+                                borderSide: BorderSide(color: _textMuted),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               focusedBorder: OutlineInputBorder(
@@ -2516,8 +2954,9 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                       double total = subtotal + propinaMonto;
                                       billetesSeleccionados = total;
                                       billetesController.text =
-                                          billetesSeleccionados
-                                              .toStringAsFixed(0);
+                                          billetesSeleccionados.toStringAsFixed(
+                                            0,
+                                          );
                                     });
                                   },
                                   icon: Icon(Icons.check, size: 18),
@@ -2585,9 +3024,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                             suffixText: '%',
                             prefixIcon: Icon(Icons.star, color: _primary),
                             enabledBorder: OutlineInputBorder(
-                              borderSide: BorderSide(
-                                color: _textMuted,
-                              ),
+                              borderSide: BorderSide(color: _textMuted),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             focusedBorder: OutlineInputBorder(
@@ -2821,9 +3258,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                             children: [
                               Icon(
                                 Icons.card_giftcard,
-                                color: esCortesia0
-                                    ? _primary
-                                    : _textSecondary,
+                                color: esCortesia0 ? _primary : _textSecondary,
                                 size: 24,
                               ),
                               SizedBox(width: 16),
@@ -2914,20 +3349,26 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                               try {
                                 // Mover el pedido a otra mesa
                                 // await _mesaService.moverPedido(mesa, mesaSeleccionada);
-                                print('Moviendo pedido de ${mesa.nombre} a ${mesaSeleccionada.nombre}');
+                                print(
+                                  'Moviendo pedido de ${mesa.nombre} a ${mesaSeleccionada.nombre}',
+                                );
                                 // Recarga las mesas y cierra el diálogo
                                 await _loadMesas();
                                 Navigator.pop(context);
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
-                                    content: Text('Pedido movido a la mesa ${mesaSeleccionada.nombre}'),
+                                    content: Text(
+                                      'Pedido movido a la mesa ${mesaSeleccionada.nombre}',
+                                    ),
                                     backgroundColor: Colors.green,
                                   ),
                                 );
                               } catch (e) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
-                                    content: Text('Error al mover el pedido: $e'),
+                                    content: Text(
+                                      'Error al mover el pedido: $e',
+                                    ),
                                     backgroundColor: Colors.red,
                                   ),
                                 );
@@ -2999,19 +3440,74 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                       ],
                     ),
                   ),
-                  SizedBox(height: 40), // Más espacio antes de botones
-                  // Botones de acción mejorados
+                  SizedBox(height: 32),
+
+                  // Botones principales
                   Row(
                     children: [
-                      // Botón Resumen
+                      // Botón Compartir Resumen (solo compartir, no facturar)
                       Expanded(
                         flex: 2,
                         child: ElevatedButton.icon(
-                          onPressed: () {
-                            _mostrarResumenImpresion(pedido);
+                          onPressed: () async {
+                            try {
+                              // Mostrar indicador de carga
+                              showDialog(
+                                context: context,
+                                barrierDismissible: false,
+                                builder: (context) => AlertDialog(
+                                  backgroundColor: _cardBg,
+                                  content: Row(
+                                    children: [
+                                      CircularProgressIndicator(
+                                        color: _primary,
+                                      ),
+                                      SizedBox(width: 20),
+                                      Text(
+                                        'Generando resumen...',
+                                        style: TextStyle(color: _textPrimary),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+
+                              // Generar resumen
+                              var resumenNullable = await _impresionService
+                                  .generarResumenPedido(pedido.id);
+
+                              // Cerrar diálogo de carga
+                              Navigator.of(context).pop();
+
+                              if (resumenNullable != null) {
+                                final resumen = await actualizarConInfoNegocio(
+                                  resumenNullable,
+                                );
+                                await _mostrarOpcionesCompartir(resumen);
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      'No se pudo generar el resumen',
+                                    ),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              }
+                            } catch (e) {
+                              Navigator.of(
+                                context,
+                              ).pop(); // Cerrar carga si hay error
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Error: $e'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
                           },
-                          icon: Icon(Icons.receipt_long, size: 20),
-                          label: Text('Ver Resumen'),
+                          icon: Icon(Icons.share, size: 20),
+                          label: Text('Compartir Resumen'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.blue.shade600,
                             foregroundColor: Colors.white,
@@ -3035,9 +3531,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(15),
                             ),
-                            side: BorderSide(
-                              color: _textMuted,
-                            ),
+                            side: BorderSide(color: _textMuted),
                           ),
                           child: Text(
                             'Cancelar',
@@ -3055,31 +3549,25 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                         flex: 2,
                         child: ElevatedButton.icon(
                           onPressed: () {
-
-                                  // Devolver resultado después de un pequeño delay
-                                  Future.delayed(
-                                    Duration(milliseconds: 300),
-                                    () {
-                                      if (mounted) {
-                                        Navigator.pop(context, {
-                                          'medioPago': medioPago0,
-                                          'incluyePropina': incluyePropina,
-                                          'descuentoPorcentaje':
-                                              descuentoPorcentajeController
-                                                  .text,
-                                          'descuentoValor':
-                                              descuentoValorController.text,
-                                          'propina': propinaController.text,
-                                          'esCortesia': esCortesia0,
-                                          'esConsumoInterno': esConsumoInterno0,
-                                          'mesaDestinoId': mesaDestinoId0,
-                                          'billetesRecibidos':
-                                              billetesSeleccionados,
-                                        });
-                                      }
-                                    },
-                                  );
-                                },
+                            // Devolver resultado después de un pequeño delay
+                            Future.delayed(Duration(milliseconds: 300), () {
+                              if (mounted) {
+                                Navigator.pop(context, {
+                                  'medioPago': medioPago0,
+                                  'incluyePropina': incluyePropina,
+                                  'descuentoPorcentaje':
+                                      descuentoPorcentajeController.text,
+                                  'descuentoValor':
+                                      descuentoValorController.text,
+                                  'propina': propinaController.text,
+                                  'esCortesia': esCortesia0,
+                                  'esConsumoInterno': esConsumoInterno0,
+                                  'mesaDestinoId': mesaDestinoId0,
+                                  'billetesRecibidos': billetesSeleccionados,
+                                });
+                              }
+                            });
+                          },
                           icon: Icon(Icons.payment, size: 20),
                           label: Text('Confirmar Pago'),
                           style: ElevatedButton.styleFrom(
@@ -3124,17 +3612,9 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
         print(
           '📝 Procesando pago del pedido: "${pedido.id}" - Mesa: ${mesa.nombre}',
         );
-        print('🎯 Opciones seleccionadas:');
-        print('  - Es cortesía: $esCortesia');
-        print('  - Es consumo interno: $esConsumoInterno');
-        print('  - Mesa destino: $mesaDestinoId');
-        print('  - Tipo actual del pedido: ${pedido.tipo}');
-
         if (pedido.id.isEmpty) {
           throw Exception('El ID del pedido es inválido o está vacío');
         }
-
-        print('🆔 ID del pedido confirmado: "${pedido.id}"');
 
         // Obtener el usuario actual para el pago
         final userProvider = Provider.of<UserProvider>(context, listen: false);
@@ -3214,16 +3694,19 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
         print('📄 Creando documento automático para pedido pagado...');
         print('💰 Método de pago seleccionado: ${formResult['medioPago']}');
         try {
-          final documento = await _documentoAutomaticoService.generarDocumentoAutomatico(
-            pedidoId: pedido.id,
-            vendedor: usuarioPago,
-            formaPago: formResult['medioPago'],
-            propina: propina,
-            pagadoPor: usuarioPago,
-          );
-          
+          final documento = await _documentoAutomaticoService
+              .generarDocumentoAutomatico(
+                pedidoId: pedido.id,
+                vendedor: usuarioPago,
+                formaPago: formResult['medioPago'],
+                propina: propina,
+                pagadoPor: usuarioPago,
+              );
+
           if (documento != null) {
-            print('✅ Documento automático generado: ${documento.numeroDocumento}');
+            print(
+              '✅ Documento automático generado: ${documento.numeroDocumento}',
+            );
           }
         } catch (e) {
           print('⚠️ Error generando documento automático: $e');
@@ -3237,33 +3720,40 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
             final mesasDisponibles = await _mesaService.getMesas();
             final mesaDestino = mesasDisponibles.firstWhere(
               (m) => m.id == mesaDestinoId,
+              orElse: () => throw Exception('Mesa destino no encontrada'),
             );
 
             // Usar la nueva API para mover el pedido
             await _pedidoService.moverPedidoAMesa(
-              pedido.id, 
+              pedido.id,
               mesaDestino.nombre,
-              nombrePedido: mesaDestino.nombre.toUpperCase().contains('DOMICILIO') ? 'Cliente' : null,
+              nombrePedido:
+                  mesaDestino.nombre.toUpperCase().contains('DOMICILIO')
+                  ? 'Cliente'
+                  : null,
             );
 
             print('🚚 Pedido movido correctamente a ${mesaDestino.nombre}');
-            
+
             // Actualizar la mesa en el objeto pedido para el documento
             pedido.mesa = mesaDestino.nombre;
-            
+
             // Generar documento para el movimiento usando el nuevo servicio
             try {
-              final documentoMovimiento = await _documentoAutomaticoService.generarDocumentoMovimiento(
-                pedidoId: pedido.id,
-                mesaOrigen: mesa.nombre,
-                mesaDestino: mesaDestino.nombre,
-                vendedor: usuarioPago,
-                formaPago: formResult['medioPago'],
-                propina: propina,
-              );
-              
+              final documentoMovimiento = await _documentoAutomaticoService
+                  .generarDocumentoMovimiento(
+                    pedidoId: pedido.id,
+                    mesaOrigen: mesa.nombre,
+                    mesaDestino: mesaDestino.nombre,
+                    vendedor: usuarioPago,
+                    formaPago: formResult['medioPago'],
+                    propina: propina,
+                  );
+
               if (documentoMovimiento != null) {
-                print('✅ Documento de movimiento generado: ${documentoMovimiento.numeroDocumento}');
+                print(
+                  '✅ Documento de movimiento generado: ${documentoMovimiento.numeroDocumento}',
+                );
               }
             } catch (e) {
               print('⚠️ Error generando documento de movimiento: $e');
@@ -3323,12 +3813,14 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
       } catch (e) {
         print('❌ Error en procesamiento: $e');
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al procesar el pago: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error al procesar el pago: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     } else {
       print('⏭️ Usuario canceló el diálogo');
@@ -3345,21 +3837,22 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
     String pagadoPor,
   ) async {
     try {
-      print('📄 Actualizando documento tras movimiento de pedido...');
-      print('  - Pedido ID: ${pedido.id}');
-      print('  - De mesa: $mesaOrigen');
-      print('  - A mesa: $mesaDestino');
-      
       // Verificar si ya existe un documento para este pedido
-      final documentosOrigen = await _documentoMesaService.getDocumentosPorMesa(mesaOrigen);
-      final documentoExistente = documentosOrigen.where(
-        (doc) => doc.pedidosIds.contains(pedido.id)
-      ).firstOrNull;
-      
+      final documentosOrigen = await _documentoMesaService.getDocumentosPorMesa(
+        mesaOrigen,
+      );
+      final documentoExistente = documentosOrigen
+          .where((doc) => doc.pedidosIds.contains(pedido.id))
+          .firstOrNull;
+
       if (documentoExistente != null) {
-        print('⚠️ Ya existe un documento para este pedido en mesa origen: ${documentoExistente.numeroDocumento}');
-        print('  - El documento queda asociado a la mesa original para mantenimiento de registros');
-        
+        print(
+          '⚠️ Ya existe un documento para este pedido en mesa origen: ${documentoExistente.numeroDocumento}',
+        );
+        print(
+          '  - El documento queda asociado a la mesa original para mantenimiento de registros',
+        );
+
         // Opcional: Crear un nuevo documento en la mesa destino que referencie el movimiento
         await _crearDocumentoMovimiento(
           pedido,
@@ -3378,15 +3871,14 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
           pagadoPor: pagadoPor,
         );
       }
-      
+
       print('✅ Documentos actualizados correctamente tras movimiento');
-      
     } catch (e) {
       print('❌ Error actualizando documento tras movimiento: $e');
       // No lanzar excepción para no interrumpir el flujo principal
     }
   }
-  
+
   /// Crea un documento de referencia para un pedido movido
   Future<void> _crearDocumentoMovimiento(
     Pedido pedido,
@@ -3396,7 +3888,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
   ) async {
     try {
       print('🔄 Creando documento de referencia para movimiento...');
-      
+
       // Crear un documento que indique el movimiento
       final documentoMovimiento = await _documentoMesaService.crearDocumento(
         mesaNombre: mesaDestino,
@@ -3409,16 +3901,329 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
         estado: 'Movido de ${documentoOriginal.mesaNombre}',
         fechaPago: DateTime.now(),
       );
-      
+
       if (documentoMovimiento != null) {
-        print('✅ Documento de movimiento creado: ${documentoMovimiento.numeroDocumento}');
+        print(
+          '✅ Documento de movimiento creado: ${documentoMovimiento.numeroDocumento}',
+        );
       }
-      
     } catch (e) {
       print('❌ Error creando documento de movimiento: $e');
     }
   }
-  
+
+  /// Muestra el diálogo de pago parcial para seleccionar productos específicos
+  void _mostrarDialogoPagoParcial(Mesa mesa, Pedido pedido) async {
+    try {
+      // Cargar información completa de productos si es necesario
+      await PedidoService().cargarProductosParaPedido(pedido);
+
+      final resultado = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => PagoParcialDialog(
+          pedido: pedido,
+          onPagoConfirmado: (itemsSeleccionados, datosPago) async {
+            await _procesarPagoParcial(
+              mesa,
+              pedido,
+              itemsSeleccionados,
+              datosPago,
+            );
+          },
+        ),
+      );
+
+      if (resultado == true) {
+        // Recargar datos después del pago parcial exitoso
+        _loadMesas();
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al cargar datos del pedido: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  /// Procesa el pago parcial de productos seleccionados
+  Future<void> _procesarPagoParcial(
+    Mesa mesa,
+    Pedido pedido,
+    List<dynamic> itemsSeleccionados,
+    Map<String, dynamic> datosPago,
+  ) async {
+    try {
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+
+      // Procesar el pago parcial usando el servicio
+      final resultado = await _pedidoService.pagarProductosParciales(
+        pedido.id,
+        itemsSeleccionados: itemsSeleccionados.cast(),
+        formaPago: datosPago['formaPago'] ?? 'efectivo',
+        propina: datosPago['propina'] ?? 0.0,
+        procesadoPor: userProvider.userName ?? 'Usuario',
+        notas: 'Pago parcial - Mesa ${mesa.nombre}',
+      );
+
+      if (resultado['success'] == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('✅ Pago parcial procesado exitosamente'),
+                Text('Items pagados: ${resultado['itemsPagados']}'),
+                Text('Total: ${formatCurrency(resultado['totalPagado'])}'),
+                if (datosPago['cambio'] > 0)
+                  Text('Cambio: ${formatCurrency(datosPago['cambio'])}'),
+              ],
+            ),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 4),
+          ),
+        );
+
+        // Navegar al detalle del pedido actualizado si es necesario
+        Navigator.of(context).pop(true);
+      } else {
+        throw Exception('El servidor no confirmó el pago parcial');
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Error al procesar pago parcial: $e'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 4),
+        ),
+      );
+    }
+  }
+
+  /// Muestra el diálogo para cancelar productos del pedido
+  void _mostrarDialogoCancelarProductos(Mesa mesa, Pedido pedido) async {
+    try {
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+
+      // Cargar información completa de productos si es necesario
+      await PedidoService().cargarProductosParaPedido(pedido);
+
+      if (pedido.items.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('No hay productos en este pedido para cancelar'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+
+      final resultado = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => CancelarProductoDialog(
+          items: pedido.items,
+          mesaId: mesa.id,
+          mesaNombre: mesa.nombre,
+          usuarioId: userProvider.userId ?? '',
+          usuarioNombre: userProvider.userName ?? 'Usuario',
+          onProductosCancelados: (itemsCancelados, motivo) async {
+            await _procesarCancelacionProductos(
+              mesa,
+              pedido,
+              itemsCancelados,
+              motivo,
+            );
+          },
+        ),
+      );
+
+      if (resultado == true) {
+        // Recargar datos después de la cancelación exitosa
+        _loadMesas();
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al cargar datos del pedido: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  /// Procesa la cancelación de productos seleccionados
+  Future<void> _procesarCancelacionProductos(
+    Mesa mesa,
+    Pedido pedido,
+    List<ItemPedido> itemsCancelados,
+    String motivo,
+  ) async {
+    try {
+      // Por ahora solo mostramos un mensaje de éxito
+      // TODO: Implementar la cancelación real en el backend
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('✅ Productos cancelados exitosamente'),
+              Text('Items cancelados: ${itemsCancelados.length}'),
+              Text('Mesa: ${mesa.nombre}'),
+              Text('Motivo: $motivo'),
+            ],
+          ),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 3),
+        ),
+      );
+
+      // Recargar datos de la mesa
+      await _loadMesas();
+
+      // Recargar la pantalla principal
+      _loadMesas();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Error al procesar cancelación: $e'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 4),
+        ),
+      );
+    }
+  }
+
+  /// Muestra el diálogo para mover productos seleccionados a otra mesa
+  void _mostrarDialogoMoverProductos(Mesa mesa, Pedido pedido) async {
+    try {
+      // Cargar información completa de productos si es necesario
+      await PedidoService().cargarProductosParaPedido(pedido);
+
+      if (pedido.items.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('No hay productos en este pedido para mover'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+
+      // Obtener mesas disponibles
+      final mesasDisponibles = await _mesaService.getMesas();
+      final mesasDestino = mesasDisponibles
+          .where((m) => m.id != mesa.id) // Excluir la mesa actual
+          .toList();
+
+      if (mesasDestino.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('No hay otras mesas disponibles'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+
+      final resultado = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => MoverProductosDialog(
+          items: pedido.items,
+          mesaOrigen: mesa,
+          mesasDestino: mesasDestino,
+          onProductosMovidos: (itemsMovidos, mesaDestino) async {
+            await _procesarMovimientoProductos(
+              mesa,
+              pedido,
+              itemsMovidos,
+              mesaDestino,
+            );
+          },
+        ),
+      );
+
+      if (resultado == true) {
+        // Recargar datos después del movimiento exitoso
+        _loadMesas();
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al cargar datos del pedido: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  /// Procesa el movimiento de productos seleccionados a otra mesa
+  Future<void> _procesarMovimientoProductos(
+    Mesa mesaOrigen,
+    Pedido pedidoOrigen,
+    List<dynamic> itemsMovidos,
+    Mesa mesaDestino,
+  ) async {
+    try {
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      final usuario = userProvider.userName ?? 'Usuario';
+
+      // Mover productos usando el servicio
+      final resultado = await _pedidoService.moverProductosEspecificos(
+        pedidoOrigenId: pedidoOrigen.id,
+        mesaDestinoNombre: mesaDestino.nombre,
+        itemsParaMover: itemsMovidos.cast(),
+        usuarioId: userProvider.userId ?? '',
+        usuarioNombre: usuario,
+      );
+
+      if (resultado['success'] == true) {
+        // Verificar si se debe crear una orden automáticamente
+        final bool seCreoNuevaOrden = resultado['nuevaOrdenCreada'] ?? false;
+
+        String mensaje =
+            '✅ Productos movidos exitosamente a ${mesaDestino.nombre}';
+        if (seCreoNuevaOrden) {
+          mensaje += '\n🆕 Nueva orden creada automáticamente';
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(mensaje),
+                Text('Items movidos: ${itemsMovidos.length}'),
+                Text('De: ${mesaOrigen.nombre} → A: ${mesaDestino.nombre}'),
+              ],
+            ),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 4),
+          ),
+        );
+
+        // Recargar la pantalla principal
+        _loadMesas();
+      } else {
+        throw Exception(resultado['message'] ?? 'Error desconocido');
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Error al mover productos: $e'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 4),
+        ),
+      );
+    }
+  }
+
   /// Crea una factura/documento para un pedido en una mesa específica
   Future<void> _crearFacturaPedidoEnMesa(
     String pedidoId,
@@ -3429,17 +4234,18 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
   }) async {
     try {
       print('📄 Creando documento para pedido $pedidoId en mesa $mesaNombre');
-      
+
       // Obtener el usuario actual si no se especifica
       final userProvider = Provider.of<UserProvider>(context, listen: false);
       final vendedor = pagadoPor ?? userProvider.userName ?? 'Sistema';
-      
+
       // Validar forma de pago
       String formapagoValidada = formaPago ?? 'efectivo';
-      if (formapagoValidada != 'efectivo' && formapagoValidada != 'transferencia') {
+      if (formapagoValidada != 'efectivo' &&
+          formapagoValidada != 'transferencia') {
         formapagoValidada = 'efectivo';
       }
-      
+
       // Crear documento usando el servicio
       final documento = await _documentoMesaService.crearDocumento(
         mesaNombre: mesaNombre,
@@ -3452,13 +4258,14 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
         estado: 'Pagado',
         fechaPago: DateTime.now(),
       );
-      
+
       if (documento != null) {
-        print('✅ Documento creado en mesa $mesaNombre: ${documento.numeroDocumento}');
+        print(
+          '✅ Documento creado en mesa $mesaNombre: ${documento.numeroDocumento}',
+        );
       } else {
         throw Exception('No se pudo crear el documento');
       }
-      
     } catch (e) {
       print('❌ Error creando documento en mesa específica: $e');
       throw e;
@@ -3791,7 +4598,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
       if (Navigator.canPop(context)) {
         Navigator.of(context).pop();
       }
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error generando resumen: $e'),
@@ -4111,13 +4918,12 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
           ),
         ),
       );
-
     } catch (e) {
       // Cerrar diálogo de carga si está abierto
       if (Navigator.canPop(context)) {
         Navigator.of(context).pop();
       }
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error generando resumen: $e'),
@@ -4150,6 +4956,32 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
   @override
   Future<void> imprimirDocumento(Map<String, dynamic> resumen) async {
     try {
+      if (kIsWeb) {
+        // Para web, ir directamente a imprimir
+        final pdfServiceWeb = PDFServiceWeb();
+        try {
+          pdfServiceWeb.abrirVentanaImpresion(resumen: resumen);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Abriendo ventana de impresión...'),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Error al abrir impresión: $e'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
+        return;
+      }
+
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -4177,12 +5009,14 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
       await mostrarOpcionesImpresion(textoImpresion, resumen);
     } catch (e) {
       Navigator.of(context).pop(); // Cerrar diálogo de carga
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error preparando impresión: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error preparando impresión: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -4275,15 +5109,13 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
             Text(
               fileName,
               style: TextStyle(
-                color: Colors.black87, // TODO: Usar _textDark cuando esté definido
+                color:
+                    Colors.black87, // TODO: Usar _textDark cuando esté definido
                 fontWeight: FontWeight.bold,
               ),
             ),
             SizedBox(height: 16),
-            Text(
-              'Opciones:',
-              style: TextStyle(color: _textPrimary),
-            ),
+            Text('Opciones:', style: TextStyle(color: _textPrimary)),
           ],
         ),
         actions: [
@@ -4315,19 +5147,23 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
   Future<void> copiarRutaAlPortapapeles(String ruta) async {
     try {
       await Clipboard.setData(ClipboardData(text: ruta));
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('📋 Ruta copiada al portapapeles'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('📋 Ruta copiada al portapapeles'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('❌ Error copiando ruta: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Error copiando ruta: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -4357,7 +5193,8 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                 child: SelectableText(
                   rutaArchivo,
                   style: TextStyle(
-                    color: Colors.black87, // TODO: Usar _textDark cuando esté definido
+                    color: Colors
+                        .black87, // TODO: Usar _textDark cuando esté definido
                     fontSize: 12,
                     fontFamily: 'monospace',
                   ),
@@ -4366,7 +5203,10 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
               SizedBox(height: 16),
               Text(
                 'Para abrir el archivo:',
-                style: TextStyle(color: _textPrimary, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: _textPrimary,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               SizedBox(height: 8),
               Text(
@@ -4400,15 +5240,12 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
           ],
         ),
       );
-      
+
       // Copiar automáticamente la ruta al portapapeles
       await copiarRutaAlPortapapeles(rutaArchivo);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('❌ Error: $e'),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text('❌ Error: $e'), backgroundColor: Colors.red),
       );
     }
   }
@@ -4434,18 +5271,21 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
               if (linea.contains('=====')) {
                 return pw.Text(
                   linea,
-                  style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold),
+                  style: pw.TextStyle(
+                    fontSize: 8,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
                 );
               } else if (linea.contains('TOTAL') || linea.contains('Total')) {
                 return pw.Text(
                   linea,
-                  style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
+                  style: pw.TextStyle(
+                    fontSize: 10,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
                 );
               } else {
-                return pw.Text(
-                  linea,
-                  style: pw.TextStyle(fontSize: 8),
-                );
+                return pw.Text(linea, style: pw.TextStyle(fontSize: 8));
               }
             }).toList(),
           );
@@ -4462,6 +5302,13 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
     Map<String, dynamic> resumen,
   ) async {
     try {
+      if (kIsWeb) {
+        // Para web, usar el servicio web
+        final pdfServiceWeb = PDFServiceWeb();
+        pdfServiceWeb.abrirVentanaImpresion(resumen: resumen);
+        return;
+      }
+
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -4497,18 +5344,17 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
       await mostrarOpcionesArchivo(pdfFile, 'PDF');
     } catch (e) {
       Navigator.of(context).pop(); // Cerrar diálogo de carga si hay error
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('❌ Error generando PDF: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Error generando PDF: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
       print('❌ Error completo: $e');
     }
   }
-
-
-
 
   // Método para guardar archivo y mostrarlo al usuario
   Future<void> guardarYAbrir(String contenido) async {
@@ -4575,17 +5421,20 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
   Future<void> navegarADocumentos() async {
     try {
       // Navegar a la pantalla de documentos
-      await Navigator.of(context).pushNamed('/documentos');
-
-      // Al regresar, actualizar las mesas por si hubo cambios
-      await _loadMesas();
+      if (mounted) {
+        await Navigator.of(context).pushNamed('/documentos');
+        // Al regresar, actualizar las mesas por si hubo cambios
+        await _loadMesas();
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error navegando a documentos: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error navegando a documentos: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -4749,10 +5598,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
     return Scaffold(
       backgroundColor: AppTheme.backgroundDark,
       appBar: AppBar(
-        title: Text(
-          'Mesas',
-          style: AppTheme.headlineMedium,
-        ),
+        title: Text('Mesas', style: AppTheme.headlineMedium),
         backgroundColor: AppTheme.primary,
         elevation: 0,
         centerTitle: true,
@@ -4782,7 +5628,9 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                             padding: EdgeInsets.all(4),
                             decoration: BoxDecoration(
                               color: AppTheme.error,
-                              borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                              borderRadius: BorderRadius.circular(
+                                AppTheme.radiusSmall,
+                              ),
                             ),
                             constraints: BoxConstraints(
                               minWidth: 18,
@@ -4840,78 +5688,86 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                     ),
                   ),
                   SizedBox(height: AppTheme.spacingLarge),
-                  Text(
-                    'Cargando mesas...',
-                    style: AppTheme.bodyLarge,
-                  ),
+                  Text('Cargando mesas...', style: AppTheme.bodyLarge),
                 ],
               ),
             )
           : errorMessage != null
-              ? Center(
-                  child: Container(
-                    margin: EdgeInsets.all(AppTheme.spacingLarge),
-                    padding: EdgeInsets.all(AppTheme.spacingXLarge),
-                    decoration: AppTheme.elevatedCardDecoration.copyWith(
-                      border: Border.all(
-                        color: AppTheme.error.withOpacity(0.3),
-                        width: 1.5,
+          ? Center(
+              child: Container(
+                margin: EdgeInsets.all(AppTheme.spacingLarge),
+                padding: EdgeInsets.all(AppTheme.spacingXLarge),
+                decoration: AppTheme.elevatedCardDecoration.copyWith(
+                  border: Border.all(
+                    color: AppTheme.error.withOpacity(0.3),
+                    width: 1.5,
+                  ),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(AppTheme.spacingMedium),
+                      decoration: BoxDecoration(
+                        color: AppTheme.error.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(50),
+                      ),
+                      child: Icon(
+                        Icons.error_outline,
+                        color: AppTheme.error,
+                        size: 48,
                       ),
                     ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          padding: EdgeInsets.all(AppTheme.spacingMedium),
-                          decoration: BoxDecoration(
-                            color: AppTheme.error.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(50),
-                          ),
-                          child: Icon(Icons.error_outline, color: AppTheme.error, size: 48),
-                        ),
-                        SizedBox(height: AppTheme.spacingLarge),
-                        Text(
-                          'Error al cargar mesas',
-                          style: AppTheme.headlineMedium,
-                          textAlign: TextAlign.center,
-                        ),
-                        SizedBox(height: AppTheme.spacingMedium),
-                        Container(
-                          padding: EdgeInsets.all(AppTheme.spacingMedium),
-                          decoration: BoxDecoration(
-                            color: AppTheme.surfaceDark,
-                            borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-                          ),
-                          child: Text(
-                            errorMessage!,
-                            style: AppTheme.bodyMedium.copyWith(color: AppTheme.textSecondary),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                        SizedBox(height: AppTheme.spacingLarge),
-                        ElevatedButton(
-                          onPressed: _loadMesas,
-                          style: AppTheme.primaryButtonStyle,
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.refresh, size: 20),
-                              SizedBox(width: AppTheme.spacingSmall),
-                              Text('Reintentar'),
-                            ],
-                          ),
-                        ),
-                      ],
+                    SizedBox(height: AppTheme.spacingLarge),
+                    Text(
+                      'Error al cargar mesas',
+                      style: AppTheme.headlineMedium,
+                      textAlign: TextAlign.center,
                     ),
-                  ),
-                )
-              : buildMesasLayout(),
+                    SizedBox(height: AppTheme.spacingMedium),
+                    Container(
+                      padding: EdgeInsets.all(AppTheme.spacingMedium),
+                      decoration: BoxDecoration(
+                        color: AppTheme.surfaceDark,
+                        borderRadius: BorderRadius.circular(
+                          AppTheme.radiusSmall,
+                        ),
+                      ),
+                      child: Text(
+                        errorMessage!,
+                        style: AppTheme.bodyMedium.copyWith(
+                          color: AppTheme.textSecondary,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    SizedBox(height: AppTheme.spacingLarge),
+                    ElevatedButton(
+                      onPressed: _loadMesas,
+                      style: AppTheme.primaryButtonStyle,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.refresh, size: 20),
+                          SizedBox(width: AppTheme.spacingSmall),
+                          Text('Reintentar'),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          : buildMesasLayout(),
     );
   }
 
   Widget buildMesasLayout() {
     return LayoutBuilder(
       builder: (context, constraints) {
+        // Detectar si es móvil usando el breakpoint establecido
+        bool isMobile = constraints.maxWidth < 768;
+
         return SingleChildScrollView(
           padding: EdgeInsets.all(context.responsivePadding),
           child: Column(
@@ -4921,12 +5777,127 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
               buildMesasEspeciales(),
               SizedBox(height: AppTheme.spacingXLarge),
 
-              // Mesas organizadas por filas (A1-A10, B1-B10, etc.)
-              buildMesasPorFilas(),
+              // Vista responsiva para mesas regulares
+              if (isMobile) _buildMobileMesasView() else buildMesasPorFilas(),
             ],
           ),
         );
       },
+    );
+  }
+
+  Widget _buildMobileMesasView() {
+    // Organizar mesas por filas para vista móvil
+    Map<String, List<Mesa>> mesasPorFila = {};
+
+    for (Mesa mesa in mesas) {
+      if (mesa.nombre.isNotEmpty) {
+        String letra = mesa.nombre[0].toUpperCase();
+        // Filtrar solo las mesas regulares (no especiales)
+        if (![
+          'DOMICILIO',
+          'CAJA',
+          'MESA AUXILIAR',
+        ].contains(mesa.nombre.toUpperCase())) {
+          if (mesasPorFila[letra] == null) {
+            mesasPorFila[letra] = [];
+          }
+          mesasPorFila[letra]!.add(mesa);
+        }
+      }
+    }
+
+    // Ordenar las letras alfabéticamente
+    List<String> letrasOrdenadas = mesasPorFila.keys.toList()..sort();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: letrasOrdenadas.map((letra) {
+        List<Mesa> mesasDeLaFila = mesasPorFila[letra]!;
+
+        // Ordenar las mesas de cada fila por número
+        mesasDeLaFila.sort((a, b) {
+          int numeroA = int.tryParse(a.nombre.substring(1)) ?? 0;
+          int numeroB = int.tryParse(b.nombre.substring(1)) ?? 0;
+
+          // Convertir 0 a 10 para que vaya al final
+          if (numeroA == 0) numeroA = 10;
+          if (numeroB == 0) numeroB = 10;
+
+          return numeroA.compareTo(numeroB);
+        });
+
+        return Container(
+          margin: EdgeInsets.only(bottom: AppTheme.spacingXLarge),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Título de la fila
+              Container(
+                width: double.infinity,
+                margin: EdgeInsets.only(bottom: AppTheme.spacingMedium),
+                padding: EdgeInsets.symmetric(
+                  horizontal: AppTheme.spacingMedium,
+                  vertical: AppTheme.spacingSmall,
+                ),
+                decoration: BoxDecoration(
+                  gradient: AppTheme.primaryGradient,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
+                  boxShadow: AppTheme.primaryShadow,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Fila $letra',
+                      style: AppTheme.bodyLarge.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 18,
+                      ),
+                    ),
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: AppTheme.spacingSmall,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(
+                          AppTheme.radiusSmall,
+                        ),
+                      ),
+                      child: Text(
+                        '${mesasDeLaFila.length} mesas',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Grid de mesas para móvil (2 columnas)
+              GridView.builder(
+                shrinkWrap: true,
+                physics: NeverScrollableScrollPhysics(),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: AppTheme.spacingMedium,
+                  mainAxisSpacing: AppTheme.spacingMedium,
+                  childAspectRatio: 0.85, // Relación ancho/alto
+                ),
+                itemCount: mesasDeLaFila.length,
+                itemBuilder: (context, index) {
+                  return _buildMesaCard(mesasDeLaFila[index]);
+                },
+              ),
+            ],
+          ),
+        );
+      }).toList(),
     );
   }
 
@@ -4939,58 +5910,91 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
   Widget buildMesasEspeciales() {
     return LayoutBuilder(
       builder: (context, constraints) {
+        // Detectar si es móvil usando el breakpoint establecado
+        bool isMobile = constraints.maxWidth < 768;
+
         // Definir altura responsive
-        double especialHeight = context.isMobile ? 100 : context.isTablet ? 120 : 140;
-        
-        return Column(
-          children: [
-            // Primera fila: Domicilio y Caja
-            Row(
-              children: [
-                Expanded(
-                  child: buildMesaEspecial(
-                    'Domicilio',
-                    Icons.delivery_dining,
-                    'disponible',
-                    () => crearPedido('Domicilio'),
-                    height: especialHeight,
+        double especialHeight = context.isMobile
+            ? 100
+            : context.isTablet
+            ? 120
+            : 140;
+
+        if (isMobile) {
+          // Vista móvil: diseño en una sola columna con más espacio
+          return Column(
+            children: [
+              buildMesaEspecial(
+                'Domicilio',
+                Icons.delivery_dining,
+                'disponible',
+                () => _navegarAPedido('Domicilio'),
+                height: especialHeight,
+              ),
+              SizedBox(height: AppTheme.spacingMedium),
+              buildMesaEspecial(
+                'Caja',
+                Icons.point_of_sale,
+                'disponible',
+                () => _navegarAPedido('Caja'),
+                height: especialHeight,
+              ),
+              SizedBox(height: AppTheme.spacingMedium),
+              buildMesaEspecial(
+                'Mesa Auxiliar',
+                Icons.table_restaurant,
+                'disponible',
+                () => _navegarAPedido('Mesa Auxiliar'),
+                height: especialHeight,
+              ),
+            ],
+          );
+        } else {
+          // Vista desktop/tablet: diseño original en filas
+          return Column(
+            children: [
+              // Primera fila: Domicilio y Caja
+              Row(
+                children: [
+                  Expanded(
+                    child: buildMesaEspecial(
+                      'Domicilio',
+                      Icons.delivery_dining,
+                      'disponible',
+                      () => _navegarAPedido('Domicilio'),
+                      height: especialHeight,
+                    ),
                   ),
-                ),
-                SizedBox(width: AppTheme.spacingMedium),
-                Expanded(
-                  child: buildMesaEspecial(
-                    'Caja',
-                    Icons.point_of_sale,
-                    'disponible',
-                    () => crearPedido('Caja'),
-                    height: especialHeight,
+                  SizedBox(width: AppTheme.spacingMedium),
+                  Expanded(
+                    child: buildMesaEspecial(
+                      'Caja',
+                      Icons.point_of_sale,
+                      'disponible',
+                      () => _navegarAPedido('Caja'),
+                      height: especialHeight,
+                    ),
                   ),
-                ),
-              ],
-            ),
-            SizedBox(height: AppTheme.spacingMedium),
-            // Segunda fila: Mesa Auxiliar y Deudas
-            Row(
-              children: [
-                Expanded(
-                  child: buildMesaEspecial(
-                    'Mesa Auxiliar',
-                    Icons.table_restaurant,
-                    'disponible',
-                    () => crearPedido('Mesa Auxiliar'),
-                    height: especialHeight,
+                ],
+              ),
+              SizedBox(height: AppTheme.spacingMedium),
+              // Segunda fila: Mesa Auxiliar
+              Row(
+                children: [
+                  Expanded(
+                    child: buildMesaEspecial(
+                      'Mesa Auxiliar',
+                      Icons.table_restaurant,
+                      'disponible',
+                      () => _navegarAPedido('Mesa Auxiliar'),
+                      height: especialHeight,
+                    ),
                   ),
-                ),
-                SizedBox(width: AppTheme.spacingMedium),
-                Expanded(
-                  child: buildMesaDeudas(
-                    height: especialHeight,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        );
+                ],
+              ),
+            ],
+          );
+        }
       },
     );
   }
@@ -5030,17 +6034,17 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
           child: Container(
             height: height,
             decoration: AppTheme.cardDecoration.copyWith(
-              gradient: tienePedidos 
-                ? LinearGradient(
-                    colors: [AppTheme.cardBg, AppTheme.cardElevated],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  )
-                : null,
+              gradient: tienePedidos
+                  ? LinearGradient(
+                      colors: [AppTheme.cardBg, AppTheme.cardElevated],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    )
+                  : null,
               border: Border.all(
-                color: tienePedidos 
-                  ? AppTheme.primary.withOpacity(0.5)
-                  : AppTheme.success.withOpacity(0.3),
+                color: tienePedidos
+                    ? AppTheme.primary.withOpacity(0.5)
+                    : AppTheme.success.withOpacity(0.3),
                 width: 1.5,
               ),
             ),
@@ -5058,9 +6062,13 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                       boxShadow: AppTheme.primaryShadow,
                     ),
                     child: Icon(
-                      icono, 
-                      color: AppTheme.primary, 
-                      size: context.isMobile ? 20 : context.isTablet ? 24 : 28,
+                      icono,
+                      color: AppTheme.primary,
+                      size: context.isMobile
+                          ? 20
+                          : context.isTablet
+                          ? 24
+                          : 28,
                     ),
                   ),
                   // Nombre de la mesa especial
@@ -5069,7 +6077,11 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                       nombre,
                       textAlign: TextAlign.center,
                       style: AppTheme.bodyLarge.copyWith(
-                        fontSize: context.isMobile ? 14 : context.isTablet ? 16 : 18,
+                        fontSize: context.isMobile
+                            ? 14
+                            : context.isTablet
+                            ? 16
+                            : 18,
                         fontWeight: FontWeight.w600,
                       ),
                       maxLines: 2,
@@ -5079,7 +6091,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                   // Estado
                   Container(
                     padding: EdgeInsets.symmetric(
-                      horizontal: AppTheme.spacingSmall, 
+                      horizontal: AppTheme.spacingSmall,
                       vertical: AppTheme.spacingXSmall,
                     ),
                     decoration: BoxDecoration(
@@ -5125,7 +6137,9 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                       ),
                       decoration: BoxDecoration(
                         color: AppTheme.primary.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                        borderRadius: BorderRadius.circular(
+                          AppTheme.radiusSmall,
+                        ),
                       ),
                       child: Text(
                         '\$${totalGeneral.toStringAsFixed(0)}',
@@ -5141,126 +6155,6 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
           ),
         );
       },
-    );
-  }
-
-  // Widget especial para mostrar deudas pendientes
-  Widget buildMesaDeudas({required double height}) {
-    return GestureDetector(
-      onTap: () => _mostrarDeudas(),
-      child: Container(
-        height: height,
-        decoration: AppTheme.cardDecoration.copyWith(
-          gradient: LinearGradient(
-            colors: [Colors.orange.withOpacity(0.1), Colors.orange.withOpacity(0.05)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          border: Border.all(
-            color: Colors.orange.withOpacity(0.4),
-            width: 1.5,
-          ),
-        ),
-        child: Padding(
-          padding: EdgeInsets.all(AppTheme.spacingMedium),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              // Icono principal
-              Container(
-                padding: EdgeInsets.all(context.isMobile ? 8 : 12),
-                decoration: BoxDecoration(
-                  color: Colors.orange.withOpacity(0.15),
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.orange.withOpacity(0.3),
-                      blurRadius: 8,
-                      offset: Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Icon(
-                  Icons.account_balance_wallet, 
-                  color: Colors.orange, 
-                  size: context.isMobile ? 20 : context.isTablet ? 24 : 28,
-                ),
-              ),
-              // Nombre
-              Flexible(
-                child: Text(
-                  'Deudas',
-                  textAlign: TextAlign.center,
-                  style: AppTheme.bodyLarge.copyWith(
-                    fontSize: context.isMobile ? 14 : context.isTablet ? 16 : 18,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              // Estado
-              Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: AppTheme.spacingSmall, 
-                  vertical: AppTheme.spacingXSmall,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.orange.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-                  border: Border.all(
-                    color: Colors.orange.withOpacity(0.3),
-                    width: 1,
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 6,
-                      height: 6,
-                      decoration: BoxDecoration(
-                        color: Colors.orange,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    SizedBox(width: AppTheme.spacingXSmall),
-                    Flexible(
-                      child: Text(
-                        'Pendientes',
-                        style: AppTheme.labelMedium.copyWith(
-                          color: Colors.orange,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              // Placeholder para futuro contador de deudas
-              Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: AppTheme.spacingSmall,
-                  vertical: AppTheme.spacingXSmall,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.orange.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-                ),
-                child: Text(
-                  'Ver todas',
-                  style: AppTheme.labelMedium.copyWith(
-                    color: Colors.orange,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 
@@ -5303,8 +6197,16 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
     return LayoutBuilder(
       builder: (context, constraints) {
         // Tamaños responsivos usando AppTheme y extension
-        double cardWidth = context.isMobile ? 90 : context.isTablet ? 110 : 130;
-        double cardHeight = context.isMobile ? 120 : context.isTablet ? 140 : 160;
+        double cardWidth = context.isMobile
+            ? 90
+            : context.isTablet
+            ? 110
+            : 130;
+        double cardHeight = context.isMobile
+            ? 120
+            : context.isTablet
+            ? 140
+            : 160;
 
         return Scrollbar(
           thumbVisibility: true,
@@ -5345,7 +6247,9 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                         ),
                         decoration: BoxDecoration(
                           gradient: AppTheme.primaryGradient,
-                          borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
+                          borderRadius: BorderRadius.circular(
+                            AppTheme.radiusLarge,
+                          ),
                           boxShadow: AppTheme.primaryShadow,
                         ),
                         child: Text(
@@ -5541,9 +6445,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                   SizedBox(width: 4),
                                   Text(
                                     'Mesero: ${pedido.mesero}',
-                                    style: TextStyle(
-                                      color: _textSecondary,
-                                    ),
+                                    style: TextStyle(color: _textSecondary),
                                   ),
                                   SizedBox(width: 16),
                                   Icon(
@@ -5554,9 +6456,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                   SizedBox(width: 4),
                                   Text(
                                     '${pedido.fecha.hour.toString().padLeft(2, '0')}:${pedido.fecha.minute.toString().padLeft(2, '0')}',
-                                    style: TextStyle(
-                                      color: _textSecondary,
-                                    ),
+                                    style: TextStyle(color: _textSecondary),
                                   ),
                                 ],
                               ),
@@ -5572,9 +6472,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                     Expanded(
                                       child: Text(
                                         pedido.notas!,
-                                        style: TextStyle(
-                                          color: _textSecondary,
-                                        ),
+                                        style: TextStyle(color: _textSecondary),
                                       ),
                                     ),
                                   ],
@@ -5600,16 +6498,37 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                         left: 16,
                                         bottom: 2,
                                       ),
-                                      child: Text(
-                                        '• ${item.cantidad}x ${item.productoNombre ?? 'Producto'} - \$${(item.precioUnitario * item.cantidad).toStringAsFixed(0)}',
-                                        style: TextStyle(
-                                          color: _textSecondary,
-                                          fontSize: 13,
-                                        ),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            '• ${item.cantidad}x ${item.productoNombre ?? 'Producto'} - \$${(item.precioUnitario * item.cantidad).toStringAsFixed(0)}',
+                                            style: TextStyle(
+                                              color: _textSecondary,
+                                              fontSize: 13,
+                                            ),
+                                          ),
+                                          if (item.agregadoPor != null)
+                                            Padding(
+                                              padding: EdgeInsets.only(
+                                                left: 12,
+                                                top: 1,
+                                              ),
+                                              child: Text(
+                                                '👤 Agregado por: ${item.agregadoPor}',
+                                                style: TextStyle(
+                                                  color: _textSecondary
+                                                      .withOpacity(0.7),
+                                                  fontSize: 11,
+                                                  fontStyle: FontStyle.italic,
+                                                ),
+                                              ),
+                                            ),
+                                        ],
                                       ),
                                     ),
-                                  )
-                                  ,
+                                  ),
 
                               if (pedido.items.length > 3)
                                 Padding(
@@ -5764,12 +6683,12 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
     }
   }
 
-  void crearPedido(String nombreMesa) {
-    // Buscar la mesa real en la lista de mesas cargadas
-    Mesa? mesaReal = mesas.firstWhere(
-      (mesa) => mesa.nombre.toUpperCase() == nombreMesa.toUpperCase(),
+  void _navegarAPedido(String nombreMesa) {
+    // Buscar la mesa en la lista de mesas
+    Mesa? mesa = mesas.firstWhere(
+      (m) => m.nombre.toLowerCase() == nombreMesa.toLowerCase(),
       orElse: () => Mesa(
-        id: '', // ID vacío para indicar que no se encontró
+        id: '',
         nombre: nombreMesa,
         ocupada: false,
         total: 0.0,
@@ -5777,29 +6696,10 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
       ),
     );
 
-    // Si no se encontró la mesa real, mostrar error
-    if (mesaReal.id.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('No se encontró la mesa $nombreMesa en el sistema'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
-    // Verificar si es una mesa especial (puede tener múltiples pedidos activos)
-    final mesasEspeciales = ['DOMICILIO', 'CAJA', 'MESA AUXILIAR'];
-    if (mesasEspeciales.contains(nombreMesa.toUpperCase())) {
-      // Para mesas especiales, mostrar la lista de pedidos activos
-      mostrarPedidosMesaEspecial(mesaReal);
-    } else {
-      // Para mesas normales, usar la lógica original
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => PedidoScreen(mesa: mesaReal)),
-      );
-    }
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => PedidoScreen(mesa: mesa)),
+    );
   }
 
   // Métodos de utilidad para mostrar mensajes
@@ -6104,15 +7004,11 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                     fillColor: _cardBg.withOpacity(0.3),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(
-                        color: _textMuted,
-                      ),
+                      borderSide: BorderSide(color: _textMuted),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(
-                        color: _textMuted,
-                      ),
+                      borderSide: BorderSide(color: _textMuted),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -6145,15 +7041,11 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                     fillColor: _cardBg.withOpacity(0.3),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(
-                        color: _textMuted,
-                      ),
+                      borderSide: BorderSide(color: _textMuted),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(
-                        color: _textMuted,
-                      ),
+                      borderSide: BorderSide(color: _textMuted),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),

@@ -29,12 +29,14 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
   // Variables de compatibilidad temporal para evitar errores de compilación
   Color get primary => AppTheme.primary;
   Color get cardBg => AppTheme.cardBg;
-  Color get textDark => AppTheme.textDark;     // Ahora es blanco desde el tema
-  Color get textLight => AppTheme.textLight;   // Ahora es gris claro con buen contraste
+  Color get textDark => AppTheme.textDark; // Ahora es blanco desde el tema
+  Color get textLight =>
+      AppTheme.textLight; // Ahora es gris claro con buen contraste
   Color get bgDark => AppTheme.backgroundDark;
 
   final TextEditingController _busquedaController = TextEditingController();
   late TabController _tabController;
+  late ScrollController _scrollController;
 
   final PedidoService _pedidoService = PedidoService();
   List<Pedido> _pedidos = [];
@@ -60,6 +62,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
       length: 5, // Activo, Pagado, Cancelado, Cortesía, Consumo Interno
       vsync: this,
     );
+    _scrollController = ScrollController();
     _tabController.addListener(_onTabChanged);
     _cargarPedidos();
     _busquedaController.addListener(_aplicarFiltros);
@@ -69,6 +72,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
   void dispose() {
     _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
+    _scrollController.dispose();
     _busquedaController.dispose();
     super.dispose();
   }
@@ -260,7 +264,10 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: Text('No', style: TextStyle(color: AppTheme.textSecondary)),
+              child: Text(
+                'No',
+                style: TextStyle(color: AppTheme.textSecondary),
+              ),
             ),
             ElevatedButton(
               onPressed: () => Navigator.of(context).pop(true),
@@ -313,9 +320,6 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
     }
   }
 
-  // El método _cambiarEstadoPedido ha sido eliminado
-  // porque ya no se utiliza en esta pantalla
-
   @override
   Widget build(BuildContext context) {
     // Check if user has admin permissions
@@ -337,61 +341,83 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundDark,
-      appBar: AppBar(
-        backgroundColor: AppTheme.primary,
-        elevation: 0,
-        title: Row(
-          children: [
-            Container(
-              padding: EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: AppTheme.primary.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(8),
+      body: CustomScrollView(
+        controller: _scrollController,
+        slivers: [
+          // AppBar que se oculta al hacer scroll
+          SliverAppBar(
+            backgroundColor: AppTheme.primary,
+            elevation: 0,
+            floating: true, // Se muestra al scroll hacia arriba
+            pinned: false, // No se queda fijo arriba
+            expandedHeight: 120.0,
+            flexibleSpace: FlexibleSpaceBar(
+              titlePadding: EdgeInsets.only(left: 16, bottom: 16),
+              title: Row(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primary.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      Icons.receipt_long,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Gestión de Pedidos',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          'Administración completa',
+                          style: TextStyle(color: Colors.white70, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              child: Icon(Icons.receipt_long, color: Colors.white, size: 24),
             ),
-            SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Administración completa',
-                  style: AppTheme.headlineSmall.copyWith(color: Colors.white),
-                ),
-                Text(
-                  'Gestión de Pedidos',
-                  style: AppTheme.bodySmall.copyWith(color: Colors.white70),
-                ),
-              ],
+            leading: IconButton(
+              icon: Icon(Icons.arrow_back, color: Colors.white),
+              onPressed: () => Navigator.of(context).pop(),
             ),
-          ],
-        ),
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        actions: [
-          Container(
-            margin: EdgeInsets.only(right: 16),
-            padding: EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: IconButton(
-              icon: Icon(Icons.refresh, color: Colors.white, size: 20),
-              onPressed: _cargarPedidos,
-            ),
-          ),
-        ],
-        bottom: PreferredSize(
-          preferredSize: Size.fromHeight(120), // Reducido de 140 a 120
-          child: Column(
-            children: [
-              // Barra de búsqueda mejorada
+            actions: [
               Container(
-                margin: EdgeInsets.symmetric(horizontal: 16, vertical: 6), // Reducido de 8 a 6
-                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 3), // Reducido padding
+                margin: EdgeInsets.only(right: 16),
+                padding: EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: IconButton(
+                  icon: Icon(Icons.refresh, color: Colors.white, size: 20),
+                  onPressed: _cargarPedidos,
+                ),
+              ),
+            ],
+          ),
+
+          // Barra de búsqueda que también se oculta al hacer scroll
+          SliverPersistentHeader(
+            floating: true, // Reaparece al scroll hacia arriba
+            delegate: _SearchBarDelegate(
+              child: Container(
+                margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
                   color: AppTheme.cardBg,
                   borderRadius: BorderRadius.circular(12),
@@ -404,10 +430,16 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                     Expanded(
                       child: TextField(
                         controller: _busquedaController,
-                        style: TextStyle(color: AppTheme.textPrimary, fontSize: 16),
+                        style: TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontSize: 16,
+                        ),
                         decoration: InputDecoration(
                           hintText: 'Buscar por ID, cliente, mesa o mesero...',
-                          hintStyle: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+                          hintStyle: TextStyle(
+                            color: AppTheme.textSecondary,
+                            fontSize: 14,
+                          ),
                           border: InputBorder.none,
                         ),
                       ),
@@ -418,33 +450,39 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                           _busquedaController.clear();
                           _aplicarFiltros();
                         },
-                        icon: Icon(Icons.clear, color: AppTheme.textSecondary, size: 18),
+                        icon: Icon(
+                          Icons.clear,
+                          color: AppTheme.textSecondary,
+                          size: 18,
+                        ),
                       ),
                   ],
                 ),
               ),
+            ),
+          ),
 
-              // Tabs mejorados
-              Container(
+          // Tabs que también se ocultan al hacer scroll
+          SliverPersistentHeader(
+            floating: true, // Reaparece al scroll hacia arriba
+            delegate: _TabBarDelegate(
+              tabBar: Container(
                 margin: EdgeInsets.symmetric(horizontal: 8),
+                decoration: BoxDecoration(
+                  color: AppTheme.primary,
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 child: TabBar(
                   controller: _tabController,
-                  indicatorColor: AppTheme.primary,
-                  indicatorWeight: 2,  // Reducido de 3 a 2 para ser menos invasivo
-                  indicatorSize: TabBarIndicatorSize.label,  // Solo bajo el texto, no toda la pestaña
+                  indicatorColor: Colors.white,
+                  indicatorWeight: 2,
+                  indicatorSize: TabBarIndicatorSize.label,
                   isScrollable: true,
-                  labelColor: Colors.white,  // Blanco sólido para que se vea sobre naranja
-                  unselectedLabelColor: Colors.white.withOpacity(0.7), // Mejor contraste
+                  labelColor: Colors.white,
+                  unselectedLabelColor: Colors.white.withOpacity(0.7),
                   labelStyle: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
-                    shadows: [
-                      Shadow(
-                        offset: Offset(0, 1),
-                        blurRadius: 2,
-                        color: Colors.black.withOpacity(0.5),
-                      ),
-                    ],
                   ),
                   unselectedLabelStyle: TextStyle(
                     fontWeight: FontWeight.normal,
@@ -504,222 +542,186 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                   ],
                 ),
               ),
-              SizedBox(height: 4), // Reducido de 8 a 4
-            ],
+            ),
           ),
-        ),
-      ),
-      body: _isLoading
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(primary),
-                  ),
-                  SizedBox(height: 16),
-                  Text(
-                    'Cargando pedidos...',
-                    style: TextStyle(color: textLight, fontSize: 16),
-                  ),
-                ],
-              ),
-            )
-          : _error != null
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.error_outline, color: Colors.red, size: 64),
-                  SizedBox(height: 16),
-                  Text(
-                    'Error al cargar pedidos',
-                    style: TextStyle(
-                      color: Colors.red,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    _error!,
-                    style: TextStyle(color: textLight),
-                    textAlign: TextAlign.center,
-                  ),
-                  SizedBox(height: 24),
-                  ElevatedButton.icon(
-                    onPressed: _cargarPedidos,
-                    icon: Icon(Icons.refresh),
-                    label: Text('Intentar de nuevo'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: primary,
-                      foregroundColor: Colors.white,
-                    ),
-                  ),
-                ],
-              ),
-            )
-          : _pedidosFiltrados.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.receipt_long, color: textLight, size: 64),
-                  SizedBox(height: 16),
-                  Text(
-                    'No hay pedidos',
-                    style: TextStyle(
-                      color: textLight,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Text(
-                    'No se encontraron pedidos con los filtros aplicados',
-                    style: TextStyle(
-                      color: textLight.withOpacity(0.7),
-                      fontSize: 14,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            )
-          : Column(
-              children: [
-                // Barra de estadísticas compacta
-                Container(
-                  margin: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                  padding: EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ), // Reducido de 12,8 a 8,4
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        primary.withOpacity(0.06), // Reducido opacidad
-                        primary.withOpacity(0.02),
-                      ],
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
-                    ),
-                    borderRadius: BorderRadius.circular(6), // Reducido de 8 a 6
-                    border: Border.all(color: primary.withOpacity(0.05)),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _buildStatItem(
-                        'Total',
-                        '${_pedidosFiltrados.length}',
-                        Icons.receipt_long,
+
+          // Contenido principal
+          SliverToBoxAdapter(
+            child: Container(
+              height: MediaQuery.of(context).size.height,
+              child: _isLoading
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          CircularProgressIndicator(color: AppTheme.primary),
+                          SizedBox(height: 16),
+                          Text(
+                            'Cargando pedidos...',
+                            style: AppTheme.bodyMedium,
+                          ),
+                        ],
                       ),
-                      _buildStatItem(
-                        'Items',
-                        '${_pedidosFiltrados.fold<int>(0, (sum, p) => sum + p.items.length)}',
-                        Icons.inventory,
+                    )
+                  : _error != null
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.error_outline,
+                            color: AppTheme.error,
+                            size: 64,
+                          ),
+                          SizedBox(height: 16),
+                          Text(
+                            'Error al cargar datos',
+                            style: AppTheme.headlineMedium.copyWith(
+                              color: AppTheme.error,
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 32),
+                            child: Text(
+                              _error!,
+                              style: AppTheme.bodyMedium,
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                          SizedBox(height: 24),
+                          ElevatedButton.icon(
+                            onPressed: _cargarPedidos,
+                            icon: Icon(Icons.refresh),
+                            label: Text('Reintentar'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.primary,
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                        ],
                       ),
-                      _buildStatItem(
-                        'Valor Total',
-                        formatCurrency(
-                          _pedidosFiltrados.fold<double>(
-                            0,
-                            (sum, p) => sum + p.total,
+                    )
+                  : _pedidosFiltrados.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.inbox_outlined,
+                            color: AppTheme.textSecondary,
+                            size: 64,
+                          ),
+                          SizedBox(height: 16),
+                          Text(
+                            'No se encontraron pedidos',
+                            style: AppTheme.headlineMedium,
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            'No hay pedidos que coincidan con los filtros seleccionados',
+                            style: AppTheme.bodyMedium.copyWith(
+                              color: AppTheme.textSecondary,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    )
+                  : Column(
+                      children: [
+                        // Barra de estadísticas compacta
+                        Container(
+                          margin: EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: cardBg.withOpacity(0.8),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: primary.withOpacity(0.2)),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              _buildStatItem(
+                                'Total',
+                                '${_pedidosFiltrados.length}',
+                                Icons.receipt_long,
+                              ),
+                              _buildStatItem(
+                                'Monto',
+                                formatCurrency(
+                                  _pedidosFiltrados.fold<double>(
+                                    0,
+                                    (sum, pedido) => sum + pedido.total,
+                                  ),
+                                ),
+                                Icons.attach_money,
+                              ),
+                              _buildStatItem(
+                                'Items',
+                                '${_pedidosFiltrados.fold<int>(0, (sum, pedido) => sum + pedido.items.length)}',
+                                Icons.shopping_cart,
+                              ),
+                            ],
                           ),
                         ),
-                        Icons.attach_money,
-                      ),
-                    ],
-                  ),
-                ),
 
-                // Lista de pedidos compacta y scrollable
-                Expanded(
-                  child: ListView.builder(
-                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    itemCount: _pedidosFiltrados.length,
-                    itemBuilder: (context, index) {
-                      final pedido = _pedidosFiltrados[index];
-                      return _buildPedidoCard(pedido);
-                    },
-                  ),
-                ),
-              ],
+                        // Lista de pedidos compacta y scrollable
+                        Expanded(
+                          child: ListView.builder(
+                            padding: EdgeInsets.symmetric(horizontal: 16),
+                            itemCount: _pedidosFiltrados.length,
+                            itemBuilder: (context, index) {
+                              return _buildPedidoCard(_pedidosFiltrados[index]);
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
             ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildPedidoCard(Pedido pedido) {
     return Card(
       color: cardBg,
-      margin: EdgeInsets.only(bottom: 2), // antes 4
+      margin: EdgeInsets.only(bottom: 8),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(3), // antes 6
-        side: BorderSide(color: primary.withOpacity(0.08)),
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: primary.withOpacity(0.2)),
       ),
-      child: ExpansionTile(
-        tilePadding: EdgeInsets.all(3), // antes 6
-        childrenPadding: EdgeInsets.symmetric(
-          horizontal: 3,
-          vertical: 2,
-        ), // antes 6,4
-        backgroundColor: cardBg,
-        collapsedBackgroundColor: cardBg,
-        iconColor: primary,
-        collapsedIconColor: primary,
-        leading: Container(
-          width: 96, // más ancho
-          height: 36, // más alto
-          decoration: BoxDecoration(
-            color: primary.withOpacity(0.08),
-            borderRadius: BorderRadius.circular(7),
-          ),
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.restaurant, color: primary, size: 18),
-                SizedBox(height: 2),
-                Flexible(
-                  child: Text(
-                    pedido.mesa,
-                    style: TextStyle(
-                      color: primary,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        title: Column(
+      child: Padding(
+        padding: EdgeInsets.all(16),
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Primera fila: Info principal
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Expanded(
-                  flex: 1, // antes 2, ahora más angosto
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'ID: ${pedido.id}',
+                        'Mesa ${pedido.mesa} - ${pedido.id}',
                         style: TextStyle(
                           color: textDark,
-                          fontSize: 11,
+                          fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       Text(
-                        'Mesa: ${pedido.mesa}',
-                        style: TextStyle(color: textLight, fontSize: 9),
+                        pedido.cliente ?? 'Sin cliente',
+                        style: TextStyle(color: textLight, fontSize: 14),
                       ),
                     ],
                   ),
@@ -727,57 +729,31 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    // Chips de tipo y estado
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (pedido.tipo != TipoPedido.normal) ...[
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 5,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: _getTipoColor(pedido.tipo),
-                              borderRadius: BorderRadius.circular(7),
-                            ),
-                            child: Text(
-                              _getTipoTexto(pedido.tipo),
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 7,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          SizedBox(width: 2),
-                        ],
-                        Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color: _getEstadoColor(pedido.estado),
-                            borderRadius: BorderRadius.circular(9),
-                          ),
-                          child: Text(
-                            _getEstadoTexto(pedido.estado),
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 8,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: _getEstadoColor(pedido.estado).withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: _getEstadoColor(pedido.estado),
+                          width: 1,
                         ),
-                      ],
+                      ),
+                      child: Text(
+                        _getEstadoTexto(pedido.estado),
+                        style: TextStyle(
+                          color: _getEstadoColor(pedido.estado),
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
-                    SizedBox(height: 2),
+                    SizedBox(height: 4),
                     Text(
-                      '\$${pedido.total.toStringAsFixed(0)}',
+                      formatCurrency(pedido.total),
                       style: TextStyle(
                         color: primary,
-                        fontSize: 12,
+                        fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -786,451 +762,26 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
               ],
             ),
             SizedBox(height: 12),
-
-            // Segunda fila: Info detallada en formato tabla
-            Container(
-              padding: EdgeInsets.all(6), // antes 12
-              decoration: BoxDecoration(
-                color: cardBg.withOpacity(0.5),
-                borderRadius: BorderRadius.circular(4), // antes 8
-                border: Border.all(color: primary.withOpacity(0.1)),
-              ),
-              child: Column(
-                children: [
-                  // Fila de mesero y cliente
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildInfoItem(
-                          Icons.person,
-                          'Mesero',
-                          pedido.mesero,
-                        ),
-                      ),
-                      SizedBox(width: 16),
-                      Expanded(
-                        child: _buildInfoItem(Icons.person_outline, 'Cliente', () {
-                          // Debug: Imprimir información del pedido
-                          print('🔍 Debug Pedido ID: ${pedido.id}');
-                          print('🔍 Debug Cliente: ${pedido.cliente}');
-                          print('🔍 Debug Items count: ${pedido.items.length}');
-                          if (pedido.items.isNotEmpty) {
-                            print(
-                              '🔍 Debug Primer producto ID: ${pedido.items.first.productoId}',
-                            );
-                            print(
-                              '🔍 Debug Primer producto nombre: ${_getProductoNombre(pedido.items.first.producto)}',
-                            );
-                          }
-
-                          // Verificar si hay algún problema con el cliente
-                          final clienteInfo = pedido.cliente ?? 'Sin cliente';
-                          print('🔍 Debug Cliente final: $clienteInfo');
-                          return clienteInfo;
-                        }()),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 8),
-
-                  // Fila de fecha y items
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildInfoItem(
-                          Icons.access_time,
-                          'Fecha/Hora',
-                          '${pedido.fecha.day}/${pedido.fecha.month}/${pedido.fecha.year}\n${pedido.fecha.hour.toString().padLeft(2, '0')}:${pedido.fecha.minute.toString().padLeft(2, '0')}',
-                        ),
-                      ),
-                      SizedBox(width: 16),
-                      Expanded(
-                        child: _buildInfoItem(Icons.inventory, 'Items', () {
-                          if (pedido.items.isEmpty) {
-                            return '0 productos';
-                          }
-
-                          // Mostrar el primer producto con su nombre si está disponible
-                          final primerItem = pedido.items.first;
-
-                          // Prioridad: objeto producto > productoNombre del JSON > ID
-                          String nombreProducto;
-                          if (_getProductoNombre(primerItem.producto) !=
-                                  "Producto desconocido" &&
-                              _getProductoNombre(primerItem.producto) !=
-                                  "Producto desconocido") {
-                            nombreProducto = _getProductoNombre(
-                              primerItem.producto,
-                            );
-                          } else {
-                            // Intentar usar productoNombre del JSON como fallback
-                            // Este campo viene del backend en el JSON
-                            nombreProducto =
-                                'ID: ${primerItem.productoId}'; // Fallback al ID
-                          }
-
-                          if (pedido.items.length == 1) {
-                            return nombreProducto;
-                          } else {
-                            return '$nombreProducto + ${pedido.items.length - 1} más';
-                          }
-                        }()),
-                      ),
-                    ],
-                  ),
-
-                  // Botón de cancelar para pedidos activos
-                  if (pedido.estado == EstadoPedido.activo) ...[
-                    SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: () => _cancelarPedido(pedido),
-                        icon: Icon(Icons.cancel, size: 16),
-                        label: Text('Cancelar Pedido'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.red,
-                          side: BorderSide(color: Colors.red),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
+            Row(
+              children: [
+                Icon(Icons.person, color: primary, size: 16),
+                SizedBox(width: 4),
+                Text(
+                  pedido.mesero,
+                  style: TextStyle(color: textLight, fontSize: 12),
+                ),
+                SizedBox(width: 16),
+                Icon(Icons.access_time, color: primary, size: 16),
+                SizedBox(width: 4),
+                Text(
+                  '${pedido.fecha.day}/${pedido.fecha.month}/${pedido.fecha.year} ${pedido.fecha.hour.toString().padLeft(2, '0')}:${pedido.fecha.minute.toString().padLeft(2, '0')}',
+                  style: TextStyle(color: textLight, fontSize: 12),
+                ),
+              ],
             ),
           ],
         ),
-        children: [
-          // Contenido expandido: Tabla detallada de productos
-          Container(
-            width: double.infinity,
-            padding: EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: cardBg.withOpacity(0.3),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: primary.withOpacity(0.1)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header de productos
-                Row(
-                  children: [
-                    Icon(Icons.receipt_long, color: primary, size: 20),
-                    SizedBox(width: 8),
-                    Text(
-                      'Detalle de Productos',
-                      style: TextStyle(
-                        color: textDark,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 16),
-
-                // Encabezados de la tabla
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: primary.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        flex: 3,
-                        child: Text(
-                          'Producto',
-                          style: TextStyle(
-                            color: primary,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        child: Text(
-                          'Cant.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: primary,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        child: Text(
-                          'Precio U.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: primary,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        child: Text(
-                          'Subtotal',
-                          textAlign: TextAlign.right,
-                          style: TextStyle(
-                            color: primary,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Lista de productos
-                ...pedido.items.asMap().entries.map((entry) {
-                  final index = entry.key;
-                  final item = entry.value;
-                  final isEven = index % 2 == 0;
-
-                  return Container(
-                    margin: EdgeInsets.only(top: 2),
-                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: isEven
-                          ? cardBg.withOpacity(0.2)
-                          : cardBg.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Column(
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              flex: 3,
-                              child: Text(
-                                _getProductoNombre(item.producto),
-                                style: TextStyle(
-                                  color: textDark,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                            Expanded(
-                              child: Container(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: primary.withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(
-                                  '${item.cantidad}',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    color: primary,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            Expanded(
-                              child: Text(
-                                '\$${item.precio.toStringAsFixed(0)}',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: textLight,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ),
-                            Expanded(
-                              child: Text(
-                                '\$${(item.precio * item.cantidad).toStringAsFixed(0)}',
-                                textAlign: TextAlign.right,
-                                style: TextStyle(
-                                  color: primary,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        // Mostrar notas si existen
-                        if (item.notas != null && item.notas!.isNotEmpty) ...[
-                          SizedBox(height: 6),
-                          Container(
-                            width: double.infinity,
-                            padding: EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.amber.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(6),
-                              border: Border.all(
-                                color: Colors.amber.withOpacity(0.3),
-                              ),
-                            ),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Icon(Icons.note, color: Colors.amber, size: 16),
-                                SizedBox(width: 6),
-                                Expanded(
-                                  child: Text(
-                                    item.notas!,
-                                    style: TextStyle(
-                                      color: textLight,
-                                      fontSize: 12,
-                                      fontStyle: FontStyle.italic,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  );
-                }),
-
-                // Total del pedido
-                SizedBox(height: 16),
-                Container(
-                  padding: EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        primary.withOpacity(0.1),
-                        primary.withOpacity(0.05),
-                      ],
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: primary.withOpacity(0.3)),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'TOTAL DEL PEDIDO',
-                            style: TextStyle(
-                              color: textLight,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          Text(
-                            '${pedido.items.length} productos',
-                            style: TextStyle(
-                              color: textLight.withOpacity(0.7),
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                      Text(
-                        '\$${pedido.total.toStringAsFixed(0)}',
-                        style: TextStyle(
-                          color: primary,
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Notas del pedido si existen
-                if (pedido.notas != null && pedido.notas!.isNotEmpty) ...[
-                  SizedBox(height: 16),
-                  Container(
-                    width: double.infinity,
-                    padding: EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.blue.withOpacity(0.3)),
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Icon(Icons.note_alt, color: Colors.blue, size: 20),
-                        SizedBox(width: 8),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Notas del Pedido:',
-                                style: TextStyle(
-                                  color: Colors.blue,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                ),
-                              ),
-                              SizedBox(height: 4),
-                              Text(
-                                pedido.notas!,
-                                style: TextStyle(color: textDark, fontSize: 14),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
       ),
-    );
-  }
-
-  // Método auxiliar para construir items de información
-  Widget _buildInfoItem(IconData icon, String label, String value) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, color: primary, size: 16),
-        SizedBox(width: 6),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  color: textLight.withOpacity(0.7),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              Text(
-                value,
-                style: TextStyle(
-                  color: textDark,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
     );
   }
 
@@ -1240,19 +791,19 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          padding: EdgeInsets.all(4), // Reducido de 8 a 4
+          padding: EdgeInsets.all(8),
           decoration: BoxDecoration(
             color: primary.withOpacity(0.12),
-            borderRadius: BorderRadius.circular(6), // Reducido de 8 a 6
+            borderRadius: BorderRadius.circular(8),
           ),
-          child: Icon(icon, color: primary, size: 16), // Reducido de 20 a 16
+          child: Icon(icon, color: primary, size: 20),
         ),
-        SizedBox(height: 2), // Reducido de 4 a 2
+        SizedBox(height: 4),
         Text(
           value,
           style: TextStyle(
             color: primary,
-            fontSize: 14, // Reducido de 16 a 14
+            fontSize: 16,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -1260,11 +811,65 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
           label,
           style: TextStyle(
             color: textLight,
-            fontSize: 9, // Reducido de 10 a 9
+            fontSize: 10,
             fontWeight: FontWeight.w500,
           ),
         ),
       ],
     );
+  }
+}
+
+// Delegate para la barra de búsqueda
+class _SearchBarDelegate extends SliverPersistentHeaderDelegate {
+  final Widget child;
+
+  _SearchBarDelegate({required this.child});
+
+  @override
+  double get minExtent => 60.0;
+
+  @override
+  double get maxExtent => 60.0;
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    return Container(color: AppTheme.backgroundDark, child: child);
+  }
+
+  @override
+  bool shouldRebuild(_SearchBarDelegate oldDelegate) {
+    return false;
+  }
+}
+
+// Delegate para los tabs
+class _TabBarDelegate extends SliverPersistentHeaderDelegate {
+  final Widget tabBar;
+
+  _TabBarDelegate({required this.tabBar});
+
+  @override
+  double get minExtent => 50.0;
+
+  @override
+  double get maxExtent => 50.0;
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    return Container(color: AppTheme.backgroundDark, child: tabBar);
+  }
+
+  @override
+  bool shouldRebuild(_TabBarDelegate oldDelegate) {
+    return false;
   }
 }

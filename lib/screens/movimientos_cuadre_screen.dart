@@ -15,12 +15,12 @@ class MovimientosCuadreScreen extends StatefulWidget {
   const MovimientosCuadreScreen({super.key, required this.cuadre});
 
   @override
-  _MovimientosCuadreScreenState createState() => _MovimientosCuadreScreenState();
+  _MovimientosCuadreScreenState createState() =>
+      _MovimientosCuadreScreenState();
 }
 
 class _MovimientosCuadreScreenState extends State<MovimientosCuadreScreen>
     with SingleTickerProviderStateMixin {
-  
   // Getters para compatibilidad temporal con AppTheme
   Color get primary => AppTheme.primary;
   Color get bgDark => AppTheme.backgroundDark;
@@ -46,7 +46,10 @@ class _MovimientosCuadreScreenState extends State<MovimientosCuadreScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this); // Resumen, Gastos, Ingresos
+    _tabController = TabController(
+      length: 3,
+      vsync: this,
+    ); // Resumen, Gastos, Ingresos
     _cargarMovimientos();
   }
 
@@ -57,10 +60,7 @@ class _MovimientosCuadreScreenState extends State<MovimientosCuadreScreen>
   }
 
   Future<void> _cargarMovimientos() async {
-    await Future.wait([
-      _cargarGastos(),
-      _cargarIngresos(),
-    ]);
+    await Future.wait([_cargarGastos(), _cargarIngresos()]);
   }
 
   Future<void> _cargarGastos() async {
@@ -92,7 +92,9 @@ class _MovimientosCuadreScreenState extends State<MovimientosCuadreScreen>
     });
 
     try {
-      final ingresos = await _ingresoCajaService.obtenerPorCuadreCaja(widget.cuadre.id!);
+      final ingresos = await _ingresoCajaService.obtenerPorCuadreCaja(
+        widget.cuadre.id!,
+      );
       setState(() {
         _ingresos = ingresos;
         _isLoadingIngresos = false;
@@ -114,7 +116,9 @@ class _MovimientosCuadreScreenState extends State<MovimientosCuadreScreen>
     if (!userProvider.isAdmin) {
       return Scaffold(
         body: Center(
-          child: Text('Acceso restringido. Necesitas permisos de administrador.'),
+          child: Text(
+            'Acceso restringido. Necesitas permisos de administrador.',
+          ),
         ),
       );
     }
@@ -136,11 +140,9 @@ class _MovimientosCuadreScreenState extends State<MovimientosCuadreScreen>
               ),
             ),
             Text(
-              widget.cuadre.nombre + ' - ${_formatDate(widget.cuadre.fechaApertura)}',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.white70,
-              ),
+              widget.cuadre.nombre +
+                  ' - ${_formatDate(widget.cuadre.fechaApertura)}',
+              style: TextStyle(fontSize: 14, color: Colors.white70),
             ),
           ],
         ),
@@ -154,24 +156,42 @@ class _MovimientosCuadreScreenState extends State<MovimientosCuadreScreen>
             onPressed: _cargarMovimientos,
           ),
         ],
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: Colors.white,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white70,
-          tabs: [
-            Tab(text: 'Resumen'),
-            Tab(text: 'Gastos (${_gastos.length})'),
-            Tab(text: 'Ingresos (${_ingresos.length})'),
-          ],
-        ),
       ),
-      body: TabBarView(
-        controller: _tabController,
+      body: Column(
         children: [
-          _buildResumenTab(),
-          _buildGastosTab(),
-          _buildIngresosTab(),
+          // Tabs movidos del AppBar al body (ahora scrolleable)
+          Container(
+            decoration: BoxDecoration(
+              color: AppTheme.primary,
+              border: Border(
+                bottom: BorderSide(
+                  color: Colors.white.withOpacity(0.2),
+                  width: 1,
+                ),
+              ),
+            ),
+            child: TabBar(
+              controller: _tabController,
+              indicatorColor: Colors.white,
+              labelColor: Colors.white,
+              unselectedLabelColor: Colors.white70,
+              tabs: [
+                Tab(text: 'Resumen'),
+                Tab(text: 'Gastos (${_gastos.length})'),
+                Tab(text: 'Ingresos (${_ingresos.length})'),
+              ],
+            ),
+          ),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildResumenTab(),
+                _buildGastosTab(),
+                _buildIngresosTab(),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -179,7 +199,10 @@ class _MovimientosCuadreScreenState extends State<MovimientosCuadreScreen>
 
   Widget _buildResumenTab() {
     double totalGastos = _gastos.fold(0.0, (sum, gasto) => sum + gasto.monto);
-    double totalIngresos = _ingresos.fold(0.0, (sum, ingreso) => sum + ingreso.monto);
+    double totalIngresos = _ingresos.fold(
+      0.0,
+      (sum, ingreso) => sum + ingreso.monto,
+    );
     double balance = totalIngresos - totalGastos;
 
     return Padding(
@@ -205,18 +228,30 @@ class _MovimientosCuadreScreenState extends State<MovimientosCuadreScreen>
                   SizedBox(height: 12),
                   _buildInfoRow('Nombre:', widget.cuadre.nombre),
                   _buildInfoRow('Responsable:', widget.cuadre.responsable),
-                  _buildInfoRow('Fecha Apertura:', _formatDate(widget.cuadre.fechaApertura)),
+                  _buildInfoRow(
+                    'Fecha Apertura:',
+                    _formatDate(widget.cuadre.fechaApertura),
+                  ),
                   if (widget.cuadre.fechaCierre != null)
-                    _buildInfoRow('Fecha Cierre:', _formatDate(widget.cuadre.fechaCierre!)),
-                  _buildInfoRow('Estado:', widget.cuadre.cerrada ? 'Cerrada' : 'Abierta'),
-                  _buildInfoRow('Fondo Inicial:', formatCurrency(widget.cuadre.fondoInicial)),
+                    _buildInfoRow(
+                      'Fecha Cierre:',
+                      _formatDate(widget.cuadre.fechaCierre!),
+                    ),
+                  _buildInfoRow(
+                    'Estado:',
+                    widget.cuadre.cerrada ? 'Cerrada' : 'Abierta',
+                  ),
+                  _buildInfoRow(
+                    'Fondo Inicial:',
+                    formatCurrency(widget.cuadre.fondoInicial),
+                  ),
                 ],
               ),
             ),
           ),
-          
+
           SizedBox(height: 16),
-          
+
           // Resumen financiero
           Card(
             color: cardBg,
@@ -234,12 +269,16 @@ class _MovimientosCuadreScreenState extends State<MovimientosCuadreScreen>
                     ),
                   ),
                   SizedBox(height: 12),
-                  _buildMoneyRow('Total Ingresos:', totalIngresos, Colors.green),
+                  _buildMoneyRow(
+                    'Total Ingresos:',
+                    totalIngresos,
+                    Colors.green,
+                  ),
                   _buildMoneyRow('Total Gastos:', totalGastos, Colors.red),
                   Divider(color: textLight),
                   _buildMoneyRow(
-                    'Balance:', 
-                    balance, 
+                    'Balance:',
+                    balance,
                     balance >= 0 ? Colors.green : Colors.red,
                     isTotal: true,
                   ),
@@ -247,9 +286,9 @@ class _MovimientosCuadreScreenState extends State<MovimientosCuadreScreen>
               ),
             ),
           ),
-          
+
           SizedBox(height: 16),
-          
+
           // Estadísticas
           Row(
             children: [
@@ -270,10 +309,7 @@ class _MovimientosCuadreScreenState extends State<MovimientosCuadreScreen>
                             color: Colors.green,
                           ),
                         ),
-                        Text(
-                          'Ingresos',
-                          style: TextStyle(color: textLight),
-                        ),
+                        Text('Ingresos', style: TextStyle(color: textLight)),
                       ],
                     ),
                   ),
@@ -297,10 +333,7 @@ class _MovimientosCuadreScreenState extends State<MovimientosCuadreScreen>
                             color: Colors.red,
                           ),
                         ),
-                        Text(
-                          'Gastos',
-                          style: TextStyle(color: textLight),
-                        ),
+                        Text('Gastos', style: TextStyle(color: textLight)),
                       ],
                     ),
                   ),
@@ -315,9 +348,7 @@ class _MovimientosCuadreScreenState extends State<MovimientosCuadreScreen>
 
   Widget _buildGastosTab() {
     if (_isLoadingGastos) {
-      return Center(
-        child: CircularProgressIndicator(color: primary),
-      );
+      return Center(child: CircularProgressIndicator(color: primary));
     }
 
     if (_errorGastos != null) {
@@ -337,10 +368,7 @@ class _MovimientosCuadreScreenState extends State<MovimientosCuadreScreen>
               textAlign: TextAlign.center,
             ),
             SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _cargarGastos,
-              child: Text('Reintentar'),
-            ),
+            ElevatedButton(onPressed: _cargarGastos, child: Text('Reintentar')),
           ],
         ),
       );
@@ -374,9 +402,7 @@ class _MovimientosCuadreScreenState extends State<MovimientosCuadreScreen>
 
   Widget _buildIngresosTab() {
     if (_isLoadingIngresos) {
-      return Center(
-        child: CircularProgressIndicator(color: primary),
-      );
+      return Center(child: CircularProgressIndicator(color: primary));
     }
 
     if (_errorIngresos != null) {
@@ -588,10 +614,7 @@ class _MovimientosCuadreScreenState extends State<MovimientosCuadreScreen>
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: TextStyle(color: textLight, fontSize: 14),
-          ),
+          Text(label, style: TextStyle(color: textLight, fontSize: 14)),
           Text(
             value,
             style: TextStyle(
@@ -605,7 +628,12 @@ class _MovimientosCuadreScreenState extends State<MovimientosCuadreScreen>
     );
   }
 
-  Widget _buildMoneyRow(String label, double value, Color color, {bool isTotal = false}) {
+  Widget _buildMoneyRow(
+    String label,
+    double value,
+    Color color, {
+    bool isTotal = false,
+  }) {
     return Padding(
       padding: EdgeInsets.symmetric(vertical: isTotal ? 8 : 4),
       child: Row(

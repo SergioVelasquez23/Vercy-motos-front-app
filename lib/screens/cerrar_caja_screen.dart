@@ -63,61 +63,6 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
     super.dispose();
   }
 
-  // Método para cargar el resumen de pedidos (total pedidos, productos y valor)
-  Future<void> _cargarResumenPedidos() async {
-    try {
-      // Obtener los pedidos del cuadre actual (desde la apertura de caja)
-      if (_cajaActual == null) return;
-
-      final fechaDesde = _cajaActual!.fechaApertura;
-
-      // Obtener todos los pedidos y filtrarlos por fecha
-      final todosPedidos = await PedidoService.getPedidos();
-
-      // Filtrar pedidos por fecha (desde la apertura de la caja)
-      final pedidosDelCuadre = todosPedidos.where((pedido) {
-        // Verificar si el pedido es posterior a la apertura de la caja
-        return pedido.fecha.isAfter(fechaDesde) ||
-            pedido.fecha.isAtSameMomentAs(fechaDesde);
-      }).toList();
-
-      // Contar pedidos y productos
-      int pedidosCount = pedidosDelCuadre.length;
-      int productosCount = 0;
-      double valorTotal = 0.0;
-
-      for (var pedido in pedidosDelCuadre) {
-        // Contar productos en cada pedido
-        productosCount += pedido.items.length;
-
-        // Sumar el total del pedido
-        valorTotal += pedido.total;
-      }
-
-      setState(() {
-        _totalPedidos = pedidosCount;
-        _totalProductos = productosCount;
-        _valorTotalVentas = valorTotal;
-      });
-
-      print(
-        '📊 Resumen de pedidos: $_totalPedidos pedidos, $_totalProductos productos, \$${_valorTotalVentas.toStringAsFixed(0)}',
-      );
-
-      setState(() {
-        _totalPedidos = pedidosCount;
-        _totalProductos = productosCount;
-        _valorTotalVentas = valorTotal;
-      });
-
-      print(
-        '📊 Resumen de pedidos: $_totalPedidos pedidos, $_totalProductos productos, \$${_valorTotalVentas.toStringAsFixed(0)}',
-      );
-    } catch (e) {
-      print('Error cargando resumen de pedidos: $e');
-    }
-  }
-
   Future<void> _verificarEstadoCaja() async {
     setState(() {
       _isLoading = true;
@@ -150,9 +95,6 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
     try {
       print('🔄 Iniciando carga de efectivo esperado...');
 
-      // Cargar contadores de pedidos y productos
-      await _cargarResumenPedidos();
-
       // Intentar obtener cuadre completo primero
       try {
         final cuadreCompleto = await _cuadreCajaService.getCuadreCompleto();
@@ -167,6 +109,15 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
           _totalDomicilios = (cuadreCompleto['totalDomicilios'] ?? 0.0)
               .toDouble();
           _totalGastos = (cuadreCompleto['totalGastos'] ?? 0.0).toDouble();
+
+          // NUEVOS: Obtener contadores también del backend
+          _totalPedidos = (cuadreCompleto['totalPedidos'] ?? 0);
+          _totalProductos = (cuadreCompleto['totalProductos'] ?? 0);
+          _valorTotalVentas =
+              (cuadreCompleto['totalVentas'] ??
+                      cuadreCompleto['ventasEfectivo'] ??
+                      0.0)
+                  .toDouble();
 
           // El efectivo esperado debería incluir las ventas en efectivo y domicilios menos gastos
           // Si el backend ya incluye domicilios, usamos su valor directamente

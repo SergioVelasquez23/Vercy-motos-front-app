@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import '../models/documento_mesa.dart';
 import '../models/mesa.dart';
 import '../services/documento_mesa_service.dart';
 import '../services/pdf_service.dart';
+import '../services/pdf_service_web.dart';
 import '../utils/negocio_info_cache.dart';
 import '../utils/format_utils.dart';
 import '../utils/impresion_mixin.dart';
@@ -488,198 +490,408 @@ class _DocumentosMesaScreenState extends State<DocumentosMesaScreen>
           child: Container(
             width: double.infinity,
             padding: EdgeInsets.symmetric(horizontal: 4),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.vertical,
-              child: DataTable(
-                columnSpacing: 18, // Menos espacio entre columnas
-                horizontalMargin: 8, // Margen horizontal menor
-                dataRowHeight: 44, // Filas más compactas
-                headingRowHeight: 48, // Encabezado más compacto
-                headingRowColor: WidgetStateProperty.all(
-                  _primary.withOpacity(0.1),
-                ),
-                dataRowColor: WidgetStateProperty.resolveWith<Color?>((
-                  Set<WidgetState> states,
-                ) {
-                  if (states.contains(WidgetState.selected)) {
-                    return _primary.withOpacity(0.2);
-                  }
-                  return null;
-                }),
-                columns: [
-                  DataColumn(
-                    label: Text(
-                      'No.',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                      ),
-                    ),
-                  ),
-                  DataColumn(
-                    label: Text(
-                      'Mesa',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                      ),
-                    ),
-                  ),
-                  DataColumn(
-                    label: Text(
-                      'Facturador',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                      ),
-                    ),
-                  ),
-                  DataColumn(
-                    label: Text(
-                      'Estado',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                      ),
-                    ),
-                  ),
-                  DataColumn(
-                    label: Text(
-                      'Medio de Pago',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                      ),
-                    ),
-                  ),
-                  DataColumn(
-                    label: Text(
-                      'Total',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                      ),
-                    ),
-                  ),
-                  DataColumn(
-                    label: Text(
-                      'Fecha',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                      ),
-                    ),
-                  ),
-                  DataColumn(
-                    label: Text(
-                      'Acciones',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                      ),
-                    ),
-                  ),
-                ],
-                rows: documentosAMostrar.map((documento) {
-                  return DataRow(
-                    cells: [
-                      DataCell(
-                        Text(
-                          documento.numeroDocumento,
-                          style: TextStyle(fontSize: 14),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                // Detectar si es móvil
+                final isMovil = constraints.maxWidth < 768;
+
+                if (isMovil) {
+                  // Layout móvil: Lista de cards
+                  return _buildMobileDocumentsList(documentosAMostrar);
+                } else {
+                  // Layout desktop: DataTable con scroll horizontal
+                  return SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.vertical,
+                      child: DataTable(
+                        columnSpacing: 18, // Menos espacio entre columnas
+                        horizontalMargin: 8, // Margen horizontal menor
+                        dataRowHeight: 44, // Filas más compactas
+                        headingRowHeight: 48, // Encabezado más compacto
+                        headingRowColor: WidgetStateProperty.all(
+                          _primary.withOpacity(0.1),
                         ),
-                      ),
-                      DataCell(
-                        Text(
-                          documento.mesaNombre,
-                          style: TextStyle(fontSize: 14),
-                        ),
-                      ),
-                      DataCell(
-                        Text(
-                          documento.vendedor,
-                          style: TextStyle(fontSize: 14),
-                        ),
-                      ),
-                      DataCell(
-                        Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: documento.estadoColor.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            documento.estadoTexto,
-                            style: TextStyle(
-                              color: documento.estadoColor,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
+                        dataRowColor: WidgetStateProperty.resolveWith<Color?>((
+                          Set<WidgetState> states,
+                        ) {
+                          if (states.contains(WidgetState.selected)) {
+                            return _primary.withOpacity(0.2);
+                          }
+                          return null;
+                        }),
+                        columns: [
+                          DataColumn(
+                            label: Text(
+                              'No.',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                              ),
                             ),
                           ),
-                        ),
-                      ),
-                      DataCell(
-                        Text(
-                          documento.formaPago ?? 'Sin especificar',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: documento.formaPago == null
-                                ? _textLight.withOpacity(0.6)
-                                : _textLight,
-                            fontStyle: documento.formaPago == null
-                                ? FontStyle.italic
-                                : FontStyle.normal,
-                          ),
-                        ),
-                      ),
-                      DataCell(
-                        Text(
-                          formatCurrency(documento.total),
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      DataCell(
-                        Text(
-                          documento.fechaFormateada,
-                          style: TextStyle(fontSize: 14),
-                        ),
-                      ),
-                      DataCell(
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: Icon(Icons.visibility, color: _primary),
-                              onPressed: () => _verDetalleDocumento(documento),
-                              tooltip: 'Ver detalle',
-                              iconSize: 28,
-                              splashRadius: 26,
+                          DataColumn(
+                            label: Text(
+                              'Mesa',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                              ),
                             ),
-                            IconButton(
-                              icon: Icon(Icons.print, color: Colors.blue),
-                              onPressed: () =>
-                                  _mostrarDialogoImpresion(documento),
-                              tooltip: 'Imprimir',
-                              iconSize: 28,
-                              splashRadius: 26,
+                          ),
+                          DataColumn(
+                            label: Text(
+                              'Facturador',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                              ),
                             ),
-                          ],
-                        ),
+                          ),
+                          DataColumn(
+                            label: Text(
+                              'Estado',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                              ),
+                            ),
+                          ),
+                          DataColumn(
+                            label: Text(
+                              'Medio de Pago',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                              ),
+                            ),
+                          ),
+                          DataColumn(
+                            label: Text(
+                              'Total',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                              ),
+                            ),
+                          ),
+                          DataColumn(
+                            label: Text(
+                              'Fecha',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                              ),
+                            ),
+                          ),
+                          DataColumn(
+                            label: Text(
+                              'Acciones',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                              ),
+                            ),
+                          ),
+                        ],
+                        rows: documentosAMostrar.map((documento) {
+                          return DataRow(
+                            cells: [
+                              DataCell(
+                                Text(
+                                  documento.numeroDocumento,
+                                  style: TextStyle(fontSize: 14),
+                                ),
+                              ),
+                              DataCell(
+                                Text(
+                                  documento.mesaNombre,
+                                  style: TextStyle(fontSize: 14),
+                                ),
+                              ),
+                              DataCell(
+                                Text(
+                                  documento.vendedor,
+                                  style: TextStyle(fontSize: 14),
+                                ),
+                              ),
+                              DataCell(
+                                Container(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: documento.estadoColor.withOpacity(
+                                      0.2,
+                                    ),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    documento.estadoTexto,
+                                    style: TextStyle(
+                                      color: documento.estadoColor,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              DataCell(
+                                Text(
+                                  documento.formaPago ?? 'Sin especificar',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: documento.formaPago == null
+                                        ? _textLight.withOpacity(0.6)
+                                        : _textLight,
+                                    fontStyle: documento.formaPago == null
+                                        ? FontStyle.italic
+                                        : FontStyle.normal,
+                                  ),
+                                ),
+                              ),
+                              DataCell(
+                                Text(
+                                  formatCurrency(documento.total),
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              DataCell(
+                                Text(
+                                  documento.fechaFormateada,
+                                  style: TextStyle(fontSize: 14),
+                                ),
+                              ),
+                              DataCell(
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      icon: Icon(
+                                        Icons.visibility,
+                                        color: _primary,
+                                      ),
+                                      onPressed: () =>
+                                          _verDetalleDocumento(documento),
+                                      tooltip: 'Ver detalle',
+                                      iconSize: 28,
+                                      splashRadius: 26,
+                                    ),
+                                    IconButton(
+                                      icon: Icon(
+                                        Icons.print,
+                                        color: Colors.blue,
+                                      ),
+                                      onPressed: () =>
+                                          _mostrarDialogoImpresion(documento),
+                                      tooltip: 'Imprimir',
+                                      iconSize: 28,
+                                      splashRadius: 26,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          );
+                        }).toList(),
                       ),
-                    ],
+                    ),
                   );
-                }).toList(),
-              ),
+                }
+              },
             ),
           ),
         ),
       ],
+    );
+  }
+
+  // Layout móvil: Lista de cards
+  Widget _buildMobileDocumentsList(List<DocumentoMesa> documentos) {
+    return ListView.builder(
+      padding: EdgeInsets.all(8),
+      itemCount: documentos.length,
+      itemBuilder: (context, index) {
+        final documento = documentos[index];
+        return Card(
+          color: _cardBg,
+          margin: EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          child: InkWell(
+            onTap: () => _verDetalleDocumento(documento),
+            borderRadius: BorderRadius.circular(8),
+            child: Padding(
+              padding: EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Primera fila: Número y estado
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Doc. #${documento.numeroDocumento}',
+                        style: TextStyle(
+                          color: _textLight,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: documento.anulado
+                              ? Colors.red.withOpacity(0.2)
+                              : documento.pagado
+                              ? Colors.green.withOpacity(0.2)
+                              : Colors.amber.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          documento.anulado
+                              ? 'ANULADO'
+                              : documento.pagado
+                              ? 'PAGADO'
+                              : 'PENDIENTE',
+                          style: TextStyle(
+                            color: documento.anulado
+                                ? Colors.red
+                                : documento.pagado
+                                ? Colors.green
+                                : Colors.amber,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 8),
+
+                  // Segunda fila: Mesa y fecha
+                  Row(
+                    children: [
+                      Icon(Icons.table_restaurant, size: 16, color: _primary),
+                      SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          documento.mesaNombre,
+                          style: TextStyle(color: _textLight, fontSize: 14),
+                        ),
+                      ),
+                      Icon(Icons.calendar_today, size: 16, color: _primary),
+                      SizedBox(width: 4),
+                      Text(
+                        documento.fechaFormateada,
+                        style: TextStyle(
+                          color: _textLight.withOpacity(0.8),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 8),
+
+                  // Tercera fila: Vendedor y total
+                  Row(
+                    children: [
+                      Icon(Icons.person, size: 16, color: _primary),
+                      SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          documento.vendedor,
+                          style: TextStyle(
+                            color: _textLight.withOpacity(0.8),
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        formatCurrency(documento.total),
+                        style: TextStyle(
+                          color: _primary,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  // Cuarta fila: Forma de pago (si existe)
+                  if (documento.formaPago != null) ...[
+                    SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Icon(Icons.payment, size: 16, color: _primary),
+                        SizedBox(width: 4),
+                        Text(
+                          documento.formaPago!,
+                          style: TextStyle(
+                            color: _textLight.withOpacity(0.8),
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+
+                  // Botones de acción
+                  SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      // Botón Ver
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () => _verDetalleDocumento(documento),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _primary.withOpacity(0.2),
+                            foregroundColor: _primary,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                          ),
+                          icon: Icon(Icons.visibility, size: 16),
+                          label: Text('Ver', style: TextStyle(fontSize: 12)),
+                        ),
+                      ),
+                      SizedBox(width: 8),
+
+                      // Botón Imprimir
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () => _mostrarDialogoImpresion(documento),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green.withOpacity(0.2),
+                            foregroundColor: Colors.green,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                          ),
+                          icon: Icon(Icons.print, size: 16),
+                          label: Text(
+                            'Imprimir',
+                            style: TextStyle(fontSize: 12),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -832,77 +1044,170 @@ class _DocumentosMesaScreenState extends State<DocumentosMesaScreen>
         return;
       }
 
-      // Mostrar opciones de impresión
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          backgroundColor: Colors.white,
-          title: Text(
-            'Opciones de Impresión',
-            style: TextStyle(color: Colors.black),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Documento ${documento.numeroDocumento}',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
+      // Detectar plataforma y usar el servicio apropiado
+      if (kIsWeb) {
+        // Para web, usar el servicio web especializado
+        final pdfServiceWeb = PDFServiceWeb();
+
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            backgroundColor: Colors.white,
+            title: Text(
+              'Compartir Resumen',
+              style: TextStyle(color: Colors.black),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Documento ${documento.numeroDocumento}',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                ),
+                SizedBox(height: 12),
+                Text(
+                  '¿Cómo deseas compartir este resumen?',
+                  style: TextStyle(color: Colors.black),
+                ),
+                SizedBox(height: 20),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('Cancelar'),
+              ),
+              ElevatedButton.icon(
+                onPressed: () async {
+                  Navigator.pop(context);
+                  try {
+                    showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (context) => Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            CircularProgressIndicator(),
+                            SizedBox(height: 16),
+                            Text(
+                              'Generando PDF...',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+
+                    pdfServiceWeb.generarYDescargarPDF(resumen: resumen);
+                    Navigator.of(context).pop(); // Cerrar loading
+                  } catch (e) {
+                    Navigator.of(context).pop(); // Cerrar loading
+                    mostrarMensajeError('Error generando PDF: $e');
+                  }
+                },
+                icon: Icon(Icons.picture_as_pdf),
+                label: Text('PDF'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Color(0xFFFF6B00),
+                  foregroundColor: Colors.white,
                 ),
               ),
-              SizedBox(height: 12),
-              Text(
-                '¿Cómo deseas imprimir este documento?',
-                style: TextStyle(color: Colors.black),
+              ElevatedButton.icon(
+                onPressed: () async {
+                  Navigator.pop(context);
+                  try {
+                    await pdfServiceWeb.compartirTexto(resumen: resumen);
+                  } catch (e) {
+                    mostrarMensajeError('Error compartiendo: $e');
+                  }
+                },
+                icon: Icon(Icons.share),
+                label: Text('Texto'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                ),
               ),
-              SizedBox(height: 20),
             ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('Cancelar'),
+        );
+      } else {
+        // Para móvil, usar el servicio tradicional
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            backgroundColor: Colors.white,
+            title: Text(
+              'Opciones de Impresión',
+              style: TextStyle(color: Colors.black),
             ),
-            ElevatedButton.icon(
-              onPressed: () async {
-                Navigator.pop(context);
-                try {
-                  await _pdfService.mostrarVistaPrevia(
-                    resumen: resumen,
-                    esFactura: false,
-                  );
-                } catch (e) {
-                  mostrarMensajeError('Error en vista previa: $e');
-                }
-              },
-              icon: Icon(Icons.print),
-              label: Text('Imprimir'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Color(0xFFFF6B00),
-                foregroundColor: Colors.white,
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Documento ${documento.numeroDocumento}',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                ),
+                SizedBox(height: 12),
+                Text(
+                  '¿Cómo deseas imprimir este documento?',
+                  style: TextStyle(color: Colors.black),
+                ),
+                SizedBox(height: 20),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('Cancelar'),
               ),
-            ),
-            ElevatedButton.icon(
-              onPressed: () async {
-                Navigator.pop(context);
-                try {
-                  await compartirPedido(resumen);
-                  mostrarMensajeExito('PDF compartido correctamente');
-                } catch (e) {
-                  mostrarMensajeError('Error compartiendo: $e');
-                }
-              },
-              icon: Icon(Icons.share),
-              label: Text('Compartir'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
-                foregroundColor: Colors.white,
+              ElevatedButton.icon(
+                onPressed: () async {
+                  Navigator.pop(context);
+                  try {
+                    await _pdfService.mostrarVistaPrevia(
+                      resumen: resumen,
+                      esFactura: false,
+                    );
+                  } catch (e) {
+                    mostrarMensajeError('Error en vista previa: $e');
+                  }
+                },
+                icon: Icon(Icons.print),
+                label: Text('Imprimir'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Color(0xFFFF6B00),
+                  foregroundColor: Colors.white,
+                ),
               ),
-            ),
-          ],
-        ),
-      );
+              ElevatedButton.icon(
+                onPressed: () async {
+                  Navigator.pop(context);
+                  try {
+                    await compartirPedido(resumen);
+                    mostrarMensajeExito('PDF compartido correctamente');
+                  } catch (e) {
+                    mostrarMensajeError('Error compartiendo: $e');
+                  }
+                },
+                icon: Icon(Icons.share),
+                label: Text('Compartir'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        );
+      }
     } catch (e) {
       mostrarMensajeError('Error preparando documento: $e');
     }

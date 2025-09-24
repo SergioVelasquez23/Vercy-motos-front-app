@@ -13,14 +13,21 @@ import '../services/pedido_service.dart';
 import '../services/inventario_service.dart';
 import '../models/movimiento_inventario.dart';
 import '../models/inventario.dart';
+import '../models/tipo_mesa.dart';
 import '../providers/user_provider.dart';
 import '../utils/format_utils.dart';
 
 class PedidoScreen extends StatefulWidget {
   final Mesa mesa;
   final Pedido? pedidoExistente; // Pedido existente para editar (opcional)
+  final TipoMesa? tipoMesa; // Tipo de mesa seleccionado (opcional)
 
-  const PedidoScreen({super.key, required this.mesa, this.pedidoExistente});
+  const PedidoScreen({
+    super.key,
+    required this.mesa,
+    this.pedidoExistente,
+    this.tipoMesa,
+  });
 
   @override
   _PedidoScreenState createState() => _PedidoScreenState();
@@ -1187,6 +1194,10 @@ class _PedidoScreenState extends State<PedidoScreen> {
         clienteFinal = lugarDomicilio;
       }
 
+      // Obtener el usuario actual (lo movemos aquí para usarlo en los items)
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      final meseroActual = userProvider.userName ?? 'Usuario Desconocido';
+
       // Crear los items del pedido
       List<ItemPedido> items = productosMesa.map((producto) {
         // Mapear ingredientesDisponibles (que pueden ser nombres) a IDs si es necesario
@@ -1214,6 +1225,8 @@ class _PedidoScreenState extends State<PedidoScreen> {
           notas: producto.nota, // Pasar las notas con opciones específicas
           ingredientesSeleccionados: ingredientesIds,
           productoNombre: producto.nombre,
+          agregadoPor: userProvider.userName ?? 'Usuario Desconocido',
+          fechaAgregado: DateTime.now(),
         );
       }).toList();
 
@@ -1222,10 +1235,6 @@ class _PedidoScreenState extends State<PedidoScreen> {
         0,
         (sum, producto) => sum + (producto.precio * producto.cantidad),
       );
-
-      // Obtener el usuario actual
-      final userProvider = Provider.of<UserProvider>(context, listen: false);
-      final meseroActual = userProvider.userName ?? 'Usuario Desconocido';
 
       // Determinar el tipo de pedido basado en la mesa
       TipoPedido tipoPedido = TipoPedido.normal;
@@ -1393,53 +1402,31 @@ class _PedidoScreenState extends State<PedidoScreen> {
     final Color cardBg = Color(0xFF252525);
     final Color textLight = Color(0xFFE0E0E0);
 
-    return Row(
-      children: [
-        // Panel izquierdo - Productos disponibles
-        Expanded(
-          flex: 2,
-          child: Column(
-            children: [
-              // Barra de búsqueda
-              Padding(
-                padding: EdgeInsets.all(16),
-                child: TextField(
-                  controller: busquedaController,
-                  style: TextStyle(color: textLight),
-                  decoration: InputDecoration(
-                    hintText: 'Buscar producto...',
-                    hintStyle: TextStyle(color: textLight.withOpacity(0.5)),
-                    prefixIcon: Icon(Icons.search, color: primary),
-                    filled: true,
-                    fillColor: cardBg,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide.none,
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide(color: primary),
-                    ),
-                  ),
-                  // No necesitamos onChanged ya que usamos el listener en initState
-                ),
-              ),
+    // Detectar si es móvil
+    final isMovil = MediaQuery.of(context).size.width < 768;
 
-              // Campo del cliente para mesas especiales
-              if ([
-                'DOMICILIO',
-                'CAJA',
-                'MESA AUXILIAR',
-              ].contains(widget.mesa.nombre.toUpperCase()))
+    if (isMovil) {
+      // Layout móvil con pestañas
+      return _buildMobileLayout();
+    } else {
+      // Layout desktop/tablet con 2 columnas
+      return Row(
+        children: [
+          // Panel izquierdo - Productos disponibles
+          Expanded(
+            flex: 2,
+            child: Column(
+              children: [
+                // Barra de búsqueda
                 Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: EdgeInsets.all(16),
                   child: TextField(
-                    controller: clienteController,
+                    controller: busquedaController,
                     style: TextStyle(color: textLight),
                     decoration: InputDecoration(
-                      hintText: 'Nombre del cliente...',
+                      hintText: 'Buscar producto...',
                       hintStyle: TextStyle(color: textLight.withOpacity(0.5)),
-                      prefixIcon: Icon(Icons.person, color: primary),
+                      prefixIcon: Icon(Icons.search, color: primary),
                       filled: true,
                       fillColor: cardBg,
                       border: OutlineInputBorder(
@@ -1451,333 +1438,706 @@ class _PedidoScreenState extends State<PedidoScreen> {
                         borderSide: BorderSide(color: primary),
                       ),
                     ),
-                    onChanged: (value) {
-                      setState(() {
-                        clienteSeleccionado = value.trim().isNotEmpty
-                            ? value.trim()
-                            : null;
-                      });
-                    },
+                    // No necesitamos onChanged ya que usamos el listener en initState
                   ),
                 ),
 
-              // Filtro de categorías
-              Container(
-                height: 50,
-                margin: EdgeInsets.symmetric(horizontal: 16),
-                child: Scrollbar(
-                  scrollbarOrientation: ScrollbarOrientation.bottom,
-                  thumbVisibility: true,
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    children: [
-                      // Botón "Todas las categorías"
-                      Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: FilterChip(
-                          backgroundColor: categoriaSelecionadaId == null
-                              ? primary
-                              : cardBg,
-                          label: Text(
-                            'Todas',
-                            style: TextStyle(
-                              color: categoriaSelecionadaId == null
-                                  ? Colors.white
-                                  : textLight,
-                            ),
-                          ),
-                          onSelected: (bool selected) {
-                            setState(() {
-                              categoriaSelecionadaId = null;
-                            });
-                            _searchProductosAPI(busquedaController.text);
-                          },
-                          selected: categoriaSelecionadaId == null,
+                // Campo del cliente para mesas especiales
+                if ([
+                  'DOMICILIO',
+                  'CAJA',
+                  'MESA AUXILIAR',
+                ].contains(widget.mesa.nombre.toUpperCase()))
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: TextField(
+                      controller: clienteController,
+                      style: TextStyle(color: textLight),
+                      decoration: InputDecoration(
+                        hintText: 'Nombre del cliente...',
+                        hintStyle: TextStyle(color: textLight.withOpacity(0.5)),
+                        prefixIcon: Icon(Icons.person, color: primary),
+                        filled: true,
+                        fillColor: cardBg,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide.none,
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: primary),
                         ),
                       ),
-                      // Chips para cada categoría
-                      ...categorias.map((categoria) {
-                        return Padding(
+                      onChanged: (value) {
+                        setState(() {
+                          clienteSeleccionado = value.trim().isNotEmpty
+                              ? value.trim()
+                              : null;
+                        });
+                      },
+                    ),
+                  ),
+
+                // Filtro de categorías
+                Container(
+                  height: 50,
+                  margin: EdgeInsets.symmetric(horizontal: 16),
+                  child: Scrollbar(
+                    scrollbarOrientation: ScrollbarOrientation.bottom,
+                    thumbVisibility: true,
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      children: [
+                        // Botón "Todas las categorías"
+                        Padding(
                           padding: const EdgeInsets.only(right: 8),
                           child: FilterChip(
-                            backgroundColor:
-                                categoriaSelecionadaId == categoria.id
+                            backgroundColor: categoriaSelecionadaId == null
                                 ? primary
                                 : cardBg,
                             label: Text(
-                              categoria.nombre,
+                              'Todas',
                               style: TextStyle(
-                                color: categoriaSelecionadaId == categoria.id
+                                color: categoriaSelecionadaId == null
                                     ? Colors.white
                                     : textLight,
                               ),
                             ),
                             onSelected: (bool selected) {
                               setState(() {
-                                categoriaSelecionadaId = selected
-                                    ? categoria.id
-                                    : null;
+                                categoriaSelecionadaId = null;
                               });
                               _searchProductosAPI(busquedaController.text);
                             },
-                            selected: categoriaSelecionadaId == categoria.id,
+                            selected: categoriaSelecionadaId == null,
                           ),
-                        );
-                      }),
-                    ],
+                        ),
+                        // Chips para cada categoría
+                        ...categorias.map((categoria) {
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: FilterChip(
+                              backgroundColor:
+                                  categoriaSelecionadaId == categoria.id
+                                  ? primary
+                                  : cardBg,
+                              label: Text(
+                                categoria.nombre,
+                                style: TextStyle(
+                                  color: categoriaSelecionadaId == categoria.id
+                                      ? Colors.white
+                                      : textLight,
+                                ),
+                              ),
+                              onSelected: (bool selected) {
+                                setState(() {
+                                  categoriaSelecionadaId = selected
+                                      ? categoria.id
+                                      : null;
+                                });
+                                _searchProductosAPI(busquedaController.text);
+                              },
+                              selected: categoriaSelecionadaId == categoria.id,
+                            ),
+                          );
+                        }),
+                      ],
+                    ),
                   ),
                 ),
-              ),
 
-              SizedBox(height: 12),
+                SizedBox(height: 12),
 
-              // Lista de productos disponibles
-              Expanded(
-                child: GridView.builder(
-                  padding: EdgeInsets.symmetric(horizontal: 16),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount:
-                        5, // Aumentado de 4 a 5 para más productos por fila
-                    childAspectRatio:
-                        0.65, // Reducido de 0.75 a 0.65 para tarjetas más compactas
-                    crossAxisSpacing: 6, // Reducido de 8 a 6
-                    mainAxisSpacing: 6, // Reducido de 8 a 6
+                // Lista de productos disponibles
+                Expanded(
+                  child: GridView.builder(
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount:
+                          5, // Aumentado de 4 a 5 para más productos por fila
+                      childAspectRatio:
+                          0.65, // Reducido de 0.75 a 0.65 para tarjetas más compactas
+                      crossAxisSpacing: 6, // Reducido de 8 a 6
+                      mainAxisSpacing: 6, // Reducido de 8 a 6
+                    ),
+                    itemCount: _filtrarProductos().length,
+                    itemBuilder: (context, index) {
+                      return _buildProductoDisponible(
+                        _filtrarProductos()[index],
+                      );
+                    },
                   ),
-                  itemCount: _filtrarProductos().length,
-                  itemBuilder: (context, index) {
-                    return _buildProductoDisponible(_filtrarProductos()[index]);
-                  },
                 ),
+              ],
+            ),
+          ),
+
+          // Panel derecho - Productos en el pedido
+          Container(
+            width: 380, // Aumentado de 300 a 380 para mejor visualización
+            decoration: BoxDecoration(
+              color: cardBg.withOpacity(0.3),
+              border: Border(
+                left: BorderSide(color: Colors.grey.withOpacity(0.3), width: 1),
               ),
-            ],
+            ),
+            child: Column(
+              children: [
+                // Encabezado del pedido
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.all(12), // Reducido de 16 a 12
+                  decoration: BoxDecoration(
+                    color: primary.withOpacity(0.1),
+                    border: Border(
+                      bottom: BorderSide(
+                        color: primary.withOpacity(0.3),
+                        width: 1,
+                      ),
+                    ),
+                  ),
+                  child: Text(
+                    'PEDIDO - ${widget.mesa.nombre}',
+                    style: TextStyle(
+                      color: primary,
+                      fontSize: 14, // Reducido de 16 a 14
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+
+                // Lista de productos en el pedido
+                if (productosMesa.isNotEmpty)
+                  Expanded(
+                    child: Padding(
+                      padding: EdgeInsets.all(8), // Reducido de 12 a 8
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Mensaje informativo para usuarios no admin con pedidos existentes
+                          if (!Provider.of<UserProvider>(
+                                context,
+                                listen: false,
+                              ).isAdmin &&
+                              esPedidoExistente &&
+                              cantidadProductosOriginales > 0)
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 6, // Reducido el padding
+                                vertical: 2, // Reducido el padding
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(
+                                  8,
+                                ), // Reducido el radio
+                                border: Border.all(
+                                  color: Colors.blue.withOpacity(0.3),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.info_outline,
+                                    color: Colors.blue,
+                                    size: 12, // Reducido el tamaño del ícono
+                                  ),
+                                  SizedBox(width: 3),
+                                  Text(
+                                    'Solo agregar nuevos',
+                                    style: TextStyle(
+                                      color: Colors.blue,
+                                      fontSize:
+                                          9, // Reducido el tamaño de fuente
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                          SizedBox(height: 6), // Reducido el espaciado
+
+                          Expanded(
+                            // Hacer scrollable la lista de productos
+                            child: SingleChildScrollView(
+                              child: Column(
+                                children: [
+                                  ...productosMesa.map(
+                                    (producto) =>
+                                        _buildProductoEnPedido(producto),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+
+                          Divider(
+                            color: textLight.withOpacity(0.3),
+                            height: 12,
+                          ), // Reducido la altura
+
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Total:',
+                                style: TextStyle(
+                                  color: textLight,
+                                  fontSize: 14, // Reducido el tamaño de fuente
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                formatCurrency(_calcularTotal()),
+                                style: TextStyle(
+                                  color: primary,
+                                  fontSize: 18, // Reducido el tamaño de fuente
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                else
+                  Expanded(
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.shopping_cart_outlined,
+                            size: 48, // Reducido de 64 a 48
+                            color: textLight.withOpacity(0.3),
+                          ),
+                          SizedBox(height: 12), // Reducido de 16 a 12
+                          Text(
+                            'No hay productos\nen el pedido',
+                            style: TextStyle(
+                              color: textLight.withOpacity(0.5),
+                              fontSize: 14, // Reducido de 16 a 14
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                // Botón de guardar en la parte inferior del panel derecho
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.all(12), // Reducido de 16 a 12
+                  decoration: BoxDecoration(
+                    color: cardBg,
+                    border: Border(
+                      top: BorderSide(
+                        color: Colors.grey.withOpacity(0.3),
+                        width: 1,
+                      ),
+                    ),
+                  ),
+                  child: ElevatedButton(
+                    onPressed: (isLoading || isSaving)
+                        ? null
+                        : () => _guardarPedido(),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primary,
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(
+                        vertical: 12,
+                      ), // Reducido de 16 a 12
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(
+                          8,
+                        ), // Reducido de 10 a 8
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        if (isSaving)
+                          SizedBox(
+                            width: 18, // Reducido de 20 a 18
+                            height: 18, // Reducido de 20 a 18
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
+                            ),
+                          )
+                        else
+                          Icon(Icons.save, size: 18), // Reducido de 20 a 18
+                        SizedBox(width: 6), // Reducido de 8 a 6
+                        Flexible(
+                          // Añadido Flexible para evitar overflow
+                          child: Text(
+                            isSaving
+                                ? 'Guardando...'
+                                : (esPedidoExistente
+                                      ? 'Actualizar' // Texto más corto
+                                      : 'Guardar'), // Texto más corto
+                            style: TextStyle(
+                              fontSize: 14, // Reducido el tamaño de fuente
+                              fontWeight: FontWeight.bold,
+                            ),
+                            overflow: TextOverflow
+                                .ellipsis, // Evitar overflow de texto
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+  }
+
+  // Nuevo método para layout móvil con pestañas
+  Widget _buildMobileLayout() {
+    return DefaultTabController(
+      length: 2,
+      child: Column(
+        children: [
+          // Barra de pestañas
+          Container(
+            color: Color(0xFF252525),
+            child: TabBar(
+              labelColor: Color(0xFFFF6B00),
+              unselectedLabelColor: Color(0xFFE0E0E0),
+              indicatorColor: Color(0xFFFF6B00),
+              tabs: [
+                Tab(icon: Icon(Icons.restaurant_menu), text: 'Productos'),
+                Tab(
+                  icon: Icon(Icons.shopping_cart),
+                  text: 'Pedido (${productosMesa.length})',
+                ),
+              ],
+            ),
+          ),
+          // Contenido de las pestañas
+          Expanded(
+            child: TabBarView(
+              children: [
+                // Pestaña 1: Lista de productos
+                _buildProductsTab(),
+                // Pestaña 2: Carrito/Pedido
+                _buildCartTab(),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Pestaña de productos para móvil
+  Widget _buildProductsTab() {
+    final Color primary = Color(0xFFFF6B00);
+    final Color cardBg = Color(0xFF252525);
+    final Color textLight = Color(0xFFE0E0E0);
+
+    return Column(
+      children: [
+        // Barra de búsqueda
+        Padding(
+          padding: EdgeInsets.all(16),
+          child: TextField(
+            controller: busquedaController,
+            style: TextStyle(color: textLight),
+            decoration: InputDecoration(
+              hintText: 'Buscar producto...',
+              hintStyle: TextStyle(color: textLight.withOpacity(0.5)),
+              prefixIcon: Icon(Icons.search, color: primary),
+              filled: true,
+              fillColor: cardBg,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: primary),
+              ),
+            ),
           ),
         ),
 
-        // Panel derecho - Productos en el pedido
-        Container(
-          width: 380, // Aumentado de 300 a 380 para mejor visualización
-          decoration: BoxDecoration(
-            color: cardBg.withOpacity(0.3),
-            border: Border(
-              left: BorderSide(color: Colors.grey.withOpacity(0.3), width: 1),
-            ),
-          ),
-          child: Column(
-            children: [
-              // Encabezado del pedido
-              Container(
-                width: double.infinity,
-                padding: EdgeInsets.all(12), // Reducido de 16 a 12
-                decoration: BoxDecoration(
-                  color: primary.withOpacity(0.1),
-                  border: Border(
-                    bottom: BorderSide(
-                      color: primary.withOpacity(0.3),
-                      width: 1,
-                    ),
-                  ),
+        // Campo del cliente para mesas especiales
+        if ([
+          'DOMICILIO',
+          'CAJA',
+          'MESA AUXILIAR',
+        ].contains(widget.mesa.nombre.toUpperCase()))
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: TextField(
+              controller: clienteController,
+              style: TextStyle(color: textLight),
+              decoration: InputDecoration(
+                hintText: 'Nombre del cliente...',
+                hintStyle: TextStyle(color: textLight.withOpacity(0.5)),
+                prefixIcon: Icon(Icons.person, color: primary),
+                filled: true,
+                fillColor: cardBg,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide.none,
                 ),
-                child: Text(
-                  'PEDIDO - ${widget.mesa.nombre}',
-                  style: TextStyle(
-                    color: primary,
-                    fontSize: 14, // Reducido de 16 a 14
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textAlign: TextAlign.center,
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(color: primary),
                 ),
               ),
+            ),
+          ),
 
-              // Lista de productos en el pedido
-              if (productosMesa.isNotEmpty)
-                Expanded(
-                  child: Padding(
-                    padding: EdgeInsets.all(8), // Reducido de 12 a 8
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Mensaje informativo para usuarios no admin con pedidos existentes
-                        if (!Provider.of<UserProvider>(
-                              context,
-                              listen: false,
-                            ).isAdmin &&
-                            esPedidoExistente &&
-                            cantidadProductosOriginales > 0)
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 6, // Reducido el padding
-                              vertical: 2, // Reducido el padding
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.blue.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(
-                                8,
-                              ), // Reducido el radio
-                              border: Border.all(
-                                color: Colors.blue.withOpacity(0.3),
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.info_outline,
-                                  color: Colors.blue,
-                                  size: 12, // Reducido el tamaño del ícono
-                                ),
-                                SizedBox(width: 3),
-                                Text(
-                                  'Solo agregar nuevos',
-                                  style: TextStyle(
-                                    color: Colors.blue,
-                                    fontSize: 9, // Reducido el tamaño de fuente
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                        SizedBox(height: 6), // Reducido el espaciado
-
-                        Expanded(
-                          // Hacer scrollable la lista de productos
-                          child: SingleChildScrollView(
-                            child: Column(
-                              children: [
-                                ...productosMesa.map(
-                                  (producto) =>
-                                      _buildProductoEnPedido(producto),
-                                ),
-                              ],
-                            ),
-                          ),
+        // Lista de categorías
+        if (categorias.isNotEmpty)
+          Container(
+            height: 50,
+            margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: categorias.length + 1, // +1 para "Todos"
+              itemBuilder: (context, index) {
+                if (index == 0) {
+                  // Opción "Todos"
+                  return GestureDetector(
+                    onTap: () => setState(() => categoriaSelecionadaId = null),
+                    child: Container(
+                      margin: EdgeInsets.only(right: 8),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: categoriaSelecionadaId == null
+                            ? primary
+                            : cardBg,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: categoriaSelecionadaId == null
+                              ? primary
+                              : Colors.grey.withOpacity(0.3),
                         ),
-
-                        Divider(
-                          color: textLight.withOpacity(0.3),
-                          height: 12,
-                        ), // Reducido la altura
-
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Total:',
-                              style: TextStyle(
-                                color: textLight,
-                                fontSize: 14, // Reducido el tamaño de fuente
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            Text(
-                              formatCurrency(_calcularTotal()),
-                              style: TextStyle(
-                                color: primary,
-                                fontSize: 18, // Reducido el tamaño de fuente
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-              else
-                Expanded(
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.shopping_cart_outlined,
-                          size: 48, // Reducido de 64 a 48
-                          color: textLight.withOpacity(0.3),
-                        ),
-                        SizedBox(height: 12), // Reducido de 16 a 12
-                        Text(
-                          'No hay productos\nen el pedido',
+                      ),
+                      child: Center(
+                        child: Text(
+                          'Todos',
                           style: TextStyle(
-                            color: textLight.withOpacity(0.5),
-                            fontSize: 14, // Reducido de 16 a 14
+                            color: categoriaSelecionadaId == null
+                                ? Colors.white
+                                : textLight,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
                           ),
-                          textAlign: TextAlign.center,
                         ),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
+                  );
+                }
 
-              // Botón de guardar en la parte inferior del panel derecho
-              Container(
-                width: double.infinity,
-                padding: EdgeInsets.all(12), // Reducido de 16 a 12
-                decoration: BoxDecoration(
-                  color: cardBg,
-                  border: Border(
-                    top: BorderSide(
-                      color: Colors.grey.withOpacity(0.3),
-                      width: 1,
+                final categoria = categorias[index - 1];
+                final isSelected = categoriaSelecionadaId == categoria.id;
+
+                return GestureDetector(
+                  onTap: () =>
+                      setState(() => categoriaSelecionadaId = categoria.id),
+                  child: Container(
+                    margin: EdgeInsets.only(right: 8),
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: isSelected ? primary : cardBg,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: isSelected
+                            ? primary
+                            : Colors.grey.withOpacity(0.3),
+                      ),
+                    ),
+                    child: Center(
+                      child: Text(
+                        categoria.nombre,
+                        style: TextStyle(
+                          color: isSelected ? Colors.white : textLight,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                     ),
                   ),
-                ),
-                child: ElevatedButton(
-                  onPressed: (isLoading || isSaving)
-                      ? null
-                      : () => _guardarPedido(),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: primary,
-                    foregroundColor: Colors.white,
-                    padding: EdgeInsets.symmetric(
-                      vertical: 12,
-                    ), // Reducido de 16 a 12
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(
-                        8,
-                      ), // Reducido de 10 a 8
-                    ),
-                  ),
-                  child: Row(
+                );
+              },
+            ),
+          ),
+
+        // Lista de productos
+        Expanded(
+          child: GridView.builder(
+            padding: EdgeInsets.all(16),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2, // 2 columnas para móvil
+              childAspectRatio: 0.8, // Ratio más cuadrado para móvil
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+            ),
+            itemCount: _filtrarProductos().length,
+            itemBuilder: (context, index) {
+              return _buildProductoDisponible(_filtrarProductos()[index]);
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Pestaña del carrito para móvil
+  Widget _buildCartTab() {
+    final Color primary = Color(0xFFFF6B00);
+    final Color textLight = Color(0xFFE0E0E0);
+
+    return Column(
+      children: [
+        // Encabezado del pedido
+        Container(
+          width: double.infinity,
+          padding: EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: primary.withOpacity(0.1),
+            border: Border(
+              bottom: BorderSide(color: primary.withOpacity(0.3), width: 1),
+            ),
+          ),
+          child: Text(
+            'PEDIDO - ${widget.mesa.nombre}',
+            style: TextStyle(
+              color: primary,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ),
+
+        // Lista de productos en el pedido
+        Expanded(
+          child: productosMesa.isEmpty
+              ? Center(
+                  child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      if (isSaving)
-                        SizedBox(
-                          width: 18, // Reducido de 20 a 18
-                          height: 18, // Reducido de 20 a 18
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              Colors.white,
-                            ),
-                          ),
-                        )
-                      else
-                        Icon(Icons.save, size: 18), // Reducido de 20 a 18
-                      SizedBox(width: 6), // Reducido de 8 a 6
-                      Flexible(
-                        // Añadido Flexible para evitar overflow
-                        child: Text(
-                          isSaving
-                              ? 'Guardando...'
-                              : (esPedidoExistente
-                                    ? 'Actualizar' // Texto más corto
-                                    : 'Guardar'), // Texto más corto
-                          style: TextStyle(
-                            fontSize: 14, // Reducido el tamaño de fuente
-                            fontWeight: FontWeight.bold,
-                          ),
-                          overflow:
-                              TextOverflow.ellipsis, // Evitar overflow de texto
-                        ),
+                      Icon(
+                        Icons.shopping_cart_outlined,
+                        size: 80,
+                        color: Colors.grey,
+                      ),
+                      SizedBox(height: 16),
+                      Text(
+                        'No hay productos\nen el pedido',
+                        style: TextStyle(color: Colors.grey, fontSize: 16),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                )
+              : SingleChildScrollView(
+                  padding: EdgeInsets.all(8),
+                  child: Column(
+                    children: [
+                      ...productosMesa.map(
+                        (producto) => _buildProductoEnPedido(producto),
                       ),
                     ],
                   ),
                 ),
-              ),
-            ],
-          ),
         ),
+
+        // Total y botón de guardar
+        if (productosMesa.isNotEmpty)
+          Container(
+            padding: EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Color(0xFF252525),
+              border: Border(
+                top: BorderSide(color: Colors.grey.withOpacity(0.3), width: 1),
+              ),
+            ),
+            child: Column(
+              children: [
+                // Total
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Total:',
+                      style: TextStyle(
+                        color: textLight,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      '\$${_calcularTotal().toStringAsFixed(0)}',
+                      style: TextStyle(
+                        color: primary,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 16),
+
+                // Botón de guardar
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: isSaving ? null : _guardarPedido,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primary,
+                      disabledBackgroundColor: primary.withOpacity(0.5),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: isSaving
+                        ? SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : Text(
+                            esPedidoExistente
+                                ? 'Actualizar Pedido'
+                                : 'Guardar Pedido',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                  ),
+                ),
+              ],
+            ),
+          ),
       ],
     );
   }

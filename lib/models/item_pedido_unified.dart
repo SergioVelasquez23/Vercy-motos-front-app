@@ -34,6 +34,10 @@ class ItemPedidoUnified {
   final String? notas; // Notas especiales (opcional)
   final List<String> ingredientesSeleccionados; // Ingredientes customizados
 
+  // 👤 INFORMACIÓN DE USUARIO (Para rastreo de quien agregó el producto)
+  final String? agregadoPor; // Usuario que agregó el producto
+  final DateTime? fechaAgregado; // Fecha cuando se agregó
+
   // 🏗️ CONSTRUCTOR PRINCIPAL
   const ItemPedidoUnified({
     this.id,
@@ -43,6 +47,8 @@ class ItemPedidoUnified {
     required this.precioUnitario,
     this.notas,
     this.ingredientesSeleccionados = const [],
+    this.agregadoPor,
+    this.fechaAgregado,
   });
 
   // 🏗️ CONSTRUCTOR NOMBRADO PARA CREACIÓN RÁPIDA
@@ -53,6 +59,8 @@ class ItemPedidoUnified {
     required double precioUnitario,
     String? notas,
     List<String> ingredientesSeleccionados = const [],
+    String? agregadoPor,
+    DateTime? fechaAgregado,
   }) : this(
          productoId: productoId,
          productoNombre: productoNombre,
@@ -60,6 +68,8 @@ class ItemPedidoUnified {
          precioUnitario: precioUnitario,
          notas: notas,
          ingredientesSeleccionados: ingredientesSeleccionados,
+         agregadoPor: agregadoPor,
+         fechaAgregado: fechaAgregado,
        );
 
   // 🧮 CÁLCULOS AUTOMÁTICOS
@@ -76,6 +86,8 @@ class ItemPedidoUnified {
     double? precioUnitario,
     String? notas,
     List<String>? ingredientesSeleccionados,
+    String? agregadoPor,
+    DateTime? fechaAgregado,
   }) {
     return ItemPedidoUnified(
       id: id ?? this.id,
@@ -86,6 +98,8 @@ class ItemPedidoUnified {
       notas: notas ?? this.notas,
       ingredientesSeleccionados:
           ingredientesSeleccionados ?? this.ingredientesSeleccionados,
+      agregadoPor: agregadoPor ?? this.agregadoPor,
+      fechaAgregado: fechaAgregado ?? this.fechaAgregado,
     );
   }
 
@@ -101,6 +115,9 @@ class ItemPedidoUnified {
       'subtotal': subtotal,
       if (notas != null && notas!.isNotEmpty) 'notas': notas,
       'ingredientesSeleccionados': ingredientesSeleccionados,
+      if (agregadoPor != null) 'agregadoPor': agregadoPor,
+      if (fechaAgregado != null)
+        'fechaAgregado': fechaAgregado!.toIso8601String(),
     };
   }
 
@@ -123,6 +140,16 @@ class ItemPedidoUnified {
       cantidad = _parseToInt(cantidadValue);
     }
 
+    // Parsear fecha si está presente
+    DateTime? fechaAgregado;
+    if (json['fechaAgregado'] != null) {
+      try {
+        fechaAgregado = DateTime.parse(json['fechaAgregado'].toString());
+      } catch (_) {
+        // Si no se puede parsear la fecha, ignorarla
+      }
+    }
+
     return ItemPedidoUnified(
       id: json['id']?.toString(),
       productoId: json['productoId']?.toString() ?? '',
@@ -133,6 +160,8 @@ class ItemPedidoUnified {
       ingredientesSeleccionados: json['ingredientesSeleccionados'] != null
           ? List<String>.from(json['ingredientesSeleccionados'])
           : const [],
+      agregadoPor: json['agregadoPor']?.toString(),
+      fechaAgregado: fechaAgregado,
     );
   }
 

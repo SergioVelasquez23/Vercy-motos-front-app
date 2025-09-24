@@ -21,10 +21,6 @@ class MesaService {
 
   List<Mesa> _parseListResponse(Map<String, dynamic> responseData) {
     try {
-      print(
-        '🎯 MesaService: Processing response data: ${json.encode(responseData)}',
-      );
-
       if (responseData['success'] == true && responseData['data'] != null) {
         final List<dynamic> mesasJson = responseData['data'];
         final mesas = mesasJson.map((json) {
