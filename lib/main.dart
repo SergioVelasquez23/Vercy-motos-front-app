@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/dashboard_screen_v2.dart';
 import 'screens/mesas_screen.dart';
+import 'screens/mesero_screen.dart';
 import 'screens/productos_screen.dart';
 import 'screens/categorias_screen.dart';
 import 'screens/cuadre_caja_screen.dart';
@@ -63,6 +64,7 @@ class MyApp extends StatelessWidget {
       routes: {
         '/dashboard': (context) => DashboardScreenV2(),
         '/mesas': (context) => MesasScreen(),
+        '/mesero': (context) => MeseroScreen(),
         '/productos': (context) => ProductosScreen(),
         '/categorias': (context) => CategoriasScreen(),
         '/cuadre_caja': (context) => CuadreCajaScreen(),

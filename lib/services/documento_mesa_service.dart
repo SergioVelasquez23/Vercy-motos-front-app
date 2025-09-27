@@ -33,7 +33,30 @@ class DocumentoMesaService {
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
+
+        // Debug: verificar estructura de respuesta
+        print('🔍 Respuesta del API para mesa $nombreMesa:');
+        print('  - Status: ${response.statusCode}');
+        print('  - Response keys: ${responseData.keys}');
+        print('  - Message: ${responseData['message']}');
+        print(
+          '  - Data length: ${(responseData['data'] as List?)?.length ?? 0}',
+        );
+
+        // Mostrar primer elemento para debug
         final List<dynamic> jsonList = responseData['data'] ?? [];
+        if (jsonList.isNotEmpty) {
+          print('  - Primer elemento keys: ${jsonList.first.keys}');
+          print(
+            '  - Primer elemento formaPago: ${jsonList.first['formaPago']}',
+          );
+          print(
+            '  - Primer elemento numeroDocumento: ${jsonList.first['numeroDocumento']}',
+          );
+          print('  - Primer elemento mesa: ${jsonList.first['mesa']}');
+          print('  - Primer elemento tipo: ${jsonList.first['tipo']}');
+        }
+
         final documentos = jsonList
             .map((json) => DocumentoMesa.fromJson(json))
             .toList();
@@ -230,7 +253,30 @@ class DocumentoMesaService {
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
+
+        // Debug: verificar estructura de respuesta
+        print('🔍 Respuesta del API para todos los documentos:');
+        print('  - Status: ${response.statusCode}');
+        print('  - Response keys: ${responseData.keys}');
+        print('  - Message: ${responseData['message']}');
+        print(
+          '  - Data length: ${(responseData['data'] as List?)?.length ?? 0}',
+        );
+
+        // Mostrar primer elemento para debug
         final List<dynamic> jsonList = responseData['data'] ?? [];
+        if (jsonList.isNotEmpty) {
+          print('  - Primer elemento keys: ${jsonList.first.keys}');
+          print(
+            '  - Primer elemento formaPago: ${jsonList.first['formaPago']}',
+          );
+          print(
+            '  - Primer elemento numeroDocumento: ${jsonList.first['numeroDocumento']}',
+          );
+          print('  - Primer elemento mesa: ${jsonList.first['mesa']}');
+          print('  - Primer elemento tipo: ${jsonList.first['tipo']}');
+        }
+
         final documentos = jsonList
             .map((json) => DocumentoMesa.fromJson(json))
             .toList();

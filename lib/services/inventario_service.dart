@@ -4,11 +4,14 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import '../models/inventario.dart';
 import '../models/movimiento_inventario.dart';
+import '../models/api_response.dart';
 import '../config/api_config.dart';
+import 'base_api_service.dart';
 
 class InventarioService {
+  final BaseApiService _apiService = BaseApiService();
   final ApiConfig _apiConfig = ApiConfig();
-  final String _baseEndpoint = 'api/inventario';
+  final String _baseEndpoint = 'inventario';
   final _inventarioActualizadoController = StreamController<bool>.broadcast();
   final Duration _timeout = const Duration(seconds: ApiConfig.requestTimeout);
 
@@ -40,38 +43,29 @@ class InventarioService {
   // Obtener todos los movimientos de inventario
   Future<List<MovimientoInventario>> getMovimientosInventario() async {
     if (kDebugMode) {
-      print('🔍 GET Request to: ${_buildUrl(path: "movimientos")}');
+      print('🔍 Obteniendo movimientos de inventario...');
     }
 
     try {
-      final response = await http
-          .get(
-            Uri.parse(_buildUrl(path: "movimientos")),
-            headers: _apiConfig.getSecureHeaders(),
-          )
-          .timeout(_timeout);
+      final response = await _apiService.getList<MovimientoInventario>(
+        '$_baseEndpoint/movimientos',
+        (json) => MovimientoInventario.fromJson(json),
+      );
 
-      if (kDebugMode) {
-        print('📡 Response status: ${response.statusCode}');
-      }
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> data = json.decode(response.body);
-        if (data['success'] == true && data['data'] != null) {
-          final List<dynamic> items = data['data'];
-          return items
-              .map((item) => MovimientoInventario.fromJson(item))
-              .toList();
+      if (response.success && response.data != null) {
+        if (kDebugMode) {
+          print('✅ Movimientos obtenidos: ${response.data!.length}');
         }
-      } else if (response.statusCode == 404) {
-        // Si no hay datos, devolver lista vacía
+        return response.data!;
+      } else {
+        if (kDebugMode) {
+          print('⚠️ Error en respuesta: ${response.message}');
+        }
         return [];
       }
-
-      throw _handleErrorResponse(response);
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Error: $e');
+        print('❌ Error obteniendo movimientos: $e');
       }
       return [];
     }

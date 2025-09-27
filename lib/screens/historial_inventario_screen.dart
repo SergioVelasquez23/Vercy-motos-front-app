@@ -429,7 +429,9 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                         child: SingleChildScrollView(
                           scrollDirection: Axis.horizontal,
                           child: SizedBox(
-                            width: MediaQuery.of(context).size.width,
+                            width: MediaQuery.of(context)
+                                .size
+                                .width, // Sin ancho mínimo, usar solo el ancho de pantalla
                             child: Column(
                               children: [
                                 // ENCABEZADO FIJO GRANDE
@@ -448,27 +450,14 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                                   child: Row(
                                     children: [
                                       Expanded(
-                                        flex: 3,
+                                        flex: 2,
                                         child: Center(
                                           child: Text(
                                             'FECHA',
                                             style: TextStyle(
                                               color: textDark,
                                               fontWeight: FontWeight.bold,
-                                              fontSize: 18,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      Expanded(
-                                        flex: 4,
-                                        child: Center(
-                                          child: Text(
-                                            'PRODUCTO',
-                                            style: TextStyle(
-                                              color: textDark,
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 18,
+                                              fontSize: 14,
                                             ),
                                           ),
                                         ),
@@ -477,11 +466,24 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                                         flex: 3,
                                         child: Center(
                                           child: Text(
+                                            'PRODUCTO',
+                                            style: TextStyle(
+                                              color: textDark,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      Expanded(
+                                        flex: 2,
+                                        child: Center(
+                                          child: Text(
                                             'TIPO',
                                             style: TextStyle(
                                               color: textDark,
                                               fontWeight: FontWeight.bold,
-                                              fontSize: 18,
+                                              fontSize: 14,
                                             ),
                                           ),
                                         ),
@@ -490,51 +492,51 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                                         flex: 2,
                                         child: Container(
                                           padding: EdgeInsets.symmetric(
-                                            horizontal: 16,
+                                            horizontal: 4,
                                             vertical: 8,
                                           ),
                                           child: Text(
-                                            'Stock Inicial',
+                                            'Stock\nInicial',
                                             style: TextStyle(
                                               color: textDark,
                                               fontWeight: FontWeight.bold,
-                                              fontSize: 16,
+                                              fontSize: 12,
                                             ),
                                             textAlign: TextAlign.center,
                                           ),
                                         ),
                                       ),
                                       Expanded(
-                                        flex: 1,
+                                        flex: 2,
                                         child: Container(
                                           padding: EdgeInsets.symmetric(
-                                            horizontal: 16,
+                                            horizontal: 4,
                                             vertical: 8,
                                           ),
                                           child: Text(
-                                            'Cantidad',
+                                            'Cantidad\nMovida',
                                             style: TextStyle(
                                               color: textDark,
                                               fontWeight: FontWeight.bold,
-                                              fontSize: 16,
+                                              fontSize: 12,
                                             ),
                                             textAlign: TextAlign.center,
                                           ),
                                         ),
                                       ),
                                       Expanded(
-                                        flex: 1,
+                                        flex: 2,
                                         child: Container(
                                           padding: EdgeInsets.symmetric(
-                                            horizontal: 16,
+                                            horizontal: 4,
                                             vertical: 8,
                                           ),
                                           child: Text(
-                                            'Stock Final',
+                                            'Stock\nFinal',
                                             style: TextStyle(
                                               color: textDark,
                                               fontWeight: FontWeight.bold,
-                                              fontSize: 16,
+                                              fontSize: 12,
                                             ),
                                             textAlign: TextAlign.center,
                                           ),
@@ -584,7 +586,7 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                                               flex: 2,
                                               child: Container(
                                                 padding: EdgeInsets.symmetric(
-                                                  horizontal: 16,
+                                                  horizontal: 4,
                                                   vertical: 8,
                                                 ),
                                                 child: Text(
@@ -593,8 +595,7 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                                                   ).format(movimiento.fecha),
                                                   style: TextStyle(
                                                     color: textDark,
-                                                    fontSize:
-                                                        15, // TEXTO MÁS GRANDE
+                                                    fontSize: 11,
                                                   ),
                                                 ),
                                               ),
@@ -603,15 +604,14 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                                               flex: 3,
                                               child: Container(
                                                 padding: EdgeInsets.symmetric(
-                                                  horizontal: 16,
+                                                  horizontal: 4,
                                                   vertical: 8,
                                                 ),
                                                 child: Text(
                                                   movimiento.productoNombre,
                                                   style: TextStyle(
                                                     color: textDark,
-                                                    fontSize:
-                                                        15, // TEXTO MÁS GRANDE
+                                                    fontSize: 11,
                                                   ),
                                                   overflow:
                                                       TextOverflow.ellipsis,
@@ -623,13 +623,13 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                                               flex: 2,
                                               child: Container(
                                                 padding: EdgeInsets.symmetric(
-                                                  horizontal: 16,
+                                                  horizontal: 4,
                                                   vertical: 8,
                                                 ),
                                                 child: Container(
                                                   padding: EdgeInsets.symmetric(
-                                                    horizontal: 12,
-                                                    vertical: 6,
+                                                    horizontal: 8,
+                                                    vertical: 4,
                                                   ),
                                                   decoration: BoxDecoration(
                                                     color: esEntrada
@@ -642,7 +642,7 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                                                               .withOpacity(0.2),
                                                     borderRadius:
                                                         BorderRadius.circular(
-                                                          12,
+                                                          8,
                                                         ),
                                                   ),
                                                   child: Text(
@@ -653,7 +653,7 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                                                           : esSalida
                                                           ? Colors.red
                                                           : textDark,
-                                                      fontSize: 13,
+                                                      fontSize: 10,
                                                       fontWeight:
                                                           FontWeight.bold,
                                                     ),
@@ -663,10 +663,10 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                                               ),
                                             ),
                                             Expanded(
-                                              flex: 1,
+                                              flex: 2,
                                               child: Container(
                                                 padding: EdgeInsets.symmetric(
-                                                  horizontal: 16,
+                                                  horizontal: 4,
                                                   vertical: 8,
                                                 ),
                                                 child: Text(
@@ -674,18 +674,17 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                                                       .toStringAsFixed(0),
                                                   style: TextStyle(
                                                     color: textDark,
-                                                    fontSize:
-                                                        15, // TEXTO MÁS GRANDE
+                                                    fontSize: 11,
                                                   ),
                                                   textAlign: TextAlign.center,
                                                 ),
                                               ),
                                             ),
                                             Expanded(
-                                              flex: 1,
+                                              flex: 2,
                                               child: Container(
                                                 padding: EdgeInsets.symmetric(
-                                                  horizontal: 16,
+                                                  horizontal: 4,
                                                   vertical: 8,
                                                 ),
                                                 child: Text(
@@ -696,8 +695,7 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                                                       : ''}${movimiento.cantidadMovimiento.toStringAsFixed(0)}',
                                                   style: TextStyle(
                                                     color: colorCantidad,
-                                                    fontSize:
-                                                        15, // TEXTO MÁS GRANDE
+                                                    fontSize: 11,
                                                     fontWeight: FontWeight.bold,
                                                   ),
                                                   textAlign: TextAlign.center,
@@ -705,10 +703,10 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                                               ),
                                             ),
                                             Expanded(
-                                              flex: 1,
+                                              flex: 2,
                                               child: Container(
                                                 padding: EdgeInsets.symmetric(
-                                                  horizontal: 16,
+                                                  horizontal: 4,
                                                   vertical: 8,
                                                 ),
                                                 child: Text(
@@ -716,8 +714,7 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                                                       .toStringAsFixed(0),
                                                   style: TextStyle(
                                                     color: textDark,
-                                                    fontSize:
-                                                        15, // TEXTO MÁS GRANDE
+                                                    fontSize: 11,
                                                     fontWeight: FontWeight.bold,
                                                   ),
                                                   textAlign: TextAlign.center,

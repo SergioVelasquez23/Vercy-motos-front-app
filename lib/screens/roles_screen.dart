@@ -92,25 +92,6 @@ class _RolesScreenState extends State<RolesScreen> {
                     },
                   ),
                 ),
-                const SizedBox(width: 16),
-                ElevatedButton.icon(
-                  onPressed: () => _mostrarDialogoRol(),
-                  icon: const Icon(Icons.add, color: Colors.white),
-                  label: const Text(
-                    'Nuevo',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFF6B00),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 16,
-                    ),
-                  ),
-                ),
               ],
             ),
           ),

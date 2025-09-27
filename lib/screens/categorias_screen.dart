@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import '../models/categoria.dart';
 import '../models/producto.dart';
 import '../services/producto_service.dart';
+import '../widgets/imagen_categoria_widget.dart';
 
 class CategoriasScreen extends StatefulWidget {
   const CategoriasScreen({super.key});
@@ -131,7 +132,12 @@ class _CategoriasScreenState extends State<CategoriasScreen> {
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: Colors.grey.withOpacity(0.3)),
           ),
-          child: _buildCategoriaImage(categoria.imagenUrl),
+          child: ImagenCategoriaWidget(
+            urlRemota: categoria.imagenUrl,
+            nombreCategoria: categoria.nombre,
+            width: 50,
+            height: 50,
+          ),
         ),
         title: Text(
           categoria.nombre,
@@ -154,67 +160,6 @@ class _CategoriasScreenState extends State<CategoriasScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildCategoriaImage(String? imagenUrl) {
-    final Color primary = Color(0xFFFF6B00);
-
-    // Si no hay imagen o la URL es inválida
-    if (imagenUrl == null || imagenUrl.isEmpty) {
-      return Icon(Icons.category, color: primary, size: 24);
-    }
-
-    // Si es una URL web o una URL de datos
-    if (imagenUrl.startsWith('http') || imagenUrl.startsWith('data:')) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: Image.network(
-          imagenUrl,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            print('Error cargando imagen: $error, URL: $imagenUrl');
-            return Icon(Icons.category, color: primary, size: 24);
-          },
-        ),
-      );
-    }
-
-    // Si es un archivo local
-    if (imagenUrl.startsWith('/')) {
-      // En Flutter Web, intentamos usar Image.network
-      if (kIsWeb) {
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: Image.network(
-            imagenUrl,
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) =>
-                Icon(Icons.category, color: primary, size: 24),
-          ),
-        );
-      } else {
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: Image.file(
-            File(imagenUrl),
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) =>
-                Icon(Icons.category, color: primary, size: 24),
-          ),
-        );
-      }
-    }
-
-    // Si es un asset
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
-      child: Image.asset(
-        imagenUrl,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) =>
-            Icon(Icons.category, color: primary, size: 24),
       ),
     );
   }
@@ -368,7 +313,12 @@ class _CategoriasScreenState extends State<CategoriasScreen> {
                                       ),
                               )
                             : (selectedImageUrl != null
-                                  ? _buildCategoriaImage(selectedImageUrl)
+                                  ? ImagenCategoriaWidget(
+                                      urlRemota: selectedImageUrl,
+                                      nombreCategoria: 'temp',
+                                      width: double.infinity,
+                                      height: double.infinity,
+                                    )
                                   : Icon(
                                       Icons.add_a_photo,
                                       color: primary,

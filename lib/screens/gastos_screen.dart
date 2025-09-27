@@ -323,19 +323,21 @@ class _GastosScreenState extends State<GastosScreen> {
       appBar: AppBar(
         backgroundColor: primary,
         title: Text('Gestión de Gastos', style: TextStyle(color: Colors.white)),
-        actions: [
-          if (!_showForm)
-            IconButton(
-              icon: Icon(Icons.add, color: Colors.white),
-              onPressed: () => _showFormDialog(),
-            ),
-        ],
+        actions: [],
       ),
       body: _isLoading
           ? Center(child: CircularProgressIndicator(color: primary))
           : _showForm
           ? _buildForm()
           : _buildGastosList(),
+      floatingActionButton: !_showForm
+          ? FloatingActionButton(
+              onPressed: () => _showFormDialog(),
+              backgroundColor: primary,
+              child: Icon(Icons.add, color: Colors.white),
+              tooltip: 'Agregar Nuevo Gasto',
+            )
+          : null,
     );
   }
 

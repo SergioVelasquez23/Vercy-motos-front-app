@@ -147,6 +147,9 @@ class _MesasConfigScreenState extends State<MesasConfigScreen> {
 
   @override
   Widget build(BuildContext context) {
+    print(
+      '🏗️ CONSTRUYENDO MESAS CONFIG SCREEN - Mesas: ${_mesas.length}, Loading: $_isLoading',
+    );
     return Column(
       children: [
         // Barra superior con búsqueda y botón agregar
@@ -186,12 +189,27 @@ class _MesasConfigScreenState extends State<MesasConfigScreen> {
                       },
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  FloatingActionButton(
-                    onPressed: () => _mostrarDialogoMesa(),
-                    backgroundColor: AppTheme.primary,
-                    mini: true,
-                    child: Icon(Icons.add, color: AppTheme.textDark),
+                  const SizedBox(width: 16),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      print('🔥 BOTÓN NUEVO MESAS PRESIONADO!');
+                      _mostrarDialogoMesa();
+                    },
+                    icon: const Icon(Icons.add, color: Colors.white),
+                    label: const Text(
+                      'Nuevo',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFFF6B00),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 16,
+                      ),
+                    ),
                   ),
                 ],
               ),

@@ -199,16 +199,16 @@ class DocumentoMesa {
     } else {
       estadoFinal = 'Pendiente';
     }
-    
+
     print('  - Estado final asignado: $estadoFinal');
 
     return DocumentoMesa(
       id: json['_id'] ?? json['id'],
-      numeroDocumento: json['numeroDocumento'] ?? '',
+      numeroDocumento: json['numeroDocumento'] ?? json['_id'] ?? '',
       fecha: parseDateTime(json['fecha']) ?? DateTime.now(),
       total: ((json['total'] ?? 0) as num).toDouble(),
-      vendedor: json['vendedor'] ?? '',
-      mesaNombre: json['mesaNombre'] ?? '',
+      vendedor: json['vendedor'] ?? json['mesero'] ?? json['pagadoPor'] ?? '',
+      mesaNombre: json['mesaNombre'] ?? json['mesa'] ?? '',
       pedidosIds:
           (json['pedidosIds'] as List?)?.map((id) => id.toString()).toList() ??
           [],

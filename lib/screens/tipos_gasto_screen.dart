@@ -240,14 +240,14 @@ class _TiposGastoScreenState extends State<TiposGastoScreen> {
       appBar: AppBar(
         backgroundColor: primary,
         title: Text('Tipos de Gasto', style: TextStyle(color: Colors.white)),
-        actions: [
-          if (!_showForm)
-            IconButton(
-              icon: Icon(Icons.add, color: Colors.white),
-              onPressed: () => _showFormDialog(),
-            ),
-        ],
       ),
+      floatingActionButton: !_showForm
+          ? FloatingActionButton(
+              onPressed: () => _showFormDialog(),
+              backgroundColor: primary,
+              child: Icon(Icons.add, color: Colors.white),
+            )
+          : null,
       body: _isLoading
           ? Center(child: CircularProgressIndicator(color: primary))
           : _showForm

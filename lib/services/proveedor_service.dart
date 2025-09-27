@@ -46,8 +46,34 @@ class ProveedorService {
       );
 
       if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
-        return data.map((json) => Proveedor.fromJson(json)).toList();
+        final responseBody = response.body;
+        if (responseBody.isEmpty) {
+          return [];
+        }
+
+        final decodedData = json.decode(responseBody);
+
+        // Si la respuesta es un objeto con success/data, extraer la data
+        if (decodedData is Map<String, dynamic>) {
+          if (decodedData.containsKey('data')) {
+            final data = decodedData['data'];
+            if (data is List) {
+              return data.map((json) => Proveedor.fromJson(json)).toList();
+            }
+          }
+          print('Error: Estructura de respuesta inesperada: $decodedData');
+          return [];
+        }
+
+        // Si la respuesta es directamente una lista
+        if (decodedData is List) {
+          return decodedData.map((json) => Proveedor.fromJson(json)).toList();
+        }
+
+        print(
+          'Error: Tipo de respuesta no soportado: ${decodedData.runtimeType}',
+        );
+        return [];
       } else {
         throw Exception('Error al cargar proveedores: ${response.statusCode}');
       }
@@ -74,8 +100,34 @@ class ProveedorService {
       );
 
       if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
-        return data.map((json) => Proveedor.fromJson(json)).toList();
+        final responseBody = response.body;
+        if (responseBody.isEmpty) {
+          return [];
+        }
+
+        final decodedData = json.decode(responseBody);
+
+        // Si la respuesta es un objeto con success/data, extraer la data
+        if (decodedData is Map<String, dynamic>) {
+          if (decodedData.containsKey('data')) {
+            final data = decodedData['data'];
+            if (data is List) {
+              return data.map((json) => Proveedor.fromJson(json)).toList();
+            }
+          }
+          print('Error: Estructura de respuesta inesperada: $decodedData');
+          return [];
+        }
+
+        // Si la respuesta es directamente una lista
+        if (decodedData is List) {
+          return decodedData.map((json) => Proveedor.fromJson(json)).toList();
+        }
+
+        print(
+          'Error: Tipo de respuesta no soportado: ${decodedData.runtimeType}',
+        );
+        return [];
       } else {
         throw Exception('Error al buscar proveedores: ${response.statusCode}');
       }

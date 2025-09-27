@@ -436,6 +436,28 @@ class PedidoService {
     }
   }
 
+  // Obtener pedidos por mesero (para el módulo de meseros)
+  Future<List<Pedido>> obtenerPedidosPorMesero(String nombreMesero) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/pedidos/mesero/$nombreMesero'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        return _parseListResponse(responseData);
+      } else {
+        throw Exception(
+          'Error al obtener pedidos del mesero: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      throw Exception('Error de conexión: $e');
+    }
+  }
+
   // Obtener estadísticas
   Future<Map<String, int>> getEstadisticas() async {
     try {

@@ -1,8 +1,9 @@
 import 'dart:convert';
 import 'dart:html' as html;
 import 'package:flutter/foundation.dart';
+import 'pdf_service_factory.dart';
 
-class PDFServiceWeb {
+class PDFServiceWeb implements PDFServiceInterface {
   /// Generar contenido como HTML para impresión en web
   String generarHTMLParaImpresion({
     required Map<String, dynamic> resumen,
@@ -458,4 +459,9 @@ ${DateTime.now().toString().split('.')[0]}
       });
     }
   }
+}
+
+// Factory function for conditional imports
+PDFServiceInterface createPDFService() {
+  return PDFServiceWeb();
 }

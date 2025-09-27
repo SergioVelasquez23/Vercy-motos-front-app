@@ -1,20 +1,38 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
+import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
+import 'dart:convert';
+
+// Providers
 import '../providers/user_provider.dart';
+
+// Models
 import '../models/cuadre_caja.dart';
 import '../models/gasto.dart';
 import '../models/resumen_cierre.dart';
+import '../models/inventario.dart';
+import '../models/movimiento_inventario.dart';
+
+// Services
 import '../services/cuadre_caja_service.dart';
 import '../services/gasto_service.dart';
 import '../services/resumen_cierre_service.dart';
+import '../services/inventario_service.dart';
+import '../services/impresion_service.dart';
+import '../services/pdf_service_web.dart'
+    if (dart.library.io) '../services/pdf_service_stub.dart';
+
+// Screens
 import 'ingresos_caja_screen.dart';
-import '../utils/format_utils.dart';
 import 'gastos_screen.dart';
 import 'tipos_gasto_screen.dart';
 import 'movimientos_cuadre_screen.dart';
 import 'contador_efectivo_screen.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+
+// Utils & Theme
+import '../utils/format_utils.dart';
 import '../theme/app_theme.dart';
 
 class CuadreCajaScreen extends StatefulWidget {
@@ -37,6 +55,8 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
   // Services
   final GastoService _gastoService = GastoService();
   final ResumenCierreService _resumenCierreService = ResumenCierreService();
+  final InventarioService _inventarioService = InventarioService();
+  final ImpresionService _impresionService = ImpresionService();
 
   // Controllers para los filtros de búsqueda
   final TextEditingController _desdeController = TextEditingController();
@@ -91,6 +111,363 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
     _montoTransferenciasController.dispose();
     _notasController.dispose();
     super.dispose();
+  }
+
+  void _mostrarError(String mensaje) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(mensaje),
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  String _formatearFecha(DateTime fecha) {
+    return '${fecha.day.toString().padLeft(2, '0')}/${fecha.month.toString().padLeft(2, '0')}/${fecha.year} ${fecha.hour.toString().padLeft(2, '0')}:${fecha.minute.toString().padLeft(2, '0')}';
+  }
+
+  Widget _buildTableHeader(String text) {
+    return Container(
+      padding: EdgeInsets.all(12),
+      child: Text(
+        text,
+        style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+        textAlign: TextAlign.center,
+      ),
+    );
+  }
+
+  Widget _buildTableCell(String text) {
+    return Container(
+      padding: EdgeInsets.all(12),
+      child: Text(
+        text,
+        style: TextStyle(color: Colors.white),
+        textAlign: TextAlign.center,
+      ),
+    );
+  }
+
+  Widget _buildInfoCardFallback(List<List<String>> items) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: cardBg.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.withOpacity(0.3)),
+      ),
+      child: Column(
+        children: items.map((item) {
+          return Padding(
+            padding: EdgeInsets.symmetric(vertical: 4),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(item[0], style: TextStyle(color: textLight, fontSize: 14)),
+                Text(
+                  item[1],
+                  style: TextStyle(
+                    color: textDark,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Future<Map<String, dynamic>?> _generarComprobanteDiario(
+    CuadreCaja cuadre,
+  ) async {
+    try {
+      final fechaCuadre = cuadre.fechaCierre ?? DateTime.now();
+      final fechaInicio = DateTime(
+        fechaCuadre.year,
+        fechaCuadre.month,
+        fechaCuadre.day,
+      );
+      final fechaFin = fechaInicio.add(const Duration(days: 1));
+      final gastos = await _gastoService.getGastosByDateRange(
+        fechaInicio,
+        fechaFin,
+      );
+
+      final totalGastos = gastos.fold<double>(
+        0,
+        (sum, gasto) => sum + gasto.monto,
+      );
+
+      final resumen = {
+        'tipo': 'comprobante_diario',
+        'titulo': 'COMPROBANTE DIARIO',
+        'nombreRestaurante': 'SOPA Y CARBÓN',
+        'fecha': DateFormat('dd/MM/yyyy').format(fechaCuadre),
+        'hora': DateFormat('HH:mm').format(fechaCuadre),
+        'cuadre': {
+          'id': cuadre.id,
+          'fechaApertura': cuadre.fechaApertura != null
+              ? DateFormat('dd/MM/yyyy HH:mm').format(cuadre.fechaApertura!)
+              : 'N/A',
+          'fechaCierre': cuadre.fechaCierre != null
+              ? DateFormat('dd/MM/yyyy HH:mm').format(cuadre.fechaCierre!)
+              : 'N/A',
+          'responsable': cuadre.responsable ?? 'Sin especificar',
+          'fondoInicial': cuadre.fondoInicial ?? 0.0,
+          'efectivoEsperado': cuadre.efectivoEsperado ?? 0.0,
+          'efectivoContado': cuadre.efectivoDeclarado,
+          'diferencia': cuadre.diferencia,
+        },
+        'gastos': {
+          'items': gastos
+              .map(
+                (gasto) => {
+                  'descripcion': gasto.concepto,
+                  'monto': gasto.monto,
+                  'fecha': DateFormat(
+                    'dd/MM/yyyy HH:mm',
+                  ).format(gasto.fechaGasto),
+                },
+              )
+              .toList(),
+          'total': totalGastos,
+        },
+        'totales': {
+          'fondoInicial': cuadre.fondoInicial ?? 0.0,
+          'efectivoEsperado': cuadre.efectivoEsperado ?? 0.0,
+          'efectivoContado': cuadre.efectivoDeclarado,
+          'totalGastos': totalGastos,
+          'diferencia': cuadre.diferencia,
+        },
+      };
+
+      return resumen;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  Future<Map<String, dynamic>?> _generarReporteInventario() async {
+    try {
+      final inventario = await _inventarioService.getInventario();
+
+      if (inventario.isEmpty) {
+        return null;
+      }
+
+      final productosBajoStock = inventario
+          .where((item) => item.stockActual <= item.stockMinimo)
+          .toList();
+      final productosAgotados = inventario
+          .where((item) => item.stockActual <= 0)
+          .toList();
+
+      double valorTotal = 0.0;
+      for (var item in inventario) {
+        valorTotal += (item.stockActual * item.precioCompra);
+      }
+
+      final resumen = {
+        'tipo': 'reporte_inventario',
+        'titulo': 'REPORTE DE INVENTARIO',
+        'nombreRestaurante': 'SOPA Y CARBÓN',
+        'fecha': DateFormat('dd/MM/yyyy').format(DateTime.now()),
+        'hora': DateFormat('HH:mm').format(DateTime.now()),
+        'inventario': {
+          'totalProductos': inventario.length,
+          'valorTotal': valorTotal,
+          'productosBajoStock': productosBajoStock.length,
+          'productosAgotados': productosAgotados.length,
+        },
+        'productos': inventario
+            .map(
+              (item) => {
+                'nombre': item.nombre,
+                'cantidad': item.stockActual,
+                'unidadMedida': item.unidad,
+                'precioCompra': item.precioCompra,
+                'valorTotal': item.stockActual * item.precioCompra,
+                'stockMinimo': item.stockMinimo,
+                'estado': item.stockActual <= 0
+                    ? 'AGOTADO'
+                    : item.stockActual <= item.stockMinimo
+                    ? 'BAJO STOCK'
+                    : 'OK',
+              },
+            )
+            .toList(),
+        'alertas': {
+          'productosBajoStock': productosBajoStock
+              .map(
+                (item) => {
+                  'nombre': item.nombre,
+                  'cantidadActual': item.stockActual,
+                  'stockMinimo': item.stockMinimo,
+                },
+              )
+              .toList(),
+          'productosAgotados': productosAgotados
+              .map((item) => {'nombre': item.nombre})
+              .toList(),
+        },
+      };
+
+      return resumen;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  void _mostrarOpcionesImpresion(Map<String, dynamic> resumen, String titulo) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) => AlertDialog(
+        backgroundColor: cardBg,
+        title: Text(titulo, style: TextStyle(color: Colors.white)),
+        content: Text(
+          'Selecciona una opción para el reporte generado:',
+          style: TextStyle(color: textLight),
+        ),
+        actions: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: Icon(Icons.print, color: primary),
+                title: Text('Ver Reporte', style: TextStyle(color: textLight)),
+                subtitle: Text(
+                  'Ver contenido del reporte',
+                  style: TextStyle(color: textLight.withOpacity(0.7)),
+                ),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _mostrarContenidoReporte(resumen, titulo);
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.share, color: primary),
+                title: Text('Compartir', style: TextStyle(color: textLight)),
+                subtitle: Text(
+                  'Compartir como texto',
+                  style: TextStyle(color: textLight.withOpacity(0.7)),
+                ),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _mostrarError('Función de compartir no implementada aún');
+                },
+              ),
+            ],
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('Cancelar', style: TextStyle(color: primary)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _mostrarContenidoReporte(Map<String, dynamic> resumen, String titulo) {
+    final textoReporte = _generarTextoReporte(resumen);
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) => AlertDialog(
+        backgroundColor: cardBg,
+        title: Text(
+          'Contenido del Reporte',
+          style: TextStyle(color: textLight),
+        ),
+        content: Container(
+          width: double.maxFinite,
+          height: 400,
+          child: SingleChildScrollView(
+            child: Text(
+              textoReporte,
+              style: TextStyle(
+                color: textLight,
+                fontFamily: 'monospace',
+                fontSize: 12,
+              ),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('Cerrar', style: TextStyle(color: primary)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _generarTextoReporte(Map<String, dynamic> resumen) {
+    final buffer = StringBuffer();
+
+    buffer.writeln('========================================');
+    buffer.writeln('${resumen['titulo']}');
+    buffer.writeln('${resumen['nombreRestaurante']}');
+    buffer.writeln('Fecha: ${resumen['fecha']} - Hora: ${resumen['hora']}');
+    buffer.writeln('========================================');
+    buffer.writeln();
+
+    if (resumen['tipo'] == 'comprobante_diario') {
+      final cuadre = resumen['cuadre'];
+      buffer.writeln('INFORMACIÓN DEL CUADRE:');
+      buffer.writeln('ID: ${cuadre['id']}');
+      buffer.writeln('Responsable: ${cuadre['responsable']}');
+      buffer.writeln('Apertura: ${cuadre['fechaApertura']}');
+      buffer.writeln('Cierre: ${cuadre['fechaCierre']}');
+      buffer.writeln();
+      buffer.writeln('RESUMEN FINANCIERO:');
+      buffer.writeln('Fondo Inicial: \$${cuadre['fondoInicial']}');
+      buffer.writeln('Efectivo Esperado: \$${cuadre['efectivoEsperado']}');
+      buffer.writeln('Efectivo Contado: \$${cuadre['efectivoContado']}');
+      buffer.writeln('Diferencia: \$${cuadre['diferencia']}');
+      buffer.writeln();
+
+      final gastos = resumen['gastos'];
+      if (gastos['items'].isNotEmpty) {
+        buffer.writeln('GASTOS DEL DÍA:');
+        for (var gasto in gastos['items']) {
+          buffer.writeln(
+            '- ${gasto['descripcion']}: \$${gasto['monto']} (${gasto['fecha']})',
+          );
+        }
+        buffer.writeln('Total Gastos: \$${gastos['total']}');
+      }
+    } else if (resumen['tipo'] == 'reporte_inventario') {
+      final inventario = resumen['inventario'];
+      buffer.writeln('RESUMEN DEL INVENTARIO:');
+      buffer.writeln('Total Productos: ${inventario['totalProductos']}');
+      buffer.writeln(
+        'Valor Total: \$${inventario['valorTotal'].toStringAsFixed(2)}',
+      );
+      buffer.writeln(
+        'Productos Bajo Stock: ${inventario['productosBajoStock']}',
+      );
+      buffer.writeln('Productos Agotados: ${inventario['productosAgotados']}');
+      buffer.writeln();
+
+      buffer.writeln('DETALLE DE PRODUCTOS:');
+      for (var producto in resumen['productos']) {
+        buffer.writeln(
+          '${producto['nombre']}: ${producto['cantidad']} ${producto['unidadMedida']} - ${producto['estado']}',
+        );
+      }
+    }
+
+    buffer.writeln();
+    buffer.writeln('========================================');
+
+    return buffer.toString();
   }
 
   Future<void> _loadCuadresCaja() async {
@@ -838,6 +1215,24 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                         ),
                         DataColumn(
                           label: Text(
+                            'Comprobante diario',
+                            style: TextStyle(
+                              color: textDark,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        DataColumn(
+                          label: Text(
+                            'Inventario',
+                            style: TextStyle(
+                              color: textDark,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        DataColumn(
+                          label: Text(
                             'Movimientos',
                             style: TextStyle(
                               color: textDark,
@@ -907,6 +1302,12 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                                 child: Text('Ver'),
                               ),
                             ),
+                            DataCell(
+                              Container(),
+                            ), // Celda vacía donde estaba Comprobante diario
+                            DataCell(
+                              Container(),
+                            ), // Celda vacía donde estaba Inventario
                             DataCell(
                               ElevatedButton.icon(
                                 style: ElevatedButton.styleFrom(
@@ -2944,70 +3345,6 @@ Widget _buildInfoCard(List<List<String>> datos) {
           );
         }).toList(),
       ),
-    ),
-  );
-}
-
-Widget _buildTableHeader(String text) {
-  return Container(
-    padding: EdgeInsets.all(12),
-    child: Text(
-      text,
-      style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-      textAlign: TextAlign.center,
-    ),
-  );
-}
-
-Widget _buildTableCell(String text) {
-  return Container(
-    padding: EdgeInsets.all(12),
-    child: Text(
-      text,
-      style: TextStyle(color: Colors.white),
-      textAlign: TextAlign.center,
-    ),
-  );
-}
-
-String _formatearFecha(DateTime fecha) {
-  return '${fecha.day.toString().padLeft(2, '0')}/${fecha.month.toString().padLeft(2, '0')}/${fecha.year} ${fecha.hour.toString().padLeft(2, '0')}:${fecha.minute.toString().padLeft(2, '0')}';
-}
-
-// Helper para construir tarjetas de información en el fallback
-Widget _buildInfoCardFallback(List<List<String>> items) {
-  final Color cardBg = Color(0xFF2C2C2C);
-  final Color textDark = Color(0xFFFFFFFF);
-  final Color textLight = Color(0xFFBBBBBB);
-
-  return Container(
-    width: double.infinity,
-    padding: EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      color: cardBg.withOpacity(0.3),
-      borderRadius: BorderRadius.circular(8),
-      border: Border.all(color: Colors.grey.withOpacity(0.3)),
-    ),
-    child: Column(
-      children: items.map((item) {
-        return Padding(
-          padding: EdgeInsets.symmetric(vertical: 4),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(item[0], style: TextStyle(color: textLight, fontSize: 14)),
-              Text(
-                item[1],
-                style: TextStyle(
-                  color: textDark,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        );
-      }).toList(),
     ),
   );
 }

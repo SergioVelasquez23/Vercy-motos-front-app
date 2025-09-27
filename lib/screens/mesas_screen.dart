@@ -28,7 +28,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:cross_file/cross_file.dart';
 import 'package:flutter/foundation.dart';
-import '../services/pdf_service_web.dart';
+import '../services/pdf_service_factory.dart';
 
 class MesasScreen extends StatefulWidget {
   const MesasScreen({super.key});
@@ -71,6 +71,9 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
 
   // Banderas para evitar procesamiento múltiple
   bool _procesandoPago = false;
+
+  // Control de zoom para móviles
+  double _zoomScale = 1.0;
 
   /// Método para resetear manualmente el flag de procesamiento
   /// Útil para casos donde el sistema se quede colgado
@@ -610,7 +613,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
 
       if (kIsWeb) {
         // Para web, generar PDF directamente
-        final pdfServiceWeb = PDFServiceWeb();
+        final pdfServiceWeb = PDFServiceFactory.create();
 
         if (mounted) {
           Navigator.pop(context); // Cerrar diálogo de carga
@@ -701,7 +704,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
   // Opciones específicas para web
   Future<void> _mostrarOpcionesWebPDF(
     Map<String, dynamic> resumen,
-    PDFServiceWeb pdfServiceWeb,
+    PDFServiceInterface pdfServiceWeb,
   ) async {
     return showDialog(
       context: context,
@@ -1015,7 +1018,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
           backgroundColor: Colors.transparent,
           child: Container(
             width: double.maxFinite,
-            constraints: BoxConstraints(maxWidth: 400),
+            constraints: BoxConstraints(maxWidth: 500),
             decoration: BoxDecoration(
               color: _cardElevated,
               borderRadius: BorderRadius.circular(20),
@@ -1074,7 +1077,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                 ),
                 // Contenido
                 Padding(
-                  padding: EdgeInsets.all(24),
+                  padding: EdgeInsets.symmetric(horizontal: 32, vertical: 24),
                   child: Column(
                     children: [
                       // Dropdown de método de pago
@@ -2052,15 +2055,15 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
             ),
             child: Padding(
               padding: EdgeInsets.all(
-                constraints.maxWidth * 0.08,
-              ), // Padding responsivo
+                constraints.maxWidth * 0.12,
+              ), // Padding responsivo aumentado
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   // Indicador de estado superior
                   Container(
                     width: double.infinity,
-                    height: 3,
+                    height: 2,
                     decoration: BoxDecoration(
                       color: statusColor,
                       borderRadius: BorderRadius.circular(
@@ -2068,101 +2071,88 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                       ),
                     ),
                   ),
+                  SizedBox(height: 6),
                   // Icono de mesa
-                  Flexible(
-                    child: Container(
-                      padding: EdgeInsets.all(constraints.maxWidth * 0.08),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primary.withOpacity(0.15),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: AppTheme.primary.withOpacity(0.3),
-                          width: 1.5,
-                        ),
-                      ),
-                      child: Icon(
-                        Icons.table_restaurant,
-                        color: AppTheme.primary,
-                        size: constraints.maxWidth * 0.2, // Tamaño responsivo
+                  Container(
+                    padding: EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primary.withOpacity(0.15),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: AppTheme.primary.withOpacity(0.3),
+                        width: 1,
                       ),
                     ),
+                    child: Icon(
+                      Icons.table_restaurant,
+                      color: AppTheme.primary,
+                      size: 20,
+                    ),
                   ),
+                  SizedBox(height: 6),
                   // Nombre de la mesa
-                  Flexible(
-                    child: Container(
-                      width: double.infinity,
-                      padding: EdgeInsets.symmetric(
-                        horizontal: AppTheme.spacingSmall,
-                        vertical: AppTheme.spacingXSmall,
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppTheme.surfaceDark.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                    ),
+                    child: Text(
+                      mesa.nombre,
+                      style: AppTheme.bodyMedium.copyWith(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
                       ),
-                      decoration: BoxDecoration(
-                        color: AppTheme.surfaceDark.withOpacity(0.3),
-                        borderRadius: BorderRadius.circular(
-                          AppTheme.radiusSmall,
-                        ),
-                      ),
-                      child: Text(
-                        mesa.nombre,
-                        style: AppTheme.bodyMedium.copyWith(
-                          fontWeight: FontWeight.w700,
-                          fontSize: constraints.maxWidth * 0.13, // Responsivo
-                        ),
-                        textAlign: TextAlign.center,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
+                  SizedBox(height: 6),
                   // Estado
-                  Flexible(
-                    child: Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: AppTheme.spacingXSmall,
-                        vertical: 2,
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: statusColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
+                      border: Border.all(
+                        color: statusColor.withOpacity(0.4),
+                        width: 1,
                       ),
-                      decoration: BoxDecoration(
-                        color: statusColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(
-                          AppTheme.radiusLarge,
-                        ),
-                        border: Border.all(
-                          color: statusColor.withOpacity(0.4),
-                          width: 1,
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 4,
-                            height: 4,
-                            decoration: BoxDecoration(
-                              color: statusColor,
-                              shape: BoxShape.circle,
-                            ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 4,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: statusColor,
+                            shape: BoxShape.circle,
                           ),
-                          SizedBox(width: AppTheme.spacingXSmall),
-                          Flexible(
-                            child: Text(
-                              isOcupada ? 'Ocupada' : 'Disponible',
-                              style: AppTheme.labelMedium.copyWith(
-                                color: statusColor,
-                                fontWeight: FontWeight.w600,
-                                fontSize: constraints.maxWidth * 0.09,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
+                        ),
+                        SizedBox(width: 4),
+                        Text(
+                          isOcupada ? 'Ocupada' : 'Disponible',
+                          style: AppTheme.labelMedium.copyWith(
+                            color: statusColor,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 10,
                           ),
-                        ],
-                      ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
                     ),
                   ),
                   // Total si existe
-                  if (mesa.total > 0)
-                    Flexible(
-                      child: canProcessPayment
-                          ? GestureDetector(
+                  if (mesa.total > 0) ...[
+                    SizedBox(height: 8),
+                    canProcessPayment
+                        ? Material(
+                            color: Colors.transparent,
+                            child: InkWell(
                               onTap: () async {
                                 final pedido = await _obtenerPedidoActivoDeMesa(
                                   mesa,
@@ -2180,10 +2170,14 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                   );
                                 }
                               },
+                              borderRadius: BorderRadius.circular(
+                                AppTheme.radiusSmall,
+                              ),
                               child: Container(
+                                width: double.infinity,
                                 padding: EdgeInsets.symmetric(
-                                  horizontal: AppTheme.spacingSmall,
-                                  vertical: AppTheme.spacingXSmall,
+                                  horizontal: 8,
+                                  vertical: 8,
                                 ),
                                 decoration: BoxDecoration(
                                   gradient: AppTheme.primaryGradient,
@@ -2196,57 +2190,59 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                   ),
                                 ),
                                 child: Row(
-                                  mainAxisSize: MainAxisSize.min,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  mainAxisSize: MainAxisSize.max,
                                   children: [
                                     Icon(
                                       Icons.payment,
-                                      size: constraints.maxWidth * 0.08,
+                                      size: 16,
                                       color: Colors.white,
                                     ),
-                                    SizedBox(width: 2),
-                                    Flexible(
-                                      child: Text(
-                                        formatCurrency(mesa.total),
-                                        style: AppTheme.labelMedium.copyWith(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: constraints.maxWidth * 0.08,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
+                                    SizedBox(width: 4),
+                                    Text(
+                                      formatCurrency(mesa.total),
+                                      style: AppTheme.labelMedium.copyWith(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13,
                                       ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ],
                                 ),
                               ),
-                            )
-                          : Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: AppTheme.spacingSmall,
-                                vertical: AppTheme.spacingXSmall,
+                            ),
+                          )
+                        : Container(
+                            width: double.infinity,
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primary.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(
+                                AppTheme.radiusSmall,
                               ),
-                              decoration: BoxDecoration(
-                                color: AppTheme.primary.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(
-                                  AppTheme.radiusSmall,
-                                ),
-                                border: Border.all(
-                                  color: AppTheme.primary.withOpacity(0.3),
-                                  width: 1,
-                                ),
-                              ),
-                              child: Text(
-                                formatCurrency(mesa.total),
-                                style: AppTheme.labelMedium.copyWith(
-                                  color: AppTheme.primary,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: constraints.maxWidth * 0.09,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                              border: Border.all(
+                                color: AppTheme.primary.withOpacity(0.3),
+                                width: 1,
                               ),
                             ),
-                    ),
+                            child: Text(
+                              formatCurrency(mesa.total),
+                              style: AppTheme.labelMedium.copyWith(
+                                color: AppTheme.primary,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                              ),
+                              textAlign: TextAlign.center,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                  ],
                 ],
               ),
             ),
@@ -2272,10 +2268,8 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
     // NUEVAS VARIABLES PARA LAS OPCIONES MOVIDAS
     bool esCortesia0 = false;
     bool esConsumoInterno0 = false;
-    String? mesaDestinoId0;
 
-    // VARIABLE PARA PRODUCTOS SELECCIONADOS
-    List<ItemPedido> productosSeleccionados = [];
+    // Funcionalidad de selección individual eliminada para simplificar la interfaz
 
     // NUEVAS VARIABLES PARA SELECTOR DE BILLETES Y CAMBIO
     double billetesSeleccionados = 0.0;
@@ -2464,38 +2458,8 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                     ),
                   ),
                   SizedBox(height: 32), // Más espacio
-                  // Sección: Productos con selección
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      _buildSeccionTitulo('Productos del Pedido'),
-                      Row(
-                        children: [
-                          TextButton(
-                            onPressed: () {
-                              setState(() {
-                                if (productosSeleccionados.length ==
-                                    pedido.items.length) {
-                                  productosSeleccionados.clear();
-                                } else {
-                                  productosSeleccionados = List.from(
-                                    pedido.items,
-                                  );
-                                }
-                              });
-                            },
-                            child: Text(
-                              productosSeleccionados.length ==
-                                      pedido.items.length
-                                  ? 'Deseleccionar todo'
-                                  : 'Seleccionar todo',
-                              style: TextStyle(color: _primary),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+                  // Sección: Productos del Pedido - Versión Simplificada
+                  _buildSeccionTitulo('Productos del Pedido'),
                   SizedBox(height: 16),
                   Container(
                     padding: EdgeInsets.all(20), // Más padding
@@ -2513,38 +2477,12 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                               ), // Más padding vertical
                               child: Container(
                                 decoration: BoxDecoration(
-                                  color: productosSeleccionados.contains(item)
-                                      ? _primary.withOpacity(0.1)
-                                      : Colors.transparent,
+                                  color: Colors.transparent,
                                   borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(
-                                    color: productosSeleccionados.contains(item)
-                                        ? _primary
-                                        : Colors.transparent,
-                                    width: 1,
-                                  ),
                                 ),
                                 padding: EdgeInsets.all(12),
                                 child: Row(
                                   children: [
-                                    // Checkbox para seleccionar producto
-                                    Checkbox(
-                                      value: productosSeleccionados.contains(
-                                        item,
-                                      ),
-                                      onChanged: (bool? value) {
-                                        setState(() {
-                                          if (value == true) {
-                                            productosSeleccionados.add(item);
-                                          } else {
-                                            productosSeleccionados.remove(item);
-                                          }
-                                        });
-                                      },
-                                      activeColor: _primary,
-                                    ),
-                                    SizedBox(width: 12),
-
                                     // Información del producto
                                     Expanded(
                                       child: Column(
@@ -2578,7 +2516,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
 
                                     // Precio
                                     Text(
-                                      '\$${((item.precio) * item.cantidad).toStringAsFixed(0)}',
+                                      '\$${(item.precioUnitario * item.cantidad).toStringAsFixed(0)}',
                                       style: TextStyle(
                                         color: _primary,
                                         fontWeight: FontWeight.bold,
@@ -2593,155 +2531,6 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                           .toList(),
                     ),
                   ),
-
-                  // Acciones rápidas para productos seleccionados
-                  if (productosSeleccionados.isNotEmpty) ...[
-                    SizedBox(height: 16),
-                    Container(
-                      padding: EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: _primary.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: _primary.withOpacity(0.3)),
-                      ),
-                      child: Column(
-                        children: [
-                          Text(
-                            '${productosSeleccionados.length} producto${productosSeleccionados.length > 1 ? 's' : ''} seleccionado${productosSeleccionados.length > 1 ? 's' : ''}',
-                            style: TextStyle(
-                              color: _textPrimary,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: ElevatedButton.icon(
-                                  onPressed: () {
-                                    // Procesar pago solo de productos seleccionados
-                                    double totalSeleccionados =
-                                        productosSeleccionados
-                                            .map(
-                                              (item) =>
-                                                  item.precio * item.cantidad,
-                                            )
-                                            .fold(
-                                              0.0,
-                                              (sum, price) => sum + price,
-                                            );
-
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          'Pagando ${productosSeleccionados.length} productos seleccionados: \$${totalSeleccionados.toStringAsFixed(0)}',
-                                        ),
-                                        backgroundColor: Colors.green,
-                                      ),
-                                    );
-                                    // Aquí implementarías la lógica de pago parcial
-                                  },
-                                  icon: Icon(Icons.payment, size: 16),
-                                  label: Text('Pagar'),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.green.shade600,
-                                    foregroundColor: Colors.white,
-                                    padding: EdgeInsets.symmetric(vertical: 8),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              SizedBox(width: 8),
-                              Expanded(
-                                child: ElevatedButton.icon(
-                                  onPressed: () async {
-                                    final resultado = await showDialog<bool>(
-                                      context: context,
-                                      builder: (context) => CancelarProductoDialog(
-                                        items: productosSeleccionados,
-                                        mesaId: mesa.id,
-                                        mesaNombre: mesa.nombre,
-                                        usuarioId: "usuario_id",
-                                        usuarioNombre: "Usuario",
-                                        onProductosCancelados:
-                                            (itemsCancelados, motivo) async {
-                                              print(
-                                                'Productos cancelados: ${itemsCancelados.length}',
-                                              );
-                                              print('Motivo: $motivo');
-                                              Navigator.pop(context, true);
-                                            },
-                                      ),
-                                    );
-                                    if (resultado == true) {
-                                      Navigator.pop(context);
-                                      await _loadMesas();
-                                    }
-                                  },
-                                  icon: Icon(
-                                    Icons.remove_circle_outline,
-                                    size: 16,
-                                  ),
-                                  label: Text('Cancelar'),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.orange.shade600,
-                                    foregroundColor: Colors.white,
-                                    padding: EdgeInsets.symmetric(vertical: 8),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              SizedBox(width: 8),
-                              Expanded(
-                                child: ElevatedButton.icon(
-                                  onPressed: () async {
-                                    final resultado = await showDialog<bool>(
-                                      context: context,
-                                      builder: (context) => MoverProductosDialog(
-                                        items: productosSeleccionados,
-                                        mesaOrigen: mesa,
-                                        mesasDestino: mesas
-                                            .where((m) => m.id != mesa.id)
-                                            .toList(),
-                                        onProductosMovidos:
-                                            (itemsMovidos, mesaDestino) async {
-                                              print(
-                                                'Productos movidos a: ${mesaDestino.nombre}',
-                                              );
-                                              print(
-                                                'Productos: ${itemsMovidos.length}',
-                                              );
-                                              Navigator.pop(context, true);
-                                            },
-                                      ),
-                                    );
-                                    if (resultado == true) {
-                                      Navigator.pop(context);
-                                      await _loadMesas();
-                                    }
-                                  },
-                                  icon: Icon(Icons.swap_horiz, size: 16),
-                                  label: Text('Mover'),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.purple.shade600,
-                                    foregroundColor: Colors.white,
-                                    padding: EdgeInsets.symmetric(vertical: 8),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
                   SizedBox(height: 32),
 
                   // Sección: Forma de pago
@@ -3339,104 +3128,6 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                           ),
                         ),
                         SizedBox(height: 16),
-
-                        // Opción Mover a otra mesa
-                        InkWell(
-                          onTap: () async {
-                            final mesaSeleccionada =
-                                await _mostrarDialogoSeleccionMesa();
-                            if (mesaSeleccionada != null) {
-                              try {
-                                // Mover el pedido a otra mesa
-                                // await _mesaService.moverPedido(mesa, mesaSeleccionada);
-                                print(
-                                  'Moviendo pedido de ${mesa.nombre} a ${mesaSeleccionada.nombre}',
-                                );
-                                // Recarga las mesas y cierra el diálogo
-                                await _loadMesas();
-                                Navigator.pop(context);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      'Pedido movido a la mesa ${mesaSeleccionada.nombre}',
-                                    ),
-                                    backgroundColor: Colors.green,
-                                  ),
-                                );
-                              } catch (e) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      'Error al mover el pedido: $e',
-                                    ),
-                                    backgroundColor: Colors.red,
-                                  ),
-                                );
-                              }
-                            }
-                          },
-                          child: Container(
-                            padding: EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: mesaDestinoId0 != null
-                                  ? _primary.withOpacity(0.1)
-                                  : Colors.transparent,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: mesaDestinoId0 != null
-                                    ? _primary
-                                    : _textPrimary.withOpacity(0.2),
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.swap_horiz,
-                                  color: mesaDestinoId0 != null
-                                      ? _primary
-                                      : _textSecondary,
-                                  size: 24,
-                                ),
-                                SizedBox(width: 16),
-                                Expanded(
-                                  child: Text(
-                                    'Mover a otra mesa',
-                                    style: TextStyle(
-                                      color: _textPrimary,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ),
-                                if (mesaDestinoId0 != null)
-                                  Container(
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 6,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: _primary,
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                    child: Text(
-                                      'Seleccionada',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                SizedBox(width: 12),
-                                Icon(
-                                  Icons.chevron_right,
-                                  color: _textSecondary,
-                                  size: 20,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
                       ],
                     ),
                   ),
@@ -3562,7 +3253,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                   'propina': propinaController.text,
                                   'esCortesia': esCortesia0,
                                   'esConsumoInterno': esConsumoInterno0,
-                                  'mesaDestinoId': mesaDestinoId0,
+
                                   'billetesRecibidos': billetesSeleccionados,
                                 });
                               }
@@ -3828,89 +3519,6 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
   }
 
   /// Actualiza el documento tras mover un pedido entre mesas
-  Future<void> _actualizarDocumentoTrasMovimiento(
-    Pedido pedido,
-    String mesaOrigen,
-    String mesaDestino,
-    String formaPago,
-    double propina,
-    String pagadoPor,
-  ) async {
-    try {
-      // Verificar si ya existe un documento para este pedido
-      final documentosOrigen = await _documentoMesaService.getDocumentosPorMesa(
-        mesaOrigen,
-      );
-      final documentoExistente = documentosOrigen
-          .where((doc) => doc.pedidosIds.contains(pedido.id))
-          .firstOrNull;
-
-      if (documentoExistente != null) {
-        print(
-          '⚠️ Ya existe un documento para este pedido en mesa origen: ${documentoExistente.numeroDocumento}',
-        );
-        print(
-          '  - El documento queda asociado a la mesa original para mantenimiento de registros',
-        );
-
-        // Opcional: Crear un nuevo documento en la mesa destino que referencie el movimiento
-        await _crearDocumentoMovimiento(
-          pedido,
-          mesaDestino,
-          documentoExistente,
-          pagadoPor,
-        );
-      } else {
-        // No existe documento previo, crear uno nuevo en la mesa destino
-        print('🆕 Creando nuevo documento en mesa destino...');
-        await _crearFacturaPedidoEnMesa(
-          pedido.id,
-          mesaDestino,
-          formaPago: formaPago,
-          propina: propina,
-          pagadoPor: pagadoPor,
-        );
-      }
-
-      print('✅ Documentos actualizados correctamente tras movimiento');
-    } catch (e) {
-      print('❌ Error actualizando documento tras movimiento: $e');
-      // No lanzar excepción para no interrumpir el flujo principal
-    }
-  }
-
-  /// Crea un documento de referencia para un pedido movido
-  Future<void> _crearDocumentoMovimiento(
-    Pedido pedido,
-    String mesaDestino,
-    DocumentoMesa documentoOriginal,
-    String pagadoPor,
-  ) async {
-    try {
-      print('🔄 Creando documento de referencia para movimiento...');
-
-      // Crear un documento que indique el movimiento
-      final documentoMovimiento = await _documentoMesaService.crearDocumento(
-        mesaNombre: mesaDestino,
-        vendedor: pagadoPor,
-        pedidosIds: [pedido.id],
-        formaPago: documentoOriginal.formaPago ?? 'efectivo',
-        pagadoPor: pagadoPor,
-        propina: documentoOriginal.propina ?? 0.0,
-        pagado: true,
-        estado: 'Movido de ${documentoOriginal.mesaNombre}',
-        fechaPago: DateTime.now(),
-      );
-
-      if (documentoMovimiento != null) {
-        print(
-          '✅ Documento de movimiento creado: ${documentoMovimiento.numeroDocumento}',
-        );
-      }
-    } catch (e) {
-      print('❌ Error creando documento de movimiento: $e');
-    }
-  }
 
   /// Muestra el diálogo de pago parcial para seleccionar productos específicos
   void _mostrarDialogoPagoParcial(Mesa mesa, Pedido pedido) async {
@@ -4286,79 +3894,6 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
       // EventBus().fire(DocumentoActualizadoEvent(pedido.id));
     } catch (e) {
       print('❌ Error notificando actualización de documentos: $e');
-    }
-  }
-
-  Future<Mesa?> _mostrarDialogoSeleccionMesa() async {
-    try {
-      // Cargar la lista de mesas disponibles
-      final mesas = await _mesaService.getMesas();
-
-      // Incluir todas las mesas (incluyendo especiales)
-      final mesasDisponibles = mesas.toList();
-
-      if (mesasDisponibles.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('No hay otras mesas disponibles'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-        return null;
-      }
-
-      // Mostrar diálogo de selección
-      final mesaSeleccionada = await showDialog<Mesa>(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            backgroundColor: _cardBg,
-            title: Text(
-              'Seleccionar mesa destino',
-              style: TextStyle(color: _textPrimary),
-            ),
-            content: SizedBox(
-              width: double.maxFinite,
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: mesasDisponibles.length,
-                itemBuilder: (context, index) {
-                  final mesa = mesasDisponibles[index];
-                  return ListTile(
-                    title: Text(
-                      mesa.nombre,
-                      style: TextStyle(color: _textPrimary),
-                    ),
-                    subtitle: Text(
-                      mesa.ocupada ? 'Ocupada' : 'Libre',
-                      style: TextStyle(
-                        color: mesa.ocupada ? Colors.orange : Colors.green,
-                      ),
-                    ),
-                    onTap: () => Navigator.of(context).pop(mesa),
-                  );
-                },
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: Text('Cancelar', style: TextStyle(color: _textPrimary)),
-              ),
-            ],
-          );
-        },
-      );
-
-      return mesaSeleccionada;
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al cargar las mesas: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return null;
     }
   }
 
@@ -4958,7 +4493,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
     try {
       if (kIsWeb) {
         // Para web, ir directamente a imprimir
-        final pdfServiceWeb = PDFServiceWeb();
+        final pdfServiceWeb = PDFServiceFactory.create();
         try {
           pdfServiceWeb.abrirVentanaImpresion(resumen: resumen);
           if (mounted) {
@@ -5304,7 +4839,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
     try {
       if (kIsWeb) {
         // Para web, usar el servicio web
-        final pdfServiceWeb = PDFServiceWeb();
+        final pdfServiceWeb = PDFServiceFactory.create();
         pdfServiceWeb.abrirVentanaImpresion(resumen: resumen);
         return;
       }
@@ -5420,6 +4955,21 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
   // Navegar a la pantalla de documentos
   Future<void> navegarADocumentos() async {
     try {
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+
+      // Verificar que el usuario no sea únicamente mesero
+      if (userProvider.isOnlyMesero) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('No tienes permisos para acceder a documentos'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
       // Navegar a la pantalla de documentos
       if (mounted) {
         await Navigator.of(context).pushNamed('/documentos');
@@ -5576,9 +5126,10 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
   }
 
   double getResponsiveCardHeight(double screenWidth) {
-    if (screenWidth < 600) return 100; // Móvil (increased for content)
-    if (screenWidth < 900) return 110; // Tablet
-    return 120; // Desktop
+    if (screenWidth < 600)
+      return 140; // Móvil (aumentado para el botón de pago)
+    if (screenWidth < 900) return 150; // Tablet
+    return 160; // Desktop
   }
 
   double getResponsiveMargin(double screenWidth) {
@@ -5603,13 +5154,83 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
         elevation: 0,
         centerTitle: true,
         actions: [
-          // Botón para mostrar resumen rápido de documentos del día
-          Container(
-            margin: EdgeInsets.only(right: AppTheme.spacingSmall),
-            child: IconButton(
-              icon: Stack(
-                children: [
-                  Container(
+          // Botón para mostrar resumen rápido de documentos del día - Solo para no-meseros
+          Consumer<UserProvider>(
+            builder: (context, userProvider, child) {
+              // Ocultar el botón para meseros únicamente
+              if (userProvider.isOnlyMesero) {
+                return SizedBox.shrink();
+              }
+
+              return Container(
+                margin: EdgeInsets.only(right: AppTheme.spacingSmall),
+                child: IconButton(
+                  icon: Stack(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(
+                            AppTheme.radiusSmall,
+                          ),
+                        ),
+                        child: Icon(Icons.receipt_long, size: 20),
+                      ),
+                      FutureBuilder<int>(
+                        future: obtenerConteoDocumentosHoy(),
+                        builder: (context, snapshot) {
+                          if (snapshot.hasData && snapshot.data! > 0) {
+                            return Positioned(
+                              right: 0,
+                              top: 0,
+                              child: Container(
+                                padding: EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.error,
+                                  borderRadius: BorderRadius.circular(
+                                    AppTheme.radiusSmall,
+                                  ),
+                                ),
+                                constraints: BoxConstraints(
+                                  minWidth: 18,
+                                  minHeight: 18,
+                                ),
+                                child: Text(
+                                  '${snapshot.data}',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            );
+                          }
+                          return SizedBox.shrink();
+                        },
+                      ),
+                    ],
+                  ),
+                  tooltip: 'Ver documentos del día',
+                  onPressed: () => navegarADocumentos(),
+                ),
+              );
+            },
+          ),
+          // Botón "Mis Pedidos" - Solo para meseros
+          Consumer<UserProvider>(
+            builder: (context, userProvider, child) {
+              // Mostrar el botón solo para meseros
+              if (!userProvider.isMesero) {
+                return SizedBox.shrink();
+              }
+
+              return Container(
+                margin: EdgeInsets.only(right: AppTheme.spacingSmall),
+                child: IconButton(
+                  icon: Container(
                     padding: EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.1),
@@ -5617,46 +5238,43 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                     ),
                     child: Icon(Icons.receipt_long, size: 20),
                   ),
-                  FutureBuilder<int>(
-                    future: obtenerConteoDocumentosHoy(),
-                    builder: (context, snapshot) {
-                      if (snapshot.hasData && snapshot.data! > 0) {
-                        return Positioned(
-                          right: 0,
-                          top: 0,
-                          child: Container(
-                            padding: EdgeInsets.all(4),
-                            decoration: BoxDecoration(
-                              color: AppTheme.error,
-                              borderRadius: BorderRadius.circular(
-                                AppTheme.radiusSmall,
-                              ),
-                            ),
-                            constraints: BoxConstraints(
-                              minWidth: 18,
-                              minHeight: 18,
-                            ),
-                            child: Text(
-                              '${snapshot.data}',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                        );
-                      }
-                      return SizedBox.shrink();
-                    },
-                  ),
-                ],
-              ),
-              tooltip: 'Ver documentos del día',
-              onPressed: () => navegarADocumentos(),
-            ),
+                  tooltip: 'Mis Pedidos',
+                  onPressed: () {
+                    Navigator.pushNamed(context, '/mesero');
+                  },
+                ),
+              );
+            },
           ),
+          // Botón de zoom - Solo en móvil
+          if (MediaQuery.of(context).size.width < 600) ...[
+            Container(
+              margin: EdgeInsets.only(right: AppTheme.spacingSmall),
+              child: IconButton(
+                icon: Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                  ),
+                  child: Icon(
+                    _zoomScale < 1.0 ? Icons.zoom_in : Icons.zoom_out,
+                    size: 20,
+                  ),
+                ),
+                onPressed: () {
+                  setState(() {
+                    if (_zoomScale <= 0.8) {
+                      _zoomScale = 1.0; // Reset a tamaño normal
+                    } else {
+                      _zoomScale = 0.8; // Zoom out para ver más mesas
+                    }
+                  });
+                },
+                tooltip: _zoomScale < 1.0 ? 'Acercar vista' : 'Alejar vista',
+              ),
+            ),
+          ],
           Container(
             margin: EdgeInsets.only(right: AppTheme.spacingSmall),
             child: IconButton(
@@ -5768,18 +5386,22 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
         // Detectar si es móvil usando el breakpoint establecido
         bool isMobile = constraints.maxWidth < 768;
 
-        return SingleChildScrollView(
-          padding: EdgeInsets.all(context.responsivePadding),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Mesas especiales en la parte superior
-              buildMesasEspeciales(),
-              SizedBox(height: AppTheme.spacingXLarge),
-
-              // Vista responsiva para mesas regulares
-              if (isMobile) _buildMobileMesasView() else buildMesasPorFilas(),
-            ],
+        return Transform.scale(
+          scale: _zoomScale,
+          child: SingleChildScrollView(
+            padding: EdgeInsets.all(context.responsivePadding),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Mesas especiales en la parte superior
+                buildMesasEspeciales(),
+                SizedBox(
+                  height: isMobile ? 40 : AppTheme.spacingXLarge,
+                ), // Más espacio en móvil
+                // Vista responsiva para mesas regulares
+                if (isMobile) _buildMobileMesasView() else buildMesasPorFilas(),
+              ],
+            ),
           ),
         );
       },
@@ -5787,8 +5409,8 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
   }
 
   Widget _buildMobileMesasView() {
-    // Organizar mesas por filas para vista móvil
-    Map<String, List<Mesa>> mesasPorFila = {};
+    // Organizar mesas por letras (igual que en escritorio)
+    Map<String, List<Mesa>> mesasPorLetra = {};
 
     for (Mesa mesa in mesas) {
       if (mesa.nombre.isNotEmpty) {
@@ -5799,105 +5421,86 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
           'CAJA',
           'MESA AUXILIAR',
         ].contains(mesa.nombre.toUpperCase())) {
-          if (mesasPorFila[letra] == null) {
-            mesasPorFila[letra] = [];
+          if (mesasPorLetra[letra] == null) {
+            mesasPorLetra[letra] = [];
           }
-          mesasPorFila[letra]!.add(mesa);
+          mesasPorLetra[letra]!.add(mesa);
         }
       }
     }
 
     // Ordenar las letras alfabéticamente
-    List<String> letrasOrdenadas = mesasPorFila.keys.toList()..sort();
+    List<String> letrasOrdenadas = mesasPorLetra.keys.toList()..sort();
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: letrasOrdenadas.map((letra) {
-        List<Mesa> mesasDeLaFila = mesasPorFila[letra]!;
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: EdgeInsets.symmetric(
+        horizontal: AppTheme.spacingSmall,
+        vertical: AppTheme.spacingMedium,
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: letrasOrdenadas.map((letra) {
+          List<Mesa> mesasDeLaLetra = mesasPorLetra[letra]!;
 
-        // Ordenar las mesas de cada fila por número
-        mesasDeLaFila.sort((a, b) {
-          int numeroA = int.tryParse(a.nombre.substring(1)) ?? 0;
-          int numeroB = int.tryParse(b.nombre.substring(1)) ?? 0;
+          // Ordenar las mesas de cada letra por número
+          mesasDeLaLetra.sort((a, b) {
+            int numeroA = int.tryParse(a.nombre.substring(1)) ?? 0;
+            int numeroB = int.tryParse(b.nombre.substring(1)) ?? 0;
 
-          // Convertir 0 a 10 para que vaya al final
-          if (numeroA == 0) numeroA = 10;
-          if (numeroB == 0) numeroB = 10;
+            // Convertir 0 a 10 para que vaya al final
+            if (numeroA == 0) numeroA = 10;
+            if (numeroB == 0) numeroB = 10;
 
-          return numeroA.compareTo(numeroB);
-        });
+            return numeroA.compareTo(numeroB);
+          });
 
-        return Container(
-          margin: EdgeInsets.only(bottom: AppTheme.spacingXLarge),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Título de la fila
-              Container(
-                width: double.infinity,
-                margin: EdgeInsets.only(bottom: AppTheme.spacingMedium),
-                padding: EdgeInsets.symmetric(
-                  horizontal: AppTheme.spacingMedium,
-                  vertical: AppTheme.spacingSmall,
-                ),
-                decoration: BoxDecoration(
-                  gradient: AppTheme.primaryGradient,
-                  borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
-                  boxShadow: AppTheme.primaryShadow,
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Fila $letra',
-                      style: AppTheme.bodyLarge.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 18,
-                      ),
+          return Container(
+            margin: EdgeInsets.only(right: AppTheme.spacingLarge),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Título de la columna (letra)
+                Container(
+                  margin: EdgeInsets.only(bottom: AppTheme.spacingMedium),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: AppTheme.spacingMedium,
+                    vertical: AppTheme.spacingSmall,
+                  ),
+                  decoration: BoxDecoration(
+                    gradient: AppTheme.primaryGradient,
+                    borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
+                    boxShadow: AppTheme.primaryShadow,
+                  ),
+                  child: Text(
+                    'Fila $letra',
+                    style: AppTheme.bodyLarge.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16, // Tamaño reducido para móvil
                     ),
-                    Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: AppTheme.spacingSmall,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(
-                          AppTheme.radiusSmall,
-                        ),
-                      ),
-                      child: Text(
-                        '${mesasDeLaFila.length} mesas',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-              // Grid de mesas para móvil (2 columnas)
-              GridView.builder(
-                shrinkWrap: true,
-                physics: NeverScrollableScrollPhysics(),
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: AppTheme.spacingMedium,
-                  mainAxisSpacing: AppTheme.spacingMedium,
-                  childAspectRatio: 0.85, // Relación ancho/alto
+                // Mesas de la letra organizadas verticalmente
+                Column(
+                  children: mesasDeLaLetra
+                      .map(
+                        (mesa) => Container(
+                          width: 140, // Ancho fijo para móvil
+                          height: 140, // Altura aumentada para móvil
+                          margin: EdgeInsets.only(
+                            bottom: AppTheme.spacingMedium,
+                          ),
+                          child: _buildMesaCard(mesa),
+                        ),
+                      )
+                      .toList(),
                 ),
-                itemCount: mesasDeLaFila.length,
-                itemBuilder: (context, index) {
-                  return _buildMesaCard(mesasDeLaFila[index]);
-                },
-              ),
-            ],
-          ),
-        );
-      }).toList(),
+              ],
+            ),
+          );
+        }).toList(),
+      ),
     );
   }
 
@@ -5913,44 +5516,44 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
         // Detectar si es móvil usando el breakpoint establecado
         bool isMobile = constraints.maxWidth < 768;
 
-        // Definir altura responsive
-        double especialHeight = context.isMobile
-            ? 100
-            : context.isTablet
-            ? 120
-            : 140;
-
         if (isMobile) {
-          // Vista móvil: diseño en una sola columna con más espacio
-          return Column(
-            children: [
-              buildMesaEspecial(
-                'Domicilio',
-                Icons.delivery_dining,
-                'disponible',
-                () => _navegarAPedido('Domicilio'),
-                height: especialHeight,
-              ),
-              SizedBox(height: AppTheme.spacingMedium),
-              buildMesaEspecial(
-                'Caja',
-                Icons.point_of_sale,
-                'disponible',
-                () => _navegarAPedido('Caja'),
-                height: especialHeight,
-              ),
-              SizedBox(height: AppTheme.spacingMedium),
-              buildMesaEspecial(
-                'Mesa Auxiliar',
-                Icons.table_restaurant,
-                'disponible',
-                () => _navegarAPedido('Mesa Auxiliar'),
-                height: especialHeight,
-              ),
-            ],
+          // Vista móvil: diseño horizontal con scroll
+          return SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: EdgeInsets.symmetric(horizontal: AppTheme.spacingMedium),
+            child: Row(
+              children: [
+                _buildMesaEspecialMobile(
+                  'Domicilio',
+                  Icons.delivery_dining,
+                  'disponible',
+                  () => _navegarAPedido('Domicilio'),
+                ),
+                SizedBox(
+                  width: AppTheme.spacingLarge,
+                ), // Más espacio entre mesas
+                _buildMesaEspecialMobile(
+                  'Caja',
+                  Icons.point_of_sale,
+                  'disponible',
+                  () => _navegarAPedido('Caja'),
+                ),
+                SizedBox(
+                  width: AppTheme.spacingLarge,
+                ), // Más espacio entre mesas
+                _buildMesaEspecialMobile(
+                  'Mesa Auxiliar',
+                  Icons.table_restaurant,
+                  'disponible',
+                  () => _navegarAPedido('Mesa Auxiliar'),
+                ),
+              ],
+            ),
           );
         } else {
           // Vista desktop/tablet: diseño original en filas
+          double especialHeight = context.isTablet ? 120 : 140;
+
           return Column(
             children: [
               // Primera fila: Domicilio y Caja
@@ -5995,6 +5598,151 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
             ],
           );
         }
+      },
+    );
+  }
+
+  Widget _buildMesaEspecialMobile(
+    String nombre,
+    IconData icono,
+    String estado,
+    VoidCallback onTap,
+  ) {
+    return FutureBuilder<List<Pedido>>(
+      future: _pedidoService.getPedidosByMesa(nombre),
+      builder: (context, snapshot) {
+        List<Pedido> pedidosActivos = [];
+        if (snapshot.hasData) {
+          pedidosActivos = snapshot.data!
+              .where((pedido) => pedido.estado == EstadoPedido.activo)
+              .toList();
+        }
+
+        // Determinar el estado basado en pedidos activos
+        bool tienePedidos = pedidosActivos.isNotEmpty;
+        Color statusColor = tienePedidos ? AppTheme.error : AppTheme.success;
+        String estadoTexto = tienePedidos
+            ? '${pedidosActivos.length} pedido${pedidosActivos.length > 1 ? 's' : ''}'
+            : 'Disponible';
+
+        // Calcular total de todos los pedidos activos
+        double totalGeneral = pedidosActivos.fold(
+          0.0,
+          (sum, pedido) => sum + pedido.total,
+        );
+
+        return GestureDetector(
+          onTap: onTap,
+          child: Container(
+            width: 130, // Ancho reducido para móvil
+            height: 110, // Altura reducida para móvil
+            decoration: AppTheme.cardDecoration.copyWith(
+              gradient: tienePedidos
+                  ? LinearGradient(
+                      colors: [AppTheme.cardBg, AppTheme.cardElevated],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    )
+                  : null,
+              border: Border.all(
+                color: tienePedidos
+                    ? AppTheme.primary.withOpacity(0.5)
+                    : AppTheme.success.withOpacity(0.3),
+                width: 1.5,
+              ),
+            ),
+            child: Padding(
+              padding: EdgeInsets.all(6), // Padding reducido
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  // Icono principal
+                  Container(
+                    padding: EdgeInsets.all(6), // Padding reducido
+                    decoration: BoxDecoration(
+                      color: AppTheme.primary.withOpacity(0.15),
+                      shape: BoxShape.circle,
+                      boxShadow: AppTheme.primaryShadow,
+                    ),
+                    child: Icon(
+                      icono,
+                      color: AppTheme.primary,
+                      size: 16, // Ícono más pequeño
+                    ),
+                  ),
+                  // Nombre de la mesa especial
+                  Text(
+                    nombre,
+                    textAlign: TextAlign.center,
+                    style: AppTheme.bodyLarge.copyWith(
+                      fontSize: 10, // Texto más pequeño
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  // Estado
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: statusColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                      border: Border.all(
+                        color: statusColor.withOpacity(0.3),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 4,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: statusColor,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            estadoTexto,
+                            style: AppTheme.labelMedium.copyWith(
+                              color: statusColor,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 9,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Total si existe
+                  if (totalGeneral > 0)
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primary.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(
+                          AppTheme.radiusSmall,
+                        ),
+                      ),
+                      child: Text(
+                        '\$${totalGeneral.toStringAsFixed(0)}',
+                        style: AppTheme.labelMedium.copyWith(
+                          color: AppTheme.primary,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 9,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        );
       },
     );
   }
@@ -6049,9 +5797,14 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
               ),
             ),
             child: Padding(
-              padding: EdgeInsets.all(AppTheme.spacingMedium),
+              padding: EdgeInsets.all(
+                context.isMobile
+                    ? AppTheme.spacingSmall
+                    : AppTheme.spacingMedium,
+              ),
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                mainAxisAlignment: MainAxisAlignment
+                    .spaceAround, // Cambiar de spaceEvenly a spaceAround para mejor distribución
                 children: [
                   // Icono principal
                   Container(
@@ -6078,10 +5831,10 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                       textAlign: TextAlign.center,
                       style: AppTheme.bodyLarge.copyWith(
                         fontSize: context.isMobile
-                            ? 14
+                            ? 12 // Reducir tamaño para móvil
                             : context.isTablet
-                            ? 16
-                            : 18,
+                            ? 14
+                            : 16,
                         fontWeight: FontWeight.w600,
                       ),
                       maxLines: 2,
@@ -6203,10 +5956,10 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
             ? 110
             : 130;
         double cardHeight = context.isMobile
-            ? 120
-            : context.isTablet
             ? 140
-            : 160;
+            : context.isTablet
+            ? 160
+            : 180;
 
         return Scrollbar(
           thumbVisibility: true,
@@ -6305,7 +6058,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
         print('    - ProductoID: ${item.productoId}');
         print('    - Nombre: ${item.productoNombre ?? 'Producto'}');
         print('    - Cantidad: ${item.cantidad}');
-        print('    - Precio: ${item.precio}');
+        print('    - Precio: ${item.precioUnitario}');
       }
     }
 

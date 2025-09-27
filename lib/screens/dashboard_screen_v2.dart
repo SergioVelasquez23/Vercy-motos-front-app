@@ -15,6 +15,9 @@ import 'proveedores_screen.dart';
 import 'unidades_screen.dart';
 import 'historial_inventario_screen.dart';
 import 'configuracion_screen.dart';
+import 'gastos_screen.dart';
+import 'ingresos_caja_screen.dart';
+import 'tipos_gasto_screen.dart';
 import '../config/constants.dart';
 import '../services/reportes_service.dart';
 import '../services/pedido_service.dart';
@@ -284,10 +287,17 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
 
   Future<void> _cargarEstadisticas() async {
     try {
+      print('🔄 Iniciando carga de estadísticas del dashboard...');
+
       // Obtener datos del dashboard desde el servicio
       final dashboardData = await _reportesService.getDashboard();
 
+      print(
+        '📊 Datos del dashboard recibidos: ${dashboardData != null ? 'Sí' : 'No'}',
+      );
+
       if (dashboardData != null && mounted) {
+        print('✅ Actualizando datos del dashboard en el estado');
         // Limpiar objetivos temporales ya que tenemos datos frescos del backend
         if (_objetivosTemporales.isNotEmpty) {
           setState(() {
@@ -300,9 +310,11 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
           });
         }
       } else if (mounted) {
+        print('⚠️ Dashboard data es null o componente no está montado');
         // Mantener los datos existentes o usar null
       }
     } catch (e) {
+      print('❌ Error cargando estadísticas del dashboard: $e');
       // No propagamos el error para evitar que falle toda la UI
       if (mounted) {
         setState(() {
@@ -699,10 +711,20 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
       });
     }
 
-    // Si el usuario es mesero sin permisos de admin, redirigir a la pantalla de mesas
-    if (userProvider.isMesero && !userProvider.isAdmin) {
+    // Debug temporal - ver roles del usuario
+    print('🔍 Roles del usuario: ${userProvider.roles}');
+    print('🔍 isMesero: ${userProvider.isMesero}');
+    print('🔍 isAdmin: ${userProvider.isAdmin}');
+    print('🔍 isSuperAdmin: ${userProvider.isSuperAdmin}');
+    print('🔍 isOnlyMesero: ${userProvider.isOnlyMesero}');
+
+    // Los meseros pueden acceder al dashboard para ver mesas y su panel de pedidos
+    // (Redirección automática comentada para permitir acceso al dashboard)
+    /*
+    if (userProvider.isOnlyMesero) {
+      print('🎯 Redirigiendo a mesero screen...');
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        Navigator.pushReplacementNamed(context, '/mesas');
+        Navigator.pushReplacementNamed(context, '/mesero');
       });
       return Scaffold(
         backgroundColor: AppTheme.backgroundDark,
@@ -715,7 +737,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
               ),
               SizedBox(height: 16),
               Text(
-                'Redirigiendo a Mesas...',
+                'Redirigiendo al Panel de Mesero...',
                 style: TextStyle(color: Colors.white, fontSize: 16),
               ),
             ],
@@ -723,6 +745,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         ),
       );
     }
+    */
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundDark,
@@ -732,7 +755,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
             _buildTopBar(),
             _buildNavBar(),
             Expanded(
-              child: userProvider.isAdmin
+              child: userProvider.isAdmin || userProvider.isSuperAdmin
                   ? (_isLoading
                         ? Center(
                             child: CircularProgressIndicator(
@@ -852,7 +875,10 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                           SizedBox(height: 24),
                           ElevatedButton(
                             onPressed: () {
-                              Navigator.pushReplacementNamed(context, '/mesas');
+                              Navigator.pushReplacementNamed(
+                                context,
+                                '/mesero',
+                              );
                             },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppTheme.primary,
@@ -862,7 +888,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                               ),
                             ),
                             child: Text(
-                              'Ir a Mesas',
+                              'Ir al Panel de Mesero',
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 16,
@@ -992,6 +1018,15 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
       }),
     );
 
+    // Mis Pedidos - Solo para meseros
+    if (userProvider.isMesero) {
+      navItems.add(
+        _buildNavItem(Icons.receipt_long, 'Mis Pedidos', 99, () {
+          Navigator.pushNamed(context, '/mesero');
+        }),
+      );
+    }
+
     // 3. Pedidos - Disponible para todos los roles
     navItems.add(
       _buildNavItem(Icons.shopping_cart, 'Pedidos', 2, () {
@@ -1016,7 +1051,11 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
 
       // 5. Inventario (dropdown)
       navItems.add(
-        _buildDropdownNavItem(Icons.inventory_2_outlined, 'Inventario', 4, [
+        _buildDropdownNavItem(
+          Icons.inventory_2_outlined, 
+          'Inventario', 
+          4, 
+          [
           PopupMenuItem<String>(
             value: 'historial',
             onTap: () {
@@ -1118,7 +1157,15 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
               ],
             ),
           ),
-        ]),
+        ],
+        tooltip: "Menú de Inventario",
+        onCanceled: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => IngredientesScreen()),
+          );
+        },
+        ),
       );
 
       // 6. Facturas Compras
@@ -1131,19 +1178,108 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         }),
       );
 
-      // 7. Documentos
+      // 7. Gestión de Gastos (dropdown)
       navItems.add(
-        _buildNavItem(Icons.description, 'Documentos', 6, () {
+        _buildDropdownNavItem(
+          Icons.account_balance_wallet, 
+          'Gastos', 
+          6, 
+          [
+          PopupMenuItem<String>(
+            value: 'ingresos_caja',
+            onTap: () {
+              Future.delayed(Duration.zero, () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => IngresosCajaScreen(),
+                  ),
+                );
+              });
+            },
+            child: Row(
+              children: [
+                Icon(Icons.receipt_long, color: Colors.blue, size: 18),
+                SizedBox(width: 8),
+                Text(
+                  'Ingresos de Caja',
+                  style: TextStyle(color: AppTheme.textPrimary),
+                ),
+              ],
+            ),
+          ),
+          PopupMenuItem<String>(
+            value: 'tipos_gastos',
+            onTap: () {
+              Future.delayed(Duration.zero, () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => TiposGastoScreen(),
+                  ),
+                );
+              });
+            },
+            child: Row(
+              children: [
+                Icon(Icons.trending_up, color: Colors.orange, size: 18),
+                SizedBox(width: 8),
+                Text(
+                  'Tipos de Gastos',
+                  style: TextStyle(color: AppTheme.textPrimary),
+                ),
+              ],
+            ),
+          ),
+          PopupMenuItem<String>(
+            value: 'gestion_gastos',
+            onTap: () {
+              Future.delayed(Duration.zero, () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => GastosScreen(),
+                  ),
+                );
+              });
+            },
+            child: Row(
+              children: [
+                Icon(Icons.account_balance_wallet, color: Colors.green, size: 18),
+                SizedBox(width: 8),
+                Text(
+                  'Gestión de Gastos',
+                  style: TextStyle(color: AppTheme.textPrimary),
+                ),
+              ],
+            ),
+          ),
+        ],
+        tooltip: "Gestión de Gastos",
+        onCanceled: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => DocumentosMesaScreen()),
+            MaterialPageRoute(builder: (context) => CuadreCajaScreen()),
           );
-        }),
+        },
+        ),
       );
+
+      // 8. Documentos - Solo para administradores que NO sean únicamente meseros
+      if (!userProvider.isOnlyMesero) {
+        navItems.add(
+          _buildNavItem(Icons.description, 'Documentos', 7, () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => DocumentosMesaScreen()),
+            );
+          }),
+        );
+      }
 
       // 8. Caja
       navItems.add(
-        _buildNavItem(Icons.account_balance, 'Caja', 7, () {
+        _buildNavItem(Icons.account_balance, 'Caja', 8, () {
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => CuadreCajaScreen()),
@@ -1153,7 +1289,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
 
       // 9. Configuración
       navItems.add(
-        _buildNavItem(Icons.settings, 'Configuración', 8, () {
+        _buildNavItem(Icons.settings, 'Configuración', 9, () {
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => ConfiguracionScreen()),
@@ -1213,8 +1349,10 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
     IconData icon,
     String label,
     int index,
-    List<PopupMenuItem<String>> items,
-  ) {
+    List<PopupMenuItem<String>> items, {
+    String? tooltip,
+    VoidCallback? onCanceled,
+  }) {
     bool isSelected = _selectedIndex == index;
     return PopupMenuButton<String>(
       onSelected: (String value) {
@@ -1225,18 +1363,11 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
       },
       offset: Offset(0, 50),
       itemBuilder: (BuildContext context) => items,
-      tooltip: "Menú de Inventario",
+      tooltip: tooltip ?? "Menú de opciones",
       position: PopupMenuPosition.under,
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      // Direct access to main inventory screen via icon
-      onCanceled: () {
-        // Navigate to Ingredients screen if menu is opened and then canceled
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => IngredientesScreen()),
-        );
-      },
+      onCanceled: onCanceled,
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         margin: EdgeInsets.symmetric(horizontal: 4),
@@ -1277,6 +1408,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
       ),
     );
   }
+
 
   Widget _buildStatsCards(BuildContext context) {
     if (_dashboardData == null) {

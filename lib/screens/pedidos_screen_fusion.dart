@@ -694,7 +694,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
   Widget _buildPedidoCard(Pedido pedido) {
     return Card(
       color: cardBg,
-      margin: EdgeInsets.only(bottom: 8),
+      margin: EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(color: primary.withOpacity(0.2)),
@@ -704,6 +704,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Cabecera del pedido
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -761,14 +762,21 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                 ),
               ],
             ),
+
             SizedBox(height: 12),
+
+            // Información del mesero y hora
             Row(
               children: [
                 Icon(Icons.person, color: primary, size: 16),
                 SizedBox(width: 4),
                 Text(
-                  pedido.mesero,
-                  style: TextStyle(color: textLight, fontSize: 12),
+                  'Atendido por: ${pedido.mesero}',
+                  style: TextStyle(
+                    color: textLight,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
                 SizedBox(width: 16),
                 Icon(Icons.access_time, color: primary, size: 16),
@@ -779,6 +787,178 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                 ),
               ],
             ),
+
+            if (pedido.items.isNotEmpty) ...[
+              SizedBox(height: 16),
+
+              // Separador y título de productos
+              Container(
+                width: double.infinity,
+                height: 1,
+                color: primary.withOpacity(0.2),
+              ),
+              SizedBox(height: 12),
+
+              Row(
+                children: [
+                  Icon(Icons.restaurant_menu, color: primary, size: 18),
+                  SizedBox(width: 8),
+                  Text(
+                    'Productos (${pedido.items.length}):',
+                    style: TextStyle(
+                      color: textDark,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 8),
+
+              // Lista de productos
+              ...pedido.items
+                  .map(
+                    (item) => Container(
+                      margin: EdgeInsets.only(bottom: 8),
+                      padding: EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: bgDark.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: primary.withOpacity(0.1),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          // Icono del producto
+                          Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              color: primary.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Icon(
+                              Icons.restaurant,
+                              color: primary,
+                              size: 16,
+                            ),
+                          ),
+                          SizedBox(width: 12),
+
+                          // Información del producto
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  item.productoNombre ?? 'Producto',
+                                  style: TextStyle(
+                                    color: textDark,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                if (item.notas != null &&
+                                    item.notas!.isNotEmpty) ...[
+                                  SizedBox(height: 2),
+                                  Text(
+                                    'Notas: ${item.notas}',
+                                    style: TextStyle(
+                                      color: AppTheme.warning,
+                                      fontSize: 11,
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+
+                          // Cantidad y precio
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Container(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: primary.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  'x${item.cantidad}',
+                                  style: TextStyle(
+                                    color: primary,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              SizedBox(height: 2),
+                              Text(
+                                formatCurrency(item.subtotal),
+                                style: TextStyle(
+                                  color: textDark,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                  .toList(),
+            ],
+
+            // Notas del pedido (si las hay)
+            if (pedido.notas != null && pedido.notas!.isNotEmpty) ...[
+              SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppTheme.warning.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: AppTheme.warning.withOpacity(0.3),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.note, color: AppTheme.warning, size: 16),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Notas del pedido:',
+                            style: TextStyle(
+                              color: AppTheme.warning,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          SizedBox(height: 2),
+                          Text(
+                            pedido.notas!,
+                            style: TextStyle(color: textLight, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
       ),

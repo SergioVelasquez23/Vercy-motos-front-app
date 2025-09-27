@@ -11,17 +11,29 @@ class ReportesService {
   // Obtener dashboard
   Future<DashboardData?> getDashboard() async {
     try {
+      print('🌐 Haciendo petición a /api/reportes/dashboard...');
+
       final response = await _apiService.get<Map<String, dynamic>>(
-        '/reportes/dashboard',
+        '/api/reportes/dashboard',
         (json) => json,
       );
 
+      print('📡 Respuesta recibida - Success: ${response.isSuccess}');
+      print('📦 Data: ${response.data != null ? 'Presente' : 'Null'}');
+
       if (response.isSuccess && response.data != null) {
-        return DashboardData.fromJson(response.data!);
+        print('✅ Convirtiendo datos a DashboardData...');
+        final dashboardData = DashboardData.fromJson(response.data!);
+        print('📊 Dashboard creado exitosamente');
+        return dashboardData;
       } else {
+        print(
+          '⚠️ Respuesta no exitosa o data null - Error: ${response.errorMessage}',
+        );
         return null;
       }
     } catch (e) {
+      print('❌ Error en getDashboard(): $e');
       return null;
     }
   }

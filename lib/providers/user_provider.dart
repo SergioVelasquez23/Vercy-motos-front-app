@@ -29,6 +29,12 @@ class UserProvider extends ChangeNotifier {
   bool get isAdmin => _roles.contains('ADMIN') || _roles.contains('SUPERADMIN');
   bool get isMesero => _roles.contains('MESERO');
 
+  // Método para verificar si es únicamente mesero (sin otros roles administrativos)
+  bool get isOnlyMesero =>
+      _roles.contains('MESERO') &&
+      !_roles.contains('ADMIN') &&
+      !_roles.contains('SUPERADMIN');
+
   // Check if user has specific role
   bool hasRole(String role) {
     return _roles.contains(role);

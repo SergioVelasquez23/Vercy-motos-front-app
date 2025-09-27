@@ -81,6 +81,7 @@ class _UsersScreenState extends State<UsersScreen> {
 
   @override
   Widget build(BuildContext context) {
+    print('🏗️ CONSTRUYENDO USERS SCREEN - Usuarios: ${_users.length}');
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       body: Column(
@@ -112,7 +113,10 @@ class _UsersScreenState extends State<UsersScreen> {
                 ),
                 const SizedBox(width: 16),
                 ElevatedButton.icon(
-                  onPressed: () => _mostrarDialogoUsuario(),
+                  onPressed: () {
+                    print('🔥 BOTÓN NUEVO USUARIOS PRESIONADO!');
+                    _mostrarDialogoUsuario();
+                  },
                   icon: const Icon(Icons.add, color: Colors.white),
                   label: const Text(
                     'Nuevo',
