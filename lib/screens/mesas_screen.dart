@@ -12,15 +12,16 @@ import '../models/documento_mesa.dart';
 import '../services/pedido_service.dart';
 import '../services/mesa_service.dart';
 import '../services/documento_mesa_service.dart';
+import '../services/producto_cancelado_service.dart';
+import '../models/producto_cancelado.dart';
 import '../services/documento_automatico_service.dart';
 import '../services/impresion_service.dart';
 import '../services/notification_service.dart';
+import '../services/cuadre_caja_service.dart';
 import '../providers/user_provider.dart';
 import '../utils/format_utils.dart';
 import '../utils/impresion_mixin.dart';
-import '../widgets/pago_parcial_dialog.dart';
-import '../widgets/cancelar_producto_dialog.dart';
-import '../widgets/mover_productos_dialog.dart';
+import '../utils/datetime_utils.dart';
 import 'pedido_screen.dart';
 import 'documentos_mesa_screen.dart';
 import 'package:share_plus/share_plus.dart';
@@ -28,7 +29,8 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:cross_file/cross_file.dart';
 import 'package:flutter/foundation.dart';
-import '../services/pdf_service_factory.dart';
+import '../services/pdf_service_web.dart';
+import 'dart:html' as html;
 
 class MesasScreen extends StatefulWidget {
   const MesasScreen({super.key});
@@ -41,8 +43,32 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
   final MesaService _mesaService = MesaService();
   final PedidoService _pedidoService = PedidoService();
   final DocumentoMesaService _documentoMesaService = DocumentoMesaService();
+  final ProductoCanceladoService _productoCanceladoService =
+      ProductoCanceladoService();
   final DocumentoAutomaticoService _documentoAutomaticoService =
       DocumentoAutomaticoService();
+  final CuadreCajaService _cuadreCajaService = CuadreCajaService();
+
+  /// Convierte un string de motivo a enum MotivoCancelacion
+  MotivoCancelacion _obtenerMotivoCancelacion(String motivo) {
+    final motivoLower = motivo.toLowerCase();
+
+    if (motivoLower.contains('cliente') || motivoLower.contains('solicito')) {
+      return MotivoCancelacion.clienteSolicito;
+    } else if (motivoLower.contains('error') &&
+        motivoLower.contains('pedido')) {
+      return MotivoCancelacion.errorPedido;
+    } else if (motivoLower.contains('no disponible') ||
+        motivoLower.contains('agotado')) {
+      return MotivoCancelacion.noDisponible;
+    } else if (motivoLower.contains('mesa') || motivoLower.contains('mover')) {
+      return MotivoCancelacion.cambioMesa;
+    } else if (motivoLower.contains('sistema')) {
+      return MotivoCancelacion.errorSistema;
+    } else {
+      return MotivoCancelacion.otro;
+    }
+  }
 
   final ImpresionService _impresionService = ImpresionService();
   List<Mesa> mesas = [];
@@ -60,37 +86,13 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
   static const _cardElevated = Color(0xFF3A3A3A);
   static const _textPrimary = Color(0xFFFFFFFF);
   static const _textSecondary = Color(0xFFB0B0B0);
-  static const _textMuted = Color(0xFF808080);
+  static const _textMuted = Color(0xFFB0B0B0);
   static const _primary = Color(0xFFFF6B00);
-  static const _primaryLight = Color(0xFFFF8F3D);
-  static const _primaryDark = Color(0xFFE55A00);
   static const _success = Color(0xFF4CAF50);
-  static const _warning = Color(0xFFFF9800);
   static const _error = Color(0xFFF44336);
-  static const _accent = Color(0xFF03DAC6);
 
   // Banderas para evitar procesamiento múltiple
-  bool _procesandoPago = false;
-
-  // Control de zoom para móviles
-  double _zoomScale = 1.0;
-
-  /// Método para resetear manualmente el flag de procesamiento
-  /// Útil para casos donde el sistema se quede colgado
-  void _resetearFlagProcesamiento() {
-    if (mounted) {
-      setState(() {
-        _procesandoPago = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Flag de procesamiento reseteado'),
-          backgroundColor: Colors.orange,
-          duration: Duration(seconds: 2),
-        ),
-      );
-    }
-  }
+  // Flag de procesamiento removido por no ser utilizado
 
   // Método para enviar documento al servidor
   Future<void> _enviarDocumentoAlServidor(
@@ -298,7 +300,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
               content: Text(
                 '✅ Documento ${documento.numeroDocumento} creado exitosamente',
               ),
-              backgroundColor: Colors.green,
+              backgroundColor: _success,
               duration: Duration(seconds: 3),
             ),
           );
@@ -312,7 +314,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('❌ Error creando documento: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: _error,
             duration: Duration(seconds: 4),
           ),
         );
@@ -531,8 +533,8 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
             icon: Icon(Icons.picture_as_pdf),
             label: Text('PDF'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
+              backgroundColor: _error,
+              foregroundColor: _textPrimary,
             ),
           ),
           ElevatedButton.icon(
@@ -613,7 +615,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
 
       if (kIsWeb) {
         // Para web, generar PDF directamente
-        final pdfServiceWeb = PDFServiceFactory.create();
+        final pdfServiceWeb = PDFServiceWeb();
 
         if (mounted) {
           Navigator.pop(context); // Cerrar diálogo de carga
@@ -625,7 +627,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text('Generando PDF...'),
-                backgroundColor: Colors.green,
+                backgroundColor: _success,
               ),
             );
           }
@@ -634,7 +636,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text('Error generando PDF: $e'),
-                backgroundColor: Colors.red,
+                backgroundColor: _error,
               ),
             );
           }
@@ -694,7 +696,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error generando PDF: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: _error,
           ),
         );
       }
@@ -704,7 +706,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
   // Opciones específicas para web
   Future<void> _mostrarOpcionesWebPDF(
     Map<String, dynamic> resumen,
-    PDFServiceInterface pdfServiceWeb,
+    PDFServiceWeb pdfServiceWeb,
   ) async {
     return showDialog(
       context: context,
@@ -734,7 +736,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text('Ventana de impresión abierta'),
-                            backgroundColor: Colors.green,
+                            backgroundColor: _success,
                           ),
                         );
                       }
@@ -765,7 +767,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text('Archivo descargado'),
-                            backgroundColor: Colors.green,
+                            backgroundColor: _success,
                           ),
                         );
                       }
@@ -783,8 +785,8 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                   icon: Icon(Icons.download),
                   label: Text('Descargar'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
-                    foregroundColor: Colors.white,
+                    backgroundColor: Color(0xFF2196F3),
+                    foregroundColor: _textPrimary,
                   ),
                 ),
                 ElevatedButton.icon(
@@ -796,7 +798,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text('Contenido copiado al portapapeles'),
-                            backgroundColor: Colors.green,
+                            backgroundColor: _success,
                           ),
                         );
                       }
@@ -814,8 +816,8 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                   icon: Icon(Icons.share),
                   label: Text('Compartir'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    foregroundColor: Colors.white,
+                    backgroundColor: _success,
+                    foregroundColor: _textPrimary,
                   ),
                 ),
               ],
@@ -844,7 +846,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
         backgroundColor: _cardBg,
         title: Row(
           children: [
-            Icon(Icons.account_balance_wallet, color: Colors.orange),
+            Icon(Icons.account_balance_wallet, color: _primary),
             SizedBox(width: 8),
             Text('Registrar Deuda', style: TextStyle(color: _textPrimary)),
           ],
@@ -900,8 +902,8 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
               });
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.orange,
-              foregroundColor: Colors.white,
+              backgroundColor: _primary,
+              foregroundColor: _textPrimary,
             ),
             child: Text('Registrar Deuda'),
           ),
@@ -1018,7 +1020,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
           backgroundColor: Colors.transparent,
           child: Container(
             width: double.maxFinite,
-            constraints: BoxConstraints(maxWidth: 500),
+            constraints: BoxConstraints(maxWidth: 400),
             decoration: BoxDecoration(
               color: _cardElevated,
               borderRadius: BorderRadius.circular(20),
@@ -1077,7 +1079,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                 ),
                 // Contenido
                 Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+                  padding: EdgeInsets.all(24),
                   child: Column(
                     children: [
                       // Dropdown de método de pago
@@ -1339,8 +1341,6 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
   @override
   void initState() {
     super.initState();
-    // Asegurar que el flag de procesamiento empiece limpio
-    _procesandoPago = false;
     _loadMesas();
     _configurarWebSockets();
     _iniciarSincronizacion();
@@ -1374,22 +1374,28 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
 
   Future<void> _loadMesas() async {
     try {
+      print('🔄 Cargando mesas...');
+
       setState(() {
         isLoading = true;
         errorMessage = null;
       });
 
-      // Cargar las mesas
       final loadedMesas = await _mesaService.getMesas();
+      print(
+        '✅ ${loadedMesas.length} mesas obtenidas (${loadedMesas.where((m) => m.ocupada).length} ocupadas)',
+      );
 
-      // Sincronizar estado de mesas con pedidos activos
       await _sincronizarEstadoMesas(loadedMesas);
 
       setState(() {
         mesas = loadedMesas;
         isLoading = false;
       });
+
+      print('✅ Carga de mesas completada');
     } catch (error) {
+      print('❌ Error al cargar mesas: $error');
       setState(() {
         errorMessage = 'Error al cargar mesas: $error';
         isLoading = false;
@@ -1398,37 +1404,94 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
   }
 
   Future<void> _sincronizarEstadoMesas(List<Mesa> mesas) async {
-    for (Mesa mesa in mesas) {
+    print('🔄 Sincronizando ${mesas.length} mesas...');
+
+    // Sincronizar mesas que están ocupadas, tienen total > 0, o todas si hay menos de 100 mesas
+    final mesasASincronizar = mesas.length <= 100
+        ? mesas // Si hay pocas mesas, verificar todas para evitar inconsistencias
+        : mesas.where((mesa) => mesa.ocupada || mesa.total > 0).toList();
+
+    print(
+      '📊 Verificando ${mesasASincronizar.length} mesas con posibles cambios...',
+    );
+
+    // Procesar mesas en paralelo para mejorar velocidad
+    final futures = mesasASincronizar.map((mesa) async {
       try {
-        // Solo verificar mesas que aparecen como ocupadas
-        if (mesa.ocupada || mesa.total > 0) {
-          final pedidos = await _pedidoService.getPedidosByMesa(mesa.nombre);
-          final hayPedidoActivo = pedidos.any(
-            (pedido) => pedido.estado == EstadoPedido.activo,
+        final pedidos = await _pedidoService.getPedidosByMesa(mesa.nombre);
+        final pedidosActivos = pedidos
+            .where((p) => p.estado == EstadoPedido.activo)
+            .toList();
+        final hayPedidoActivo = pedidosActivos.isNotEmpty;
+        bool mesaCambio = false;
+
+        if (hayPedidoActivo) {
+          // Calcular total más preciso desde los items de cada pedido
+          double totalMesa = 0.0;
+          print(
+            '🔍 Mesa ${mesa.nombre} - Pedidos activos encontrados: ${pedidosActivos.length}',
           );
 
-          if (!hayPedidoActivo) {
-            print(
-              '⚠️ Mesa ${mesa.nombre}: Sin pedidos activos, liberando mesa...',
-            );
-
-            // Si no hay pedidos activos pero la mesa aparece ocupada, liberarla
-            if (mesa.ocupada || mesa.total > 0) {
-              mesa.ocupada = false;
-              mesa.productos = [];
-              mesa.total = 0.0;
-
-              try {
-                await _mesaService.updateMesa(mesa);
-              } catch (e) {
-                print('❌ Error al liberar mesa ${mesa.nombre}: $e');
-              }
+          for (var pedido in pedidosActivos) {
+            double totalPedido = 0.0;
+            for (var item in pedido.items) {
+              double subtotalItem = item.cantidad * item.precioUnitario;
+              totalPedido += subtotalItem;
+              totalMesa += subtotalItem;
             }
+            print(
+              '   📦 Pedido ${pedido.id}: ${pedido.items.length} items, total: \$${totalPedido}',
+            );
+          }
+
+          print('   💰 Total calculado mesa ${mesa.nombre}: \$${totalMesa}');
+
+          // Forzar actualización si hay diferencia en totales (corrige inconsistencias)
+          if (!mesa.ocupada || mesa.total != totalMesa) {
+            print(
+              '🔄 Mesa ${mesa.nombre}: ocupada=true, total=\$${totalMesa} (anterior: \$${mesa.total})',
+            );
+            mesa.ocupada = true;
+            mesa.total = totalMesa;
+            mesaCambio = true;
+            await _mesaService.updateMesa(mesa);
+          } else if (mesa.total != totalMesa) {
+            // Caso especial: forzar corrección de totales inconsistentes
+            print(
+              '⚠️ Corrigiendo total inconsistente Mesa ${mesa.nombre}: \$${mesa.total} → \$${totalMesa}',
+            );
+            mesa.total = totalMesa;
+            mesaCambio = true;
+            await _mesaService.updateMesa(mesa);
+          }
+        } else {
+          if (mesa.ocupada || mesa.total > 0) {
+            print(
+              '⚠️ Mesa ${mesa.nombre}: Liberando mesa sin pedidos activos (total anterior: \$${mesa.total})',
+            );
+            mesa.ocupada = false;
+            mesa.productos = [];
+            mesa.total = 0.0;
+            mesaCambio = true;
+            await _mesaService.updateMesa(mesa);
           }
         }
+
+        return mesaCambio; // Retornar si hubo cambios
       } catch (e) {
         print('❌ Error verificando mesa ${mesa.nombre}: $e');
+        return false;
       }
+    });
+
+    // Esperar a que todas las mesas se procesen en paralelo
+    final resultados = await Future.wait(futures);
+    final mesasConCambios = resultados.where((cambio) => cambio).length;
+
+    if (mesasConCambios > 0) {
+      print('✅ Sincronización completada: $mesasConCambios mesas actualizadas');
+    } else {
+      print('ℹ️ No hubo cambios en las mesas');
     }
   }
 
@@ -1710,7 +1773,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                           Navigator.pop(context);
                           final pedido = await _obtenerPedidoActivoDeMesa(mesa);
                           if (pedido != null) {
-                            _mostrarDialogoPagoParcial(mesa, pedido);
+                            _mostrarDialogoPago(mesa, pedido);
                           } else {
                             if (mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -1734,7 +1797,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                           Navigator.pop(context);
                           final pedido = await _obtenerPedidoActivoDeMesa(mesa);
                           if (pedido != null) {
-                            _mostrarDialogoCancelarProductos(mesa, pedido);
+                            _mostrarDialogoPago(mesa, pedido);
                           } else {
                             if (mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -1758,7 +1821,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                           Navigator.pop(context);
                           final pedido = await _obtenerPedidoActivoDeMesa(mesa);
                           if (pedido != null) {
-                            _mostrarDialogoMoverProductos(mesa, pedido);
+                            _mostrarDialogoPago(mesa, pedido);
                           } else {
                             if (mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -1907,7 +1970,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
             content: Text(
               '$mesasLimpiadas mesas han sido restauradas correctamente',
             ),
-            backgroundColor: Colors.green,
+            backgroundColor: _success,
           ),
         );
       } catch (e) {
@@ -1965,7 +2028,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Mesa ${mesa.nombre} vaciada correctamente'),
-              backgroundColor: Colors.green,
+              backgroundColor: _success,
             ),
           );
         }
@@ -1974,7 +2037,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Error al vaciar mesa: $e'),
-              backgroundColor: Colors.red,
+              backgroundColor: _error,
             ),
           );
           setState(() {
@@ -1999,7 +2062,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Mesa ${mesa.nombre} actualizada'),
-            backgroundColor: Colors.green,
+            backgroundColor: _success,
           ),
         );
       }
@@ -2008,7 +2071,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error al sincronizar mesa: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: _error,
           ),
         );
         setState(() {
@@ -2055,15 +2118,15 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
             ),
             child: Padding(
               padding: EdgeInsets.all(
-                constraints.maxWidth * 0.12,
-              ), // Padding responsivo aumentado
+                constraints.maxWidth * 0.08,
+              ), // Padding responsivo
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   // Indicador de estado superior
                   Container(
                     width: double.infinity,
-                    height: 2,
+                    height: 3,
                     decoration: BoxDecoration(
                       color: statusColor,
                       borderRadius: BorderRadius.circular(
@@ -2071,88 +2134,101 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                       ),
                     ),
                   ),
-                  SizedBox(height: 6),
                   // Icono de mesa
-                  Container(
-                    padding: EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primary.withOpacity(0.15),
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: AppTheme.primary.withOpacity(0.3),
-                        width: 1,
+                  Flexible(
+                    child: Container(
+                      padding: EdgeInsets.all(constraints.maxWidth * 0.08),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primary.withOpacity(0.15),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: AppTheme.primary.withOpacity(0.3),
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Icon(
+                        Icons.table_restaurant,
+                        color: AppTheme.primary,
+                        size: constraints.maxWidth * 0.2, // Tamaño responsivo
                       ),
                     ),
-                    child: Icon(
-                      Icons.table_restaurant,
-                      color: AppTheme.primary,
-                      size: 20,
-                    ),
                   ),
-                  SizedBox(height: 6),
                   // Nombre de la mesa
-                  Container(
-                    width: double.infinity,
-                    padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: AppTheme.surfaceDark.withOpacity(0.3),
-                      borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-                    ),
-                    child: Text(
-                      mesa.nombre,
-                      style: AppTheme.bodyMedium.copyWith(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 16,
+                  Flexible(
+                    child: Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: AppTheme.spacingSmall,
+                        vertical: AppTheme.spacingXSmall,
                       ),
-                      textAlign: TextAlign.center,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                      decoration: BoxDecoration(
+                        color: AppTheme.surfaceDark.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(
+                          AppTheme.radiusSmall,
+                        ),
+                      ),
+                      child: Text(
+                        mesa.nombre,
+                        style: AppTheme.bodyMedium.copyWith(
+                          fontWeight: FontWeight.w700,
+                          fontSize: constraints.maxWidth * 0.13, // Responsivo
+                        ),
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   ),
-                  SizedBox(height: 6),
                   // Estado
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
-                      border: Border.all(
-                        color: statusColor.withOpacity(0.4),
-                        width: 1,
+                  Flexible(
+                    child: Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: AppTheme.spacingXSmall,
+                        vertical: 2,
                       ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 4,
-                          height: 4,
-                          decoration: BoxDecoration(
-                            color: statusColor,
-                            shape: BoxShape.circle,
-                          ),
+                      decoration: BoxDecoration(
+                        color: statusColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(
+                          AppTheme.radiusLarge,
                         ),
-                        SizedBox(width: 4),
-                        Text(
-                          isOcupada ? 'Ocupada' : 'Disponible',
-                          style: AppTheme.labelMedium.copyWith(
-                            color: statusColor,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 10,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                        border: Border.all(
+                          color: statusColor.withOpacity(0.4),
+                          width: 1,
                         ),
-                      ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 4,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: statusColor,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          SizedBox(width: AppTheme.spacingXSmall),
+                          Flexible(
+                            child: Text(
+                              isOcupada ? 'Ocupada' : 'Disponible',
+                              style: AppTheme.labelMedium.copyWith(
+                                color: statusColor,
+                                fontWeight: FontWeight.w600,
+                                fontSize: constraints.maxWidth * 0.09,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                   // Total si existe
-                  if (mesa.total > 0) ...[
-                    SizedBox(height: 8),
-                    canProcessPayment
-                        ? Material(
-                            color: Colors.transparent,
-                            child: InkWell(
+                  if (mesa.total > 0)
+                    Flexible(
+                      child: canProcessPayment
+                          ? GestureDetector(
                               onTap: () async {
                                 final pedido = await _obtenerPedidoActivoDeMesa(
                                   mesa,
@@ -2170,14 +2246,10 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                   );
                                 }
                               },
-                              borderRadius: BorderRadius.circular(
-                                AppTheme.radiusSmall,
-                              ),
                               child: Container(
-                                width: double.infinity,
                                 padding: EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 8,
+                                  horizontal: AppTheme.spacingSmall,
+                                  vertical: AppTheme.spacingXSmall,
                                 ),
                                 decoration: BoxDecoration(
                                   gradient: AppTheme.primaryGradient,
@@ -2190,59 +2262,57 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                   ),
                                 ),
                                 child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  mainAxisSize: MainAxisSize.max,
+                                  mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Icon(
                                       Icons.payment,
-                                      size: 16,
+                                      size: constraints.maxWidth * 0.08,
                                       color: Colors.white,
                                     ),
-                                    SizedBox(width: 4),
-                                    Text(
-                                      formatCurrency(mesa.total),
-                                      style: AppTheme.labelMedium.copyWith(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 13,
+                                    SizedBox(width: 2),
+                                    Flexible(
+                                      child: Text(
+                                        formatCurrency(mesa.total),
+                                        style: AppTheme.labelMedium.copyWith(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: constraints.maxWidth * 0.08,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ],
                                 ),
                               ),
-                            ),
-                          )
-                        : Container(
-                            width: double.infinity,
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppTheme.primary.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(
-                                AppTheme.radiusSmall,
+                            )
+                          : Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: AppTheme.spacingSmall,
+                                vertical: AppTheme.spacingXSmall,
                               ),
-                              border: Border.all(
-                                color: AppTheme.primary.withOpacity(0.3),
-                                width: 1,
+                              decoration: BoxDecoration(
+                                color: AppTheme.primary.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(
+                                  AppTheme.radiusSmall,
+                                ),
+                                border: Border.all(
+                                  color: AppTheme.primary.withOpacity(0.3),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Text(
+                                formatCurrency(mesa.total),
+                                style: AppTheme.labelMedium.copyWith(
+                                  color: AppTheme.primary,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: constraints.maxWidth * 0.09,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                            child: Text(
-                              formatCurrency(mesa.total),
-                              style: AppTheme.labelMedium.copyWith(
-                                color: AppTheme.primary,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
-                              ),
-                              textAlign: TextAlign.center,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                  ],
+                    ),
                 ],
               ),
             ),
@@ -2260,16 +2330,15 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
     TextEditingController descuentoValorController = TextEditingController();
     TextEditingController propinaController = TextEditingController();
 
-    // Reseteamos la bandera de procesamiento al comenzar
-    setState(() {
-      _procesandoPago = false;
-    });
+    // Bandera de procesamiento removida por no ser utilizada
 
     // NUEVAS VARIABLES PARA LAS OPCIONES MOVIDAS
     bool esCortesia0 = false;
     bool esConsumoInterno0 = false;
+    String? mesaDestinoId0;
 
-    // Funcionalidad de selección individual eliminada para simplificar la interfaz
+    // VARIABLE PARA PRODUCTOS SELECCIONADOS
+    List<ItemPedido> productosSeleccionados = [];
 
     // NUEVAS VARIABLES PARA SELECTOR DE BILLETES Y CAMBIO
     double billetesSeleccionados = 0.0;
@@ -2388,6 +2457,19 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
 
     // Cerrar el diálogo de carga
     Navigator.of(context).pop();
+
+    // Función helper para calcular el total de productos seleccionados
+    double calcularTotalSeleccionados() {
+      if (productosSeleccionados.isEmpty) {
+        return pedido
+            .total; // Si no hay productos seleccionados, usar total completo
+      }
+      return productosSeleccionados.fold<double>(
+        0,
+        (sum, item) => sum + (item.cantidad * item.precioUnitario),
+      );
+    }
+
     final formResult = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (context) => StatefulBuilder(
@@ -2458,8 +2540,38 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                     ),
                   ),
                   SizedBox(height: 32), // Más espacio
-                  // Sección: Productos del Pedido - Versión Simplificada
-                  _buildSeccionTitulo('Productos del Pedido'),
+                  // Sección: Productos con selección
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _buildSeccionTitulo('Productos del Pedido'),
+                      Row(
+                        children: [
+                          TextButton(
+                            onPressed: () {
+                              setState(() {
+                                if (productosSeleccionados.length ==
+                                    pedido.items.length) {
+                                  productosSeleccionados.clear();
+                                } else {
+                                  productosSeleccionados = List.from(
+                                    pedido.items,
+                                  );
+                                }
+                              });
+                            },
+                            child: Text(
+                              productosSeleccionados.length ==
+                                      pedido.items.length
+                                  ? 'Deseleccionar todo'
+                                  : 'Seleccionar todo',
+                              style: TextStyle(color: _primary),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                   SizedBox(height: 16),
                   Container(
                     padding: EdgeInsets.all(20), // Más padding
@@ -2477,12 +2589,38 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                               ), // Más padding vertical
                               child: Container(
                                 decoration: BoxDecoration(
-                                  color: Colors.transparent,
+                                  color: productosSeleccionados.contains(item)
+                                      ? _primary.withOpacity(0.1)
+                                      : Colors.transparent,
                                   borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: productosSeleccionados.contains(item)
+                                        ? _primary
+                                        : Colors.transparent,
+                                    width: 1,
+                                  ),
                                 ),
                                 padding: EdgeInsets.all(12),
                                 child: Row(
                                   children: [
+                                    // Checkbox para seleccionar producto
+                                    Checkbox(
+                                      value: productosSeleccionados.contains(
+                                        item,
+                                      ),
+                                      onChanged: (bool? value) {
+                                        setState(() {
+                                          if (value == true) {
+                                            productosSeleccionados.add(item);
+                                          } else {
+                                            productosSeleccionados.remove(item);
+                                          }
+                                        });
+                                      },
+                                      activeColor: _primary,
+                                    ),
+                                    SizedBox(width: 12),
+
                                     // Información del producto
                                     Expanded(
                                       child: Column(
@@ -2516,7 +2654,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
 
                                     // Precio
                                     Text(
-                                      '\$${(item.precioUnitario * item.cantidad).toStringAsFixed(0)}',
+                                      '\$${((item.precio) * item.cantidad).toStringAsFixed(0)}',
                                       style: TextStyle(
                                         color: _primary,
                                         fontWeight: FontWeight.bold,
@@ -2531,6 +2669,265 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                           .toList(),
                     ),
                   ),
+
+                  // Acciones rápidas para productos seleccionados
+                  if (productosSeleccionados.isNotEmpty) ...[
+                    SizedBox(height: 16),
+                    Container(
+                      padding: EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: _primary.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: _primary.withOpacity(0.3)),
+                      ),
+                      child: Column(
+                        children: [
+                          Text(
+                            '${productosSeleccionados.length} producto${productosSeleccionados.length > 1 ? 's' : ''} seleccionado${productosSeleccionados.length > 1 ? 's' : ''}',
+                            style: TextStyle(
+                              color: _textPrimary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: () async {
+                                    // Cancelar productos seleccionados
+                                    final motivo = await showDialog<String>(
+                                      context: context,
+                                      builder: (context) => AlertDialog(
+                                        backgroundColor: _cardBg,
+                                        title: Text(
+                                          'Cancelar Productos',
+                                          style: TextStyle(color: _textPrimary),
+                                        ),
+                                        content: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              '¿Está seguro de cancelar ${productosSeleccionados.length} producto${productosSeleccionados.length > 1 ? 's' : ''}?',
+                                              style: TextStyle(
+                                                color: _textPrimary,
+                                              ),
+                                            ),
+                                            SizedBox(height: 16),
+                                            TextField(
+                                              decoration: InputDecoration(
+                                                labelText: 'Motivo (opcional)',
+                                                labelStyle: TextStyle(
+                                                  color: _textPrimary,
+                                                ),
+                                                enabledBorder:
+                                                    OutlineInputBorder(
+                                                      borderSide: BorderSide(
+                                                        color: _textMuted,
+                                                      ),
+                                                    ),
+                                                focusedBorder:
+                                                    OutlineInputBorder(
+                                                      borderSide: BorderSide(
+                                                        color: _primary,
+                                                      ),
+                                                    ),
+                                              ),
+                                              style: TextStyle(
+                                                color: _textPrimary,
+                                              ),
+                                              onChanged: (value) {},
+                                            ),
+                                          ],
+                                        ),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () =>
+                                                Navigator.pop(context),
+                                            child: Text('Cancelar'),
+                                          ),
+                                          ElevatedButton(
+                                            onPressed: () => Navigator.pop(
+                                              context,
+                                              'Cancelado por usuario',
+                                            ),
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Colors.red,
+                                            ),
+                                            child: Text(
+                                              'Confirmar',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+
+                                    if (motivo != null) {
+                                      print(
+                                        '🗑️ Iniciando cancelación de ${productosSeleccionados.length} productos',
+                                      );
+
+                                      // Cerrar diálogo principal primero
+                                      Navigator.pop(context);
+
+                                      // Procesar cancelación de productos DESPUÉS
+                                      await _procesarCancelacionProductos(
+                                        mesa,
+                                        pedido,
+                                        productosSeleccionados,
+                                        motivo,
+                                      );
+                                    }
+                                  },
+                                  icon: Icon(
+                                    Icons.remove_circle_outline,
+                                    size: 16,
+                                  ),
+                                  label: Text('Cancelar'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: _primary,
+                                    foregroundColor: _textPrimary,
+                                    padding: EdgeInsets.symmetric(vertical: 8),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(width: 8),
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: () async {
+                                    print(
+                                      '🔄 USUARIO PRESIONÓ BOTÓN MOVER PRODUCTOS',
+                                    );
+                                    print('📊 ESTADO ACTUAL:');
+                                    print(
+                                      '   • Mesa origen: ${mesa.nombre} (ID: ${mesa.id})',
+                                    );
+                                    print('   • Pedido: ${pedido.id}');
+                                    print(
+                                      '   • Productos seleccionados: ${productosSeleccionados.length}',
+                                    );
+                                    print(
+                                      '   • Total de mesas disponibles: ${mesas.where((m) => m.id != mesa.id).length}',
+                                    );
+
+                                    // Mostrar diálogo para seleccionar mesa destino
+                                    print(
+                                      '📋 MOSTRANDO DIÁLOGO DE SELECCIÓN DE MESA...',
+                                    );
+                                    final mesaDestino = await showDialog<Mesa>(
+                                      context: context,
+                                      builder: (context) => AlertDialog(
+                                        backgroundColor: _cardBg,
+                                        title: Text(
+                                          'Mover Productos',
+                                          style: TextStyle(color: _textPrimary),
+                                        ),
+                                        content: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              'Seleccione la mesa destino para ${productosSeleccionados.length} producto${productosSeleccionados.length > 1 ? 's' : ''}:',
+                                              style: TextStyle(
+                                                color: _textPrimary,
+                                              ),
+                                            ),
+                                            SizedBox(height: 16),
+                                            Container(
+                                              height: 200,
+                                              width: double.maxFinite,
+                                              child: ListView.builder(
+                                                itemCount: mesas
+                                                    .where(
+                                                      (m) => m.id != mesa.id,
+                                                    )
+                                                    .length,
+                                                itemBuilder: (context, index) {
+                                                  final mesaOption = mesas
+                                                      .where(
+                                                        (m) => m.id != mesa.id,
+                                                      )
+                                                      .toList()[index];
+                                                  return ListTile(
+                                                    leading: Icon(
+                                                      Icons.table_restaurant,
+                                                      color: _primary,
+                                                    ),
+                                                    title: Text(
+                                                      mesaOption.nombre,
+                                                      style: TextStyle(
+                                                        color: _textPrimary,
+                                                      ),
+                                                    ),
+                                                    subtitle: Text(
+                                                      'Mesa disponible',
+                                                      style: TextStyle(
+                                                        color: _textSecondary,
+                                                      ),
+                                                    ),
+                                                    onTap: () => Navigator.pop(
+                                                      context,
+                                                      mesaOption,
+                                                    ),
+                                                  );
+                                                },
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () =>
+                                                Navigator.pop(context),
+                                            child: Text('Cancelar'),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+
+                                    if (mesaDestino != null) {
+                                      print(
+                                        '🎯 USUARIO SELECCIONÓ MESA DESTINO: ${mesaDestino.nombre}',
+                                      );
+                                      print(
+                                        '📦 PRODUCTOS SELECCIONADOS PARA MOVER: ${productosSeleccionados.length}',
+                                      );
+
+                                      // Cerrar diálogo principal primero
+                                      Navigator.pop(context);
+
+                                      // Procesar el movimiento de productos DESPUÉS
+                                      await _procesarMovimientoProductos(
+                                        mesa,
+                                        pedido,
+                                        productosSeleccionados,
+                                        mesaDestino,
+                                      );
+                                    }
+                                  },
+                                  icon: Icon(Icons.swap_horiz, size: 16),
+                                  label: Text('Mover'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Color(0xFF9C27B0),
+                                    foregroundColor: _textPrimary,
+                                    padding: EdgeInsets.symmetric(vertical: 8),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   SizedBox(height: 32),
 
                   // Sección: Forma de pago
@@ -2731,7 +3128,8 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                       contadorBilletes.updateAll(
                                         (key, value) => 0,
                                       );
-                                      double subtotal = pedido.total;
+                                      double subtotal =
+                                          calcularTotalSeleccionados();
                                       double propinaPercent =
                                           double.tryParse(
                                             propinaController.text,
@@ -2837,7 +3235,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                         // Resumen de totales
                         Builder(
                           builder: (context) {
-                            double subtotal = pedido.total;
+                            double subtotal = calcularTotalSeleccionados();
                             double propinaPercent =
                                 double.tryParse(propinaController.text) ?? 0.0;
                             double propinaMonto =
@@ -3128,6 +3526,80 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                           ),
                         ),
                         SizedBox(height: 16),
+
+                        // Opción Mover a otra mesa
+                        InkWell(
+                          onTap: () async {
+                            final mesaSeleccionada =
+                                await _mostrarDialogoSeleccionMesa();
+                            if (mesaSeleccionada != null) {
+                              try {
+                                // Mover el pedido a otra mesa
+                                // await _mesaService.moverPedido(mesa, mesaSeleccionada);
+                                print(
+                                  'Moviendo pedido de ${mesa.nombre} a ${mesaSeleccionada.nombre}',
+                                );
+                                // Recarga las mesas y cierra el diálogo
+                                await _loadMesas();
+                                Navigator.pop(context);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      'Pedido movido a la mesa ${mesaSeleccionada.nombre}',
+                                    ),
+                                    backgroundColor: Colors.green,
+                                  ),
+                                );
+                              } catch (e) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      'Error al mover el pedido: $e',
+                                    ),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              }
+                            }
+                          },
+                          child: Container(
+                            padding: EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.transparent,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: _textPrimary.withOpacity(0.2),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.swap_horiz,
+                                  color: _textSecondary,
+                                  size: 24,
+                                ),
+                                SizedBox(width: 16),
+                                Expanded(
+                                  child: Text(
+                                    'Mover a otra mesa',
+                                    style: TextStyle(
+                                      color: _textPrimary,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+
+                                SizedBox(width: 12),
+                                Icon(
+                                  Icons.chevron_right,
+                                  color: _textSecondary,
+                                  size: 20,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -3192,7 +3664,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
                                   content: Text('Error: $e'),
-                                  backgroundColor: Colors.red,
+                                  backgroundColor: _error,
                                 ),
                               );
                             }
@@ -3200,8 +3672,8 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                           icon: Icon(Icons.share, size: 20),
                           label: Text('Compartir Resumen'),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue.shade600,
-                            foregroundColor: Colors.white,
+                            backgroundColor: Color(0xFF1976D2),
+                            foregroundColor: _textPrimary,
                             padding: EdgeInsets.symmetric(vertical: 16),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(15),
@@ -3239,11 +3711,39 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                       Expanded(
                         flex: 2,
                         child: ElevatedButton.icon(
-                          onPressed: () {
-                            // Devolver resultado después de un pequeño delay
-                            Future.delayed(Duration(milliseconds: 300), () {
-                              if (mounted) {
-                                Navigator.pop(context, {
+                          onPressed: () async {
+                            // Si no hay productos seleccionados, pagar todo el pedido
+                            if (productosSeleccionados.isEmpty) {
+                              // Pago total del pedido
+                              Navigator.pop(context, {
+                                'medioPago': medioPago0,
+                                'incluyePropina': incluyePropina,
+                                'descuentoPorcentaje':
+                                    descuentoPorcentajeController.text,
+                                'descuentoValor': descuentoValorController.text,
+                                'propina': propinaController.text,
+                                'esCortesia': esCortesia0,
+                                'esConsumoInterno': esConsumoInterno0,
+                                'mesaDestinoId': mesaDestinoId0,
+                                'billetesRecibidos': billetesSeleccionados,
+                                'productosSeleccionados':
+                                    [], // Lista vacía = pagar todo
+                              });
+                            } else {
+                              // Pago parcial - solo productos seleccionados
+                              print(
+                                '🔄 Iniciando pago parcial con ${productosSeleccionados.length} productos',
+                              );
+
+                              // Cerrar diálogo primero para evitar bloqueo
+                              Navigator.pop(context);
+
+                              // Procesar pago parcial DESPUÉS de cerrar diálogo
+                              await _procesarPagoParcial(
+                                mesa,
+                                pedido,
+                                productosSeleccionados,
+                                {
                                   'medioPago': medioPago0,
                                   'incluyePropina': incluyePropina,
                                   'descuentoPorcentaje':
@@ -3253,11 +3753,11 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                   'propina': propinaController.text,
                                   'esCortesia': esCortesia0,
                                   'esConsumoInterno': esConsumoInterno0,
-
+                                  'mesaDestinoId': mesaDestinoId0,
                                   'billetesRecibidos': billetesSeleccionados,
-                                });
-                              }
-                            });
+                                },
+                              );
+                            }
                           },
                           icon: Icon(Icons.payment, size: 20),
                           label: Text('Confirmar Pago'),
@@ -3519,40 +4019,87 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
   }
 
   /// Actualiza el documento tras mover un pedido entre mesas
-
-  /// Muestra el diálogo de pago parcial para seleccionar productos específicos
-  void _mostrarDialogoPagoParcial(Mesa mesa, Pedido pedido) async {
+  Future<void> _actualizarDocumentoTrasMovimiento(
+    Pedido pedido,
+    String mesaOrigen,
+    String mesaDestino,
+    String formaPago,
+    double propina,
+    String pagadoPor,
+  ) async {
     try {
-      // Cargar información completa de productos si es necesario
-      await PedidoService().cargarProductosParaPedido(pedido);
+      // Verificar si ya existe un documento para este pedido
+      final documentosOrigen = await _documentoMesaService.getDocumentosPorMesa(
+        mesaOrigen,
+      );
+      final documentoExistente = documentosOrigen
+          .where((doc) => doc.pedidosIds.contains(pedido.id))
+          .firstOrNull;
 
-      final resultado = await showDialog<bool>(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => PagoParcialDialog(
-          pedido: pedido,
-          onPagoConfirmado: (itemsSeleccionados, datosPago) async {
-            await _procesarPagoParcial(
-              mesa,
-              pedido,
-              itemsSeleccionados,
-              datosPago,
-            );
-          },
-        ),
+      if (documentoExistente != null) {
+        print(
+          '⚠️ Ya existe un documento para este pedido en mesa origen: ${documentoExistente.numeroDocumento}',
+        );
+        print(
+          '  - El documento queda asociado a la mesa original para mantenimiento de registros',
+        );
+
+        // Opcional: Crear un nuevo documento en la mesa destino que referencie el movimiento
+        await _crearDocumentoMovimiento(
+          pedido,
+          mesaDestino,
+          documentoExistente,
+          pagadoPor,
+        );
+      } else {
+        // No existe documento previo, crear uno nuevo en la mesa destino
+        print('🆕 Creando nuevo documento en mesa destino...');
+        await _crearFacturaPedidoEnMesa(
+          pedido.id,
+          mesaDestino,
+          formaPago: formaPago,
+          propina: propina,
+          pagadoPor: pagadoPor,
+        );
+      }
+
+      print('✅ Documentos actualizados correctamente tras movimiento');
+    } catch (e) {
+      print('❌ Error actualizando documento tras movimiento: $e');
+      // No lanzar excepción para no interrumpir el flujo principal
+    }
+  }
+
+  /// Crea un documento de referencia para un pedido movido
+  Future<void> _crearDocumentoMovimiento(
+    Pedido pedido,
+    String mesaDestino,
+    DocumentoMesa documentoOriginal,
+    String pagadoPor,
+  ) async {
+    try {
+      print('🔄 Creando documento de referencia para movimiento...');
+
+      // Crear un documento que indique el movimiento
+      final documentoMovimiento = await _documentoMesaService.crearDocumento(
+        mesaNombre: mesaDestino,
+        vendedor: pagadoPor,
+        pedidosIds: [pedido.id],
+        formaPago: documentoOriginal.formaPago ?? 'efectivo',
+        pagadoPor: pagadoPor,
+        propina: documentoOriginal.propina ?? 0.0,
+        pagado: true,
+        estado: 'Movido de ${documentoOriginal.mesaNombre}',
+        fechaPago: DateTime.now(),
       );
 
-      if (resultado == true) {
-        // Recargar datos después del pago parcial exitoso
-        _loadMesas();
+      if (documentoMovimiento != null) {
+        print(
+          '✅ Documento de movimiento creado: ${documentoMovimiento.numeroDocumento}',
+        );
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al cargar datos del pedido: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      print('❌ Error creando documento de movimiento: $e');
     }
   }
 
@@ -3560,104 +4107,267 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
   Future<void> _procesarPagoParcial(
     Mesa mesa,
     Pedido pedido,
-    List<dynamic> itemsSeleccionados,
+    List<ItemPedido> itemsSeleccionados,
     Map<String, dynamic> datosPago,
   ) async {
     try {
+      print(
+        '� =========================== INICIO PAGO PARCIAL ===========================',
+      );
+      print('📊 DATOS DEL PAGO PARCIAL:');
+      print('   • Mesa: ${mesa.nombre} (ID: ${mesa.id})');
+      print('   • Pedido Original ID: ${pedido.id}');
+      print('   • Total Original: \$${pedido.total}');
+      print('   • Items Originales: ${pedido.items.length}');
+      print('   • Items Seleccionados: ${itemsSeleccionados.length}');
+      print('   • Datos Pago: $datosPago');
+      print('   • Timestamp: ${DateTime.now().toIso8601String()}');
+
       final userProvider = Provider.of<UserProvider>(context, listen: false);
 
-      // Procesar el pago parcial usando el servicio
-      final resultado = await _pedidoService.pagarProductosParciales(
-        pedido.id,
-        itemsSeleccionados: itemsSeleccionados.cast(),
-        formaPago: datosPago['formaPago'] ?? 'efectivo',
-        propina: datosPago['propina'] ?? 0.0,
-        procesadoPor: userProvider.userName ?? 'Usuario',
+      print('👤 USUARIO PROCESANDO PAGO:');
+      print('   • ID Usuario: ${userProvider.userId ?? 'No disponible'}');
+      print('   • Nombre Usuario: ${userProvider.userName ?? 'No disponible'}');
+
+      // Calcular el total de los productos seleccionados
+      double totalSeleccionado = 0;
+      for (var item in itemsSeleccionados) {
+        double itemTotal = item.cantidad * item.precioUnitario;
+        totalSeleccionado += itemTotal;
+        print(
+          '   - ${item.productoNombre ?? 'Producto'} x${item.cantidad} = ${formatCurrency(itemTotal)}',
+        );
+      }
+
+      print('💰 Total a pagar: ${formatCurrency(totalSeleccionado)}');
+      print('💳 Medio de pago: ${datosPago['medioPago'] ?? 'efectivo'}');
+
+      // Crear el pedido con los productos pagados
+      final fechaActual = DateTime.now();
+      print('📅 FECHA PAGO: ${fechaActual.toIso8601String()}');
+
+      Pedido pedidoPagado = Pedido(
+        id: '', // Se asignará en el backend
+        fecha: fechaActual,
+        tipo: TipoPedido.normal,
+        mesa: mesa.nombre,
+        mesero: userProvider.userName ?? 'Usuario',
+        items: itemsSeleccionados,
+        total: totalSeleccionado,
+        estado: EstadoPedido.pagado,
+        formaPago: datosPago['medioPago'] ?? 'efectivo',
+        descuento:
+            double.tryParse(datosPago['descuentoValor']?.toString() ?? '0') ??
+            0,
         notas: 'Pago parcial - Mesa ${mesa.nombre}',
       );
 
-      if (resultado['success'] == true) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('✅ Pago parcial procesado exitosamente'),
-                Text('Items pagados: ${resultado['itemsPagados']}'),
-                Text('Total: ${formatCurrency(resultado['totalPagado'])}'),
-                if (datosPago['cambio'] > 0)
-                  Text('Cambio: ${formatCurrency(datosPago['cambio'])}'),
-              ],
-            ),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 4),
-          ),
+      // Crear el pedido con los productos restantes
+      List<ItemPedido> itemsRestantes = pedido.items.where((item) {
+        return !itemsSeleccionados.any(
+          (seleccionado) => seleccionado.id == item.id,
+        );
+      }).toList();
+
+      print('📋 Productos restantes: ${itemsRestantes.length}');
+
+      if (itemsRestantes.isNotEmpty) {
+        double totalRestante = 0;
+        for (var item in itemsRestantes) {
+          double itemTotal = item.cantidad * item.precioUnitario;
+          totalRestante += itemTotal;
+          print(
+            '   - ${item.productoNombre ?? 'Producto'} x${item.cantidad} = ${formatCurrency(itemTotal)}',
+          );
+        }
+        print('💰 Total restante: ${formatCurrency(totalRestante)}');
+
+        // ✅ OPCIÓN 1: ACTUALIZAR PEDIDO ORIGINAL CON PRODUCTOS RESTANTES
+        print('� ACTUALIZANDO PEDIDO ORIGINAL CON PRODUCTOS RESTANTES:');
+        print('   • Pedido ID: ${pedido.id}');
+        print('   • Nuevos items: ${itemsRestantes.length}');
+        print('   • Nuevo total: ${formatCurrency(totalRestante)}');
+
+        // Crear objeto actualizado del pedido original
+        Pedido pedidoActualizado = Pedido(
+          id: pedido.id, // Mantener el mismo ID
+          fecha: pedido.fecha, // Mantener fecha original
+          tipo: pedido.tipo,
+          mesa: pedido.mesa,
+          mesero: pedido.mesero,
+          items: itemsRestantes, // Solo los productos restantes
+          total: totalRestante,
+          estado: EstadoPedido.activo, // Mantener activo
+          notas:
+              (pedido.notas ?? '') +
+              '\n[PAGO PARCIAL] ${itemsSeleccionados.length} productos pagados (${DateTimeUtils.formatForDisplay(fechaActual, format: 'datetime')})',
         );
 
-        // Navegar al detalle del pedido actualizado si es necesario
-        Navigator.of(context).pop(true);
+        // Actualizar el pedido original
+        print('🌐 LLAMADA API - ACTUALIZAR PEDIDO ORIGINAL:');
+        print('   • Endpoint: PUT /api/pedidos/${pedido.id}');
+        print('   • Items restantes: ${itemsRestantes.length}');
+        print('   • Nuevo total: \$${totalRestante}');
+        print('📊 Datos del pedido actualizado: ${pedidoActualizado.toJson()}');
+
+        await _pedidoService.updatePedido(pedidoActualizado);
+        print(
+          '✅ RESPUESTA API - PEDIDO ORIGINAL ACTUALIZADO CON PRODUCTOS RESTANTES',
+        );
+
+        // Crear pedido pagado separado
+        print('🌐 LLAMADA API - CREAR PEDIDO PAGADO:');
+        print('   • Endpoint: POST /api/pedidos');
+        print('   • Mesa ID: ${mesa.id}');
+        print('   • Estado: pagado');
+        print('   • Total: \$${totalSeleccionado}');
+        print('   • Items: ${itemsSeleccionados.length}');
+        print('📊 Datos del pedido pagado: ${pedidoPagado.toJson()}');
+        final resultadoPagado = await _pedidoService.crearPedido(pedidoPagado);
+        print('✅ RESPUESTA API - PEDIDO PAGADO CREADO: ${resultadoPagado.id}');
+
+        print(
+          '✅ PAGO PARCIAL COMPLETADO - PEDIDO ORIGINAL CONSERVADO CON PRODUCTOS RESTANTES',
+        );
       } else {
-        throw Exception('El servidor no confirmó el pago parcial');
+        // Solo guardar el pedido pagado si no quedan productos
+        print('💾 Guardando pedido completo (no quedan productos)...');
+        print('📊 Datos del pedido completo: ${pedidoPagado.toJson()}');
+
+        // 🔍 Validar que hay una caja pendiente antes de procesar el pago
+        print('🔍 Validando que hay una caja pendiente...');
+        try {
+          print('🔍 Buscando caja activa...');
+          final cajas = await _cuadreCajaService.getAllCuadres();
+          print('📊 Total de cajas encontradas: ${cajas.length}');
+
+          for (var caja in cajas) {
+            print(
+              '   • Caja: ${caja.id} - Estado: ${caja.estado} - Nombre: ${caja.nombre}',
+            );
+          }
+
+          final cajaActiva = cajas
+              .where((c) => c.estado == 'pendiente')
+              .firstOrNull;
+
+          if (cajaActiva == null) {
+            print('❌ No se encontró ninguna caja con estado "pendiente"');
+            throw Exception(
+              'No hay una caja en estado pendiente. Debe abrir caja antes de procesar pagos.',
+            );
+          }
+
+          print(
+            '✅ Caja activa encontrada: ${cajaActiva.id} - ${cajaActiva.nombre}',
+          );
+
+          // Vincular el pedido con el cuadre de caja activo
+          pedidoPagado.cuadreId = cajaActiva.id;
+          print(
+            '✅ Pedido vinculado a cuadre: ${cajaActiva.id} - ${cajaActiva.nombre}',
+          );
+        } catch (e) {
+          print('❌ Error validando caja: $e');
+          throw Exception('Error validando caja pendiente: $e');
+        }
+
+        final resultadoCompleto = await _pedidoService.crearPedido(
+          pedidoPagado,
+        );
+        print('✅ Pedido completo guardado: ${resultadoCompleto.id}');
+
+        // Solo eliminar el pedido original cuando NO quedan productos
+        print('🌐 LLAMADA API - ELIMINAR PEDIDO ORIGINAL:');
+        print('   • Endpoint: DELETE /api/pedidos/${pedido.id}');
+        print('   • Pedido ID: ${pedido.id}');
+        print('   • Razón: Pago completo - no quedan productos restantes');
+        await _pedidoService.eliminarPedido(pedido.id);
+        print('✅ RESPUESTA API - PEDIDO ORIGINAL ELIMINADO EXITOSAMENTE');
       }
-    } catch (e) {
+
+      print(
+        '💰 =========================== FIN PAGO PARCIAL (ÉXITO) ===========================',
+      );
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('❌ Error al procesar pago parcial: $e'),
-          backgroundColor: Colors.red,
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('✅ Pago parcial procesado exitosamente'),
+              Text('Items pagados: ${itemsSeleccionados.length}'),
+              Text('Total pagado: ${formatCurrency(totalSeleccionado)}'),
+              if (itemsRestantes.isNotEmpty)
+                Text('Items restantes: ${itemsRestantes.length}'),
+            ],
+          ),
+          backgroundColor: Colors.green,
           duration: Duration(seconds: 4),
         ),
       );
-    }
-  }
 
-  /// Muestra el diálogo para cancelar productos del pedido
-  void _mostrarDialogoCancelarProductos(Mesa mesa, Pedido pedido) async {
-    try {
-      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      // 🔄 ACTUALIZAR TOTAL DE LA MESA DESPUÉS DEL PAGO PARCIAL
+      print('🔄 ACTUALIZANDO MESA DESPUÉS DEL PAGO PARCIAL:');
+      if (itemsRestantes.isNotEmpty) {
+        // Calcular total restante
+        double nuevoTotalMesa = 0;
+        for (var item in itemsRestantes) {
+          nuevoTotalMesa += item.cantidad * item.precioUnitario;
+        }
 
-      // Cargar información completa de productos si es necesario
-      await PedidoService().cargarProductosParaPedido(pedido);
+        print('   • Mesa: ${mesa.nombre}');
+        print('   • Total anterior: ${formatCurrency(mesa.total)}');
+        print('   • Nuevo total (restante): ${formatCurrency(nuevoTotalMesa)}');
 
-      if (pedido.items.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('No hay productos en este pedido para cancelar'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-        return;
+        mesa.total = nuevoTotalMesa;
+
+        try {
+          await _mesaService.updateMesa(mesa);
+          print(
+            '✅ Mesa actualizada con total restante: ${formatCurrency(mesa.total)}',
+          );
+        } catch (e) {
+          print('❌ Error al actualizar mesa después de pago parcial: $e');
+        }
+      } else {
+        // Si no quedan productos, liberar la mesa
+        print('   • Liberando mesa ${mesa.nombre} (sin productos restantes)');
+        mesa.ocupada = false;
+        mesa.total = 0.0;
+
+        try {
+          await _mesaService.updateMesa(mesa);
+          print('✅ Mesa liberada exitosamente');
+        } catch (e) {
+          print('❌ Error al liberar mesa: $e');
+        }
       }
 
-      final resultado = await showDialog<bool>(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => CancelarProductoDialog(
-          items: pedido.items,
-          mesaId: mesa.id,
-          mesaNombre: mesa.nombre,
-          usuarioId: userProvider.userId ?? '',
-          usuarioNombre: userProvider.userName ?? 'Usuario',
-          onProductosCancelados: (itemsCancelados, motivo) async {
-            await _procesarCancelacionProductos(
-              mesa,
-              pedido,
-              itemsCancelados,
-              motivo,
-            );
-          },
-        ),
+      // 🧹 LIMPIAR CACHE DE FORMATEO después del pago parcial
+      clearFormatCache();
+      print('🧩 Cache de formateo limpiado después del pago parcial');
+
+      // Recargar datos
+      await _loadMesas();
+    } catch (e) {
+      print('❌ EXCEPCIÓN EN PAGO PARCIAL: $e');
+      print(
+        '💰 =========================== FIN PAGO PARCIAL (ERROR) ===========================',
       );
 
-      if (resultado == true) {
-        // Recargar datos después de la cancelación exitosa
-        _loadMesas();
+      String mensajeError = 'Error al procesar pago parcial: $e';
+      if (e.toString().contains('Token de autenticación no encontrado')) {
+        mensajeError =
+            '🔐 Sesión expirada. Por favor, recarga la página y vuelve a iniciar sesión.';
       }
-    } catch (e) {
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error al cargar datos del pedido: $e'),
+          content: Text('❌ $mensajeError'),
           backgroundColor: Colors.red,
+          duration: Duration(seconds: 6),
         ),
       );
     }
@@ -3671,8 +4381,251 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
     String motivo,
   ) async {
     try {
-      // Por ahora solo mostramos un mensaje de éxito
-      // TODO: Implementar la cancelación real en el backend
+      print(
+        '🗑️ CANCELACIÓN: ${itemsCancelados.length} productos en mesa ${mesa.nombre}',
+      );
+      print('   • Pedido: ${pedido.id} (${pedido.items.length} items total)');
+      print('   • Motivo: $motivo');
+
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      final usuario = userProvider.userName ?? 'Usuario';
+
+      // Mostrar productos a cancelar con sus IDs
+      print('🎯 PRODUCTOS SELECCIONADOS PARA CANCELAR:');
+      double totalCancelado = 0;
+      for (int i = 0; i < itemsCancelados.length; i++) {
+        final item = itemsCancelados[i];
+        double itemTotal = item.cantidad * item.precioUnitario;
+        totalCancelado += itemTotal;
+        print('   ${i + 1}. ${item.productoNombre} (ID: ${item.productoId})');
+        print('      - ItemID: ${item.id}');
+        print('      - Cantidad: ${item.cantidad}');
+        print('      - Total: ${formatCurrency(itemTotal)}');
+      }
+      print('💰 Valor total a cancelar: ${formatCurrency(totalCancelado)}');
+
+      // 📝 REGISTRAR PRODUCTOS CANCELADOS EN EL SISTEMA
+      print('🌐 LLAMADA API - REGISTRAR PRODUCTOS CANCELADOS:');
+      print('   • Endpoint: POST /api/productos-cancelados');
+      print('   • Cantidad de productos: ${itemsCancelados.length}');
+
+      for (var itemCancelado in itemsCancelados) {
+        try {
+          print('📝 Registrando cancelación: ${itemCancelado.productoNombre}');
+          final resultadoRegistro = await _productoCanceladoService
+              .registrarCancelacion(
+                pedidoId: pedido.id,
+                mesaNombre: mesa.nombre,
+                itemOriginal: itemCancelado,
+                canceladoPor: usuario,
+                motivo: _obtenerMotivoCancelacion(motivo),
+                descripcionMotivo: motivo,
+                observaciones:
+                    'Cancelación desde mesa ${mesa.nombre} - Usuario: $usuario',
+              );
+
+          if (resultadoRegistro['success']) {
+            print(
+              '✅ RESPUESTA API - PRODUCTO CANCELADO REGISTRADO: ${itemCancelado.productoNombre}',
+            );
+            print(
+              '   • ID Registro: ${resultadoRegistro['productoCancelado']?.id ?? 'N/A'}',
+            );
+          } else {
+            print(
+              '❌ RESPUESTA API - ERROR AL REGISTRAR: ${resultadoRegistro['message']}',
+            );
+          }
+        } catch (e) {
+          print('❌ EXCEPCIÓN AL REGISTRAR CANCELACIÓN: $e');
+          // Continuar con otros productos aunque uno falle
+        }
+      }
+
+      print('📝 REGISTRO DE CANCELACIONES COMPLETADO');
+
+      // PASO CRÍTICO: Identificar productos a cancelar
+      List<int> indicesCancelados = [];
+      print('🔍 IDENTIFICANDO PRODUCTOS EN EL PEDIDO:');
+
+      // Mostrar todos los productos del pedido actual
+      for (int i = 0; i < pedido.items.length; i++) {
+        final item = pedido.items[i];
+        print(
+          '   [$i] ${item.productoNombre} (ProdID: ${item.productoId}, ItemID: ${item.id})',
+        );
+      }
+
+      print('🎯 BUSCANDO COINCIDENCIAS PARA CANCELAR:');
+      for (
+        int canceladoIndex = 0;
+        canceladoIndex < itemsCancelados.length;
+        canceladoIndex++
+      ) {
+        var itemCancelado = itemsCancelados[canceladoIndex];
+        print(
+          '   Buscando: ${itemCancelado.productoNombre} (ProdID: ${itemCancelado.productoId})',
+        );
+
+        bool encontrado = false;
+        for (int i = 0; i < pedido.items.length; i++) {
+          final itemOriginal = pedido.items[i];
+
+          bool esElMismoProducto = false;
+          if (itemCancelado.productoId.isNotEmpty &&
+              itemOriginal.productoId.isNotEmpty) {
+            esElMismoProducto =
+                itemOriginal.productoId == itemCancelado.productoId;
+            print(
+              '     -> Comparando por ProductoID: ${itemOriginal.productoId} == ${itemCancelado.productoId} = $esElMismoProducto',
+            );
+          } else {
+            esElMismoProducto =
+                itemOriginal.productoNombre == itemCancelado.productoNombre;
+            print(
+              '     -> Comparando por nombre: "${itemOriginal.productoNombre}" == "${itemCancelado.productoNombre}" = $esElMismoProducto',
+            );
+          }
+
+          if (esElMismoProducto && !indicesCancelados.contains(i)) {
+            indicesCancelados.add(i);
+            print(
+              '   ✅ PRODUCTO IDENTIFICADO para cancelar [índice $i]: ${itemOriginal.productoNombre}',
+            );
+            encontrado = true;
+            break;
+          }
+        }
+
+        if (!encontrado) {
+          print('   ❌ NO ENCONTRADO: ${itemCancelado.productoNombre}');
+        }
+      }
+
+      print('� RESUMEN DE IDENTIFICACIÓN:');
+      print(
+        '   • Productos a cancelar seleccionados: ${itemsCancelados.length}',
+      );
+      print('   • Índices identificados para cancelar: $indicesCancelados');
+      print('   • Total productos en pedido: ${pedido.items.length}');
+
+      if (indicesCancelados.isEmpty) {
+        throw Exception(
+          'PROBLEMA CRÍTICO: No se pudieron identificar los productos a cancelar',
+        );
+      }
+
+      if (indicesCancelados.length != itemsCancelados.length) {
+        print(
+          '⚠️ ADVERTENCIA: Se seleccionaron ${itemsCancelados.length} productos pero solo se identificaron ${indicesCancelados.length}',
+        );
+      }
+
+      // Filtrar productos manteniendo solo los que NO están en los índices cancelados
+      List<ItemPedido> productosRestantes = [];
+      for (int i = 0; i < pedido.items.length; i++) {
+        if (!indicesCancelados.contains(i)) {
+          productosRestantes.add(pedido.items[i]);
+          print(
+            '✅ Producto mantenido (índice $i): ${pedido.items[i].productoNombre}',
+          );
+        } else {
+          print(
+            '❌ Producto cancelado (índice $i): ${pedido.items[i].productoNombre}',
+          );
+        }
+      }
+
+      print('🔍 ANÁLISIS DE PRODUCTOS RESTANTES:');
+      for (int i = 0; i < productosRestantes.length; i++) {
+        final item = productosRestantes[i];
+        print(
+          '   ${i + 1}. ${item.productoNombre} - Cantidad: ${item.cantidad} - Precio: ${formatCurrency(item.precioUnitario)}',
+        );
+      }
+
+      print('📊 PRODUCTOS DESPUÉS DE CANCELACIÓN:');
+      print('   • Productos originales: ${pedido.items.length}');
+      print('   • Productos cancelados: ${itemsCancelados.length}');
+      print('   • Productos restantes: ${productosRestantes.length}');
+
+      if (productosRestantes.isEmpty) {
+        // Si no quedan productos, eliminar todo el pedido
+        print('⚠️ ADVERTENCIA: No quedan productos después de la cancelación');
+        print('📊 VERIFICACIÓN FINAL:');
+        print('   • Items originales: ${pedido.items.length}');
+        print('   • Items a cancelar: ${itemsCancelados.length}');
+        print('   • Índices cancelados: $indicesCancelados');
+        print(
+          '   • Productos restantes calculados: ${productosRestantes.length}',
+        );
+
+        print('🌐 LLAMADA API - ELIMINAR PEDIDO COMPLETO:');
+        print('   • Endpoint: DELETE /api/pedidos/${pedido.id}');
+        print('   • Pedido ID: ${pedido.id}');
+        print('   • Motivo: No quedan productos después de cancelación');
+        await _pedidoService.eliminarPedido(pedido.id);
+        print('✅ RESPUESTA API - PEDIDO ELIMINADO EXITOSAMENTE');
+
+        // Liberar la mesa
+        mesa.ocupada = false;
+        mesa.productos = [];
+        mesa.total = 0.0;
+        await _mesaService.updateMesa(mesa);
+        print(
+          '✅ Mesa ${mesa.nombre} liberada (pedido eliminado completamente)',
+        );
+      } else {
+        // Calcular nuevo total
+        double nuevoTotal = productosRestantes.fold<double>(
+          0,
+          (sum, item) => sum + (item.cantidad * item.precioUnitario),
+        );
+        print('💰 NUEVO TOTAL DEL PEDIDO: ${formatCurrency(nuevoTotal)}');
+
+        // Crear pedido actualizado sin los productos cancelados
+        Pedido pedidoActualizado = Pedido(
+          id: pedido.id,
+          fecha: pedido.fecha,
+          tipo: pedido.tipo,
+          mesa: pedido.mesa,
+          mesero: pedido.mesero,
+          items: productosRestantes,
+          total: nuevoTotal,
+          estado: pedido.estado,
+          cliente: pedido.cliente,
+          notas: pedido.notas != null
+              ? '${pedido.notas}\n[CANCELACIÓN] $motivo - $usuario (${DateTime.now().day}/${DateTime.now().month})'
+              : '[CANCELACIÓN] $motivo - $usuario (${DateTime.now().day}/${DateTime.now().month})',
+          plataforma: pedido.plataforma,
+          pedidoPor: pedido.pedidoPor,
+          guardadoPor: pedido.guardadoPor,
+          fechaCortesia: pedido.fechaCortesia,
+          formaPago: pedido.formaPago,
+          incluyePropina: pedido.incluyePropina,
+          descuento: pedido.descuento,
+          cuadreId: pedido.cuadreId,
+        );
+
+        print(
+          '🔄 Actualizando pedido: ${productosRestantes.length} items restantes, nuevo total: ${formatCurrency(nuevoTotal)}',
+        );
+
+        final pedidoRespuesta = await _pedidoService.updatePedido(
+          pedidoActualizado,
+        );
+
+        // Actualizar total de la mesa
+        mesa.total = pedidoRespuesta.total;
+        await _mesaService.updateMesa(mesa);
+
+        print(
+          '✅ Pedido actualizado: ${pedidoRespuesta.id} - Total: ${formatCurrency(pedidoRespuesta.total)}',
+        );
+      }
+
+      print('✅ Cancelación completada exitosamente');
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Column(
@@ -3682,89 +4635,56 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
               Text('✅ Productos cancelados exitosamente'),
               Text('Items cancelados: ${itemsCancelados.length}'),
               Text('Mesa: ${mesa.nombre}'),
-              Text('Motivo: $motivo'),
+              Text('Total cancelado: ${formatCurrency(totalCancelado)}'),
+              if (productosRestantes.isEmpty)
+                Text('🗑️ Pedido eliminado completamente')
+              else
+                Text('📋 Productos restantes: ${productosRestantes.length}'),
             ],
           ),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 3),
-        ),
-      );
-
-      // Recargar datos de la mesa
-      await _loadMesas();
-
-      // Recargar la pantalla principal
-      _loadMesas();
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('❌ Error al procesar cancelación: $e'),
-          backgroundColor: Colors.red,
+          backgroundColor: _success,
           duration: Duration(seconds: 4),
         ),
       );
-    }
-  }
 
-  /// Muestra el diálogo para mover productos seleccionados a otra mesa
-  void _mostrarDialogoMoverProductos(Mesa mesa, Pedido pedido) async {
-    try {
-      // Cargar información completa de productos si es necesario
-      await PedidoService().cargarProductosParaPedido(pedido);
-
-      if (pedido.items.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('No hay productos en este pedido para mover'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-        return;
+      // Recargar datos sin afectar estilos
+      print('🔄 RECARGANDO DATOS DE MESAS (PRESERVANDO ESTILOS)...');
+      try {
+        final loadedMesas = await _mesaService.getMesas();
+        await _sincronizarEstadoMesas(loadedMesas);
+        setState(() {
+          mesas = loadedMesas;
+          // No cambiar isLoading ni errorMessage para preservar estado visual
+        });
+        print('✅ DATOS RECARGADOS SIN AFECTAR ESTILOS');
+      } catch (e) {
+        print('❌ ERROR AL RECARGAR DATOS: $e');
+        // Fallback a recarga completa solo si es necesario
+        await _loadMesas();
       }
 
-      // Obtener mesas disponibles
-      final mesasDisponibles = await _mesaService.getMesas();
-      final mesasDestino = mesasDisponibles
-          .where((m) => m.id != mesa.id) // Excluir la mesa actual
-          .toList();
-
-      if (mesasDestino.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('No hay otras mesas disponibles'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-        return;
-      }
-
-      final resultado = await showDialog<bool>(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => MoverProductosDialog(
-          items: pedido.items,
-          mesaOrigen: mesa,
-          mesasDestino: mesasDestino,
-          onProductosMovidos: (itemsMovidos, mesaDestino) async {
-            await _procesarMovimientoProductos(
-              mesa,
-              pedido,
-              itemsMovidos,
-              mesaDestino,
-            );
-          },
-        ),
+      print(
+        '🎉 =========================== CANCELACIÓN COMPLETADA ===========================',
       );
-
-      if (resultado == true) {
-        // Recargar datos después del movimiento exitoso
-        _loadMesas();
-      }
     } catch (e) {
+      print('❌ ERROR EN CANCELACIÓN DE PRODUCTOS:');
+      print('   • Mesa: ${mesa.nombre}');
+      print('   • Pedido: ${pedido.id}');
+      print('   • Items intentados cancelar: ${itemsCancelados.length}');
+      print('   • Error detallado: $e');
+      print('   • Timestamp error: ${DateTime.now().toIso8601String()}');
+
+      String mensajeError = 'Error al cancelar productos: $e';
+      if (e.toString().contains('Token de autenticación no encontrado')) {
+        mensajeError =
+            '🔐 Sesión expirada. Por favor, recarga la página y vuelve a iniciar sesión.';
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error al cargar datos del pedido: $e'),
-          backgroundColor: Colors.red,
+          content: Text('❌ $mensajeError'),
+          backgroundColor: _error,
+          duration: Duration(seconds: 6),
         ),
       );
     }
@@ -3778,10 +4698,19 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
     Mesa mesaDestino,
   ) async {
     try {
+      print(
+        '🚀 Moviendo ${itemsMovidos.length} productos de ${mesaOrigen.nombre} a ${mesaDestino.nombre}',
+      );
+
       final userProvider = Provider.of<UserProvider>(context, listen: false);
       final usuario = userProvider.userName ?? 'Usuario';
 
-      // Mover productos usando el servicio
+      final totalMovimiento = itemsMovidos.fold<double>(
+        0,
+        (sum, item) => sum + (item.cantidad * item.precio),
+      );
+      print('💰 Valor total: \$${totalMovimiento.toStringAsFixed(2)}');
+
       final resultado = await _pedidoService.moverProductosEspecificos(
         pedidoOrigenId: pedidoOrigen.id,
         mesaDestinoNombre: mesaDestino.nombre,
@@ -3791,13 +4720,114 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
       );
 
       if (resultado['success'] == true) {
-        // Verificar si se debe crear una orden automáticamente
-        final bool seCreoNuevaOrden = resultado['nuevaOrdenCreada'] ?? false;
+        // Obtener datos del backend correctamente
+        final dataMovimiento = resultado['data'] ?? {};
+        // Corregir extracción del nuevo pedido ID
+        final String? nuevoPedidoId = dataMovimiento['nuevoPedidoId']
+            ?.toString();
+        final bool seCreoNuevaOrden =
+            nuevoPedidoId != null && nuevoPedidoId.isNotEmpty;
+        // Convertir de forma segura para evitar errores de cast
+        final dynamic productosMovidosRaw =
+            dataMovimiento['productosMovidos'] ?? itemsMovidos.length;
+        final int itemsMovidosCount = productosMovidosRaw is String
+            ? int.tryParse(productosMovidosRaw) ?? itemsMovidos.length
+            : productosMovidosRaw as int;
+
+        print('✅ Movimiento exitoso: $itemsMovidosCount items');
+        print('🔍 VERIFICANDO CREACIÓN DEL PEDIDO EN MESA DESTINO...');
+        print('   • Mesa destino: ${mesaDestino.nombre}');
+        print('   • Nuevo pedido ID: $nuevoPedidoId');
+        print('   • Se creó nueva orden: $seCreoNuevaOrden');
 
         String mensaje =
             '✅ Productos movidos exitosamente a ${mesaDestino.nombre}';
-        if (seCreoNuevaOrden) {
-          mensaje += '\n🆕 Nueva orden creada automáticamente';
+
+        if (nuevoPedidoId != null && nuevoPedidoId.isNotEmpty) {
+          mensaje += '\n🆕 Nueva orden creada: $nuevoPedidoId';
+
+          try {
+            // BÚSQUEDA MEJORADA: Ahora enviamos nombre completo, debería estar en mesa correcta
+            print('🔍 VERIFICANDO PEDIDO EN MESA DESTINO...');
+
+            Pedido? pedidoEncontrado;
+            String? mesaRealPedido;
+
+            // Primero buscar en la mesa destino esperada
+            final pedidosEnMesaDestino = await _pedidoService.getPedidosByMesa(
+              mesaDestino.nombre,
+            );
+            pedidoEncontrado = pedidosEnMesaDestino
+                .where((p) => p.id == nuevoPedidoId)
+                .firstOrNull;
+
+            if (pedidoEncontrado != null) {
+              mesaRealPedido = mesaDestino.nombre;
+              print(
+                '✅ Pedido encontrado en mesa esperada: ${mesaDestino.nombre}',
+              );
+            } else {
+              // Si no se encuentra, buscar con enfoque de respaldo por número
+              print(
+                '⚠️ Pedido no encontrado en mesa esperada, buscando por número...',
+              );
+              final numeroMatch = RegExp(r'\d+').firstMatch(mesaDestino.nombre);
+              final numeroMesa = numeroMatch?.group(0);
+
+              if (numeroMesa != null) {
+                final todasLasMesas = await _mesaService.getMesas();
+                final mesasConMismoNumero = todasLasMesas.where((mesa) {
+                  final numeroMesaActual = RegExp(
+                    r'\d+',
+                  ).firstMatch(mesa.nombre)?.group(0);
+                  return numeroMesaActual == numeroMesa;
+                }).toList();
+
+                print(
+                  '   • Buscando en mesas con número $numeroMesa: ${mesasConMismoNumero.map((m) => m.nombre).join(', ')}',
+                );
+
+                for (var mesa in mesasConMismoNumero) {
+                  final pedidosEnMesa = await _pedidoService.getPedidosByMesa(
+                    mesa.nombre,
+                  );
+                  final pedidoTemp = pedidosEnMesa
+                      .where((p) => p.id == nuevoPedidoId)
+                      .firstOrNull;
+                  if (pedidoTemp != null) {
+                    pedidoEncontrado = pedidoTemp;
+                    mesaRealPedido = mesa.nombre;
+                    break;
+                  }
+                }
+              }
+            }
+
+            if (pedidoEncontrado != null) {
+              print('✅ PEDIDO ENCONTRADO:');
+              print('   • ID: ${pedidoEncontrado.id}');
+              print('   • Mesa solicitada: ${mesaDestino.nombre}');
+              print('   • Mesa real en BD: $mesaRealPedido');
+              print('   • Items: ${pedidoEncontrado.items.length}');
+              print('   • Total: \$${pedidoEncontrado.total}');
+
+              if (mesaRealPedido != mesaDestino.nombre) {
+                mensaje +=
+                    '\n⚠️ Nota: Pedido almacenado en mesa $mesaRealPedido (conversión del backend)';
+              }
+            } else {
+              print('❌ PEDIDO NO ENCONTRADO CON NUEVO ENFOQUE');
+              print('   • ID buscado: $nuevoPedidoId');
+              print('   • Mesa objetivo: ${mesaDestino.nombre}');
+              mensaje +=
+                  '\n⚠️ Advertencia: No se pudo verificar la creación del pedido';
+            }
+          } catch (e) {
+            print('❌ Error verificando pedido: $e');
+            mensaje += '\n⚠️ Error verificando creación del pedido';
+          }
+        } else {
+          print('⚠️ No se devolvió ID de nuevo pedido');
         }
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -3811,24 +4841,88 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                 Text('De: ${mesaOrigen.nombre} → A: ${mesaDestino.nombre}'),
               ],
             ),
-            backgroundColor: Colors.green,
+            backgroundColor: _success,
             duration: Duration(seconds: 4),
           ),
         );
 
-        // Recargar la pantalla principal
-        _loadMesas();
+        // � Limpiar cache de formateo para evitar corrupción de números
+        clearFormatCache();
+        print('🧩 Cache de formateo limpiado después del movimiento');
+
+        // �🔄 Recargar la pantalla principal (actualiza totales automáticamente)
+        await _loadMesas();
+        print('🎉 Movimiento completado exitosamente');
       } else {
+        print(
+          '❌ Error del servicio: ${resultado['message'] ?? 'Error desconocido'}',
+        );
         throw Exception(resultado['message'] ?? 'Error desconocido');
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('❌ Error al mover productos: $e'),
-          backgroundColor: Colors.red,
-          duration: Duration(seconds: 4),
-        ),
+      print(
+        '💥 Error movimiento productos ${mesaOrigen.nombre} → ${mesaDestino.nombre}: $e',
       );
+
+      String mensajeError = 'Error al mover productos: $e';
+      if (e.toString().contains('Token de autenticación no encontrado')) {
+        // Mostrar diálogo específico para problemas de token
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            title: Row(
+              children: [
+                Icon(Icons.warning, color: Colors.orange),
+                SizedBox(width: 8),
+                Text('Sesión Expirada'),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Tu sesión ha expirado durante el movimiento de productos.',
+                ),
+                SizedBox(height: 8),
+                Text('Mesa origen: ${mesaOrigen.nombre}'),
+                Text('Mesa destino: ${mesaDestino.nombre}'),
+                Text('Items: ${itemsMovidos.length} productos'),
+                SizedBox(height: 16),
+                Text(
+                  '¿Deseas recargar la página para reiniciar sesión?',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('Cancelar'),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _primary,
+                  foregroundColor: _textPrimary,
+                ),
+                onPressed: () {
+                  html.window.location.reload();
+                },
+                child: Text('Recargar Página'),
+              ),
+            ],
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ $mensajeError'),
+            backgroundColor: _error,
+            duration: Duration(seconds: 6),
+          ),
+        );
+      }
     }
   }
 
@@ -3897,251 +4991,80 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
     }
   }
 
-  // Método para mostrar resumen e imprimir factura
-  void _mostrarResumenImpresion(Pedido pedido) async {
-    // Mostrar indicador de carga
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        backgroundColor: _cardBg,
-        content: Row(
-          children: [
-            CircularProgressIndicator(color: _primary),
-            SizedBox(width: 20),
-            Text(
-              'Generando resumen de impresión...',
-              style: TextStyle(color: _textPrimary),
-            ),
-          ],
-        ),
-      ),
-    );
-
+  Future<Mesa?> _mostrarDialogoSeleccionMesa() async {
     try {
-      // Generar resumen desde el backend usando el nuevo endpoint
-      var resumenNullable = await _impresionService.generarResumenPedido(
-        pedido.id,
-      );
+      // Cargar la lista de mesas disponibles
+      final mesas = await _mesaService.getMesas();
 
-      if (resumenNullable == null) {
-        // Cerrar diálogo de carga
-        Navigator.of(context).pop();
+      // Incluir todas las mesas (incluyendo especiales)
+      final mesasDisponibles = mesas.toList();
 
+      if (mesasDisponibles.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('No se pudo generar el resumen del pedido'),
-            backgroundColor: Colors.red,
+            content: Text('No hay otras mesas disponibles'),
+            backgroundColor: Colors.orange,
           ),
         );
-        return;
+        return null;
       }
 
-      // Actualizar resumen con información del negocio
-      final resumen = await actualizarConInfoNegocio(resumenNullable);
-
-      // Cerrar diálogo de carga
-      Navigator.of(context).pop();
-
-      // Mostrar diálogo con resumen - trabajando directamente con los datos del endpoint
-      showDialog(
+      // Mostrar diálogo de selección
+      final mesaSeleccionada = await showDialog<Mesa>(
         context: context,
-        builder: (context) => Dialog(
-          backgroundColor: _cardBg,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15),
-          ),
-          child: Container(
-            width: MediaQuery.of(context).size.width * 0.9,
-            padding: EdgeInsets.all(20),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Encabezado
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Resumen del Pedido',
-                        style: TextStyle(
-                          color: _textPrimary,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.close, color: _textPrimary),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                    ],
-                  ),
-                  Divider(color: _textMuted),
-                  SizedBox(height: 16),
-
-                  // Información del restaurante
-                  _buildSeccionResumen('RESTAURANTE', [
-                    resumen['nombreRestaurante'] ?? 'SOPA Y CARBÓN',
-                    resumen['direccionRestaurante'] ??
-                        'Dirección del restaurante',
-                    'Tel: ${resumen['telefonoRestaurante'] ?? 'Teléfono'}',
-                  ]),
-
-                  // Información del pedido
-                  _buildSeccionResumen('INFORMACIÓN DEL PEDIDO', [
-                    'Pedido: ${resumen['pedidoId'] ?? 'N/A'}',
-                    'Fecha: ${resumen['fecha'] ?? 'N/A'}',
-                    'Hora: ${resumen['hora'] ?? 'N/A'}',
-                    if (resumen['mesa'] != null) 'Mesa: ${resumen['mesa']}',
-                    if (resumen['mesero'] != null)
-                      'Mesero: ${resumen['mesero']}',
-                    if (resumen['tipo'] != null) 'Tipo: ${resumen['tipo']}',
-                  ]),
-
-                  // Detalle de productos
-                  Text(
-                    'DETALLE DE PRODUCTOS:',
-                    style: TextStyle(
-                      color: _textPrimary,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
+        builder: (context) {
+          return AlertDialog(
+            backgroundColor: _cardBg,
+            title: Text(
+              'Seleccionar mesa destino',
+              style: TextStyle(color: _textPrimary),
+            ),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: mesasDisponibles.length,
+                itemBuilder: (context, index) {
+                  final mesa = mesasDisponibles[index];
+                  return ListTile(
+                    title: Text(
+                      mesa.nombre,
+                      style: TextStyle(color: _textPrimary),
                     ),
-                  ),
-                  SizedBox(height: 8),
-
-                  Container(
-                    constraints: BoxConstraints(maxHeight: 350),
-                    child: SingleChildScrollView(
-                      child: Column(
-                        children: (resumen['productos'] as List? ?? [])
-                            .map<Widget>(
-                              (producto) =>
-                                  _buildProductoItemConIngredientes(producto),
-                            )
-                            .toList(),
+                    subtitle: Text(
+                      mesa.ocupada ? 'Ocupada' : 'Libre',
+                      style: TextStyle(
+                        color: mesa.ocupada ? Colors.orange : Colors.green,
                       ),
                     ),
-                  ),
-
-                  SizedBox(height: 16),
-                  Divider(color: _textMuted),
-
-                  // Total
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'TOTAL:',
-                        style: TextStyle(
-                          color: _textPrimary,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        '\$${(resumen['total'] ?? 0.0).toStringAsFixed(0)}',
-                        style: TextStyle(
-                          color: _primary,
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  SizedBox(height: 24),
-
-                  // Botones de acción
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      ElevatedButton.icon(
-                        onPressed: () async {
-                          await _imprimirResumenPedido(resumen);
-                        },
-                        icon: Icon(Icons.print, size: 18),
-                        label: Text('Imprimir'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                        ),
-                      ),
-                      ElevatedButton.icon(
-                        onPressed: () async {
-                          await _mostrarOpcionesCompartir(resumen);
-                        },
-                        icon: Icon(Icons.share, size: 18),
-                        label: Text('Compartir'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue,
-                          foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                        ),
-                      ),
-                      ElevatedButton.icon(
-                        onPressed: () async {
-                          Navigator.pop(context); // Cerrar diálogo actual
-
-                          // Solicitar información de pago antes de crear la factura
-                          final formResult = await _mostrarDialogoSimplePago();
-
-                          if (formResult != null) {
-                            await _crearFacturaPedido(
-                              resumen['pedidoId'],
-                              formaPago: formResult['medioPago'],
-                              propina: formResult['propina'] ?? 0.0,
-                              pagadoPor: formResult['pagadoPor'],
-                            );
-
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Factura creada exitosamente'),
-                                backgroundColor: Colors.green,
-                              ),
-                            );
-                          }
-                        },
-                        icon: Icon(Icons.receipt_long, size: 18),
-                        label: Text('Facturar'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.orange,
-                          foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                    onTap: () => Navigator.of(context).pop(mesa),
+                  );
+                },
               ),
             ),
-          ),
-        ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text('Cancelar', style: TextStyle(color: _textPrimary)),
+              ),
+            ],
+          );
+        },
       );
-    } catch (e) {
-      // Cerrar diálogo de carga si está abierto
-      if (Navigator.canPop(context)) {
-        Navigator.of(context).pop();
-      }
 
+      return mesaSeleccionada;
+    } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error generando resumen: $e'),
+          content: Text('Error al cargar las mesas: $e'),
           backgroundColor: Colors.red,
         ),
       );
+      return null;
     }
   }
+
+  // Método para mostrar resumen e imprimir factura
 
   // Notificar actualización de documentos
   Future<void> notificarActualizacionDocumentos(Pedido pedido) async {
@@ -4493,7 +5416,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
     try {
       if (kIsWeb) {
         // Para web, ir directamente a imprimir
-        final pdfServiceWeb = PDFServiceFactory.create();
+        final pdfServiceWeb = PDFServiceWeb();
         try {
           pdfServiceWeb.abrirVentanaImpresion(resumen: resumen);
           if (mounted) {
@@ -4644,8 +5567,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
             Text(
               fileName,
               style: TextStyle(
-                color:
-                    Colors.black87, // TODO: Usar _textDark cuando esté definido
+                color: _textPrimary,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -4727,12 +5649,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                 ),
                 child: SelectableText(
                   rutaArchivo,
-                  style: TextStyle(
-                    color: Colors
-                        .black87, // TODO: Usar _textDark cuando esté definido
-                    fontSize: 12,
-                    fontFamily: 'monospace',
-                  ),
+                  style: TextStyle(color: _textPrimary, fontSize: 12),
                 ),
               ),
               SizedBox(height: 16),
@@ -4839,7 +5756,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
     try {
       if (kIsWeb) {
         // Para web, usar el servicio web
-        final pdfServiceWeb = PDFServiceFactory.create();
+        final pdfServiceWeb = PDFServiceWeb();
         pdfServiceWeb.abrirVentanaImpresion(resumen: resumen);
         return;
       }
@@ -4955,21 +5872,6 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
   // Navegar a la pantalla de documentos
   Future<void> navegarADocumentos() async {
     try {
-      final userProvider = Provider.of<UserProvider>(context, listen: false);
-
-      // Verificar que el usuario no sea únicamente mesero
-      if (userProvider.isOnlyMesero) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('No tienes permisos para acceder a documentos'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-        return;
-      }
-
       // Navegar a la pantalla de documentos
       if (mounted) {
         await Navigator.of(context).pushNamed('/documentos');
@@ -5126,10 +6028,9 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
   }
 
   double getResponsiveCardHeight(double screenWidth) {
-    if (screenWidth < 600)
-      return 140; // Móvil (aumentado para el botón de pago)
-    if (screenWidth < 900) return 150; // Tablet
-    return 160; // Desktop
+    if (screenWidth < 600) return 100; // Móvil (increased for content)
+    if (screenWidth < 900) return 110; // Tablet
+    return 120; // Desktop
   }
 
   double getResponsiveMargin(double screenWidth) {
@@ -5154,83 +6055,13 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
         elevation: 0,
         centerTitle: true,
         actions: [
-          // Botón para mostrar resumen rápido de documentos del día - Solo para no-meseros
-          Consumer<UserProvider>(
-            builder: (context, userProvider, child) {
-              // Ocultar el botón para meseros únicamente
-              if (userProvider.isOnlyMesero) {
-                return SizedBox.shrink();
-              }
-
-              return Container(
-                margin: EdgeInsets.only(right: AppTheme.spacingSmall),
-                child: IconButton(
-                  icon: Stack(
-                    children: [
-                      Container(
-                        padding: EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(
-                            AppTheme.radiusSmall,
-                          ),
-                        ),
-                        child: Icon(Icons.receipt_long, size: 20),
-                      ),
-                      FutureBuilder<int>(
-                        future: obtenerConteoDocumentosHoy(),
-                        builder: (context, snapshot) {
-                          if (snapshot.hasData && snapshot.data! > 0) {
-                            return Positioned(
-                              right: 0,
-                              top: 0,
-                              child: Container(
-                                padding: EdgeInsets.all(4),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.error,
-                                  borderRadius: BorderRadius.circular(
-                                    AppTheme.radiusSmall,
-                                  ),
-                                ),
-                                constraints: BoxConstraints(
-                                  minWidth: 18,
-                                  minHeight: 18,
-                                ),
-                                child: Text(
-                                  '${snapshot.data}',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
-                            );
-                          }
-                          return SizedBox.shrink();
-                        },
-                      ),
-                    ],
-                  ),
-                  tooltip: 'Ver documentos del día',
-                  onPressed: () => navegarADocumentos(),
-                ),
-              );
-            },
-          ),
-          // Botón "Mis Pedidos" - Solo para meseros
-          Consumer<UserProvider>(
-            builder: (context, userProvider, child) {
-              // Mostrar el botón solo para meseros
-              if (!userProvider.isMesero) {
-                return SizedBox.shrink();
-              }
-
-              return Container(
-                margin: EdgeInsets.only(right: AppTheme.spacingSmall),
-                child: IconButton(
-                  icon: Container(
+          // Botón para mostrar resumen rápido de documentos del día
+          Container(
+            margin: EdgeInsets.only(right: AppTheme.spacingSmall),
+            child: IconButton(
+              icon: Stack(
+                children: [
+                  Container(
                     padding: EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.1),
@@ -5238,43 +6069,46 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                     ),
                     child: Icon(Icons.receipt_long, size: 20),
                   ),
-                  tooltip: 'Mis Pedidos',
-                  onPressed: () {
-                    Navigator.pushNamed(context, '/mesero');
-                  },
-                ),
-              );
-            },
-          ),
-          // Botón de zoom - Solo en móvil
-          if (MediaQuery.of(context).size.width < 600) ...[
-            Container(
-              margin: EdgeInsets.only(right: AppTheme.spacingSmall),
-              child: IconButton(
-                icon: Container(
-                  padding: EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                  FutureBuilder<int>(
+                    future: obtenerConteoDocumentosHoy(),
+                    builder: (context, snapshot) {
+                      if (snapshot.hasData && snapshot.data! > 0) {
+                        return Positioned(
+                          right: 0,
+                          top: 0,
+                          child: Container(
+                            padding: EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: AppTheme.error,
+                              borderRadius: BorderRadius.circular(
+                                AppTheme.radiusSmall,
+                              ),
+                            ),
+                            constraints: BoxConstraints(
+                              minWidth: 18,
+                              minHeight: 18,
+                            ),
+                            child: Text(
+                              '${snapshot.data}',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        );
+                      }
+                      return SizedBox.shrink();
+                    },
                   ),
-                  child: Icon(
-                    _zoomScale < 1.0 ? Icons.zoom_in : Icons.zoom_out,
-                    size: 20,
-                  ),
-                ),
-                onPressed: () {
-                  setState(() {
-                    if (_zoomScale <= 0.8) {
-                      _zoomScale = 1.0; // Reset a tamaño normal
-                    } else {
-                      _zoomScale = 0.8; // Zoom out para ver más mesas
-                    }
-                  });
-                },
-                tooltip: _zoomScale < 1.0 ? 'Acercar vista' : 'Alejar vista',
+                ],
               ),
+              tooltip: 'Ver documentos del día',
+              onPressed: () => navegarADocumentos(),
             ),
-          ],
+          ),
           Container(
             margin: EdgeInsets.only(right: AppTheme.spacingSmall),
             child: IconButton(
@@ -5386,22 +6220,18 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
         // Detectar si es móvil usando el breakpoint establecido
         bool isMobile = constraints.maxWidth < 768;
 
-        return Transform.scale(
-          scale: _zoomScale,
-          child: SingleChildScrollView(
-            padding: EdgeInsets.all(context.responsivePadding),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Mesas especiales en la parte superior
-                buildMesasEspeciales(),
-                SizedBox(
-                  height: isMobile ? 40 : AppTheme.spacingXLarge,
-                ), // Más espacio en móvil
-                // Vista responsiva para mesas regulares
-                if (isMobile) _buildMobileMesasView() else buildMesasPorFilas(),
-              ],
-            ),
+        return SingleChildScrollView(
+          padding: EdgeInsets.all(context.responsivePadding),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Mesas especiales en la parte superior
+              buildMesasEspeciales(),
+              SizedBox(height: AppTheme.spacingXLarge),
+
+              // Vista responsiva para mesas regulares
+              if (isMobile) _buildMobileMesasView() else buildMesasPorFilas(),
+            ],
           ),
         );
       },
@@ -5409,8 +6239,8 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
   }
 
   Widget _buildMobileMesasView() {
-    // Organizar mesas por letras (igual que en escritorio)
-    Map<String, List<Mesa>> mesasPorLetra = {};
+    // Organizar mesas por filas para vista móvil
+    Map<String, List<Mesa>> mesasPorFila = {};
 
     for (Mesa mesa in mesas) {
       if (mesa.nombre.isNotEmpty) {
@@ -5421,86 +6251,105 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
           'CAJA',
           'MESA AUXILIAR',
         ].contains(mesa.nombre.toUpperCase())) {
-          if (mesasPorLetra[letra] == null) {
-            mesasPorLetra[letra] = [];
+          if (mesasPorFila[letra] == null) {
+            mesasPorFila[letra] = [];
           }
-          mesasPorLetra[letra]!.add(mesa);
+          mesasPorFila[letra]!.add(mesa);
         }
       }
     }
 
     // Ordenar las letras alfabéticamente
-    List<String> letrasOrdenadas = mesasPorLetra.keys.toList()..sort();
+    List<String> letrasOrdenadas = mesasPorFila.keys.toList()..sort();
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: EdgeInsets.symmetric(
-        horizontal: AppTheme.spacingSmall,
-        vertical: AppTheme.spacingMedium,
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: letrasOrdenadas.map((letra) {
-          List<Mesa> mesasDeLaLetra = mesasPorLetra[letra]!;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: letrasOrdenadas.map((letra) {
+        List<Mesa> mesasDeLaFila = mesasPorFila[letra]!;
 
-          // Ordenar las mesas de cada letra por número
-          mesasDeLaLetra.sort((a, b) {
-            int numeroA = int.tryParse(a.nombre.substring(1)) ?? 0;
-            int numeroB = int.tryParse(b.nombre.substring(1)) ?? 0;
+        // Ordenar las mesas de cada fila por número
+        mesasDeLaFila.sort((a, b) {
+          int numeroA = int.tryParse(a.nombre.substring(1)) ?? 0;
+          int numeroB = int.tryParse(b.nombre.substring(1)) ?? 0;
 
-            // Convertir 0 a 10 para que vaya al final
-            if (numeroA == 0) numeroA = 10;
-            if (numeroB == 0) numeroB = 10;
+          // Convertir 0 a 10 para que vaya al final
+          if (numeroA == 0) numeroA = 10;
+          if (numeroB == 0) numeroB = 10;
 
-            return numeroA.compareTo(numeroB);
-          });
+          return numeroA.compareTo(numeroB);
+        });
 
-          return Container(
-            margin: EdgeInsets.only(right: AppTheme.spacingLarge),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // Título de la columna (letra)
-                Container(
-                  margin: EdgeInsets.only(bottom: AppTheme.spacingMedium),
-                  padding: EdgeInsets.symmetric(
-                    horizontal: AppTheme.spacingMedium,
-                    vertical: AppTheme.spacingSmall,
-                  ),
-                  decoration: BoxDecoration(
-                    gradient: AppTheme.primaryGradient,
-                    borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
-                    boxShadow: AppTheme.primaryShadow,
-                  ),
-                  child: Text(
-                    'Fila $letra',
-                    style: AppTheme.bodyLarge.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 16, // Tamaño reducido para móvil
+        return Container(
+          margin: EdgeInsets.only(bottom: AppTheme.spacingXLarge),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Título de la fila
+              Container(
+                width: double.infinity,
+                margin: EdgeInsets.only(bottom: AppTheme.spacingMedium),
+                padding: EdgeInsets.symmetric(
+                  horizontal: AppTheme.spacingMedium,
+                  vertical: AppTheme.spacingSmall,
+                ),
+                decoration: BoxDecoration(
+                  gradient: AppTheme.primaryGradient,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
+                  boxShadow: AppTheme.primaryShadow,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Fila $letra',
+                      style: AppTheme.bodyLarge.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 18,
+                      ),
                     ),
-                  ),
-                ),
-                // Mesas de la letra organizadas verticalmente
-                Column(
-                  children: mesasDeLaLetra
-                      .map(
-                        (mesa) => Container(
-                          width: 140, // Ancho fijo para móvil
-                          height: 140, // Altura aumentada para móvil
-                          margin: EdgeInsets.only(
-                            bottom: AppTheme.spacingMedium,
-                          ),
-                          child: _buildMesaCard(mesa),
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: AppTheme.spacingSmall,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(
+                          AppTheme.radiusSmall,
                         ),
-                      )
-                      .toList(),
+                      ),
+                      child: Text(
+                        '${mesasDeLaFila.length} mesas',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          );
-        }).toList(),
-      ),
+              ),
+              // Grid de mesas para móvil (2 columnas)
+              GridView.builder(
+                shrinkWrap: true,
+                physics: NeverScrollableScrollPhysics(),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: AppTheme.spacingMedium,
+                  mainAxisSpacing: AppTheme.spacingMedium,
+                  childAspectRatio: 0.85, // Relación ancho/alto
+                ),
+                itemCount: mesasDeLaFila.length,
+                itemBuilder: (context, index) {
+                  return _buildMesaCard(mesasDeLaFila[index]);
+                },
+              ),
+            ],
+          ),
+        );
+      }).toList(),
     );
   }
 
@@ -5516,44 +6365,44 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
         // Detectar si es móvil usando el breakpoint establecado
         bool isMobile = constraints.maxWidth < 768;
 
+        // Definir altura responsive
+        double especialHeight = context.isMobile
+            ? 100
+            : context.isTablet
+            ? 120
+            : 140;
+
         if (isMobile) {
-          // Vista móvil: diseño horizontal con scroll
-          return SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: EdgeInsets.symmetric(horizontal: AppTheme.spacingMedium),
-            child: Row(
-              children: [
-                _buildMesaEspecialMobile(
-                  'Domicilio',
-                  Icons.delivery_dining,
-                  'disponible',
-                  () => _navegarAPedido('Domicilio'),
-                ),
-                SizedBox(
-                  width: AppTheme.spacingLarge,
-                ), // Más espacio entre mesas
-                _buildMesaEspecialMobile(
-                  'Caja',
-                  Icons.point_of_sale,
-                  'disponible',
-                  () => _navegarAPedido('Caja'),
-                ),
-                SizedBox(
-                  width: AppTheme.spacingLarge,
-                ), // Más espacio entre mesas
-                _buildMesaEspecialMobile(
-                  'Mesa Auxiliar',
-                  Icons.table_restaurant,
-                  'disponible',
-                  () => _navegarAPedido('Mesa Auxiliar'),
-                ),
-              ],
-            ),
+          // Vista móvil: diseño en una sola columna con más espacio
+          return Column(
+            children: [
+              buildMesaEspecial(
+                'Domicilio',
+                Icons.delivery_dining,
+                'disponible',
+                () => _navegarAPedido('Domicilio'),
+                height: especialHeight,
+              ),
+              SizedBox(height: AppTheme.spacingMedium),
+              buildMesaEspecial(
+                'Caja',
+                Icons.point_of_sale,
+                'disponible',
+                () => _navegarAPedido('Caja'),
+                height: especialHeight,
+              ),
+              SizedBox(height: AppTheme.spacingMedium),
+              buildMesaEspecial(
+                'Mesa Auxiliar',
+                Icons.table_restaurant,
+                'disponible',
+                () => _navegarAPedido('Mesa Auxiliar'),
+                height: especialHeight,
+              ),
+            ],
           );
         } else {
           // Vista desktop/tablet: diseño original en filas
-          double especialHeight = context.isTablet ? 120 : 140;
-
           return Column(
             children: [
               // Primera fila: Domicilio y Caja
@@ -5602,151 +6451,6 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
     );
   }
 
-  Widget _buildMesaEspecialMobile(
-    String nombre,
-    IconData icono,
-    String estado,
-    VoidCallback onTap,
-  ) {
-    return FutureBuilder<List<Pedido>>(
-      future: _pedidoService.getPedidosByMesa(nombre),
-      builder: (context, snapshot) {
-        List<Pedido> pedidosActivos = [];
-        if (snapshot.hasData) {
-          pedidosActivos = snapshot.data!
-              .where((pedido) => pedido.estado == EstadoPedido.activo)
-              .toList();
-        }
-
-        // Determinar el estado basado en pedidos activos
-        bool tienePedidos = pedidosActivos.isNotEmpty;
-        Color statusColor = tienePedidos ? AppTheme.error : AppTheme.success;
-        String estadoTexto = tienePedidos
-            ? '${pedidosActivos.length} pedido${pedidosActivos.length > 1 ? 's' : ''}'
-            : 'Disponible';
-
-        // Calcular total de todos los pedidos activos
-        double totalGeneral = pedidosActivos.fold(
-          0.0,
-          (sum, pedido) => sum + pedido.total,
-        );
-
-        return GestureDetector(
-          onTap: onTap,
-          child: Container(
-            width: 130, // Ancho reducido para móvil
-            height: 110, // Altura reducida para móvil
-            decoration: AppTheme.cardDecoration.copyWith(
-              gradient: tienePedidos
-                  ? LinearGradient(
-                      colors: [AppTheme.cardBg, AppTheme.cardElevated],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    )
-                  : null,
-              border: Border.all(
-                color: tienePedidos
-                    ? AppTheme.primary.withOpacity(0.5)
-                    : AppTheme.success.withOpacity(0.3),
-                width: 1.5,
-              ),
-            ),
-            child: Padding(
-              padding: EdgeInsets.all(6), // Padding reducido
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  // Icono principal
-                  Container(
-                    padding: EdgeInsets.all(6), // Padding reducido
-                    decoration: BoxDecoration(
-                      color: AppTheme.primary.withOpacity(0.15),
-                      shape: BoxShape.circle,
-                      boxShadow: AppTheme.primaryShadow,
-                    ),
-                    child: Icon(
-                      icono,
-                      color: AppTheme.primary,
-                      size: 16, // Ícono más pequeño
-                    ),
-                  ),
-                  // Nombre de la mesa especial
-                  Text(
-                    nombre,
-                    textAlign: TextAlign.center,
-                    style: AppTheme.bodyLarge.copyWith(
-                      fontSize: 10, // Texto más pequeño
-                      fontWeight: FontWeight.w600,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  // Estado
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-                      border: Border.all(
-                        color: statusColor.withOpacity(0.3),
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 4,
-                          height: 4,
-                          decoration: BoxDecoration(
-                            color: statusColor,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        SizedBox(width: 4),
-                        Flexible(
-                          child: Text(
-                            estadoTexto,
-                            style: AppTheme.labelMedium.copyWith(
-                              color: statusColor,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 9,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  // Total si existe
-                  if (totalGeneral > 0)
-                    Container(
-                      padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primary.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(
-                          AppTheme.radiusSmall,
-                        ),
-                      ),
-                      child: Text(
-                        '\$${totalGeneral.toStringAsFixed(0)}',
-                        style: AppTheme.labelMedium.copyWith(
-                          color: AppTheme.primary,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 9,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
   Widget buildMesaEspecial(
     String nombre,
     IconData icono,
@@ -5771,11 +6475,13 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
             ? '${pedidosActivos.length} pedido${pedidosActivos.length > 1 ? 's' : ''}'
             : 'Disponible';
 
-        // Calcular total de todos los pedidos activos
-        double totalGeneral = pedidosActivos.fold(
-          0.0,
-          (sum, pedido) => sum + pedido.total,
-        );
+        // Calcular total de todos los pedidos activos (método consistente)
+        double totalGeneral = 0.0;
+        for (var pedido in pedidosActivos) {
+          for (var item in pedido.items) {
+            totalGeneral += item.cantidad * item.precioUnitario;
+          }
+        }
 
         return GestureDetector(
           onTap: onTap,
@@ -5797,14 +6503,9 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
               ),
             ),
             child: Padding(
-              padding: EdgeInsets.all(
-                context.isMobile
-                    ? AppTheme.spacingSmall
-                    : AppTheme.spacingMedium,
-              ),
+              padding: EdgeInsets.all(AppTheme.spacingMedium),
               child: Column(
-                mainAxisAlignment: MainAxisAlignment
-                    .spaceAround, // Cambiar de spaceEvenly a spaceAround para mejor distribución
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   // Icono principal
                   Container(
@@ -5831,10 +6532,10 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                       textAlign: TextAlign.center,
                       style: AppTheme.bodyLarge.copyWith(
                         fontSize: context.isMobile
-                            ? 12 // Reducir tamaño para móvil
-                            : context.isTablet
                             ? 14
-                            : 16,
+                            : context.isTablet
+                            ? 16
+                            : 18,
                         fontWeight: FontWeight.w600,
                       ),
                       maxLines: 2,
@@ -5956,10 +6657,10 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
             ? 110
             : 130;
         double cardHeight = context.isMobile
-            ? 140
+            ? 120
             : context.isTablet
-            ? 160
-            : 180;
+            ? 140
+            : 160;
 
         return Scrollbar(
           thumbVisibility: true,
@@ -6058,7 +6759,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
         print('    - ProductoID: ${item.productoId}');
         print('    - Nombre: ${item.productoNombre ?? 'Producto'}');
         print('    - Cantidad: ${item.cantidad}');
-        print('    - Precio: ${item.precioUnitario}');
+        print('    - Precio: ${item.precio}');
       }
     }
 

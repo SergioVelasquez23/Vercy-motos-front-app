@@ -1,7 +1,10 @@
 import 'dart:convert';
+import 'package:collection/collection.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'dart:async'; // Importar para usar StreamController
+import 'package:flutter/foundation.dart';
+import 'dart:html' as html;
 import '../models/pedido.dart';
 import '../utils/pedido_helper.dart'; // Añadido import
 import '../services/producto_service.dart';
@@ -35,9 +38,86 @@ class PedidoService {
     _pedidoPagadoController.close();
   }
 
+  /// Helper para formatear fechas de manera consistente con el backend
+  /// ULTRA-ROBUSTO: Nunca falla el formateo de fecha
+  String _formatearFechaParaBackend(DateTime fecha) {
+    try {
+      // Asegurar que sea hora local y válida
+      final fechaLocal = fecha.toLocal();
+
+      // Validar que la fecha esté en un rango razonable
+      if (fechaLocal.year < 1900 || fechaLocal.year > 2100) {
+        print(
+          '⚠️ Fecha fuera de rango (${fechaLocal.year}), usando fecha actual',
+        );
+        final fechaActual = DateTime.now().toLocal();
+        return _formatoManualFecha(fechaActual);
+      }
+
+      // Formateo manual SIEMPRE para evitar problemas de locale
+      return _formatoManualFecha(fechaLocal);
+    } catch (e) {
+      print('❌ Error crítico formateando fecha: $e');
+      print('❌ Fecha original: ${fecha.toString()}');
+      // Fallback absoluto: usar fecha actual con formateo manual
+      try {
+        final fechaActual = DateTime.now().toLocal();
+        return _formatoManualFecha(fechaActual);
+      } catch (e2) {
+        print('❌ Fallback crítico en formateo de fecha: $e2');
+        // Último recurso: formato ISO básico hardcodeado
+        final now = DateTime.now();
+        return '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}T${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}';
+      }
+    }
+  }
+
+  /// Formateo manual de fecha ULTRA-SEGURO
+  String _formatoManualFecha(DateTime fecha) {
+    try {
+      // Formato: yyyy-MM-ddTHH:mm:ss
+      final year = fecha.year.toString().padLeft(4, '0');
+      final month = fecha.month.toString().padLeft(2, '0');
+      final day = fecha.day.toString().padLeft(2, '0');
+      final hour = fecha.hour.toString().padLeft(2, '0');
+      final minute = fecha.minute.toString().padLeft(2, '0');
+      final second = fecha.second.toString().padLeft(2, '0');
+
+      final resultado = '$year-$month-${day}T$hour:$minute:$second';
+
+      // Validar que el resultado tenga el formato correcto
+      if (!RegExp(
+        r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$',
+      ).hasMatch(resultado)) {
+        print('⚠️ Formato de fecha inválido generado: $resultado');
+        // Fallback con valores predeterminados si algo salió mal
+        return '${DateTime.now().year}-01-01T00:00:00';
+      }
+
+      return resultado;
+    } catch (e) {
+      print('❌ Error en formateo manual: $e');
+      return '${DateTime.now().year}-01-01T00:00:00';
+    }
+  }
+
   String get baseUrl => ApiConfig.instance.baseUrl;
   final storage = FlutterSecureStorage();
   final ProductoService _productoService = ProductoService();
+
+  // Obtener token del storage
+  Future<String?> _getToken() async {
+    try {
+      if (kIsWeb) {
+        return html.window.localStorage['jwt_token'];
+      } else {
+        return await storage.read(key: 'jwt_token');
+      }
+    } catch (e) {
+      print('Error obteniendo token: $e');
+      return null;
+    }
+  }
 
   // Función auxiliar para parsear respuestas de lista de pedidos
   List<Pedido> _parseListResponse(dynamic responseData) {
@@ -85,7 +165,7 @@ class PedidoService {
 
   // Headers con autenticación
   Future<Map<String, String>> _getHeaders() async {
-    final token = await storage.read(key: 'jwt_token');
+    final token = await _getToken();
     return {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
@@ -173,14 +253,17 @@ class PedidoService {
   // Crear nuevo pedido (método legacy - ahora usa validación de caja)
   Future<Pedido> crearPedido(Pedido pedido) async {
     try {
-      // VALIDACIÓN: Verificar que hay una caja abierta antes de crear el pedido
-      print('🔍 Validando que hay una caja abierta...');
-      final cajaActiva = await _cuadreCajaService.getCajaActiva();
+      // VALIDACIÓN: Verificar que hay una caja pendiente antes de crear el pedido
+      print('🔍 Validando que hay una caja pendiente...');
+      final cajas = await _cuadreCajaService.getAllCuadres();
+      final cajaActiva = cajas
+          .where((c) => c.estado == 'pendiente')
+          .firstOrNull;
 
       if (cajaActiva == null) {
-        print('❌ No hay caja abierta para crear pedido');
+        print('❌ No hay caja pendiente para crear pedido');
         throw Exception(
-          'No se puede crear un pedido sin una caja abierta. Debe abrir una caja antes de registrar pedidos.',
+          'No se puede crear un pedido sin una caja pendiente. Debe abrir una caja antes de registrar pedidos.',
         );
       }
 
@@ -210,14 +293,17 @@ class PedidoService {
   // Crear un nuevo pedido
   Future<Pedido> createPedido(Pedido pedido) async {
     try {
-      // VALIDACIÓN: Verificar que hay una caja abierta antes de crear el pedido
-      print('🔍 Validando que hay una caja abierta...');
-      final cajaActiva = await _cuadreCajaService.getCajaActiva();
+      // VALIDACIÓN: Verificar que hay una caja pendiente antes de crear el pedido
+      print('🔍 Validando que hay una caja pendiente...');
+      final cajas = await _cuadreCajaService.getAllCuadres();
+      final cajaActiva = cajas
+          .where((c) => c.estado == 'pendiente')
+          .firstOrNull;
 
       if (cajaActiva == null) {
-        print('❌ No hay caja abierta para crear pedido');
+        print('❌ No hay caja pendiente para crear pedido');
         throw Exception(
-          'No se puede crear un pedido sin una caja abierta. Debe abrir una caja antes de registrar pedidos.',
+          'No se puede crear un pedido sin una caja pendiente. Debe abrir una caja antes de registrar pedidos.',
         );
       }
 
@@ -806,8 +892,7 @@ class PedidoService {
   // Método legacy para cancelar pedidos (mantener por compatibilidad)
   Future<void> cancelarPedido(String pedidoId, String motivo) async {
     final url = '$baseUrl/api/pedidos/cancelar';
-    final secureStorage = FlutterSecureStorage();
-    final token = await secureStorage.read(key: 'jwt_token');
+    final token = await _getToken();
 
     if (token == null) {
       throw Exception('No se encontró el token de autenticación');
@@ -990,7 +1075,7 @@ class PedidoService {
         pagarData['propina'] = propina;
         pagarData['pagado'] = true;
         pagarData['estado'] = 'Pagado'; // Asegurar que el estado sea explícito
-        pagarData['fechaPago'] = DateTime.now().toIso8601String();
+        pagarData['fechaPago'] = _formatearFechaParaBackend(DateTime.now());
 
         // Log adicional para forma de pago
         print('💵 Forma de pago configurada: $formaPago');
@@ -1092,7 +1177,7 @@ class PedidoService {
         'procesadoPor': procesadoPor,
         'notas': notas,
         'totalCalculado': totalSeleccionado + propina,
-        'fechaPago': DateTime.now().toIso8601String(),
+        'fechaPago': _formatearFechaParaBackend(DateTime.now()),
       };
 
       print('🚀 Datos para pago parcial:');
@@ -1117,7 +1202,6 @@ class PedidoService {
           _pedidoPagadoController.add(true);
           print('🔔 PedidoService: Notificación de pago parcial enviada');
           print('✅ PedidoService: Pago parcial completado exitosamente');
-
           return {
             'success': true,
             'pedidoActualizado': responseData['data']['pedidoActualizado'],
@@ -1253,34 +1337,38 @@ class PedidoService {
       print('  - Mesa destino: $mesaDestinoNombre');
       print('  - Items a mover: ${itemsParaMover.length}');
 
-      final token = await storage.read(key: 'jwt_token');
+      final token = await _getToken();
       if (token == null) {
         throw Exception('Token de autenticación no encontrado');
       }
 
-      // Preparar datos de los items a mover
-      final itemsData = itemsParaMover
-          .map(
-            (item) => {
-              'itemId': item.id,
-              'cantidad': item.cantidad,
-              'precio': item.precio,
-              'productoId': item.productoId,
-              'productoNombre': item.productoNombre,
-              'notas': item.notas,
-            },
-          )
-          .toList();
+      // Preparar datos de los productos a mover según formato del backend
+      final productosData = itemsParaMover.map((item) {
+        // Asegurar que cantidad siempre sea un entero
+        int cantidad;
+        if (item.cantidad is String) {
+          cantidad = int.tryParse(item.cantidad.toString()) ?? 1;
+        } else if (item.cantidad is double) {
+          cantidad = item.cantidad.toInt();
+        } else {
+          cantidad = item.cantidad;
+        }
+
+        return {'productoId': item.productoId, 'cantidad': cantidad};
+      }).toList();
 
       final requestData = {
-        'pedidoOrigenId': pedidoOrigenId,
-        'mesaDestinoNombre': mesaDestinoNombre,
-        'itemsParaMover': itemsData,
-        'usuarioId': usuarioId,
-        'usuarioNombre': usuarioNombre,
-        'timestamp': DateTime.now().toIso8601String(),
+        'pedidoId': pedidoOrigenId, // Backend espera 'pedidoId'
+        'mesaDestino':
+            mesaDestinoNombre, // Enviar nombre completo de mesa (A1, B6, C1)
+        'productos': productosData, // Backend espera 'productos'
       };
 
+      print('🌐 LLAMADA API - MOVER PRODUCTOS ESPECÍFICOS:');
+      print('   • Endpoint: POST /api/pedidos/mover-productos-especificos');
+      print('   • Pedido ID: $pedidoOrigenId');
+      print('   • Mesa destino: $mesaDestinoNombre');
+      print('   • Productos a mover: ${productosData.length}');
       print('📤 Enviando request: ${json.encode(requestData)}');
 
       final response = await http.post(
@@ -1303,17 +1391,25 @@ class PedidoService {
 
           print('✅ Productos movidos exitosamente');
           print('  - Mesa destino: $mesaDestinoNombre');
-          print('  - Nueva orden creada: ${data['nuevaOrdenCreada'] ?? false}');
+          print('  - Nueva orden creada: ${data['nuevoPedidoId'] != null}');
+          print('  - Nuevo pedido ID: ${data['nuevoPedidoId'] ?? 'N/A'}');
           print(
-            '  - Items movidos: ${data['itemsMovidos'] ?? itemsParaMover.length}',
+            '  - Items movidos: ${data['productosMovidos'] ?? itemsParaMover.length}',
           );
 
+          // Retornar la respuesta completa del backend con información adicional
           return {
             'success': true,
-            'nuevaOrdenCreada': data['nuevaOrdenCreada'] ?? false,
-            'itemsMovidos': data['itemsMovidos'] ?? itemsParaMover.length,
-            'pedidoDestinoId': data['pedidoDestinoId'],
-            'message': 'Productos movidos exitosamente a $mesaDestinoNombre',
+            'data': data, // Datos completos del backend
+            'message':
+                responseData['message'] ??
+                'Productos movidos exitosamente a $mesaDestinoNombre',
+            // Mantener compatibilidad con código existente
+            'nuevaOrdenCreada': data['nuevoPedidoId'] != null,
+            'itemsMovidos': data['productosMovidos'] ?? itemsParaMover.length,
+            'pedidoDestinoId': data['nuevoPedidoId'],
+            'mesaDestino': data['mesaDestino'],
+            'pedidoOriginalEliminado': data['pedidoOriginalEliminado'] ?? false,
           };
         } else {
           throw Exception(
