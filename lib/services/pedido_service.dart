@@ -1166,18 +1166,25 @@ class PedidoService {
 
       // Crear lista de IDs de items para el backend
       List<String> itemIds = itemsSeleccionados
-          .map((item) => item.id ?? '')
+          .map((item) => item.productoId)
           .where((id) => id.isNotEmpty)
           .toList();
+
+      print('🔍 Debug itemIds:');
+      for (int i = 0; i < itemsSeleccionados.length; i++) {
+        final item = itemsSeleccionados[i];
+        print(
+          '  Item $i: id=${item.id}, productoId=${item.productoId}, nombre=${item.productoNombre}',
+        );
+      }
+      print('  ItemIds finales: $itemIds');
 
       final Map<String, dynamic> pagoData = {
         'itemIds': itemIds,
         'formaPago': formaPago,
-        'propina': propina,
         'procesadoPor': procesadoPor,
         'notas': notas,
         'totalCalculado': totalSeleccionado + propina,
-        'fechaPago': _formatearFechaParaBackend(DateTime.now()),
       };
 
       print('🚀 Datos para pago parcial:');

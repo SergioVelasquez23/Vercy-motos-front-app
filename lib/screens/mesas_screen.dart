@@ -21,7 +21,6 @@ import '../services/cuadre_caja_service.dart';
 import '../providers/user_provider.dart';
 import '../utils/format_utils.dart';
 import '../utils/impresion_mixin.dart';
-import '../utils/datetime_utils.dart';
 import 'pedido_screen.dart';
 import 'documentos_mesa_screen.dart';
 import 'package:share_plus/share_plus.dart';
@@ -855,7 +854,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'Total a deber: \$${(resumen['total'] ?? 0.0).toStringAsFixed(0)}',
+              'Total a deber: ${formatCurrency(resumen['total'] ?? 0.0)}',
               style: TextStyle(
                 color: Colors.orange,
                 fontSize: 18,
@@ -1304,7 +1303,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                 ),
               ),
               Text(
-                '\$${(producto['subtotal'] ?? 0.0).toStringAsFixed(0)}',
+                formatCurrency(producto['subtotal'] ?? 0.0),
                 style: TextStyle(color: _primary, fontWeight: FontWeight.bold),
               ),
             ],
@@ -1440,16 +1439,18 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
               totalMesa += subtotalItem;
             }
             print(
-              '   📦 Pedido ${pedido.id}: ${pedido.items.length} items, total: \$${totalPedido}',
+              '   📦 Pedido ${pedido.id}: ${pedido.items.length} items, total: ${formatCurrency(totalPedido)}',
             );
           }
 
-          print('   💰 Total calculado mesa ${mesa.nombre}: \$${totalMesa}');
+          print(
+            '   💰 Total calculado mesa ${mesa.nombre}: ${formatCurrency(totalMesa)}',
+          );
 
           // Forzar actualización si hay diferencia en totales (corrige inconsistencias)
           if (!mesa.ocupada || mesa.total != totalMesa) {
             print(
-              '🔄 Mesa ${mesa.nombre}: ocupada=true, total=\$${totalMesa} (anterior: \$${mesa.total})',
+              '🔄 Mesa ${mesa.nombre}: ocupada=true, total=${formatCurrency(totalMesa)} (anterior: ${formatCurrency(mesa.total)})',
             );
             mesa.ocupada = true;
             mesa.total = totalMesa;
@@ -1458,7 +1459,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
           } else if (mesa.total != totalMesa) {
             // Caso especial: forzar corrección de totales inconsistentes
             print(
-              '⚠️ Corrigiendo total inconsistente Mesa ${mesa.nombre}: \$${mesa.total} → \$${totalMesa}',
+              '⚠️ Corrigiendo total inconsistente Mesa ${mesa.nombre}: ${formatCurrency(mesa.total)} → ${formatCurrency(totalMesa)}',
             );
             mesa.total = totalMesa;
             mesaCambio = true;
@@ -1467,7 +1468,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
         } else {
           if (mesa.ocupada || mesa.total > 0) {
             print(
-              '⚠️ Mesa ${mesa.nombre}: Liberando mesa sin pedidos activos (total anterior: \$${mesa.total})',
+              '⚠️ Mesa ${mesa.nombre}: Liberando mesa sin pedidos activos (total anterior: ${formatCurrency(mesa.total)})',
             );
             mesa.ocupada = false;
             mesa.productos = [];
@@ -2271,15 +2272,66 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                     ),
                                     SizedBox(width: 2),
                                     Flexible(
-                                      child: Text(
-                                        formatCurrency(mesa.total),
-                                        style: AppTheme.labelMedium.copyWith(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: constraints.maxWidth * 0.08,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
+                                      child: Builder(
+                                        builder: (context) {
+                                          // 🔍 DEBUG: Capturar corrupción de números
+                                          final valorOriginal = mesa.total;
+                                          final valorFormateado =
+                                              formatCurrency(valorOriginal);
+
+                                          // Detectar si hay caracteres raros
+                                          if (valorFormateado.contains(
+                                            RegExp(r'[^\d\.\$\-]'),
+                                          )) {
+                                            print(
+                                              '🔴 CORRUPCIÓN DETECTADA EN MESA ${mesa.nombre}:',
+                                            );
+                                            print(
+                                              '  - Valor original: $valorOriginal (${valorOriginal.runtimeType})',
+                                            );
+                                            print(
+                                              '  - Valor formateado: "$valorFormateado"',
+                                            );
+                                            print(
+                                              '  - Caracteres: ${valorFormateado.runes.map((c) => '${String.fromCharCode(c)} ($c)').join(', ')}',
+                                            );
+
+                                            // Usar fallback directo
+                                            final fallback = formatCurrency(
+                                              valorOriginal,
+                                            );
+                                            print(
+                                              '  - Usando fallback: "$fallback"',
+                                            );
+                                            return Text(
+                                              fallback,
+                                              style: AppTheme.labelMedium
+                                                  .copyWith(
+                                                    color: Colors.white,
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize:
+                                                        constraints.maxWidth *
+                                                        0.08,
+                                                  ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            );
+                                          }
+
+                                          return Text(
+                                            valorFormateado,
+                                            style: AppTheme.labelMedium
+                                                .copyWith(
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize:
+                                                      constraints.maxWidth *
+                                                      0.08,
+                                                ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          );
+                                        },
                                       ),
                                     ),
                                   ],
@@ -2301,15 +2353,59 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                   width: 1,
                                 ),
                               ),
-                              child: Text(
-                                formatCurrency(mesa.total),
-                                style: AppTheme.labelMedium.copyWith(
-                                  color: AppTheme.primary,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: constraints.maxWidth * 0.09,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                              child: Builder(
+                                builder: (context) {
+                                  // 🔍 DEBUG: Capturar corrupción de números (segunda instancia)
+                                  final valorOriginal = mesa.total;
+                                  final valorFormateado = formatCurrency(
+                                    valorOriginal,
+                                  );
+
+                                  // Detectar si hay caracteres raros
+                                  if (valorFormateado.contains(
+                                    RegExp(r'[^\d\.\$\-]'),
+                                  )) {
+                                    print(
+                                      '🔴 CORRUPCIÓN DETECTADA EN MESA ${mesa.nombre} (instancia 2):',
+                                    );
+                                    print(
+                                      '  - Valor original: $valorOriginal (${valorOriginal.runtimeType})',
+                                    );
+                                    print(
+                                      '  - Valor formateado: "$valorFormateado"',
+                                    );
+                                    print(
+                                      '  - Caracteres: ${valorFormateado.runes.map((c) => '${String.fromCharCode(c)} ($c)').join(', ')}',
+                                    );
+
+                                    // Usar fallback directo
+                                    final fallback = formatCurrency(
+                                      valorOriginal,
+                                    );
+                                    print('  - Usando fallback: "$fallback"');
+                                    return Text(
+                                      fallback,
+                                      style: AppTheme.labelMedium.copyWith(
+                                        color: AppTheme.primary,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: constraints.maxWidth * 0.09,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    );
+                                  }
+
+                                  return Text(
+                                    valorFormateado,
+                                    style: AppTheme.labelMedium.copyWith(
+                                      color: AppTheme.primary,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: constraints.maxWidth * 0.09,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  );
+                                },
                               ),
                             ),
                     ),
@@ -2414,7 +2510,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
 
                   // Valor del billete
                   Text(
-                    '\$${(valor / 1000).toStringAsFixed(0)}K',
+                    '${formatCurrency(valor / 1000)}K',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 14,
@@ -2654,7 +2750,9 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
 
                                     // Precio
                                     Text(
-                                      '\$${((item.precio) * item.cantidad).toStringAsFixed(0)}',
+                                      formatCurrency(
+                                        (item.precio) * item.cantidad,
+                                      ),
                                       style: TextStyle(
                                         color: _primary,
                                         fontWeight: FontWeight.bold,
@@ -3360,7 +3458,9 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                                 ),
                                               ),
                                               Text(
-                                                '\$${billetesSeleccionados.toStringAsFixed(0)}',
+                                                formatCurrency(
+                                                  billetesSeleccionados,
+                                                ),
                                                 style: TextStyle(
                                                   color: _textPrimary,
                                                   fontSize: 15,
@@ -3386,8 +3486,11 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                                 (billetesSeleccionados -
                                                             total) >=
                                                         0
-                                                    ? '\$${(billetesSeleccionados - total).toStringAsFixed(0)}'
-                                                    : '-\$${(total - billetesSeleccionados).toStringAsFixed(0)}',
+                                                    ? formatCurrency(
+                                                        billetesSeleccionados -
+                                                            total,
+                                                      )
+                                                    : '-${formatCurrency(total - billetesSeleccionados)}',
                                                 style: TextStyle(
                                                   color:
                                                       (billetesSeleccionados -
@@ -3739,7 +3842,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                               Navigator.pop(context);
 
                               // Procesar pago parcial DESPUÉS de cerrar diálogo
-                              await _procesarPagoParcial(
+                              await _pagarProductosParciales(
                                 mesa,
                                 pedido,
                                 productosSeleccionados,
@@ -4103,7 +4206,90 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
     }
   }
 
-  /// Procesa el pago parcial de productos seleccionados
+  /// Procesa el pago parcial usando la API correcta del backend
+  Future<void> _pagarProductosParciales(
+    Mesa mesa,
+    Pedido pedido,
+    List<ItemPedido> itemsSeleccionados,
+    Map<String, dynamic> datosPago,
+  ) async {
+    try {
+      print(
+        '🚀 =========================== INICIO PAGO PARCIAL (API) ===========================',
+      );
+
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+
+      // Calcular propina si está incluida
+      double propina = 0.0;
+      if (datosPago['incluyePropina'] == true) {
+        propina =
+            double.tryParse(datosPago['propina']?.toString() ?? '0') ?? 0.0;
+      }
+
+      print('📊 DATOS PARA API:');
+      print('   • Pedido ID: ${pedido.id}');
+      print('   • Items seleccionados: ${itemsSeleccionados.length}');
+      print('   • Forma de pago: ${datosPago['medioPago'] ?? 'efectivo'}');
+      print('   • Propina: \$${propina}');
+      print('   • Usuario: ${userProvider.userName ?? 'Usuario'}');
+
+      // Llamar a la API correcta
+      final resultado = await _pedidoService.pagarProductosParciales(
+        pedido.id,
+        itemsSeleccionados: itemsSeleccionados,
+        formaPago: datosPago['medioPago'] ?? 'efectivo',
+        propina: propina,
+        procesadoPor: userProvider.userName ?? 'Usuario',
+        notas: 'Pago parcial desde mesa ${mesa.nombre}',
+      );
+
+      if (resultado['success'] == true) {
+        print('✅ PAGO PARCIAL EXITOSO:');
+        print('   • Items pagados: ${resultado['itemsPagados']}');
+        print('   • Total pagado: \$${resultado['totalPagado']}');
+
+        // Mostrar confirmación
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('✅ Pago parcial procesado exitosamente'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+
+        // Recargar mesas para actualizar los totales
+        await _loadMesas();
+      } else {
+        throw Exception('Error en la respuesta de la API: ${resultado}');
+      }
+
+      print(
+        '✅ =========================== FIN PAGO PARCIAL (ÉXITO) ===========================',
+      );
+    } catch (e) {
+      print('❌ ERROR EN PAGO PARCIAL (API): $e');
+      print(
+        '❌ =========================== FIN PAGO PARCIAL (ERROR) ===========================',
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Error en pago parcial: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 5),
+          ),
+        );
+      }
+
+      rethrow;
+    }
+  }
+
+  /// Procesa el pago parcial de productos seleccionados (MÉTODO ANTERIOR - NO USAR)
   Future<void> _procesarPagoParcial(
     Mesa mesa,
     Pedido pedido,
@@ -4117,7 +4303,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
       print('📊 DATOS DEL PAGO PARCIAL:');
       print('   • Mesa: ${mesa.nombre} (ID: ${mesa.id})');
       print('   • Pedido Original ID: ${pedido.id}');
-      print('   • Total Original: \$${pedido.total}');
+      print('   • Total Original: ${formatCurrency(pedido.total)}');
       print('   • Items Originales: ${pedido.items.length}');
       print('   • Items Seleccionados: ${itemsSeleccionados.length}');
       print('   • Datos Pago: $datosPago');
@@ -4200,14 +4386,14 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
           estado: EstadoPedido.activo, // Mantener activo
           notas:
               (pedido.notas ?? '') +
-              '\n[PAGO PARCIAL] ${itemsSeleccionados.length} productos pagados (${DateTimeUtils.formatForDisplay(fechaActual, format: 'datetime')})',
+              '\n[PAGO PARCIAL] ${itemsSeleccionados.length} productos pagados (${fechaActual.toIso8601String()})',
         );
 
         // Actualizar el pedido original
         print('🌐 LLAMADA API - ACTUALIZAR PEDIDO ORIGINAL:');
         print('   • Endpoint: PUT /api/pedidos/${pedido.id}');
         print('   • Items restantes: ${itemsRestantes.length}');
-        print('   • Nuevo total: \$${totalRestante}');
+        print('   • Nuevo total: ${formatCurrency(totalRestante)}');
         print('📊 Datos del pedido actualizado: ${pedidoActualizado.toJson()}');
 
         await _pedidoService.updatePedido(pedidoActualizado);
@@ -4220,7 +4406,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
         print('   • Endpoint: POST /api/pedidos');
         print('   • Mesa ID: ${mesa.id}');
         print('   • Estado: pagado');
-        print('   • Total: \$${totalSeleccionado}');
+        print('   • Total: ${formatCurrency(totalSeleccionado)}');
         print('   • Items: ${itemsSeleccionados.length}');
         print('📊 Datos del pedido pagado: ${pedidoPagado.toJson()}');
         final resultadoPagado = await _pedidoService.crearPedido(pedidoPagado);
@@ -4709,7 +4895,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
         0,
         (sum, item) => sum + (item.cantidad * item.precio),
       );
-      print('💰 Valor total: \$${totalMovimiento.toStringAsFixed(2)}');
+      print('💰 Valor total: ${formatCurrency(totalMovimiento)}');
 
       final resultado = await _pedidoService.moverProductosEspecificos(
         pedidoOrigenId: pedidoOrigen.id,
@@ -4809,7 +4995,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
               print('   • Mesa solicitada: ${mesaDestino.nombre}');
               print('   • Mesa real en BD: $mesaRealPedido');
               print('   • Items: ${pedidoEncontrado.items.length}');
-              print('   • Total: \$${pedidoEncontrado.total}');
+              print('   • Total: ${formatCurrency(pedidoEncontrado.total)}');
 
               if (mesaRealPedido != mesaDestino.nombre) {
                 mensaje +=
@@ -5307,7 +5493,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                         ),
                       ),
                       Text(
-                        '\$${(resumen['total'] ?? 0.0).toStringAsFixed(0)}',
+                        formatCurrency(resumen['total'] ?? 0.0),
                         style: TextStyle(
                           color: _primary,
                           fontSize: 22,
@@ -5918,7 +6104,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
             ),
             SizedBox(height: 8),
             Text(
-              'Total: \$${factura['total']?.toStringAsFixed(0) ?? '0'}',
+              'Total: ${formatCurrency(factura['total'] ?? 0.0)}',
               style: TextStyle(
                 color: _primary,
                 fontSize: 18,
@@ -5976,7 +6162,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
               style: TextStyle(color: _textPrimary, fontSize: 16),
             ),
             Text(
-              'Total: \$${factura['total'].toStringAsFixed(0)}',
+              'Total: ${formatCurrency(factura['total'])}',
               style: TextStyle(
                 color: _primary,
                 fontSize: 18,
@@ -6596,7 +6782,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                         ),
                       ),
                       child: Text(
-                        '\$${totalGeneral.toStringAsFixed(0)}',
+                        formatCurrency(totalGeneral),
                         style: AppTheme.labelMedium.copyWith(
                           color: AppTheme.primary,
                           fontWeight: FontWeight.bold,
@@ -6881,7 +7067,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     child: Text(
-                                      '\$${pedido.total.toStringAsFixed(0)}',
+                                      formatCurrency(pedido.total),
                                       style: TextStyle(
                                         color: Colors.white,
                                         fontWeight: FontWeight.bold,
@@ -6957,7 +7143,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                             CrossAxisAlignment.start,
                                         children: [
                                           Text(
-                                            '• ${item.cantidad}x ${item.productoNombre ?? 'Producto'} - \$${(item.precioUnitario * item.cantidad).toStringAsFixed(0)}',
+                                            '• ${item.cantidad}x ${item.productoNombre ?? 'Producto'} - ${formatCurrency(item.precioUnitario * item.cantidad)}',
                                             style: TextStyle(
                                               color: _textSecondary,
                                               fontSize: 13,
