@@ -165,7 +165,6 @@ class _MovimientoInventarioDialogState
       Navigator.of(context).pop(true);
     } catch (e) {
       setState(() => _error = kErrorGuardado);
-      print('Error guardando movimiento: $e');
     } finally {
       setState(() => _isLoading = false);
     }

@@ -215,3 +215,35 @@ String _detectAndFixCorruption(String formatted, dynamic originalValue) {
 
   return formatted;
 }
+
+/// Formatea una fecha en formato legible dd/MM/yyyy HH:mm
+/// Ejemplo: 2025-09-30T14:30:00.000Z -> 30/09/2025 14:30
+String formatDate(DateTime dateTime) {
+  try {
+    final day = dateTime.day.toString().padLeft(2, '0');
+    final month = dateTime.month.toString().padLeft(2, '0');
+    final year = dateTime.year.toString();
+    final hour = dateTime.hour.toString().padLeft(2, '0');
+    final minute = dateTime.minute.toString().padLeft(2, '0');
+
+    return '$day/$month/$year $hour:$minute';
+  } catch (e) {
+    print('❌ Error formateando fecha: $e');
+    return 'Fecha inválida';
+  }
+}
+
+/// Formatea una fecha en formato solo fecha dd/MM/yyyy
+/// Ejemplo: 2025-09-30T14:30:00.000Z -> 30/09/2025
+String formatDateOnly(DateTime dateTime) {
+  try {
+    final day = dateTime.day.toString().padLeft(2, '0');
+    final month = dateTime.month.toString().padLeft(2, '0');
+    final year = dateTime.year.toString();
+
+    return '$day/$month/$year';
+  } catch (e) {
+    print('❌ Error formateando fecha: $e');
+    return 'Fecha inválida';
+  }
+}

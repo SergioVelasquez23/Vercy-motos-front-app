@@ -406,23 +406,47 @@ class ProductoService {
   Future<String> uploadProductImage(XFile image) async {
     try {
       final headers = await _getHeaders();
-      final request = http.MultipartRequest(
-        'POST',
-        Uri.parse('$baseUrl/api/productos/upload-image'),
-      );
-
-      request.headers.addAll(headers);
-      request.files.add(await http.MultipartFile.fromPath('image', image.path));
-
-      final response = await request.send().timeout(Duration(seconds: 30));
-
-      if (response.statusCode == 200) {
-        final responseData = await response.stream.bytesToString();
-        final jsonData = json.decode(responseData);
-        print('✅ Imagen subida exitosamente');
-        return jsonData['imageUrl'];
+      if (kIsWeb) {
+        // Flutter Web: leer bytes, codificar a base64 y enviar como JSON
+        final bytes = await image.readAsBytes();
+        final base64Image = base64Encode(bytes);
+        final fileName = image.name;
+        final response = await http
+            .post(
+              Uri.parse('$baseUrl/api/images/upload-base64'),
+              headers: headers,
+              body: json.encode({
+                'fileName': fileName,
+                'imageBase64': base64Image,
+              }),
+            )
+            .timeout(Duration(seconds: 30));
+        if (response.statusCode == 200) {
+          final jsonData = json.decode(response.body);
+          print('✅ Imagen subida exitosamente (web)');
+          return jsonData['data'];
+        } else {
+          throw Exception('Error del servidor (web): ${response.statusCode}');
+        }
       } else {
-        throw Exception('Error del servidor: ${response.statusCode}');
+        // Móvil/escritorio: usar MultipartRequest
+        final request = http.MultipartRequest(
+          'POST',
+          Uri.parse('$baseUrl/api/productos/upload-image'),
+        );
+        request.headers.addAll(headers);
+        request.files.add(
+          await http.MultipartFile.fromPath('image', image.path),
+        );
+        final response = await request.send().timeout(Duration(seconds: 30));
+        if (response.statusCode == 200) {
+          final responseData = await response.stream.bytesToString();
+          final jsonData = json.decode(responseData);
+          print('✅ Imagen subida exitosamente');
+          return jsonData['data'];
+        } else {
+          throw Exception('Error del servidor: ${response.statusCode}');
+        }
       }
     } catch (e) {
       print('❌ Error subiendo imagen: $e');

@@ -61,7 +61,6 @@ class _AbrirCajaScreenState extends State<AbrirCajaScreen> {
         _cajaActual = cajaAbierta.isNotEmpty ? cajaAbierta.first : null;
       });
     } catch (e) {
-      print('Error verificando estado de caja: $e');
     } finally {
       setState(() {
         _isLoading = false;

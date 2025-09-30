@@ -70,12 +70,24 @@ class _MovimientosCuadreScreenState extends State<MovimientosCuadreScreen>
     });
 
     try {
+      print('🔍 Cargando gastos para cuadre ID: ${widget.cuadre.id}');
+      print('📊 Cuadre completo: ${widget.cuadre.toJson()}');
+
       final gastos = await _gastoService.getGastosByCuadre(widget.cuadre.id!);
       setState(() {
         _gastos = gastos;
         _isLoadingGastos = false;
       });
       print('✅ Gastos cargados: ${gastos.length}');
+
+      if (gastos.isNotEmpty) {
+        print('📋 Primeros gastos:');
+        for (int i = 0; i < gastos.length && i < 3; i++) {
+          print('   - ${gastos[i].concepto}: ${gastos[i].monto}');
+        }
+      } else {
+        print('⚠️ No se encontraron gastos para este cuadre');
+      }
     } catch (e) {
       setState(() {
         _errorGastos = e.toString();
@@ -92,6 +104,8 @@ class _MovimientosCuadreScreenState extends State<MovimientosCuadreScreen>
     });
 
     try {
+      print('🔍 Cargando ingresos para cuadre ID: ${widget.cuadre.id}');
+
       final ingresos = await _ingresoCajaService.obtenerPorCuadreCaja(
         widget.cuadre.id!,
       );
@@ -100,6 +114,15 @@ class _MovimientosCuadreScreenState extends State<MovimientosCuadreScreen>
         _isLoadingIngresos = false;
       });
       print('✅ Ingresos cargados: ${ingresos.length}');
+
+      if (ingresos.isNotEmpty) {
+        print('📋 Primeros ingresos:');
+        for (int i = 0; i < ingresos.length && i < 3; i++) {
+          print('   - ${ingresos[i].concepto}: ${ingresos[i].monto}');
+        }
+      } else {
+        print('⚠️ No se encontraron ingresos para este cuadre');
+      }
     } catch (e) {
       setState(() {
         _errorIngresos = e.toString();
@@ -244,6 +267,64 @@ class _MovimientosCuadreScreenState extends State<MovimientosCuadreScreen>
                   _buildInfoRow(
                     'Fondo Inicial:',
                     formatCurrency(widget.cuadre.fondoInicial),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          SizedBox(height: 16),
+
+          // Debug card para mostrar información adicional
+          Card(
+            color: Colors.orange.withOpacity(0.1),
+            child: Padding(
+              padding: EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Debug Info',
+                    style: TextStyle(
+                      color: Colors.orange,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'Cuadre ID: ${widget.cuadre.id ?? "NULL"}',
+                    style: TextStyle(color: textLight, fontSize: 12),
+                  ),
+                  Text(
+                    'Loading Gastos: $_isLoadingGastos',
+                    style: TextStyle(color: textLight, fontSize: 12),
+                  ),
+                  Text(
+                    'Loading Ingresos: $_isLoadingIngresos',
+                    style: TextStyle(color: textLight, fontSize: 12),
+                  ),
+                  if (_errorGastos != null)
+                    Text(
+                      'Error Gastos: $_errorGastos',
+                      style: TextStyle(color: Colors.red, fontSize: 12),
+                    ),
+                  if (_errorIngresos != null)
+                    Text(
+                      'Error Ingresos: $_errorIngresos',
+                      style: TextStyle(color: Colors.red, fontSize: 12),
+                    ),
+                  SizedBox(height: 8),
+                  ElevatedButton(
+                    onPressed: () {
+                      print('🔄 Recargando movimientos manualmente...');
+                      _cargarMovimientos();
+                    },
+                    child: Text('Recargar Datos'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange,
+                      foregroundColor: Colors.white,
+                    ),
                   ),
                 ],
               ),

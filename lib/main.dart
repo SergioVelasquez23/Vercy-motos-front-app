@@ -21,10 +21,7 @@ void main() async {
 
   // NO inicializar Intl.defaultLocale para evitar corrupción de formateo
   // El formateo de números ahora es completamente independiente en format_utils.dart
-  print(
-    '🚀 Aplicación iniciada sin configuración de Intl para evitar corrupción',
-  );
-
+  // ...existing code...
   runApp(
     MultiProvider(
       providers: [ChangeNotifierProvider(create: (_) => UserProvider())],

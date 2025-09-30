@@ -29,13 +29,11 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    print('🟢 LoginScreen initState: pantalla de login inicializada');
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    print('🟡 LoginScreen didChangeDependencies: dependencias cargadas');
   }
 
   @override
@@ -46,7 +44,6 @@ class _LoginScreenState extends State<LoginScreen> {
     registerNameController.dispose();
     registerEmailController.dispose();
     registerPasswordController.dispose();
-    print('🔴 LoginScreen dispose: pantalla de login destruida');
     super.dispose();
   }
 
@@ -58,13 +55,11 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final userProvider = Provider.of<UserProvider>(context, listen: false);
 
-      print('🔐 Intentando iniciar sesión...');
       final response = await authService.iniciarSesionWithResponse(
         context,
         emailController.text,
         passwordController.text,
       );
-      print('Respuesta del backend: $response');
 
       if (response != null) {
         if (response['error'] != null) {
@@ -76,31 +71,16 @@ class _LoginScreenState extends State<LoginScreen> {
             showCodeField = true;
           });
         } else if (response['token'] != null) {
-          print('✅ Login exitoso, token recibido');
           final token = response['token'];
-
-          print(
-            '⚡ Procesando login directamente, omitiendo verificación de token',
-          );
-
           try {
             await userProvider.setToken(token);
             await Future.delayed(Duration(milliseconds: 100));
-
-            print('👤 Verificación final de roles:');
-            print('👤 isMesero: ${userProvider.isMesero}');
-            print('👤 isAdmin: ${userProvider.isAdmin}');
-            print('👤 roles: ${userProvider.roles}');
-
             if (userProvider.isMesero && !userProvider.isAdmin) {
-              print('👤 ✅ Usuario es mesero, redirigiendo a mesas');
               Navigator.pushReplacementNamed(context, '/mesas');
             } else {
-              print('👤 ✅ Usuario es admin, redirigiendo a dashboard');
               Navigator.pushReplacementNamed(context, '/dashboard');
             }
           } catch (e) {
-            print('❌ Error al procesar roles: $e');
             setState(() {
               errorMessage = 'Error interno. Inténtalo de nuevo.';
             });
@@ -112,7 +92,6 @@ class _LoginScreenState extends State<LoginScreen> {
         });
       }
     } catch (e) {
-      print('❌ Error en login: $e');
       setState(() {
         errorMessage = 'Error inesperado: $e';
       });
@@ -132,16 +111,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
         await Future.delayed(Duration(milliseconds: 100));
 
-        print('👤 Verificación final de roles en validación código:');
-        print('👤 isMesero: ${userProvider.isMesero}');
-        print('👤 isAdmin: ${userProvider.isAdmin}');
-        print('👤 roles: ${userProvider.roles}');
-
         if (userProvider.isMesero && !userProvider.isAdmin) {
-          print('👤 ✅ Usuario es mesero, redirigiendo a mesas');
           Navigator.pushReplacementNamed(context, '/mesas');
         } else {
-          print('👤 ✅ Usuario es admin, redirigiendo a dashboard');
           Navigator.pushReplacementNamed(context, '/dashboard');
         }
       } else {
@@ -544,20 +516,45 @@ class _LoginScreenState extends State<LoginScreen> {
 
                           SizedBox(height: AppTheme.spacingLarge),
 
-                          // Botón de login elegante
-                          SizedBox(
+                          // Botón de login elegante con mejor responsividad
+                          Container(
                             width: double.infinity,
-                            height: 50,
-                            child: ElevatedButton(
-                              onPressed: _login,
-                              style: AppTheme.primaryButtonStyle.copyWith(
-                                elevation: MaterialStateProperty.all(4),
-                              ),
-                              child: Text(
-                                'Iniciar Sesión',
-                                style: AppTheme.labelLarge.copyWith(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w600,
+                            margin: EdgeInsets.symmetric(
+                              horizontal: 4,
+                            ), // Margen para evitar cortes
+                            child: SizedBox(
+                              height: context.isMobile
+                                  ? 56
+                                  : 60, // Altura más generosa
+                              child: ElevatedButton(
+                                onPressed: _login,
+                                style: AppTheme.primaryButtonStyle.copyWith(
+                                  elevation: MaterialStateProperty.all(4),
+                                  shape: MaterialStateProperty.all(
+                                    RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(
+                                        AppTheme.radiusMedium,
+                                      ),
+                                    ),
+                                  ),
+                                  padding: MaterialStateProperty.all(
+                                    EdgeInsets.symmetric(
+                                      horizontal: context.isMobile ? 24 : 28,
+                                      vertical: context.isMobile ? 16 : 18,
+                                    ),
+                                  ),
+                                ),
+                                child: FittedBox(
+                                  fit: BoxFit
+                                      .scaleDown, // Escala el texto si es necesario
+                                  child: Text(
+                                    'Iniciar Sesión',
+                                    style: AppTheme.labelLarge.copyWith(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: context.isMobile ? 18 : 20,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),

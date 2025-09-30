@@ -19,7 +19,8 @@ class SeleccionarTipoMesaDialog extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  State<SeleccionarTipoMesaDialog> createState() => _SeleccionarTipoMesaDialogState();
+  State<SeleccionarTipoMesaDialog> createState() =>
+      _SeleccionarTipoMesaDialogState();
 }
 
 class _SeleccionarTipoMesaDialogState extends State<SeleccionarTipoMesaDialog> {
@@ -102,11 +103,11 @@ class _SeleccionarTipoMesaDialogState extends State<SeleccionarTipoMesaDialog> {
                       ),
                     ),
                     SizedBox(height: 20),
-                    
+
                     // Lista de tipos de mesa
-                    ...TipoMesa.tiposDisponibles.map((tipo) => 
-                      _buildTipoMesaCard(tipo)
-                    ).toList(),
+                    ...TipoMesa.tiposDisponibles
+                        .map((tipo) => _buildTipoMesaCard(tipo))
+                        .toList(),
                   ],
                 ),
               ),
@@ -117,9 +118,7 @@ class _SeleccionarTipoMesaDialogState extends State<SeleccionarTipoMesaDialog> {
               padding: EdgeInsets.all(20),
               decoration: BoxDecoration(
                 border: Border(
-                  top: BorderSide(
-                    color: Colors.grey.withOpacity(0.3),
-                  ),
+                  top: BorderSide(color: Colors.grey.withOpacity(0.3)),
                 ),
               ),
               child: Row(
@@ -140,12 +139,12 @@ class _SeleccionarTipoMesaDialogState extends State<SeleccionarTipoMesaDialog> {
                   Expanded(
                     flex: 2,
                     child: ElevatedButton(
-                      onPressed: _tipoSeleccionado != null 
-                        ? () {
-                            widget.onTipoSeleccionado(_tipoSeleccionado!);
-                            Navigator.of(context).pop();
-                          } 
-                        : null,
+                      onPressed: _tipoSeleccionado != null
+                          ? () {
+                              widget.onTipoSeleccionado(_tipoSeleccionado!);
+                              Navigator.of(context).pop();
+                            }
+                          : null,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.primary,
                         foregroundColor: Colors.white,
@@ -168,7 +167,7 @@ class _SeleccionarTipoMesaDialogState extends State<SeleccionarTipoMesaDialog> {
 
   Widget _buildTipoMesaCard(TipoMesa tipo) {
     final isSelected = _tipoSeleccionado == tipo;
-    
+
     return Container(
       margin: EdgeInsets.only(bottom: 12),
       child: InkWell(
@@ -182,15 +181,15 @@ class _SeleccionarTipoMesaDialogState extends State<SeleccionarTipoMesaDialog> {
           padding: EdgeInsets.all(16),
           decoration: BoxDecoration(
             border: Border.all(
-              color: isSelected 
-                ? AppTheme.primary 
-                : Colors.grey.withOpacity(0.3),
+              color: isSelected
+                  ? AppTheme.primary
+                  : Colors.grey.withOpacity(0.3),
               width: isSelected ? 2 : 1,
             ),
             borderRadius: BorderRadius.circular(12),
-            color: isSelected 
-              ? AppTheme.primary.withOpacity(0.1) 
-              : Colors.transparent,
+            color: isSelected
+                ? AppTheme.primary.withOpacity(0.1)
+                : Colors.transparent,
           ),
           child: Row(
             children: [
@@ -207,16 +206,12 @@ class _SeleccionarTipoMesaDialogState extends State<SeleccionarTipoMesaDialog> {
                   color: isSelected ? AppTheme.primary : Colors.transparent,
                 ),
                 child: isSelected
-                  ? Icon(
-                      Icons.check,
-                      color: Colors.white,
-                      size: 16,
-                    )
-                  : null,
+                    ? Icon(Icons.check, color: Colors.white, size: 16)
+                    : null,
               ),
-              
+
               SizedBox(width: 16),
-              
+
               // Icono del tipo de mesa
               Container(
                 padding: EdgeInsets.all(10),
@@ -230,9 +225,9 @@ class _SeleccionarTipoMesaDialogState extends State<SeleccionarTipoMesaDialog> {
                   size: 24,
                 ),
               ),
-              
+
               SizedBox(width: 16),
-              
+
               // Información del tipo
               Expanded(
                 child: Column(

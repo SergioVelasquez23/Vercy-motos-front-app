@@ -15,8 +15,8 @@ class PDFService {
     final pdf = pw.Document();
 
     // Cargar fuente personalizada si es necesario
-    final font = await PdfGoogleFonts.notoSansRegular();
-    final fontBold = await PdfGoogleFonts.notoSansBold();
+    final font = await PdfGoogleFonts.robotoRegular();
+    final fontBold = await PdfGoogleFonts.robotoBold();
 
     pdf.addPage(
       pw.Page(

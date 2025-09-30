@@ -13,11 +13,8 @@ class JwtUtils {
       final payload = utf8.decode(decoded);
       final decodedPayload = jsonDecode(payload);
 
-      print('🔑 JWT decodificado correctamente');
       return decodedPayload;
     } catch (e) {
-      print('❌ Error decodificando JWT: $e');
-      print('🔖 Token: ${token.substring(0, 20)}...');
       rethrow;
     }
   }
@@ -44,7 +41,6 @@ class JwtUtils {
 
       return List<String>.from(roles);
     } catch (e) {
-      print('Error getting roles from token: $e');
       return [];
     }
   }

@@ -1287,6 +1287,9 @@ class _PedidoScreenState extends State<PedidoScreen> {
         pedidoFinal = await PedidoService().createPedido(nuevoPedido);
 
         print('✅ Nuevo pedido creado correctamente');
+        print(
+          '📊 Pedido registrado para ventas - ID: ${pedidoFinal.id}, Total: ${formatCurrency(total)}',
+        );
       }
 
       // Descontar productos de carne del inventario si existen
@@ -1299,8 +1302,15 @@ class _PedidoScreenState extends State<PedidoScreen> {
       );
 
       if (esMesaEspecial) {
-        // Para mesas especiales, el backend creará automáticamente la factura
-        // Solo mostrar el mensaje de éxito
+        // Para mesas especiales, los pedidos se guardan como individuales
+        // Asegurar que cada pedido mantiene su estado independiente
+        print(
+          '✅ Mesa especial: ${widget.mesa.nombre} - Pedido guardado como individual',
+        );
+        print('📝 ID del pedido: ${pedidoFinal.id}');
+        print('💰 Total del pedido: ${formatCurrency(total)}');
+
+        // NO crear factura automática para permitir pedidos múltiples independientes
         _mostrarMensajeExito(pedidoFinal.id, total);
       } else {
         // Para mesas normales, actualizar el estado de la mesa

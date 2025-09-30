@@ -1876,20 +1876,11 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                   FutureBuilder<Map<String, dynamic>>(
                     future: _cuadreCajaService.getEfectivoEsperado(),
                     builder: (context, snapshot) {
-                      print('🖼️ Estado del FutureBuilder:');
-                      print(
-                        '   - ConnectionState: ${snapshot.connectionState}',
-                      );
-                      print('   - HasData: ${snapshot.hasData}');
-                      print('   - HasError: ${snapshot.hasError}');
                       if (snapshot.hasError) {
-                        print('   - Error: ${snapshot.error}');
                       }
 
                       if (snapshot.hasData) {
                         final data = snapshot.data!;
-                        print('📊 Datos del FutureBuilder: $data');
-
                         final efectivoEsperado = (data['efectivoEsperado'] ?? 0)
                             .toDouble();
                         final transferenciasEsperadas =

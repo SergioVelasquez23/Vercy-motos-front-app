@@ -196,6 +196,18 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
 
     List<Pedido> pedidosFiltrados = List.from(_pedidos);
 
+    // Filtrar pedidos vacíos o sin contenido válido
+    pedidosFiltrados = pedidosFiltrados.where((pedido) {
+      // Eliminar pedidos que parecen ser movimientos vacíos
+      if (pedido.total <= 0 && pedido.items.isEmpty) {
+        print(
+          '⚠️ Pedido filtrado (vacío): ${pedido.id} - Mesa: ${pedido.mesa}',
+        );
+        return false;
+      }
+      return true;
+    }).toList();
+
     // NUEVA LÓGICA: Filtrar por tipo específico primero (Cortesía, Consumo Interno)
     if (_tipoFiltro != null) {
       final antes = pedidosFiltrados.length;
@@ -320,6 +332,184 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
     }
   }
 
+  Future<void> _mostrarDialogoEliminarPedidos() async {
+    // Obtener pedidos activos que pueden ser eliminados
+    final pedidosActivos = _pedidosFiltrados
+        .where((pedido) => pedido.estado == EstadoPedido.activo)
+        .toList();
+
+    if (pedidosActivos.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('No hay pedidos activos que se puedan eliminar'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    // Mostrar lista de pedidos para seleccionar cuáles eliminar
+    List<String> pedidosSeleccionados = [];
+
+    await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              backgroundColor: AppTheme.cardBg,
+              title: Row(
+                children: [
+                  Icon(Icons.delete_forever, color: Colors.red, size: 28),
+                  SizedBox(width: 8),
+                  Text(
+                    'Eliminar Pedidos',
+                    style: AppTheme.headlineMedium.copyWith(color: Colors.red),
+                  ),
+                ],
+              ),
+              content: Container(
+                width: double.maxFinite,
+                height: 300,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Selecciona los pedidos activos que deseas eliminar:',
+                      style: AppTheme.bodyMedium,
+                    ),
+                    SizedBox(height: 16),
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: pedidosActivos.length,
+                        itemBuilder: (context, index) {
+                          final pedido = pedidosActivos[index];
+                          final isSelected = pedidosSeleccionados.contains(
+                            pedido.id,
+                          );
+
+                          return CheckboxListTile(
+                            value: isSelected,
+                            onChanged: (bool? value) {
+                              setState(() {
+                                if (value == true) {
+                                  pedidosSeleccionados.add(pedido.id);
+                                } else {
+                                  pedidosSeleccionados.remove(pedido.id);
+                                }
+                              });
+                            },
+                            title: Text(
+                              'Mesa ${pedido.mesa} - ${pedido.cliente ?? "Sin cliente"}',
+                              style: TextStyle(color: AppTheme.textPrimary),
+                            ),
+                            subtitle: Text(
+                              'Total: ${formatCurrency(pedido.total)} - ${pedido.items.length} productos',
+                              style: TextStyle(color: AppTheme.textSecondary),
+                            ),
+                            activeColor: Colors.red,
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text(
+                    'Cancelar',
+                    style: TextStyle(color: AppTheme.textSecondary),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: pedidosSeleccionados.isEmpty
+                      ? null
+                      : () async {
+                          Navigator.of(context).pop();
+                          await _eliminarPedidosSeleccionados(
+                            pedidosSeleccionados,
+                          );
+                        },
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                  child: Text(
+                    'Eliminar ${pedidosSeleccionados.length} pedido(s)',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _eliminarPedidosSeleccionados(List<String> pedidosIds) async {
+    try {
+      setState(() {
+        _isLoading = true;
+      });
+
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      final usuarioEliminacion = userProvider.userName ?? 'Usuario Desconocido';
+
+      int exitosos = 0;
+      int fallidos = 0;
+
+      for (String pedidoId in pedidosIds) {
+        try {
+          await _pedidoService.eliminarPedido(pedidoId);
+          exitosos++;
+          print(
+            '✅ Pedido $pedidoId eliminado exitosamente por $usuarioEliminacion',
+          );
+        } catch (e) {
+          fallidos++;
+          print('❌ Error eliminando pedido $pedidoId: $e');
+        }
+      }
+
+      // Recargar la lista de pedidos
+      await _cargarPedidos();
+
+      // Mostrar resultado
+      String mensaje;
+      Color color;
+
+      if (fallidos == 0) {
+        mensaje = '✅ Se eliminaron $exitosos pedido(s) correctamente';
+        color = Colors.green;
+      } else if (exitosos == 0) {
+        mensaje = '❌ No se pudo eliminar ningún pedido';
+        color = Colors.red;
+      } else {
+        mensaje = '⚠️ Se eliminaron $exitosos pedido(s). $fallidos falló(s)';
+        color = Colors.orange;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(mensaje),
+          backgroundColor: color,
+          duration: Duration(seconds: 3),
+        ),
+      );
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error eliminando pedidos: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     // Check if user has admin permissions
@@ -396,6 +586,24 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
               onPressed: () => Navigator.of(context).pop(),
             ),
             actions: [
+              // Botón para eliminar pedidos seleccionados
+              Container(
+                margin: EdgeInsets.only(right: 8),
+                padding: EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: IconButton(
+                  icon: Icon(
+                    Icons.delete_forever,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                  onPressed: () => _mostrarDialogoEliminarPedidos(),
+                  tooltip: 'Eliminar pedidos',
+                ),
+              ),
               Container(
                 margin: EdgeInsets.only(right: 16),
                 padding: EdgeInsets.all(6),
@@ -406,6 +614,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                 child: IconButton(
                   icon: Icon(Icons.refresh, color: Colors.white, size: 20),
                   onPressed: _cargarPedidos,
+                  tooltip: 'Actualizar pedidos',
                 ),
               ),
             ],
@@ -692,6 +901,12 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
   }
 
   Widget _buildPedidoCard(Pedido pedido) {
+    // Filtrar pedidos sin total o con total 0 que no deberían mostrarse
+    if (pedido.total <= 0 && pedido.items.isEmpty) {
+      print('⚠️ Pedido filtrado - Sin total ni items: ${pedido.id}');
+      return SizedBox.shrink(); // No mostrar este pedido
+    }
+
     return Card(
       color: cardBg,
       margin: EdgeInsets.only(bottom: 12),

@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'dart:convert';
+import '../widgets/imagen_producto_widget.dart';
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import 'package:image_picker/image_picker.dart';
@@ -17,7 +19,10 @@ class ProductosScreen extends StatefulWidget {
 }
 
 class _ProductosScreenState extends State<ProductosScreen> {
+  // Cambia esto por tu dominio backend real si es diferente
+  static const String _backendBaseUrl = "https://sopa-y-carbon.onrender.com";
   final ProductoService _productoService = ProductoService();
+  final ImagePicker _imagePicker = ImagePicker();
   final IngredienteService _ingredienteService = IngredienteService();
   List<Categoria> _categorias = [];
   List<Producto> _productos = [];
@@ -102,15 +107,11 @@ class _ProductosScreenState extends State<ProductosScreen> {
 
   @override
   Widget build(BuildContext context) {
-
     if (_isLoading) {
       return Scaffold(
         backgroundColor: AppTheme.backgroundDark,
         appBar: AppBar(
-          title: Text(
-            'Gestión de Productos',
-            style: AppTheme.headlineMedium,
-          ),
+          title: Text('Gestión de Productos', style: AppTheme.headlineMedium),
           backgroundColor: AppTheme.primary,
           elevation: 0,
           centerTitle: true,
@@ -128,10 +129,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                 ),
               ),
               SizedBox(height: AppTheme.spacingLarge),
-              Text(
-                'Cargando productos...',
-                style: AppTheme.bodyLarge,
-              ),
+              Text('Cargando productos...', style: AppTheme.bodyLarge),
             ],
           ),
         ),
@@ -142,10 +140,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
       return Scaffold(
         backgroundColor: AppTheme.backgroundDark,
         appBar: AppBar(
-          title: Text(
-            'Gestión de Productos',
-            style: AppTheme.headlineMedium,
-          ),
+          title: Text('Gestión de Productos', style: AppTheme.headlineMedium),
           backgroundColor: AppTheme.primary,
           elevation: 0,
           centerTitle: true,
@@ -169,7 +164,11 @@ class _ProductosScreenState extends State<ProductosScreen> {
                     color: AppTheme.error.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(50),
                   ),
-                  child: Icon(Icons.error_outline, color: AppTheme.error, size: 48),
+                  child: Icon(
+                    Icons.error_outline,
+                    color: AppTheme.error,
+                    size: 48,
+                  ),
                 ),
                 SizedBox(height: AppTheme.spacingLarge),
                 Text(
@@ -186,7 +185,9 @@ class _ProductosScreenState extends State<ProductosScreen> {
                   ),
                   child: Text(
                     _error!,
-                    style: AppTheme.bodyMedium.copyWith(color: AppTheme.textSecondary),
+                    style: AppTheme.bodyMedium.copyWith(
+                      color: AppTheme.textSecondary,
+                    ),
                     textAlign: TextAlign.center,
                   ),
                 ),
@@ -213,10 +214,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
     return Scaffold(
       backgroundColor: AppTheme.backgroundDark,
       appBar: AppBar(
-        title: Text(
-          'Gestión de Productos',
-          style: AppTheme.headlineMedium,
-        ),
+        title: Text('Gestión de Productos', style: AppTheme.headlineMedium),
         backgroundColor: AppTheme.primary,
         elevation: 0,
         centerTitle: true,
@@ -275,10 +273,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                   ),
                   child: TextField(
                     controller: _searchController,
-                    style: TextStyle(
-                      color: AppTheme.textPrimary,
-                      fontSize: 16,
-                    ),
+                    style: TextStyle(color: AppTheme.textPrimary, fontSize: 16),
                     decoration: InputDecoration(
                       hintText: 'Buscar producto...',
                       hintStyle: TextStyle(
@@ -287,7 +282,11 @@ class _ProductosScreenState extends State<ProductosScreen> {
                       ),
                       prefixIcon: Container(
                         padding: EdgeInsets.all(12),
-                        child: Icon(Icons.search, color: AppTheme.primary, size: 20),
+                        child: Icon(
+                          Icons.search,
+                          color: AppTheme.primary,
+                          size: 20,
+                        ),
                       ),
                       border: InputBorder.none,
                       contentPadding: EdgeInsets.symmetric(
@@ -337,7 +336,10 @@ class _ProductosScreenState extends State<ProductosScreen> {
                             decoration: BoxDecoration(
                               gradient: _selectedCategoriaId == null
                                   ? LinearGradient(
-                                      colors: [AppTheme.primary, AppTheme.primaryLight],
+                                      colors: [
+                                        AppTheme.primary,
+                                        AppTheme.primaryLight,
+                                      ],
                                       begin: Alignment.topLeft,
                                       end: Alignment.bottomRight,
                                     )
@@ -355,7 +357,9 @@ class _ProductosScreenState extends State<ProductosScreen> {
                               boxShadow: _selectedCategoriaId == null
                                   ? [
                                       BoxShadow(
-                                        color: AppTheme.primary.withOpacity(0.3),
+                                        color: AppTheme.primary.withOpacity(
+                                          0.3,
+                                        ),
                                         blurRadius: 8,
                                         offset: Offset(0, 2),
                                       ),
@@ -410,7 +414,10 @@ class _ProductosScreenState extends State<ProductosScreen> {
                               decoration: BoxDecoration(
                                 gradient: isSelected
                                     ? LinearGradient(
-                                        colors: [AppTheme.primary, AppTheme.primaryLight],
+                                        colors: [
+                                          AppTheme.primary,
+                                          AppTheme.primaryLight,
+                                        ],
                                         begin: Alignment.topLeft,
                                         end: Alignment.bottomRight,
                                       )
@@ -426,7 +433,9 @@ class _ProductosScreenState extends State<ProductosScreen> {
                                 boxShadow: isSelected
                                     ? [
                                         BoxShadow(
-                                          color: AppTheme.primary.withOpacity(0.3),
+                                          color: AppTheme.primary.withOpacity(
+                                            0.3,
+                                          ),
                                           blurRadius: 8,
                                           offset: Offset(0, 2),
                                         ),
@@ -516,7 +525,6 @@ class _ProductosScreenState extends State<ProductosScreen> {
   }
 
   Widget _buildProductoItem(Producto producto) {
-
     // Buscar la categoría por ID (solo usando producto.categoria)
     String categoriaNombre = 'Adicional';
     if (producto.categoria != null && producto.categoria!.nombre.isNotEmpty) {
@@ -556,7 +564,10 @@ class _ProductosScreenState extends State<ProductosScreen> {
               children: [
                 Text(
                   formatCurrency(producto.precio),
-                  style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    color: AppTheme.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 SizedBox(width: 12),
                 Text(
@@ -590,7 +601,9 @@ class _ProductosScreenState extends State<ProductosScreen> {
                 padding: const EdgeInsets.only(top: 4),
                 child: Text(
                   producto.descripcion!,
-                  style: TextStyle(color: AppTheme.textPrimary.withOpacity(0.7)),
+                  style: TextStyle(
+                    color: AppTheme.textPrimary.withOpacity(0.7),
+                  ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -619,64 +632,36 @@ class _ProductosScreenState extends State<ProductosScreen> {
   }
 
   Widget _buildProductImage(String? imagenUrl) {
-
-    // Si no hay imagen o la URL es inválida
-    if (imagenUrl == null || imagenUrl.isEmpty) {
-      return Icon(Icons.restaurant, color: AppTheme.primary, size: 32);
-    }
-
-    // Si es una URL web
-    if (imagenUrl.startsWith('http')) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: Image.network(
-          imagenUrl,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) =>
-              Icon(Icons.restaurant, color: AppTheme.primary, size: 32),
-        ),
-      );
-    }
-
-    // Si es un archivo local
-    if (imagenUrl.startsWith('/')) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: Image.file(
-          File(imagenUrl),
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) =>
-              Icon(Icons.restaurant, color: AppTheme.primary, size: 32),
-        ),
-      );
-    }
-
-    // Si es un asset
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
-      child: Image.asset(
-        imagenUrl,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) =>
-            Icon(Icons.restaurant, color: AppTheme.primary, size: 32),
-      ),
+    return ImagenProductoWidget(
+      urlRemota: imagenUrl,
+      nombreProducto:
+          null, // Se puede pasar el nombre del producto si está disponible
+      width: 50,
+      height: 50,
+      fit: BoxFit.cover,
+      backendBaseUrl: _backendBaseUrl,
     );
   }
 
   void _showDeleteConfirmationDialog(Producto producto) {
-
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppTheme.cardBg,
-        title: Text('¿Eliminar producto?', style: TextStyle(color: AppTheme.textPrimary)),
+        title: Text(
+          '¿Eliminar producto?',
+          style: TextStyle(color: AppTheme.textPrimary),
+        ),
         content: Text(
           '¿Está seguro que desea eliminar ${producto.nombre}?',
           style: TextStyle(color: AppTheme.textPrimary.withOpacity(0.8)),
         ),
         actions: [
           TextButton(
-            child: Text('Cancelar', style: TextStyle(color: AppTheme.textPrimary)),
+            child: Text(
+              'Cancelar',
+              style: TextStyle(color: AppTheme.textPrimary),
+            ),
             onPressed: () {
               Navigator.of(context).pop();
             },
@@ -792,7 +777,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
       }
     }
     String? selectedImageUrl = isEditing ? producto.imagenUrl : null;
-    String? tempImagePath;
+    // String? tempImagePath; // Ya no se usa
     List<String> ingredientesSeleccionados = isEditing
         ? List<String>.from(producto.ingredientesDisponibles)
         : [];
@@ -828,19 +813,32 @@ class _ProductosScreenState extends State<ProductosScreen> {
                         final result = await _showImageSourceDialog();
                         if (result != null) {
                           if (result is ImageSource) {
-                            final path = await _productoService.pickImage(
-                              result,
+                            final pickedFile = await _imagePicker.pickImage(
+                              source: result,
                             );
-                            if (path != null) {
-                              setState(() {
-                                tempImagePath = path;
-                                selectedImageUrl =
-                                    null; // Clear any previous URL when selecting new image
-                              });
+                            if (pickedFile != null) {
+                              try {
+                                final url = await _productoService
+                                    .uploadProductImage(pickedFile);
+                                setState(() {
+                                  selectedImageUrl = url;
+                                });
+                              } catch (e) {
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        'Error subiendo imagen: ' +
+                                            e.toString(),
+                                      ),
+                                      backgroundColor: Colors.redAccent,
+                                    ),
+                                  );
+                                }
+                              }
                             }
                           } else if (result == 'placeholder') {
                             setState(() {
-                              tempImagePath = null;
                               selectedImageUrl =
                                   'assets/placeholder/food_placeholder.png';
                             });
@@ -856,17 +854,13 @@ class _ProductosScreenState extends State<ProductosScreen> {
                           ),
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: tempImagePath != null
-                            ? ClipRRect(
-                                borderRadius: BorderRadius.circular(10),
-                                child: Image.file(
-                                  File(tempImagePath!),
-                                  fit: BoxFit.cover,
-                                ),
-                              )
-                            : selectedImageUrl != null
+                        child: selectedImageUrl != null
                             ? _buildProductImage(selectedImageUrl)
-                            : Icon(Icons.add_a_photo, color: AppTheme.primary, size: 40),
+                            : Icon(
+                                Icons.add_a_photo,
+                                color: AppTheme.primary,
+                                size: 40,
+                              ),
                       ),
                     ),
                     SizedBox(height: 16),
@@ -1188,7 +1182,9 @@ class _ProductosScreenState extends State<ProductosScreen> {
                       decoration: BoxDecoration(
                         color: AppTheme.primary.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: AppTheme.primary.withOpacity(0.3)),
+                        border: Border.all(
+                          color: AppTheme.primary.withOpacity(0.3),
+                        ),
                       ),
                       child: Row(
                         children: [
@@ -1251,7 +1247,9 @@ class _ProductosScreenState extends State<ProductosScreen> {
                           decoration: BoxDecoration(
                             color: AppTheme.cardBg.withOpacity(0.5),
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: AppTheme.primary.withOpacity(0.3)),
+                            border: Border.all(
+                              color: AppTheme.primary.withOpacity(0.3),
+                            ),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1269,7 +1267,9 @@ class _ProductosScreenState extends State<ProductosScreen> {
                                   (ing) => Text(
                                     '• ${ing.ingredienteNombre}',
                                     style: TextStyle(
-                                      color: AppTheme.textPrimary.withOpacity(0.8),
+                                      color: AppTheme.textPrimary.withOpacity(
+                                        0.8,
+                                      ),
                                       fontSize: 11,
                                     ),
                                   ),
@@ -1289,7 +1289,9 @@ class _ProductosScreenState extends State<ProductosScreen> {
                                   (ing) => Text(
                                     '• ${ing.ingredienteNombre}',
                                     style: TextStyle(
-                                      color: AppTheme.textPrimary.withOpacity(0.8),
+                                      color: AppTheme.textPrimary.withOpacity(
+                                        0.8,
+                                      ),
                                       fontSize: 11,
                                     ),
                                   ),
@@ -1462,7 +1464,9 @@ class _ProductosScreenState extends State<ProductosScreen> {
                     SizedBox(height: 8),
                     Container(
                       decoration: BoxDecoration(
-                        border: Border.all(color: AppTheme.textPrimary.withOpacity(0.3)),
+                        border: Border.all(
+                          color: AppTheme.textPrimary.withOpacity(0.3),
+                        ),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       padding: EdgeInsets.all(12),
@@ -1508,7 +1512,9 @@ class _ProductosScreenState extends State<ProductosScreen> {
                                   });
                                 },
                                 selectedColor: AppTheme.primary,
-                                backgroundColor: AppTheme.cardBg.withOpacity(0.5),
+                                backgroundColor: AppTheme.cardBg.withOpacity(
+                                  0.5,
+                                ),
                                 checkmarkColor: Colors.white,
                                 side: BorderSide(
                                   color: isSelected
@@ -1538,7 +1544,10 @@ class _ProductosScreenState extends State<ProductosScreen> {
               ),
               actions: [
                 TextButton(
-                  child: Text('Cancelar', style: TextStyle(color: AppTheme.textPrimary)),
+                  child: Text(
+                    'Cancelar',
+                    style: TextStyle(color: AppTheme.textPrimary),
+                  ),
                   onPressed: () {
                     Navigator.of(context).pop();
                   },
@@ -1584,9 +1593,6 @@ class _ProductosScreenState extends State<ProductosScreen> {
 
                     // Obtener imagen final
                     String? finalImageUrl = selectedImageUrl;
-                    if (tempImagePath != null) {
-                      finalImageUrl = tempImagePath;
-                    }
 
                     // Crear o actualizar el producto
                     try {
@@ -1722,26 +1728,34 @@ class _ProductosScreenState extends State<ProductosScreen> {
   }
 
   Future<dynamic> _showImageSourceDialog() async {
-
     return showDialog<dynamic>(
       context: context,
       builder: (context) {
         return AlertDialog(
           backgroundColor: AppTheme.cardBg,
-          title: Text('Seleccionar imagen', style: TextStyle(color: AppTheme.textPrimary)),
+          title: Text(
+            'Seleccionar imagen',
+            style: TextStyle(color: AppTheme.textPrimary),
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
                 leading: Icon(Icons.camera_alt, color: AppTheme.primary),
-                title: Text('Tomar foto', style: TextStyle(color: AppTheme.textPrimary)),
+                title: Text(
+                  'Tomar foto',
+                  style: TextStyle(color: AppTheme.textPrimary),
+                ),
                 onTap: () {
                   Navigator.of(context).pop(ImageSource.camera);
                 },
               ),
               ListTile(
                 leading: Icon(Icons.photo_library, color: AppTheme.primary),
-                title: Text('Galería', style: TextStyle(color: AppTheme.textPrimary)),
+                title: Text(
+                  'Galería',
+                  style: TextStyle(color: AppTheme.textPrimary),
+                ),
                 onTap: () {
                   Navigator.of(context).pop(ImageSource.gallery);
                 },
@@ -1780,7 +1794,6 @@ class _ProductosScreenState extends State<ProductosScreen> {
     required List<IngredienteProducto> ingredientesRequeridos,
     required List<IngredienteProducto> ingredientesOpcionales,
   }) async {
-
     // Copias locales para editar
     List<IngredienteProducto> requeridosEditables = List.from(
       ingredientesRequeridos,
@@ -1859,9 +1872,8 @@ class _ProductosScreenState extends State<ProductosScreen> {
                                 children: [
                                   TabBar(
                                     labelColor: AppTheme.primary,
-                                    unselectedLabelColor: AppTheme.textPrimary.withOpacity(
-                                      0.6,
-                                    ),
+                                    unselectedLabelColor: AppTheme.textPrimary
+                                        .withOpacity(0.6),
                                     indicatorColor: AppTheme.primary,
                                     tabs: [
                                       Tab(text: 'Requeridos'),
@@ -1926,7 +1938,10 @@ class _ProductosScreenState extends State<ProductosScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  child: Text('Cancelar', style: TextStyle(color: AppTheme.textPrimary)),
+                  child: Text(
+                    'Cancelar',
+                    style: TextStyle(color: AppTheme.textPrimary),
+                  ),
                 ),
                 ElevatedButton(
                   onPressed: () {
@@ -1935,7 +1950,9 @@ class _ProductosScreenState extends State<ProductosScreen> {
                       'opcionales': opcionalesEditables,
                     });
                   },
-                  style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primary,
+                  ),
                   child: Text('Guardar', style: TextStyle(color: Colors.white)),
                 ),
               ],
@@ -1954,7 +1971,6 @@ class _ProductosScreenState extends State<ProductosScreen> {
     required Function(int) onRemove,
     required StateSetter setState,
   }) {
-
     return Column(
       children: [
         // Botón agregar
@@ -1975,7 +1991,9 @@ class _ProductosScreenState extends State<ProductosScreen> {
               ? Center(
                   child: Text(
                     'No hay ingredientes ${esOpcional ? 'opcionales' : 'requeridos'} configurados',
-                    style: TextStyle(color: AppTheme.textPrimary.withOpacity(0.6)),
+                    style: TextStyle(
+                      color: AppTheme.textPrimary.withOpacity(0.6),
+                    ),
                     textAlign: TextAlign.center,
                   ),
                 )
@@ -2025,7 +2043,6 @@ class _ProductosScreenState extends State<ProductosScreen> {
     StateSetter parentSetState,
     List<Ingrediente> ingredientesDisponibles,
   ) {
-
     Ingrediente? selectedIngrediente;
     final cantidadController = TextEditingController();
     final precioController = TextEditingController();
@@ -2062,7 +2079,9 @@ class _ProductosScreenState extends State<ProductosScreen> {
                     }).toList(),
                     decoration: InputDecoration(
                       labelText: 'Seleccionar ingrediente',
-                      labelStyle: TextStyle(color: AppTheme.textPrimary.withOpacity(0.7)),
+                      labelStyle: TextStyle(
+                        color: AppTheme.textPrimary.withOpacity(0.7),
+                      ),
                       filled: true,
                       fillColor: AppTheme.cardBg.withOpacity(0.3),
                       border: OutlineInputBorder(
@@ -2077,7 +2096,9 @@ class _ProductosScreenState extends State<ProductosScreen> {
                     style: TextStyle(color: AppTheme.textPrimary),
                     decoration: InputDecoration(
                       labelText: 'Cantidad necesaria',
-                      labelStyle: TextStyle(color: AppTheme.textPrimary.withOpacity(0.7)),
+                      labelStyle: TextStyle(
+                        color: AppTheme.textPrimary.withOpacity(0.7),
+                      ),
                       filled: true,
                       fillColor: AppTheme.cardBg.withOpacity(0.3),
                       border: OutlineInputBorder(
@@ -2111,7 +2132,10 @@ class _ProductosScreenState extends State<ProductosScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  child: Text('Cancelar', style: TextStyle(color: AppTheme.textPrimary)),
+                  child: Text(
+                    'Cancelar',
+                    style: TextStyle(color: AppTheme.textPrimary),
+                  ),
                 ),
                 ElevatedButton(
                   onPressed: () {
@@ -2134,7 +2158,9 @@ class _ProductosScreenState extends State<ProductosScreen> {
                       Navigator.of(context).pop();
                     }
                   },
-                  style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primary,
+                  ),
                   child: Text('Agregar', style: TextStyle(color: Colors.white)),
                 ),
               ],
@@ -2149,7 +2175,6 @@ class _ProductosScreenState extends State<ProductosScreen> {
     List<Ingrediente> ingredientesDisponibles,
     List<String> ingredientesSeleccionados,
   ) {
-
     List<String> selectedIds = List.from(ingredientesSeleccionados);
 
     return StatefulBuilder(
@@ -2214,11 +2239,16 @@ class _ProductosScreenState extends State<ProductosScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(null),
-              child: Text('Cancelar', style: TextStyle(color: AppTheme.textPrimary)),
+              child: Text(
+                'Cancelar',
+                style: TextStyle(color: AppTheme.textPrimary),
+              ),
             ),
             ElevatedButton(
               onPressed: () => Navigator.of(context).pop(selectedIds),
-              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primary,
+              ),
               child: Text('Confirmar', style: TextStyle(color: Colors.white)),
             ),
           ],

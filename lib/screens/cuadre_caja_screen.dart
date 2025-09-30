@@ -108,6 +108,22 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
 
       setState(() {
         _cuadresCaja = cuadres;
+
+        // 🔧 CORRECCIÓN: Asignar el cuadre actual (el que está abierto/pendiente)
+        _cuadreActual =
+            cuadres
+                .where(
+                  (cuadre) => cuadre.estado == 'pendiente' && !cuadre.cerrada,
+                )
+                .firstOrNull ??
+            (cuadres.isNotEmpty ? cuadres.first : null);
+
+        print('📊 Cuadres cargados: ${cuadres.length}');
+        print(
+          '🎯 Cuadre actual asignado: ${_cuadreActual?.id} - ${_cuadreActual?.nombre}',
+        );
+        print('� Efectivo esperado: ${_cuadreActual?.efectivoEsperado ?? 0}');
+        print('🏦 Estado del cuadre: ${_cuadreActual?.estado ?? 'N/A'}');
       });
     } catch (e) {
       setState(() {
@@ -1475,19 +1491,8 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                   FutureBuilder<Map<String, dynamic>>(
                     future: _cuadreCajaService.getEfectivoEsperado(),
                     builder: (context, snapshot) {
-                      print('🖼️ Estado del FutureBuilder:');
-                      print(
-                        '   - ConnectionState: ${snapshot.connectionState}',
-                      );
-                      print('   - HasData: ${snapshot.hasData}');
-                      print('   - HasError: ${snapshot.hasError}');
-                      if (snapshot.hasError) {
-                        print('   - Error: ${snapshot.error}');
-                      }
-
                       if (snapshot.hasData) {
                         final data = snapshot.data!;
-                        print('📊 Datos del FutureBuilder: $data');
 
                         final efectivoEsperado = (data['efectivoEsperado'] ?? 0)
                             .toDouble();
@@ -2302,7 +2307,6 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
       // Generar el resumen
       return await _resumenCierreService.getResumenCierre(cuadreId);
     } catch (e) {
-      print('❌ Error en validación/generación de resumen: $e');
       rethrow;
     }
   }
@@ -2696,13 +2700,35 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
 
           // Resumen de ventas
           _buildSeccionTitulo('Resumen de Ventas'),
-          _buildInfoCard([
-            ['Total pedidos', '${resumen.resumenVentas.totalPedidos}'],
-            [
-              'Total ventas',
-              '\$${resumen.resumenVentas.totalVentas.toStringAsFixed(2)}',
-            ],
-          ]),
+          Builder(
+            builder: (context) {
+              // Calcular datos basados en pedidos realmente pagados
+              final pedidosPagados = resumen.resumenVentas.detallesPedidos
+                  .where((pedido) {
+                    bool tieneTotalValido = pedido.total > 0;
+                    bool tieneFechaPago =
+                        pedido.fechaPago.isNotEmpty &&
+                        pedido.fechaPago != 'null';
+                    return tieneTotalValido && tieneFechaPago;
+                  })
+                  .toList();
+
+              final totalPedidosPagados = pedidosPagados.length;
+              final totalVentasPagadas = pedidosPagados.fold<double>(
+                0,
+                (sum, pedido) => sum + pedido.total,
+              );
+
+              return _buildInfoCard([
+                ['Total pedidos (realmente pagados)', '$totalPedidosPagados'],
+                [
+                  'Total pedidos (incluye cancelados/movidos)',
+                  '${resumen.resumenVentas.totalPedidos}',
+                ],
+                ['Total ventas', '\$${totalVentasPagadas.toStringAsFixed(2)}'],
+              ]);
+            },
+          ),
 
           SizedBox(height: 10),
 
@@ -2712,6 +2738,8 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
             _buildVentasFormaPagoTable(resumen.resumenVentas),
             SizedBox(height: 20),
           ],
+
+          SizedBox(height: 20),
 
           // Detalle de pedidos
           if (resumen.resumenVentas.detallesPedidos.isNotEmpty) ...[
@@ -2784,6 +2812,25 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
   }
 
   Widget _buildDetallesPedidosTable(List<DetallePedido> pedidos) {
+    // 🔍 FILTRAR SOLO PEDIDOS REALMENTE PAGADOS
+    final pedidosPagados = pedidos.where((pedido) {
+      // Un pedido está realmente pagado si:
+      // 1. Tiene un total mayor a 0
+      // 2. Tiene una fecha de pago válida (no vacía y no 'null')
+      bool tieneTotalValido = pedido.total > 0;
+      bool tieneFechaPago =
+          pedido.fechaPago.isNotEmpty && pedido.fechaPago != 'null';
+
+      print(
+        '🔍 Filtro pedido ${pedido.id}: total=${pedido.total}, fechaPago="${pedido.fechaPago}", válido=${tieneTotalValido && tieneFechaPago}',
+      );
+
+      return tieneTotalValido && tieneFechaPago;
+    }).toList();
+
+    print('📊 Total pedidos recibidos: ${pedidos.length}');
+    print('✅ Pedidos realmente pagados: ${pedidosPagados.length}');
+
     return Container(
       decoration: BoxDecoration(
         color: cardBg,
@@ -2846,45 +2893,63 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
               ],
             ),
           ),
-          ...pedidos.take(10).map((pedido) {
-            return Container(
-              padding: EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(color: primary.withOpacity(0.2)),
+          // Mostrar mensaje si no hay pedidos pagados
+          if (pedidosPagados.isEmpty)
+            Container(
+              padding: EdgeInsets.all(20),
+              child: Text(
+                'No hay pedidos pagados en este período',
+                style: TextStyle(
+                  color: textDark.withOpacity(0.7),
+                  fontStyle: FontStyle.italic,
                 ),
+                textAlign: TextAlign.center,
               ),
-              child: Row(
-                children: [
-                  Expanded(
-                    flex: 1,
-                    child: Text(pedido.mesa, style: TextStyle(color: textDark)),
+            )
+          else
+            // Mostrar solo los pedidos realmente pagados
+            ...pedidosPagados.take(10).map((pedido) {
+              return Container(
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(color: primary.withOpacity(0.2)),
                   ),
-                  Expanded(
-                    flex: 2,
-                    child: Text(
-                      _formatearFecha(DateTime.parse(pedido.fechaPago)),
-                      style: TextStyle(color: textDark, fontSize: 12),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      flex: 1,
+                      child: Text(
+                        pedido.mesa,
+                        style: TextStyle(color: textDark),
+                      ),
                     ),
-                  ),
-                  Expanded(
-                    flex: 1,
-                    child: Text(
-                      pedido.formaPago.toUpperCase(),
-                      style: TextStyle(color: textDark, fontSize: 12),
+                    Expanded(
+                      flex: 2,
+                      child: Text(
+                        _formatearFecha(DateTime.parse(pedido.fechaPago)),
+                        style: TextStyle(color: textDark, fontSize: 12),
+                      ),
                     ),
-                  ),
-                  Expanded(
-                    flex: 1,
-                    child: Text(
-                      formatCurrency(pedido.total),
-                      style: TextStyle(color: textDark),
+                    Expanded(
+                      flex: 1,
+                      child: Text(
+                        pedido.formaPago.toUpperCase(),
+                        style: TextStyle(color: textDark, fontSize: 12),
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            );
-          }),
+                    Expanded(
+                      flex: 1,
+                      child: Text(
+                        formatCurrency(pedido.total),
+                        style: TextStyle(color: textDark),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
           if (pedidos.length > 10)
             Container(
               padding: EdgeInsets.all(12),

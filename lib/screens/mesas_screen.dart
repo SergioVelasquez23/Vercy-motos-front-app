@@ -39,6 +39,20 @@ class MesasScreen extends StatefulWidget {
 }
 
 class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
+  // Recarga toda la pestaña de mesas y navega al mismo módulo/tab
+  void _recargarPestanaActual() {
+    final currentRoute = ModalRoute.of(context)?.settings.name;
+    Navigator.pushReplacement(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (context, animation1, animation2) => const MesasScreen(),
+        transitionDuration: Duration.zero,
+        reverseTransitionDuration: Duration.zero,
+        settings: RouteSettings(name: currentRoute),
+      ),
+    );
+  }
+
   final MesaService _mesaService = MesaService();
   final PedidoService _pedidoService = PedidoService();
   final DocumentoMesaService _documentoMesaService = DocumentoMesaService();
@@ -74,9 +88,9 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
   bool isLoading = true;
   String? errorMessage;
 
-  // Subscripciones para actualizaciones en tiempo real
-  late StreamSubscription<bool> _pedidoCompletadoSubscription;
-  late StreamSubscription<bool> _pedidoPagadoSubscription;
+  // Subscripciones para actualizaciones en tiempo real (eliminadas)
+  // late StreamSubscription<bool> _pedidoCompletadoSubscription;
+  // late StreamSubscription<bool> _pedidoPagadoSubscription;
 
   // Paleta de colores mejorada
   static const _backgroundDark = Color(0xFF1A1A1A);
@@ -291,33 +305,11 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
         fechaPago: DateTime.now(),
       );
 
-      if (documento != null) {
-        // Mostrar mensaje de éxito
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                '✅ Documento ${documento.numeroDocumento} creado exitosamente',
-              ),
-              backgroundColor: _success,
-              duration: Duration(seconds: 3),
-            ),
-          );
-        }
-      } else {
+      if (documento == null) {
         throw Exception('El servicio de documentos devolvió null');
       }
     } catch (e) {
       print('❌ Error creando documento automático: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('❌ Error creando documento: $e'),
-            backgroundColor: _error,
-            duration: Duration(seconds: 4),
-          ),
-        );
-      }
       // No lanzar la excepción para que no interrumpa el flujo de pago
     }
   }
@@ -1342,56 +1334,50 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
     super.initState();
     _loadMesas();
     _configurarWebSockets();
-    _iniciarSincronizacion();
+    print(
+      '🟢 [DEBUG] initState: WebSocket listeners NO activos para recarga automática.',
+    );
+    // _iniciarSincronizacion(); // Desactivado
   }
 
-  void _iniciarSincronizacion() {
-    // Sincronización deshabilitada
-  }
+  // void _iniciarSincronizacion() {
+  //   // Sincronización deshabilitada
+  // }
 
   @override
   void dispose() {
-    // Limpiar subscripciones
-    _pedidoCompletadoSubscription.cancel();
-    _pedidoPagadoSubscription.cancel();
+    // No hay subscripciones WebSocket activas para cancelar
+    print(
+      '🟢 [DEBUG] dispose: No hay subscripciones WebSocket activas para cancelar.',
+    );
     super.dispose();
   }
 
   void _configurarWebSockets() {
-    // Suscribirse a eventos de pedidos completados
-    _pedidoCompletadoSubscription = _pedidoService.onPedidoCompletado.listen((
-      _,
-    ) {
-      _loadMesas();
-    });
-
-    // Suscribirse a eventos de pedidos pagados
-    _pedidoPagadoSubscription = _pedidoService.onPedidoPagado.listen((_) {
-      _loadMesas();
-    });
+    // NO hay listeners automáticos de recarga de mesas por eventos de pedidos
+    print(
+      '🟢 [DEBUG] _configurarWebSockets: NO hay listeners activos para recarga automática.',
+    );
+    // _pedidoCompletadoSubscription = _pedidoService.onPedidoCompletado.listen((_) => _loadMesas());
+    // _pedidoPagadoSubscription = _pedidoService.onPedidoPagado.listen((_) => _loadMesas());
   }
 
   Future<void> _loadMesas() async {
     try {
       print('🔄 Cargando mesas...');
-
       setState(() {
         isLoading = true;
         errorMessage = null;
       });
-
       final loadedMesas = await _mesaService.getMesas();
       print(
         '✅ ${loadedMesas.length} mesas obtenidas (${loadedMesas.where((m) => m.ocupada).length} ocupadas)',
       );
-
-      await _sincronizarEstadoMesas(loadedMesas);
-
+      // Eliminada la sincronización de estado de mesas
       setState(() {
         mesas = loadedMesas;
         isLoading = false;
       });
-
       print('✅ Carga de mesas completada');
     } catch (error) {
       print('❌ Error al cargar mesas: $error');
@@ -1402,99 +1388,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
     }
   }
 
-  Future<void> _sincronizarEstadoMesas(List<Mesa> mesas) async {
-    print('🔄 Sincronizando ${mesas.length} mesas...');
-
-    // Sincronizar mesas que están ocupadas, tienen total > 0, o todas si hay menos de 100 mesas
-    final mesasASincronizar = mesas.length <= 100
-        ? mesas // Si hay pocas mesas, verificar todas para evitar inconsistencias
-        : mesas.where((mesa) => mesa.ocupada || mesa.total > 0).toList();
-
-    print(
-      '📊 Verificando ${mesasASincronizar.length} mesas con posibles cambios...',
-    );
-
-    // Procesar mesas en paralelo para mejorar velocidad
-    final futures = mesasASincronizar.map((mesa) async {
-      try {
-        final pedidos = await _pedidoService.getPedidosByMesa(mesa.nombre);
-        final pedidosActivos = pedidos
-            .where((p) => p.estado == EstadoPedido.activo)
-            .toList();
-        final hayPedidoActivo = pedidosActivos.isNotEmpty;
-        bool mesaCambio = false;
-
-        if (hayPedidoActivo) {
-          // Calcular total más preciso desde los items de cada pedido
-          double totalMesa = 0.0;
-          print(
-            '🔍 Mesa ${mesa.nombre} - Pedidos activos encontrados: ${pedidosActivos.length}',
-          );
-
-          for (var pedido in pedidosActivos) {
-            double totalPedido = 0.0;
-            for (var item in pedido.items) {
-              double subtotalItem = item.cantidad * item.precioUnitario;
-              totalPedido += subtotalItem;
-              totalMesa += subtotalItem;
-            }
-            print(
-              '   📦 Pedido ${pedido.id}: ${pedido.items.length} items, total: ${formatCurrency(totalPedido)}',
-            );
-          }
-
-          print(
-            '   💰 Total calculado mesa ${mesa.nombre}: ${formatCurrency(totalMesa)}',
-          );
-
-          // Forzar actualización si hay diferencia en totales (corrige inconsistencias)
-          if (!mesa.ocupada || mesa.total != totalMesa) {
-            print(
-              '🔄 Mesa ${mesa.nombre}: ocupada=true, total=${formatCurrency(totalMesa)} (anterior: ${formatCurrency(mesa.total)})',
-            );
-            mesa.ocupada = true;
-            mesa.total = totalMesa;
-            mesaCambio = true;
-            await _mesaService.updateMesa(mesa);
-          } else if (mesa.total != totalMesa) {
-            // Caso especial: forzar corrección de totales inconsistentes
-            print(
-              '⚠️ Corrigiendo total inconsistente Mesa ${mesa.nombre}: ${formatCurrency(mesa.total)} → ${formatCurrency(totalMesa)}',
-            );
-            mesa.total = totalMesa;
-            mesaCambio = true;
-            await _mesaService.updateMesa(mesa);
-          }
-        } else {
-          if (mesa.ocupada || mesa.total > 0) {
-            print(
-              '⚠️ Mesa ${mesa.nombre}: Liberando mesa sin pedidos activos (total anterior: ${formatCurrency(mesa.total)})',
-            );
-            mesa.ocupada = false;
-            mesa.productos = [];
-            mesa.total = 0.0;
-            mesaCambio = true;
-            await _mesaService.updateMesa(mesa);
-          }
-        }
-
-        return mesaCambio; // Retornar si hubo cambios
-      } catch (e) {
-        print('❌ Error verificando mesa ${mesa.nombre}: $e');
-        return false;
-      }
-    });
-
-    // Esperar a que todas las mesas se procesen en paralelo
-    final resultados = await Future.wait(futures);
-    final mesasConCambios = resultados.where((cambio) => cambio).length;
-
-    if (mesasConCambios > 0) {
-      print('✅ Sincronización completada: $mesasConCambios mesas actualizadas');
-    } else {
-      print('ℹ️ No hubo cambios en las mesas');
-    }
-  }
+  // Eliminar completamente la función _sincronizarEstadoMesas
 
   /// Crea un documento de mesa agrupando varios pedidos
   Future<void> _crearDocumentoMesa(Mesa mesa) async {
@@ -2083,7 +1977,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
   }
 
   Widget _buildMesaCard(Mesa mesa) {
-    bool isOcupada = mesa.ocupada;
+    bool isOcupada = mesa.ocupada || mesa.total > 0;
     Color statusColor = isOcupada ? AppTheme.error : AppTheme.success;
     final userProvider = Provider.of<UserProvider>(context, listen: false);
     bool canProcessPayment =
@@ -2225,7 +2119,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                       ),
                     ),
                   ),
-                  // Total si existe
+                  // Total si existe - Área táctil mejorada
                   if (mesa.total > 0)
                     Flexible(
                       child: canProcessPayment
@@ -2248,29 +2142,48 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                 }
                               },
                               child: Container(
+                                width: double.infinity,
+                                margin: EdgeInsets.all(
+                                  4,
+                                ), // Margen para área táctil más grande
                                 padding: EdgeInsets.symmetric(
-                                  horizontal: AppTheme.spacingSmall,
-                                  vertical: AppTheme.spacingXSmall,
+                                  horizontal: AppTheme
+                                      .spacingMedium, // Aumentado el padding horizontal
+                                  vertical: AppTheme
+                                      .spacingSmall, // Aumentado el padding vertical
                                 ),
                                 decoration: BoxDecoration(
                                   gradient: AppTheme.primaryGradient,
                                   borderRadius: BorderRadius.circular(
-                                    AppTheme.radiusSmall,
+                                    AppTheme
+                                        .radiusMedium, // Bordes más redondeados
                                   ),
                                   border: Border.all(
                                     color: Colors.white.withOpacity(0.3),
                                     width: 1,
                                   ),
+                                  // Sombra para hacer más visible el botón
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.2),
+                                      blurRadius: 4,
+                                      offset: Offset(0, 2),
+                                    ),
+                                  ],
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Icon(
                                       Icons.payment,
-                                      size: constraints.maxWidth * 0.08,
+                                      size:
+                                          constraints.maxWidth *
+                                          0.12, // Icono más grande
                                       color: Colors.white,
                                     ),
-                                    SizedBox(width: 2),
+                                    SizedBox(
+                                      width: 4,
+                                    ), // Más espacio entre icono y texto
                                     Flexible(
                                       child: Builder(
                                         builder: (context) {
@@ -3815,9 +3728,19 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                         flex: 2,
                         child: ElevatedButton.icon(
                           onPressed: () async {
-                            // Si no hay productos seleccionados, pagar todo el pedido
-                            if (productosSeleccionados.isEmpty) {
-                              // Pago total del pedido
+                            // Verificar si todos los productos están seleccionados o ninguno
+                            bool todosProdutosSeleccionados =
+                                productosSeleccionados.length ==
+                                pedido.items.length;
+
+                            // Si no hay productos seleccionados O todos están seleccionados, usar pago completo
+                            if (productosSeleccionados.isEmpty ||
+                                todosProdutosSeleccionados) {
+                              print(
+                                '🔄 Usando flujo de pago COMPLETO - Productos seleccionados: ${productosSeleccionados.length}/${pedido.items.length}',
+                              );
+
+                              // Pago total del pedido (usar flujo completo que maneja bien la caja)
                               Navigator.pop(context, {
                                 'medioPago': medioPago0,
                                 'incluyePropina': incluyePropina,
@@ -3833,9 +3756,9 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                     [], // Lista vacía = pagar todo
                               });
                             } else {
-                              // Pago parcial - solo productos seleccionados
+                              // Pago parcial REAL - solo algunos productos seleccionados
                               print(
-                                '🔄 Iniciando pago parcial con ${productosSeleccionados.length} productos',
+                                '🔄 Usando flujo de pago PARCIAL con ${productosSeleccionados.length}/${pedido.items.length} productos',
                               );
 
                               // Cerrar diálogo primero para evitar bloqueo
@@ -4249,19 +4172,18 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
         print('   • Items pagados: ${resultado['itemsPagados']}');
         print('   • Total pagado: \$${resultado['totalPagado']}');
 
-        // Mostrar confirmación
+        // --- Mensaje de confirmación simple ---
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('✅ Pago parcial procesado exitosamente'),
-              backgroundColor: Colors.green,
+              content: Text('Acción realizada con éxito'),
+              backgroundColor: _success,
               duration: Duration(seconds: 3),
             ),
           );
         }
 
-        // Recargar mesas para actualizar los totales
-        await _loadMesas();
+        _recargarPestanaActual();
       } else {
         throw Exception('Error en la respuesta de la API: ${resultado}');
       }
@@ -4462,37 +4384,20 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
           pedidoPagado,
         );
         print('✅ Pedido completo guardado: ${resultadoCompleto.id}');
-
-        // Solo eliminar el pedido original cuando NO quedan productos
-        print('🌐 LLAMADA API - ELIMINAR PEDIDO ORIGINAL:');
-        print('   • Endpoint: DELETE /api/pedidos/${pedido.id}');
+        // Cambiar el estado del pedido original a cancelado cuando NO quedan productos
+        print('🌐 LLAMADA API - CAMBIAR ESTADO PEDIDO ORIGINAL A CANCELADO:');
+        print('   • Endpoint: PUT /api/pedidos/${pedido.id}/estado/cancelado');
         print('   • Pedido ID: ${pedido.id}');
         print('   • Razón: Pago completo - no quedan productos restantes');
-        await _pedidoService.eliminarPedido(pedido.id);
-        print('✅ RESPUESTA API - PEDIDO ORIGINAL ELIMINADO EXITOSAMENTE');
+        await PedidoService.actualizarEstado(pedido.id, EstadoPedido.cancelado);
+        print('✅ RESPUESTA API - PEDIDO ORIGINAL MARCADO COMO CANCELADO');
       }
 
       print(
         '💰 =========================== FIN PAGO PARCIAL (ÉXITO) ===========================',
       );
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('✅ Pago parcial procesado exitosamente'),
-              Text('Items pagados: ${itemsSeleccionados.length}'),
-              Text('Total pagado: ${formatCurrency(totalSeleccionado)}'),
-              if (itemsRestantes.isNotEmpty)
-                Text('Items restantes: ${itemsRestantes.length}'),
-            ],
-          ),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 4),
-        ),
-      );
+      // SnackBar eliminado: Pago parcial procesado exitosamente
 
       // 🔄 ACTUALIZAR TOTAL DE LA MESA DESPUÉS DEL PAGO PARCIAL
       print('🔄 ACTUALIZANDO MESA DESPUÉS DEL PAGO PARCIAL:');
@@ -4736,7 +4641,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
       print('   • Productos restantes: ${productosRestantes.length}');
 
       if (productosRestantes.isEmpty) {
-        // Si no quedan productos, eliminar todo el pedido
+        // Si no quedan productos, cambiar el estado del pedido a 'cancelado' en vez de eliminarlo
         print('⚠️ ADVERTENCIA: No quedan productos después de la cancelación');
         print('📊 VERIFICACIÓN FINAL:');
         print('   • Items originales: ${pedido.items.length}');
@@ -4746,12 +4651,12 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
           '   • Productos restantes calculados: ${productosRestantes.length}',
         );
 
-        print('🌐 LLAMADA API - ELIMINAR PEDIDO COMPLETO:');
-        print('   • Endpoint: DELETE /api/pedidos/${pedido.id}');
+        print('🌐 LLAMADA API - CAMBIAR ESTADO DEL PEDIDO A CANCELADO:');
+        print('   • Endpoint: PUT /api/pedidos/${pedido.id}/estado/cancelado');
         print('   • Pedido ID: ${pedido.id}');
         print('   • Motivo: No quedan productos después de cancelación');
-        await _pedidoService.eliminarPedido(pedido.id);
-        print('✅ RESPUESTA API - PEDIDO ELIMINADO EXITOSAMENTE');
+        await PedidoService.actualizarEstado(pedido.id, EstadoPedido.cancelado);
+        print('✅ RESPUESTA API - PEDIDO MARCADO COMO CANCELADO');
 
         // Liberar la mesa
         mesa.ocupada = false;
@@ -4759,8 +4664,12 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
         mesa.total = 0.0;
         await _mesaService.updateMesa(mesa);
         print(
-          '✅ Mesa ${mesa.nombre} liberada (pedido eliminado completamente)',
+          '✅ Mesa ${mesa.nombre} liberada (pedido cancelado completamente)',
         );
+
+        // Recarga automática de mesas eliminada tras cancelar productos
+        // await _loadMesas();
+        // print('🔄 Mesas recargadas tras liberar mesa por cancelación total');
       } else {
         // Calcular nuevo total
         double nuevoTotal = productosRestantes.fold<double>(
@@ -4806,11 +4715,11 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
         await _mesaService.updateMesa(mesa);
 
         print(
-          '✅ Pedido actualizado: ${pedidoRespuesta.id} - Total: ${formatCurrency(pedidoRespuesta.total)}',
+          'Pedido actualizado: ${pedidoRespuesta.id} - Total: ${formatCurrency(pedidoRespuesta.total)}',
         );
       }
 
-      print('✅ Cancelación completada exitosamente');
+      print('Cancelación completada exitosamente');
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -4818,14 +4727,20 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('✅ Productos cancelados exitosamente'),
-              Text('Items cancelados: ${itemsCancelados.length}'),
-              Text('Mesa: ${mesa.nombre}'),
-              Text('Total cancelado: ${formatCurrency(totalCancelado)}'),
+              Text(
+                'Cancelación realizada correctamente',
+                style: TextStyle(fontFamily: 'Roboto'),
+              ),
               if (productosRestantes.isEmpty)
-                Text('🗑️ Pedido eliminado completamente')
+                Text(
+                  'Pedido eliminado completamente',
+                  style: TextStyle(fontFamily: 'Roboto'),
+                )
               else
-                Text('📋 Productos restantes: ${productosRestantes.length}'),
+                Text(
+                  'Productos restantes: ${productosRestantes.length}',
+                  style: TextStyle(fontFamily: 'Roboto'),
+                ),
             ],
           ),
           backgroundColor: _success,
@@ -4833,32 +4748,13 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
         ),
       );
 
-      // Recargar datos sin afectar estilos
-      print('🔄 RECARGANDO DATOS DE MESAS (PRESERVANDO ESTILOS)...');
-      try {
-        final loadedMesas = await _mesaService.getMesas();
-        await _sincronizarEstadoMesas(loadedMesas);
-        setState(() {
-          mesas = loadedMesas;
-          // No cambiar isLoading ni errorMessage para preservar estado visual
-        });
-        print('✅ DATOS RECARGADOS SIN AFECTAR ESTILOS');
-      } catch (e) {
-        print('❌ ERROR AL RECARGAR DATOS: $e');
-        // Fallback a recarga completa solo si es necesario
-        await _loadMesas();
-      }
+      _recargarPestanaActual();
 
       print(
         '🎉 =========================== CANCELACIÓN COMPLETADA ===========================',
       );
     } catch (e) {
-      print('❌ ERROR EN CANCELACIÓN DE PRODUCTOS:');
-      print('   • Mesa: ${mesa.nombre}');
-      print('   • Pedido: ${pedido.id}');
-      print('   • Items intentados cancelar: ${itemsCancelados.length}');
-      print('   • Error detallado: $e');
-      print('   • Timestamp error: ${DateTime.now().toIso8601String()}');
+      print(' ERROR EN CANCELACIÓN DE PRODUCTOS:');
 
       String mensajeError = 'Error al cancelar productos: $e';
       if (e.toString().contains('Token de autenticación no encontrado')) {
@@ -4885,7 +4781,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
   ) async {
     try {
       print(
-        '🚀 Moviendo ${itemsMovidos.length} productos de ${mesaOrigen.nombre} a ${mesaDestino.nombre}',
+        'Moviendo ${itemsMovidos.length} productos de ${mesaOrigen.nombre} a ${mesaDestino.nombre}',
       );
 
       final userProvider = Provider.of<UserProvider>(context, listen: false);
@@ -4908,29 +4804,49 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
       if (resultado['success'] == true) {
         // Obtener datos del backend correctamente
         final dataMovimiento = resultado['data'] ?? {};
-        // Corregir extracción del nuevo pedido ID
         final String? nuevoPedidoId = dataMovimiento['nuevoPedidoId']
             ?.toString();
         final bool seCreoNuevaOrden =
             nuevoPedidoId != null && nuevoPedidoId.isNotEmpty;
-        // Convertir de forma segura para evitar errores de cast
         final dynamic productosMovidosRaw =
             dataMovimiento['productosMovidos'] ?? itemsMovidos.length;
         final int itemsMovidosCount = productosMovidosRaw is String
             ? int.tryParse(productosMovidosRaw) ?? itemsMovidos.length
             : productosMovidosRaw as int;
 
-        print('✅ Movimiento exitoso: $itemsMovidosCount items');
-        print('🔍 VERIFICANDO CREACIÓN DEL PEDIDO EN MESA DESTINO...');
+        print('Movimiento exitoso: $itemsMovidosCount items');
+        print('VERIFICANDO CREACIÓN DEL PEDIDO EN MESA DESTINO...');
         print('   • Mesa destino: ${mesaDestino.nombre}');
         print('   • Nuevo pedido ID: $nuevoPedidoId');
         print('   • Se creó nueva orden: $seCreoNuevaOrden');
 
-        String mensaje =
-            '✅ Productos movidos exitosamente a ${mesaDestino.nombre}';
+        // --- NUEVO: Marcar mesa destino como ocupada y actualizar total ---
+        mesaDestino.ocupada = true;
+        double totalMovido = 0;
+        for (var item in itemsMovidos) {
+          totalMovido += item.cantidad * item.precio;
+        }
+        mesaDestino.total = mesaDestino.total + totalMovido;
+        try {
+          await _mesaService.updateMesa(mesaDestino);
+          print('✅ Mesa destino marcada como ocupada y total actualizado.');
+        } catch (e) {
+          print('❌ Error actualizando mesa destino: $e');
+        }
+
+        // --- Mensaje de confirmación simple ---
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Acción realizada con éxito'),
+              backgroundColor: _success,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
 
         if (nuevoPedidoId != null && nuevoPedidoId.isNotEmpty) {
-          mensaje += '\n🆕 Nueva orden creada: $nuevoPedidoId';
+          // mensaje += '\n🆕 Nueva orden creada: $nuevoPedidoId';
 
           try {
             // BÚSQUEDA MEJORADA: Ahora enviamos nombre completo, debería estar en mesa correcta
@@ -4998,47 +4914,45 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
               print('   • Total: ${formatCurrency(pedidoEncontrado.total)}');
 
               if (mesaRealPedido != mesaDestino.nombre) {
-                mensaje +=
-                    '\n⚠️ Nota: Pedido almacenado en mesa $mesaRealPedido (conversión del backend)';
+                // mensaje +=
+                //     '\n⚠️ Nota: Pedido almacenado en mesa $mesaRealPedido (conversión del backend)';
               }
             } else {
               print('❌ PEDIDO NO ENCONTRADO CON NUEVO ENFOQUE');
               print('   • ID buscado: $nuevoPedidoId');
               print('   • Mesa objetivo: ${mesaDestino.nombre}');
-              mensaje +=
-                  '\n⚠️ Advertencia: No se pudo verificar la creación del pedido';
+              // mensaje +=
+              //     '\n⚠️ Advertencia: No se pudo verificar la creación del pedido';
             }
           } catch (e) {
             print('❌ Error verificando pedido: $e');
-            mensaje += '\n⚠️ Error verificando creación del pedido';
+            // mensaje += '\n⚠️ Error verificando creación del pedido';
           }
         } else {
           print('⚠️ No se devolvió ID de nuevo pedido');
         }
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(mensaje),
-                Text('Items movidos: ${itemsMovidos.length}'),
-                Text('De: ${mesaOrigen.nombre} → A: ${mesaDestino.nombre}'),
-              ],
-            ),
-            backgroundColor: _success,
-            duration: Duration(seconds: 4),
-          ),
-        );
-
-        // � Limpiar cache de formateo para evitar corrupción de números
-        clearFormatCache();
-        print('🧩 Cache de formateo limpiado después del movimiento');
-
-        // �🔄 Recargar la pantalla principal (actualiza totales automáticamente)
-        await _loadMesas();
-        print('🎉 Movimiento completado exitosamente');
+        // ScaffoldMessenger.of(context).showSnackBar(
+        //   SnackBar(
+        //     content: Column(
+        //       mainAxisSize: MainAxisSize.min,
+        //       crossAxisAlignment: CrossAxisAlignment.start,
+        //       children: [
+        //         Text(mensaje, style: TextStyle(fontFamily: 'Roboto')),
+        //         Text(
+        //           'Items movidos: ${itemsMovidos.length}',
+        //           style: TextStyle(fontFamily: 'Roboto'),
+        //         ),
+        //         Text(
+        //           'De: ${mesaOrigen.nombre} → A: ${mesaDestino.nombre}',
+        //           style: TextStyle(fontFamily: 'Roboto'),
+        //         ),
+        //       ],
+        //     ),
+        //     backgroundColor: _success,
+        //     duration: Duration(seconds: 4),
+        //   ),
+        // );
       } else {
         print(
           '❌ Error del servicio: ${resultado['message'] ?? 'Error desconocido'}',
@@ -5070,15 +4984,28 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
               children: [
                 Text(
                   'Tu sesión ha expirado durante el movimiento de productos.',
+                  style: TextStyle(fontFamily: 'Roboto'),
                 ),
                 SizedBox(height: 8),
-                Text('Mesa origen: ${mesaOrigen.nombre}'),
-                Text('Mesa destino: ${mesaDestino.nombre}'),
-                Text('Items: ${itemsMovidos.length} productos'),
+                Text(
+                  'Mesa origen: ${mesaOrigen.nombre}',
+                  style: TextStyle(fontFamily: 'Roboto'),
+                ),
+                Text(
+                  'Mesa destino: ${mesaDestino.nombre}',
+                  style: TextStyle(fontFamily: 'Roboto'),
+                ),
+                Text(
+                  'Items: ${itemsMovidos.length} productos',
+                  style: TextStyle(fontFamily: 'Roboto'),
+                ),
                 SizedBox(height: 16),
                 Text(
                   '¿Deseas recargar la página para reiniciar sesión?',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'Roboto',
+                  ),
                 ),
               ],
             ),
@@ -6317,15 +6244,15 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Container(
-                    padding: EdgeInsets.all(AppTheme.spacingLarge),
-                    decoration: AppTheme.cardDecoration,
+                  SizedBox(
+                    width: 50,
+                    height: 50,
                     child: CircularProgressIndicator(
                       color: AppTheme.primary,
                       strokeWidth: 3,
                     ),
                   ),
-                  SizedBox(height: AppTheme.spacingLarge),
+                  SizedBox(height: AppTheme.spacingMedium),
                   Text('Cargando mesas...', style: AppTheme.bodyLarge),
                 ],
               ),
@@ -6517,15 +6444,17 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                   ],
                 ),
               ),
-              // Grid de mesas para móvil (2 columnas)
+              // Grid de mesas para móvil (3 columnas para mejor aprovechamiento)
               GridView.builder(
                 shrinkWrap: true,
                 physics: NeverScrollableScrollPhysics(),
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: AppTheme.spacingMedium,
+                  crossAxisCount: 3, // Cambiado de 2 a 3 columnas
+                  crossAxisSpacing: AppTheme
+                      .spacingMedium, // Reducido para acomodar 3 columnas
                   mainAxisSpacing: AppTheme.spacingMedium,
-                  childAspectRatio: 0.85, // Relación ancho/alto
+                  childAspectRatio:
+                      1.2, // Cambiado de 0.9 a 1.2 para hacerlas más pequeñas como las especiales
                 ),
                 itemCount: mesasDeLaFila.length,
                 itemBuilder: (context, index) {
@@ -6566,7 +6495,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                 'Domicilio',
                 Icons.delivery_dining,
                 'disponible',
-                () => _navegarAPedido('Domicilio'),
+                () => _mostrarPedidosMesaEspecial('Domicilio'),
                 height: especialHeight,
               ),
               SizedBox(height: AppTheme.spacingMedium),
@@ -6574,7 +6503,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                 'Caja',
                 Icons.point_of_sale,
                 'disponible',
-                () => _navegarAPedido('Caja'),
+                () => _mostrarPedidosMesaEspecial('Caja'),
                 height: especialHeight,
               ),
               SizedBox(height: AppTheme.spacingMedium),
@@ -6582,7 +6511,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                 'Mesa Auxiliar',
                 Icons.table_restaurant,
                 'disponible',
-                () => _navegarAPedido('Mesa Auxiliar'),
+                () => _mostrarPedidosMesaEspecial('Mesa Auxiliar'),
                 height: especialHeight,
               ),
             ],
@@ -6599,7 +6528,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                       'Domicilio',
                       Icons.delivery_dining,
                       'disponible',
-                      () => _navegarAPedido('Domicilio'),
+                      () => _mostrarPedidosMesaEspecial('Domicilio'),
                       height: especialHeight,
                     ),
                   ),
@@ -6609,7 +6538,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                       'Caja',
                       Icons.point_of_sale,
                       'disponible',
-                      () => _navegarAPedido('Caja'),
+                      () => _mostrarPedidosMesaEspecial('Caja'),
                       height: especialHeight,
                     ),
                   ),
@@ -6624,7 +6553,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                       'Mesa Auxiliar',
                       Icons.table_restaurant,
                       'disponible',
-                      () => _navegarAPedido('Mesa Auxiliar'),
+                      () => _mostrarPedidosMesaEspecial('Mesa Auxiliar'),
                       height: especialHeight,
                     ),
                   ),
@@ -7324,21 +7253,254 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
   }
 
   void _navegarAPedido(String nombreMesa) {
-    // Buscar la mesa en la lista de mesas
-    Mesa? mesa = mesas.firstWhere(
-      (m) => m.nombre.toLowerCase() == nombreMesa.toLowerCase(),
-      orElse: () => Mesa(
+    // Método simplificado para navegación directa a crear pedido
+    Mesa? mesa = mesas.cast<Mesa?>().firstWhere(
+      (m) => m?.nombre.toLowerCase() == nombreMesa.toLowerCase(),
+      orElse: () => null,
+    );
+
+    if (mesa == null) {
+      mesa = Mesa(
         id: '',
         nombre: nombreMesa,
         ocupada: false,
         total: 0.0,
         productos: [],
+      );
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => PedidoScreen(mesa: mesa!)),
+    );
+  }
+
+  // Nuevo método para mostrar lista de pedidos de mesas especiales
+  void _mostrarPedidosMesaEspecial(String nombreMesa) async {
+    try {
+      print(
+        '🔍 VERSIÓN ACTUALIZADA: Iniciando búsqueda de pedidos para mesa: "$nombreMesa"',
+      );
+
+      // Mostrar indicador de carga
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => Center(
+          child: Container(
+            padding: EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: AppTheme.cardBg,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: 40,
+                  height: 40,
+                  child: CircularProgressIndicator(
+                    color: AppTheme.primary,
+                    strokeWidth: 3,
+                  ),
+                ),
+                SizedBox(height: 12),
+                Text(
+                  'Buscando pedidos de $nombreMesa...',
+                  style: TextStyle(color: AppTheme.textPrimary),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ); // 🔧 BÚSQUEDA ROBUSTA: Probar múltiples variantes del nombre
+      List<Pedido> pedidos = [];
+      final variantes = [
+        nombreMesa, // Original
+        nombreMesa.toUpperCase(), // CAJA
+        nombreMesa.toLowerCase(), // caja
+        nombreMesa.replaceAll(' ', ''), // Sin espacios
+        nombreMesa.replaceAll(' ', '').toUpperCase(), // Sin espacios mayúscula
+        nombreMesa.replaceAll(' ', '').toLowerCase(), // Sin espacios minúscula
+      ];
+
+      print('🔄 Probando variantes de nombre: ${variantes.join(", ")}');
+
+      for (String variante in variantes) {
+        try {
+          print('   🔍 Buscando con: "$variante"');
+          final resultado = await _pedidoService.getPedidosByMesa(variante);
+          if (resultado.isNotEmpty) {
+            pedidos = resultado;
+            print(
+              '   ✅ ¡Encontrados ${pedidos.length} pedidos con "$variante"!',
+            );
+            break;
+          } else {
+            print('   ❌ No encontrado con "$variante"');
+          }
+        } catch (e) {
+          print('   ⚠️ Error con "$variante": $e');
+          continue;
+        }
+      }
+
+      print('📦 Total final de pedidos encontrados: ${pedidos.length}');
+
+      // Debug: mostrar todos los pedidos encontrados
+      for (int i = 0; i < pedidos.length; i++) {
+        final p = pedidos[i];
+        print(
+          '   Pedido ${i + 1}: ID=${p.id}, Mesa="${p.mesa}", Estado=${p.estado}, Total=${p.total}',
+        );
+      }
+
+      // Filtrar solo pedidos activos (no pagados, no cancelados)
+      final pedidosActivos = pedidos
+          .where((p) => p.estado == EstadoPedido.activo)
+          .toList();
+
+      print('✅ Pedidos activos encontrados: ${pedidosActivos.length}');
+
+      // Cerrar indicador de carga
+      Navigator.of(context).pop();
+
+      if (pedidosActivos.isEmpty) {
+        // Si no hay pedidos activos, mostrar mensaje y ir a crear uno
+        print('📝 No hay pedidos activos para "$nombreMesa", creando nuevo...');
+
+        // 🧪 TEMPORAL: Mostrar la pantalla vacía para testing
+        print('🧪 TESTING: Mostrando pantalla vacía para debug');
+        _mostrarPantallaPedidosEspeciales(nombreMesa, pedidosActivos);
+        return;
+
+        // Código original comentado para testing:
+        /*
+        // Mostrar mensaje informativo antes de crear nuevo pedido
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('No hay pedidos activos en $nombreMesa. Creando nuevo pedido...'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+        
+        // Delay corto para que el usuario vea el mensaje
+        await Future.delayed(Duration(milliseconds: 500));
+        _navegarAPedido(nombreMesa);
+        return;
+        */
+      }
+
+      // Si hay pedidos activos, mostrar la pantalla de lista
+      print(
+        '📋 Mostrando pantalla con ${pedidosActivos.length} pedidos activos para "$nombreMesa"',
+      );
+      _mostrarPantallaPedidosEspeciales(nombreMesa, pedidosActivos);
+    } catch (e) {
+      // Cerrar indicador de carga si hay error
+      if (Navigator.canPop(context)) {
+        Navigator.of(context).pop();
+      }
+
+      print('❌ Error cargando pedidos para "$nombreMesa": $e');
+
+      // Mostrar error al usuario
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al cargar pedidos: $e'),
+          backgroundColor: AppTheme.error,
+          duration: Duration(seconds: 3),
+        ),
+      );
+
+      // Si hay error, ir directo a crear pedido después de un delay
+      await Future.delayed(Duration(seconds: 1));
+      _navegarAPedido(nombreMesa);
+    }
+  }
+
+  // Pantalla para mostrar lista de pedidos de mesa especial
+  void _mostrarPantallaPedidosEspeciales(
+    String nombreMesa,
+    List<Pedido> pedidos,
+  ) {
+    print(
+      '🚀 Navegando a PedidosEspecialesScreen con ${pedidos.length} pedidos',
+    );
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PedidosEspecialesScreen(
+          nombreMesa: nombreMesa,
+          pedidos: pedidos,
+          onAgregarPedido: () {
+            Navigator.pop(context); // Cerrar la pantalla de lista
+            _navegarAPedido(nombreMesa);
+          },
+          onPagarPedido: (pedido) => _pagarPedidoIndividual(pedido),
+          onEditarPedido: (pedido) => _editarPedidoExistente(pedido),
+          onRecargarPedidos: () {
+            Navigator.pop(context); // Cerrar la pantalla actual
+            _mostrarPedidosMesaEspecial(nombreMesa); // Recargar
+          },
+        ),
       ),
+    );
+  }
+
+  // Método de prueba para forzar mostrar la pantalla (solo para debug)
+  void _mostrarPantallaPedidosEspecialesForzado(String nombreMesa) {
+    print('🧪 FORZANDO pantalla de pedidos para: $nombreMesa');
+    // Crear algunos pedidos de prueba
+    final pedidosPrueba = <Pedido>[];
+
+    _mostrarPantallaPedidosEspeciales(nombreMesa, pedidosPrueba);
+  }
+
+  // Método para pagar un pedido individual
+  void _pagarPedidoIndividual(Pedido pedido) async {
+    try {
+      // Crear mesa temporal para el pedido
+      final mesaTemporal = Mesa(
+        id: pedido.id, // Usar ID del pedido como referencia
+        nombre: pedido.mesa,
+        ocupada: true,
+        total: pedido.total,
+        productos: [],
+      );
+
+      // Mostrar diálogo de pago
+      _mostrarDialogoPago(mesaTemporal, pedido);
+    } catch (e) {
+      print('❌ Error al procesar pago individual: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al procesar el pago: $e'),
+          backgroundColor: AppTheme.error,
+        ),
+      );
+    }
+  }
+
+  // Método para editar un pedido existente
+  void _editarPedidoExistente(Pedido pedido) {
+    // Crear mesa temporal para navegar al pedido
+    final mesaTemporal = Mesa(
+      id: pedido.id, // Usar ID del pedido
+      nombre: pedido.mesa,
+      ocupada: true,
+      total: pedido.total,
+      productos: [],
     );
 
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => PedidoScreen(mesa: mesa)),
+      MaterialPageRoute(
+        builder: (context) => PedidoScreen(
+          mesa: mesaTemporal,
+          // Pasar información adicional si la pantalla lo soporta
+        ),
+      ),
     );
   }
 
@@ -7743,5 +7905,465 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
         ),
       ),
     );
+  }
+}
+
+// Pantalla para mostrar pedidos de mesas especiales con pagos individuales
+class PedidosEspecialesScreen extends StatefulWidget {
+  final String nombreMesa;
+  final List<Pedido> pedidos;
+  final VoidCallback onAgregarPedido;
+  final Function(Pedido) onPagarPedido;
+  final Function(Pedido) onEditarPedido;
+  final VoidCallback onRecargarPedidos;
+
+  const PedidosEspecialesScreen({
+    Key? key,
+    required this.nombreMesa,
+    required this.pedidos,
+    required this.onAgregarPedido,
+    required this.onPagarPedido,
+    required this.onEditarPedido,
+    required this.onRecargarPedidos,
+  }) : super(key: key);
+
+  @override
+  _PedidosEspecialesScreenState createState() =>
+      _PedidosEspecialesScreenState();
+}
+
+class _PedidosEspecialesScreenState extends State<PedidosEspecialesScreen> {
+  @override
+  Widget build(BuildContext context) {
+    final totalGeneral = widget.pedidos.fold<double>(
+      0,
+      (sum, pedido) => sum + pedido.total,
+    );
+
+    return Scaffold(
+      backgroundColor: AppTheme.backgroundDark,
+      appBar: AppBar(
+        backgroundColor: AppTheme.primary,
+        elevation: 0,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              widget.nombreMesa,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            Text(
+              '${widget.pedidos.length} pedidos activos',
+              style: TextStyle(fontSize: 14, color: Colors.white70),
+            ),
+          ],
+        ),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.refresh, color: Colors.white),
+            onPressed: () {
+              widget.onRecargarPedidos();
+              Navigator.of(context).pop(); // Volver y recargar
+            },
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          // Resumen total
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  AppTheme.primary.withOpacity(0.1),
+                  AppTheme.primary.withOpacity(0.05),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Total General:',
+                  style: TextStyle(
+                    color: AppTheme.textPrimary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  formatCurrency(totalGeneral),
+                  style: TextStyle(
+                    color: AppTheme.primary,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Lista de pedidos
+          Expanded(
+            child: widget.pedidos.isEmpty
+                ? _buildEmptyState()
+                : ListView.builder(
+                    padding: EdgeInsets.all(16),
+                    itemCount: widget.pedidos.length,
+                    itemBuilder: (context, index) {
+                      final pedido = widget.pedidos[index];
+                      return _buildPedidoCard(pedido);
+                    },
+                  ),
+          ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: widget.onAgregarPedido,
+        backgroundColor: AppTheme.primary,
+        icon: Icon(Icons.add, color: Colors.white),
+        label: Text(
+          'Agregar Pedido',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: AppTheme.primary.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.restaurant_menu,
+                size: 64,
+                color: AppTheme.primary,
+              ),
+            ),
+            SizedBox(height: 24),
+            Text(
+              'No hay pedidos activos',
+              style: TextStyle(
+                color: AppTheme.textPrimary,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: 12),
+            Text(
+              'Esta mesa no tiene pedidos pendientes.\n¡Agrega el primer pedido!',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppTheme.textSecondary, fontSize: 16),
+            ),
+            SizedBox(height: 32),
+            ElevatedButton.icon(
+              onPressed: widget.onAgregarPedido,
+              icon: Icon(Icons.add, color: Colors.white),
+              label: Text(
+                'Crear Primer Pedido',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primary,
+                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPedidoCard(Pedido pedido) {
+    final esActivo = pedido.estado == EstadoPedido.activo;
+
+    return Container(
+      margin: EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        gradient: esActivo ? AppTheme.cardGradient : null,
+        color: esActivo ? null : AppTheme.cardBg.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.primary.withOpacity(0.3), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Encabezado del pedido
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Pedido #${pedido.id.length > 8 ? pedido.id.substring(pedido.id.length - 8) : pedido.id}',
+                        style: TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        'Mesero: ${pedido.mesero}',
+                        style: TextStyle(
+                          color: AppTheme.textSecondary,
+                          fontSize: 14,
+                        ),
+                      ),
+                      Text(
+                        'Fecha: ${_formatFecha(pedido.fecha)}',
+                        style: TextStyle(
+                          color: AppTheme.textSecondary,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Estado del pedido
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: _getEstadoColor(pedido.estado).withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: _getEstadoColor(pedido.estado),
+                      width: 1,
+                    ),
+                  ),
+                  child: Text(
+                    _getEstadoTexto(pedido.estado),
+                    style: TextStyle(
+                      color: _getEstadoColor(pedido.estado),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            SizedBox(height: 12),
+
+            // Items del pedido (resumen)
+            if (pedido.items.isNotEmpty) ...[
+              Text(
+                'Productos (${pedido.items.length}):',
+                style: TextStyle(
+                  color: AppTheme.textPrimary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              SizedBox(height: 8),
+              ...pedido.items
+                  .take(3)
+                  .map(
+                    (item) => Padding(
+                      padding: EdgeInsets.only(bottom: 4),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              '${item.cantidad}x ${item.productoNombre ?? 'Producto'}',
+                              style: TextStyle(
+                                color: AppTheme.textSecondary,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            formatCurrency(item.cantidad * item.precioUnitario),
+                            style: TextStyle(
+                              color: AppTheme.textPrimary,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              if (pedido.items.length > 3)
+                Text(
+                  '... y ${pedido.items.length - 3} más',
+                  style: TextStyle(
+                    color: AppTheme.textMuted,
+                    fontSize: 12,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+            ],
+
+            SizedBox(height: 16),
+
+            // Total y acciones
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // Total del pedido
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: AppTheme.primary.withOpacity(0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: Text(
+                    formatCurrency(pedido.total),
+                    style: TextStyle(
+                      color: AppTheme.primary,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+
+                // Botones de acción
+                Row(
+                  children: [
+                    // Botón editar
+                    IconButton(
+                      onPressed: () => widget.onEditarPedido(pedido),
+                      icon: Icon(Icons.edit, color: AppTheme.primary),
+                      style: IconButton.styleFrom(
+                        backgroundColor: AppTheme.primary.withOpacity(0.1),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                    // Botón pagar
+                    if (esActivo)
+                      ElevatedButton.icon(
+                        onPressed: () => widget.onPagarPedido(pedido),
+                        icon: Icon(Icons.payment, size: 18),
+                        label: Text('Pagar'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.success,
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+
+            // Notas si existen
+            if (pedido.notas != null && pedido.notas!.isNotEmpty) ...[
+              SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppTheme.cardBg.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Notas:',
+                      style: TextStyle(
+                        color: AppTheme.textPrimary,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      pedido.notas!,
+                      style: TextStyle(
+                        color: AppTheme.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Color _getEstadoColor(EstadoPedido estado) {
+    switch (estado) {
+      case EstadoPedido.activo:
+        return AppTheme.success;
+      case EstadoPedido.pagado:
+        return AppTheme.primary;
+      case EstadoPedido.cancelado:
+        return AppTheme.error;
+      case EstadoPedido.cortesia:
+        return Colors.orange;
+    }
+  }
+
+  String _getEstadoTexto(EstadoPedido estado) {
+    switch (estado) {
+      case EstadoPedido.activo:
+        return 'ACTIVO';
+      case EstadoPedido.pagado:
+        return 'PAGADO';
+      case EstadoPedido.cancelado:
+        return 'CANCELADO';
+      case EstadoPedido.cortesia:
+        return 'CORTESÍA';
+    }
+  }
+
+  String _formatFecha(DateTime fecha) {
+    return '${fecha.day.toString().padLeft(2, '0')}/${fecha.month.toString().padLeft(2, '0')}/${fecha.year} ${fecha.hour.toString().padLeft(2, '0')}:${fecha.minute.toString().padLeft(2, '0')}';
   }
 }

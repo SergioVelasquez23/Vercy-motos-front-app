@@ -11,12 +11,8 @@ class AppTheme {
 
   // ===== COLORES DE TEXTO =====
   static const Color textPrimary = Color(0xFFFFFFFF);
-  static const Color textSecondary = Color(
-    0xFFE0E0E0,
-  ); // Mejorado de B0B0B0 a E0E0E0 para mejor contraste
-  static const Color textMuted = Color(
-    0xFFC0C0C0,
-  ); // Mejorado de 808080 a C0C0C0 para mejor legibilidad
+  static const Color textSecondary = Color(0xFFCCCCCC); // Gris claro
+  static const Color textMuted = Color(0xFF888888); // Gris medio real
   static const Color textDark = Color(0xFFFFFFFF); // Blanco para fondos oscuros
   static const Color textLight = Color(
     0xFFE8E8E8,
@@ -42,7 +38,7 @@ class AppTheme {
   );
 
   static const LinearGradient cardGradient = LinearGradient(
-    colors: [cardBg, cardElevated],
+    colors: [cardBg, cardBg], // Gradiente eliminado, color plano
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
@@ -50,17 +46,17 @@ class AppTheme {
   // ===== SOMBRAS =====
   static List<BoxShadow> get cardShadow => [
     BoxShadow(
-      color: Colors.black.withOpacity(0.2),
-      blurRadius: 12,
-      offset: const Offset(0, 4),
+      color: Colors.black.withOpacity(0.1),
+      blurRadius: 8,
+      offset: const Offset(0, 2),
     ),
   ];
 
   static List<BoxShadow> get elevatedShadow => [
     BoxShadow(
-      color: Colors.black.withOpacity(0.3),
-      blurRadius: 20,
-      offset: const Offset(0, 10),
+      color: Colors.black.withOpacity(0.1),
+      blurRadius: 8,
+      offset: const Offset(0, 2),
     ),
   ];
 
@@ -121,20 +117,20 @@ class AppTheme {
   );
 
   static const TextStyle bodySmall = TextStyle(
-    color: textSecondary,
+    color: textPrimary,
     fontSize: 12,
     fontWeight: FontWeight.w400,
     height: 1.2,
   );
 
   static const TextStyle labelLarge = TextStyle(
-    color: textSecondary,
+    color: textPrimary,
     fontSize: 14,
     fontWeight: FontWeight.w500,
   );
 
   static const TextStyle labelMedium = TextStyle(
-    color: textSecondary,
+    color: textPrimary,
     fontSize: 12,
     fontWeight: FontWeight.w500,
   );
@@ -143,7 +139,7 @@ class AppTheme {
   static BoxDecoration get cardDecoration => BoxDecoration(
     color: cardBg,
     borderRadius: BorderRadius.circular(radiusMedium),
-    border: Border.all(color: textMuted.withOpacity(0.2), width: 1),
+    border: Border.all(color: Color(0xFF404040), width: 1),
     boxShadow: cardShadow,
   );
 
@@ -157,7 +153,7 @@ class AppTheme {
   static BoxDecoration get inputDecoration => BoxDecoration(
     color: surfaceDark,
     borderRadius: BorderRadius.circular(radiusMedium),
-    border: Border.all(color: textMuted.withOpacity(0.3), width: 1),
+    border: Border.all(color: Color(0xFF404040), width: 1),
   );
 
   // ===== ESTILOS DE BOTÓN =====
@@ -216,64 +212,6 @@ class AppTheme {
 
   static EdgeInsetsGeometry get smallPadding =>
       const EdgeInsets.all(spacingSmall);
-
-  // ===== TEMA MATERIAL =====
-  static ThemeData get darkTheme => ThemeData(
-    brightness: Brightness.dark,
-    primaryColor: primary,
-    scaffoldBackgroundColor: backgroundDark,
-    cardColor: cardBg,
-    dividerColor: textMuted.withOpacity(0.2),
-    fontFamily: 'Roboto',
-    appBarTheme: const AppBarTheme(
-      backgroundColor: primary,
-      foregroundColor: Colors.white,
-      elevation: 0,
-      centerTitle: true,
-      titleTextStyle: headlineMedium,
-    ),
-    elevatedButtonTheme: ElevatedButtonThemeData(style: primaryButtonStyle),
-    textButtonTheme: TextButtonThemeData(style: secondaryButtonStyle),
-    inputDecorationTheme: InputDecorationTheme(
-      filled: true,
-      fillColor: surfaceDark,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(radiusMedium),
-        borderSide: BorderSide(color: textMuted.withOpacity(0.3)),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(radiusMedium),
-        borderSide: BorderSide(color: textMuted.withOpacity(0.3)),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(radiusMedium),
-        borderSide: const BorderSide(color: primary, width: 2),
-      ),
-      labelStyle: labelLarge,
-      hintStyle: bodyMedium.copyWith(color: textMuted),
-    ),
-    cardTheme: CardThemeData(
-      color: cardBg,
-      elevation: 4,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(radiusMedium),
-      ),
-    ),
-    dialogTheme: DialogThemeData(
-      backgroundColor: cardElevated,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(radiusXLarge),
-      ),
-      titleTextStyle: headlineMedium,
-      contentTextStyle: bodyMedium,
-    ),
-    bottomSheetTheme: BottomSheetThemeData(
-      backgroundColor: cardElevated,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(radiusXLarge)),
-      ),
-    ),
-  );
 }
 
 /// Extension para agregar métodos útiles a BuildContext

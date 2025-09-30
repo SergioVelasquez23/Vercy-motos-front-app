@@ -178,10 +178,7 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
     return Scaffold(
       backgroundColor: AppTheme.backgroundDark,
       appBar: AppBar(
-        title: Text(
-          'Facturas de Compras',
-          style: AppTheme.headlineMedium,
-        ),
+        title: Text('Facturas de Compras', style: AppTheme.headlineMedium),
         backgroundColor: AppTheme.backgroundDark,
         elevation: 0,
         iconTheme: IconThemeData(color: AppTheme.textPrimary),
@@ -197,7 +194,9 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
           _buildFiltros(),
           Expanded(
             child: _isLoading
-                ? Center(child: CircularProgressIndicator(color: AppTheme.primary))
+                ? Center(
+                    child: CircularProgressIndicator(color: AppTheme.primary),
+                  )
                 : _facturasFiltradas.isEmpty
                 ? _buildEmptyState()
                 : _buildListaFacturas(),

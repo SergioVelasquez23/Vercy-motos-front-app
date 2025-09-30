@@ -8,7 +8,8 @@ import 'package:provider/provider.dart';
 import '../providers/user_provider.dart';
 
 class ContadorEfectivoScreen extends StatefulWidget {
-  final Function(double)? onTotalCalculado; // Callback para pasar el total calculado
+  final Function(double)?
+  onTotalCalculado; // Callback para pasar el total calculado
   final double? montoInicial; // Monto inicial si se quiere precargar
 
   const ContadorEfectivoScreen({
@@ -31,7 +32,7 @@ class _ContadorEfectivoScreenState extends State<ContadorEfectivoScreen> {
 
   // Lista de denominaciones
   List<DenominacionEfectivo> _denominaciones = [];
-  
+
   // Controladores de texto para cada denominación
   Map<int, TextEditingController> _controllers = {};
 
@@ -55,13 +56,13 @@ class _ContadorEfectivoScreenState extends State<ContadorEfectivoScreen> {
 
   void _inicializarDenominaciones() {
     _denominaciones = ContadorEfectivo.obtenerDenominacionesStandard();
-    
+
     // Crear controladores para cada denominación
     for (var denominacion in _denominaciones) {
       _controllers[denominacion.valor] = TextEditingController(text: '0');
       _controllers[denominacion.valor]!.addListener(() => _calcularTotales());
     }
-    
+
     _calcularTotales();
   }
 
@@ -114,26 +115,16 @@ class _ContadorEfectivoScreenState extends State<ContadorEfectivoScreen> {
     );
   }
 
-  void _usarTotal() {
-    if (widget.onTotalCalculado != null) {
-      widget.onTotalCalculado!(_totalGeneral);
-      Navigator.of(context).pop(_totalGeneral);
-    } else {
-      // Si no hay callback, mostrar mensaje informativo
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Total calculado: ${formatCurrency(_totalGeneral)}'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    }
-  }
+  // Función removida: _usarTotal ya no es necesaria
+  // Solo se usa exportar a Excel
 
   Future<void> _exportarAExcel() async {
     if (!ExcelExportService.hayDatosParaExportar(_denominaciones)) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('No hay datos para exportar. Ingresa al menos una cantidad.'),
+          content: Text(
+            'No hay datos para exportar. Ingresa al menos una cantidad.',
+          ),
           backgroundColor: Colors.orange,
         ),
       );
@@ -173,7 +164,7 @@ class _ContadorEfectivoScreenState extends State<ContadorEfectivoScreen> {
       // Obtener información del usuario
       final userProvider = Provider.of<UserProvider>(context, listen: false);
       String? nombreUsuario = userProvider.userName;
-      
+
       // Exportar archivo
       String? filePath = await ExcelExportService.exportarContadorEfectivo(
         denominaciones: _denominaciones,
@@ -186,7 +177,10 @@ class _ContadorEfectivoScreenState extends State<ContadorEfectivoScreen> {
 
       if (filePath != null) {
         // Mostrar opciones de éxito
-        _mostrarDialogoExitoExportacion(filePath, resultado['compartir'] ?? false);
+        _mostrarDialogoExitoExportacion(
+          filePath,
+          resultado['compartir'] ?? false,
+        );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -198,7 +192,7 @@ class _ContadorEfectivoScreenState extends State<ContadorEfectivoScreen> {
     } catch (e) {
       // Cerrar diálogo de carga si hay error
       Navigator.of(context).pop();
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error: ${e.toString()}'),
@@ -209,14 +203,17 @@ class _ContadorEfectivoScreenState extends State<ContadorEfectivoScreen> {
   }
 
   Widget _buildExportDialog() {
-    final TextEditingController observacionesController = TextEditingController();
+    final TextEditingController observacionesController =
+        TextEditingController();
     bool compartir = true;
 
     return StatefulBuilder(
       builder: (context, setState) {
         return AlertDialog(
           backgroundColor: cardBg,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           title: Row(
             children: [
               Icon(Icons.file_download, color: primary, size: 28),
@@ -235,7 +232,10 @@ class _ContadorEfectivoScreenState extends State<ContadorEfectivoScreen> {
               children: [
                 Text(
                   'Observaciones (opcional):',
-                  style: TextStyle(color: textDark, fontWeight: FontWeight.w500),
+                  style: TextStyle(
+                    color: textDark,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
                 SizedBox(height: 8),
                 TextField(
@@ -291,7 +291,10 @@ class _ContadorEfectivoScreenState extends State<ContadorEfectivoScreen> {
               icon: Icon(Icons.download, color: Colors.white, size: 20),
               label: Text(
                 'Exportar',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: primary,
@@ -321,7 +324,8 @@ class _ContadorEfectivoScreenState extends State<ContadorEfectivoScreen> {
             action: !exito
                 ? SnackBarAction(
                     label: 'Compartir',
-                    onPressed: () => ExcelExportService.compartirExcel(filePath),
+                    onPressed: () =>
+                        ExcelExportService.compartirExcel(filePath),
                   )
                 : null,
           ),
@@ -334,14 +338,19 @@ class _ContadorEfectivoScreenState extends State<ContadorEfectivoScreen> {
         builder: (BuildContext context) {
           return AlertDialog(
             backgroundColor: cardBg,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
             title: Row(
               children: [
                 Icon(Icons.check_circle, color: Colors.green, size: 28),
                 SizedBox(width: 8),
                 Text(
                   '¡Éxito!',
-                  style: TextStyle(color: textDark, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    color: textDark,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ],
             ),
@@ -386,10 +395,7 @@ class _ContadorEfectivoScreenState extends State<ContadorEfectivoScreen> {
                   ExcelExportService.compartirExcel(filePath);
                 },
                 icon: Icon(Icons.share, color: Colors.white, size: 20),
-                label: Text(
-                  'Compartir',
-                  style: TextStyle(color: Colors.white),
-                ),
+                label: Text('Compartir', style: TextStyle(color: Colors.white)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue,
                   shape: RoundedRectangleBorder(
@@ -442,12 +448,10 @@ class _ContadorEfectivoScreenState extends State<ContadorEfectivoScreen> {
         children: [
           // Panel de totales
           _buildTotalesPanel(),
-          
+
           // Lista de denominaciones
-          Expanded(
-            child: _buildListaDenominaciones(),
-          ),
-          
+          Expanded(child: _buildListaDenominaciones()),
+
           // Botones de acción
           _buildBotonesAccion(),
         ],
@@ -502,9 +506,9 @@ class _ContadorEfectivoScreenState extends State<ContadorEfectivoScreen> {
               ],
             ),
           ),
-          
+
           SizedBox(height: 16),
-          
+
           // Subtotales
           Row(
             children: [
@@ -532,7 +536,12 @@ class _ContadorEfectivoScreenState extends State<ContadorEfectivoScreen> {
     );
   }
 
-  Widget _buildSubtotalCard(String titulo, double total, IconData icono, Color color) {
+  Widget _buildSubtotalCard(
+    String titulo,
+    double total,
+    IconData icono,
+    Color color,
+  ) {
     return Container(
       padding: EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -573,7 +582,7 @@ class _ContadorEfectivoScreenState extends State<ContadorEfectivoScreen> {
       itemBuilder: (context, index) {
         final denominacion = _denominaciones[index];
         final esBillete = denominacion.tipo == 'billete';
-        
+
         return Card(
           color: cardBg,
           margin: EdgeInsets.only(bottom: 8),
@@ -586,10 +595,14 @@ class _ContadorEfectivoScreenState extends State<ContadorEfectivoScreen> {
                   width: 60,
                   height: 60,
                   decoration: BoxDecoration(
-                    color: esBillete ? Colors.green.withOpacity(0.1) : Colors.orange.withOpacity(0.1),
+                    color: esBillete
+                        ? Colors.green.withOpacity(0.1)
+                        : Colors.orange.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: esBillete ? Colors.green.withOpacity(0.3) : Colors.orange.withOpacity(0.3),
+                      color: esBillete
+                          ? Colors.green.withOpacity(0.3)
+                          : Colors.orange.withOpacity(0.3),
                     ),
                   ),
                   child: Column(
@@ -611,9 +624,9 @@ class _ContadorEfectivoScreenState extends State<ContadorEfectivoScreen> {
                     ],
                   ),
                 ),
-                
+
                 SizedBox(width: 16),
-                
+
                 // Campo de cantidad
                 Expanded(
                   flex: 2,
@@ -646,15 +659,18 @@ class _ContadorEfectivoScreenState extends State<ContadorEfectivoScreen> {
                             borderRadius: BorderRadius.circular(8),
                             borderSide: BorderSide(color: primary, width: 2),
                           ),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ),
-                
+
                 SizedBox(width: 16),
-                
+
                 // Total por denominación
                 Expanded(
                   flex: 1,
@@ -663,10 +679,7 @@ class _ContadorEfectivoScreenState extends State<ContadorEfectivoScreen> {
                     children: [
                       Text(
                         'Total',
-                        style: TextStyle(
-                          color: textLight,
-                          fontSize: 12,
-                        ),
+                        style: TextStyle(color: textLight, fontSize: 12),
                       ),
                       Text(
                         formatCurrency(denominacion.total),
@@ -724,17 +737,14 @@ class _ContadorEfectivoScreenState extends State<ContadorEfectivoScreen> {
                   onPressed: _resetearContador,
                 ),
               ),
-              
+
               SizedBox(width: 12),
-              
+
               // Botón exportar Excel
               Expanded(
                 child: OutlinedButton.icon(
                   icon: Icon(Icons.file_download, color: Colors.blue),
-                  label: Text(
-                    'Excel',
-                    style: TextStyle(color: Colors.blue),
-                  ),
+                  label: Text('Excel', style: TextStyle(color: Colors.blue)),
                   style: OutlinedButton.styleFrom(
                     side: BorderSide(color: Colors.blue),
                     padding: EdgeInsets.symmetric(vertical: 12),
@@ -742,23 +752,24 @@ class _ContadorEfectivoScreenState extends State<ContadorEfectivoScreen> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  onPressed: ExcelExportService.hayDatosParaExportar(_denominaciones)
+                  onPressed:
+                      ExcelExportService.hayDatosParaExportar(_denominaciones)
                       ? _exportarAExcel
                       : null,
                 ),
               ),
             ],
           ),
-          
+
           SizedBox(height: 12),
-          
-          // Segunda fila: Usar Total (botón principal)
+
+          // Solo mostrar botón de exportar Excel
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              icon: Icon(Icons.check_circle, color: Colors.white),
+              icon: Icon(Icons.file_download, color: Colors.white),
               label: Text(
-                'Usar Total',
+                'Exportar a Excel',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 16,
@@ -766,13 +777,16 @@ class _ContadorEfectivoScreenState extends State<ContadorEfectivoScreen> {
                 ),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: primary,
+                backgroundColor: Colors.blue,
                 padding: EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              onPressed: _totalGeneral > 0 ? _usarTotal : null,
+              onPressed:
+                  ExcelExportService.hayDatosParaExportar(_denominaciones)
+                  ? _exportarAExcel
+                  : null,
             ),
           ),
         ],

@@ -100,15 +100,8 @@ class _DocumentosMesaScreenState extends State<DocumentosMesaScreen>
           ? await _documentoService.getDocumentosPorMesa(widget.mesa!.nombre)
           : await _documentoService.getDocumentos();
 
-      // Debug: verificar qué datos de pago están llegando
-      print('📋 Documentos cargados: ${documentos.length}');
+      // Debug: verificar qué datos de pago están llegando      for (var doc in documentos.take(3)) {
       for (var doc in documentos.take(3)) {
-        // Solo los primeros 3 para no saturar el log
-        print('  🧾 Documento ${doc.numeroDocumento}:');
-        print('    - formaPago: ${doc.formaPago}');
-        print('    - pagadoPor: ${doc.pagadoPor}');
-        print('    - pagado: ${doc.pagado}');
-        print('    - propina: ${doc.propina}');
       }
 
       // Ordenar documentos por fecha descendente (más recientes primero)

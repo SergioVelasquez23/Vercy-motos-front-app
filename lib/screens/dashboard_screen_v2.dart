@@ -24,6 +24,7 @@ import '../services/pedido_service.dart';
 import '../services/websocket_service.dart';
 import '../models/dashboard_data.dart';
 import '../providers/user_provider.dart';
+import '../widgets/admin_key_detector.dart';
 
 class InfoCardItem {
   final String label;
@@ -87,27 +88,17 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         _setupWebSocket();
 
         // Suscribirse al stream de eventos de pedidos completados
-        _pedidoCompletadoSubscription = _pedidoService.onPedidoCompletado.listen((
-          _,
-        ) {
-          print(
-            '🔔 Pedido completado - WebSocket se encargará de la actualización',
-          );
-        });
+        _pedidoCompletadoSubscription = _pedidoService.onPedidoCompletado
+            .listen((_) {});
 
         // Suscribirse al stream de eventos de pedidos pagados
-        _pedidoPagadoSubscription = _pedidoService.onPedidoPagado.listen((_) {
-          print(
-            '🔔 Pedido pagado - WebSocket se encargará de la actualización',
-          );
-        });
+        _pedidoPagadoSubscription = _pedidoService.onPedidoPagado.listen(
+          (_) {},
+        );
 
         // Timer de respaldo (cada 5 minutos) en caso de que WebSocket falle
         _autoRefreshTimer = Timer.periodic(Duration(minutes: 5), (timer) {
           if (!_webSocketService.isConnected) {
-            print(
-              '🔄 WebSocket desconectado, recargando datos por timer de respaldo',
-            );
             _cargarDatos();
             // Actualizar UI para mostrar estado desconectado
             if (mounted) {
@@ -193,7 +184,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
             });
           })
           .catchError((e) {
-            print('❌ Error cargando ventas por día: $e');
             setState(() {
               _ventasPorDia = [];
             });
@@ -271,7 +261,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
           }
         },
         onError: (error) {
-          print('❌ Error en WebSocket: $error');
           // Actualizar UI para mostrar estado desconectado
           if (mounted) {
             setState(() {});
@@ -280,24 +269,16 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         },
       );
     } catch (e) {
-      print('❌ Error configurando WebSocket: $e');
       // Continuar con el timer de respaldo si falla WebSocket
     }
   }
 
   Future<void> _cargarEstadisticas() async {
     try {
-      print('🔄 Iniciando carga de estadísticas del dashboard...');
-
       // Obtener datos del dashboard desde el servicio
       final dashboardData = await _reportesService.getDashboard();
 
-      print(
-        '📊 Datos del dashboard recibidos: ${dashboardData != null ? 'Sí' : 'No'}',
-      );
-
       if (dashboardData != null && mounted) {
-        print('✅ Actualizando datos del dashboard en el estado');
         // Limpiar objetivos temporales ya que tenemos datos frescos del backend
         if (_objetivosTemporales.isNotEmpty) {
           setState(() {
@@ -310,11 +291,9 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
           });
         }
       } else if (mounted) {
-        print('⚠️ Dashboard data es null o componente no está montado');
         // Mantener los datos existentes o usar null
       }
     } catch (e) {
-      print('❌ Error cargando estadísticas del dashboard: $e');
       // No propagamos el error para evitar que falle toda la UI
       if (mounted) {
         setState(() {
@@ -326,8 +305,13 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
 
   Future<void> _cargarIngresosVsEgresos() async {
     try {
+      print('📊 Cargando datos de ingresos vs egresos...');
       // Obtener ingresos vs egresos de los últimos 12 meses desde el backend
       final ingresosVsEgresos = await _reportesService.getIngresosVsEgresos(12);
+
+      print(
+        '✅ Datos de ingresos vs egresos cargados: ${ingresosVsEgresos.length} registros',
+      );
 
       if (mounted) {
         setState(() {
@@ -335,11 +319,22 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         });
       }
     } catch (e) {
+      print('❌ Error cargando ingresos vs egresos: $e');
       // En caso de error, usar datos vacíos para evitar crashes
       if (mounted) {
         setState(() {
           _ingresosVsEgresos = [];
         });
+      }
+
+      // Mostrar mensaje de error al usuario
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error cargando datos de ingresos vs egresos'),
+            backgroundColor: Colors.orange,
+          ),
+        );
       }
     }
   }
@@ -399,7 +394,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         });
       }
     } catch (e) {
-      print('❌ Error cargando pedidos por hora: $e');
       if (mounted) {
         setState(() {
           _pedidosPorHora = [];
@@ -415,7 +409,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
       try {
         ultimosPedidos = await _reportesService.getUltimosPedidos(10);
       } catch (e) {
-        print('⚠️ Error con reportes service, usando PedidoService: $e');
         // Opción 2: Fallback usando PedidoService directamente
         final pedidos = await _pedidoService.getAllPedidos();
         ultimosPedidos = pedidos
@@ -488,7 +481,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         });
       }
     } catch (e) {
-      print('❌ Error cargando últimos pedidos: $e');
       if (mounted) {
         setState(() {
           _ultimosPedidos = [];
@@ -521,7 +513,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         });
       }
     } catch (e) {
-      print('❌ Error cargando vendedores del mes: $e');
       if (mounted) {
         setState(() {
           _vendedoresDelMes = [];
@@ -711,13 +702,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
       });
     }
 
-    // Debug temporal - ver roles del usuario
-    print('🔍 Roles del usuario: ${userProvider.roles}');
-    print('🔍 isMesero: ${userProvider.isMesero}');
-    print('🔍 isAdmin: ${userProvider.isAdmin}');
-    print('🔍 isSuperAdmin: ${userProvider.isSuperAdmin}');
-    print('🔍 isOnlyMesero: ${userProvider.isOnlyMesero}');
-
     // Los meseros pueden acceder al dashboard para ver mesas y su panel de pedidos
     // (Redirección automática comentada para permitir acceso al dashboard)
     /*
@@ -747,162 +731,167 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
     }
     */
 
-    return Scaffold(
-      backgroundColor: AppTheme.backgroundDark,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildTopBar(),
-            _buildNavBar(),
-            Expanded(
-              child: userProvider.isAdmin || userProvider.isSuperAdmin
-                  ? (_isLoading
-                        ? Center(
-                            child: CircularProgressIndicator(
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                AppTheme.primary,
+    return AdminKeySequenceDetector(
+      child: Scaffold(
+        backgroundColor: AppTheme.backgroundDark,
+        body: SafeArea(
+          child: Column(
+            children: [
+              _buildTopBar(),
+              _buildNavBar(),
+              Expanded(
+                child: userProvider.isAdmin || userProvider.isSuperAdmin
+                    ? (_isLoading
+                          ? Center(
+                              child: CircularProgressIndicator(
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  AppTheme.primary,
+                                ),
                               ),
-                            ),
-                          )
-                        : RefreshIndicator(
-                            onRefresh: _cargarDatos,
-                            child: SingleChildScrollView(
-                              physics: AlwaysScrollableScrollPhysics(),
-                              padding: EdgeInsets.all(
-                                context.responsivePadding,
-                              ),
-                              child: Column(
-                                children: [
-                                  // Cards de estadísticas principales
-                                  _buildStatsCards(context),
-                                  SizedBox(height: AppTheme.spacingXLarge),
-                                  // Gráfico de pedidos por hora (más prominente)
-                                  _buildPedidosPorHoraChart(context),
-                                  SizedBox(height: AppTheme.spacingXLarge),
+                            )
+                          : RefreshIndicator(
+                              onRefresh: _cargarDatos,
+                              child: SingleChildScrollView(
+                                physics: AlwaysScrollableScrollPhysics(),
+                                padding: EdgeInsets.all(
+                                  context.responsivePadding,
+                                ),
+                                child: Column(
+                                  children: [
+                                    // Cards de estadísticas principales
+                                    _buildStatsCards(context),
+                                    SizedBox(height: AppTheme.spacingXLarge),
+                                    // Gráfico de pedidos por hora (más prominente)
+                                    _buildPedidosPorHoraChart(context),
+                                    SizedBox(height: AppTheme.spacingXLarge),
 
-                                  // Gráficos en fila o columna según el dispositivo
-                                  context.isMobile
-                                      ? Column(
-                                          children: [
-                                            _buildIngresosVsEgresosChart(
-                                              context,
-                                            ),
-                                            SizedBox(
-                                              height: AppTheme.spacingLarge,
-                                            ),
-                                            _buildTopProductosChart(context),
-                                          ],
-                                        )
-                                      : Row(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Expanded(
-                                              child:
-                                                  _buildIngresosVsEgresosChart(
-                                                    context,
-                                                  ),
-                                            ),
-                                            SizedBox(
-                                              width: AppTheme.spacingXLarge,
-                                            ),
-                                            Expanded(
-                                              child: _buildTopProductosChart(
+                                    // Gráficos en fila o columna según el dispositivo
+                                    context.isMobile
+                                        ? Column(
+                                            children: [
+                                              _buildIngresosVsEgresosChart(
                                                 context,
                                               ),
-                                            ),
-                                          ],
-                                        ),
-                                  SizedBox(height: AppTheme.spacingXLarge),
+                                              SizedBox(
+                                                height: AppTheme.spacingLarge,
+                                              ),
+                                              _buildTopProductosChart(context),
+                                            ],
+                                          )
+                                        : Row(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Expanded(
+                                                child:
+                                                    _buildIngresosVsEgresosChart(
+                                                      context,
+                                                    ),
+                                              ),
+                                              SizedBox(
+                                                width: AppTheme.spacingXLarge,
+                                              ),
+                                              Expanded(
+                                                child: _buildTopProductosChart(
+                                                  context,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                    SizedBox(height: AppTheme.spacingXLarge),
 
-                                  // Últimos pedidos y vendedores responsivos
-                                  context.isMobile
-                                      ? Column(
-                                          children: [
-                                            _buildUltimosPedidos(context),
-                                            SizedBox(
-                                              height: AppTheme.spacingLarge,
-                                            ),
-                                            _buildVendedoresDelMes(context),
-                                          ],
-                                        )
-                                      : Row(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Expanded(
-                                              flex: 3,
-                                              child: _buildUltimosPedidos(
-                                                context,
+                                    // Últimos pedidos y vendedores responsivos
+                                    context.isMobile
+                                        ? Column(
+                                            children: [
+                                              _buildUltimosPedidos(context),
+                                              SizedBox(
+                                                height: AppTheme.spacingLarge,
                                               ),
-                                            ),
-                                            SizedBox(
-                                              width: AppTheme.spacingXLarge,
-                                            ),
-                                            Expanded(
-                                              flex: 2,
-                                              child: _buildVendedoresDelMes(
-                                                context,
+                                              _buildVendedoresDelMes(context),
+                                            ],
+                                          )
+                                        : Row(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Expanded(
+                                                flex: 3,
+                                                child: _buildUltimosPedidos(
+                                                  context,
+                                                ),
                                               ),
-                                            ),
-                                          ],
-                                        ),
-                                  SizedBox(height: AppTheme.spacingXLarge),
-                                ],
+                                              SizedBox(
+                                                width: AppTheme.spacingXLarge,
+                                              ),
+                                              Expanded(
+                                                flex: 2,
+                                                child: _buildVendedoresDelMes(
+                                                  context,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                    SizedBox(height: AppTheme.spacingXLarge),
+                                  ],
+                                ),
                               ),
-                            ),
-                          ))
-                  : Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.security, size: 64, color: Colors.grey),
-                          SizedBox(height: 16),
-                          Text(
-                            'Acceso Restringido',
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            'No tienes permisos para acceder al dashboard.',
-                            style: TextStyle(fontSize: 16, color: Colors.grey),
-                            textAlign: TextAlign.center,
-                          ),
-                          SizedBox(height: 24),
-                          ElevatedButton(
-                            onPressed: () {
-                              Navigator.pushReplacementNamed(
-                                context,
-                                '/mesero',
-                              );
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppTheme.primary,
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 32,
-                                vertical: 16,
-                              ),
-                            ),
-                            child: Text(
-                              'Ir al Panel de Mesero',
+                            ))
+                    : Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.security, size: 64, color: Colors.grey),
+                            SizedBox(height: 16),
+                            Text(
+                              'Acceso Restringido',
                               style: TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
                                 color: Colors.white,
-                                fontSize: 16,
                               ),
                             ),
-                          ),
-                        ],
+                            SizedBox(height: 8),
+                            Text(
+                              'No tienes permisos para acceder al dashboard.',
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.grey,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            SizedBox(height: 24),
+                            ElevatedButton(
+                              onPressed: () {
+                                Navigator.pushReplacementNamed(
+                                  context,
+                                  '/mesero',
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppTheme.primary,
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 32,
+                                  vertical: 16,
+                                ),
+                              ),
+                              child: Text(
+                                'Ir al Panel de Mesero',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-            ),
-          ],
-        ),
+              ),
+            ],
+          ),
+        ), // Cierra Scaffold
       ),
-    );
+    ); // Cierra AdminKeySequenceDetector
   }
 
   Widget _buildTopBar() {
@@ -1052,119 +1041,129 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
       // 5. Inventario (dropdown)
       navItems.add(
         _buildDropdownNavItem(
-          Icons.inventory_2_outlined, 
-          'Inventario', 
-          4, 
+          Icons.inventory_2_outlined,
+          'Inventario',
+          4,
           [
-          PopupMenuItem<String>(
-            value: 'historial',
-            onTap: () {
-              Future.delayed(Duration.zero, () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => HistorialInventarioScreen(),
+            PopupMenuItem<String>(
+              value: 'historial',
+              onTap: () {
+                Future.delayed(Duration.zero, () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => HistorialInventarioScreen(),
+                    ),
+                  );
+                });
+              },
+              child: Row(
+                children: [
+                  Icon(Icons.history, color: Colors.blue, size: 18),
+                  SizedBox(width: 8),
+                  Text(
+                    'Historial',
+                    style: TextStyle(color: AppTheme.textPrimary),
                   ),
-                );
-              });
-            },
-            child: Row(
-              children: [
-                Icon(Icons.history, color: Colors.blue, size: 18),
-                SizedBox(width: 8),
-                Text(
-                  'Historial',
-                  style: TextStyle(color: AppTheme.textPrimary),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          PopupMenuItem<String>(
-            value: 'ingredientes',
-            onTap: () {
-              Future.delayed(Duration.zero, () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => IngredientesScreen()),
-                );
-              });
-            },
-            child: Row(
-              children: [
-                Icon(Icons.restaurant_menu, color: Colors.green, size: 18),
-                SizedBox(width: 8),
-                Text(
-                  'Ingredientes',
-                  style: TextStyle(color: AppTheme.textPrimary),
-                ),
-              ],
+            PopupMenuItem<String>(
+              value: 'ingredientes',
+              onTap: () {
+                Future.delayed(Duration.zero, () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => IngredientesScreen(),
+                    ),
+                  );
+                });
+              },
+              child: Row(
+                children: [
+                  Icon(Icons.restaurant_menu, color: Colors.green, size: 18),
+                  SizedBox(width: 8),
+                  Text(
+                    'Ingredientes',
+                    style: TextStyle(color: AppTheme.textPrimary),
+                  ),
+                ],
+              ),
             ),
-          ),
-          PopupMenuItem<String>(
-            value: 'recetas',
-            onTap: () {
-              Future.delayed(Duration.zero, () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => RecetasScreen()),
-                );
-              });
-            },
-            child: Row(
-              children: [
-                Icon(Icons.menu_book, color: Colors.orange, size: 18),
-                SizedBox(width: 8),
-                Text('Recetas', style: TextStyle(color: AppTheme.textPrimary)),
-              ],
+            PopupMenuItem<String>(
+              value: 'recetas',
+              onTap: () {
+                Future.delayed(Duration.zero, () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => RecetasScreen()),
+                  );
+                });
+              },
+              child: Row(
+                children: [
+                  Icon(Icons.menu_book, color: Colors.orange, size: 18),
+                  SizedBox(width: 8),
+                  Text(
+                    'Recetas',
+                    style: TextStyle(color: AppTheme.textPrimary),
+                  ),
+                ],
+              ),
             ),
-          ),
-          PopupMenuItem<String>(
-            value: 'proveedores',
-            onTap: () {
-              Future.delayed(Duration.zero, () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => ProveedoresScreen()),
-                );
-              });
-            },
-            child: Row(
-              children: [
-                Icon(Icons.local_shipping, color: Colors.purple, size: 18),
-                SizedBox(width: 8),
-                Text(
-                  'Proveedores',
-                  style: TextStyle(color: AppTheme.textPrimary),
-                ),
-              ],
+            PopupMenuItem<String>(
+              value: 'proveedores',
+              onTap: () {
+                Future.delayed(Duration.zero, () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ProveedoresScreen(),
+                    ),
+                  );
+                });
+              },
+              child: Row(
+                children: [
+                  Icon(Icons.local_shipping, color: Colors.purple, size: 18),
+                  SizedBox(width: 8),
+                  Text(
+                    'Proveedores',
+                    style: TextStyle(color: AppTheme.textPrimary),
+                  ),
+                ],
+              ),
             ),
-          ),
-          PopupMenuItem<String>(
-            value: 'unidades',
-            onTap: () {
-              Future.delayed(Duration.zero, () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => UnidadesScreen()),
-                );
-              });
-            },
-            child: Row(
-              children: [
-                Icon(Icons.straighten, color: Colors.teal, size: 18),
-                SizedBox(width: 8),
-                Text('Unidades', style: TextStyle(color: AppTheme.textPrimary)),
-              ],
+            PopupMenuItem<String>(
+              value: 'unidades',
+              onTap: () {
+                Future.delayed(Duration.zero, () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => UnidadesScreen()),
+                  );
+                });
+              },
+              child: Row(
+                children: [
+                  Icon(Icons.straighten, color: Colors.teal, size: 18),
+                  SizedBox(width: 8),
+                  Text(
+                    'Unidades',
+                    style: TextStyle(color: AppTheme.textPrimary),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
-        tooltip: "Menú de Inventario",
-        onCanceled: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => IngredientesScreen()),
-          );
-        },
+          ],
+          tooltip: "Menú de Inventario",
+          onCanceled: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => IngredientesScreen()),
+            );
+          },
         ),
       );
 
@@ -1181,87 +1180,87 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
       // 7. Gestión de Gastos (dropdown)
       navItems.add(
         _buildDropdownNavItem(
-          Icons.account_balance_wallet, 
-          'Gastos', 
-          6, 
+          Icons.account_balance_wallet,
+          'Gastos',
+          6,
           [
-          PopupMenuItem<String>(
-            value: 'ingresos_caja',
-            onTap: () {
-              Future.delayed(Duration.zero, () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => IngresosCajaScreen(),
+            PopupMenuItem<String>(
+              value: 'ingresos_caja',
+              onTap: () {
+                Future.delayed(Duration.zero, () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => IngresosCajaScreen(),
+                    ),
+                  );
+                });
+              },
+              child: Row(
+                children: [
+                  Icon(Icons.receipt_long, color: Colors.blue, size: 18),
+                  SizedBox(width: 8),
+                  Text(
+                    'Ingresos de Caja',
+                    style: TextStyle(color: AppTheme.textPrimary),
                   ),
-                );
-              });
-            },
-            child: Row(
-              children: [
-                Icon(Icons.receipt_long, color: Colors.blue, size: 18),
-                SizedBox(width: 8),
-                Text(
-                  'Ingresos de Caja',
-                  style: TextStyle(color: AppTheme.textPrimary),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          PopupMenuItem<String>(
-            value: 'tipos_gastos',
-            onTap: () {
-              Future.delayed(Duration.zero, () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => TiposGastoScreen(),
+            PopupMenuItem<String>(
+              value: 'tipos_gastos',
+              onTap: () {
+                Future.delayed(Duration.zero, () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => TiposGastoScreen()),
+                  );
+                });
+              },
+              child: Row(
+                children: [
+                  Icon(Icons.trending_up, color: Colors.orange, size: 18),
+                  SizedBox(width: 8),
+                  Text(
+                    'Tipos de Gastos',
+                    style: TextStyle(color: AppTheme.textPrimary),
                   ),
-                );
-              });
-            },
-            child: Row(
-              children: [
-                Icon(Icons.trending_up, color: Colors.orange, size: 18),
-                SizedBox(width: 8),
-                Text(
-                  'Tipos de Gastos',
-                  style: TextStyle(color: AppTheme.textPrimary),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          PopupMenuItem<String>(
-            value: 'gestion_gastos',
-            onTap: () {
-              Future.delayed(Duration.zero, () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => GastosScreen(),
+            PopupMenuItem<String>(
+              value: 'gestion_gastos',
+              onTap: () {
+                Future.delayed(Duration.zero, () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => GastosScreen()),
+                  );
+                });
+              },
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.account_balance_wallet,
+                    color: Colors.green,
+                    size: 18,
                   ),
-                );
-              });
-            },
-            child: Row(
-              children: [
-                Icon(Icons.account_balance_wallet, color: Colors.green, size: 18),
-                SizedBox(width: 8),
-                Text(
-                  'Gestión de Gastos',
-                  style: TextStyle(color: AppTheme.textPrimary),
-                ),
-              ],
+                  SizedBox(width: 8),
+                  Text(
+                    'Gestión de Gastos',
+                    style: TextStyle(color: AppTheme.textPrimary),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
-        tooltip: "Gestión de Gastos",
-        onCanceled: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => CuadreCajaScreen()),
-          );
-        },
+          ],
+          tooltip: "Gestión de Gastos",
+          onCanceled: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => CuadreCajaScreen()),
+            );
+          },
         ),
       );
 
@@ -1408,7 +1407,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
       ),
     );
   }
-
 
   Widget _buildStatsCards(BuildContext context) {
     if (_dashboardData == null) {
