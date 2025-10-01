@@ -29,6 +29,14 @@ class ImagenProductoWidget extends StatelessWidget {
 
     final imagenUrl = urlRemota!;
 
+    // Filtrar referencias al placeholder corrupto
+    if (imagenUrl.contains('placeholder/food_placeholder.png')) {
+      print(
+        '⚠️ Detectada referencia al placeholder corrupto, usando icono por defecto',
+      );
+      return _buildIconoDefault();
+    }
+
     // Si es una imagen base64
     if (imagenUrl.startsWith('data:image')) {
       return _buildImagenBase64(imagenUrl);
@@ -37,6 +45,12 @@ class ImagenProductoWidget extends StatelessWidget {
     // Si es una URL web absoluta
     if (imagenUrl.startsWith('http')) {
       return _buildImagenNetwork(imagenUrl);
+    }
+
+    // Si es solo un nombre de archivo, construir la URL completa
+    if (!imagenUrl.startsWith('/') && !imagenUrl.contains('/')) {
+      final fullUrl = '$backendBaseUrl/images/platos/$imagenUrl';
+      return _buildImagenNetwork(fullUrl);
     }
 
     // Si es una URL relativa
@@ -93,7 +107,23 @@ class ImagenProductoWidget extends StatelessWidget {
           );
         },
         errorBuilder: (context, error, stackTrace) {
-          print('❌ Error cargando imagen de red: $url - Error: $error');
+          print('❌ Error cargando imagen de red: $url');
+          print('   Tipo de error: ${error.runtimeType}');
+          print('   Detalles: $error');
+
+          // Intentar detectar el tipo de error específico
+          if (error.toString().contains('500')) {
+            print(
+              '   🚨 Error 500 del servidor - imagen no encontrada o endpoint dañado',
+            );
+          } else if (error.toString().contains('404')) {
+            print('   🚨 Error 404 - imagen no encontrada');
+          } else if (error.toString().contains(
+            'Failed to detect image file format',
+          )) {
+            print('   🚨 Archivo no es una imagen válida o está corrupto');
+          }
+
           return _buildImagenAssetFallback();
         },
       ),
@@ -160,12 +190,18 @@ class ImagenProductoWidget extends StatelessWidget {
             width: width,
             height: height,
             fit: fit,
-            errorBuilder: (context, error, stackTrace) => _buildIconoDefault(),
+            errorBuilder: (context, error, stackTrace) {
+              print(
+                '❌ Error cargando imagen local: $rutaImagen - Error: $error',
+              );
+              return _buildIconoDefault();
+            },
           ),
         );
       }
     }
 
+    // Fallback final: icono por defecto
     return _buildIconoDefault();
   }
 
@@ -176,13 +212,31 @@ class ImagenProductoWidget extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.grey[200],
         borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey[300]!, width: 1),
       ),
-      child: Icon(
-        Icons.restaurant,
-        color: Colors.grey[400],
-        size: (width != null && height != null)
-            ? (width! < height! ? width! * 0.5 : height! * 0.5)
-            : 24,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.restaurant,
+            color: Colors.grey[400],
+            size: (width != null && height != null)
+                ? (width! < height! ? width! * 0.4 : height! * 0.4)
+                : 20,
+          ),
+          if (height != null && height! > 60) ...[
+            SizedBox(height: 4),
+            Text(
+              'Sin imagen',
+              style: TextStyle(
+                color: Colors.grey[500],
+                fontSize: 10,
+                fontWeight: FontWeight.w500,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -192,15 +246,33 @@ class ImagenProductoWidget extends StatelessWidget {
       width: width,
       height: height,
       decoration: BoxDecoration(
-        color: Colors.red[100],
+        color: Colors.orange[50],
         borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.orange[200]!, width: 1),
       ),
-      child: Icon(
-        Icons.error,
-        color: Colors.red[400],
-        size: (width != null && height != null)
-            ? (width! < height! ? width! * 0.5 : height! * 0.5)
-            : 24,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.image_not_supported,
+            color: Colors.orange[400],
+            size: (width != null && height != null)
+                ? (width! < height! ? width! * 0.4 : height! * 0.4)
+                : 20,
+          ),
+          if (height != null && height! > 60) ...[
+            SizedBox(height: 4),
+            Text(
+              'Error\ncargando',
+              style: TextStyle(
+                color: Colors.orange[600],
+                fontSize: 9,
+                fontWeight: FontWeight.w500,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ],
       ),
     );
   }

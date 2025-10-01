@@ -45,6 +45,9 @@ class EndpointsConfig {
 
   /// Endpoints para proveedores
   ProveedorEndpoints get proveedores => ProveedorEndpoints(currentBaseUrl);
+
+  /// Endpoints para manejo de imágenes
+  ImageEndpoints get images => ImageEndpoints(currentBaseUrl);
 }
 
 /// Endpoints relacionados con autenticación y usuarios
@@ -222,4 +225,34 @@ class ProveedorEndpoints {
 
   /// Obtener proveedores para facturas de compras
   String get paraFacturas => '$baseUrl/api/facturas-compras/proveedores';
+}
+
+/// Endpoints relacionados con manejo de imágenes
+class ImageEndpoints {
+  final String baseUrl;
+
+  ImageEndpoints(this.baseUrl);
+
+  String get base => '$baseUrl/api/images';
+
+  /// Subir imagen (multipart)
+  String get upload => '$base/upload';
+
+  /// Subir imagen base64 (para web)
+  String get uploadBase64 => '$base/upload-base64';
+
+  /// Listar todas las imágenes disponibles
+  String get list => '$base/list';
+
+  /// Verificar si una imagen existe
+  String check(String filename) => '$base/check/$filename';
+
+  /// Servir imagen de platos
+  String plato(String filename) => '$base/platos/$filename';
+
+  /// URL directa para acceder a imagen (para mostrar en UI)
+  String directUrl(String filename) => '$baseUrl/images/platos/$filename';
+
+  /// Eliminar imagen
+  String delete(String filename) => '$base/platos/$filename';
 }

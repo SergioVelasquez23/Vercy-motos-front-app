@@ -406,9 +406,7 @@ class _CategoriasScreenState extends State<CategoriasScreen> {
                         final nuevaCategoria = Categoria(
                           id: DateTime.now().millisecondsSinceEpoch.toString(),
                           nombre: nombreController.text,
-                          imagenUrl:
-                              finalImageUrl ??
-                              'assets/placeholder/food_placeholder.png',
+                          imagenUrl: finalImageUrl, // null si no hay imagen
                         );
                         await _productoService.addCategoria(nuevaCategoria);
                       }

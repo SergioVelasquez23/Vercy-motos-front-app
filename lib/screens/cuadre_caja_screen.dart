@@ -11,7 +11,6 @@ import 'ingresos_caja_screen.dart';
 import '../utils/format_utils.dart';
 import 'gastos_screen.dart';
 import 'tipos_gasto_screen.dart';
-import 'movimientos_cuadre_screen.dart';
 import 'contador_efectivo_screen.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -324,15 +323,6 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
         ),
       );
     }
-  }
-
-  void _mostrarMovimientosCuadre(CuadreCaja cuadre) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => MovimientosCuadreScreen(cuadre: cuadre),
-      ),
-    );
   }
 
   void _abrirContadorEfectivo({bool paraEfectivo = true}) async {
@@ -852,15 +842,6 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                             ),
                           ),
                         ),
-                        DataColumn(
-                          label: Text(
-                            'Movimientos',
-                            style: TextStyle(
-                              color: textDark,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
                       ],
                       rows: _cuadresCaja.map((cuadre) {
                         return DataRow(
@@ -921,29 +902,6 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                                   _mostrarResumenDetallado(cuadre);
                                 },
                                 child: Text('Ver'),
-                              ),
-                            ),
-                            DataCell(
-                              ElevatedButton.icon(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.blue,
-                                  foregroundColor: Colors.white,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  elevation: 3,
-                                ),
-                                onPressed: () {
-                                  _mostrarMovimientosCuadre(cuadre);
-                                },
-                                icon: Icon(
-                                  Icons.account_balance_wallet,
-                                  size: 16,
-                                ),
-                                label: Text(
-                                  'Ver',
-                                  style: TextStyle(fontSize: 12),
-                                ),
                               ),
                             ),
                           ],

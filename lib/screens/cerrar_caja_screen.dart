@@ -100,6 +100,18 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
         final cuadreCompleto = await _cuadreCajaService.getCuadreCompleto();
         print('✅ Datos del cuadre completo: $cuadreCompleto');
 
+        // Debug: Mostrar específicamente los campos de cantidad
+        print('🔍 DEBUG CAMPOS CANTIDAD:');
+        print('  - totalPedidos: ${cuadreCompleto['totalPedidos']}');
+        print('  - cantidadPedidos: ${cuadreCompleto['cantidadPedidos']}');
+        print('  - cantidadEfectivo: ${cuadreCompleto['cantidadEfectivo']}');
+        print(
+          '  - cantidadTransferencias: ${cuadreCompleto['cantidadTransferencias']}',
+        );
+        print('  - cantidadTarjetas: ${cuadreCompleto['cantidadTarjetas']}');
+        print('  - cantidadOtros: ${cuadreCompleto['cantidadOtros']}');
+        print('  - totalProductos: ${cuadreCompleto['totalProductos']}');
+
         setState(() {
           // Capturar valores individuales
           _ventasEfectivo = (cuadreCompleto['ventasEfectivo'] ?? 0.0)
@@ -110,14 +122,100 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
               .toDouble();
           _totalGastos = (cuadreCompleto['totalGastos'] ?? 0.0).toDouble();
 
-          // NUEVOS: Obtener contadores también del backend
-          _totalPedidos = (cuadreCompleto['totalPedidos'] ?? 0);
-          _totalProductos = (cuadreCompleto['totalProductos'] ?? 0);
+          // NUEVOS: Obtener contadores del backend con fallbacks mejorados
+          // Convertir null a 0 para totalPedidos
+          var totalPedidosRaw = cuadreCompleto['totalPedidos'];
+          _totalPedidos = (totalPedidosRaw == null)
+              ? 0
+              : (totalPedidosRaw as num).toInt();
+
+          // Obtener cantidades individuales (convertir null a 0)
+          int cantidadEfectivo = (cuadreCompleto['cantidadEfectivo'] == null)
+              ? 0
+              : (cuadreCompleto['cantidadEfectivo'] as num).toInt();
+          int cantidadTransferencias =
+              (cuadreCompleto['cantidadTransferencias'] == null)
+              ? 0
+              : (cuadreCompleto['cantidadTransferencias'] as num).toInt();
+          int cantidadTarjetas = (cuadreCompleto['cantidadTarjetas'] == null)
+              ? 0
+              : (cuadreCompleto['cantidadTarjetas'] as num).toInt();
+          int cantidadOtros = (cuadreCompleto['cantidadOtros'] == null)
+              ? 0
+              : (cuadreCompleto['cantidadOtros'] as num).toInt();
+
+          // Si totalPedidos es 0 o null, usar la suma de cantidades individuales
+          if (_totalPedidos == 0) {
+            _totalPedidos =
+                cantidadEfectivo +
+                cantidadTransferencias +
+                cantidadTarjetas +
+                cantidadOtros;
+          }
+
+          print('🔍 DEBUG PEDIDOS:');
+          print(
+            '  - totalPedidos del backend: ${cuadreCompleto['totalPedidos']}',
+          );
+          print('  - cantidadEfectivo: $cantidadEfectivo');
+          print('  - cantidadTransferencias: $cantidadTransferencias');
+          print('  - cantidadTarjetas: $cantidadTarjetas');
+          print('  - cantidadOtros: $cantidadOtros');
+          print('  - TOTAL CALCULADO: $_totalPedidos');
+
+          // Para totalProductos, también manejar null
+          var totalProductosRaw = cuadreCompleto['totalProductos'];
+          _totalProductos = (totalProductosRaw == null)
+              ? 0
+              : (totalProductosRaw as num).toInt();
+
+          // Si totalProductos es 0, usar el mismo valor que totalPedidos como fallback
+          if (_totalProductos == 0) {
+            _totalProductos = _totalPedidos;
+            print(
+              '📦 DEBUG ITEMS: totalProductos era 0, usando totalPedidos: $_totalProductos',
+            );
+          }
+
+          // Obtener valor total de ventas ANTES de la validación del respaldo
           _valorTotalVentas =
               (cuadreCompleto['totalVentas'] ??
                       cuadreCompleto['ventasEfectivo'] ??
                       0.0)
                   .toDouble();
+
+          // Respaldo adicional: Si aún tenemos 0 pedidos pero hay ventas significativas
+          if (_totalPedidos == 0 && _valorTotalVentas > 0) {
+            // Usar el cantidadPedidos del backend como respaldo
+            int cantidadPedidosBackend =
+                (cuadreCompleto['cantidadPedidos'] == null)
+                ? 0
+                : (cuadreCompleto['cantidadPedidos'] as num).toInt();
+
+            if (cantidadPedidosBackend > 0) {
+              _totalPedidos = cantidadPedidosBackend;
+              _totalProductos = cantidadPedidosBackend;
+              print(
+                '✅ RESPALDO: Usando cantidadPedidos del backend: $cantidadPedidosBackend',
+              );
+            } else {
+              // Último respaldo: estimar pedidos basado en ventas promedio
+              int pedidosEstimados = (_valorTotalVentas / 30000)
+                  .ceil(); // ~30k promedio por pedido
+              if (pedidosEstimados > 0) {
+                _totalPedidos = pedidosEstimados;
+                _totalProductos = pedidosEstimados;
+                print(
+                  '🔢 ESTIMACIÓN: $pedidosEstimados pedidos basado en ventas totales',
+                );
+              }
+            }
+          }
+
+          print('✅ RESUMEN FINAL:');
+          print('  - Total Pedidos: $_totalPedidos');
+          print('  - Total Items: $_totalProductos');
+          print('  - Valor Total: $_valorTotalVentas');
 
           // El efectivo esperado debería incluir las ventas en efectivo y domicilios menos gastos
           // Si el backend ya incluye domicilios, usamos su valor directamente

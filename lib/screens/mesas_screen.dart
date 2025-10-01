@@ -62,6 +62,42 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
       DocumentoAutomaticoService();
   final CuadreCajaService _cuadreCajaService = CuadreCajaService();
 
+  /// Mejora los mensajes de error para hacerlos más amigables al usuario
+  String _mejorarMensajeError(String error) {
+    final errorLower = error.toLowerCase();
+
+    // Error de caja cerrada
+    if (errorLower.contains('caja pendiente') ||
+        errorLower.contains('abrir una caja') ||
+        errorLower.contains('abrir caja')) {
+      return ' Debe abrir caja para continuar\n\nPara registrar pedidos primero debe abrir la caja del día.';
+    }
+
+    // Error de conexión
+    if (errorLower.contains('conexión') ||
+        errorLower.contains('network') ||
+        errorLower.contains('timeout')) {
+      return ' Sin conexión\n\nVerifique su conexión a internet e intente de nuevo.';
+    }
+
+    // Error de servidor
+    if (errorLower.contains('500') ||
+        errorLower.contains('servidor') ||
+        errorLower.contains('server')) {
+      return ' Error del sistema\n\nIntente de nuevo en unos momentos.';
+    }
+
+    // Error de permisos
+    if (errorLower.contains('permiso') ||
+        errorLower.contains('autorizado') ||
+        errorLower.contains('forbidden')) {
+      return ' Sin permisos\n\nNo tiene autorización para realizar esta acción.';
+    }
+
+    // Mensaje genérico mejorado para otros errores
+    return ' Error\n\n$error';
+  }
+
   /// Convierte un string de motivo a enum MotivoCancelacion
   MotivoCancelacion _obtenerMotivoCancelacion(String motivo) {
     final motivoLower = motivo.toLowerCase();
@@ -484,8 +520,9 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error preparando impresión: $e'),
+            content: Text(_mejorarMensajeError(e.toString())),
             backgroundColor: Colors.red,
+            duration: Duration(seconds: 4),
           ),
         );
       }
@@ -573,8 +610,9 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error compartiendo: $e'),
+            content: Text(_mejorarMensajeError(e.toString())),
             backgroundColor: Colors.red,
+            duration: Duration(seconds: 4),
           ),
         );
       }
@@ -974,8 +1012,9 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('❌ Error registrando deuda: $e'),
+            content: Text(_mejorarMensajeError(e.toString())),
             backgroundColor: Colors.red,
+            duration: Duration(seconds: 4),
           ),
         );
       }
@@ -1978,6 +2017,12 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
 
   Widget _buildMesaCard(Mesa mesa) {
     bool isOcupada = mesa.ocupada || mesa.total > 0;
+
+    // 🔍 DEBUG: Verificar estado de las mesas
+    print(
+      '🔍 MESA ${mesa.nombre}: ocupada=${mesa.ocupada}, total=${mesa.total}, isOcupada=$isOcupada',
+    );
+
     Color statusColor = isOcupada ? AppTheme.error : AppTheme.success;
     final userProvider = Provider.of<UserProvider>(context, listen: false);
     bool canProcessPayment =
@@ -2041,10 +2086,14 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                           width: 1.5,
                         ),
                       ),
-                      child: Icon(
-                        Icons.table_restaurant,
-                        color: AppTheme.primary,
-                        size: constraints.maxWidth * 0.2, // Tamaño responsivo
+                      child: FittedBox(
+                        child: Icon(
+                          Icons.table_restaurant,
+                          color: AppTheme.primary,
+                          size:
+                              constraints.maxWidth *
+                              0.15, // Reducido de 0.2 a 0.15
+                        ),
                       ),
                     ),
                   ),
@@ -2148,9 +2197,9 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                 ), // Margen para área táctil más grande
                                 padding: EdgeInsets.symmetric(
                                   horizontal: AppTheme
-                                      .spacingMedium, // Aumentado el padding horizontal
+                                      .spacingSmall, // Reducido para más espacio al texto
                                   vertical: AppTheme
-                                      .spacingSmall, // Aumentado el padding vertical
+                                      .spacingXSmall, // Reducido para mejor proporción
                                 ),
                                 decoration: BoxDecoration(
                                   gradient: AppTheme.primaryGradient,
@@ -2178,13 +2227,14 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                       Icons.payment,
                                       size:
                                           constraints.maxWidth *
-                                          0.12, // Icono más grande
+                                          0.08, // Reducido de 0.12 a 0.08
                                       color: Colors.white,
                                     ),
                                     SizedBox(
-                                      width: 4,
+                                      width: 6,
                                     ), // Más espacio entre icono y texto
-                                    Flexible(
+                                    Expanded(
+                                      // Cambiado de Flexible a Expanded
                                       child: Builder(
                                         builder: (context) {
                                           // 🔍 DEBUG: Capturar corrupción de números
@@ -2218,14 +2268,14 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                             );
                                             return Text(
                                               fallback,
-                                              style: AppTheme.labelMedium
-                                                  .copyWith(
-                                                    color: Colors.white,
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize:
-                                                        constraints.maxWidth *
-                                                        0.08,
-                                                  ),
+                                              style: AppTheme.labelMedium.copyWith(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize:
+                                                    constraints.maxWidth *
+                                                    0.09, // Aumentado de 0.08 a 0.09
+                                              ),
+                                              textAlign: TextAlign.center,
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
                                             );
@@ -3931,6 +3981,11 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
         }
 
         // Manejar opciones especiales antes de liberar la mesa
+        print('🔍 Verificando opciones especiales...');
+        print('  - mesaDestinoId: $mesaDestinoId');
+        print('  - esCortesia: $esCortesia');
+        print('  - esConsumoInterno: $esConsumoInterno');
+
         if (mesaDestinoId != null) {
           // Mover a otra mesa usando la nueva API y actualizar documento
           try {
@@ -3997,11 +4052,25 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
 
         // Liberar la mesa después del pago exitoso
         try {
+          print('🔓 Liberando mesa ${mesa.nombre}...');
+          print(
+            '  - Estado actual: ocupada=${mesa.ocupada}, total=${mesa.total}',
+          );
+
           mesa.ocupada = false;
           mesa.productos = [];
           mesa.total = 0.0;
+
+          print(
+            '  - Estado después del cambio: ocupada=${mesa.ocupada}, total=${mesa.total}',
+          );
+
           await _mesaService.updateMesa(mesa);
+
           print('✅ Mesa ${mesa.nombre} liberada después del pago');
+          print(
+            '  - Estado final enviado al servidor: ocupada=${mesa.ocupada}, total=${mesa.total}',
+          );
         } catch (e) {
           print('❌ Error al liberar mesa después del pago: $e');
         }
@@ -4200,7 +4269,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('❌ Error en pago parcial: ${e.toString()}'),
+            content: Text(_mejorarMensajeError(e.toString())),
             backgroundColor: Colors.red,
             duration: Duration(seconds: 5),
           ),
@@ -6454,7 +6523,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                       .spacingMedium, // Reducido para acomodar 3 columnas
                   mainAxisSpacing: AppTheme.spacingMedium,
                   childAspectRatio:
-                      1.2, // Cambiado de 0.9 a 1.2 para hacerlas más pequeñas como las especiales
+                      1.0, // Ajustado a 1.0 para un tamaño balanceado (cuadradas)
                 ),
                 itemCount: mesasDeLaFila.length,
                 itemBuilder: (context, index) {
@@ -7303,11 +7372,6 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                     color: AppTheme.primary,
                     strokeWidth: 3,
                   ),
-                ),
-                SizedBox(height: 12),
-                Text(
-                  'Buscando pedidos de $nombreMesa...',
-                  style: TextStyle(color: AppTheme.textPrimary),
                 ),
               ],
             ),

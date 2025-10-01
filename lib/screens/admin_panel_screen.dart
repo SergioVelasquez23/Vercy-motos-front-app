@@ -5,6 +5,7 @@ import 'dart:convert';
 import '../config/api_config.dart';
 import '../theme/app_theme.dart';
 import '../utils/format_utils.dart';
+import '../services/pedido_service.dart';
 
 class AdminPanelScreen extends StatefulWidget {
   const AdminPanelScreen({super.key});
@@ -182,6 +183,100 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
       }
     } catch (e) {
       _showError('Error eliminando registros: $e');
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  // Nueva función para eliminar pedido específico
+  Future<void> _eliminarPedidoEspecifico() async {
+    String? pedidoId;
+
+    // Mostrar diálogo para ingresar ID del pedido
+    await showDialog(
+      context: context,
+      builder: (context) {
+        final controller = TextEditingController();
+        return AlertDialog(
+          backgroundColor: AppTheme.cardBg,
+          title: Text(
+            'Eliminar Pedido Específico',
+            style: TextStyle(color: AppTheme.textPrimary),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Ingresa el ID del pedido que deseas eliminar:\n\n'
+                'ADVERTENCIA: Esto eliminará el pedido incluso si está pagado.',
+                style: TextStyle(color: AppTheme.textPrimary),
+              ),
+              SizedBox(height: 16),
+              TextField(
+                controller: controller,
+                style: TextStyle(color: AppTheme.textPrimary),
+                decoration: InputDecoration(
+                  hintText: 'ID del pedido',
+                  hintStyle: TextStyle(color: AppTheme.textSecondary),
+                  border: OutlineInputBorder(),
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: AppTheme.textSecondary),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: AppTheme.primary),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                'Cancelar',
+                style: TextStyle(color: AppTheme.textSecondary),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                pedidoId = controller.text.trim();
+                Navigator.pop(context);
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              child: Text('Eliminar', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (pedidoId == null || pedidoId!.isEmpty) return;
+
+    // Confirmar eliminación
+    final confirmed = await _showConfirmDialog(
+      'ELIMINAR PEDIDO',
+      'ID del pedido: $pedidoId\n\n'
+          'Esta acción eliminará el pedido permanentemente,\n'
+          'incluso si está pagado o facturado.\n\n'
+          '¿Estás seguro?',
+    );
+
+    if (!confirmed) return;
+
+    setState(() => _isLoading = true);
+    try {
+      // Importar el servicio de pedidos
+      final pedidoService = PedidoService();
+
+      // Intentar eliminación forzada
+      await pedidoService.eliminarPedidoForzado(pedidoId!);
+
+      _showSuccess('Pedido $pedidoId eliminado exitosamente');
+      setState(() => _lastResult = 'Pedido eliminado: $pedidoId');
+      await _loadStats();
+    } catch (e) {
+      _showError('Error eliminando pedido: $e');
+      print('❌ Error completo: $e');
     } finally {
       setState(() => _isLoading = false);
     }
@@ -494,6 +589,22 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                   ),
                 ),
               ],
+            ),
+
+            SizedBox(height: 12),
+
+            // Botón para eliminar pedido específico
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _isLoading ? null : _eliminarPedidoEspecifico,
+                icon: Icon(Icons.delete_outline),
+                label: Text('Eliminar Pedido Específico'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.deepOrange,
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
             ),
 
             SizedBox(height: 12),

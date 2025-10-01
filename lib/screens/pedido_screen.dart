@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../models/mesa.dart';
+import '../widgets/imagen_producto_widget.dart';
+import '../config/endpoints_config.dart';
+import '../services/image_service.dart';
 import '../models/producto.dart';
 import '../models/categoria.dart';
 import '../models/pedido.dart';
@@ -37,6 +40,7 @@ class _PedidoScreenState extends State<PedidoScreen> {
   final ProductoService _productoService = ProductoService();
   final MesaService _mesaService = MesaService();
   final InventarioService _inventarioService = InventarioService();
+  final ImageService _imageService = ImageService();
 
   /// Helper method to convert dynamic to Producto
   /// If forceNonNull is true, returns a default Producto instead of null for invalid inputs
@@ -2289,36 +2293,14 @@ class _PedidoScreenState extends State<PedidoScreen> {
   }
 
   Widget _buildProductImage(String? imagenUrl) {
-    final Color primary = Color(0xFFFF6B00);
-
-    // Si no hay imagen o la URL es inválida
-    if (imagenUrl == null || imagenUrl.isEmpty) {
-      return Icon(
-        Icons.restaurant,
-        color: primary,
-        size: 28, // Reducido de 32 a 28
-      );
-    }
-
-    // Si es una URL web
-    if (imagenUrl.startsWith('http')) {
-      return CachedNetworkImage(
-        imageUrl: imagenUrl,
-        placeholder: (context, url) => CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(primary),
-        ),
-        errorWidget: (context, url, error) =>
-            Icon(Icons.restaurant, color: primary),
-        fit: BoxFit.cover,
-      );
-    }
-
-    // Si es un archivo local o asset
-    return Image.asset(
-      imagenUrl,
+    return ImagenProductoWidget(
+      urlRemota: imagenUrl != null
+          ? _imageService.getImageUrl(imagenUrl)
+          : null,
+      width: 60,
+      height: 60,
       fit: BoxFit.cover,
-      errorBuilder: (context, error, stackTrace) =>
-          Icon(Icons.restaurant, color: primary),
+      backendBaseUrl: EndpointsConfig().baseUrl,
     );
   }
 

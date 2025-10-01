@@ -1,14 +1,14 @@
-import 'dart:io';
-import 'dart:convert';
 import '../widgets/imagen_producto_widget.dart';
+import '../widgets/image_upload_helper.dart';
 import 'package:flutter/material.dart';
-import '../theme/app_theme.dart';
 import 'package:image_picker/image_picker.dart';
+import '../theme/app_theme.dart';
 import '../models/producto.dart';
 import '../models/categoria.dart';
 import '../models/ingrediente.dart';
 import '../services/producto_service.dart';
 import '../services/ingrediente_service.dart';
+import '../services/image_service.dart';
 import '../utils/format_utils.dart';
 
 class ProductosScreen extends StatefulWidget {
@@ -22,7 +22,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
   // Cambia esto por tu dominio backend real si es diferente
   static const String _backendBaseUrl = "https://sopa-y-carbon.onrender.com";
   final ProductoService _productoService = ProductoService();
-  final ImagePicker _imagePicker = ImagePicker();
+  final ImageService _imageService = ImageService();
   final IngredienteService _ingredienteService = IngredienteService();
   List<Categoria> _categorias = [];
   List<Producto> _productos = [];
@@ -219,6 +219,26 @@ class _ProductosScreenState extends State<ProductosScreen> {
         elevation: 0,
         centerTitle: true,
         actions: [
+          Container(
+            margin: EdgeInsets.only(right: AppTheme.spacingSmall),
+            child: IconButton(
+              icon: Container(
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                ),
+                child: Icon(Icons.image, size: 20),
+              ),
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (context) => ImageUploadHelper(),
+                );
+              },
+              tooltip: 'Gestionar Imágenes',
+            ),
+          ),
           Container(
             margin: EdgeInsets.only(right: AppTheme.spacingSmall),
             child: IconButton(
@@ -633,9 +653,10 @@ class _ProductosScreenState extends State<ProductosScreen> {
 
   Widget _buildProductImage(String? imagenUrl) {
     return ImagenProductoWidget(
-      urlRemota: imagenUrl,
-      nombreProducto:
-          null, // Se puede pasar el nombre del producto si está disponible
+      urlRemota: imagenUrl != null
+          ? _imageService.getImageUrl(imagenUrl)
+          : null,
+      nombreProducto: null,
       width: 50,
       height: 50,
       fit: BoxFit.cover,
@@ -813,35 +834,49 @@ class _ProductosScreenState extends State<ProductosScreen> {
                         final result = await _showImageSourceDialog();
                         if (result != null) {
                           if (result is ImageSource) {
-                            final pickedFile = await _imagePicker.pickImage(
-                              source: result,
-                            );
-                            if (pickedFile != null) {
-                              try {
-                                final url = await _productoService
-                                    .uploadProductImage(pickedFile);
+                            try {
+                              // Usar el servicio de imágenes para seleccionar y subir
+                              XFile? pickedFile;
+                              if (result == ImageSource.camera) {
+                                pickedFile = await _imageService
+                                    .pickImageFromCamera();
+                              } else {
+                                pickedFile = await _imageService
+                                    .pickImageFromGallery();
+                              }
+
+                              if (pickedFile != null) {
+                                // Subir la imagen usando el servicio de imágenes
+                                final filename = await _imageService
+                                    .uploadImage(pickedFile);
                                 setState(() {
-                                  selectedImageUrl = url;
+                                  selectedImageUrl = filename;
                                 });
-                              } catch (e) {
+
                                 if (mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content: Text(
-                                        'Error subiendo imagen: ' +
-                                            e.toString(),
+                                        'Imagen subida exitosamente',
                                       ),
-                                      backgroundColor: Colors.redAccent,
+                                      backgroundColor: Colors.green,
                                     ),
                                   );
                                 }
                               }
+                            } catch (e) {
+                              print('❌ Error subiendo imagen: $e');
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      'Error subiendo imagen: ${e.toString()}',
+                                    ),
+                                    backgroundColor: Colors.redAccent,
+                                  ),
+                                );
+                              }
                             }
-                          } else if (result == 'placeholder') {
-                            setState(() {
-                              selectedImageUrl =
-                                  'assets/placeholder/food_placeholder.png';
-                            });
                           }
                         }
                       },
@@ -1758,17 +1793,6 @@ class _ProductosScreenState extends State<ProductosScreen> {
                 ),
                 onTap: () {
                   Navigator.of(context).pop(ImageSource.gallery);
-                },
-              ),
-              ListTile(
-                leading: Icon(Icons.image, color: AppTheme.primary),
-                title: Text(
-                  'Usar imagen de placeholder',
-                  style: TextStyle(color: AppTheme.textPrimary),
-                ),
-                onTap: () {
-                  // Devolver un valor específico para usar el placeholder
-                  Navigator.of(context).pop('placeholder');
                 },
               ),
             ],

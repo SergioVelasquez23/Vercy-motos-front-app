@@ -261,9 +261,9 @@ class PedidoService {
           .firstOrNull;
 
       if (cajaActiva == null) {
-        print('❌ No hay caja pendiente para crear pedido');
+        print('❌ Caja cerrada - No se puede crear pedido');
         throw Exception(
-          'No se puede crear un pedido sin una caja pendiente. Debe abrir una caja antes de registrar pedidos.',
+          'Debe abrir caja para continuar. Para registrar pedidos primero debe abrir la caja del día.',
         );
       }
 
@@ -301,9 +301,9 @@ class PedidoService {
           .firstOrNull;
 
       if (cajaActiva == null) {
-        print('❌ No hay caja pendiente para crear pedido');
+        print('❌ Caja cerrada - No se puede crear pedido');
         throw Exception(
-          'No se puede crear un pedido sin una caja pendiente. Debe abrir una caja antes de registrar pedidos.',
+          'Debe abrir caja para continuar. Para registrar pedidos primero debe abrir la caja del día.',
         );
       }
 
@@ -467,6 +467,67 @@ class PedidoService {
         throw Exception('Error al eliminar pedido: ${response.statusCode}');
       }
     } catch (e) {
+      throw Exception('Error de conexión: $e');
+    }
+  }
+
+  // Eliminar pedido forzadamente (para administradores)
+  // Esta función específicamente maneja pedidos pagados o con estado especial
+  Future<void> eliminarPedidoForzado(String id) async {
+    try {
+      print('🔧 ADMIN: Intentando eliminar pedido forzadamente: $id');
+
+      final headers = await _getHeaders();
+
+      // Intentar eliminación forzada con parámetro admin
+      final response = await http.delete(
+        Uri.parse('$baseUrl/api/pedidos/$id?force=true&admin=true'),
+        headers: headers,
+      );
+
+      print('🔧 ADMIN: Respuesta del servidor: ${response.statusCode}');
+      print('🔧 ADMIN: Cuerpo de respuesta: ${response.body}');
+
+      if (response.statusCode == 204 || response.statusCode == 200) {
+        print('✅ ADMIN: Pedido eliminado exitosamente');
+        return;
+      }
+
+      // Si el endpoint normal falla, intentar con endpoint específico de admin
+      if (response.statusCode != 204) {
+        print('⚠️ ADMIN: Endpoint normal falló, intentando endpoint admin...');
+
+        final adminResponse = await http.delete(
+          Uri.parse('$baseUrl/api/admin/pedidos/$id'),
+          headers: headers,
+        );
+
+        print(
+          '🔧 ADMIN: Respuesta endpoint admin: ${adminResponse.statusCode}',
+        );
+        print('🔧 ADMIN: Cuerpo respuesta admin: ${adminResponse.body}');
+
+        if (adminResponse.statusCode == 204 ||
+            adminResponse.statusCode == 200) {
+          print('✅ ADMIN: Pedido eliminado via endpoint admin');
+          return;
+        }
+
+        // Si ambos fallan, mostrar información detallada
+        String errorMsg = 'Error al eliminar pedido: ${response.statusCode}';
+        try {
+          final errorData = json.decode(response.body);
+          if (errorData['message'] != null) {
+            errorMsg = errorData['message'];
+          }
+        } catch (e) {
+          // Si no se puede parsear el JSON, usar mensaje por defecto
+        }
+
+        throw Exception(errorMsg);
+      }
+    } catch (e) {
+      print('❌ ADMIN: Error eliminando pedido: $e');
       throw Exception('Error de conexión: $e');
     }
   }

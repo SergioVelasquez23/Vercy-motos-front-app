@@ -26,7 +26,6 @@ flutter:
   assets:
     - assets/images/
     - assets/images/categorias/
-    - assets/placeholder/
   fonts:
     - family: Roboto
       fonts:
