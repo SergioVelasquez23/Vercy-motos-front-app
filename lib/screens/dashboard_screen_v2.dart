@@ -10,7 +10,6 @@ import 'cuadre_caja_screen.dart';
 import 'documentos_mesa_screen.dart';
 import 'ingredientes_screen.dart';
 import 'facturas_compras_screen.dart';
-import 'recetas_screen.dart';
 import 'proveedores_screen.dart';
 import 'unidades_screen.dart';
 import 'historial_inventario_screen.dart';
@@ -1086,27 +1085,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                   SizedBox(width: 8),
                   Text(
                     'Ingredientes',
-                    style: TextStyle(color: AppTheme.textPrimary),
-                  ),
-                ],
-              ),
-            ),
-            PopupMenuItem<String>(
-              value: 'recetas',
-              onTap: () {
-                Future.delayed(Duration.zero, () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => RecetasScreen()),
-                  );
-                });
-              },
-              child: Row(
-                children: [
-                  Icon(Icons.menu_book, color: Colors.orange, size: 18),
-                  SizedBox(width: 8),
-                  Text(
-                    'Recetas',
                     style: TextStyle(color: AppTheme.textPrimary),
                   ),
                 ],

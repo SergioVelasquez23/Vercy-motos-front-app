@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/image_service.dart';
+import '../services/producto_service.dart';
 import '../theme/app_theme.dart';
 
 /// Widget para gestión rápida de imágenes de productos
@@ -12,6 +13,7 @@ class ImageUploadHelper extends StatefulWidget {
 
 class _ImageUploadHelperState extends State<ImageUploadHelper> {
   final ImageService _imageService = ImageService();
+  final ProductoService _productoService = ProductoService();
   List<String> _imagenesSubidas = [];
   List<String> _imagenesDisponibles = [];
   bool _isLoading = false;
@@ -57,8 +59,8 @@ class _ImageUploadHelperState extends State<ImageUploadHelper> {
 
       setState(() => _isLoading = true);
 
-      // Subir la imagen
-      final filename = await _imageService.uploadImage(imagenes);
+      // Subir la imagen usando ProductoService con base64
+      final filename = await _productoService.uploadProductImage(imagenes);
 
       setState(() {
         _imagenesSubidas.add(filename);

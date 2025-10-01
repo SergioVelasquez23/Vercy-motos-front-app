@@ -846,9 +846,9 @@ class _ProductosScreenState extends State<ProductosScreen> {
                               }
 
                               if (pickedFile != null) {
-                                // Subir la imagen usando el servicio de imágenes
-                                final filename = await _imageService
-                                    .uploadImage(pickedFile);
+                                // Subir la imagen usando ProductoService con base64
+                                final filename = await _productoService
+                                    .uploadProductImage(pickedFile);
                                 setState(() {
                                   selectedImageUrl = filename;
                                 });

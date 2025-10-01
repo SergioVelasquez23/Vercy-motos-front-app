@@ -280,7 +280,7 @@ class ImageService {
     }
   }
 
-  /// Obtiene la URL directa de una imagen para mostrar en la UI
+  /// Obtiene la URL directa de una imagen para mostrar en la UI con mejoras para móviles
   String getImageUrl(String filename) {
     // Validar que el filename no esté vacío
     if (filename.trim().isEmpty) {
@@ -290,35 +290,71 @@ class ImageService {
 
     final cleanFilename = filename.trim();
 
+    // 🎯 PRIORIDAD 1: Si es una data URL base64, retornarla directamente
+    if (cleanFilename.startsWith('data:image/')) {
+      print('✅ Data URL base64 detectada, retornando directamente');
+      return cleanFilename;
+    }
+
     // Si ya es una URL completa, validarla
     if (cleanFilename.startsWith('http')) {
       // Validar que no termine en rutas incompletas
-      if (cleanFilename.endsWith('/images/platos/') || 
+      if (cleanFilename.endsWith('/images/platos/') ||
           cleanFilename.endsWith('/images/platos')) {
         print('⚠️ URL incompleta detectada: $cleanFilename');
         return '';
       }
-      return cleanFilename;
+
+      // Validar que sea una URL bien formada
+      try {
+        final uri = Uri.parse(cleanFilename);
+        if (!uri.hasScheme || !uri.hasAuthority) {
+          print('⚠️ URL mal formada: $cleanFilename');
+          return '';
+        }
+
+        // Verificar que tenga una extensión de imagen válida
+        if (!isValidImageFile(uri.path.split('/').last)) {
+          print('⚠️ URL no apunta a imagen válida: $cleanFilename');
+          return '';
+        }
+
+        return cleanFilename;
+      } catch (e) {
+        print('❌ Error validando URL: $cleanFilename - $e');
+        return '';
+      }
     }
 
     // Si ya tiene el prefijo /images/platos/, construir URL completa
     if (cleanFilename.startsWith('/images/platos/')) {
       // Validar que no sea solo el path sin archivo
-      if (cleanFilename == '/images/platos/' || cleanFilename == '/images/platos') {
+      if (cleanFilename == '/images/platos/' ||
+          cleanFilename == '/images/platos') {
         print('⚠️ Path incompleto detectado: $cleanFilename');
         return '';
       }
+
+      // Validar que el archivo tenga extensión válida
+      final fileName = cleanFilename.split('/').last;
+      if (!isValidImageFile(fileName)) {
+        print('⚠️ Archivo sin extensión válida en path: $cleanFilename');
+        return '';
+      }
+
       return '${_apiConfig.baseUrl}$cleanFilename';
     }
 
     // Si es solo el nombre del archivo, validar que tenga extensión
-    if (!cleanFilename.contains('.')) {
-      print('⚠️ Filename sin extensión: $cleanFilename');
+    if (!cleanFilename.contains('.') || !isValidImageFile(cleanFilename)) {
+      print('⚠️ Filename inválido o sin extensión: $cleanFilename');
       return '';
     }
 
     // Construir la URL completa
-    return '${_apiConfig.baseUrl}/images/platos/$cleanFilename';
+    final fullUrl = '${_apiConfig.baseUrl}/images/platos/$cleanFilename';
+    print('🔗 URL construida para móvil: $fullUrl');
+    return fullUrl;
   }
 
   /// Valida si un archivo es una imagen válida

@@ -402,55 +402,90 @@ class ProductoService {
     }
   }
 
-  // Subir imagen
+  // Subir imagen y guardar como base64 en la base de datos
   Future<String> uploadProductImage(XFile image) async {
     try {
+      print('📤 Iniciando subida de imagen: ${image.name}');
       final headers = await _getHeaders();
-      if (kIsWeb) {
-        // Flutter Web: leer bytes, codificar a base64 y enviar como JSON
-        final bytes = await image.readAsBytes();
-        final base64Image = base64Encode(bytes);
-        final fileName = image.name;
-        final response = await http
-            .post(
-              Uri.parse('$baseUrl/api/images/upload-base64'),
-              headers: headers,
-              body: json.encode({
-                'fileName': fileName,
-                'imageBase64': base64Image,
-              }),
-            )
-            .timeout(Duration(seconds: 30));
-        if (response.statusCode == 200) {
-          final jsonData = json.decode(response.body);
-          print('✅ Imagen subida exitosamente (web)');
-          return jsonData['data'];
-        } else {
-          throw Exception('Error del servidor (web): ${response.statusCode}');
-        }
+
+      // Siempre usar base64 para persistencia (tanto web como móvil)
+      final bytes = await image.readAsBytes();
+      final base64Image = base64Encode(bytes);
+      final fileName = image.name;
+
+      // Detectar MIME type
+      String mimeType = 'image/jpeg';
+      if (fileName.toLowerCase().endsWith('.png')) {
+        mimeType = 'image/png';
+      } else if (fileName.toLowerCase().endsWith('.gif')) {
+        mimeType = 'image/gif';
+      } else if (fileName.toLowerCase().endsWith('.webp')) {
+        mimeType = 'image/webp';
+      }
+
+      // Crear data URL para almacenamiento persistente
+      final dataUrl = 'data:$mimeType;base64,$base64Image';
+
+      print('📤 Imagen convertida: ${dataUrl.length} caracteres');
+      print('📤 Guardando imagen como base64 en BD...');
+
+      // Enviar al backend para guardar en BD como base64
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/api/images/save-base64'),
+            headers: headers,
+            body: json.encode({
+              'fileName': fileName,
+              'imageData': dataUrl,
+              'mimeType': mimeType,
+              'storage': 'database', // Especificar que se guarde en BD
+            }),
+          )
+          .timeout(Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body);
+        print('✅ Imagen guardada como base64 en BD exitosamente');
+        // Retornar la data URL para uso inmediato
+        return dataUrl;
       } else {
-        // Móvil/escritorio: usar MultipartRequest
-        final request = http.MultipartRequest(
-          'POST',
-          Uri.parse('$baseUrl/api/productos/upload-image'),
-        );
-        request.headers.addAll(headers);
-        request.files.add(
-          await http.MultipartFile.fromPath('image', image.path),
-        );
-        final response = await request.send().timeout(Duration(seconds: 30));
-        if (response.statusCode == 200) {
-          final responseData = await response.stream.bytesToString();
-          final jsonData = json.decode(responseData);
-          print('✅ Imagen subida exitosamente');
-          return jsonData['data'];
-        } else {
-          throw Exception('Error del servidor: ${response.statusCode}');
-        }
+        print('⚠️ Backend no soporta base64, usando data URL local');
+        // Fallback: retornar data URL directamente
+        return dataUrl;
       }
     } catch (e) {
-      print('❌ Error subiendo imagen: $e');
-      throw Exception('No se pudo subir la imagen: $e');
+      print('❌ Error procesando imagen: $e');
+
+      // Fallback: crear data URL local
+      try {
+        final bytes = await image.readAsBytes();
+        final base64Image = base64Encode(bytes);
+        final mimeType = _getMimeTypeFromFileName(image.name);
+        final dataUrl = 'data:$mimeType;base64,$base64Image';
+
+        print('🔄 Usando imagen base64 local como fallback');
+        return dataUrl;
+      } catch (fallbackError) {
+        print('❌ Error en fallback: $fallbackError');
+        throw Exception('No se pudo procesar la imagen: $e');
+      }
+    }
+  }
+
+  // Método auxiliar para obtener MIME type
+  String _getMimeTypeFromFileName(String fileName) {
+    final extension = fileName.toLowerCase().split('.').last;
+    switch (extension) {
+      case 'png':
+        return 'image/png';
+      case 'gif':
+        return 'image/gif';
+      case 'webp':
+        return 'image/webp';
+      case 'jpg':
+      case 'jpeg':
+      default:
+        return 'image/jpeg';
     }
   }
 

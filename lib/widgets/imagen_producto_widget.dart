@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'dart:convert';
 import '../services/image_service.dart';
 
@@ -35,32 +36,33 @@ class ImagenProductoWidget extends StatelessWidget {
       return _buildIconoDefault();
     }
 
-    // Usar ImageService para obtener la URL validada
-    final imageService = ImageService();
-    final validatedUrl = imageService.getImageUrl(imagenUrl);
-    
-    // Si la URL validada está vacía, mostrar icono por defecto
-    if (validatedUrl.isEmpty) {
-      return _buildIconoDefault();
-    }
-
     // Filtrar referencias al placeholder corrupto
     if (imagenUrl.contains('placeholder/food_placeholder.png')) {
-      print('⚠️ Detectada referencia al placeholder corrupto, usando icono por defecto');
       return _buildIconoDefault();
     }
 
-    // Si es una imagen base64
-    if (validatedUrl.startsWith('data:image')) {
-      return _buildImagenBase64(validatedUrl);
+    // PRIORIDAD 1: Si es una imagen base64, mostrarla directamente (PERSISTENTE)
+    if (imagenUrl.startsWith('data:image/')) {
+      print('🎨 Mostrando imagen base64 persistente');
+      return _buildImagenBase64(imagenUrl);
     }
 
-    // Si es una URL web válida, cargarla
-    if (validatedUrl.startsWith('http')) {
+    // PRIORIDAD 2: Si es una URL HTTP válida, intentar cargarla
+    if (imagenUrl.startsWith('http')) {
+      print('🌐 Intentando cargar imagen desde URL: $imagenUrl');
+      return _buildImagenNetwork(imagenUrl);
+    }
+
+    // PRIORIDAD 3: Construir URL del servidor (probablemente fallará en Render)
+    final imageService = ImageService();
+    final validatedUrl = imageService.getImageUrl(imagenUrl);
+
+    if (validatedUrl.isNotEmpty) {
+      print('🏗️ URL construida del servidor: $validatedUrl');
       return _buildImagenNetwork(validatedUrl);
     }
 
-    // Si llegamos aquí, algo salió mal con la validación
+    // Si llegamos aquí, mostrar icono por defecto
     return _buildIconoDefault();
   }
 
@@ -68,14 +70,22 @@ class ImagenProductoWidget extends StatelessWidget {
     try {
       final base64Str = imagenUrl.split(',').last;
       final bytes = base64Decode(base64Str);
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: Image.memory(
-          bytes,
-          width: width,
-          height: height,
-          fit: fit,
-          errorBuilder: (context, error, stackTrace) => _buildIconoDefault(),
+      return Container(
+        width: width,
+        height: height,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          color: Color(0xFF3A3A3A),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Image.memory(
+            bytes,
+            width: width,
+            height: height,
+            fit: fit,
+            errorBuilder: (context, error, stackTrace) => _buildIconoError(),
+          ),
         ),
       );
     } catch (e) {
@@ -84,128 +94,91 @@ class ImagenProductoWidget extends StatelessWidget {
   }
 
   Widget _buildImagenNetwork(String url) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
-      child: Image.network(
-        url,
-        width: width,
-        height: height,
-        fit: fit,
-        loadingBuilder: (context, child, loadingProgress) {
-          if (loadingProgress == null) return child;
-          return Container(
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        color: Color(0xFF3A3A3A),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: CachedNetworkImage(
+          imageUrl: url,
+          width: width,
+          height: height,
+          fit: fit,
+          httpHeaders: {
+            'Accept': '*/*',
+            'User-Agent': 'Mozilla/5.0 (Mobile; Flutter)',
+            'Cache-Control': 'no-cache',
+          },
+          placeholder: (context, url) => Container(
             width: width,
             height: height,
-            decoration: BoxDecoration(
-              color: Color(0xFF2A2A2A), // Fondo oscuro para loading
-              borderRadius: BorderRadius.circular(8),
-            ),
+            color: Color(0xFF3A3A3A),
             child: Center(
               child: CircularProgressIndicator(
-                value: loadingProgress.expectedTotalBytes != null
-                    ? loadingProgress.cumulativeBytesLoaded /
-                          loadingProgress.expectedTotalBytes!
-                    : null,
                 strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  Color(0xFFFF6B00),
-                ), // Color naranja
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFF6B00)),
               ),
             ),
-          );
-        },
-        errorBuilder: (context, error, stackTrace) {
-          // Log más específico y silencioso para errores conocidos
-          if (error.toString().contains('404')) {
-            print('� Imagen no encontrada (404): $url');
-          } else if (error.toString().contains('500')) {
-            print('⚠️ Error del servidor (500): $url');
-          } else {
-            print('❌ Error cargando imagen: $url - ${error.toString()}');
-          }
-          return _buildIconoError();
-        },
+          ),
+          errorWidget: (context, url, error) {
+            // Log más específico para debug
+            print(
+              '❌ Error cargando imagen en móvil: $url - ${error.toString()}',
+            );
+            return _buildIconoError();
+          },
+          fadeInDuration: Duration(milliseconds: 300),
+          fadeOutDuration: Duration(milliseconds: 100),
+        ),
       ),
     );
   }
 
+  /// Widget de respaldo cuando no hay imagen o URL vacía
   Widget _buildIconoDefault() {
     return Container(
       width: width,
       height: height,
       decoration: BoxDecoration(
-        // Fondo con gradiente para mejor visibilidad
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF3A3A3A), Color(0xFF2A2A2A)],
-        ),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Color(0xFF505050), width: 1.5),
+        color: Color(0xFF2A2A2A),
+        border: Border.all(color: Color(0xFF444444), width: 1),
       ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Color(0xFFFF6B00).withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.restaurant_menu, // Icono más apropiado para comida
-              color: Color(0xFFFF6B00), // Color naranja del tema
-              size: (width != null && height != null)
-                  ? (width! < height! ? width! * 0.3 : height! * 0.3)
-                  : 18,
-            ),
-          ),
-          if (height != null && height! > 60) ...[
-            SizedBox(height: 4),
-            Text(
-              'Sin imagen',
-              style: TextStyle(
-                color: Color(0xFFB0B0B0), // Texto gris claro
-                fontSize: 9,
-                fontWeight: FontWeight.w500,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ],
+      child: Icon(
+        Icons.restaurant_menu,
+        color: Color(0xFFFF6B00),
+        size: (width ?? 50) * 0.5,
       ),
     );
   }
 
+  /// Widget de respaldo cuando hay error al cargar la imagen
   Widget _buildIconoError() {
     return Container(
       width: width,
       height: height,
       decoration: BoxDecoration(
-        // Fondo oscuro con tinte rojizo para indicar error
-        color: Color(0xFF3A2A2A),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Color(0xFF604040), width: 1),
+        color: Color(0xFF2A2A2A),
+        border: Border.all(color: Color(0xFF666666), width: 1),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-            Icons.broken_image,
-            color: Color(0xFFFF6B6B), // Rojo claro para error
-            size: (width != null && height != null)
-                ? (width! < height! ? width! * 0.4 : height! * 0.4)
-                : 20,
+            Icons.broken_image_outlined,
+            color: Color(0xFF888888),
+            size: (width ?? 50) * 0.4,
           ),
-          if (height != null && height! > 60) ...[
-            SizedBox(height: 4),
+          if ((height ?? 50) > 60) ...[
+            SizedBox(height: 2),
             Text(
-              'Error\ncargando',
-              style: TextStyle(
-                color: Color(0xFFB0B0B0), // Texto gris claro
-                fontSize: 9,
-                fontWeight: FontWeight.w500,
-              ),
+              'Sin imagen',
+              style: TextStyle(color: Color(0xFF888888), fontSize: 10),
               textAlign: TextAlign.center,
             ),
           ],
