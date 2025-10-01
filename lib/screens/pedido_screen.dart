@@ -1428,7 +1428,7 @@ class _PedidoScreenState extends State<PedidoScreen> {
         children: [
           // Panel izquierdo - Productos disponibles
           Expanded(
-            flex: 2,
+            flex: 3, // Aumentado de 2 a 3 para dar más espacio a las imágenes
             child: Column(
               children: [
                 // Barra de búsqueda
@@ -1492,69 +1492,47 @@ class _PedidoScreenState extends State<PedidoScreen> {
                     ),
                   ),
 
-                // Filtro de categorías
+                // Filtro de categorías con imágenes
                 Container(
-                  height: 50,
+                  height: 80, // Aumentado para acomodar imágenes circulares
                   margin: EdgeInsets.symmetric(horizontal: 16),
-                  child: Scrollbar(
-                    scrollbarOrientation: ScrollbarOrientation.bottom,
-                    thumbVisibility: true,
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
                       children: [
                         // Botón "Todas las categorías"
                         Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: FilterChip(
-                            backgroundColor: categoriaSelecionadaId == null
-                                ? primary
-                                : cardBg,
-                            label: Text(
-                              'Todas',
-                              style: TextStyle(
-                                color: categoriaSelecionadaId == null
-                                    ? Colors.white
-                                    : textLight,
-                              ),
-                            ),
-                            onSelected: (bool selected) {
+                          padding: const EdgeInsets.only(right: 12),
+                          child: _buildCategoriaChip(
+                            nombre: 'Todas',
+                            imagenUrl: null,
+                            isSelected: categoriaSelecionadaId == null,
+                            onTap: () {
                               setState(() {
                                 categoriaSelecionadaId = null;
                               });
                               _searchProductosAPI(busquedaController.text);
                             },
-                            selected: categoriaSelecionadaId == null,
                           ),
                         ),
                         // Chips para cada categoría
                         ...categorias.map((categoria) {
                           return Padding(
-                            padding: const EdgeInsets.only(right: 8),
-                            child: FilterChip(
-                              backgroundColor:
-                                  categoriaSelecionadaId == categoria.id
-                                  ? primary
-                                  : cardBg,
-                              label: Text(
-                                categoria.nombre,
-                                style: TextStyle(
-                                  color: categoriaSelecionadaId == categoria.id
-                                      ? Colors.white
-                                      : textLight,
-                                ),
-                              ),
-                              onSelected: (bool selected) {
+                            padding: const EdgeInsets.only(right: 12),
+                            child: _buildCategoriaChip(
+                              nombre: categoria.nombre,
+                              imagenUrl: categoria.imagenUrl,
+                              isSelected:
+                                  categoriaSelecionadaId == categoria.id,
+                              onTap: () {
                                 setState(() {
-                                  categoriaSelecionadaId = selected
-                                      ? categoria.id
-                                      : null;
+                                  categoriaSelecionadaId = categoria.id;
                                 });
                                 _searchProductosAPI(busquedaController.text);
                               },
-                              selected: categoriaSelecionadaId == categoria.id,
                             ),
                           );
-                        }),
+                        }).toList(),
                       ],
                     ),
                   ),
@@ -1567,12 +1545,11 @@ class _PedidoScreenState extends State<PedidoScreen> {
                   child: GridView.builder(
                     padding: EdgeInsets.symmetric(horizontal: 16),
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount:
-                          5, // Aumentado de 4 a 5 para más productos por fila
+                      crossAxisCount: 4, // 4 columnas para desktop
                       childAspectRatio:
-                          0.65, // Reducido de 0.75 a 0.65 para tarjetas más compactas
-                      crossAxisSpacing: 6, // Reducido de 8 a 6
-                      mainAxisSpacing: 6, // Reducido de 8 a 6
+                          1.0, // Proporción 1:1 para tarjetas cuadradas
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
                     ),
                     itemCount: _filtrarProductos().length,
                     itemBuilder: (context, index) {
@@ -1588,7 +1565,8 @@ class _PedidoScreenState extends State<PedidoScreen> {
 
           // Panel derecho - Productos en el pedido
           Container(
-            width: 380, // Aumentado de 300 a 380 para mejor visualización
+            width:
+                370, // Aumentado de 350 a 370 para mejor legibilidad del texto
             decoration: BoxDecoration(
               color: cardBg.withOpacity(0.3),
               border: Border(
@@ -2002,9 +1980,9 @@ class _PedidoScreenState extends State<PedidoScreen> {
             padding: EdgeInsets.all(16),
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2, // 2 columnas para móvil
-              childAspectRatio: 0.8, // Ratio más cuadrado para móvil
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
+              childAspectRatio: 1.1, // Proporción más cuadrada para móvil
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
             ),
             itemCount: _filtrarProductos().length,
             itemBuilder: (context, index) {
@@ -2230,60 +2208,77 @@ class _PedidoScreenState extends State<PedidoScreen> {
     return GestureDetector(
       onTap: () => _agregarProducto(producto),
       child: Container(
-        padding: EdgeInsets.all(4), // Reducido de 6 a 4
+        padding: EdgeInsets.all(6),
         decoration: BoxDecoration(
           color: cardBg,
-          borderRadius: BorderRadius.circular(6), // Reducido de 8 a 6
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(color: Colors.grey.withOpacity(0.3)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 4,
+              offset: Offset(0, 2),
+            ),
+          ],
         ),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             // Imagen del producto
             Expanded(
-              flex: 3, // Mayor proporción para la imagen
-              child: _buildProductImage(producto.imagenUrl),
-            ),
-            SizedBox(height: 3), // Reducido de 4 a 3
-            // Etiqueta de categoría
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 3, vertical: 1),
-              decoration: BoxDecoration(
-                color: primary.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(2),
-              ),
-              child: Text(
-                categoriaText,
-                style: TextStyle(
-                  color: primary,
-                  fontSize: 7, // Reducido de 8 a 7
-                  fontWeight: FontWeight.w500,
-                ),
+              flex: 5, // Mayor espacio para la imagen
+              child: Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(6),
+                child: _buildProductImage(producto.imagenUrl),
               ),
             ),
-            SizedBox(height: 2), // Mantener en 2
-            // Nombre del producto
-            Flexible(
-              child: Text(
-                producto.nombre,
-                style: TextStyle(
-                  color: textLight,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 10, // Reducido de 11 a 10
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            SizedBox(height: 1), // Reducido de 2 a 1
-            // Precio
-            Text(
-              formatCurrency(producto.precio),
-              style: TextStyle(
-                color: primary,
-                fontWeight: FontWeight.bold,
-                fontSize: 11, // Reducido de 12 a 11
+            // Información del producto (categoría, nombre, precio)
+            Expanded(
+              flex: 2, // Menos espacio para el texto
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  // Etiqueta de categoría
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: primary.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      categoriaText,
+                      style: TextStyle(
+                        color: primary,
+                        fontSize: 8,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  // Nombre del producto
+                  Text(
+                    producto.nombre,
+                    style: TextStyle(
+                      color: textLight,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 11,
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  // Precio
+                  Text(
+                    formatCurrency(producto.precio),
+                    style: TextStyle(
+                      color: primary,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
               ),
             ),
           ],
@@ -2292,15 +2287,30 @@ class _PedidoScreenState extends State<PedidoScreen> {
     );
   }
 
-  Widget _buildProductImage(String? imagenUrl) {
-    return ImagenProductoWidget(
-      urlRemota: imagenUrl != null
-          ? _imageService.getImageUrl(imagenUrl)
-          : null,
-      width: 60,
-      height: 60,
-      fit: BoxFit.cover,
-      backendBaseUrl: EndpointsConfig().baseUrl,
+  Widget _buildProductImage(
+    String? imagenUrl, {
+    double? width,
+    double? height,
+  }) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        width: width ?? double.infinity,
+        height: height ?? double.infinity,
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey.withOpacity(0.2)),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: ImagenProductoWidget(
+          urlRemota: imagenUrl != null
+              ? _imageService.getImageUrl(imagenUrl)
+              : null,
+          width: width ?? double.infinity,
+          height: height ?? double.infinity,
+          fit: BoxFit.cover,
+          backendBaseUrl: EndpointsConfig().baseUrl,
+        ),
+      ),
     );
   }
 
@@ -2357,9 +2367,17 @@ class _PedidoScreenState extends State<PedidoScreen> {
             )
           else
             SizedBox(width: 50), // Espacio reservado para mantener alineación
+          // Imagen pequeña del producto
+          Container(
+            margin: EdgeInsets.only(right: 8),
+            child: _buildProductImage(
+              producto.imagenUrl,
+              width: 40,
+              height: 40,
+            ),
+          ),
 
           Expanded(
-            flex: 2,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -2370,8 +2388,11 @@ class _PedidoScreenState extends State<PedidoScreen> {
                         producto.nombre,
                         style: TextStyle(
                           color: textLight,
-                          // Eliminar tachado basado en productoPagado
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
                         ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     // Indicadores visuales para productos según su estado
@@ -2439,9 +2460,9 @@ class _PedidoScreenState extends State<PedidoScreen> {
               ],
             ),
           ),
-          // Controles de cantidad (con más espacio)
+          // Controles de cantidad (optimizado)
           SizedBox(
-            width: 120, // Aumentado de 100 a 120 para mejor usabilidad
+            width: 100, // Reducido de 120 a 100 para dar más espacio al texto
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -2455,11 +2476,11 @@ class _PedidoScreenState extends State<PedidoScreen> {
                   onPressed: (productoPagado[producto.id]! && puedeEliminar)
                       ? () => _eliminarProducto(producto)
                       : null,
-                  iconSize: 20, // Regresado de 18 a 20 para mejor visibilidad
+                  iconSize: 18, // Reducido de 20 a 18 para mejor ajuste
                   padding: EdgeInsets.zero,
-                  constraints: BoxConstraints(minWidth: 26, minHeight: 26),
+                  constraints: BoxConstraints(minWidth: 24, minHeight: 24),
                 ),
-                SizedBox(width: 8), // Aumentado de 6 a 8
+                SizedBox(width: 6), // Reducido de 8 a 6
                 Text(
                   '${producto.cantidad}',
                   style: TextStyle(
@@ -2468,7 +2489,7 @@ class _PedidoScreenState extends State<PedidoScreen> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                SizedBox(width: 8),
+                SizedBox(width: 6), // Reducido de 8 a 6
                 IconButton(
                   icon: Icon(Icons.add_circle, color: Colors.green),
                   onPressed: () {
@@ -2476,16 +2497,16 @@ class _PedidoScreenState extends State<PedidoScreen> {
                     // Actualizar el total después de incrementar la cantidad
                     setState(() {});
                   },
-                  iconSize: 20,
+                  iconSize: 18, // Reducido de 20 a 18
                   padding: EdgeInsets.zero,
-                  constraints: BoxConstraints(minWidth: 26, minHeight: 26),
+                  constraints: BoxConstraints(minWidth: 24, minHeight: 24),
                 ),
               ],
             ),
           ),
-          // Precio (con ancho ampliado)
+          // Precio (optimizado)
           SizedBox(
-            width: 80, // Aumentado de 60 a 80 para mejor legibilidad
+            width: 70, // Reducido de 80 a 70 para dar más espacio al texto
             child: Text(
               formatCurrency(producto.precio * producto.cantidad),
               style: TextStyle(
@@ -2493,7 +2514,7 @@ class _PedidoScreenState extends State<PedidoScreen> {
                     ? primary
                     : primary.withOpacity(0.5),
                 fontWeight: FontWeight.bold,
-                fontSize: 14, // Aumentado de 12 a 14
+                fontSize: 13, // Reducido de 14 a 13 para mejor ajuste
               ),
               textAlign: TextAlign.end,
             ),
@@ -2583,6 +2604,81 @@ class _PedidoScreenState extends State<PedidoScreen> {
           ],
         );
       },
+    );
+  }
+
+  // Widget para chips de categoría con imagen circular
+  Widget _buildCategoriaChip({
+    required String nombre,
+    String? imagenUrl,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    final primary = Color(0xFFFF6B00);
+    final cardBg = Color(0xFF2A2A2A);
+    final textLight = Color(0xFFB0B0B0);
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? primary : cardBg,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? primary : Colors.grey.withOpacity(0.3),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Imagen circular o icono
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isSelected
+                    ? Colors.white.withOpacity(0.2)
+                    : Colors.grey.withOpacity(0.3),
+              ),
+              child: ClipOval(
+                child: imagenUrl != null && imagenUrl.isNotEmpty
+                    ? CachedNetworkImage(
+                        imageUrl: _imageService.getImageUrl(imagenUrl),
+                        fit: BoxFit.cover,
+                        errorWidget: (context, url, error) => Icon(
+                          Icons.restaurant_menu,
+                          color: isSelected ? Colors.white : textLight,
+                          size: 18,
+                        ),
+                        placeholder: (context, url) => Icon(
+                          Icons.restaurant_menu,
+                          color: isSelected ? Colors.white : textLight,
+                          size: 18,
+                        ),
+                      )
+                    : Icon(
+                        nombre == 'Todas' ? Icons.apps : Icons.restaurant_menu,
+                        color: isSelected ? Colors.white : textLight,
+                        size: 18,
+                      ),
+              ),
+            ),
+            SizedBox(width: 8),
+            // Texto de la categoría
+            Text(
+              nombre,
+              style: TextStyle(
+                color: isSelected ? Colors.white : textLight,
+                fontSize: 14,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

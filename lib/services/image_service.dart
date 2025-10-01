@@ -282,18 +282,43 @@ class ImageService {
 
   /// Obtiene la URL directa de una imagen para mostrar en la UI
   String getImageUrl(String filename) {
-    // Si ya es una URL completa, devolverla tal como está
-    if (filename.startsWith('http')) {
-      return filename;
+    // Validar que el filename no esté vacío
+    if (filename.trim().isEmpty) {
+      print('⚠️ Filename vacío proporcionado a getImageUrl');
+      return '';
+    }
+
+    final cleanFilename = filename.trim();
+
+    // Si ya es una URL completa, validarla
+    if (cleanFilename.startsWith('http')) {
+      // Validar que no termine en rutas incompletas
+      if (cleanFilename.endsWith('/images/platos/') || 
+          cleanFilename.endsWith('/images/platos')) {
+        print('⚠️ URL incompleta detectada: $cleanFilename');
+        return '';
+      }
+      return cleanFilename;
     }
 
     // Si ya tiene el prefijo /images/platos/, construir URL completa
-    if (filename.startsWith('/images/platos/')) {
-      return '${_apiConfig.baseUrl}$filename';
+    if (cleanFilename.startsWith('/images/platos/')) {
+      // Validar que no sea solo el path sin archivo
+      if (cleanFilename == '/images/platos/' || cleanFilename == '/images/platos') {
+        print('⚠️ Path incompleto detectado: $cleanFilename');
+        return '';
+      }
+      return '${_apiConfig.baseUrl}$cleanFilename';
     }
 
-    // Si es solo el nombre del archivo, construir la URL completa
-    return '${_apiConfig.baseUrl}/images/platos/$filename';
+    // Si es solo el nombre del archivo, validar que tenga extensión
+    if (!cleanFilename.contains('.')) {
+      print('⚠️ Filename sin extensión: $cleanFilename');
+      return '';
+    }
+
+    // Construir la URL completa
+    return '${_apiConfig.baseUrl}/images/platos/$cleanFilename';
   }
 
   /// Valida si un archivo es una imagen válida

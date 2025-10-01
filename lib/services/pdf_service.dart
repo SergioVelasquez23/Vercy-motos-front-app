@@ -443,14 +443,46 @@ class PDFService {
         esFactura: esFactura,
       );
 
-      await Printing.layoutPdf(
-        onLayout: (format) async => pdfBytes,
-        name:
-            '${esFactura ? 'Factura' : 'Resumen'}_${resumen['pedidoId'] ?? resumen['numero'] ?? DateTime.now().millisecondsSinceEpoch}',
-        format: PdfPageFormat.roll80,
-      );
+      // Siempre usar el método de guardado para evitar errores de plataforma
+      await _guardarYAbrirPDFWindows(pdfBytes, resumen, esFactura);
     } catch (e) {
       print('❌ Error en vista previa: $e');
+      // Si falla el guardado, intentar solo generar el PDF
+      try {
+        final pdfBytes = await generarResumenPedidoPDF(
+          resumen: resumen,
+          esFactura: esFactura,
+        );
+        print('✅ PDF generado correctamente (${pdfBytes.length} bytes)');
+        print('💡 Error al guardar archivo. PDF generado pero no guardado.');
+      } catch (e2) {
+        print('❌ Error generando PDF: $e2');
+        rethrow;
+      }
+      rethrow;
+    }
+  }
+
+  /// Método alternativo para Windows: guardar archivo y abrir con visor predeterminado
+  Future<void> _guardarYAbrirPDFWindows(
+    Uint8List pdfBytes,
+    Map<String, dynamic> resumen,
+    bool esFactura,
+  ) async {
+    try {
+      // Obtener directorio de documentos
+      final directory = await getApplicationDocumentsDirectory();
+      final fileName =
+          '${esFactura ? 'Factura' : 'Resumen'}_${resumen['pedidoId'] ?? resumen['numero'] ?? DateTime.now().millisecondsSinceEpoch}.pdf';
+      final file = File('${directory.path}/$fileName');
+
+      // Escribir el archivo
+      await file.writeAsBytes(pdfBytes);
+
+      print('✅ PDF guardado en: ${file.path}');
+      print('💡 Abrir manualmente el archivo desde: ${file.path}');
+    } catch (e) {
+      print('❌ Error guardando PDF: $e');
       rethrow;
     }
   }

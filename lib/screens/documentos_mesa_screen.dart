@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'dart:io';
 import '../models/documento_mesa.dart';
 import '../models/mesa.dart';
 import '../services/documento_mesa_service.dart';
 import '../services/pdf_service.dart';
-import '../services/pdf_service_factory.dart';
+import '../services/pdf_service_web.dart';
 import '../utils/negocio_info_cache.dart';
 import '../utils/format_utils.dart';
 import '../utils/impresion_mixin.dart';
@@ -101,8 +102,7 @@ class _DocumentosMesaScreenState extends State<DocumentosMesaScreen>
           : await _documentoService.getDocumentos();
 
       // Debug: verificar qué datos de pago están llegando      for (var doc in documentos.take(3)) {
-      for (var doc in documentos.take(3)) {
-      }
+      for (var doc in documentos.take(3)) {}
 
       // Ordenar documentos por fecha descendente (más recientes primero)
       documentos.sort((a, b) {
@@ -986,8 +986,8 @@ class _DocumentosMesaScreenState extends State<DocumentosMesaScreen>
 
       // Detectar plataforma y usar el servicio apropiado
       if (kIsWeb) {
-        // Para web, usar el servicio web especializado
-        final pdfServiceWeb = PDFServiceFactory.create();
+        // Para web, usar directamente PDFServiceWeb como en mesas_screen
+        final pdfServiceWeb = PDFServiceWeb();
 
         showDialog(
           context: context,
@@ -1044,6 +1044,14 @@ class _DocumentosMesaScreenState extends State<DocumentosMesaScreen>
 
                     pdfServiceWeb.generarYDescargarPDF(resumen: resumen);
                     Navigator.of(context).pop(); // Cerrar loading
+                    
+                    // Mostrar mensaje de éxito
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Generando PDF...'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
                   } catch (e) {
                     Navigator.of(context).pop(); // Cerrar loading
                     mostrarMensajeError('Error generando PDF: $e');
@@ -1112,11 +1120,39 @@ class _DocumentosMesaScreenState extends State<DocumentosMesaScreen>
                 onPressed: () async {
                   Navigator.pop(context);
                   try {
+                    showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (context) => Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            CircularProgressIndicator(),
+                            SizedBox(height: 16),
+                            Text(
+                              'Preparando documento...',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+
                     await _pdfService.mostrarVistaPrevia(
                       resumen: resumen,
                       esFactura: false,
                     );
+
+                    Navigator.of(context).pop(); // Cerrar loading
+
+                    // Mostrar mensaje de éxito específico para Windows
+                    if (!kIsWeb && Platform.isWindows) {
+                      mostrarMensajeExito(
+                        'PDF guardado en documentos. Busque el archivo en su carpeta de documentos.',
+                      );
+                    }
                   } catch (e) {
+                    Navigator.of(context).pop(); // Cerrar loading
                     mostrarMensajeError('Error en vista previa: $e');
                   }
                 },

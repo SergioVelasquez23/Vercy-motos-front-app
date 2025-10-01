@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
+import '../services/image_service.dart';
 
 /// Widget que maneja imágenes de productos con fallback local
 class ImagenProductoWidget extends StatelessWidget {
@@ -27,40 +28,40 @@ class ImagenProductoWidget extends StatelessWidget {
       return _buildIconoDefault();
     }
 
-    final imagenUrl = urlRemota!;
+    final imagenUrl = urlRemota!.trim();
+
+    // Validar que la URL no esté vacía después del trim
+    if (imagenUrl.isEmpty) {
+      return _buildIconoDefault();
+    }
+
+    // Usar ImageService para obtener la URL validada
+    final imageService = ImageService();
+    final validatedUrl = imageService.getImageUrl(imagenUrl);
+    
+    // Si la URL validada está vacía, mostrar icono por defecto
+    if (validatedUrl.isEmpty) {
+      return _buildIconoDefault();
+    }
 
     // Filtrar referencias al placeholder corrupto
     if (imagenUrl.contains('placeholder/food_placeholder.png')) {
-      print(
-        '⚠️ Detectada referencia al placeholder corrupto, usando icono por defecto',
-      );
+      print('⚠️ Detectada referencia al placeholder corrupto, usando icono por defecto');
       return _buildIconoDefault();
     }
 
     // Si es una imagen base64
-    if (imagenUrl.startsWith('data:image')) {
-      return _buildImagenBase64(imagenUrl);
+    if (validatedUrl.startsWith('data:image')) {
+      return _buildImagenBase64(validatedUrl);
     }
 
-    // Si es una URL web absoluta
-    if (imagenUrl.startsWith('http')) {
-      return _buildImagenNetwork(imagenUrl);
+    // Si es una URL web válida, cargarla
+    if (validatedUrl.startsWith('http')) {
+      return _buildImagenNetwork(validatedUrl);
     }
 
-    // Si es solo un nombre de archivo, construir la URL completa
-    if (!imagenUrl.startsWith('/') && !imagenUrl.contains('/')) {
-      final fullUrl = '$backendBaseUrl/images/platos/$imagenUrl';
-      return _buildImagenNetwork(fullUrl);
-    }
-
-    // Si es una URL relativa
-    if (imagenUrl.startsWith('/')) {
-      final fullUrl = '$backendBaseUrl$imagenUrl';
-      return _buildImagenNetwork(fullUrl);
-    }
-
-    // Si es un asset local
-    return _buildImagenAsset(imagenUrl);
+    // Si llegamos aquí, algo salió mal con la validación
+    return _buildIconoDefault();
   }
 
   Widget _buildImagenBase64(String imagenUrl) {
@@ -95,6 +96,10 @@ class ImagenProductoWidget extends StatelessWidget {
           return Container(
             width: width,
             height: height,
+            decoration: BoxDecoration(
+              color: Color(0xFF2A2A2A), // Fondo oscuro para loading
+              borderRadius: BorderRadius.circular(8),
+            ),
             child: Center(
               child: CircularProgressIndicator(
                 value: loadingProgress.expectedTotalBytes != null
@@ -102,107 +107,26 @@ class ImagenProductoWidget extends StatelessWidget {
                           loadingProgress.expectedTotalBytes!
                     : null,
                 strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  Color(0xFFFF6B00),
+                ), // Color naranja
               ),
             ),
           );
         },
         errorBuilder: (context, error, stackTrace) {
-          print('❌ Error cargando imagen de red: $url');
-          print('   Tipo de error: ${error.runtimeType}');
-          print('   Detalles: $error');
-
-          // Intentar detectar el tipo de error específico
-          if (error.toString().contains('500')) {
-            print(
-              '   🚨 Error 500 del servidor - imagen no encontrada o endpoint dañado',
-            );
-          } else if (error.toString().contains('404')) {
-            print('   🚨 Error 404 - imagen no encontrada');
-          } else if (error.toString().contains(
-            'Failed to detect image file format',
-          )) {
-            print('   🚨 Archivo no es una imagen válida o está corrupto');
+          // Log más específico y silencioso para errores conocidos
+          if (error.toString().contains('404')) {
+            print('� Imagen no encontrada (404): $url');
+          } else if (error.toString().contains('500')) {
+            print('⚠️ Error del servidor (500): $url');
+          } else {
+            print('❌ Error cargando imagen: $url - ${error.toString()}');
           }
-
-          return _buildImagenAssetFallback();
+          return _buildIconoError();
         },
       ),
     );
-  }
-
-  Widget _buildImagenAsset(String assetPath) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
-      child: Image.asset(
-        assetPath,
-        width: width,
-        height: height,
-        fit: fit,
-        errorBuilder: (context, error, stackTrace) {
-          print('❌ Error cargando asset: $assetPath - Error: $error');
-          return _buildImagenAssetFallback();
-        },
-      ),
-    );
-  }
-
-  Widget _buildImagenAssetFallback() {
-    // Intentar cargar imagen local específica basada en el nombre del producto
-    if (nombreProducto != null) {
-      final nombreLimpio = nombreProducto!
-          .toLowerCase()
-          .replaceAll(RegExp(r'[^a-z0-9\s]'), '')
-          .replaceAll(RegExp(r'\s+'), ' ')
-          .trim();
-
-      // Mapeo de productos comunes a imágenes locales disponibles
-      final Map<String, String> imagenesLocales = {
-        'adicion de carne': 'assets/images/productos/adicion de carne.png',
-        'adicional carne': 'assets/images/productos/adicion de carne.png',
-        'carne adicional': 'assets/images/productos/adicion de carne.png',
-        'carne extra': 'assets/images/productos/adicion de carne.png',
-        // Fallbacks por categorías de productos
-        'carne': 'assets/images/productos/adicion de carne.png',
-        'pollo': 'assets/images/productos/adicion de carne.png',
-        'cerdo': 'assets/images/productos/adicion de carne.png',
-        'res': 'assets/images/productos/adicion de carne.png',
-      };
-
-      // Buscar coincidencia exacta
-      String? rutaImagen = imagenesLocales[nombreLimpio];
-
-      // Si no encuentra exacta, buscar por palabras clave
-      if (rutaImagen == null) {
-        for (final palabra in imagenesLocales.keys) {
-          if (nombreLimpio.contains(palabra) ||
-              palabra.contains(nombreLimpio)) {
-            rutaImagen = imagenesLocales[palabra];
-            break;
-          }
-        }
-      }
-
-      if (rutaImagen != null) {
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: Image.asset(
-            rutaImagen,
-            width: width,
-            height: height,
-            fit: fit,
-            errorBuilder: (context, error, stackTrace) {
-              print(
-                '❌ Error cargando imagen local: $rutaImagen - Error: $error',
-              );
-              return _buildIconoDefault();
-            },
-          ),
-        );
-      }
-    }
-
-    // Fallback final: icono por defecto
-    return _buildIconoDefault();
   }
 
   Widget _buildIconoDefault() {
@@ -210,27 +134,39 @@ class ImagenProductoWidget extends StatelessWidget {
       width: width,
       height: height,
       decoration: BoxDecoration(
-        color: Colors.grey[200],
+        // Fondo con gradiente para mejor visibilidad
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF3A3A3A), Color(0xFF2A2A2A)],
+        ),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey[300]!, width: 1),
+        border: Border.all(color: Color(0xFF505050), width: 1.5),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.restaurant,
-            color: Colors.grey[400],
-            size: (width != null && height != null)
-                ? (width! < height! ? width! * 0.4 : height! * 0.4)
-                : 20,
+          Container(
+            padding: EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Color(0xFFFF6B00).withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.restaurant_menu, // Icono más apropiado para comida
+              color: Color(0xFFFF6B00), // Color naranja del tema
+              size: (width != null && height != null)
+                  ? (width! < height! ? width! * 0.3 : height! * 0.3)
+                  : 18,
+            ),
           ),
           if (height != null && height! > 60) ...[
             SizedBox(height: 4),
             Text(
               'Sin imagen',
               style: TextStyle(
-                color: Colors.grey[500],
-                fontSize: 10,
+                color: Color(0xFFB0B0B0), // Texto gris claro
+                fontSize: 9,
                 fontWeight: FontWeight.w500,
               ),
               textAlign: TextAlign.center,
@@ -246,16 +182,17 @@ class ImagenProductoWidget extends StatelessWidget {
       width: width,
       height: height,
       decoration: BoxDecoration(
-        color: Colors.orange[50],
+        // Fondo oscuro con tinte rojizo para indicar error
+        color: Color(0xFF3A2A2A),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.orange[200]!, width: 1),
+        border: Border.all(color: Color(0xFF604040), width: 1),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-            Icons.image_not_supported,
-            color: Colors.orange[400],
+            Icons.broken_image,
+            color: Color(0xFFFF6B6B), // Rojo claro para error
             size: (width != null && height != null)
                 ? (width! < height! ? width! * 0.4 : height! * 0.4)
                 : 20,
@@ -265,7 +202,7 @@ class ImagenProductoWidget extends StatelessWidget {
             Text(
               'Error\ncargando',
               style: TextStyle(
-                color: Colors.orange[600],
+                color: Color(0xFFB0B0B0), // Texto gris claro
                 fontSize: 9,
                 fontWeight: FontWeight.w500,
               ),
