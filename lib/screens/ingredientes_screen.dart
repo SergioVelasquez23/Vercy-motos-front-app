@@ -92,10 +92,7 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppTheme.cardBg,
-        title: Text(
-          '¿Eliminar ingrediente?',
-          style: AppTheme.headlineMedium,
-        ),
+        title: Text('¿Eliminar ingrediente?', style: AppTheme.headlineMedium),
         content: Text(
           '¿Está seguro que desea eliminar el ingrediente "${ingrediente.nombre}"? Esta acción no se puede deshacer.',
           style: AppTheme.bodyMedium,
@@ -336,6 +333,10 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
                       unidad: unidadController.text,
                       costo: double.parse(costoController.text),
                       cantidad: double.parse(cantidadController.text),
+                      stockActual: double.parse(
+                        cantidadController.text,
+                      ), // Usar stockActual para el stock manual
+                      stockMinimo: ingrediente?.stockMinimo ?? 0.0,
                       estado: ingrediente?.estado ?? 'Activo',
                       descontable: esDescontable,
                     );

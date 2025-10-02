@@ -2,15 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/user_provider.dart';
 import '../models/cuadre_caja.dart';
-import '../models/gasto.dart';
 import '../models/resumen_cierre.dart';
 import '../services/cuadre_caja_service.dart';
-import '../services/gasto_service.dart';
 import '../services/resumen_cierre_service.dart';
 import 'ingresos_caja_screen.dart';
 import '../utils/format_utils.dart';
-import 'gastos_screen.dart';
-import 'tipos_gasto_screen.dart';
 import 'contador_efectivo_screen.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -34,7 +30,6 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
   Color get accentOrange => AppTheme.accent;
 
   // Services
-  final GastoService _gastoService = GastoService();
   final ResumenCierreService _resumenCierreService = ResumenCierreService();
 
   // Controllers para los filtros de búsqueda
@@ -444,41 +439,19 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
               icon: Icon(Icons.more_vert, color: Colors.white),
               color: cardBg,
               onSelected: (value) {
-                if (value == 'gastos') {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => GastosScreen()),
-                  );
-                } else if (value == 'ingresos_caja') {
+                if (value == 'ingresos_caja') {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) => IngresosCajaScreen(),
                     ),
                   );
-                } else if (value == 'tipos_gasto') {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => TiposGastoScreen()),
-                  );
                 } else if (value == 'contador_efectivo') {
                   _abrirContadorEfectivo();
                 }
               },
               itemBuilder: (context) => [
-                PopupMenuItem(
-                  value: 'gastos',
-                  child: Row(
-                    children: [
-                      Icon(Icons.receipt_long, color: primary),
-                      SizedBox(width: 8),
-                      Text(
-                        'Gestión de Gastos',
-                        style: TextStyle(color: textDark),
-                      ),
-                    ],
-                  ),
-                ),
+                // PopupMenuItem de gastos eliminado
                 PopupMenuItem(
                   value: 'ingresos_caja',
                   child: Row(
@@ -492,19 +465,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                     ],
                   ),
                 ),
-                PopupMenuItem(
-                  value: 'tipos_gasto',
-                  child: Row(
-                    children: [
-                      Icon(Icons.category, color: primary),
-                      SizedBox(width: 8),
-                      Text(
-                        'Tipos de Gastos',
-                        style: TextStyle(color: textDark),
-                      ),
-                    ],
-                  ),
-                ),
+                // PopupMenuItem de tipos de gastos eliminado
                 PopupMenuItem(
                   value: 'contador_efectivo',
                   child: Row(
@@ -2181,31 +2142,20 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
     );
   }
 
-  // Helper para construir el resumen final - Ahora con gastos dinámicos y transferencias
+  // Helper para construir el resumen final - Sin gastos
   Widget _buildResumenFinal(CuadreCaja cuadre) {
     return FutureBuilder<Map<String, dynamic>>(
-      future:
-          Future.wait([
-            _gastoService.getGastosByCuadre(cuadre.id!),
-            _cuadreCajaService.getEfectivoEsperado(),
-          ]).then(
-            (results) => {
-              'gastos': results[0] as List<Gasto>,
-              'efectivoData': results[1] as Map<String, dynamic>,
-            },
-          ),
+      future: _cuadreCajaService.getEfectivoEsperado().then(
+        (efectivoData) => {'efectivoData': efectivoData},
+      ),
       builder: (context, snapshot) {
         double inicial = cuadre.fondoInicial;
         double ventasEfectivo = cuadre.efectivoEsperado;
         double ventasTransferencias = 0;
-        double gastos = 0;
+        double gastos = 0; // Gastos siempre 0
 
         if (snapshot.hasData) {
           final data = snapshot.data!;
-
-          // Calcular gastos
-          final gastosData = data['gastos'] as List<Gasto>;
-          gastos = gastosData.fold(0, (total, gasto) => total + gasto.monto);
 
           // Obtener transferencias
           final efectivoData = data['efectivoData'] as Map<String, dynamic>;

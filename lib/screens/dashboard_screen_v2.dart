@@ -308,10 +308,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
       // Obtener ingresos vs egresos de los últimos 12 meses desde el backend
       final ingresosVsEgresos = await _reportesService.getIngresosVsEgresos(12);
 
-      print(
-        '✅ Datos de ingresos vs egresos cargados: ${ingresosVsEgresos.length} registros',
-      );
-
       if (mounted) {
         setState(() {
           _ingresosVsEgresos = ingresosVsEgresos;

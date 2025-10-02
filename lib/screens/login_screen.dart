@@ -332,7 +332,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    print('🔵 LoginScreen build: construyendo pantalla de login');
     return Scaffold(
       backgroundColor: AppTheme.backgroundDark,
       body: SafeArea(

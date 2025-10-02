@@ -11,8 +11,6 @@ class ReportesService {
   // Obtener dashboard
   Future<DashboardData?> getDashboard() async {
     try {
-      print('🌐 Haciendo petición a /api/reportes/dashboard...');
-
       final response = await _apiService.get<Map<String, dynamic>>(
         '/api/reportes/dashboard',
         (json) => json,
@@ -22,9 +20,7 @@ class ReportesService {
       print('📦 Data: ${response.data != null ? 'Presente' : 'Null'}');
 
       if (response.isSuccess && response.data != null) {
-        print('✅ Convirtiendo datos a DashboardData...');
         final dashboardData = DashboardData.fromJson(response.data!);
-        print('📊 Dashboard creado exitosamente');
         return dashboardData;
       } else {
         print(
@@ -49,7 +45,6 @@ class ReportesService {
     );
 
     if (response.isSuccess) {
-      print('✅ Pedidos por hora obtenidos');
       return response.data ?? [];
     } else {
       print('⚠️ Error al obtener pedidos por hora: ${response.errorMessage}');
@@ -67,7 +62,6 @@ class ReportesService {
     );
 
     if (response.isSuccess) {
-      print('✅ Ventas por día obtenidas');
       return response.data ?? [];
     } else {
       print('⚠️ Error al obtener ventas por día: ${response.errorMessage}');
@@ -85,7 +79,6 @@ class ReportesService {
     );
 
     if (response.isSuccess) {
-      print('✅ Ingresos vs egresos obtenidos');
       return response.data ?? [];
     } else {
       print(
@@ -103,10 +96,8 @@ class ReportesService {
     );
 
     if (response.isSuccess) {
-      print('✅ Top productos obtenidos');
       return response.data ?? [];
     } else {
-      print('⚠️ Error al obtener top productos: ${response.errorMessage}');
       return [];
     }
   }
@@ -122,7 +113,6 @@ class ReportesService {
       );
 
       if (response.isSuccess) {
-        print('✅ Ventas por categoría obtenidas');
         return response.data ?? [];
       } else {
         print(
@@ -189,9 +179,6 @@ class ReportesService {
     );
 
     if (response.isSuccess) {
-      print(
-        '✅ Historial de cuadres obtenido: ${response.data!.length} registros',
-      );
       return response.data!;
     } else {
       print(
@@ -209,7 +196,6 @@ class ReportesService {
     );
 
     if (response.isSuccess) {
-      print('✅ Alertas obtenidas');
       return response.data!;
     } else {
       print('⚠️ Error al obtener alertas: ${response.errorMessage}');
@@ -233,7 +219,6 @@ class ReportesService {
       );
 
       if (response.isSuccess) {
-        print('✅ Objetivo $periodo actualizado exitosamente');
         return true;
       } else {
         print('❌ Error al actualizar objetivo: ${response.errorMessage}');
@@ -262,7 +247,6 @@ class ReportesService {
       );
 
       if (response.isSuccess) {
-        print('✅ Últimos pedidos obtenidos');
         return response.data ?? [];
       } else {
         print('⚠️ Error al obtener últimos pedidos: ${response.errorMessage}');
@@ -285,7 +269,6 @@ class ReportesService {
       );
 
       if (response.isSuccess) {
-        print('✅ Vendedores del mes obtenidos');
         return response.data ?? [];
       } else {
         print(

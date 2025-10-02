@@ -124,6 +124,9 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
   bool isLoading = true;
   String? errorMessage;
 
+  // Key para forzar reconstrucción de widgets después de operaciones
+  int _widgetRebuildKey = 0;
+
   // Subscripciones para actualizaciones en tiempo real (eliminadas)
   // late StreamSubscription<bool> _pedidoCompletadoSubscription;
   // late StreamSubscription<bool> _pedidoPagadoSubscription;
@@ -1427,6 +1430,472 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
     }
   }
 
+  /// Método ULTRA AGRESIVO que fuerza actualización tanto en backend como frontend
+  Future<void> _recargarMesasConCards() async {
+    print('� INICIANDO RECARGA ULTRA AGRESIVA...');
+
+    try {
+      // 1. FORZAR ACTUALIZACIÓN EN EL BACKEND PARA CADA MESA
+      await _forzarActualizacionBackend();
+
+      // 2. INVALIDAR COMPLETAMENTE EL CACHE LOCAL
+      _invalidarCacheCompleto();
+
+      // 3. MÚLTIPLES RECARGAS CON DELAYS LARGOS
+      for (int i = 1; i <= 5; i++) {
+        print('🔄 Recarga #$i de 5...');
+        await Future.delayed(
+          Duration(milliseconds: 500 * i),
+        ); // Delays progresivos
+        await _loadMesas();
+        await _recalcularTotalesDesdeBackend();
+
+        if (mounted) {
+          setState(() {
+            _widgetRebuildKey += 10; // Incremento grande para asegurar cambio
+          });
+        }
+      }
+
+      // 4. RECARGA FINAL CON VERIFICACIÓN
+      await _verificarYCorregirInconsistencias();
+
+      print('✅ RECARGA ULTRA AGRESIVA COMPLETADA (key: $_widgetRebuildKey)');
+    } catch (e) {
+      print('❌ Error en recarga ultra agresiva: $e');
+      // Fallback: recarga básica
+      await _loadMesas();
+      if (mounted) setState(() => _widgetRebuildKey++);
+    }
+  }
+
+  /// FUERZA la actualización de todas las mesas en el backend
+  Future<void> _forzarActualizacionBackend() async {
+    try {
+      print('🚨 FORZANDO ACTUALIZACIÓN EN BACKEND...');
+
+      // Obtener todas las mesas del backend
+      final mesasBackend = await _mesaService.getMesas();
+
+      // Para cada mesa, forzar recálculo en el backend
+      for (final mesa in mesasBackend) {
+        try {
+          // Obtener pedidos activos y forzar recálculo
+          final pedidos = await _pedidoService.getPedidosByMesa(mesa.nombre);
+          final pedidosActivos = pedidos
+              .where(
+                (p) =>
+                    p.estado != 'pagado' &&
+                    p.estado != 'cancelado' &&
+                    p.estado != EstadoPedido.pagado &&
+                    p.estado != EstadoPedido.cancelado,
+              )
+              .toList();
+
+          // Calcular total real
+          double totalReal = 0.0;
+          for (final pedido in pedidosActivos) {
+            totalReal += pedido.total;
+          }
+
+          // FORZAR actualización en el backend si hay diferencia
+          if (mesa.total != totalReal ||
+              mesa.ocupada != pedidosActivos.isNotEmpty) {
+            print('🔧 CORRIGIENDO ${mesa.nombre}: ${mesa.total} -> $totalReal');
+            mesa.total = totalReal;
+            mesa.ocupada = pedidosActivos.isNotEmpty;
+
+            // Forzar UPDATE en el backend
+            await _mesaService.updateMesa(mesa);
+            await Future.delayed(
+              Duration(milliseconds: 200),
+            ); // Esperar confirmación
+          }
+        } catch (e) {
+          print('❌ Error forzando actualización de ${mesa.nombre}: $e');
+        }
+      }
+
+      print('✅ Actualización forzada en backend completada');
+    } catch (e) {
+      print('❌ Error en actualización forzada del backend: $e');
+    }
+  }
+
+  /// INVALIDA completamente el cache local
+  void _invalidarCacheCompleto() {
+    print('🗑️ INVALIDANDO CACHE COMPLETO...');
+
+    // Limpiar completamente la lista de mesas
+    mesas.clear();
+
+    // Resetear variables de estado
+    isLoading = true;
+    errorMessage = null;
+
+    // Incrementar key dramáticamente
+    _widgetRebuildKey += 100;
+
+    print('✅ Cache completamente invalidado');
+  }
+
+  /// VERIFICA y CORRIGE inconsistencias finales
+  Future<void> _verificarYCorregirInconsistencias() async {
+    try {
+      print('🔍 VERIFICANDO INCONSISTENCIAS FINALES...');
+
+      bool hayInconsistencias = false;
+
+      for (int i = 0; i < mesas.length; i++) {
+        final mesa = mesas[i];
+
+        // Verificar una vez más con el backend
+        final mesaBackend = await _mesaService.getMesaById(mesa.id);
+        final pedidos = await _pedidoService.getPedidosByMesa(mesa.nombre);
+        final pedidosActivos = pedidos
+            .where(
+              (p) =>
+                  p.estado != 'pagado' &&
+                  p.estado != 'cancelado' &&
+                  p.estado != EstadoPedido.pagado &&
+                  p.estado != EstadoPedido.cancelado,
+            )
+            .toList();
+
+        double totalEsperado = pedidosActivos.fold(
+          0.0,
+          (sum, p) => sum + p.total,
+        );
+        bool ocupadaEsperada = pedidosActivos.isNotEmpty;
+
+        // Si TODAVÍA hay inconsistencias, corregir agresivamente
+        if (mesa.total != totalEsperado || mesa.ocupada != ocupadaEsperada) {
+          print('🚨 INCONSISTENCIA DETECTADA en ${mesa.nombre}:');
+          print('   Mesa local: total=${mesa.total}, ocupada=${mesa.ocupada}');
+          print('   Esperado: total=$totalEsperado, ocupada=$ocupadaEsperada');
+
+          // Corregir localmente
+          mesa.total = totalEsperado;
+          mesa.ocupada = ocupadaEsperada;
+          hayInconsistencias = true;
+        }
+      }
+
+      if (hayInconsistencias) {
+        print('⚠️ Se encontraron y corrigieron inconsistencias');
+        if (mounted) {
+          setState(() {
+            _widgetRebuildKey += 50;
+          });
+        }
+      } else {
+        print('✅ No se encontraron inconsistencias');
+      }
+    } catch (e) {
+      print('❌ Error verificando inconsistencias: $e');
+    }
+  }
+
+  /// Recalcula los totales de todas las mesas desde los pedidos activos en el backend
+  Future<void> _recalcularTotalesDesdeBackend() async {
+    try {
+      print('🔄 Recalculando totales desde backend...');
+
+      for (int i = 0; i < mesas.length; i++) {
+        final mesa = mesas[i];
+        try {
+          // Obtener pedidos activos de la mesa
+          final pedidos = await _pedidoService.getPedidosByMesa(mesa.nombre);
+          final pedidosActivos = pedidos
+              .where((p) => p.estado != 'pagado' && p.estado != 'cancelado')
+              .toList();
+
+          // Calcular total real desde pedidos
+          double totalReal = pedidosActivos.fold(
+            0.0,
+            (sum, pedido) => sum + pedido.total,
+          );
+          bool ocupadaReal = pedidosActivos.isNotEmpty;
+
+          print(
+            '📊 Mesa ${mesa.nombre}: total_card=${mesa.total} vs total_real=$totalReal',
+          );
+
+          // Actualizar datos locales si hay diferencia
+          if (mesa.total != totalReal || mesa.ocupada != ocupadaReal) {
+            print('⚠️ Diferencia detectada en ${mesa.nombre}, actualizando...');
+            mesa.total = totalReal;
+            mesa.ocupada = ocupadaReal;
+          }
+        } catch (e) {
+          print('❌ Error recalculando mesa ${mesa.nombre}: $e');
+        }
+      }
+
+      print('✅ Recálculo de totales completado');
+    } catch (e) {
+      print('❌ Error en recálculo general: $e');
+    }
+  }
+
+  /// ACTUALIZACIÓN ULTRA AGRESIVA de una mesa específica
+  Future<void> _actualizarMesaEspecifica(Mesa mesa) async {
+    try {
+      print('� ACTUALIZACIÓN ULTRA AGRESIVA de mesa: ${mesa.nombre}');
+
+      // 1. FORZAR actualizaci\u00f3n en el backend primero
+      await _forzarActualizacionMesaIndividual(mesa);
+
+      // 2. Delay para asegurar que el backend procese
+      await Future.delayed(Duration(milliseconds: 500));
+
+      // 3. Obtener datos frescos MÚLTIPLES VECES
+      Mesa? mesaActualizada;
+      for (int i = 1; i <= 3; i++) {
+        print('🔄 Intento #$i de obtener datos actualizados...');
+        try {
+          mesaActualizada = await _mesaService.getMesaById(mesa.id);
+          await Future.delayed(Duration(milliseconds: 200));
+        } catch (e) {
+          print('❌ Error en intento #$i: $e');
+        }
+      }
+
+      if (mesaActualizada == null) {
+        throw Exception('No se pudo obtener datos actualizados de la mesa');
+      }
+
+      // 4. DOBLE verificaci\u00f3n con pedidos activos
+      final pedidos = await _pedidoService.getPedidosByMesa(mesa.nombre);
+      final pedidosActivos = pedidos
+          .where(
+            (p) =>
+                p.estado != 'pagado' &&
+                p.estado != 'cancelado' &&
+                p.estado != EstadoPedido.pagado &&
+                p.estado != EstadoPedido.cancelado,
+          )
+          .toList();
+
+      double totalDesdePedidos = pedidosActivos.fold(
+        0.0,
+        (sum, pedido) => sum + pedido.total,
+      );
+      bool ocupadaReal = pedidosActivos.isNotEmpty;
+
+      // 5. Usar SIEMPRE los datos de pedidos (más confiables)
+      mesaActualizada.total = totalDesdePedidos;
+      mesaActualizada.ocupada = ocupadaReal;
+
+      print('📊 DATOS FINALES para ${mesa.nombre}:');
+      print('   - Total: $totalDesdePedidos');
+      print('   - Ocupada: $ocupadaReal');
+      print('   - Pedidos activos: ${pedidosActivos.length}');
+
+      // 6. Actualizar localmente con MÚLTIPLES cambios de key
+      final index = mesas.indexWhere((m) => m.id == mesa.id);
+      if (index != -1) {
+        for (int i = 0; i < 3; i++) {
+          if (mounted) {
+            setState(() {
+              mesas[index] = Mesa(
+                id: mesaActualizada!.id,
+                nombre: mesaActualizada.nombre,
+                ocupada: ocupadaReal,
+                total: totalDesdePedidos,
+                productos: mesaActualizada.productos,
+              );
+              _widgetRebuildKey += 25; // Incremento grande
+            });
+            await Future.delayed(Duration(milliseconds: 100));
+          }
+        }
+
+        print(
+          '✅ Mesa ${mesa.nombre} COMPLETAMENTE actualizada: ocupada=$ocupadaReal, total=$totalDesdePedidos (key: $_widgetRebuildKey)',
+        );
+      }
+    } catch (e) {
+      print('❌ Error en actualización ultra agresiva: $e');
+      // Fallback: recarga completa
+      await _recargarMesasConCards();
+    }
+  }
+
+  /// FUERZA actualizaci\u00f3n de una mesa individual en el backend
+  Future<void> _forzarActualizacionMesaIndividual(Mesa mesa) async {
+    try {
+      print('🔧 FORZANDO actualización backend de ${mesa.nombre}...');
+
+      // Obtener pedidos y calcular total real
+      final pedidos = await _pedidoService.getPedidosByMesa(mesa.nombre);
+      final pedidosActivos = pedidos
+          .where(
+            (p) =>
+                p.estado != 'pagado' &&
+                p.estado != 'cancelado' &&
+                p.estado != EstadoPedido.pagado &&
+                p.estado != EstadoPedido.cancelado,
+          )
+          .toList();
+
+      double totalReal = pedidosActivos.fold(0.0, (sum, p) => sum + p.total);
+      bool ocupadaReal = pedidosActivos.isNotEmpty;
+
+      // Crear objeto mesa actualizado
+      final mesaActualizada = Mesa(
+        id: mesa.id,
+        nombre: mesa.nombre,
+        ocupada: ocupadaReal,
+        total: totalReal,
+        productos: mesa.productos,
+      );
+
+      // FORZAR UPDATE en backend
+      await _mesaService.updateMesa(mesaActualizada);
+      print(
+        '✅ Backend forzado para ${mesa.nombre}: total=$totalReal, ocupada=$ocupadaReal',
+      );
+    } catch (e) {
+      print('❌ Error forzando actualización individual: $e');
+    }
+  }
+
+  /// 🚨 RECONSTRUCCIÓN TOTAL DESDE CERO - MÉTODO DEFINITIVO
+  Future<void> _reconstruirCardDesdeCero(Mesa mesa) async {
+    print('🚨 ===== RECONSTRUCCIÓN TOTAL DESDE CERO =====');
+    print('🎯 Objetivo: ${mesa.nombre}');
+
+    try {
+      // 1. OBTENER DATOS FRESCOS DIRECTAMENTE DEL BACKEND
+      print('🔄 Paso 1: Obteniendo datos frescos del backend...');
+      final mesaBackend = await _mesaService.getMesaById(mesa.id);
+      final pedidosActivos = await _obtenerPedidosActivosReales(mesa.nombre);
+
+      // 2. CALCULAR TOTALES REALES DESDE PEDIDOS
+      print('📊 Paso 2: Calculando totales reales...');
+      double totalReal = 0.0;
+      for (final pedido in pedidosActivos) {
+        totalReal += pedido.total;
+        print('   - Pedido ${pedido.id}: +${pedido.total}');
+      }
+      bool ocupadaReal = pedidosActivos.isNotEmpty;
+
+      print('📊 TOTALES CALCULADOS:');
+      print('   - Total real: $totalReal');
+      print('   - Ocupada real: $ocupadaReal');
+      print('   - Pedidos activos: ${pedidosActivos.length}');
+
+      // 3. CREAR OBJETO MESA COMPLETAMENTE NUEVO
+      print('🔆 Paso 3: Creando objeto mesa nuevo...');
+      final mesaNueva = Mesa(
+        id: mesa.id,
+        nombre: mesa.nombre,
+        ocupada: ocupadaReal,
+        total: totalReal,
+        productos: [], // Lista limpia
+      );
+
+      // 4. ACTUALIZAR EN EL BACKEND PARA ASEGURAR CONSISTENCIA
+      print('🔄 Paso 4: Actualizando backend...');
+      await _mesaService.updateMesa(mesaNueva);
+      await Future.delayed(Duration(milliseconds: 300)); // Esperar confirmación
+
+      // 5. REEMPLAZAR EN LA LISTA LOCAL CON MÚLTIPLES SETSTATE
+      print('🔄 Paso 5: Reemplazando en lista local...');
+      final index = mesas.indexWhere((m) => m.id == mesa.id);
+      if (index != -1) {
+        // Hacer 3 actualizaciones consecutivas para asegurar el cambio
+        for (int i = 1; i <= 3; i++) {
+          if (mounted) {
+            setState(() {
+              mesas[index] = Mesa(
+                id: mesaNueva.id,
+                nombre: mesaNueva.nombre,
+                ocupada: mesaNueva.ocupada,
+                total: mesaNueva.total,
+                productos: [],
+              );
+              _widgetRebuildKey += 50; // Incremento masivo
+            });
+            print('🔄 Actualización #$i: key=$_widgetRebuildKey');
+            await Future.delayed(Duration(milliseconds: 150));
+          }
+        }
+      }
+
+      // 6. FORZAR RECARGA COMPLETA ADICIONAL
+      print('🔄 Paso 6: Recarga completa adicional...');
+      await Future.delayed(Duration(milliseconds: 500));
+      await _loadMesas();
+
+      if (mounted) {
+        setState(() {
+          _widgetRebuildKey += 100; // Incremento final masivo
+        });
+      }
+
+      print('✅ RECONSTRUCCIÓN TOTAL COMPLETADA');
+      print('🎯 ${mesa.nombre}: ${mesa.total} -> $totalReal');
+      print('🔑 Key final: $_widgetRebuildKey');
+    } catch (e) {
+      print('❌ Error en reconstrucción total: $e');
+      // Fallback: recarga ultra agresiva
+      await _recargarMesasConCards();
+    }
+  }
+
+  /// Obtiene pedidos activos reales desde el backend
+  Future<List<Pedido>> _obtenerPedidosActivosReales(String nombreMesa) async {
+    final pedidos = await _pedidoService.getPedidosByMesa(nombreMesa);
+    return pedidos
+        .where(
+          (p) =>
+              p.estado != 'pagado' &&
+              p.estado != 'cancelado' &&
+              p.estado != EstadoPedido.pagado &&
+              p.estado != EstadoPedido.cancelado,
+        )
+        .toList();
+  }
+
+  /// VERIFICA el estado real de una mesa en tiempo de construcción del widget
+  void _verificarEstadoRealMesa(Mesa mesa) {
+    // Hacer esta verificación de forma asíncrona para no bloquear el build
+    Future.microtask(() async {
+      try {
+        final pedidos = await _pedidoService.getPedidosByMesa(mesa.nombre);
+        final pedidosActivos = pedidos
+            .where(
+              (p) =>
+                  p.estado != 'pagado' &&
+                  p.estado != 'cancelado' &&
+                  p.estado != EstadoPedido.pagado &&
+                  p.estado != EstadoPedido.cancelado,
+            )
+            .toList();
+
+        double totalReal = pedidosActivos.fold(0.0, (sum, p) => sum + p.total);
+        bool ocupadaReal = pedidosActivos.isNotEmpty;
+
+        print('🔍 VERIFICACIÓN REAL ${mesa.nombre}:');
+        print(
+          '   - Card muestra: total=${mesa.total}, ocupada=${mesa.ocupada}',
+        );
+        print('   - Reality check: total=$totalReal, ocupada=$ocupadaReal');
+        print('   - Pedidos activos: ${pedidosActivos.length}');
+
+        if (mesa.total != totalReal || mesa.ocupada != ocupadaReal) {
+          print('🚨 ¡INCONSISTENCIA DETECTADA EN TIEMPO REAL!');
+          print('   - Diferencia total: ${mesa.total} vs $totalReal');
+          print('   - Diferencia ocupada: ${mesa.ocupada} vs $ocupadaReal');
+        }
+      } catch (e) {
+        print('❌ Error verificando estado real: $e');
+      }
+    });
+  }
+
   // Eliminar completamente la función _sincronizarEstadoMesas
 
   /// Crea un documento de mesa agrupando varios pedidos
@@ -1598,7 +2067,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
           await _mesaService.updateMesa(mesa);
 
           // Recargar las mesas para reflejar el cambio en la UI
-          _loadMesas();
+          _recargarMesasConCards();
         } catch (updateError) {
           print('❌ Error al corregir mesa ${mesa.nombre}: $updateError');
         }
@@ -1897,7 +2366,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
         int mesasLimpiadas = 0;
 
         // Recargar las mesas
-        await _loadMesas();
+        await _recargarMesasConCards();
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -1956,7 +2425,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
         }
 
         await _mesaService.vaciarMesa(mesa.id);
-        await _loadMesas();
+        await _recargarMesasConCards();
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -1990,7 +2459,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
         });
       }
 
-      await _loadMesas(); // Recargar las mesas
+      await _recargarMesasConCards(); // Recargar las mesas
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -2018,10 +2487,18 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
   Widget _buildMesaCard(Mesa mesa) {
     bool isOcupada = mesa.ocupada || mesa.total > 0;
 
-    // 🔍 DEBUG: Verificar estado de las mesas
-    print(
-      '🔍 MESA ${mesa.nombre}: ocupada=${mesa.ocupada}, total=${mesa.total}, isOcupada=$isOcupada',
-    );
+    // � DEBUG ULTRA DETALLADO
+    final timestamp = DateTime.now().toIso8601String().substring(11, 19);
+    print('� [$timestamp] ===== CONSTRUYENDO CARD ${mesa.nombre} =====');
+    print('🔍 Mesa ID: ${mesa.id}');
+    print('🔍 Mesa.ocupada: ${mesa.ocupada}');
+    print('🔍 Mesa.total: ${mesa.total}');
+    print('🔍 isOcupada calculado: $isOcupada');
+    print('🔍 Widget key: mesa_card_${mesa.id}_$_widgetRebuildKey');
+    print('🔍 Rebuild key actual: $_widgetRebuildKey');
+
+    // VERIFICACIÓN ADICIONAL: obtener pedidos en tiempo real para comparar
+    _verificarEstadoRealMesa(mesa);
 
     Color statusColor = isOcupada ? AppTheme.error : AppTheme.success;
     final userProvider = Provider.of<UserProvider>(context, listen: false);
@@ -2029,13 +2506,18 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
         userProvider.isAdmin && isOcupada && mesa.total > 0;
 
     return LayoutBuilder(
+      key: ValueKey('mesa_card_${mesa.id}_$_widgetRebuildKey'),
       builder: (context, constraints) {
         return GestureDetector(
-          onTap: () {
-            Navigator.push(
+          onTap: () async {
+            final result = await Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => PedidoScreen(mesa: mesa)),
             );
+            // Si se creó o actualizó un pedido, recargar las mesas
+            if (result == true) {
+              await _recargarMesasConCards();
+            }
           },
           onLongPress: userProvider.isAdmin
               ? () => _mostrarMenuMesa(mesa)
@@ -3606,7 +4088,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                   'Moviendo pedido de ${mesa.nombre} a ${mesaSeleccionada.nombre}',
                                 );
                                 // Recarga las mesas y cierra el diálogo
-                                await _loadMesas();
+                                await _recargarMesasConCards();
                                 Navigator.pop(context);
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
@@ -4039,6 +4521,12 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                 backgroundColor: Colors.green,
               ),
             );
+
+            // 🚨 RECONSTRUCCIÓN TOTAL DESDE CERO
+            await _reconstruirCardDesdeCero(mesa);
+
+            // Recargar las mesas inmediatamente después del movimiento
+            await _recargarMesasConCards();
           } catch (e) {
             print('Error moviendo pedido a otra mesa: $e');
             ScaffoldMessenger.of(context).showSnackBar(
@@ -4093,7 +4581,11 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
             backgroundColor: Colors.green,
           ),
         );
-        _loadMesas(); // Recargar las mesas
+
+        // 🚨 RECONSTRUCCIÓN TOTAL DESDE CERO
+        await _reconstruirCardDesdeCero(mesa);
+
+        _recargarMesasConCards(); // Recargar las mesas
 
         print('✅ Procesamiento completado exitosamente');
       } catch (e) {
@@ -4252,7 +4744,14 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
           );
         }
 
-        _recargarPestanaActual();
+        // 🚨 RECONSTRUCCIÓN TOTAL DESDE CERO
+        await _reconstruirCardDesdeCero(mesa);
+
+        // Recargar las mesas para reflejar los cambios en la UI
+        await _recargarMesasConCards();
+
+        // Actualizar específicamente la mesa para reflejar el cambio inmediato del pago parcial
+        await _actualizarMesaEspecifica(mesa);
       } else {
         throw Exception('Error en la respuesta de la API: ${resultado}');
       }
@@ -4510,7 +5009,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
       print('🧩 Cache de formateo limpiado después del pago parcial');
 
       // Recargar datos
-      await _loadMesas();
+      await _recargarMesasConCards();
     } catch (e) {
       print('❌ EXCEPCIÓN EN PAGO PARCIAL: $e');
       print(
@@ -5022,6 +5521,15 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
         //     duration: Duration(seconds: 4),
         //   ),
         // );
+
+        // 🚨 RECONSTRUCCIÓN TOTAL DESDE CERO
+        await _reconstruirCardDesdeCero(mesaOrigen);
+
+        // Recargar las mesas para reflejar los cambios en la UI
+        await _recargarMesasConCards();
+
+        // Actualizar específicamente la mesa origen para reflejar el cambio inmediato
+        await _actualizarMesaEspecifica(mesaOrigen);
       } else {
         print(
           '❌ Error del servicio: ${resultado['message'] ?? 'Error desconocido'}',
@@ -5105,6 +5613,9 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
           ),
         );
       }
+    } finally {
+      // Siempre recargar las mesas al final, independientemente del resultado
+      await _recargarMesasConCards();
     }
   }
 
@@ -6393,6 +6904,27 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
               ),
             )
           : buildMesasLayout(),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          print(
+            '🚨 BOTÓN DEBUG PRESIONADO - RECONSTRUCCIÓN TOTAL DE TODAS LAS MESAS',
+          );
+
+          // Reconstruir todas las mesas ocupadas desde cero
+          for (final mesa in mesas) {
+            if (mesa.ocupada || mesa.total > 0) {
+              print('🔄 Reconstruyendo ${mesa.nombre}...');
+              await _reconstruirCardDesdeCero(mesa);
+            }
+          }
+
+          // Recarga final ultra agresiva
+          await _recargarMesasConCards();
+        },
+        backgroundColor: Colors.red,
+        child: Icon(Icons.refresh, color: Colors.white),
+        tooltip: 'DEBUG: Reconstruir todas las mesas desde cero',
+      ),
     );
   }
 
@@ -6515,6 +7047,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
               ),
               // Grid de mesas para móvil (3 columnas para mejor aprovechamiento)
               GridView.builder(
+                key: ValueKey('mesas_grid_$_widgetRebuildKey'),
                 shrinkWrap: true,
                 physics: NeverScrollableScrollPhysics(),
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -6545,6 +7078,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
 
   Widget buildMesasEspeciales() {
     return LayoutBuilder(
+      key: ValueKey('mesas_especiales_$_widgetRebuildKey'),
       builder: (context, constraints) {
         // Detectar si es móvil usando el breakpoint establecado
         bool isMobile = constraints.maxWidth < 768;
@@ -6643,6 +7177,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
     required double height,
   }) {
     return FutureBuilder<List<Pedido>>(
+      key: ValueKey('mesa_especial_${nombre}_$_widgetRebuildKey'),
       future: _pedidoService.getPedidosByMesa(nombre),
       builder: (context, snapshot) {
         List<Pedido> pedidosActivos = [];
@@ -6980,10 +7515,14 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
 
       if (pedidosActivos.isEmpty) {
         // Si no hay pedidos activos, ir directamente a crear un nuevo pedido
-        Navigator.push(
+        final result = await Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => PedidoScreen(mesa: mesa)),
         );
+        // Si se creó o actualizó un pedido, recargar las mesas
+        if (result == true) {
+          await _recargarMesasConCards();
+        }
         return;
       }
 
@@ -7277,14 +7816,18 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton(
-                    onPressed: () {
+                    onPressed: () async {
                       Navigator.pop(context); // Cerrar el modal
-                      Navigator.push(
+                      final result = await Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (context) => PedidoScreen(mesa: mesa),
                         ),
                       );
+                      // Si se creó o actualizó un pedido, recargar las mesas
+                      if (result == true) {
+                        await _recargarMesasConCards();
+                      }
                     },
                     style: OutlinedButton.styleFrom(
                       foregroundColor: _primary,
@@ -7321,7 +7864,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
     }
   }
 
-  void _navegarAPedido(String nombreMesa) {
+  Future<void> _navegarAPedido(String nombreMesa) async {
     // Método simplificado para navegación directa a crear pedido
     Mesa? mesa = mesas.cast<Mesa?>().firstWhere(
       (m) => m?.nombre.toLowerCase() == nombreMesa.toLowerCase(),
@@ -7338,10 +7881,14 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
       );
     }
 
-    Navigator.push(
+    final result = await Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => PedidoScreen(mesa: mesa!)),
     );
+    // Si se creó o actualizó un pedido, recargar las mesas
+    if (result == true) {
+      await _recargarMesasConCards();
+    }
   }
 
   // Nuevo método para mostrar lista de pedidos de mesas especiales

@@ -2132,25 +2132,24 @@ class _ProductosScreenState extends State<ProductosScreen> {
                     keyboardType: TextInputType.number,
                   ),
                   SizedBox(height: 16),
-                  if (esOpcional) ...[
-                    TextField(
-                      controller: precioController,
-                      style: TextStyle(color: AppTheme.textPrimary),
-                      decoration: InputDecoration(
-                        labelText: 'Precio adicional (opcional)',
-                        labelStyle: TextStyle(
-                          color: AppTheme.textPrimary.withOpacity(0.7),
-                        ),
-                        prefixText: '\$ ',
-                        filled: true,
-                        fillColor: AppTheme.cardBg.withOpacity(0.3),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
+                  // Precio adicional para TODOS los ingredientes (no solo opcionales)
+                  TextField(
+                    controller: precioController,
+                    style: TextStyle(color: AppTheme.textPrimary),
+                    decoration: InputDecoration(
+                      labelText: 'Precio adicional (opcional)',
+                      labelStyle: TextStyle(
+                        color: AppTheme.textPrimary.withOpacity(0.7),
                       ),
-                      keyboardType: TextInputType.number,
+                      prefixText: '\$ ',
+                      filled: true,
+                      fillColor: AppTheme.cardBg.withOpacity(0.3),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
-                  ],
+                    keyboardType: TextInputType.number,
+                  ),
                 ],
               ),
               actions: [
@@ -2199,14 +2198,20 @@ class _ProductosScreenState extends State<ProductosScreen> {
     List<Ingrediente> ingredientesDisponibles,
     List<String> ingredientesSeleccionados,
   ) {
-    List<String> selectedIds = List.from(ingredientesSeleccionados);
+    // Cambiar a Map para manejar ingrediente y cantidad
+    Map<String, double> ingredientesConCantidad = {};
+
+    // Inicializar con ingredientes ya seleccionados (cantidad 1 por defecto)
+    for (String id in ingredientesSeleccionados) {
+      ingredientesConCantidad[id] = 1.0;
+    }
 
     return StatefulBuilder(
       builder: (context, setState) {
         return AlertDialog(
           backgroundColor: AppTheme.cardBg,
           title: Text(
-            'Seleccionar Ingredientes',
+            'Configurar Ingredientes',
             style: TextStyle(color: AppTheme.textPrimary),
           ),
           content: SizedBox(
@@ -2215,7 +2220,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
             child: Column(
               children: [
                 Text(
-                  'Selecciona los ingredientes disponibles para este producto:',
+                  'Configura los ingredientes y sus cantidades para este producto:',
                   style: TextStyle(
                     color: AppTheme.textPrimary.withOpacity(0.7),
                     fontSize: 12,
@@ -2227,32 +2232,90 @@ class _ProductosScreenState extends State<ProductosScreen> {
                     itemCount: ingredientesDisponibles.length,
                     itemBuilder: (context, index) {
                       final ingrediente = ingredientesDisponibles[index];
-                      final isSelected = selectedIds.contains(ingrediente.id);
+                      final isSelected = ingredientesConCantidad.containsKey(
+                        ingrediente.id,
+                      );
+                      final cantidad =
+                          ingredientesConCantidad[ingrediente.id] ?? 1.0;
 
-                      return CheckboxListTile(
-                        title: Text(
-                          ingrediente.nombre,
-                          style: TextStyle(color: AppTheme.textPrimary),
-                        ),
-                        subtitle: Text(
-                          '${ingrediente.categoria} - ${ingrediente.unidad}',
-                          style: TextStyle(
-                            color: AppTheme.textPrimary.withOpacity(0.6),
-                            fontSize: 12,
+                      return Card(
+                        color: AppTheme.cardBg.withOpacity(0.5),
+                        child: ListTile(
+                          title: Text(
+                            ingrediente.nombre,
+                            style: TextStyle(color: AppTheme.textPrimary),
+                          ),
+                          subtitle: Text(
+                            '${ingrediente.categoria} - ${ingrediente.unidad}',
+                            style: TextStyle(
+                              color: AppTheme.textPrimary.withOpacity(0.6),
+                              fontSize: 12,
+                            ),
+                          ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (isSelected) ...[
+                                // Campo de cantidad
+                                SizedBox(
+                                  width: 60,
+                                  child: TextFormField(
+                                    initialValue: cantidad.toString(),
+                                    style: TextStyle(
+                                      color: AppTheme.textPrimary,
+                                      fontSize: 12,
+                                    ),
+                                    decoration: InputDecoration(
+                                      labelText: 'Cant.',
+                                      labelStyle: TextStyle(
+                                        color: AppTheme.textPrimary.withOpacity(
+                                          0.7,
+                                        ),
+                                        fontSize: 10,
+                                      ),
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(5),
+                                      ),
+                                      contentPadding: EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
+                                    ),
+                                    keyboardType: TextInputType.number,
+                                    onChanged: (value) {
+                                      final nuevaCantidad =
+                                          double.tryParse(value) ?? 1.0;
+                                      setState(() {
+                                        ingredientesConCantidad[ingrediente
+                                                .id] =
+                                            nuevaCantidad;
+                                      });
+                                    },
+                                  ),
+                                ),
+                                SizedBox(width: 8),
+                              ],
+                              // Checkbox para agregar/quitar
+                              Checkbox(
+                                value: isSelected,
+                                onChanged: (bool? value) {
+                                  setState(() {
+                                    if (value == true) {
+                                      ingredientesConCantidad[ingrediente.id] =
+                                          1.0;
+                                    } else {
+                                      ingredientesConCantidad.remove(
+                                        ingrediente.id,
+                                      );
+                                    }
+                                  });
+                                },
+                                activeColor: AppTheme.primary,
+                                checkColor: Colors.white,
+                              ),
+                            ],
                           ),
                         ),
-                        value: isSelected,
-                        onChanged: (bool? value) {
-                          setState(() {
-                            if (value == true) {
-                              selectedIds.add(ingrediente.id);
-                            } else {
-                              selectedIds.remove(ingrediente.id);
-                            }
-                          });
-                        },
-                        activeColor: AppTheme.primary,
-                        checkColor: Colors.white,
                       );
                     },
                   ),
@@ -2269,7 +2332,11 @@ class _ProductosScreenState extends State<ProductosScreen> {
               ),
             ),
             ElevatedButton(
-              onPressed: () => Navigator.of(context).pop(selectedIds),
+              onPressed: () {
+                // Retornar solo los IDs seleccionados (manteniendo compatibilidad)
+                final selectedIds = ingredientesConCantidad.keys.toList();
+                Navigator.of(context).pop(selectedIds);
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.primary,
               ),

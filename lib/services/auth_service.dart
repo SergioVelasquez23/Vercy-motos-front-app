@@ -132,15 +132,11 @@ class AuthService {
     String password,
   ) async {
     try {
-      print('🔐 Intentando iniciar sesión con: $email en URL: $baseUrl');
       final response = await http.post(
         Uri.parse(baseUrl),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'email': email, 'password': password}),
       );
-
-      print('🔐 Respuesta del servidor: ${response.statusCode}');
-      print('🔐 Cuerpo de la respuesta: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = response.body.isNotEmpty
@@ -149,7 +145,6 @@ class AuthService {
 
         // Guardar el token si existe
         if (data != null && data.containsKey('token')) {
-          print('✅ Token recibido correctamente');
           await saveToken(data['token']);
         } else {
           print('⚠️ La respuesta no contiene un token');
@@ -195,16 +190,13 @@ class AuthService {
   }
 
   Future<void> saveToken(String token) async {
-    print('🔒 Guardando token en storage...');
     try {
       if (kIsWeb) {
         // Para web, usa localStorage
         // ignore: undefined_prefixed_name
         await Future.value(html.window.localStorage['jwt_token'] = token);
-        print('✅ Token guardado en localStorage');
       } else {
         await storage.write(key: 'jwt_token', value: token);
-        print('✅ Token guardado en SecureStorage');
       }
     } catch (e) {
       print('❌ Error guardando token: $e');
@@ -215,21 +207,9 @@ class AuthService {
   // Método para verificar si un token es válido
   Future<bool> verificarToken(String token) async {
     try {
-      print(
-        '🔍 Verificando token en: ${ApiConfig.instance.endpoints.auth.userInfo}',
-      );
-      print(
-        '🔍 Token (primeros 20 caracteres): ${token.substring(0, token.length > 20 ? 20 : token.length)}...',
-      );
-
       // Decodificar el token para depuración
       try {
         final payload = JwtUtils.decodeToken(token);
-        print('🔍 Contenido del token JWT:');
-        print('   - ID: ${payload['_id']}');
-        print('   - Nombre: ${payload['name']}');
-        print('   - Email: ${payload['email']}');
-        print('   - Roles: ${payload['roles']}');
       } catch (e) {
         print('⚠️ Error decodificando token: $e');
       }
@@ -242,17 +222,12 @@ class AuthService {
         },
       );
 
-      print('🔍 Verificando token - Respuesta: ${response.statusCode}');
-      print('🔍 Cuerpo de la respuesta: ${response.body}');
-
       // Si la respuesta es exitosa, analizamos el contenido para asegurarnos de que el token es válido
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['success'] == true) {
-          print('✅ Token válido - Datos del usuario recibidos');
           return true;
         } else {
-          print('⚠️ Respuesta 200 pero con éxito=false: ${data['message']}');
           return false;
         }
       }
