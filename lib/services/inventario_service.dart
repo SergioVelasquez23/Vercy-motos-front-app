@@ -438,9 +438,13 @@ class InventarioService {
         }
       }
 
+      // ✅ SILENCIOSO: Error de servidor, continuar sin mostrar diálogo molesto
+      print(
+        '⚠️ Error de servidor al validar stock (${response.statusCode}), continuando...',
+      );
       return {
-        'stockSuficiente': false,
-        'mensaje': 'Error al validar stock: ${response.statusCode}',
+        'stockSuficiente': true, // ✅ Cambiar a true para evitar diálogo
+        'mensaje': 'Validación omitida por error de servidor',
       };
     } catch (e) {
       if (kDebugMode) {

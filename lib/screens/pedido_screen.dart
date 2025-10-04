@@ -283,16 +283,13 @@ class _PedidoScreenState extends State<PedidoScreen> {
     TextEditingController notasController = TextEditingController();
     String? ingredienteOpcionalSeleccionado; // Para radio buttons de opcionales
 
-    print('🔍 DEBUGING INGREDIENTES para ${producto.nombre}:');
-    print('  - ingredientesDisponibles: ${producto.ingredientesDisponibles}');
-    print(
-      '  - ingredientesRequeridos: ${producto.ingredientesRequeridos.length} items',
-    );
-    for (var ingrediente in producto.ingredientesRequeridos) {
-      print(
-        '    * Requerido: ID="${ingrediente.ingredienteId}", Nombre="${ingrediente.ingredienteNombre}"',
-      );
-    }
+    // ✅ COMENTADO: Logs de debugging detallados removidos
+    // print('🔍 DEBUGING INGREDIENTES para ${producto.nombre}:');
+    // print('  - ingredientesDisponibles: ${producto.ingredientesDisponibles}');
+    // print('  - ingredientesRequeridos: ${producto.ingredientesRequeridos.length} items');
+    // for (var ingrediente in producto.ingredientesRequeridos) {
+    //   print('    * Requerido: ID="${ingrediente.ingredienteId}", Nombre="${ingrediente.ingredienteNombre}"');
+    // }
     print(
       '  - ingredientesOpcionales: ${producto.ingredientesOpcionales.length} items',
     );
@@ -311,9 +308,8 @@ class _PedidoScreenState extends State<PedidoScreen> {
 
     // Agregar ingredientes opcionales con precios SOLO para selección
     for (var ingrediente in producto.ingredientesOpcionales) {
-      print(
-        '🔍 Procesando ingrediente opcional: ID="${ingrediente.ingredienteId}", Nombre="${ingrediente.ingredienteNombre}"',
-      );
+      // ✅ COMENTADO: Log de procesamiento detallado removido
+      // print('🔍 Procesando ingrediente opcional: ID="${ingrediente.ingredienteId}", Nombre="${ingrediente.ingredienteNombre}"');
 
       String nombreConPrecio = ingrediente.ingredienteNombre;
       if (ingrediente.precioAdicional > 0) {
@@ -321,18 +317,16 @@ class _PedidoScreenState extends State<PedidoScreen> {
             ' (+\$${ingrediente.precioAdicional.toStringAsFixed(0)})';
       }
 
-      print('🔍 Nombre con precio generado: "$nombreConPrecio"');
+      // ✅ COMENTADO: Log de nombre con precio removido
+      // print('🔍 Nombre con precio generado: "$nombreConPrecio"');
       ingredientesOpcionales.add(nombreConPrecio);
     }
 
     // Los requeridos se agregan automáticamente al resultado final, NO para selección
-    print('📋 Ingredientes básicos: ${ingredientesBasicos.length}');
-    print(
-      '📋 Ingredientes opcionales para selección: ${ingredientesOpcionales.length}',
-    );
-    print(
-      '📋 Ingredientes requeridos (auto): ${producto.ingredientesRequeridos.length}',
-    );
+    // ✅ COMENTADO: Logs de conteo básico removidos
+    // print('📋 Ingredientes básicos: ${ingredientesBasicos.length}');
+    // print('📋 Ingredientes opcionales para selección: ${ingredientesOpcionales.length}');
+    // print('📋 Ingredientes requeridos (auto): ${producto.ingredientesRequeridos.length}');
 
     final resultado = await showDialog<Map<String, dynamic>>(
       context: context,
@@ -851,7 +845,8 @@ class _PedidoScreenState extends State<PedidoScreen> {
           }
         }
       } else {
-        print('ℹ️ Mesa disponible, creando nuevo pedido');
+        // ✅ COMENTADO: Log de mesa disponible removido
+        // print('ℹ️ Mesa disponible, creando nuevo pedido');
         esPedidoExistente = false;
         productosMesa = [];
       }
@@ -887,15 +882,12 @@ class _PedidoScreenState extends State<PedidoScreen> {
         producto.ingredientesRequeridos.isNotEmpty &&
         producto.ingredientesOpcionales.isEmpty;
 
-    print('🔍 ANÁLISIS DEL PRODUCTO: ${producto.nombre}');
-    print(
-      '  - Ingredientes requeridos: ${producto.ingredientesRequeridos.length}',
-    );
-    print(
-      '  - Ingredientes opcionales: ${producto.ingredientesOpcionales.length}',
-    );
-    print('  - Solo tiene requeridos: $soloTieneRequeridos');
-    print('  - Tiene opcionales: $tieneIngredientesOpcionales');
+    // ✅ COMENTADO: Log de análisis detallado removido para reducir ruido
+    // print('🔍 ANÁLISIS DEL PRODUCTO: ${producto.nombre}');
+    // print('  - Ingredientes requeridos: ${producto.ingredientesRequeridos.length}');
+    // print('  - Ingredientes opcionales: ${producto.ingredientesOpcionales.length}');
+    // print('  - Solo tiene requeridos: $soloTieneRequeridos');
+    // print('  - Tiene opcionales: $tieneIngredientesOpcionales');
 
     // Si el producto indica que tiene ingredientes pero no los tiene cargados, intentar cargarlos
     if (!tieneIngredientesOpcionales &&

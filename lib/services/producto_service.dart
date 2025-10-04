@@ -37,7 +37,8 @@ class ProductoService {
           .get(Uri.parse(url), headers: headers)
           .timeout(Duration(seconds: 10));
 
-      print('📦 Response status: ${response.statusCode}');
+      // ✅ COMENTADO: Log de respuesta HTTP removido
+      // print('📦 Response status: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
@@ -357,7 +358,8 @@ class ProductoService {
         }
 
         final List<dynamic> jsonList = jsonBody['data'];
-        print('✅ Productos encontrados: ${jsonList.length}');
+        // ✅ COMENTADO: Log de productos encontrados removido
+        // print('✅ Productos encontrados: ${jsonList.length}');
         return jsonList.map((json) => Producto.fromJson(json)).toList();
       } else {
         throw Exception('Error del servidor: ${response.statusCode}');

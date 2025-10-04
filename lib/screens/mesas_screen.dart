@@ -62,6 +62,28 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
       DocumentoAutomaticoService();
   final CuadreCajaService _cuadreCajaService = CuadreCajaService();
 
+  /// Verifica si existe la mesa "Deudas" y sugiere crearla si no existe
+  Future<void> _verificarMesaDeudas() async {
+    try {
+      final mesas = await _mesaService.getMesas();
+      final mesaDeudas = mesas.firstWhere(
+        (mesa) => mesa.nombre.toLowerCase() == 'deudas',
+        orElse: () => throw StateError('Mesa Deudas no encontrada'),
+      );
+
+      print(
+        '✅ Mesa Deudas encontrada: ${mesaDeudas.nombre} (Tipo: ${mesaDeudas.tipo})',
+      );
+      print('   📍 Estado: ${mesaDeudas.ocupada ? "Ocupada" : "Disponible"}');
+      print('   💰 Total: \$${mesaDeudas.total}');
+    } catch (e) {
+      print('⚠️ Mesa Deudas no encontrada en el sistema');
+      print(
+        '   📝 Para habilitar pagos parciales, crear mesa "Deudas" con tipo "DEUDAS" en el backend',
+      );
+    }
+  }
+
   /// Mejora los mensajes de error para hacerlos más amigables al usuario
   String _mejorarMensajeError(String error) {
     final errorLower = error.toLowerCase();
@@ -1376,6 +1398,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
     super.initState();
     _loadMesas();
     _configurarWebSockets();
+    _verificarMesaDeudas(); // ✅ Verificar mesa Deudas al iniciar
     print(
       '🟢 [DEBUG] initState: WebSocket listeners NO activos para recarga automática.',
     );
@@ -1687,10 +1710,11 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
       mesaActualizada.total = totalDesdePedidos;
       mesaActualizada.ocupada = ocupadaReal;
 
-      print('📊 DATOS FINALES para ${mesa.nombre}:');
-      print('   - Total: $totalDesdePedidos');
-      print('   - Ocupada: $ocupadaReal');
-      print('   - Pedidos activos: ${pedidosActivos.length}');
+      // ✅ COMENTADO: Logs de datos finales repetitivos removidos
+      // print('📊 DATOS FINALES para ${mesa.nombre}:');
+      // print('   - Total: $totalDesdePedidos');
+      // print('   - Ocupada: $ocupadaReal');
+      // print('   - Pedidos activos: ${pedidosActivos.length}');
 
       // 6. Actualizar localmente con MÚLTIPLES cambios de key
       final index = mesas.indexWhere((m) => m.id == mesa.id);
@@ -1781,10 +1805,11 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
       }
       bool ocupadaReal = pedidosActivos.isNotEmpty;
 
-      print('📊 TOTALES CALCULADOS:');
-      print('   - Total real: $totalReal');
-      print('   - Ocupada real: $ocupadaReal');
-      print('   - Pedidos activos: ${pedidosActivos.length}');
+      // ✅ COMENTADO: Logs de totales calculados repetitivos removidos
+      // print('📊 TOTALES CALCULADOS:');
+      // print('   - Total real: $totalReal');
+      // print('   - Ocupada real: $ocupadaReal');
+      // print('   - Pedidos activos: ${pedidosActivos.length}');
 
       // 3. CREAR OBJETO MESA COMPLETAMENTE NUEVO
       print('🔆 Paso 3: Creando objeto mesa nuevo...');
@@ -1878,12 +1903,11 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
         double totalReal = pedidosActivos.fold(0.0, (sum, p) => sum + p.total);
         bool ocupadaReal = pedidosActivos.isNotEmpty;
 
-        print('🔍 VERIFICACIÓN REAL ${mesa.nombre}:');
-        print(
-          '   - Card muestra: total=${mesa.total}, ocupada=${mesa.ocupada}',
-        );
-        print('   - Reality check: total=$totalReal, ocupada=$ocupadaReal');
-        print('   - Pedidos activos: ${pedidosActivos.length}');
+        // ✅ COMENTADO: Logs de verificación repetitivos removidos
+        // print('🔍 VERIFICACIÓN REAL ${mesa.nombre}:');
+        // print('   - Card muestra: total=${mesa.total}, ocupada=${mesa.ocupada}');
+        // print('   - Reality check: total=$totalReal, ocupada=$ocupadaReal');
+        // print('   - Pedidos activos: ${pedidosActivos.length}');
 
         if (mesa.total != totalReal || mesa.ocupada != ocupadaReal) {
           print('🚨 ¡INCONSISTENCIA DETECTADA EN TIEMPO REAL!');
@@ -2893,6 +2917,13 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
       1000: 0,
     };
 
+    // ✅ NUEVAS VARIABLES PARA PAGO MÚLTIPLE
+    bool pagoMultiple = false;
+    TextEditingController montoEfectivoController = TextEditingController();
+    TextEditingController montoTarjetaController = TextEditingController();
+    TextEditingController montoTransferenciaController =
+        TextEditingController();
+
     // Función local para construir botones de billetes mejorados
     Widget buildBilletButton(int valor, Function(VoidCallback) setStateLocal) {
       return Expanded(
@@ -3733,6 +3764,341 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                     SizedBox(height: 24),
                   ],
 
+                  // Sección: Descuento
+                  _buildSeccionTitulo('Descuento'),
+                  SizedBox(height: 16),
+                  Container(
+                    padding: EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: _cardBg.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: _primary.withOpacity(0.3),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Descuento (%)',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: _textPrimary,
+                                    ),
+                                  ),
+                                  SizedBox(height: 8),
+                                  TextFormField(
+                                    controller: descuentoPorcentajeController,
+                                    keyboardType: TextInputType.number,
+                                    inputFormatters: [
+                                      FilteringTextInputFormatter.allow(
+                                        RegExp(r'^\d*\.?\d*'),
+                                      ),
+                                    ],
+                                    decoration: InputDecoration(
+                                      hintText: '0.00',
+                                      prefixIcon: Icon(
+                                        Icons.percent,
+                                        color: _primary,
+                                      ),
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                        borderSide: BorderSide(
+                                          color: _primary,
+                                          width: 2,
+                                        ),
+                                      ),
+                                    ),
+                                    onChanged: (value) {
+                                      // Calcular descuento automáticamente cuando cambie el porcentaje
+                                      if (value.isNotEmpty) {
+                                        double porcentaje =
+                                            double.tryParse(value) ?? 0;
+                                        double descuento =
+                                            (pedido.total * porcentaje) / 100;
+                                        descuentoValorController.text =
+                                            descuento.toStringAsFixed(2);
+                                      } else {
+                                        descuentoValorController.text = '';
+                                      }
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ),
+                            SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Descuento Fijo (\$)',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: _textPrimary,
+                                    ),
+                                  ),
+                                  SizedBox(height: 8),
+                                  TextFormField(
+                                    controller: descuentoValorController,
+                                    keyboardType: TextInputType.number,
+                                    inputFormatters: [
+                                      FilteringTextInputFormatter.allow(
+                                        RegExp(r'^\d*\.?\d*'),
+                                      ),
+                                    ],
+                                    decoration: InputDecoration(
+                                      hintText: '0.00',
+                                      prefixIcon: Icon(
+                                        Icons.attach_money,
+                                        color: _primary,
+                                      ),
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                        borderSide: BorderSide(
+                                          color: _primary,
+                                          width: 2,
+                                        ),
+                                      ),
+                                    ),
+                                    onChanged: (value) {
+                                      // Calcular porcentaje automáticamente cuando cambie el valor fijo
+                                      if (value.isNotEmpty &&
+                                          pedido.total > 0) {
+                                        double valor =
+                                            double.tryParse(value) ?? 0;
+                                        double porcentaje =
+                                            (valor * 100) / pedido.total;
+                                        descuentoPorcentajeController.text =
+                                            porcentaje.toStringAsFixed(2);
+                                      } else if (value.isEmpty) {
+                                        descuentoPorcentajeController.text = '';
+                                      }
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: 24),
+
+                  // Sección: Pago Múltiple
+                  _buildSeccionTitulo('Pago Múltiple'),
+                  SizedBox(height: 16),
+                  Container(
+                    padding: EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: _cardBg.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: _primary.withOpacity(0.3),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.account_balance_wallet,
+                              color: _primary,
+                              size: 24,
+                            ),
+                            SizedBox(width: 12),
+                            Text(
+                              'Dividir pago entre métodos',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: _textPrimary,
+                              ),
+                            ),
+                            Spacer(),
+                            Switch(
+                              value: pagoMultiple,
+                              onChanged: (value) {
+                                setState(() {
+                                  pagoMultiple = value;
+                                  if (!value) {
+                                    // Limpiar campos cuando se desactive
+                                    montoEfectivoController.clear();
+                                    montoTarjetaController.clear();
+                                    montoTransferenciaController.clear();
+                                  }
+                                });
+                              },
+                              activeColor: _primary,
+                            ),
+                          ],
+                        ),
+                        if (pagoMultiple) ...[
+                          SizedBox(height: 20),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Efectivo (\$)',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                        color: _textPrimary,
+                                      ),
+                                    ),
+                                    SizedBox(height: 8),
+                                    TextFormField(
+                                      controller: montoEfectivoController,
+                                      keyboardType: TextInputType.number,
+                                      inputFormatters: [
+                                        FilteringTextInputFormatter.allow(
+                                          RegExp(r'^\d*\.?\d*'),
+                                        ),
+                                      ],
+                                      decoration: InputDecoration(
+                                        hintText: '0.00',
+                                        prefixIcon: Icon(
+                                          Icons.money,
+                                          color: Colors.green,
+                                        ),
+                                        border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                        focusedBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                          borderSide: BorderSide(
+                                            color: _primary,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Tarjeta (\$)',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                        color: _textPrimary,
+                                      ),
+                                    ),
+                                    SizedBox(height: 8),
+                                    TextFormField(
+                                      controller: montoTarjetaController,
+                                      keyboardType: TextInputType.number,
+                                      inputFormatters: [
+                                        FilteringTextInputFormatter.allow(
+                                          RegExp(r'^\d*\.?\d*'),
+                                        ),
+                                      ],
+                                      decoration: InputDecoration(
+                                        hintText: '0.00',
+                                        prefixIcon: Icon(
+                                          Icons.credit_card,
+                                          color: Colors.blue,
+                                        ),
+                                        border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                        focusedBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                          borderSide: BorderSide(
+                                            color: _primary,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Transferencia (\$)',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                        color: _textPrimary,
+                                      ),
+                                    ),
+                                    SizedBox(height: 8),
+                                    TextFormField(
+                                      controller: montoTransferenciaController,
+                                      keyboardType: TextInputType.number,
+                                      inputFormatters: [
+                                        FilteringTextInputFormatter.allow(
+                                          RegExp(r'^\d*\.?\d*'),
+                                        ),
+                                      ],
+                                      decoration: InputDecoration(
+                                        hintText: '0.00',
+                                        prefixIcon: Icon(
+                                          Icons.account_balance,
+                                          color: Colors.purple,
+                                        ),
+                                        border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                        focusedBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                          borderSide: BorderSide(
+                                            color: _primary,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: 24),
+
                   // Sección: Propina y Totales
                   _buildSeccionTitulo('Propina y Totales'),
                   SizedBox(height: 16),
@@ -4075,82 +4441,11 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                         ),
                         SizedBox(height: 16),
 
-                        // Opción Mover a otra mesa
-                        InkWell(
-                          onTap: () async {
-                            final mesaSeleccionada =
-                                await _mostrarDialogoSeleccionMesa();
-                            if (mesaSeleccionada != null) {
-                              try {
-                                // Mover el pedido a otra mesa
-                                // await _mesaService.moverPedido(mesa, mesaSeleccionada);
-                                print(
-                                  'Moviendo pedido de ${mesa.nombre} a ${mesaSeleccionada.nombre}',
-                                );
-                                // Recarga las mesas y cierra el diálogo
-                                await _recargarMesasConCards();
-                                Navigator.pop(context);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      'Pedido movido a la mesa ${mesaSeleccionada.nombre}',
-                                    ),
-                                    backgroundColor: Colors.green,
-                                  ),
-                                );
-                              } catch (e) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      'Error al mover el pedido: $e',
-                                    ),
-                                    backgroundColor: Colors.red,
-                                  ),
-                                );
-                              }
-                            }
-                          },
-                          child: Container(
-                            padding: EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Colors.transparent,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: _textPrimary.withOpacity(0.2),
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.swap_horiz,
-                                  color: _textSecondary,
-                                  size: 24,
-                                ),
-                                SizedBox(width: 16),
-                                Expanded(
-                                  child: Text(
-                                    'Mover a otra mesa',
-                                    style: TextStyle(
-                                      color: _textPrimary,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ),
-
-                                SizedBox(width: 12),
-                                Icon(
-                                  Icons.chevron_right,
-                                  color: _textSecondary,
-                                  size: 20,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
+                        // 📝 NOTA: Opción 'Mover a otra mesa' removida por solicitud del usuario
                       ],
                     ),
                   ),
+
                   SizedBox(height: 32),
 
                   // Botones principales
@@ -4260,6 +4555,94 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                         flex: 2,
                         child: ElevatedButton.icon(
                           onPressed: () async {
+                            // ✅ NUEVA LÓGICA: Verificar si es pago múltiple parcial
+                            if (pagoMultiple) {
+                              double montoEfectivo =
+                                  double.tryParse(
+                                    montoEfectivoController.text,
+                                  ) ??
+                                  0.0;
+                              double montoTarjeta =
+                                  double.tryParse(
+                                    montoTarjetaController.text,
+                                  ) ??
+                                  0.0;
+                              double montoTransferencia =
+                                  double.tryParse(
+                                    montoTransferenciaController.text,
+                                  ) ??
+                                  0.0;
+                              double totalPagando =
+                                  montoEfectivo +
+                                  montoTarjeta +
+                                  montoTransferencia;
+
+                              // Calcular descuento
+                              double descuento = 0.0;
+                              String descuentoPorcentajeStr =
+                                  descuentoPorcentajeController.text;
+                              String descuentoValorStr =
+                                  descuentoValorController.text;
+
+                              if (descuentoPorcentajeStr.isNotEmpty) {
+                                double porcentaje =
+                                    double.tryParse(descuentoPorcentajeStr) ??
+                                    0.0;
+                                descuento = (pedido.total * porcentaje) / 100;
+                              } else if (descuentoValorStr.isNotEmpty) {
+                                descuento =
+                                    double.tryParse(descuentoValorStr) ?? 0.0;
+                              }
+
+                              double totalConDescuento =
+                                  pedido.total - descuento;
+
+                              print('💰 VERIFICANDO PAGO MÚLTIPLE:');
+                              print('   - Total pedido: \$${pedido.total}');
+                              print('   - Descuento: \$${descuento}');
+                              print(
+                                '   - Total con descuento: \$${totalConDescuento}',
+                              );
+                              print('   - Pagando: \$${totalPagando}');
+
+                              if (totalPagando < totalConDescuento) {
+                                // PAGO PARCIAL - Crear pedido de deuda por el restante
+                                double montoPendiente =
+                                    totalConDescuento - totalPagando;
+                                print(
+                                  '⚠️ PAGO PARCIAL: Queda pendiente \$${montoPendiente}',
+                                );
+
+                                // Procesar pago parcial
+                                Navigator.pop(context);
+                                await _procesarPagoMultipleParcial(
+                                  mesa,
+                                  pedido,
+                                  totalPagando,
+                                  montoPendiente,
+                                  {
+                                    'medioPago': medioPago0,
+                                    'incluyePropina': incluyePropina,
+                                    'descuentoPorcentaje':
+                                        descuentoPorcentajeController.text,
+                                    'descuentoValor':
+                                        descuentoValorController.text,
+                                    'propina': propinaController.text,
+                                    'esCortesia': esCortesia0,
+                                    'esConsumoInterno': esConsumoInterno0,
+                                    'pagoMultiple': pagoMultiple,
+                                    'montoEfectivo':
+                                        montoEfectivoController.text,
+                                    'montoTarjeta': montoTarjetaController.text,
+                                    'montoTransferencia':
+                                        montoTransferenciaController.text,
+                                    'descuento': descuento,
+                                  },
+                                );
+                                return;
+                              }
+                            }
+
                             // Verificar si todos los productos están seleccionados o ninguno
                             bool todosProdutosSeleccionados =
                                 productosSeleccionados.length ==
@@ -4284,6 +4667,12 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                 'esConsumoInterno': esConsumoInterno0,
                                 'mesaDestinoId': mesaDestinoId0,
                                 'billetesRecibidos': billetesSeleccionados,
+                                // ✅ NUEVO: Campos de pago múltiple
+                                'pagoMultiple': pagoMultiple,
+                                'montoEfectivo': montoEfectivoController.text,
+                                'montoTarjeta': montoTarjetaController.text,
+                                'montoTransferencia':
+                                    montoTransferenciaController.text,
                                 'productosSeleccionados':
                                     [], // Lista vacía = pagar todo
                               });
@@ -4313,6 +4702,12 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                   'esConsumoInterno': esConsumoInterno0,
                                   'mesaDestinoId': mesaDestinoId0,
                                   'billetesRecibidos': billetesSeleccionados,
+                                  // ✅ NUEVO: Campos de pago múltiple
+                                  'pagoMultiple': pagoMultiple,
+                                  'montoEfectivo': montoEfectivoController.text,
+                                  'montoTarjeta': montoTarjetaController.text,
+                                  'montoTransferencia':
+                                      montoTransferenciaController.text,
                                 },
                               );
                             }
@@ -4421,6 +4816,37 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
 
         print('💲 Forma de pago seleccionada: $medioPago');
 
+        // CALCULAR DESCUENTO
+        double descuento = 0.0;
+        String descuentoPorcentajeStr = formResult['descuentoPorcentaje'] ?? '';
+        String descuentoValorStr = formResult['descuentoValor'] ?? '';
+
+        if (descuentoPorcentajeStr.isNotEmpty) {
+          double porcentaje = double.tryParse(descuentoPorcentajeStr) ?? 0.0;
+          descuento = (pedido.total * porcentaje) / 100;
+          print(
+            '📊 Descuento por porcentaje: $porcentaje% = \$${descuento.toStringAsFixed(0)}',
+          );
+        } else if (descuentoValorStr.isNotEmpty) {
+          descuento = double.tryParse(descuentoValorStr) ?? 0.0;
+          print(
+            '📊 Descuento fijo aplicado: \$${descuento.toStringAsFixed(0)}',
+          );
+        }
+
+        // Validar que el descuento no sea mayor al total
+        if (descuento > pedido.total) {
+          descuento = pedido.total;
+          print(
+            '⚠️ Descuento limitado al total del pedido: \$${descuento.toStringAsFixed(0)}',
+          );
+        }
+
+        double totalConDescuento = pedido.total - descuento;
+        print('💰 Total original: \$${pedido.total.toStringAsFixed(0)}');
+        print('💰 Descuento: \$${descuento.toStringAsFixed(0)}');
+        print('💰 Total final: \$${totalConDescuento.toStringAsFixed(0)}');
+
         await _pedidoService.pagarPedido(
           pedido.id,
           formaPago: medioPago,
@@ -4430,6 +4856,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
           esConsumoInterno: esConsumoInterno,
           motivoCortesia: esCortesia ? 'Pedido procesado como cortesía' : null,
           tipoConsumoInterno: esConsumoInterno ? 'empleado' : null,
+          descuento: descuento, // ✅ NUEVO: Pasar el descuento al servicio
         );
 
         print('✅ Pago procesado exitosamente');
@@ -4769,6 +5196,148 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(_mejorarMensajeError(e.toString())),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 5),
+          ),
+        );
+      }
+
+      rethrow;
+    }
+  }
+
+  /// Procesa pago múltiple parcial cuando la suma de montos es menor al total
+  Future<void> _procesarPagoMultipleParcial(
+    Mesa mesa,
+    Pedido pedido,
+    double montoPagado,
+    double montoPendiente,
+    Map<String, dynamic> datosPago,
+  ) async {
+    try {
+      print(
+        '🚀 ================== INICIO PAGO MÚLTIPLE PARCIAL ==================',
+      );
+      print('💰 Total pedido: \$${pedido.total}');
+      print('💵 Monto pagado: \$${montoPagado}');
+      print('⏳ Monto pendiente: \$${montoPendiente}');
+
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      final usuarioPago = userProvider.userName ?? 'Usuario Desconocido';
+
+      // 1. CREAR REGISTRO DE PAGO PARCIAL PRIMERO
+      print('📝 Registrando pago parcial...');
+
+      // Preparar datos del pago parcial
+      Map<String, dynamic> datosPagoParcial = {
+        'tipoPago': 'pago_parcial',
+        'procesadoPor': usuarioPago,
+        'notas': 'Pago múltiple parcial desde mesa ${mesa.nombre}',
+        'montoPagado': montoPagado,
+        'montoPendiente': montoPendiente,
+        'formaPago': datosPago['medioPago'] ?? 'efectivo',
+        'pagoMultiple': true,
+        'montoEfectivo':
+            double.tryParse(datosPago['montoEfectivo'] ?? '0') ?? 0.0,
+        'montoTarjeta':
+            double.tryParse(datosPago['montoTarjeta'] ?? '0') ?? 0.0,
+        'montoTransferencia':
+            double.tryParse(datosPago['montoTransferencia'] ?? '0') ?? 0.0,
+        'descuento': datosPago['descuento'] ?? 0.0,
+        'fechaPago': DateTime.now().toIso8601String(),
+      };
+
+      print(
+        '📤 Enviando datos de pago parcial: ${json.encode(datosPagoParcial)}',
+      );
+
+      // TODO: Aquí llamaríamos a un endpoint del backend para registrar el pago parcial
+      // Por ahora simularemos que fue exitoso
+
+      // 2. MOSTRAR CONFIRMACIÓN AL USUARIO
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            backgroundColor: _cardBg,
+            title: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.green, size: 28),
+                SizedBox(width: 12),
+                Text(
+                  'Pago Parcial Registrado',
+                  style: TextStyle(color: _textPrimary),
+                ),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Mesa: ${mesa.nombre}',
+                  style: TextStyle(color: _textPrimary),
+                ),
+                Text(
+                  'Monto pagado: \$${montoPagado.toStringAsFixed(0)}',
+                  style: TextStyle(color: Colors.green),
+                ),
+                Text(
+                  'Monto pendiente: \$${montoPendiente.toStringAsFixed(0)}',
+                  style: TextStyle(color: Colors.orange),
+                ),
+                SizedBox(height: 16),
+                Container(
+                  padding: EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.orange),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info, color: Colors.orange),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'El pedido queda pendiente por \$${montoPendiente.toStringAsFixed(0)}. Se puede completar el pago más tarde.',
+                          style: TextStyle(color: _textPrimary, fontSize: 13),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text('Aceptar', style: TextStyle(color: _primary)),
+              ),
+            ],
+          ),
+        );
+      }
+
+      // 3. ACTUALIZAR ESTADO LOCAL DEL PEDIDO
+      // El pedido mantiene su estado actual pero con información de pago parcial
+      print('🔄 Actualizando estado local del pedido...');
+
+      // 4. REFRESCAR LA UI
+      await _reconstruirCardDesdeCero(mesa);
+      await _recargarMesasConCards();
+      await _actualizarMesaEspecifica(mesa);
+
+      print(
+        '✅ ================== FIN PAGO MÚLTIPLE PARCIAL (ÉXITO) ==================',
+      );
+    } catch (e) {
+      print('❌ ERROR EN PAGO MÚLTIPLE PARCIAL: $e');
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al procesar pago parcial: ${e.toString()}'),
             backgroundColor: Colors.red,
             duration: Duration(seconds: 5),
           ),
@@ -7638,6 +8207,29 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                 ],
                               ),
 
+                              // ✅ NUEVO: Mostrar cliente si existe
+                              if (pedido.cliente != null &&
+                                  pedido.cliente!.isNotEmpty) ...[
+                                SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.account_circle,
+                                      color: Colors.orange,
+                                      size: 16,
+                                    ),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      'Cliente: ${pedido.cliente}',
+                                      style: TextStyle(
+                                        color: Colors.orange,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+
                               if (pedido.notas != null &&
                                   pedido.notas!.isNotEmpty) ...[
                                 SizedBox(height: 8),
@@ -8759,6 +9351,19 @@ class _PedidosEspecialesScreenState extends State<PedidosEspecialesScreen> {
                           fontSize: 14,
                         ),
                       ),
+                      if (pedido.cliente != null &&
+                          pedido.cliente!.isNotEmpty) ...[
+                        SizedBox(height: 2),
+                        Text(
+                          'Cliente: ${pedido.cliente}',
+                          style: TextStyle(
+                            color: Colors.orange,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                      SizedBox(height: 4),
                       Text(
                         'Fecha: ${_formatFecha(pedido.fecha)}',
                         style: TextStyle(

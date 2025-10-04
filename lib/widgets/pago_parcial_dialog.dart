@@ -35,6 +35,21 @@ class _PagoParcialDialogState extends State<PagoParcialDialog> {
   // Para el cálculo del cambio
   double billetesRecibidos = 0.0;
 
+  // ✅ NUEVO: Variables para descuentos
+  double descuentoPorcentaje = 0.0;
+  double descuentoValor = 0.0;
+  TextEditingController descuentoPorcentajeController = TextEditingController();
+  TextEditingController descuentoValorController = TextEditingController();
+
+  // ✅ NUEVO: Variables para pagos múltiples
+  bool pagoMultiple = false;
+  double montoEfectivo = 0.0;
+  double montoTarjeta = 0.0;
+  double montoTransferencia = 0.0;
+  TextEditingController montoEfectivoController = TextEditingController();
+  TextEditingController montoTarjetaController = TextEditingController();
+  TextEditingController montoTransferenciaController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
@@ -56,7 +71,27 @@ class _PagoParcialDialogState extends State<PagoParcialDialog> {
     return total;
   }
 
-  double get totalConPropina => totalSeleccionado + propina;
+  double get totalConDescuentos {
+    double totalConDesc = totalSeleccionado;
+
+    // Aplicar descuento por porcentaje primero
+    if (descuentoPorcentaje > 0) {
+      totalConDesc = totalConDesc * (1 - (descuentoPorcentaje / 100));
+    }
+
+    // Luego restar descuento por valor
+    if (descuentoValor > 0) {
+      totalConDesc = totalConDesc - descuentoValor;
+    }
+
+    // No puede ser negativo
+    return totalConDesc < 0 ? 0 : totalConDesc;
+  }
+
+  double get totalConPropina => totalConDescuentos + propina;
+
+  double get totalPagosMultiples =>
+      montoEfectivo + montoTarjeta + montoTransferencia;
 
   double get cambio {
     if (formaPago == 'efectivo' && billetesRecibidos > 0) {
@@ -81,8 +116,8 @@ class _PagoParcialDialogState extends State<PagoParcialDialog> {
       backgroundColor: AppTheme.cardBg,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Container(
-        width: MediaQuery.of(context).size.width * 0.9,
-        height: MediaQuery.of(context).size.height * 0.8,
+        width: MediaQuery.of(context).size.width * 0.95,
+        height: MediaQuery.of(context).size.height * 0.85,
         padding: EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -294,6 +329,46 @@ class _PagoParcialDialogState extends State<PagoParcialDialog> {
                       ),
                     ],
                   ),
+                  // ✅ NUEVO: Mostrar descuentos si existen
+                  if (descuentoPorcentaje > 0 || descuentoValor > 0) ...[
+                    SizedBox(height: 8),
+                    if (descuentoPorcentaje > 0)
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Descuento (${descuentoPorcentaje.toStringAsFixed(1)}%):',
+                            style: TextStyle(color: Colors.green, fontSize: 14),
+                          ),
+                          Text(
+                            '- ${formatCurrency(totalSeleccionado * (descuentoPorcentaje / 100))}',
+                            style: TextStyle(
+                              color: Colors.green,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    if (descuentoValor > 0)
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Descuento fijo:',
+                            style: TextStyle(color: Colors.green, fontSize: 14),
+                          ),
+                          Text(
+                            '- ${formatCurrency(descuentoValor)}',
+                            style: TextStyle(
+                              color: Colors.green,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                  ],
                   if (propina > 0) ...[
                     SizedBox(height: 8),
                     Row(
@@ -363,16 +438,341 @@ class _PagoParcialDialogState extends State<PagoParcialDialog> {
                     SizedBox(height: 8),
 
                     // Selector de forma de pago
-                    Wrap(
-                      spacing: 8,
+                    Row(
                       children: [
-                        _buildFormaPagoChip('efectivo', 'Efectivo'),
-                        _buildFormaPagoChip('tarjeta', 'Tarjeta'),
-                        _buildFormaPagoChip('transferencia', 'Transferencia'),
+                        Wrap(
+                          spacing: 8,
+                          children: [
+                            _buildFormaPagoChip('efectivo', 'Efectivo'),
+                            _buildFormaPagoChip('tarjeta', 'Tarjeta'),
+                            _buildFormaPagoChip(
+                              'transferencia',
+                              'Transferencia',
+                            ),
+                          ],
+                        ),
+                        SizedBox(width: 16),
+                        // ✅ NUEVO: Switch para pago múltiple
+                        Row(
+                          children: [
+                            Text(
+                              'Pago mixto:',
+                              style: TextStyle(
+                                color: AppTheme.textPrimary,
+                                fontSize: 14,
+                              ),
+                            ),
+                            SizedBox(width: 8),
+                            Switch(
+                              value: pagoMultiple,
+                              onChanged: (value) {
+                                setState(() {
+                                  pagoMultiple = value;
+                                  // Limpiar campos si se desactiva
+                                  if (!value) {
+                                    montoEfectivo = 0.0;
+                                    montoTarjeta = 0.0;
+                                    montoTransferencia = 0.0;
+                                    montoEfectivoController.clear();
+                                    montoTarjetaController.clear();
+                                    montoTransferenciaController.clear();
+                                  }
+                                });
+                              },
+                              activeColor: AppTheme.primary,
+                            ),
+                          ],
+                        ),
                       ],
                     ),
 
                     SizedBox(height: 16),
+
+                    // ✅ NUEVO: Sección de descuentos
+                    Container(
+                      padding: EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppTheme.surfaceDark,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: AppTheme.primary.withOpacity(0.2),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Descuentos:',
+                            style: TextStyle(
+                              color: AppTheme.textPrimary,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  controller: descuentoPorcentajeController,
+                                  decoration: InputDecoration(
+                                    labelText: 'Descuento %',
+                                    hintText: '0',
+                                    suffixText: '%',
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                      borderSide: BorderSide(
+                                        color: AppTheme.primary,
+                                      ),
+                                    ),
+                                  ),
+                                  keyboardType: TextInputType.number,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      descuentoPorcentaje =
+                                          double.tryParse(value) ?? 0.0;
+                                      // Limpiar descuento por valor si se usa porcentaje
+                                      if (descuentoPorcentaje > 0) {
+                                        descuentoValor = 0.0;
+                                        descuentoValorController.clear();
+                                      }
+                                    });
+                                  },
+                                ),
+                              ),
+                              SizedBox(width: 16),
+                              Expanded(
+                                child: TextField(
+                                  controller: descuentoValorController,
+                                  decoration: InputDecoration(
+                                    labelText: 'Descuento fijo',
+                                    hintText: '0',
+                                    prefixText: '\$ ',
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                      borderSide: BorderSide(
+                                        color: AppTheme.primary,
+                                      ),
+                                    ),
+                                  ),
+                                  keyboardType: TextInputType.number,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      descuentoValor =
+                                          double.tryParse(value) ?? 0.0;
+                                      // Limpiar descuento por porcentaje si se usa valor
+                                      if (descuentoValor > 0) {
+                                        descuentoPorcentaje = 0.0;
+                                        descuentoPorcentajeController.clear();
+                                      }
+                                    });
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    SizedBox(height: 16),
+
+                    // ✅ NUEVO: Sección de pagos múltiples
+                    if (pagoMultiple) ...[
+                      Container(
+                        padding: EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: AppTheme.surfaceDark,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: AppTheme.primary.withOpacity(0.2),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Distribución del Pago:',
+                                  style: TextStyle(
+                                    color: AppTheme.textPrimary,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text(
+                                  'Total: ${formatCurrency(totalConPropina)}',
+                                  style: TextStyle(
+                                    color: AppTheme.primary,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: TextField(
+                                    controller: montoEfectivoController,
+                                    decoration: InputDecoration(
+                                      labelText: 'Efectivo',
+                                      hintText: '0',
+                                      prefixText: '\$ ',
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                        borderSide: BorderSide(
+                                          color: AppTheme.primary,
+                                        ),
+                                      ),
+                                    ),
+                                    keyboardType: TextInputType.number,
+                                    onChanged: (value) {
+                                      setState(() {
+                                        montoEfectivo =
+                                            double.tryParse(value) ?? 0.0;
+                                      });
+                                    },
+                                  ),
+                                ),
+                                SizedBox(width: 8),
+                                Expanded(
+                                  child: TextField(
+                                    controller: montoTarjetaController,
+                                    decoration: InputDecoration(
+                                      labelText: 'Tarjeta',
+                                      hintText: '0',
+                                      prefixText: '\$ ',
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                        borderSide: BorderSide(
+                                          color: AppTheme.primary,
+                                        ),
+                                      ),
+                                    ),
+                                    keyboardType: TextInputType.number,
+                                    onChanged: (value) {
+                                      setState(() {
+                                        montoTarjeta =
+                                            double.tryParse(value) ?? 0.0;
+                                      });
+                                    },
+                                  ),
+                                ),
+                                SizedBox(width: 8),
+                                Expanded(
+                                  child: TextField(
+                                    controller: montoTransferenciaController,
+                                    decoration: InputDecoration(
+                                      labelText: 'Transferencia',
+                                      hintText: '0',
+                                      prefixText: '\$ ',
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                        borderSide: BorderSide(
+                                          color: AppTheme.primary,
+                                        ),
+                                      ),
+                                    ),
+                                    keyboardType: TextInputType.number,
+                                    onChanged: (value) {
+                                      setState(() {
+                                        montoTransferencia =
+                                            double.tryParse(value) ?? 0.0;
+                                      });
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 12),
+                            // Mostrar diferencia
+                            Container(
+                              padding: EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color:
+                                    (totalPagosMultiples - totalConPropina)
+                                            .abs() <
+                                        0.01
+                                    ? Colors.green.withOpacity(0.1)
+                                    : Colors.orange.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color:
+                                      (totalPagosMultiples - totalConPropina)
+                                              .abs() <
+                                          0.01
+                                      ? Colors.green
+                                      : Colors.orange,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'Total pagado:',
+                                    style: TextStyle(
+                                      color: AppTheme.textPrimary,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Text(
+                                        formatCurrency(totalPagosMultiples),
+                                        style: TextStyle(
+                                          color: AppTheme.primary,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                      if ((totalPagosMultiples -
+                                                  totalConPropina)
+                                              .abs() >=
+                                          0.01)
+                                        Text(
+                                          totalPagosMultiples > totalConPropina
+                                              ? 'Exceso: ${formatCurrency(totalPagosMultiples - totalConPropina)}'
+                                              : 'Falta: ${formatCurrency(totalConPropina - totalPagosMultiples)}',
+                                          style: TextStyle(
+                                            color:
+                                                totalPagosMultiples >
+                                                    totalConPropina
+                                                ? Colors.blue
+                                                : Colors.orange,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: 16),
+                    ],
 
                     // Campo de propina
                     Row(
@@ -403,8 +803,8 @@ class _PagoParcialDialogState extends State<PagoParcialDialog> {
                       ],
                     ),
 
-                    // Solo mostrar campo de billetes si es efectivo
-                    if (formaPago == 'efectivo') ...[
+                    // Solo mostrar campo de billetes si es efectivo Y no es pago múltiple
+                    if (formaPago == 'efectivo' && !pagoMultiple) ...[
                       SizedBox(height: 16),
                       TextField(
                         controller: billetesController,
@@ -557,22 +957,48 @@ class _PagoParcialDialogState extends State<PagoParcialDialog> {
       return;
     }
 
-    if (formaPago == 'efectivo' && billetesRecibidos < totalConPropina) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('El dinero recibido es insuficiente'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
+    // ✅ NUEVO: Validaciones para pago múltiple
+    if (pagoMultiple) {
+      if ((totalPagosMultiples - totalConPropina).abs() >= 0.01) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Los montos no coinciden con el total a pagar'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+    } else {
+      // Validación original para pago único
+      if (formaPago == 'efectivo' && billetesRecibidos < totalConPropina) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('El dinero recibido es insuficiente'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
     }
 
+    // ✅ NUEVO: Datos de pago actualizados
     final datosPago = {
-      'formaPago': formaPago,
+      'formaPago': pagoMultiple ? 'multiple' : formaPago,
       'propina': propina,
       'billetesRecibidos': billetesRecibidos,
       'cambio': cambio,
       'total': totalConPropina,
+      'subtotal': totalSeleccionado,
+      'totalConDescuentos': totalConDescuentos,
+      // Descuentos
+      'descuentoPorcentaje': descuentoPorcentaje,
+      'descuentoValor': descuentoValor,
+      // Pago múltiple
+      'pagoMultiple': pagoMultiple,
+      'montoEfectivo': montoEfectivo,
+      'montoTarjeta': montoTarjeta,
+      'montoTransferencia': montoTransferencia,
+      'totalPagosMultiples': totalPagosMultiples,
     };
 
     widget.onPagoConfirmado(itemsParaPagar, datosPago);

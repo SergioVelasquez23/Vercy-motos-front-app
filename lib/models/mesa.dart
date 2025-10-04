@@ -75,13 +75,41 @@ class Mesa {
   };
 
   factory Mesa.fromJson(Map<String, dynamic> json) {
+    // Mapeo mejorado para tipos de mesa del backend
+    TipoMesa tipoMesa = TipoMesa.normal;
+    final tipoString = (json['tipo'] as String?)?.toLowerCase();
+
+    switch (tipoString) {
+      case 'normal':
+        tipoMesa = TipoMesa.normal;
+        break;
+      case 'especial':
+        tipoMesa = TipoMesa.especial;
+        break;
+      case 'auxiliar':
+        tipoMesa = TipoMesa.auxiliar;
+        break;
+      case 'terraza':
+        tipoMesa = TipoMesa.terraza;
+        break;
+      case 'vip':
+        tipoMesa = TipoMesa.vip;
+        break;
+      case 'privada':
+        tipoMesa = TipoMesa.privada;
+        break;
+      case 'deudas':
+        tipoMesa = TipoMesa.deudas;
+        break;
+      default:
+        tipoMesa = TipoMesa.normal;
+        break;
+    }
+
     return Mesa(
       id: json['_id'] ?? '',
       nombre: json['nombre'] ?? '',
-      tipo: TipoMesa.values.firstWhere(
-        (tipo) => tipo.name == json['tipo'],
-        orElse: () => TipoMesa.normal,
-      ),
+      tipo: tipoMesa,
       ocupada: json['ocupada'] ?? false,
       total: (json['total'] ?? 0.0).toDouble(),
       productos:

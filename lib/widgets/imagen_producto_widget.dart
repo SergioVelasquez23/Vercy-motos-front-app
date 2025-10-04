@@ -43,15 +43,15 @@ class ImagenProductoWidget extends StatelessWidget {
 
     // PRIORIDAD 1: Si es una imagen base64, mostrarla directamente (PERSISTENTE)
     if (imagenUrl.startsWith('data:image/')) {
-      print('🎨 Mostrando imagen base64 persistente');
+      // ✅ COMENTADO: Log de imagen base64 removido
+      // print('🎨 Mostrando imagen base64 persistente');
       return _buildImagenBase64(imagenUrl);
     }
 
     // VERIFICACIÓN ESPECIAL: Si la URL contiene el servidor problemático, mostrar ícono por defecto
     if (imagenUrl.contains('sopa-y-carbon.onrender.com')) {
-      print(
-        '⚠️ Servidor problemático detectado, mostrando ícono por defecto: $imagenUrl',
-      );
+      // ✅ COMENTADO: Log de servidor problemático removido
+      // print('⚠️ Servidor problemático detectado, mostrando ícono por defecto: $imagenUrl');
       return _buildIconoDefault();
     }
 

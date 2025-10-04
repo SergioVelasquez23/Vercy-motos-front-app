@@ -282,6 +282,46 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     }
   }
 
+  // ✅ NUEVA: Función para eliminar TODOS los pedidos activos
+  Future<void> _eliminarTodosPedidosActivos() async {
+    final confirmed = await _showConfirmDialog(
+      '🚨 ELIMINAR TODOS LOS PEDIDOS ACTIVOS',
+      'Esto eliminará ABSOLUTAMENTE TODOS los pedidos activos sin importar:\n'
+          '• Su estado (activo, pagado, completado, etc.)\n'
+          '• Su método de pago (efectivo, tarjeta, transferencia)\n'
+          '• Su mesa (incluye domicilios y mesas especiales)\n\n'
+          '🔴 Esta operación NO se puede deshacer.\n\n'
+          '¿Estás COMPLETAMENTE seguro?',
+    );
+
+    if (!confirmed) return;
+
+    setState(() => _isLoading = true);
+    try {
+      final response = await http.delete(
+        Uri.parse('$baseUrl/api/admin/eliminar-todos-pedidos-activos'),
+        headers: headers,
+      );
+
+      final data = json.decode(response.body);
+      if (data['success']) {
+        _showSuccess(
+          '✅ Todos los pedidos activos eliminados: ${data['deletedCount']} pedidos',
+        );
+        setState(
+          () => _lastResult = '🗑️ Pedidos eliminados: ${data['deletedCount']}',
+        );
+        await _loadStats();
+      } else {
+        _showError('Error: ${data['message']}');
+      }
+    } catch (e) {
+      _showError('Error eliminando pedidos activos: $e');
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
   String _formatConteoResult(Map<String, dynamic> data) {
     final conteos = data['conteos'] as Map<String, dynamic>;
     final buffer = StringBuffer();
@@ -589,6 +629,23 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                   ),
                 ),
               ],
+            ),
+
+            SizedBox(height: 12),
+
+            // ✅ NUEVO: Botón para eliminar TODOS los pedidos activos
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _isLoading ? null : _eliminarTodosPedidosActivos,
+                icon: Icon(Icons.delete_sweep),
+                label: Text('🚨 ELIMINAR TODOS LOS PEDIDOS ACTIVOS'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red[800],
+                  foregroundColor: Colors.white,
+                  padding: EdgeInsets.symmetric(vertical: 14),
+                ),
+              ),
             ),
 
             SizedBox(height: 12),

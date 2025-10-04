@@ -10,7 +10,11 @@ enum TipoMesa {
   auxiliar('Mesa Auxiliar', 'Mesa auxiliar para pedidos especiales'),
   terraza('Mesa Terraza', 'Mesa ubicada en terraza o área exterior'),
   vip('Mesa VIP', 'Mesa para clientes VIP con servicio premium'),
-  privada('Mesa Privada', 'Mesa en área privada o reservada');
+  privada('Mesa Privada', 'Mesa en área privada o reservada'),
+  deudas(
+    'Mesa Deudas',
+    'Mesa especial para gestionar deudas y pagos pendientes',
+  );
 
   const TipoMesa(this.nombre, this.descripcion);
 
@@ -32,6 +36,8 @@ enum TipoMesa {
         return 'workspace_premium';
       case TipoMesa.privada:
         return 'meeting_room';
+      case TipoMesa.deudas:
+        return 'account_balance_wallet'; // Ícono de billetera para deudas
     }
   }
 
@@ -50,6 +56,8 @@ enum TipoMesa {
         return 0xFFE91E63; // Rosa
       case TipoMesa.privada:
         return 0xFF795548; // Marrón
+      case TipoMesa.deudas:
+        return 0xFFF44336; // Rojo para deudas
     }
   }
 
@@ -63,6 +71,7 @@ enum TipoMesa {
       case TipoMesa.normal:
       case TipoMesa.auxiliar:
       case TipoMesa.terraza:
+      case TipoMesa.deudas:
         return false;
     }
   }
@@ -79,6 +88,7 @@ enum TipoMesa {
       case TipoMesa.normal:
       case TipoMesa.auxiliar:
       case TipoMesa.terraza:
+      case TipoMesa.deudas:
         return 0.0; // Sin recargo
     }
   }
@@ -98,11 +108,27 @@ enum TipoMesa {
 
   /// Crea desde JSON
   static TipoMesa fromJson(Map<String, dynamic> json) {
-    final tipo = json['tipo'] as String?;
-    return TipoMesa.values.firstWhere(
-      (t) => t.name == tipo,
-      orElse: () => TipoMesa.normal,
-    );
+    final tipo = (json['tipo'] as String?)?.toLowerCase();
+
+    // Mapeo especial para tipos del backend
+    switch (tipo) {
+      case 'normal':
+        return TipoMesa.normal;
+      case 'especial':
+        return TipoMesa.especial;
+      case 'auxiliar':
+        return TipoMesa.auxiliar;
+      case 'terraza':
+        return TipoMesa.terraza;
+      case 'vip':
+        return TipoMesa.vip;
+      case 'privada':
+        return TipoMesa.privada;
+      case 'deudas':
+        return TipoMesa.deudas;
+      default:
+        return TipoMesa.normal;
+    }
   }
 
   /// Obtiene todos los tipos de mesa disponibles para selección
@@ -112,5 +138,6 @@ enum TipoMesa {
     TipoMesa.terraza,
     TipoMesa.vip,
     TipoMesa.privada,
+    TipoMesa.deudas, // ✅ Agregar tipo deudas
   ];
 }

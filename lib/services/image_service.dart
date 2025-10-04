@@ -284,7 +284,8 @@ class ImageService {
   String getImageUrl(String filename) {
     // Validar que el filename no esté vacío
     if (filename.trim().isEmpty) {
-      print('⚠️ Filename vacío proporcionado a getImageUrl');
+      // ✅ COMENTADO: Log de filename vacío removido
+      // print('⚠️ Filename vacío proporcionado a getImageUrl');
       return '';
     }
 
@@ -292,15 +293,15 @@ class ImageService {
 
     // 🎯 PRIORIDAD 1: Si es una data URL base64, retornarla directamente
     if (cleanFilename.startsWith('data:image/')) {
-      print('✅ Data URL base64 detectada, retornando directamente');
+      // ✅ COMENTADO: Log de data URL removido
+      // print('✅ Data URL base64 detectada, retornando directamente');
       return cleanFilename;
     }
 
     // VERIFICACIÓN: Si el baseUrl contiene el servidor problemático, retornar vacío
     if (_apiConfig.baseUrl.contains('sopa-y-carbon.onrender.com')) {
-      print(
-        '⚠️ Servidor problemático detectado en configuración, omitiendo construcción de URL',
-      );
+      // ✅ COMENTADO: Log de servidor problemático removido
+      // print('⚠️ Servidor problemático detectado en configuración, omitiendo construcción de URL');
       return '';
     }
 

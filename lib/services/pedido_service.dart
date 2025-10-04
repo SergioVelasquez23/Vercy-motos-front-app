@@ -1130,6 +1130,7 @@ class PedidoService {
     bool esConsumoInterno = false,
     String? motivoCortesia,
     String? tipoConsumoInterno,
+    double descuento = 0.0, // ✅ NUEVO: Parámetro para descuento
   }) async {
     try {
       final headers = await _getHeaders();
@@ -1163,6 +1164,8 @@ class PedidoService {
 
         pagarData['formaPago'] = formaPago;
         pagarData['propina'] = propina;
+        pagarData['descuento'] =
+            descuento; // ✅ NUEVO: Incluir descuento en el JSON
         pagarData['pagado'] = true;
         pagarData['estado'] = 'Pagado'; // Asegurar que el estado sea explícito
         pagarData['fechaPago'] = _formatearFechaParaBackend(DateTime.now());
@@ -1188,6 +1191,11 @@ class PedidoService {
       print('🚀 Datos enviados al pagar pedido:');
       print('  - Pedido ID: $pedidoId');
       print('  - Tipo de pago: $tipoPago');
+      print('  - Forma de pago: $formaPago');
+      print('  - Propina: \$${propina.toStringAsFixed(0)}');
+      print(
+        '  - Descuento: \$${descuento.toStringAsFixed(0)}',
+      ); // ✅ NUEVO: Log de descuento
       print('  - Es cortesía: $esCortesia');
       print('  - Es consumo interno: $esConsumoInterno');
       print('  - Datos completos: ${json.encode(pagarData)}');

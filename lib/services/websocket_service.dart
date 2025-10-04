@@ -31,7 +31,7 @@ class WebSocketEventData {
 
   factory WebSocketEventData.fromJson(Map<String, dynamic> json) {
     WebSocketEvent event = WebSocketEvent.error;
-    
+
     // Mapear string del backend a enum
     switch (json['event']?.toString().toLowerCase()) {
       case 'pedido_creado':
@@ -95,52 +95,55 @@ class WebSocketService {
   /// Conectar al WebSocket del servidor
   Future<void> connect() async {
     if (_isConnected || _isReconnecting) {
-      print('🔌 WebSocket: Ya conectado o reconectando');
+      // ✅ COMENTADO: Log de WebSocket ya conectado removido
+      // print('🔌 WebSocket: Ya conectado o reconectando');
       return;
     }
-    
+
     // TODO: Implementar WebSocket STOMP correctamente
     print('⚠️ WebSocket: Deshabilitado temporalmente - usando polling');
     return;
 
     try {
       print('🔌 WebSocket: Intentando conectar...');
-      
+
       // Obtener la URL base y convertirla a WebSocket
       final baseUrl = ApiConfig.instance.baseUrl;
-      final wsUrl = baseUrl.replaceAll('http://', 'ws://').replaceAll('https://', 'wss://');
-      final fullWsUrl = '$wsUrl/ws-native'; // Endpoint WebSocket nativo del backend
-      
+      final wsUrl = baseUrl
+          .replaceAll('http://', 'ws://')
+          .replaceAll('https://', 'wss://');
+      final fullWsUrl =
+          '$wsUrl/ws-native'; // Endpoint WebSocket nativo del backend
+
       print('🔗 WebSocket URL: $fullWsUrl');
-      
+
       _channel = WebSocketChannel.connect(Uri.parse(fullWsUrl));
-      
+
       // Configurar el stream de eventos
       _eventController ??= StreamController<WebSocketEventData>.broadcast();
-      
+
       // Escuchar mensajes del WebSocket
       _channel!.stream.listen(
         _onMessage,
         onError: _onError,
         onDone: _onDisconnected,
       );
-      
+
       // Configurar heartbeat para mantener la conexión viva
       _setupHeartbeat();
-      
+
       _isConnected = true;
       _isReconnecting = false;
       _reconnectAttempts = 0;
-      
+
       print('✅ WebSocket: Conectado exitosamente');
-      
+
       // Enviar mensaje de registro al servidor
       _sendMessage({
         'type': 'register',
         'client': 'dashboard',
         'timestamp': DateTime.now().toIso8601String(),
       });
-      
     } catch (e) {
       print('❌ WebSocket: Error de conexión: $e');
       _isConnected = false;
@@ -151,14 +154,14 @@ class WebSocketService {
   /// Desconectar del WebSocket
   Future<void> disconnect() async {
     print('🔌 WebSocket: Desconectando...');
-    
+
     _isConnected = false;
     _heartbeatTimer?.cancel();
     _reconnectTimer?.cancel();
-    
+
     await _channel?.sink.close(status.normalClosure);
     _channel = null;
-    
+
     print('✅ WebSocket: Desconectado');
   }
 
@@ -179,19 +182,18 @@ class WebSocketService {
   void _onMessage(dynamic message) {
     try {
       print('📥 WebSocket: Mensaje recibido: $message');
-      
+
       final Map<String, dynamic> data = json.decode(message);
-      
+
       // Ignorar respuestas del heartbeat
       if (data['type'] == 'pong') {
         print('💗 WebSocket: Heartbeat OK');
         return;
       }
-      
+
       // Procesar eventos del dashboard
       final eventData = WebSocketEventData.fromJson(data);
       _eventController?.add(eventData);
-      
     } catch (e) {
       print('❌ WebSocket: Error procesando mensaje: $e');
     }
@@ -209,7 +211,7 @@ class WebSocketService {
     print('🔌 WebSocket: Conexión cerrada');
     _isConnected = false;
     _heartbeatTimer?.cancel();
-    
+
     if (!_isReconnecting) {
       _scheduleReconnect();
     }
@@ -242,9 +244,11 @@ class WebSocketService {
 
     _isReconnecting = true;
     _reconnectAttempts++;
-    
-    print('🔄 WebSocket: Programando reconexión (intento $_reconnectAttempts/$_maxReconnectAttempts)');
-    
+
+    print(
+      '🔄 WebSocket: Programando reconexión (intento $_reconnectAttempts/$_maxReconnectAttempts)',
+    );
+
     _reconnectTimer = Timer(_reconnectDelay, () {
       if (!_isConnected) {
         connect();
@@ -263,39 +267,40 @@ class WebSocketService {
 
 /// Extensión de utilidades para el servicio WebSocket
 extension WebSocketServiceUtils on WebSocketService {
-  
   /// Stream específico para eventos del dashboard
   Stream<WebSocketEventData> get dashboardEvents {
-    return events.where((event) => 
-      event.event == WebSocketEvent.dashboardUpdate ||
-      event.event == WebSocketEvent.pedidoPagado ||
-      event.event == WebSocketEvent.pedidoCreado ||
-      event.event == WebSocketEvent.pedidoCancelado
+    return events.where(
+      (event) =>
+          event.event == WebSocketEvent.dashboardUpdate ||
+          event.event == WebSocketEvent.pedidoPagado ||
+          event.event == WebSocketEvent.pedidoCreado ||
+          event.event == WebSocketEvent.pedidoCancelado,
     );
   }
-  
+
   /// Stream específico para eventos de mesas
   Stream<WebSocketEventData> get mesaEvents {
-    return events.where((event) => 
-      event.event == WebSocketEvent.mesaOcupada ||
-      event.event == WebSocketEvent.mesaLiberada
+    return events.where(
+      (event) =>
+          event.event == WebSocketEvent.mesaOcupada ||
+          event.event == WebSocketEvent.mesaLiberada,
     );
   }
-  
+
   /// Stream específico para eventos de inventario
   Stream<WebSocketEventData> get inventarioEvents {
-    return events.where((event) => 
-      event.event == WebSocketEvent.inventarioActualizado
+    return events.where(
+      (event) => event.event == WebSocketEvent.inventarioActualizado,
     );
   }
-  
+
   /// Reconectar manualmente
   Future<void> reconnect() async {
     await disconnect();
     await Future.delayed(Duration(seconds: 1));
     await connect();
   }
-  
+
   /// Resetear contador de reconexiones
   void resetReconnectAttempts() {
     _reconnectAttempts = 0;
