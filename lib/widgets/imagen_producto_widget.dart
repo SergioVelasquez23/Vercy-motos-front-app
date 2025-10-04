@@ -47,6 +47,14 @@ class ImagenProductoWidget extends StatelessWidget {
       return _buildImagenBase64(imagenUrl);
     }
 
+    // VERIFICACIÓN ESPECIAL: Si la URL contiene el servidor problemático, mostrar ícono por defecto
+    if (imagenUrl.contains('sopa-y-carbon.onrender.com')) {
+      print(
+        '⚠️ Servidor problemático detectado, mostrando ícono por defecto: $imagenUrl',
+      );
+      return _buildIconoDefault();
+    }
+
     // PRIORIDAD 2: Si es una URL HTTP válida, intentar cargarla
     if (imagenUrl.startsWith('http')) {
       print('🌐 Intentando cargar imagen desde URL: $imagenUrl');
@@ -56,6 +64,14 @@ class ImagenProductoWidget extends StatelessWidget {
     // PRIORIDAD 3: Construir URL del servidor (probablemente fallará en Render)
     final imageService = ImageService();
     final validatedUrl = imageService.getImageUrl(imagenUrl);
+
+    // Verificar si la URL validada también contiene el servidor problemático
+    if (validatedUrl.contains('sopa-y-carbon.onrender.com')) {
+      print(
+        '⚠️ URL validada contiene servidor problemático, mostrando ícono por defecto: $validatedUrl',
+      );
+      return _buildIconoDefault();
+    }
 
     if (validatedUrl.isNotEmpty) {
       print('🏗️ URL construida del servidor: $validatedUrl');
@@ -126,13 +142,29 @@ class ImagenProductoWidget extends StatelessWidget {
           ),
           errorWidget: (context, url, error) {
             // Log más específico para debug
-            print(
-              '❌ Error cargando imagen en móvil: $url - ${error.toString()}',
-            );
+            final errorStr = error.toString();
+            print('❌ Error cargando imagen: $url - $errorStr');
+
+            // Si es un error del servidor (500, 404, etc.) mostrar ícono por defecto
+            if (errorStr.contains('500') ||
+                errorStr.contains('404') ||
+                errorStr.contains('EncodingError') ||
+                errorStr.contains('cannot be decoded') ||
+                errorStr.contains('HttpException') ||
+                url.contains('sopa-y-carbon.onrender.com')) {
+              print('🔄 Servidor con problemas, mostrando ícono por defecto');
+              return _buildIconoDefault();
+            }
+
             return _buildIconoError();
           },
           fadeInDuration: Duration(milliseconds: 300),
           fadeOutDuration: Duration(milliseconds: 100),
+          // Configuración más robusta para manejar errores del servidor
+          maxHeightDiskCache: 50,
+          maxWidthDiskCache: 50,
+          // Reducir tiempo de espera para fallar más rápido si el servidor está caído
+          fadeInCurve: Curves.easeInOut,
         ),
       ),
     );
@@ -148,10 +180,27 @@ class ImagenProductoWidget extends StatelessWidget {
         color: Color(0xFF2A2A2A),
         border: Border.all(color: Color(0xFF444444), width: 1),
       ),
-      child: Icon(
-        Icons.restaurant_menu,
-        color: Color(0xFFFF6B00),
-        size: (width ?? 50) * 0.5,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.restaurant_menu,
+            color: Color(0xFFFF6B00),
+            size: (width ?? 50) * 0.5,
+          ),
+          if ((height ?? 50) > 40) ...[
+            SizedBox(height: 2),
+            Text(
+              'Sin imagen',
+              style: TextStyle(
+                color: Color(0xFF888888),
+                fontSize: 8,
+                fontWeight: FontWeight.w400,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ],
       ),
     );
   }

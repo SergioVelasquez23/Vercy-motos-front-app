@@ -65,6 +65,156 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
     }
   }
 
+  // ✅ NUEVO: Método para sincronizar inventario
+  Future<void> _sincronizarInventario() async {
+    try {
+      // Mostrar diálogo de confirmación
+      final confirmar = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: Color(kCardBackgroundDark),
+          title: Text(
+            'Sincronizar Inventario',
+            style: TextStyle(color: Color(kTextDark)),
+          ),
+          content: Text(
+            '¿Desea sincronizar el inventario con los ingredientes? Esto puede tardar unos momentos.',
+            style: TextStyle(color: Color(kTextDark)),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text('Sincronizar'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmar == true) {
+        // Mostrar indicador de carga
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            backgroundColor: Color(kCardBackgroundDark),
+            content: Row(
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(width: 16),
+                Text(
+                  'Sincronizando...',
+                  style: TextStyle(color: Color(kTextDark)),
+                ),
+              ],
+            ),
+          ),
+        );
+
+        final resultado = await _inventarioService
+            .sincronizarInventarioConIngredientes();
+        Navigator.pop(context); // Cerrar diálogo de carga
+
+        // Mostrar resultado
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Sincronización completada. ${resultado['ingredientesCreados']} creados, ${resultado['ingredientesSincronizados']} sincronizados.',
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+        // Recargar movimientos
+        _cargarMovimientos();
+      }
+    } catch (e) {
+      Navigator.pop(context); // Cerrar diálogo de carga si está abierto
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al sincronizar: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  // ✅ NUEVO: Método para limpiar movimientos erróneos
+  Future<void> _limpiarMovimientosErroneos() async {
+    try {
+      // Mostrar diálogo de confirmación
+      final confirmar = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: Color(kCardBackgroundDark),
+          title: Text(
+            'Limpiar Movimientos Erróneos',
+            style: TextStyle(color: Color(kTextDark)),
+          ),
+          content: Text(
+            '¿Desea eliminar los movimientos de inventario erróneos o inconsistentes? Esta acción no se puede deshacer.',
+            style: TextStyle(color: Color(kTextDark)),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text('Limpiar', style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmar == true) {
+        // Mostrar indicador de carga
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            backgroundColor: Color(kCardBackgroundDark),
+            content: Row(
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(width: 16),
+                Text('Limpiando...', style: TextStyle(color: Color(kTextDark))),
+              ],
+            ),
+          ),
+        );
+
+        final resultado = await _inventarioService.limpiarMovimientosErroneos();
+        Navigator.pop(context); // Cerrar diálogo de carga
+
+        // Mostrar resultado
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Limpieza completada. ${resultado['movimientosEliminados']} movimientos eliminados.',
+            ),
+            backgroundColor: Colors.orange,
+          ),
+        );
+
+        // Recargar movimientos
+        _cargarMovimientos();
+      }
+    } catch (e) {
+      Navigator.pop(context); // Cerrar diálogo de carga si está abierto
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al limpiar movimientos: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   void _aplicarFiltros() {
     List<MovimientoInventario> filtrados = List.from(_movimientos);
 
@@ -172,6 +322,16 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
           ),
         ),
         actions: [
+          IconButton(
+            icon: Icon(Icons.sync, color: textDark),
+            onPressed: _sincronizarInventario,
+            tooltip: 'Sincronizar inventario',
+          ),
+          IconButton(
+            icon: Icon(Icons.cleaning_services, color: textDark),
+            onPressed: _limpiarMovimientosErroneos,
+            tooltip: 'Limpiar movimientos erróneos',
+          ),
           IconButton(
             icon: Icon(Icons.refresh, color: textDark),
             onPressed: _cargarMovimientos,

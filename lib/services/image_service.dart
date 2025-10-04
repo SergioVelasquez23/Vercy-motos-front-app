@@ -296,8 +296,24 @@ class ImageService {
       return cleanFilename;
     }
 
+    // VERIFICACIÓN: Si el baseUrl contiene el servidor problemático, retornar vacío
+    if (_apiConfig.baseUrl.contains('sopa-y-carbon.onrender.com')) {
+      print(
+        '⚠️ Servidor problemático detectado en configuración, omitiendo construcción de URL',
+      );
+      return '';
+    }
+
     // Si ya es una URL completa, validarla
     if (cleanFilename.startsWith('http')) {
+      // Verificar si contiene el servidor problemático
+      if (cleanFilename.contains('sopa-y-carbon.onrender.com')) {
+        print(
+          '⚠️ URL contiene servidor problemático, omitiendo: $cleanFilename',
+        );
+        return '';
+      }
+
       // Validar que no termine en rutas incompletas
       if (cleanFilename.endsWith('/images/platos/') ||
           cleanFilename.endsWith('/images/platos')) {
@@ -326,7 +342,7 @@ class ImageService {
       }
     }
 
-    // Si ya tiene el prefijo /images/platos/, construir URL completa
+    // Si ya tiene el prefijo /images/platos/, NO construir URL si el servidor es problemático
     if (cleanFilename.startsWith('/images/platos/')) {
       // Validar que no sea solo el path sin archivo
       if (cleanFilename == '/images/platos/' ||
@@ -342,12 +358,24 @@ class ImageService {
         return '';
       }
 
+      // NO construir URL si es el servidor problemático
+      if (_apiConfig.baseUrl.contains('sopa-y-carbon.onrender.com')) {
+        print('⚠️ Evitando construcción de URL para servidor problemático');
+        return '';
+      }
+
       return '${_apiConfig.baseUrl}$cleanFilename';
     }
 
     // Si es solo el nombre del archivo, validar que tenga extensión
     if (!cleanFilename.contains('.') || !isValidImageFile(cleanFilename)) {
       print('⚠️ Filename inválido o sin extensión: $cleanFilename');
+      return '';
+    }
+
+    // NO construir URL si es el servidor problemático
+    if (_apiConfig.baseUrl.contains('sopa-y-carbon.onrender.com')) {
+      print('⚠️ Evitando construcción de URL para servidor problemático');
       return '';
     }
 

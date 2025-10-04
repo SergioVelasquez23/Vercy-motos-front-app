@@ -395,7 +395,65 @@ class InventarioService {
     _inventarioActualizadoController.close();
   }
 
-  // Procesa un pedido para actualizar el inventario, enviando ingredientes seleccionados
+  // ✅ CORREGIDO: Validar stock ANTES de procesar el pedido
+  Future<Map<String, dynamic>> validarStockAntesDePedido(
+    Map<String, List<String>> ingredientesPorItem,
+    Map<String, int> cantidadPorProducto,
+  ) async {
+    try {
+      if (kDebugMode) {
+        print('🔍 Validando stock antes de crear pedido...');
+      }
+
+      final Map<String, dynamic> requestBody = {
+        'ingredientesPorItem': ingredientesPorItem,
+        'cantidadPorProducto': cantidadPorProducto,
+        'validarSolo': true, // Solo validar, no descontar
+      };
+
+      final response = await http
+          .post(
+            Uri.parse(_buildUrl(path: "validar-stock-pedido")),
+            headers: _apiConfig.getSecureHeaders(),
+            body: json.encode(requestBody),
+          )
+          .timeout(_timeout);
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) {
+          return {
+            'stockSuficiente': true,
+            'ingredientesValidados':
+                data['data']['ingredientesValidados'] ?? [],
+            'alertas': data['data']['alertas'] ?? [],
+          };
+        } else {
+          return {
+            'stockSuficiente': false,
+            'mensaje': data['message'] ?? 'Stock insuficiente',
+            'ingredientesFaltantes':
+                data['data']['ingredientesFaltantes'] ?? [],
+          };
+        }
+      }
+
+      return {
+        'stockSuficiente': false,
+        'mensaje': 'Error al validar stock: ${response.statusCode}',
+      };
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error validando stock: $e');
+      }
+      return {
+        'stockSuficiente': false,
+        'mensaje': 'Error de conexión al validar stock: $e',
+      };
+    }
+  }
+
+  // ✅ MEJORADO: Procesa un pedido para actualizar el inventario con validaciones
   Future<bool> procesarPedidoParaInventario(
     String pedidoId,
     Map<String, List<String>> ingredientesPorItem,
@@ -422,8 +480,30 @@ class InventarioService {
       }
 
       if (response.statusCode == 200) {
-        _inventarioActualizadoController.add(true);
-        return true;
+        final responseData = json.decode(response.body);
+        if (responseData['success'] == true) {
+          _inventarioActualizadoController.add(true);
+
+          // ✅ NUEVO: Verificar si hay alertas de stock bajo
+          if (responseData['data'] != null &&
+              responseData['data']['alertas'] != null) {
+            final alertas = responseData['data']['alertas'] as List;
+            if (alertas.isNotEmpty && kDebugMode) {
+              print('⚠️ ALERTAS DE STOCK BAJO:');
+              for (var alerta in alertas) {
+                print(
+                  '   - ${alerta['ingrediente']}: Stock actual ${alerta['stockActual']}, mínimo ${alerta['stockMinimo']}',
+                );
+              }
+            }
+          }
+
+          return true;
+        } else {
+          throw Exception(
+            responseData['message'] ?? 'Error procesando inventario',
+          );
+        }
       }
 
       throw _handleErrorResponse(response);
@@ -431,7 +511,11 @@ class InventarioService {
       if (kDebugMode) {
         print('❌ Error procesando pedido para inventario: $e');
       }
-      // No lanzamos una excepción porque no queremos interrumpir el flujo principal
+      // ✅ MEJORADO: Propagar error crítico de stock insuficiente
+      if (e.toString().contains('stock insuficiente') ||
+          e.toString().contains('insufficient stock')) {
+        rethrow; // Propagar errores críticos de stock
+      }
       return false;
     }
   }
@@ -512,6 +596,80 @@ class InventarioService {
         print('❌ Error obteniendo ingredientes descontados: $e');
       }
       return [];
+    }
+  }
+
+  // ✅ NUEVO: Limpiar movimientos erróneos
+  Future<Map<String, dynamic>> limpiarMovimientosErroneos() async {
+    try {
+      if (kDebugMode) {
+        print('🧹 Limpiando movimientos erróneos...');
+      }
+
+      final response = await http
+          .delete(
+            Uri.parse(_buildUrl(path: 'movimientos/limpiar-errores')),
+            headers: _apiConfig.getSecureHeaders(),
+          )
+          .timeout(_timeout);
+
+      if (kDebugMode) {
+        print('📡 Response status: ${response.statusCode}');
+        print('📦 Response body: ${response.body}');
+      }
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          _inventarioActualizadoController.add(true);
+          return data['data'];
+        }
+        throw Exception('Formato de respuesta inválido');
+      }
+
+      throw _handleErrorResponse(response);
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error limpiando movimientos: $e');
+      }
+      throw Exception('Error al limpiar movimientos erróneos: $e');
+    }
+  }
+
+  // ✅ NUEVO: Sincronizar inventario con ingredientes
+  Future<Map<String, dynamic>> sincronizarInventarioConIngredientes() async {
+    try {
+      if (kDebugMode) {
+        print('🔄 Sincronizando inventario con ingredientes...');
+      }
+
+      final response = await http
+          .post(
+            Uri.parse(_buildUrl(path: 'sincronizar-con-ingredientes')),
+            headers: _apiConfig.getSecureHeaders(),
+          )
+          .timeout(_timeout);
+
+      if (kDebugMode) {
+        print('📡 Response status: ${response.statusCode}');
+        print('📦 Response body: ${response.body}');
+      }
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          _inventarioActualizadoController.add(true);
+          return data['data'];
+        }
+        throw Exception('Formato de respuesta inválido');
+      }
+
+      throw _handleErrorResponse(response);
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error sincronizando inventario: $e');
+      }
+      throw Exception('Error al sincronizar inventario: $e');
     }
   }
 }

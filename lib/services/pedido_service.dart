@@ -350,18 +350,47 @@ class PedidoService {
               item.productoId: item.ingredientesSeleccionados,
           };
 
+          // ✅ CORREGIDO: Validar stock antes de procesar
+          final Map<String, int> cantidadPorProducto = {
+            for (var item in pedidoCreado.items) item.productoId: item.cantidad,
+          };
+
+          // Validar stock disponible antes de descontar
+          final validacion = await _inventarioService.validarStockAntesDePedido(
+            ingredientesPorItem,
+            cantidadPorProducto,
+          );
+
+          if (!validacion['stockSuficiente']) {
+            print('⚠️ Stock insuficiente detectado: ${validacion['mensaje']}');
+            // Continuar pero registrar la alerta
+          }
+
           // Procesar descuento de ingredientes automáticamente
           try {
-            await _inventarioService.procesarPedidoParaInventario(
-              pedidoCreado.id,
-              ingredientesPorItem,
-            );
-            print(
-              '✅ Ingredientes descontados correctamente para pedido: ${pedidoCreado.id}',
-            );
+            final procesado = await _inventarioService
+                .procesarPedidoParaInventario(
+                  pedidoCreado.id,
+                  ingredientesPorItem,
+                );
+            if (procesado) {
+              print(
+                '✅ Ingredientes descontados correctamente para pedido: ${pedidoCreado.id}',
+              );
+            } else {
+              print(
+                '⚠️ Advertencia: Pedido creado pero inventario no actualizado completamente',
+              );
+            }
           } catch (e) {
             print('⚠️ Error al descontar ingredientes del inventario: $e');
-            // No fallar la creación del pedido, solo loggear el error
+            // ✅ MEJORADO: Si es error crítico de stock, propagar
+            if (e.toString().contains('stock insuficiente') ||
+                e.toString().contains('insufficient stock')) {
+              throw Exception(
+                'Pedido creado pero error crítico de inventario: $e',
+              );
+            }
           }
 
           return pedidoCreado;
