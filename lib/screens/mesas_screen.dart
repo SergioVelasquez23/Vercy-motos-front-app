@@ -31,6 +31,10 @@ import 'package:flutter/foundation.dart';
 import '../services/pdf_service_web.dart';
 import 'dart:html' as html;
 
+// Importes de los nuevos módulos
+import '../widgets/mesa/mesa_card.dart';
+import '../dialogs/dialogo_pago.dart';
+
 class MesasScreen extends StatefulWidget {
   const MesasScreen({super.key});
 
@@ -2508,383 +2512,54 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
     }
   }
 
-  Widget _buildMesaCard(Mesa mesa) {
-    bool isOcupada = mesa.ocupada || mesa.total > 0;
+  // Función eliminada - ahora se usa MesaCard widget
 
-    // � DEBUG ULTRA DETALLADO
-    final timestamp = DateTime.now().toIso8601String().substring(11, 19);
-    print('� [$timestamp] ===== CONSTRUYENDO CARD ${mesa.nombre} =====');
-    print('🔍 Mesa ID: ${mesa.id}');
-    print('🔍 Mesa.ocupada: ${mesa.ocupada}');
-    print('🔍 Mesa.total: ${mesa.total}');
-    print('🔍 isOcupada calculado: $isOcupada');
-    print('🔍 Widget key: mesa_card_${mesa.id}_$_widgetRebuildKey');
-    print('🔍 Rebuild key actual: $_widgetRebuildKey');
-
-    // VERIFICACIÓN ADICIONAL: obtener pedidos en tiempo real para comparar
-    _verificarEstadoRealMesa(mesa);
-
-    Color statusColor = isOcupada ? AppTheme.error : AppTheme.success;
-    final userProvider = Provider.of<UserProvider>(context, listen: false);
-    bool canProcessPayment =
-        userProvider.isAdmin && isOcupada && mesa.total > 0;
-
-    return LayoutBuilder(
-      key: ValueKey('mesa_card_${mesa.id}_$_widgetRebuildKey'),
-      builder: (context, constraints) {
-        return GestureDetector(
-          onTap: () async {
-            final result = await Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => PedidoScreen(mesa: mesa)),
-            );
-            // Si se creó o actualizó un pedido, recargar las mesas
-            if (result == true) {
-              await _recargarMesasConCards();
-            }
-          },
-          onLongPress: userProvider.isAdmin
-              ? () => _mostrarMenuMesa(mesa)
-              : null,
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: isOcupada ? AppTheme.cardGradient : null,
-              color: isOcupada ? null : AppTheme.cardBg,
-              borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
-              border: Border.all(
-                color: isOcupada
-                    ? AppTheme.primary.withOpacity(0.6)
-                    : statusColor.withOpacity(0.3),
-                width: 2,
-              ),
-              boxShadow: [
-                ...AppTheme.cardShadow,
-                if (isOcupada) ...AppTheme.primaryShadow,
-              ],
-            ),
-            child: Padding(
-              padding: EdgeInsets.all(
-                constraints.maxWidth * 0.08,
-              ), // Padding responsivo
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  // Indicador de estado superior
-                  Container(
-                    width: double.infinity,
-                    height: 3,
-                    decoration: BoxDecoration(
-                      color: statusColor,
-                      borderRadius: BorderRadius.circular(
-                        AppTheme.radiusSmall / 2,
-                      ),
-                    ),
-                  ),
-                  // Icono de mesa
-                  Flexible(
-                    child: Container(
-                      padding: EdgeInsets.all(constraints.maxWidth * 0.08),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primary.withOpacity(0.15),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: AppTheme.primary.withOpacity(0.3),
-                          width: 1.5,
-                        ),
-                      ),
-                      child: FittedBox(
-                        child: Icon(
-                          Icons.table_restaurant,
-                          color: AppTheme.primary,
-                          size:
-                              constraints.maxWidth *
-                              0.15, // Reducido de 0.2 a 0.15
-                        ),
-                      ),
-                    ),
-                  ),
-                  // Nombre de la mesa
-                  Flexible(
-                    child: Container(
-                      width: double.infinity,
-                      padding: EdgeInsets.symmetric(
-                        horizontal: AppTheme.spacingSmall,
-                        vertical: AppTheme.spacingXSmall,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppTheme.surfaceDark.withOpacity(0.3),
-                        borderRadius: BorderRadius.circular(
-                          AppTheme.radiusSmall,
-                        ),
-                      ),
-                      child: Text(
-                        mesa.nombre,
-                        style: AppTheme.bodyMedium.copyWith(
-                          fontWeight: FontWeight.w700,
-                          fontSize: constraints.maxWidth * 0.13, // Responsivo
-                        ),
-                        textAlign: TextAlign.center,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ),
-                  // Estado
-                  Flexible(
-                    child: Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: AppTheme.spacingXSmall,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: statusColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(
-                          AppTheme.radiusLarge,
-                        ),
-                        border: Border.all(
-                          color: statusColor.withOpacity(0.4),
-                          width: 1,
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 4,
-                            height: 4,
-                            decoration: BoxDecoration(
-                              color: statusColor,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          SizedBox(width: AppTheme.spacingXSmall),
-                          Flexible(
-                            child: Text(
-                              isOcupada ? 'Ocupada' : 'Disponible',
-                              style: AppTheme.labelMedium.copyWith(
-                                color: statusColor,
-                                fontWeight: FontWeight.w600,
-                                fontSize: constraints.maxWidth * 0.09,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  // Total si existe - Área táctil mejorada
-                  if (mesa.total > 0)
-                    Flexible(
-                      child: canProcessPayment
-                          ? GestureDetector(
-                              onTap: () async {
-                                final pedido = await _obtenerPedidoActivoDeMesa(
-                                  mesa,
-                                );
-                                if (pedido != null) {
-                                  _mostrarDialogoPago(mesa, pedido);
-                                } else {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        'No se encontró un pedido activo para esta mesa',
-                                      ),
-                                      backgroundColor: AppTheme.error,
-                                    ),
-                                  );
-                                }
-                              },
-                              child: Container(
-                                width: double.infinity,
-                                margin: EdgeInsets.all(
-                                  4,
-                                ), // Margen para área táctil más grande
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: AppTheme
-                                      .spacingSmall, // Reducido para más espacio al texto
-                                  vertical: AppTheme
-                                      .spacingXSmall, // Reducido para mejor proporción
-                                ),
-                                decoration: BoxDecoration(
-                                  gradient: AppTheme.primaryGradient,
-                                  borderRadius: BorderRadius.circular(
-                                    AppTheme
-                                        .radiusMedium, // Bordes más redondeados
-                                  ),
-                                  border: Border.all(
-                                    color: Colors.white.withOpacity(0.3),
-                                    width: 1,
-                                  ),
-                                  // Sombra para hacer más visible el botón
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.2),
-                                      blurRadius: 4,
-                                      offset: Offset(0, 2),
-                                    ),
-                                  ],
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.payment,
-                                      size:
-                                          constraints.maxWidth *
-                                          0.08, // Reducido de 0.12 a 0.08
-                                      color: Colors.white,
-                                    ),
-                                    SizedBox(
-                                      width: 6,
-                                    ), // Más espacio entre icono y texto
-                                    Expanded(
-                                      // Cambiado de Flexible a Expanded
-                                      child: Builder(
-                                        builder: (context) {
-                                          // 🔍 DEBUG: Capturar corrupción de números
-                                          final valorOriginal = mesa.total;
-                                          final valorFormateado =
-                                              formatCurrency(valorOriginal);
-
-                                          // Detectar si hay caracteres raros
-                                          if (valorFormateado.contains(
-                                            RegExp(r'[^\d\.\$\-]'),
-                                          )) {
-                                            print(
-                                              '🔴 CORRUPCIÓN DETECTADA EN MESA ${mesa.nombre}:',
-                                            );
-                                            print(
-                                              '  - Valor original: $valorOriginal (${valorOriginal.runtimeType})',
-                                            );
-                                            print(
-                                              '  - Valor formateado: "$valorFormateado"',
-                                            );
-                                            print(
-                                              '  - Caracteres: ${valorFormateado.runes.map((c) => '${String.fromCharCode(c)} ($c)').join(', ')}',
-                                            );
-
-                                            // Usar fallback directo
-                                            final fallback = formatCurrency(
-                                              valorOriginal,
-                                            );
-                                            print(
-                                              '  - Usando fallback: "$fallback"',
-                                            );
-                                            return Text(
-                                              fallback,
-                                              style: AppTheme.labelMedium.copyWith(
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.bold,
-                                                fontSize:
-                                                    constraints.maxWidth *
-                                                    0.09, // Aumentado de 0.08 a 0.09
-                                              ),
-                                              textAlign: TextAlign.center,
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            );
-                                          }
-
-                                          return Text(
-                                            valorFormateado,
-                                            style: AppTheme.labelMedium
-                                                .copyWith(
-                                                  color: Colors.white,
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize:
-                                                      constraints.maxWidth *
-                                                      0.08,
-                                                ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            )
-                          : Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: AppTheme.spacingSmall,
-                                vertical: AppTheme.spacingXSmall,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppTheme.primary.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(
-                                  AppTheme.radiusSmall,
-                                ),
-                                border: Border.all(
-                                  color: AppTheme.primary.withOpacity(0.3),
-                                  width: 1,
-                                ),
-                              ),
-                              child: Builder(
-                                builder: (context) {
-                                  // 🔍 DEBUG: Capturar corrupción de números (segunda instancia)
-                                  final valorOriginal = mesa.total;
-                                  final valorFormateado = formatCurrency(
-                                    valorOriginal,
-                                  );
-
-                                  // Detectar si hay caracteres raros
-                                  if (valorFormateado.contains(
-                                    RegExp(r'[^\d\.\$\-]'),
-                                  )) {
-                                    print(
-                                      '🔴 CORRUPCIÓN DETECTADA EN MESA ${mesa.nombre} (instancia 2):',
-                                    );
-                                    print(
-                                      '  - Valor original: $valorOriginal (${valorOriginal.runtimeType})',
-                                    );
-                                    print(
-                                      '  - Valor formateado: "$valorFormateado"',
-                                    );
-                                    print(
-                                      '  - Caracteres: ${valorFormateado.runes.map((c) => '${String.fromCharCode(c)} ($c)').join(', ')}',
-                                    );
-
-                                    // Usar fallback directo
-                                    final fallback = formatCurrency(
-                                      valorOriginal,
-                                    );
-                                    print('  - Usando fallback: "$fallback"');
-                                    return Text(
-                                      fallback,
-                                      style: AppTheme.labelMedium.copyWith(
-                                        color: AppTheme.primary,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: constraints.maxWidth * 0.09,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    );
-                                  }
-
-                                  return Text(
-                                    valorFormateado,
-                                    style: AppTheme.labelMedium.copyWith(
-                                      color: AppTheme.primary,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: constraints.maxWidth * 0.09,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  );
-                                },
-                              ),
-                            ),
-                    ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
+  // Método modular para mostrar el diálogo de pago
+  Future<void> _mostrarDialogoPagoModular(Mesa mesa, Pedido pedido) async {
+    final resultado = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (context) => DialogoPago(mesa: mesa, pedido: pedido),
     );
+
+    if (resultado != null) {
+      // Procesar el resultado del pago aquí
+      await _procesarResultadoPago(mesa, pedido, resultado);
+    }
+  }
+
+  // Procesar el resultado del pago
+  Future<void> _procesarResultadoPago(
+    Mesa mesa,
+    Pedido pedido,
+    Map<String, dynamic> resultado,
+  ) async {
+    try {
+      // Procesar según el tipo de pago
+      final medioPago = resultado['medioPago'] as String;
+      final incluyePropina = resultado['incluyePropina'] as bool;
+      final esCortesia = resultado['esCortesia'] as bool;
+      final esConsumoInterno = resultado['esConsumoInterno'] as bool;
+
+      // Aquí se incluiría la lógica de procesamiento de pago del método original
+      // Por ahora, solo mostramos un mensaje de confirmación
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Pago procesado exitosamente'),
+          backgroundColor: AppTheme.success,
+        ),
+      );
+
+      // Recargar las mesas después del pago
+      await _loadMesas();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al procesar el pago: $e'),
+          backgroundColor: AppTheme.error,
+        ),
+      );
+    }
   }
 
   void _mostrarDialogoPago(Mesa mesa, Pedido pedido) async {
@@ -3074,40 +2749,6 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-                  SizedBox(height: 32), // Más espacio
-                  // Sección: Información del pedido
-                  _buildSeccionTitulo('Información del Pedido'),
-                  SizedBox(height: 16),
-                  Container(
-                    padding: EdgeInsets.all(20), // Más padding
-                    decoration: BoxDecoration(
-                      color: _cardBg.withOpacity(0.3),
-                      borderRadius: BorderRadius.circular(
-                        16,
-                      ), // Bordes más redondeados
-                      border: Border.all(color: _primary.withOpacity(0.2)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildInfoRow(
-                          Icons.table_restaurant,
-                          'Mesa',
-                          pedido.mesa,
-                        ),
-                        SizedBox(height: 12),
-                        _buildInfoRow(Icons.person, 'Mesero', pedido.mesero),
-                        if (pedido.cliente != null) ...[
-                          SizedBox(height: 12),
-                          _buildInfoRow(
-                            Icons.person_outline,
-                            'Cliente',
-                            pedido.cliente!,
-                          ),
-                        ],
                       ],
                     ),
                   ),
@@ -3529,6 +3170,200 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                   ],
                   SizedBox(height: 32),
 
+                  // SUBTOTAL - Nueva sección
+                  _buildSeccionTitulo('Subtotal'),
+                  SizedBox(height: 16),
+                  Container(
+                    padding: EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: _cardBg.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: _primary.withOpacity(0.2)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Subtotal:',
+                          style: TextStyle(
+                            color: _textPrimary,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        Text(
+                          '\$${pedido.total.toStringAsFixed(0)}',
+                          style: TextStyle(
+                            color: _primary,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: 32),
+
+                  // DESCUENTOS - Movido para estar después del subtotal
+                  _buildSeccionTitulo('Descuento'),
+                  SizedBox(height: 16),
+                  Container(
+                    padding: EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: _cardBg.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: _primary.withOpacity(0.2)),
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: descuentoPorcentajeController,
+                                keyboardType: TextInputType.number,
+                                style: TextStyle(
+                                  color: _textPrimary,
+                                  fontSize: 16,
+                                ),
+                                decoration: InputDecoration(
+                                  labelText: 'Descuento (%)',
+                                  labelStyle: TextStyle(color: _textSecondary),
+                                  prefixIcon: Icon(
+                                    Icons.percent,
+                                    color: _primary,
+                                  ),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide(
+                                      color: _primary.withOpacity(0.3),
+                                    ),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide(
+                                      color: _primary,
+                                      width: 2,
+                                    ),
+                                  ),
+                                ),
+                                onChanged: (value) {
+                                  setState(() {
+                                    if (value.isNotEmpty) {
+                                      descuentoValorController.clear();
+                                    }
+                                  });
+                                },
+                              ),
+                            ),
+                            SizedBox(width: 16),
+                            Text(
+                              'O',
+                              style: TextStyle(
+                                color: _textSecondary,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            SizedBox(width: 16),
+                            Expanded(
+                              child: TextField(
+                                controller: descuentoValorController,
+                                keyboardType: TextInputType.number,
+                                style: TextStyle(
+                                  color: _textPrimary,
+                                  fontSize: 16,
+                                ),
+                                decoration: InputDecoration(
+                                  labelText: 'Valor fijo',
+                                  labelStyle: TextStyle(color: _textSecondary),
+                                  prefixIcon: Icon(
+                                    Icons.attach_money,
+                                    color: _primary,
+                                  ),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide(
+                                      color: _primary.withOpacity(0.3),
+                                    ),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide(
+                                      color: _primary,
+                                      width: 2,
+                                    ),
+                                  ),
+                                ),
+                                onChanged: (value) {
+                                  setState(() {
+                                    if (value.isNotEmpty) {
+                                      descuentoPorcentajeController.clear();
+                                    }
+                                  });
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: 32),
+
+                  // TOTAL - Nueva sección para mostrar el total final
+                  _buildSeccionTitulo('Total'),
+                  SizedBox(height: 16),
+                  Container(
+                    padding: EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: _primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: _primary.withOpacity(0.3),
+                        width: 2,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'TOTAL A PAGAR:',
+                          style: TextStyle(
+                            color: _textPrimary,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          '\$${(() {
+                            double total = pedido.total;
+                            double descuento = 0;
+
+                            if (descuentoPorcentajeController.text.isNotEmpty) {
+                              final porcentaje = double.tryParse(descuentoPorcentajeController.text) ?? 0;
+                              descuento = total * (porcentaje / 100);
+                            } else if (descuentoValorController.text.isNotEmpty) {
+                              descuento = double.tryParse(descuentoValorController.text) ?? 0;
+                            }
+
+                            double propina = 0;
+                            if (incluyePropina && propinaController.text.isNotEmpty) {
+                              propina = double.tryParse(propinaController.text) ?? 0;
+                            }
+
+                            return (total - descuento + propina).toStringAsFixed(0);
+                          })()}',
+                          style: TextStyle(
+                            color: _primary,
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: 32),
+
                   // Sección: Forma de pago
                   _buildSeccionTitulo('Método de Pago'),
                   SizedBox(height: 16),
@@ -3788,142 +3623,6 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                     ),
                     SizedBox(height: 24),
                   ],
-
-                  // Sección: Descuento
-                  _buildSeccionTitulo('Descuento'),
-                  SizedBox(height: 16),
-                  Container(
-                    padding: EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: _cardBg.withOpacity(0.3),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: _primary.withOpacity(0.3),
-                        width: 1.5,
-                      ),
-                    ),
-                    child: Column(
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Descuento (%)',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                      color: _textPrimary,
-                                    ),
-                                  ),
-                                  SizedBox(height: 8),
-                                  TextFormField(
-                                    controller: descuentoPorcentajeController,
-                                    keyboardType: TextInputType.number,
-                                    inputFormatters: [
-                                      FilteringTextInputFormatter.allow(
-                                        RegExp(r'^\d*\.?\d*'),
-                                      ),
-                                    ],
-                                    decoration: InputDecoration(
-                                      hintText: '0.00',
-                                      prefixIcon: Icon(
-                                        Icons.percent,
-                                        color: _primary,
-                                      ),
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      focusedBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                        borderSide: BorderSide(
-                                          color: _primary,
-                                          width: 2,
-                                        ),
-                                      ),
-                                    ),
-                                    onChanged: (value) {
-                                      // Calcular descuento automáticamente cuando cambie el porcentaje
-                                      if (value.isNotEmpty) {
-                                        double porcentaje =
-                                            double.tryParse(value) ?? 0;
-                                        double descuento =
-                                            (pedido.total * porcentaje) / 100;
-                                        descuentoValorController.text =
-                                            descuento.toStringAsFixed(2);
-                                      } else {
-                                        descuentoValorController.text = '';
-                                      }
-                                    },
-                                  ),
-                                ],
-                              ),
-                            ),
-                            SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Descuento Fijo (\$)',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                      color: _textPrimary,
-                                    ),
-                                  ),
-                                  SizedBox(height: 8),
-                                  TextFormField(
-                                    controller: descuentoValorController,
-                                    keyboardType: TextInputType.number,
-                                    inputFormatters: [
-                                      FilteringTextInputFormatter.allow(
-                                        RegExp(r'^\d*\.?\d*'),
-                                      ),
-                                    ],
-                                    decoration: InputDecoration(
-                                      hintText: '0.00',
-                                      prefixIcon: Icon(
-                                        Icons.attach_money,
-                                        color: _primary,
-                                      ),
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      focusedBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                        borderSide: BorderSide(
-                                          color: _primary,
-                                          width: 2,
-                                        ),
-                                      ),
-                                    ),
-                                    onChanged: (value) {
-                                      // Calcular porcentaje automáticamente cuando cambie el valor fijo
-                                      if (value.isNotEmpty &&
-                                          pedido.total > 0) {
-                                        double valor =
-                                            double.tryParse(value) ?? 0;
-                                        double porcentaje =
-                                            (valor * 100) / pedido.total;
-                                        descuentoPorcentajeController.text =
-                                            porcentaje.toStringAsFixed(2);
-                                      } else if (value.isEmpty) {
-                                        descuentoPorcentajeController.text = '';
-                                      }
-                                    },
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  SizedBox(height: 24),
 
                   // Sección: Pago Múltiple
                   _buildSeccionTitulo('Pago Múltiple'),
@@ -4512,6 +4211,40 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                         SizedBox(height: 16),
 
                         // 📝 NOTA: Opción 'Mover a otra mesa' removida por solicitud del usuario
+                      ],
+                    ),
+                  ),
+
+                  SizedBox(height: 32),
+
+                  // INFORMACIÓN DEL PEDIDO (BÚSQUEDA DE CLIENTE) - Movido después de opciones especiales
+                  _buildSeccionTitulo('Información del Pedido'),
+                  SizedBox(height: 16),
+                  Container(
+                    padding: EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: _cardBg.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: _primary.withOpacity(0.2)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildInfoRow(
+                          Icons.table_restaurant,
+                          'Mesa',
+                          pedido.mesa,
+                        ),
+                        SizedBox(height: 12),
+                        _buildInfoRow(Icons.person, 'Mesero', pedido.mesero),
+                        if (pedido.cliente != null) ...[
+                          SizedBox(height: 12),
+                          _buildInfoRow(
+                            Icons.person_outline,
+                            'Cliente',
+                            pedido.cliente!,
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -7726,7 +7459,15 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                 ),
                 itemCount: mesasDeLaFila.length,
                 itemBuilder: (context, index) {
-                  return _buildMesaCard(mesasDeLaFila[index]);
+                  return MesaCard(
+                    mesa: mesasDeLaFila[index],
+                    widgetRebuildKey: _widgetRebuildKey,
+                    onRecargarMesas: _loadMesas,
+                    onMostrarMenuMesa: _mostrarMenuMesa,
+                    onMostrarDialogoPago: _mostrarDialogoPago,
+                    onObtenerPedidoActivo: _obtenerPedidoActivoDeMesa,
+                    onVerificarEstadoReal: _verificarEstadoRealMesa,
+                  );
                 },
               ),
             ],
@@ -8129,7 +7870,17 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                 margin: EdgeInsets.only(
                                   bottom: AppTheme.spacingMedium,
                                 ),
-                                child: _buildMesaCard(mesa),
+                                child: MesaCard(
+                                  mesa: mesa,
+                                  widgetRebuildKey: _widgetRebuildKey,
+                                  onRecargarMesas: _loadMesas,
+                                  onMostrarMenuMesa: _mostrarMenuMesa,
+                                  onMostrarDialogoPago: _mostrarDialogoPago,
+                                  onObtenerPedidoActivo:
+                                      _obtenerPedidoActivoDeMesa,
+                                  onVerificarEstadoReal:
+                                      _verificarEstadoRealMesa,
+                                ),
                               ),
                             )
                             .toList(),
