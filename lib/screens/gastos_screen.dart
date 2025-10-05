@@ -4,8 +4,10 @@ import '../providers/user_provider.dart';
 import '../models/gasto.dart';
 import '../models/tipo_gasto.dart';
 import '../models/cuadre_caja.dart';
+import '../models/proveedor.dart';
 import '../services/gasto_service.dart';
 import '../services/cuadre_caja_service.dart';
+import '../services/proveedor_service.dart';
 
 class GastosScreen extends StatefulWidget {
   final String? cuadreCajaId;
@@ -26,6 +28,7 @@ class _GastosScreenState extends State<GastosScreen> {
   // Services
   final GastoService _gastoService = GastoService();
   final CuadreCajaService _cuadreCajaService = CuadreCajaService();
+  final ProveedorService _proveedorService = ProveedorService();
 
   // Controllers
   final TextEditingController _conceptoController = TextEditingController();
@@ -33,7 +36,6 @@ class _GastosScreenState extends State<GastosScreen> {
   final TextEditingController _numeroReciboController = TextEditingController();
   final TextEditingController _numeroFacturaController =
       TextEditingController();
-  final TextEditingController _proveedorController = TextEditingController();
   final TextEditingController _subtotalController = TextEditingController();
   final TextEditingController _impuestosController = TextEditingController();
 
@@ -41,12 +43,15 @@ class _GastosScreenState extends State<GastosScreen> {
   List<Gasto> _gastos = [];
   List<TipoGasto> _tiposGasto = [];
   List<CuadreCaja> _cuadresDisponibles = [];
+  List<Proveedor> _proveedores = [];
   bool _isLoading = false;
   bool _showForm = false;
+  bool _pagadoDesdeCaja = false; // ✅ Campo para checkbox
 
   // Selecciones
   String? _selectedCuadreId;
   String? _selectedTipoGastoId;
+  String? _selectedProveedorId;
   String? _selectedFormaPago;
   DateTime _selectedDate = DateTime.now();
   Gasto? _gastoEditando;
@@ -67,7 +72,6 @@ class _GastosScreenState extends State<GastosScreen> {
     _montoController.dispose();
     _numeroReciboController.dispose();
     _numeroFacturaController.dispose();
-    _proveedorController.dispose();
     _subtotalController.dispose();
     _impuestosController.dispose();
     super.dispose();
@@ -79,6 +83,7 @@ class _GastosScreenState extends State<GastosScreen> {
       await Future.wait([
         _loadTiposGasto(),
         _loadCuadresDisponibles(),
+        _loadProveedores(),
         _loadGastos(),
       ]);
     } catch (e) {
@@ -113,6 +118,17 @@ class _GastosScreenState extends State<GastosScreen> {
     }
   }
 
+  Future<void> _loadProveedores() async {
+    try {
+      final proveedores = await _proveedorService.getProveedores();
+      if (mounted) {
+        setState(() => _proveedores = proveedores);
+      }
+    } catch (e) {
+      print('Error loading proveedores: $e');
+    }
+  }
+
   Future<void> _loadGastos() async {
     try {
       List<Gasto> gastos;
@@ -132,28 +148,50 @@ class _GastosScreenState extends State<GastosScreen> {
   }
 
   void _showFormDialog({Gasto? gasto}) {
-    setState(() {
-      _gastoEditando = gasto;
-      _showForm = true;
-    });
+    _gastoEditando = gasto;
 
     if (gasto != null) {
-      // Editar gasto existente
+      // Editar gasto existente - cargar datos en los controladores
+      print('DEBUG: Cargando gasto para editar: ${gasto.proveedor}'); // DEBUG
+
       _conceptoController.text = gasto.concepto;
       _montoController.text = gasto.monto.toString();
       _numeroReciboController.text = gasto.numeroRecibo ?? '';
       _numeroFacturaController.text = gasto.numeroFactura ?? '';
-      _proveedorController.text = gasto.proveedor ?? '';
       _subtotalController.text = gasto.subtotal.toString();
       _impuestosController.text = gasto.impuestos.toString();
       _selectedTipoGastoId = gasto.tipoGastoId;
       _selectedFormaPago = gasto.formaPago;
       _selectedDate = gasto.fechaGasto;
       _selectedCuadreId = gasto.cuadreCajaId;
+      _pagadoDesdeCaja = gasto.pagadoDesdeCaja;
+
+      // Buscar el proveedor por nombre para seleccionarlo
+      if (gasto.proveedor != null && gasto.proveedor!.isNotEmpty) {
+        final proveedor = _proveedores
+            .where((p) => p.nombre == gasto.proveedor)
+            .firstOrNull;
+        _selectedProveedorId = proveedor?.id;
+      }
+
+      print('DEBUG: Proveedor seleccionado: $_selectedProveedorId'); // DEBUG
     } else {
       // Nuevo gasto
       _clearForm();
+      _generateInvoiceNumber(); // Generar número de factura automáticamente
     }
+
+    setState(() {
+      _showForm = true;
+    });
+  }
+
+  void _generateInvoiceNumber() {
+    // Generar número de factura basado en la fecha y hora actual
+    final now = DateTime.now();
+    final timestamp =
+        '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}-${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}';
+    _numeroFacturaController.text = 'FACT-$timestamp';
   }
 
   void _clearForm() {
@@ -161,12 +199,13 @@ class _GastosScreenState extends State<GastosScreen> {
     _montoController.clear();
     _numeroReciboController.clear();
     _numeroFacturaController.clear();
-    _proveedorController.clear();
     _subtotalController.clear();
     _impuestosController.clear();
     _selectedTipoGastoId = null;
+    _selectedProveedorId = null;
     _selectedFormaPago = null;
     _selectedDate = DateTime.now();
+    _pagadoDesdeCaja = false; // ✅ Reset checkbox
     if (widget.cuadreCajaId != null) {
       _selectedCuadreId = widget.cuadreCajaId;
     }
@@ -182,6 +221,15 @@ class _GastosScreenState extends State<GastosScreen> {
 
       if (_gastoEditando != null) {
         // Actualizar gasto existente
+        // Obtener nombre del proveedor seleccionado
+        String? proveedorNombre;
+        if (_selectedProveedorId != null) {
+          final proveedor = _proveedores
+              .where((p) => p.id == _selectedProveedorId)
+              .firstOrNull;
+          proveedorNombre = proveedor?.nombre;
+        }
+
         await _gastoService.updateGasto(
           _gastoEditando!.id!,
           cuadreCajaId: _selectedCuadreId,
@@ -196,16 +244,24 @@ class _GastosScreenState extends State<GastosScreen> {
           numeroFactura: _numeroFacturaController.text.isEmpty
               ? null
               : _numeroFacturaController.text,
-          proveedor: _proveedorController.text.isEmpty
-              ? null
-              : _proveedorController.text,
+          proveedor: proveedorNombre,
           formaPago: _selectedFormaPago,
           subtotal: double.tryParse(_subtotalController.text),
           impuestos: double.tryParse(_impuestosController.text),
+          pagadoDesdeCaja: _pagadoDesdeCaja,
         );
         _showSuccess('Gasto actualizado exitosamente');
       } else {
         // Crear nuevo gasto
+        // Obtener nombre del proveedor seleccionado
+        String? proveedorNombre;
+        if (_selectedProveedorId != null) {
+          final proveedor = _proveedores
+              .where((p) => p.id == _selectedProveedorId)
+              .firstOrNull;
+          proveedorNombre = proveedor?.nombre;
+        }
+
         await _gastoService.createGasto(
           cuadreCajaId: _selectedCuadreId!,
           tipoGastoId: _selectedTipoGastoId!,
@@ -219,12 +275,11 @@ class _GastosScreenState extends State<GastosScreen> {
           numeroFactura: _numeroFacturaController.text.isEmpty
               ? null
               : _numeroFacturaController.text,
-          proveedor: _proveedorController.text.isEmpty
-              ? null
-              : _proveedorController.text,
+          proveedor: proveedorNombre,
           formaPago: _selectedFormaPago,
           subtotal: double.tryParse(_subtotalController.text),
           impuestos: double.tryParse(_impuestosController.text),
+          pagadoDesdeCaja: _pagadoDesdeCaja,
         );
         _showSuccess('Gasto creado exitosamente');
       }
@@ -251,11 +306,15 @@ class _GastosScreenState extends State<GastosScreen> {
       _showError('El concepto es requerido');
       return false;
     }
-    if (_montoController.text.trim().isEmpty ||
-        double.tryParse(_montoController.text) == null) {
-      _showError('El monto debe ser un número válido');
+    if (_subtotalController.text.trim().isEmpty ||
+        double.tryParse(_subtotalController.text) == null) {
+      _showError('El subtotal debe ser un número válido');
       return false;
     }
+
+    // Calcular total automáticamente si no está calculado
+    _calculateTotal();
+
     return true;
   }
 
@@ -298,6 +357,13 @@ class _GastosScreenState extends State<GastosScreen> {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  void _calculateTotal([String? value]) {
+    final subtotal = double.tryParse(_subtotalController.text) ?? 0.0;
+    final impuestos = double.tryParse(_impuestosController.text) ?? 0.0;
+    final total = subtotal + impuestos;
+    _montoController.text = total.toStringAsFixed(2);
   }
 
   void _showError(String message) {
@@ -370,132 +436,357 @@ class _GastosScreenState extends State<GastosScreen> {
           Card(
             color: cardBg,
             child: Padding(
-              padding: EdgeInsets.all(16),
+              padding: EdgeInsets.all(20),
               child: Column(
                 children: [
-                  // Cuadre de caja
-                  DropdownButtonFormField<String>(
-                    decoration: InputDecoration(
-                      labelText: 'Cuadre de Caja',
-                      labelStyle: TextStyle(color: textLight),
-                      border: OutlineInputBorder(),
+                  // Cuadre de caja (solo si no viene predefinido)
+                  if (widget.cuadreCajaId == null) ...[
+                    DropdownButtonFormField<String>(
+                      decoration: InputDecoration(
+                        labelText: 'Cuadre de Caja*',
+                        labelStyle: TextStyle(color: textLight, fontSize: 14),
+                        border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 12,
+                        ),
+                      ),
+                      initialValue: _selectedCuadreId,
+                      dropdownColor: cardBg,
+                      style: TextStyle(color: textDark, fontSize: 14),
+                      items: _cuadresDisponibles.map((cuadre) {
+                        return DropdownMenuItem(
+                          value: cuadre.id,
+                          child: Text(
+                            '${cuadre.nombre} - ${cuadre.responsable}',
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        setState(() => _selectedCuadreId = value);
+                      },
                     ),
-                    initialValue: _selectedCuadreId,
-                    dropdownColor: cardBg,
-                    style: TextStyle(color: textDark),
-                    items: _cuadresDisponibles.map((cuadre) {
-                      return DropdownMenuItem(
-                        value: cuadre.id,
-                        child: Text('${cuadre.nombre} - ${cuadre.responsable}'),
+                    SizedBox(height: 12),
+                  ],
+
+                  // Fecha
+                  InkWell(
+                    onTap: () async {
+                      final date = await showDatePicker(
+                        context: context,
+                        initialDate: _selectedDate,
+                        firstDate: DateTime(2020),
+                        lastDate: DateTime(2030),
                       );
-                    }).toList(),
-                    onChanged: widget.cuadreCajaId == null
-                        ? (value) {
-                            setState(() => _selectedCuadreId = value);
-                          }
-                        : null,
-                  ),
-                  SizedBox(height: 16),
-
-                  // Tipo de gasto
-                  DropdownButtonFormField<String>(
-                    decoration: InputDecoration(
-                      labelText: 'Tipo de Gasto',
-                      labelStyle: TextStyle(color: textLight),
-                      border: OutlineInputBorder(),
+                      if (date != null) {
+                        setState(() => _selectedDate = date);
+                      }
+                    },
+                    child: Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 16,
+                      ),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.calendar_today,
+                            color: textLight,
+                            size: 20,
+                          ),
+                          SizedBox(width: 12),
+                          Text(
+                            '${_selectedDate.day.toString().padLeft(2, '0')}/${_selectedDate.month.toString().padLeft(2, '0')}/${_selectedDate.year}',
+                            style: TextStyle(color: textDark, fontSize: 16),
+                          ),
+                        ],
+                      ),
                     ),
-                    initialValue: _selectedTipoGastoId,
-                    dropdownColor: cardBg,
-                    style: TextStyle(color: textDark),
-                    items: _tiposGasto.map((tipo) {
-                      return DropdownMenuItem(
-                        value: tipo.id,
-                        child: Text(tipo.nombre),
-                      );
-                    }).toList(),
-                    onChanged: (value) =>
-                        setState(() => _selectedTipoGastoId = value),
                   ),
-                  SizedBox(height: 16),
+                  SizedBox(height: 12),
 
-                  // Concepto
+                  // Tipo de gasto y Proveedor en la misma fila
+                  Row(
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          decoration: InputDecoration(
+                            labelText: 'Tipo de gasto*',
+                            labelStyle: TextStyle(
+                              color: textLight,
+                              fontSize: 14,
+                            ),
+                            border: OutlineInputBorder(),
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 12,
+                            ),
+                          ),
+                          initialValue: _selectedTipoGastoId,
+                          dropdownColor: cardBg,
+                          style: TextStyle(color: textDark, fontSize: 14),
+                          items: _tiposGasto.map((tipo) {
+                            return DropdownMenuItem(
+                              value: tipo.id,
+                              child: Text(tipo.nombre),
+                            );
+                          }).toList(),
+                          onChanged: (value) =>
+                              setState(() => _selectedTipoGastoId = value),
+                        ),
+                      ),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          decoration: InputDecoration(
+                            labelText: 'Proveedor',
+                            labelStyle: TextStyle(
+                              color: textLight,
+                              fontSize: 14,
+                            ),
+                            border: OutlineInputBorder(),
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 12,
+                            ),
+                          ),
+                          value: _selectedProveedorId,
+                          dropdownColor: cardBg,
+                          style: TextStyle(color: textDark, fontSize: 14),
+                          items: [
+                            DropdownMenuItem<String>(
+                              value: null,
+                              child: Text(
+                                'Sin proveedor',
+                                style: TextStyle(color: textLight),
+                              ),
+                            ),
+                            ..._proveedores.map((proveedor) {
+                              return DropdownMenuItem<String>(
+                                value: proveedor.id,
+                                child: Text(proveedor.nombre),
+                              );
+                            }),
+                          ],
+                          onChanged: (value) =>
+                              setState(() => _selectedProveedorId = value),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 12),
+
+                  // Número de factura
                   TextFormField(
-                    controller: _conceptoController,
+                    controller: _numeroFacturaController,
+                    readOnly: true,
                     decoration: InputDecoration(
-                      labelText: 'Concepto',
-                      labelStyle: TextStyle(color: textLight),
+                      labelText: 'N° Factura (Generado automáticamente)',
+                      labelStyle: TextStyle(color: textLight, fontSize: 14),
                       border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 12,
+                      ),
+                      suffixIcon: IconButton(
+                        icon: Icon(Icons.refresh, color: primary, size: 20),
+                        onPressed: _generateInvoiceNumber,
+                        tooltip: 'Regenerar número',
+                      ),
                     ),
-                    style: TextStyle(color: textDark),
+                    style: TextStyle(color: textDark, fontSize: 14),
                   ),
-                  SizedBox(height: 16),
-
-                  // Monto
-                  TextFormField(
-                    controller: _montoController,
-                    decoration: InputDecoration(
-                      labelText: 'Monto',
-                      labelStyle: TextStyle(color: textLight),
-                      border: OutlineInputBorder(),
-                      prefixText: '\$ ',
-                    ),
-                    style: TextStyle(color: textDark),
-                    keyboardType: TextInputType.number,
-                  ),
-                  SizedBox(height: 16),
+                  SizedBox(height: 12),
 
                   // Forma de pago
                   DropdownButtonFormField<String>(
                     decoration: InputDecoration(
                       labelText: 'Forma de Pago',
-                      labelStyle: TextStyle(color: textLight),
+                      labelStyle: TextStyle(color: textLight, fontSize: 14),
                       border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 12,
+                      ),
                     ),
                     initialValue: _selectedFormaPago,
                     dropdownColor: cardBg,
-                    style: TextStyle(color: textDark),
+                    style: TextStyle(color: textDark, fontSize: 14),
                     items: _formasPago.map((forma) {
                       return DropdownMenuItem(value: forma, child: Text(forma));
                     }).toList(),
                     onChanged: (value) =>
                         setState(() => _selectedFormaPago = value),
                   ),
-                  SizedBox(height: 16),
+                  SizedBox(height: 12),
 
-                  // Número de recibo
+                  // Concepto del gasto
                   TextFormField(
-                    controller: _numeroReciboController,
+                    controller: _conceptoController,
+                    maxLines: 3,
                     decoration: InputDecoration(
-                      labelText: 'Número de Recibo (Opcional)',
-                      labelStyle: TextStyle(color: textLight),
+                      labelText: 'Concepto del Gasto*',
+                      labelStyle: TextStyle(color: textLight, fontSize: 14),
                       border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 12,
+                      ),
                     ),
-                    style: TextStyle(color: textDark),
+                    style: TextStyle(color: textDark, fontSize: 14),
+                  ),
+                  SizedBox(height: 12),
+
+                  // Subtotal e Impuestos en la misma fila
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: _subtotalController,
+                          decoration: InputDecoration(
+                            labelText: 'Subtotal*',
+                            labelStyle: TextStyle(
+                              color: textLight,
+                              fontSize: 14,
+                            ),
+                            border: OutlineInputBorder(),
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 12,
+                            ),
+                          ),
+                          style: TextStyle(color: textDark, fontSize: 14),
+                          keyboardType: TextInputType.number,
+                          onChanged: _calculateTotal,
+                        ),
+                      ),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: TextFormField(
+                          controller: _impuestosController,
+                          decoration: InputDecoration(
+                            labelText: 'Impuestos',
+                            labelStyle: TextStyle(
+                              color: textLight,
+                              fontSize: 14,
+                            ),
+                            border: OutlineInputBorder(),
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 12,
+                            ),
+                          ),
+                          style: TextStyle(color: textDark, fontSize: 14),
+                          keyboardType: TextInputType.number,
+                          onChanged: _calculateTotal,
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 12),
+
+                  // Total
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                    decoration: BoxDecoration(
+                      color: primary.withOpacity(0.1),
+                      border: Border.all(color: primary),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Total',
+                          style: TextStyle(
+                            color: textDark,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          _montoController.text.isEmpty
+                              ? '0,00'
+                              : _montoController.text,
+                          style: TextStyle(
+                            color: primary,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                   SizedBox(height: 16),
 
-                  // Número de factura
-                  TextFormField(
-                    controller: _numeroFacturaController,
-                    decoration: InputDecoration(
-                      labelText: 'Número de Factura (Opcional)',
-                      labelStyle: TextStyle(color: textLight),
-                      border: OutlineInputBorder(),
+                  // Checkbox para pago desde caja
+                  Container(
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: primary.withOpacity(0.3)),
                     ),
-                    style: TextStyle(color: textDark),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.account_balance_wallet,
+                          color: primary,
+                          size: 20,
+                        ),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Pagar desde caja (descontar del efectivo)',
+                            style: TextStyle(
+                              color: textDark,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                        Switch(
+                          value: _pagadoDesdeCaja,
+                          onChanged: (value) {
+                            setState(() {
+                              _pagadoDesdeCaja = value;
+                            });
+                          },
+                          activeColor: primary,
+                        ),
+                      ],
+                    ),
                   ),
-                  SizedBox(height: 16),
 
-                  // Proveedor
-                  TextFormField(
-                    controller: _proveedorController,
-                    decoration: InputDecoration(
-                      labelText: 'Proveedor (Opcional)',
-                      labelStyle: TextStyle(color: textLight),
-                      border: OutlineInputBorder(),
+                  // Mostrar información de efectivo disponible si está activado el switch
+                  if (_pagadoDesdeCaja && _selectedCuadreId != null) ...[
+                    SizedBox(height: 12),
+                    Container(
+                      padding: EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.info, color: Colors.blue, size: 20),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Se descontará del efectivo disponible en caja. Asegúrate de que hay suficiente efectivo.',
+                              style: TextStyle(color: textDark, fontSize: 12),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    style: TextStyle(color: textDark),
-                  ),
+                  ],
                   SizedBox(height: 20),
 
                   // Botones
@@ -588,65 +879,155 @@ class _GastosScreenState extends State<GastosScreen> {
                     final gasto = _gastos[index];
                     return Card(
                       color: cardBg,
-                      margin: EdgeInsets.only(bottom: 8),
-                      child: ListTile(
-                        title: Text(
-                          gasto.concepto,
-                          style: TextStyle(
-                            color: textDark,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        subtitle: Column(
+                      margin: EdgeInsets.only(bottom: 12),
+                      elevation: 2,
+                      child: Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              '${gasto.tipoGastoNombre} • ${gasto.fechaFormateada}',
-                              style: TextStyle(color: textLight),
-                            ),
-                            if (gasto.proveedor != null)
-                              Text(
-                                'Proveedor: ${gasto.proveedor}',
-                                style: TextStyle(color: textLight),
-                              ),
-                          ],
-                        ),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              gasto.montoFormateado,
-                              style: TextStyle(
-                                color: primary,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                            PopupMenuButton(
-                              color: cardBg,
-                              itemBuilder: (context) => [
-                                PopupMenuItem(
-                                  value: 'edit',
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
                                   child: Text(
-                                    'Editar',
-                                    style: TextStyle(color: textDark),
+                                    gasto.concepto,
+                                    style: TextStyle(
+                                      color: textDark,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
                                   ),
                                 ),
-                                PopupMenuItem(
-                                  value: 'delete',
-                                  child: Text(
-                                    'Eliminar',
-                                    style: TextStyle(color: Colors.red),
+                                Text(
+                                  gasto.montoFormateado,
+                                  style: TextStyle(
+                                    color: primary,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 18,
                                   ),
                                 ),
                               ],
-                              onSelected: (value) {
-                                if (value == 'edit') {
-                                  _showFormDialog(gasto: gasto);
-                                } else if (value == 'delete') {
-                                  _deleteGasto(gasto);
-                                }
-                              },
+                            ),
+                            SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.category,
+                                  size: 16,
+                                  color: textLight,
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  gasto.tipoGastoNombre,
+                                  style: TextStyle(
+                                    color: textLight,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                SizedBox(width: 16),
+                                Icon(
+                                  Icons.calendar_today,
+                                  size: 16,
+                                  color: textLight,
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  gasto.fechaFormateada,
+                                  style: TextStyle(
+                                    color: textLight,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (gasto.proveedor != null) ...[
+                              SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.business,
+                                    size: 16,
+                                    color: textLight,
+                                  ),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    gasto.proveedor!,
+                                    style: TextStyle(
+                                      color: textLight,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                            if (gasto.numeroFactura != null) ...[
+                              SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.receipt,
+                                    size: 16,
+                                    color: textLight,
+                                  ),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    'Factura: ${gasto.numeroFactura}',
+                                    style: TextStyle(
+                                      color: textLight,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                            SizedBox(height: 12),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                ElevatedButton.icon(
+                                  onPressed: () =>
+                                      _showFormDialog(gasto: gasto),
+                                  icon: Icon(
+                                    Icons.edit,
+                                    size: 16,
+                                    color: Colors.white,
+                                  ),
+                                  label: Text(
+                                    'Editar',
+                                    style: TextStyle(color: Colors.white),
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.blue,
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 8,
+                                    ),
+                                    minimumSize: Size(0, 32),
+                                  ),
+                                ),
+                                SizedBox(width: 8),
+                                ElevatedButton.icon(
+                                  onPressed: () => _deleteGasto(gasto),
+                                  icon: Icon(
+                                    Icons.delete,
+                                    size: 16,
+                                    color: Colors.white,
+                                  ),
+                                  label: Text(
+                                    'Eliminar',
+                                    style: TextStyle(color: Colors.white),
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.red,
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 8,
+                                    ),
+                                    minimumSize: Size(0, 32),
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),

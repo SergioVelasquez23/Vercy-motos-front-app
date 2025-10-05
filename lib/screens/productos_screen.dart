@@ -334,149 +334,17 @@ class _ProductosScreenState extends State<ProductosScreen> {
                 ),
                 SizedBox(height: 12),
                 Container(
-                  height: 45,
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    children: [
-                      // Chip "Todas"
-                      Container(
-                        margin: EdgeInsets.only(right: 12),
-                        child: GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _selectedCategoriaId = null;
-                              _productosFuture = _filtrarProductos();
-                            });
-                          },
-                          child: Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 10,
-                            ),
-                            decoration: BoxDecoration(
-                              gradient: _selectedCategoriaId == null
-                                  ? LinearGradient(
-                                      colors: [
-                                        AppTheme.primary,
-                                        AppTheme.primaryLight,
-                                      ],
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                    )
-                                  : null,
-                              color: _selectedCategoriaId == null
-                                  ? null
-                                  : AppTheme.cardBg,
-                              borderRadius: BorderRadius.circular(25),
-                              border: Border.all(
-                                color: _selectedCategoriaId == null
-                                    ? AppTheme.primary
-                                    : AppTheme.textMuted.withOpacity(0.3),
-                                width: 1.5,
-                              ),
-                              boxShadow: _selectedCategoriaId == null
-                                  ? [
-                                      BoxShadow(
-                                        color: AppTheme.primary.withOpacity(
-                                          0.3,
-                                        ),
-                                        blurRadius: 8,
-                                        offset: Offset(0, 2),
-                                      ),
-                                    ]
-                                  : null,
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.apps,
-                                  color: _selectedCategoriaId == null
-                                      ? Colors.white
-                                      : AppTheme.textSecondary,
-                                  size: 16,
-                                ),
-                                SizedBox(width: 6),
-                                Text(
-                                  'Todas',
-                                  style: TextStyle(
-                                    color: _selectedCategoriaId == null
-                                        ? Colors.white
-                                        : AppTheme.textSecondary,
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
+                  height: 70, // Solo una fila visible
+                  child: Scrollbar(
+                    thumbVisibility: true,
+                    trackVisibility: true,
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.vertical,
+                      physics: BouncingScrollPhysics(),
+                      child: Column(
+                        children: _buildCategoriaGridRowsProductos(),
                       ),
-                      // Chips de categorías
-                      ..._categorias.map((categoria) {
-                        final isSelected = _selectedCategoriaId == categoria.id;
-                        return Container(
-                          margin: EdgeInsets.only(right: 12),
-                          child: GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                _selectedCategoriaId = isSelected
-                                    ? null
-                                    : categoria.id;
-                                _productosFuture = _filtrarProductos();
-                              });
-                            },
-                            child: Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 10,
-                              ),
-                              decoration: BoxDecoration(
-                                gradient: isSelected
-                                    ? LinearGradient(
-                                        colors: [
-                                          AppTheme.primary,
-                                          AppTheme.primaryLight,
-                                        ],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                      )
-                                    : null,
-                                color: isSelected ? null : AppTheme.cardBg,
-                                borderRadius: BorderRadius.circular(25),
-                                border: Border.all(
-                                  color: isSelected
-                                      ? AppTheme.primary
-                                      : AppTheme.textSecondary.withOpacity(0.3),
-                                  width: 1.5,
-                                ),
-                                boxShadow: isSelected
-                                    ? [
-                                        BoxShadow(
-                                          color: AppTheme.primary.withOpacity(
-                                            0.3,
-                                          ),
-                                          blurRadius: 8,
-                                          offset: Offset(0, 2),
-                                        ),
-                                      ]
-                                    : null,
-                              ),
-                              child: Text(
-                                categoria.nombre,
-                                style: TextStyle(
-                                  color: isSelected
-                                      ? Colors.white
-                                      : AppTheme.textSecondary,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ),
-                          ),
-                        );
-                      }),
-                    ],
+                    ),
                   ),
                 ),
               ],
@@ -2102,5 +1970,150 @@ class _ProductosScreenState extends State<ProductosScreen> {
         );
       },
     );
+  }
+
+  // Genera las filas del grid de categorías para productos
+  List<Widget> _buildCategoriaGridRowsProductos() {
+    List<Widget> rows = [];
+    List<Widget> allCategories = [];
+
+    // Agregar opción "Todas"
+    allCategories.add(
+      Container(
+        margin: EdgeInsets.only(right: 12),
+        child: GestureDetector(
+          onTap: () {
+            setState(() {
+              _selectedCategoriaId = null;
+              _productosFuture = _filtrarProductos();
+            });
+          },
+          child: Container(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              gradient: _selectedCategoriaId == null
+                  ? LinearGradient(
+                      colors: [AppTheme.primary, AppTheme.primaryLight],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    )
+                  : null,
+              color: _selectedCategoriaId == null ? null : AppTheme.cardBg,
+              borderRadius: BorderRadius.circular(25),
+              border: Border.all(
+                color: _selectedCategoriaId == null
+                    ? AppTheme.primary
+                    : AppTheme.textMuted.withOpacity(0.3),
+                width: 1.5,
+              ),
+              boxShadow: _selectedCategoriaId == null
+                  ? [
+                      BoxShadow(
+                        color: AppTheme.primary.withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: Offset(0, 2),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.apps,
+                  color: _selectedCategoriaId == null
+                      ? Colors.white
+                      : AppTheme.textSecondary,
+                  size: 16,
+                ),
+                SizedBox(width: 6),
+                Text(
+                  'Todas',
+                  style: TextStyle(
+                    color: _selectedCategoriaId == null
+                        ? Colors.white
+                        : AppTheme.textSecondary,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    // Agregar todas las categorías
+    allCategories.addAll(
+      _categorias.map((categoria) {
+        final isSelected = _selectedCategoriaId == categoria.id;
+        return Container(
+          margin: EdgeInsets.only(right: 12),
+          child: GestureDetector(
+            onTap: () {
+              setState(() {
+                _selectedCategoriaId = isSelected ? null : categoria.id;
+                _productosFuture = _filtrarProductos();
+              });
+            },
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                gradient: isSelected
+                    ? LinearGradient(
+                        colors: [AppTheme.primary, AppTheme.primaryLight],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      )
+                    : null,
+                color: isSelected ? null : AppTheme.cardBg,
+                borderRadius: BorderRadius.circular(25),
+                border: Border.all(
+                  color: isSelected
+                      ? AppTheme.primary
+                      : AppTheme.textSecondary.withOpacity(0.3),
+                  width: 1.5,
+                ),
+                boxShadow: isSelected
+                    ? [
+                        BoxShadow(
+                          color: AppTheme.primary.withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: Offset(0, 2),
+                        ),
+                      ]
+                    : null,
+              ),
+              child: Text(
+                categoria.nombre,
+                style: TextStyle(
+                  color: isSelected ? Colors.white : AppTheme.textSecondary,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+          ),
+        );
+      }),
+    );
+
+    // Dividir en filas de 2 elementos
+    for (int i = 0; i < allCategories.length; i += 2) {
+      List<Widget> rowItems = allCategories.skip(i).take(2).toList();
+
+      rows.add(
+        Container(
+          height: 50,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: rowItems,
+          ),
+        ),
+      );
+    }
+
+    return rows;
   }
 }

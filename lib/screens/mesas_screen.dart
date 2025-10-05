@@ -3207,6 +3207,31 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                               fontSize: 15,
                                             ),
                                           ),
+                                          // Mostrar quien agregó el producto
+                                          if (item.agregadoPor != null &&
+                                              item.agregadoPor!.isNotEmpty) ...[
+                                            SizedBox(height: 2),
+                                            Row(
+                                              children: [
+                                                Icon(
+                                                  Icons.person_pin,
+                                                  size: 14,
+                                                  color: Colors.green
+                                                      .withOpacity(0.8),
+                                                ),
+                                                SizedBox(width: 4),
+                                                Text(
+                                                  'Agregado por: ${item.agregadoPor}',
+                                                  style: TextStyle(
+                                                    color: Colors.green
+                                                        .withOpacity(0.9),
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
                                           if (item.notas != null &&
                                               item.notas!.isNotEmpty) ...[
                                             SizedBox(height: 4),
@@ -4150,7 +4175,27 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                             double propinaMonto =
                                 (subtotal * propinaPercent / 100)
                                     .roundToDouble();
-                            double total = subtotal + propinaMonto;
+
+                            // ✅ Calcular descuento
+                            double descuento = 0.0;
+                            String descuentoPorcentajeStr =
+                                descuentoPorcentajeController.text;
+                            String descuentoValorStr =
+                                descuentoValorController.text;
+
+                            if (descuentoPorcentajeStr.isNotEmpty) {
+                              double descuentoPorcentaje =
+                                  double.tryParse(descuentoPorcentajeStr) ??
+                                  0.0;
+                              descuento =
+                                  (subtotal * descuentoPorcentaje / 100);
+                            } else if (descuentoValorStr.isNotEmpty) {
+                              descuento =
+                                  double.tryParse(descuentoValorStr) ?? 0.0;
+                            }
+
+                            // ✅ Total con descuento aplicado
+                            double total = subtotal - descuento + propinaMonto;
 
                             return Container(
                               padding: EdgeInsets.all(20),
@@ -4191,6 +4236,31 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                       ),
                                     ],
                                   ),
+                                  // ✅ Mostrar descuento si está aplicado
+                                  if (descuento > 0) ...[
+                                    SizedBox(height: 12),
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          'Descuento:',
+                                          style: TextStyle(
+                                            color: Colors.green,
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                        Text(
+                                          '-${formatCurrency(descuento)}',
+                                          style: TextStyle(
+                                            color: Colors.green,
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
                                   if (propinaPercent > 0) ...[
                                     SizedBox(height: 12),
                                     Row(
@@ -5629,6 +5699,9 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
         print('      - ItemID: ${item.id}');
         print('      - Cantidad: ${item.cantidad}');
         print('      - Total: ${formatCurrency(itemTotal)}');
+        if (item.agregadoPor != null && item.agregadoPor!.isNotEmpty) {
+          print('      - Agregado por: ${item.agregadoPor}');
+        }
       }
       print('💰 Valor total a cancelar: ${formatCurrency(totalCancelado)}');
 
@@ -7134,9 +7207,25 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
   // Navegar a la pantalla de documentos
   Future<void> navegarADocumentos() async {
     try {
-      // Navegar a la pantalla de documentos
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+
+      // Debug logs para verificar el rol del usuario
+      print('🔍 DEBUG MESAS - userProvider.isMesero: ${userProvider.isMesero}');
+      print('🔍 DEBUG MESAS - userProvider.roles: ${userProvider.roles}');
+      print(
+        '🔍 DEBUG MESAS - userProvider.isOnlyMesero: ${userProvider.isOnlyMesero}',
+      );
+
       if (mounted) {
-        await Navigator.of(context).pushNamed('/documentos');
+        if (userProvider.isMesero) {
+          // Si es mesero, navegar a la pantalla de mesero
+          print('✅ MESAS - Navegando a /mesero para usuario mesero');
+          await Navigator.of(context).pushNamed('/mesero');
+        } else {
+          // Si no es mesero, navegar a documentos
+          print('❌ MESAS - Navegando a /documentos para usuario no-mesero');
+          await Navigator.of(context).pushNamed('/documentos');
+        }
         // Al regresar, actualizar las mesas por si hubo cambios
         await _loadMesas();
       }
@@ -7200,7 +7289,11 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
               await navegarADocumentos();
             },
             icon: Icon(Icons.receipt_long),
-            label: Text('Ver Todos los Documentos'),
+            label: Text(
+              Provider.of<UserProvider>(context, listen: false).isMesero
+                  ? 'Ir a Mis Pedidos'
+                  : 'Ver Todos los Documentos',
+            ),
             style: ElevatedButton.styleFrom(
               backgroundColor: _primary,
               foregroundColor: Colors.white,
@@ -7367,7 +7460,10 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                   ),
                 ],
               ),
-              tooltip: 'Ver documentos del día',
+              tooltip:
+                  Provider.of<UserProvider>(context, listen: false).isMesero
+                  ? 'Ir a Mis Pedidos'
+                  : 'Ver documentos del día',
               onPressed: () => navegarADocumentos(),
             ),
           ),
@@ -7533,6 +7629,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
           'DOMICILIO',
           'CAJA',
           'MESA AUXILIAR',
+          'DEUDAS', // ✅ Mesa Deudas como mesa especial
         ].contains(mesa.nombre.toUpperCase())) {
           if (mesasPorFila[letra] == null) {
             mesasPorFila[letra] = [];
@@ -7686,6 +7783,14 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                 () => _mostrarPedidosMesaEspecial('Mesa Auxiliar'),
                 height: especialHeight,
               ),
+              SizedBox(height: AppTheme.spacingMedium),
+              buildMesaEspecial(
+                'Deudas',
+                Icons.account_balance_wallet,
+                'disponible',
+                () => _mostrarPedidosMesaEspecial('Deudas'),
+                height: especialHeight,
+              ),
             ],
           );
         } else {
@@ -7717,7 +7822,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                 ],
               ),
               SizedBox(height: AppTheme.spacingMedium),
-              // Segunda fila: Mesa Auxiliar
+              // Segunda fila: Mesa Auxiliar y Deudas
               Row(
                 children: [
                   Expanded(
@@ -7726,6 +7831,16 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                       Icons.table_restaurant,
                       'disponible',
                       () => _mostrarPedidosMesaEspecial('Mesa Auxiliar'),
+                      height: especialHeight,
+                    ),
+                  ),
+                  SizedBox(width: AppTheme.spacingMedium),
+                  Expanded(
+                    child: buildMesaEspecial(
+                      'Deudas',
+                      Icons.account_balance_wallet,
+                      'disponible',
+                      () => _mostrarPedidosMesaEspecial('Deudas'),
                       height: especialHeight,
                     ),
                   ),
@@ -7924,6 +8039,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
           'DOMICILIO',
           'CAJA',
           'MESA AUXILIAR',
+          'DEUDAS', // ✅ Mesa Deudas como mesa especial
         ].contains(mesa.nombre.toUpperCase())) {
           if (mesasPorLetra[letra] == null) {
             mesasPorLetra[letra] = [];
@@ -8048,6 +8164,9 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
         print('    - Nombre: ${item.productoNombre ?? 'Producto'}');
         print('    - Cantidad: ${item.cantidad}');
         print('    - Precio: ${item.precio}');
+        if (item.agregadoPor != null && item.agregadoPor!.isNotEmpty) {
+          print('    - Agregado por: ${item.agregadoPor}');
+        }
       }
     }
 
@@ -9413,27 +9532,57 @@ class _PedidosEspecialesScreenState extends State<PedidosEspecialesScreen> {
                   .take(3)
                   .map(
                     (item) => Padding(
-                      padding: EdgeInsets.only(bottom: 4),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      padding: EdgeInsets.only(bottom: 6),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(
-                            child: Text(
-                              '${item.cantidad}x ${item.productoNombre ?? 'Producto'}',
-                              style: TextStyle(
-                                color: AppTheme.textSecondary,
-                                fontSize: 14,
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  '${item.cantidad}x ${item.productoNombre ?? 'Producto'}',
+                                  style: TextStyle(
+                                    color: AppTheme.textSecondary,
+                                    fontSize: 14,
+                                  ),
+                                ),
                               ),
-                            ),
+                              Text(
+                                formatCurrency(
+                                  item.cantidad * item.precioUnitario,
+                                ),
+                                style: TextStyle(
+                                  color: AppTheme.textPrimary,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
                           ),
-                          Text(
-                            formatCurrency(item.cantidad * item.precioUnitario),
-                            style: TextStyle(
-                              color: AppTheme.textPrimary,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
+                          // Mostrar quien agregó el producto en vista resumida
+                          if (item.agregadoPor != null &&
+                              item.agregadoPor!.isNotEmpty) ...[
+                            SizedBox(height: 2),
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.person,
+                                  size: 12,
+                                  color: Colors.green.withOpacity(0.7),
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  'por ${item.agregadoPor}',
+                                  style: TextStyle(
+                                    color: Colors.green.withOpacity(0.8),
+                                    fontSize: 11,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
+                          ],
                         ],
                       ),
                     ),

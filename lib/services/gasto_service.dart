@@ -123,6 +123,7 @@ class GastoService {
     String? formaPago,
     double? subtotal,
     double? impuestos,
+    bool? pagadoDesdeCaja,
   }) async {
     try {
       final headers = await _getHeaders();
@@ -139,6 +140,7 @@ class GastoService {
         if (formaPago != null) 'formaPago': formaPago,
         if (subtotal != null) 'subtotal': subtotal,
         if (impuestos != null) 'impuestos': impuestos,
+        if (pagadoDesdeCaja != null) 'pagadoDesdeCaja': pagadoDesdeCaja,
       };
 
       print('GastoService - createGasto body: ${json.encode(body)}');
@@ -179,6 +181,7 @@ class GastoService {
     String? formaPago,
     double? subtotal,
     double? impuestos,
+    bool? pagadoDesdeCaja,
   }) async {
     try {
       final headers = await _getHeaders();
@@ -195,6 +198,7 @@ class GastoService {
         if (formaPago != null) 'formaPago': formaPago,
         if (subtotal != null) 'subtotal': subtotal,
         if (impuestos != null) 'impuestos': impuestos,
+        if (pagadoDesdeCaja != null) 'pagadoDesdeCaja': pagadoDesdeCaja,
       };
 
       final response = await http.put(

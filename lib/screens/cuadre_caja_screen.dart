@@ -359,18 +359,49 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
     // Check if user has admin permissions
     final userProvider = Provider.of<UserProvider>(context);
     if (!userProvider.isAdmin) {
-      // If user is not admin, redirect to dashboard
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        Navigator.of(context).pushReplacementNamed('/dashboard');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Acceso restringido. Necesitas permisos de administrador.',
+      // Si el usuario no es admin, mostrar mensaje y pantalla de acceso restringido
+      return Scaffold(
+        backgroundColor: bgDark,
+        appBar: AppBar(
+          title: Text(
+            'Cuadres de Caja',
+            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+          ),
+          backgroundColor: primary,
+        ),
+        body: Center(
+          child: Container(
+            margin: EdgeInsets.all(20),
+            padding: EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: cardBg,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.red.withOpacity(0.3)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.lock, color: Colors.red, size: 64),
+                SizedBox(height: 16),
+                Text(
+                  'Acceso Restringido',
+                  style: TextStyle(
+                    color: textDark,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'Necesitas permisos de administrador para acceder a esta sección.',
+                  style: TextStyle(color: textLight),
+                  textAlign: TextAlign.center,
+                ),
+              ],
             ),
           ),
-        );
-      });
-      return Container(); // Return empty container while redirecting
+        ),
+      );
     }
 
     return Scaffold(

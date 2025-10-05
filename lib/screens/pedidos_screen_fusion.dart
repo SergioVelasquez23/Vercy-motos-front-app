@@ -515,18 +515,67 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
     // Check if user has admin permissions
     final userProvider = Provider.of<UserProvider>(context);
     if (!userProvider.isAdmin) {
-      // If user is not admin, redirect to dashboard
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        Navigator.of(context).pushReplacementNamed('/dashboard');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Acceso restringido. Necesitas permisos de administrador.',
+      // Si el usuario no es admin, mostrar pantalla de acceso restringido
+      return Scaffold(
+        backgroundColor: AppTheme.backgroundDark,
+        body: CustomScrollView(
+          controller: _scrollController,
+          slivers: [
+            SliverAppBar(
+              backgroundColor: AppTheme.primary,
+              elevation: 0,
+              floating: true,
+              pinned: false,
+              expandedHeight: 120.0,
+              flexibleSpace: FlexibleSpaceBar(
+                titlePadding: EdgeInsets.only(left: 16, bottom: 16),
+                title: Text(
+                  'Pedidos',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
             ),
-          ),
-        );
-      });
-      return Container(); // Return empty container while redirecting
+            SliverFillRemaining(
+              child: Center(
+                child: Container(
+                  margin: EdgeInsets.all(20),
+                  padding: EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: AppTheme.cardBg,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.red.withOpacity(0.3)),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.lock, color: Colors.red, size: 64),
+                      SizedBox(height: 16),
+                      Text(
+                        'Acceso Restringido',
+                        style: TextStyle(
+                          color: AppTheme.textDark,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'Necesitas permisos de administrador para acceder a esta sección.',
+                        style: TextStyle(color: AppTheme.textLight),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
     }
 
     return Scaffold(

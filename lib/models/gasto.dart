@@ -13,6 +13,7 @@ class Gasto {
   final String? formaPago;
   final double subtotal;
   final double impuestos;
+  final bool pagadoDesdeCaja;
 
   Gasto({
     this.id,
@@ -29,6 +30,7 @@ class Gasto {
     this.formaPago,
     this.subtotal = 0.0,
     this.impuestos = 0.0,
+    this.pagadoDesdeCaja = false,
   });
 
   factory Gasto.fromJson(Map<String, dynamic> json) {
@@ -49,6 +51,7 @@ class Gasto {
       formaPago: json['formaPago'],
       subtotal: (json['subtotal'] ?? 0).toDouble(),
       impuestos: (json['impuestos'] ?? 0).toDouble(),
+      pagadoDesdeCaja: json['pagadoDesdeCaja'] ?? false,
     );
   }
 
@@ -68,6 +71,7 @@ class Gasto {
       if (formaPago != null) 'formaPago': formaPago,
       'subtotal': subtotal,
       'impuestos': impuestos,
+      'pagadoDesdeCaja': pagadoDesdeCaja,
     };
   }
 
@@ -86,6 +90,7 @@ class Gasto {
     String? formaPago,
     double? subtotal,
     double? impuestos,
+    bool? pagadoDesdeCaja,
   }) {
     return Gasto(
       id: id ?? this.id,
@@ -102,6 +107,7 @@ class Gasto {
       formaPago: formaPago ?? this.formaPago,
       subtotal: subtotal ?? this.subtotal,
       impuestos: impuestos ?? this.impuestos,
+      pagadoDesdeCaja: pagadoDesdeCaja ?? this.pagadoDesdeCaja,
     );
   }
 

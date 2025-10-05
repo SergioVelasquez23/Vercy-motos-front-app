@@ -1002,15 +1002,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
       }),
     );
 
-    // Mis Pedidos - Solo para meseros
-    if (userProvider.isMesero) {
-      navItems.add(
-        _buildNavItem(Icons.receipt_long, 'Mis Pedidos', 99, () {
-          Navigator.pushNamed(context, '/mesero');
-        }),
-      );
-    }
-
     // 3. Pedidos - Disponible para todos los roles
     navItems.add(
       _buildNavItem(Icons.shopping_cart, 'Pedidos', 2, () {
@@ -1238,8 +1229,24 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         ),
       );
 
-      // 8. Documentos - Solo para administradores que NO sean únicamente meseros
-      if (!userProvider.isOnlyMesero) {
+      // 8. Documentos / Mis Pedidos - Condicional según el rol
+      print('🔍 DEBUG - userProvider.isMesero: ${userProvider.isMesero}');
+      print('🔍 DEBUG - userProvider.roles: ${userProvider.roles}');
+      print(
+        '🔍 DEBUG - userProvider.isOnlyMesero: ${userProvider.isOnlyMesero}',
+      );
+
+      if (userProvider.isMesero) {
+        // Cualquier usuario con rol de mesero ve "Mis Pedidos"
+        print('✅ Agregando botón "Mis Pedidos" para mesero');
+        navItems.add(
+          _buildNavItem(Icons.receipt_long, 'Mis Pedidos', 7, () {
+            Navigator.pushNamed(context, '/mesero');
+          }),
+        );
+      } else {
+        // Solo usuarios sin rol de mesero ven "Documentos"
+        print('❌ Agregando botón "Documentos" para no-mesero');
         navItems.add(
           _buildNavItem(Icons.description, 'Documentos', 7, () {
             Navigator.push(
