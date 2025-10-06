@@ -20,15 +20,14 @@ class PedidoRowWidget extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (pedido.cliente != null && pedido.cliente.isNotEmpty)
-                Text(
-                  pedido.cliente,
-                  style: const TextStyle(
-                    color: textDark,
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                  ),
+              Text(
+                'ID: ${pedido.id}',
+                style: const TextStyle(
+                  color: textDark,
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
                 ),
+              ),
               Text(
                 'Mesa: ${pedido.mesa}',
                 style: const TextStyle(color: textLight, fontSize: 9),

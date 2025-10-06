@@ -95,7 +95,16 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
           (_) {},
         );
 
-        // Timer de respaldo eliminado para evitar recargas automáticas excesivas
+        // Timer de respaldo (cada 5 minutos) en caso de que WebSocket falle
+        _autoRefreshTimer = Timer.periodic(Duration(minutes: 5), (timer) {
+          if (!_webSocketService.isConnected) {
+            _cargarDatos();
+            // Actualizar UI para mostrar estado desconectado
+            if (mounted) {
+              setState(() {});
+            }
+          }
+        });
       }
     });
   }
@@ -136,7 +145,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
     _pedidoCompletadoSubscription.cancel();
     _pedidoPagadoSubscription.cancel();
     _webSocketSubscription.cancel();
-    // Timer de respaldo eliminado
+    _autoRefreshTimer.cancel();
 
     // Desconectar WebSocket si estamos saliendo del dashboard
     _webSocketService.disconnect();

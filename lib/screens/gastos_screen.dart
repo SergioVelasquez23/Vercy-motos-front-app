@@ -110,9 +110,7 @@ class _GastosScreenState extends State<GastosScreen> {
       final allCuadres = await _cuadreCajaService.getAllCuadres();
       if (mounted) {
         setState(() {
-          _cuadresDisponibles = allCuadres
-              .where((c) => c.estado != 'cerrada')
-              .toList();
+          _cuadresDisponibles = allCuadres.where((c) => !c.cerrada).toList();
         });
       }
     } catch (e) {

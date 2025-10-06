@@ -54,7 +54,7 @@ class _AbrirCajaScreenState extends State<AbrirCajaScreen> {
 
     try {
       final cuadres = await _cuadreCajaService.getAllCuadres();
-      final cajaAbierta = cuadres.where((c) => c.estado != 'cerrada').toList();
+      final cajaAbierta = cuadres.where((c) => !c.cerrada).toList();
 
       setState(() {
         _hayCajaAbierta = cajaAbierta.isNotEmpty;
@@ -222,7 +222,7 @@ class _AbrirCajaScreenState extends State<AbrirCajaScreen> {
                             SizedBox(height: 12),
                             if (_cajaActual != null) ...[
                               Text(
-                                'Caja: ${_selectedCaja ?? 'Caja Principal'}',
+                                'Caja: ${_cajaActual!.nombre}',
                                 style: TextStyle(color: Colors.red.shade100),
                               ),
                               Text(
@@ -230,13 +230,11 @@ class _AbrirCajaScreenState extends State<AbrirCajaScreen> {
                                 style: TextStyle(color: Colors.red.shade100),
                               ),
                               Text(
-                                _cajaActual!.fechaInicio != null
-                                    ? 'Fecha apertura: ${_cajaActual!.fechaInicio!.day}/${_cajaActual!.fechaInicio!.month}/${_cajaActual!.fechaInicio!.year} ${_cajaActual!.fechaInicio!.hour}:${_cajaActual!.fechaInicio!.minute.toString().padLeft(2, '0')}'
-                                    : 'Fecha apertura: --',
+                                'Fecha apertura: ${_cajaActual!.fechaApertura.day}/${_cajaActual!.fechaApertura.month}/${_cajaActual!.fechaApertura.year} ${_cajaActual!.fechaApertura.hour}:${_cajaActual!.fechaApertura.minute.toString().padLeft(2, '0')}',
                                 style: TextStyle(color: Colors.red.shade100),
                               ),
                               Text(
-                                'Monto inicial: \${_cajaActual!.efectivoInicial.toStringAsFixed(0)}',
+                                'Monto inicial: \$${_cajaActual!.fondoInicial.toStringAsFixed(0)}',
                                 style: TextStyle(color: Colors.red.shade100),
                               ),
                             ],

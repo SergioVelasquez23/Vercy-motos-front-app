@@ -6,7 +6,6 @@ import '../services/pedido_service.dart';
 import '../providers/user_provider.dart';
 import '../utils/format_utils.dart';
 import '../theme/app_theme.dart';
-import 'package:collection/collection.dart';
 
 class PedidosScreenFusion extends StatefulWidget {
   const PedidosScreenFusion({super.key});
@@ -334,21 +333,15 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
   }
 
   Future<void> _mostrarDialogoEliminarPedidos() async {
-    // Permitir eliminar pedidos pagados y activos
-    final pedidosEliminables = _pedidosFiltrados
-        .where(
-          (pedido) =>
-              pedido.estado == EstadoPedido.activo ||
-              pedido.estado == EstadoPedido.pagado,
-        )
+    // Obtener pedidos activos que pueden ser eliminados
+    final pedidosActivos = _pedidosFiltrados
+        .where((pedido) => pedido.estado == EstadoPedido.activo)
         .toList();
 
-    if (pedidosEliminables.isEmpty) {
+    if (pedidosActivos.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            'No hay pedidos activos o pagados que se puedan eliminar',
-          ),
+          content: Text('No hay pedidos activos que se puedan eliminar'),
           backgroundColor: Colors.orange,
         ),
       );
@@ -382,15 +375,15 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Selecciona los pedidos activos o pagados que deseas eliminar:',
+                      'Selecciona los pedidos activos que deseas eliminar:',
                       style: AppTheme.bodyMedium,
                     ),
                     SizedBox(height: 16),
                     Expanded(
                       child: ListView.builder(
-                        itemCount: pedidosEliminables.length,
+                        itemCount: pedidosActivos.length,
                         itemBuilder: (context, index) {
-                          final pedido = pedidosEliminables[index];
+                          final pedido = pedidosActivos[index];
                           final isSelected = pedidosSeleccionados.contains(
                             pedido.id,
                           );
@@ -407,14 +400,11 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                               });
                             },
                             title: Text(
-                              pedido.cliente != null &&
-                                      pedido.cliente!.isNotEmpty
-                                  ? 'Mesa ${pedido.mesa} - ${pedido.cliente}'
-                                  : 'Mesa ${pedido.mesa}',
+                              'Mesa ${pedido.mesa} - ${pedido.cliente ?? "Sin cliente"}',
                               style: TextStyle(color: AppTheme.textPrimary),
                             ),
                             subtitle: Text(
-                              'Total: ${formatCurrency(pedido.total)} - ${pedido.items.length} productos - Estado: ${_getEstadoTexto(pedido.estado)}',
+                              'Total: ${formatCurrency(pedido.total)} - ${pedido.items.length} productos',
                               style: TextStyle(color: AppTheme.textSecondary),
                             ),
                             activeColor: Colors.red,
@@ -470,15 +460,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
 
       for (String pedidoId in pedidosIds) {
         try {
-          // Buscar el pedido para saber si está pagado
-          final pedido = _pedidos.firstWhereOrNull((p) => p.id == pedidoId);
-          if (pedido != null && pedido.estado == EstadoPedido.pagado) {
-            // Eliminar pedido pagado usando el endpoint especial
-            await _pedidoService.eliminarPedidoPagado(pedidoId);
-          } else {
-            // Eliminar pedido normal
-            await _pedidoService.eliminarPedido(pedidoId);
-          }
+          await _pedidoService.eliminarPedido(pedidoId);
           exitosos++;
           print(
             '✅ Pedido $pedidoId eliminado exitosamente por $usuarioEliminacion',
@@ -995,18 +977,17 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Mesa ${pedido.mesa}',
+                        'Mesa ${pedido.mesa} - ${pedido.id}',
                         style: TextStyle(
                           color: textDark,
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      if (pedido.cliente != null && pedido.cliente!.isNotEmpty)
-                        Text(
-                          pedido.cliente!,
-                          style: TextStyle(color: textLight, fontSize: 14),
-                        ),
+                      Text(
+                        pedido.cliente ?? 'Sin cliente',
+                        style: TextStyle(color: textLight, fontSize: 14),
+                      ),
                     ],
                   ),
                 ),

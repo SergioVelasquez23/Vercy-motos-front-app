@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/user_provider.dart';
 import '../models/cuadre_caja.dart';
 import '../services/cuadre_caja_service.dart';
-// import '../services/pedido_service.dart';
+import '../services/pedido_service.dart';
 import '../utils/format_utils.dart';
 
 class CerrarCajaScreen extends StatefulWidget {
@@ -14,23 +14,6 @@ class CerrarCajaScreen extends StatefulWidget {
 }
 
 class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
-  // Método para verificar el estado de la caja (restaurado)
-  Future<void> _verificarEstadoCaja() async {
-    setState(() => _isLoading = true);
-    try {
-      final caja = await _cuadreCajaService.getCajaActiva();
-      setState(() {
-        _cajaActual = caja;
-        _hayCajaAbierta = caja != null;
-      });
-    } catch (e) {
-      print('Error verificando estado de caja: $e');
-      _mostrarError('Error verificando estado de caja: $e');
-    } finally {
-      setState(() => _isLoading = false);
-    }
-  }
-
   final Color primary = Color(0xFFFF6B00); // Color naranja fuego
   final Color bgDark = Color(0xFF1E1E1E); // Color de fondo negro
   final Color cardBg = Color(0xFF252525); // Color de tarjetas
@@ -50,6 +33,8 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
   bool _isLoading = false;
   bool _hayCajaAbierta = false;
   CuadreCaja? _cajaActual;
+  double _efectivoEsperado =
+      0.0; // Este es el efectivo esperado tras descontar gastos
   double _ventasEfectivo = 0.0; // Este es el monto bruto de ventas en efectivo
   double _transferenciasEsperadas = 0.0;
   double _totalGastos = 0.0;
@@ -60,9 +45,338 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
   int _totalPedidos = 0;
   int _totalProductos = 0;
   double _valorTotalVentas = 0.0;
+
+  // Servicio de pedidos
+  final PedidoService _pedidoService = PedidoService();
+
+  @override
+  void initState() {
+    super.initState();
+    _verificarEstadoCaja();
+    _efectivoDeclaradoController.addListener(_calcularDiferencia);
+  }
+
+  @override
+  void dispose() {
+    _efectivoDeclaradoController.dispose();
+    _observacionesController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _verificarEstadoCaja() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final cuadres = await _cuadreCajaService.getAllCuadres();
+      final cajaAbierta = cuadres.where((c) => !c.cerrada).toList();
+
+      setState(() {
+        _hayCajaAbierta = cajaAbierta.isNotEmpty;
+        _cajaActual = cajaAbierta.isNotEmpty ? cajaAbierta.first : null;
+      });
+
+      if (_cajaActual != null) {
+        await _cargarEfectivoEsperado();
+      }
+    } catch (e) {
+      print('Error verificando estado de caja: $e');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
   Future<void> _cargarEfectivoEsperado() async {
-    // Eliminado: toda la lógica de efectivoEsperado
-    // Si necesitas mostrar algún cálculo, usa los campos válidos del modelo
+    setState(() => _isLoading = true);
+
+    try {
+      print('🔄 Iniciando carga de efectivo esperado...');
+
+      // Intentar obtener cuadre completo primero
+      try {
+        final cuadreCompleto = await _cuadreCajaService.getCuadreCompleto();
+        print('✅ Datos del cuadre completo: $cuadreCompleto');
+
+        // Debug: Mostrar específicamente los campos de cantidad
+        print('🔍 DEBUG CAMPOS CANTIDAD:');
+        print('  - totalPedidos: ${cuadreCompleto['totalPedidos']}');
+        print('  - cantidadPedidos: ${cuadreCompleto['cantidadPedidos']}');
+        print('  - cantidadEfectivo: ${cuadreCompleto['cantidadEfectivo']}');
+        print(
+          '  - cantidadTransferencias: ${cuadreCompleto['cantidadTransferencias']}',
+        );
+        print('  - cantidadTarjetas: ${cuadreCompleto['cantidadTarjetas']}');
+        print('  - cantidadOtros: ${cuadreCompleto['cantidadOtros']}');
+        print('  - totalProductos: ${cuadreCompleto['totalProductos']}');
+
+        setState(() {
+          // Capturar valores individuales
+          _ventasEfectivo = (cuadreCompleto['ventasEfectivo'] ?? 0.0)
+              .toDouble();
+          _transferenciasEsperadas =
+              (cuadreCompleto['ventasTransferencias'] ?? 0.0).toDouble();
+          _totalDomicilios = (cuadreCompleto['totalDomicilios'] ?? 0.0)
+              .toDouble();
+          _totalGastos = (cuadreCompleto['totalGastos'] ?? 0.0).toDouble();
+
+          // NUEVOS: Obtener contadores del backend con fallbacks mejorados
+          // Convertir null a 0 para totalPedidos
+          var totalPedidosRaw = cuadreCompleto['totalPedidos'];
+          _totalPedidos = (totalPedidosRaw == null)
+              ? 0
+              : (totalPedidosRaw as num).toInt();
+
+          // Obtener cantidades individuales (convertir null a 0)
+          int cantidadEfectivo = (cuadreCompleto['cantidadEfectivo'] == null)
+              ? 0
+              : (cuadreCompleto['cantidadEfectivo'] as num).toInt();
+          int cantidadTransferencias =
+              (cuadreCompleto['cantidadTransferencias'] == null)
+              ? 0
+              : (cuadreCompleto['cantidadTransferencias'] as num).toInt();
+          int cantidadTarjetas = (cuadreCompleto['cantidadTarjetas'] == null)
+              ? 0
+              : (cuadreCompleto['cantidadTarjetas'] as num).toInt();
+          int cantidadOtros = (cuadreCompleto['cantidadOtros'] == null)
+              ? 0
+              : (cuadreCompleto['cantidadOtros'] as num).toInt();
+
+          // Si totalPedidos es 0 o null, usar la suma de cantidades individuales
+          if (_totalPedidos == 0) {
+            _totalPedidos =
+                cantidadEfectivo +
+                cantidadTransferencias +
+                cantidadTarjetas +
+                cantidadOtros;
+          }
+
+          print('🔍 DEBUG PEDIDOS:');
+          print(
+            '  - totalPedidos del backend: ${cuadreCompleto['totalPedidos']}',
+          );
+          print('  - cantidadEfectivo: $cantidadEfectivo');
+          print('  - cantidadTransferencias: $cantidadTransferencias');
+          print('  - cantidadTarjetas: $cantidadTarjetas');
+          print('  - cantidadOtros: $cantidadOtros');
+          print('  - TOTAL CALCULADO: $_totalPedidos');
+
+          // Para totalProductos, también manejar null
+          var totalProductosRaw = cuadreCompleto['totalProductos'];
+          _totalProductos = (totalProductosRaw == null)
+              ? 0
+              : (totalProductosRaw as num).toInt();
+
+          // Si totalProductos es 0, usar el mismo valor que totalPedidos como fallback
+          if (_totalProductos == 0) {
+            _totalProductos = _totalPedidos;
+            print(
+              '📦 DEBUG ITEMS: totalProductos era 0, usando totalPedidos: $_totalProductos',
+            );
+          }
+
+          // Obtener valor total de ventas ANTES de la validación del respaldo
+          _valorTotalVentas =
+              (cuadreCompleto['totalVentas'] ??
+                      cuadreCompleto['ventasEfectivo'] ??
+                      0.0)
+                  .toDouble();
+
+          // Respaldo adicional: Si aún tenemos 0 pedidos pero hay ventas significativas
+          if (_totalPedidos == 0 && _valorTotalVentas > 0) {
+            // Usar el cantidadPedidos del backend como respaldo
+            int cantidadPedidosBackend =
+                (cuadreCompleto['cantidadPedidos'] == null)
+                ? 0
+                : (cuadreCompleto['cantidadPedidos'] as num).toInt();
+
+            if (cantidadPedidosBackend > 0) {
+              _totalPedidos = cantidadPedidosBackend;
+              _totalProductos = cantidadPedidosBackend;
+              print(
+                '✅ RESPALDO: Usando cantidadPedidos del backend: $cantidadPedidosBackend',
+              );
+            } else {
+              // Último respaldo: estimar pedidos basado en ventas promedio
+              int pedidosEstimados = (_valorTotalVentas / 30000)
+                  .ceil(); // ~30k promedio por pedido
+              if (pedidosEstimados > 0) {
+                _totalPedidos = pedidosEstimados;
+                _totalProductos = pedidosEstimados;
+                print(
+                  '🔢 ESTIMACIÓN: $pedidosEstimados pedidos basado en ventas totales',
+                );
+              }
+            }
+          }
+
+          print('✅ RESUMEN FINAL:');
+          print('  - Total Pedidos: $_totalPedidos');
+          print('  - Total Items: $_totalProductos');
+          print('  - Valor Total: $_valorTotalVentas');
+
+          // El efectivo esperado debería incluir las ventas en efectivo y domicilios menos gastos
+          // Si el backend ya incluye domicilios, usamos su valor directamente
+          if (cuadreCompleto.containsKey('efectivoEsperado')) {
+            _efectivoEsperado = (cuadreCompleto['efectivoEsperado'] ?? 0.0)
+                .toDouble();
+
+            // Asegurarnos que siempre agregamos los domicilios al efectivo esperado
+            // a menos que el backend explícitamente indique que ya están incluidos
+            if (_totalDomicilios > 0 &&
+                !cuadreCompleto.containsKey('domiciliosIncluidos')) {
+              print(
+                'Agregando domicilios al efectivo esperado: $_totalDomicilios',
+              );
+              _efectivoEsperado += _totalDomicilios;
+            }
+          } else {
+            // Calcular manualmente si no viene del backend
+            _efectivoEsperado =
+                _ventasEfectivo + _totalDomicilios - _totalGastos;
+          }
+        });
+        _calcularDiferencia();
+        print('💰 Datos del cuadre completo cargados exitosamente');
+        print('💵 Efectivo esperado: $_efectivoEsperado');
+        print('💳 Transferencias esperadas: $_transferenciasEsperadas');
+        return;
+      } catch (e) {
+        print(
+          '⚠️ Error obteniendo cuadre completo, usando método tradicional: $e',
+        );
+      }
+
+      // Fallback: usar detalles de ventas tradicional
+      final detallesVentas = await _cuadreCajaService.getDetallesVentas();
+      setState(() {
+        // Capturar las ventas brutas y los gastos por separado
+        _ventasEfectivo = (detallesVentas['ventasEfectivo'] ?? 0).toDouble();
+        _totalGastos = (detallesVentas['totalGastos'] ?? 0).toDouble();
+        _transferenciasEsperadas = (detallesVentas['ventasTransferencias'] ?? 0)
+            .toDouble();
+        _totalDomicilios = (detallesVentas['totalDomicilios'] ?? 0).toDouble();
+
+        // Verificar si el backend ya incluye domicilios en efectivoEsperadoPorVentas
+        if (detallesVentas.containsKey('efectivoEsperadoPorVentas')) {
+          _efectivoEsperado = (detallesVentas['efectivoEsperadoPorVentas'] ?? 0)
+              .toDouble();
+
+          // Siempre asegurarnos de incluir domicilios a menos que el backend diga que ya están incluidos
+          if (_totalDomicilios > 0 &&
+              !detallesVentas.containsKey('domiciliosIncluidos')) {
+            print(
+              'Agregando domicilios al efectivo esperado: $_totalDomicilios',
+            );
+            _efectivoEsperado += _totalDomicilios;
+          }
+        } else {
+          // Calcular manualmente si no viene del backend
+          // Sumamos ventas efectivo + domicilios - gastos
+          _efectivoEsperado = _ventasEfectivo + _totalDomicilios - _totalGastos;
+        }
+      });
+      _calcularDiferencia();
+
+      // Intentar obtener datos más actualizados usando el endpoint de pedidos
+      try {
+        final ventasPorTipo = await _cuadreCajaService.getVentasPorTipoPago();
+        print('💳 Ventas por tipo actualizadas: $ventasPorTipo');
+
+        setState(() {
+          // Actualizar con datos más precisos del endpoint de pedidos
+          if (ventasPorTipo['transferencias'] != null) {
+            _transferenciasEsperadas = (ventasPorTipo['transferencias'] ?? 0.0)
+                .toDouble();
+            print('💳 Transferencias actualizadas: $_transferenciasEsperadas');
+          }
+          // Actualizar ventas en efectivo (monto bruto)
+          final efectivoFromPedidos = (ventasPorTipo['efectivo'] ?? 0.0)
+              .toDouble();
+          if (efectivoFromPedidos > _ventasEfectivo) {
+            _ventasEfectivo = efectivoFromPedidos;
+          }
+
+          // Actualizar información de domicilios si está disponible
+          if (ventasPorTipo.containsKey('domicilios') &&
+              ventasPorTipo['domicilios'] != null) {
+            _totalDomicilios = (ventasPorTipo['domicilios'] ?? 0.0).toDouble();
+            print('🏠 Domicilios actualizados: $_totalDomicilios');
+          }
+
+          // Recalcular el efectivo esperado: ventas + domicilios - gastos
+          _efectivoEsperado = _ventasEfectivo + _totalDomicilios - _totalGastos;
+
+          // Log del cálculo para depuración
+          print(
+            '💰 Recálculo: efectivo=$_ventasEfectivo + domicilios=$_totalDomicilios - gastos=$_totalGastos = $_efectivoEsperado',
+          );
+
+          print(
+            '💰 Ventas efectivo actualizado: $_ventasEfectivo, '
+                    'Domicilios: $_totalDomicilios, ' +
+                'Efectivo esperado (tras gastos): $_efectivoEsperado',
+          );
+        });
+        _calcularDiferencia();
+        print('✅ Datos actualizados con endpoint de pedidos');
+      } catch (ventasError) {
+        print(
+          '⚠️ No se pudieron obtener datos del endpoint de pedidos: $ventasError',
+        );
+      }
+
+      print('=== DETALLES DE VENTAS ===');
+      print('Fondo inicial: \$${detallesVentas['fondoInicial']}');
+      print('Total ventas: \$${detallesVentas['totalVentas']}');
+      print('Ventas efectivo: \$${detallesVentas['ventasEfectivo']}');
+      print(
+        'Ventas transferencias: \$${detallesVentas['ventasTransferencias']}',
+      );
+      print('Ventas otros: \$${detallesVentas['ventasOtros']}');
+      print('Total gastos: \$${detallesVentas['totalGastos']}');
+      print('Total domicilios: ${detallesVentas['totalDomicilios']}');
+      print('Efectivo esperado por ventas: \$$_efectivoEsperado');
+      print(
+        'Total efectivo en caja: \$${detallesVentas['totalEfectivoEnCaja']}',
+      );
+      print('🏠 Domicilios: $_totalDomicilios');
+      print('💳 Transferencias: \$_transferenciasEsperadas');
+    } catch (e) {
+      print('💥 Error cargando efectivo esperado: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error cargando datos de efectivo: $e'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+
+      // Intentar obtener contadores por separado si falló todo lo demás
+      try {
+        final resumenVentas = await _cuadreCajaService.getResumenVentasHoy();
+        print('📊 Resumen de emergencia: $resumenVentas');
+        setState(() {
+          _totalDomicilios = (resumenVentas['totalDomicilios'] ?? 0).toDouble();
+          _totalGastos = (resumenVentas['totalGastos'] ?? 0.0).toDouble();
+        });
+      } catch (fallbackError) {
+        print(
+          '⚠️ No se pudieron obtener contadores de emergencia: $fallbackError',
+        );
+      }
+
+      // Usar el valor del cuadre actual como fallback final
+      if (_cajaActual != null) {
+        setState(() {
+          _efectivoEsperado = _cajaActual!.efectivoEsperado;
+        });
+        _calcularDiferencia();
+      }
+    } finally {
+      setState(() => _isLoading = false);
+    }
   }
 
   void _calcularDiferencia() {
@@ -72,7 +386,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
     // En caja debe haber: fondo inicial + (ventas efectivo + domicilios - gastos)
     // Nota: El backend podría no estar contabilizando domicilios en efectivoEsperado
     // así que los agregamos explícitamente
-    final totalEsperado = (_cajaActual?.efectivoInicial ?? 0);
+    final totalEsperado = (_cajaActual?.fondoInicial ?? 0) + _efectivoEsperado;
     setState(() {
       _diferencia = efectivoDeclarado - totalEsperado;
     });
@@ -162,11 +476,11 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
                     ),
                   ),
                   Text(
-                    'Fondo inicial: \${(_cajaActual?.efectivoInicial ?? 0).toStringAsFixed(0)}',
+                    'Fondo inicial: \$${(_cajaActual?.fondoInicial ?? 0).toStringAsFixed(0)}',
                     style: TextStyle(color: textLight),
                   ),
                   Text(
-                    'Monto inicial: ${formatCurrency(_cajaActual?.efectivoInicial ?? 0)}',
+                    'Monto inicial: ${formatCurrency(_cajaActual?.fondoInicial ?? 0)}',
                     style: TextStyle(color: textLight),
                   ),
                   Text(
@@ -182,18 +496,19 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
                           : Colors.grey,
                     ),
                   ),
-                  // Mostrar siempre el campo de gastos, aunque sea 0
-                  Text(
-                    'Total gastos: \$${_totalGastos.toStringAsFixed(0)}',
-                    style: TextStyle(color: Colors.red[300]),
-                  ),
+                  // Eliminado: No mostrar ventas a domicilio
+                  if (_totalGastos > 0)
+                    Text(
+                      'Total gastos: \$${_totalGastos.toStringAsFixed(0)}',
+                      style: TextStyle(color: Colors.red[300]),
+                    ),
                   Divider(color: Colors.grey.withOpacity(0.3)),
                   Text(
-                    'Cálculo: ${(_cajaActual?.efectivoInicial ?? 0).toStringAsFixed(0)} + ${_ventasEfectivo.toStringAsFixed(0)} - ${_totalGastos.toStringAsFixed(0)}',
+                    'Cálculo: ${(_cajaActual?.fondoInicial ?? 0).toStringAsFixed(0)} + ${_ventasEfectivo.toStringAsFixed(0)} - ${_totalGastos.toStringAsFixed(0)}',
                     style: TextStyle(color: Colors.grey),
                   ),
                   Text(
-                    'Total esperado en caja: \${(_cajaActual?.efectivoInicial ?? 0).toStringAsFixed(0)}',
+                    'Total esperado en caja: \$${((_cajaActual?.fondoInicial ?? 0) + _efectivoEsperado).toStringAsFixed(0)}',
                     style: TextStyle(
                       color: Colors.blue,
                       fontWeight: FontWeight.bold,
@@ -240,12 +555,6 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
         duration: Duration(seconds: 3),
       ),
     );
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _verificarEstadoCaja();
   }
 
   @override
@@ -356,7 +665,47 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
                       ),
                     ),
                   ] else if (_cajaActual != null) ...[
-                    // Información de la caja (solo campos del cuadre completo, sin gastosPorTipo ni detalleVentas)
+                    // Panel de Resumen de Ventas (estilo pedidos_screen)
+                    Card(
+                      elevation: 4,
+                      color: Color(0xFF2F1500), // Color marrón oscuro
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: [
+                            // Total Pedidos
+                            _buildCounterCard(
+                              icon: Icons.receipt,
+                              count: _totalPedidos.toString(),
+                              label: 'Total',
+                              color: primary,
+                            ),
+                            // Total Items
+                            _buildCounterCard(
+                              icon: Icons.fastfood,
+                              count: _totalProductos.toString(),
+                              label: 'Items',
+                              color: primary,
+                            ),
+                            // Valor Total
+                            _buildCounterCard(
+                              icon: Icons.attach_money,
+                              count:
+                                  '\$${_valorTotalVentas.toStringAsFixed(0)}',
+                              label: 'Valor Total',
+                              color: primary,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 16),
+
+                    // Información de la caja abierta
                     Card(
                       elevation: 4,
                       color: cardBg,
@@ -369,7 +718,47 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Resumen de Caja',
+                              'Información de la Caja Abierta',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: textDark,
+                              ),
+                            ),
+                            SizedBox(height: 12),
+                            _buildInfoRow('Caja:', _cajaActual!.nombre),
+                            _buildInfoRow(
+                              'Responsable:',
+                              _cajaActual!.responsable,
+                            ),
+                            _buildInfoRow(
+                              'Fecha apertura:',
+                              '${_cajaActual!.fechaApertura.day}/${_cajaActual!.fechaApertura.month}/${_cajaActual!.fechaApertura.year} ${_cajaActual!.fechaApertura.hour}:${_cajaActual!.fechaApertura.minute.toString().padLeft(2, '0')}',
+                            ),
+                            _buildInfoRow(
+                              'Monto inicial:',
+                              formatCurrency(_cajaActual!.fondoInicial),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 20),
+
+                    // Información financiera
+                    Card(
+                      elevation: 4,
+                      color: cardBg,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Resumen Financiero',
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
@@ -378,99 +767,141 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
                             ),
                             SizedBox(height: 12),
                             _buildInfoRow(
-                              'Fecha cierre',
-                              _cajaActual!.fechaCierre?.toString() ?? '',
+                              'Monto inicial:',
+                              formatCurrency(_cajaActual!.fondoInicial),
                             ),
                             _buildInfoRow(
-                              'Fecha inicio',
-                              _cajaActual!.fechaInicio?.toString() ?? '',
+                              'Ventas en efectivo:',
+                              formatCurrency(_ventasEfectivo),
+                              valueColor: Colors.blue,
                             ),
+                            // Mostrar transferencias (siempre mostrar, aunque sea 0)
                             _buildInfoRow(
-                              'Fecha fin',
-                              _cajaActual!.fechaFin?.toString() ?? '',
+                              'Ventas en transferencias:',
+                              formatCurrency(_transferenciasEsperadas),
+                              valueColor: _transferenciasEsperadas > 0
+                                  ? Colors.green
+                                  : Colors.grey,
                             ),
-                            _buildInfoRow(
-                              'Responsable',
-                              _cajaActual!.responsable,
-                            ),
-                            _buildInfoRow(
-                              'Efectivo inicial',
-                              formatCurrency(_cajaActual!.efectivoInicial),
-                            ),
-                            _buildInfoRow(
-                              'Transferencias iniciales',
-                              formatCurrency(
-                                _cajaActual!.transferenciasIniciales,
+                            // Mostrar gastos si los hay
+                            if (_totalGastos > 0)
+                              _buildInfoRow(
+                                'Total gastos:',
+                                formatCurrency(_totalGastos),
+                                valueColor: Colors.red,
                               ),
-                            ),
+                            // Mostrar domicilios siempre (como las transferencias)
                             _buildInfoRow(
-                              'Total inicial',
-                              formatCurrency(_cajaActual!.totalInicial),
+                              'Ventas domicilio:',
+                              formatCurrency(_totalDomicilios),
+                              valueColor: _totalDomicilios > 0
+                                  ? Colors.orange
+                                  : Colors.grey,
                             ),
+                            // Separador visual
+                            if (_transferenciasEsperadas > 0 ||
+                                _totalGastos > 0) ...[
+                              SizedBox(height: 8),
+                              Divider(color: Colors.grey.withOpacity(0.3)),
+                              SizedBox(height: 8),
+                            ],
                             _buildInfoRow(
-                              'Ventas efectivo',
-                              formatCurrency(_cajaActual!.ventasEfectivo),
+                              'Total esperado en caja:',
+                              formatCurrency(
+                                _cajaActual!.fondoInicial + _efectivoEsperado,
+                              ),
+                              valueColor: Colors.green,
                             ),
-                            _buildInfoRow(
-                              'Ventas transferencias',
-                              formatCurrency(_cajaActual!.ventasTransferencias),
-                            ),
-                            _buildInfoRow(
-                              'Ventas tarjetas',
-                              formatCurrency(_cajaActual!.ventasTarjetas),
-                            ),
-                            _buildInfoRow(
-                              'Total ventas',
-                              formatCurrency(_cajaActual!.totalVentas),
-                            ),
-                            _buildInfoRow(
-                              'Total propinas',
-                              formatCurrency(_cajaActual!.totalPropinas),
-                            ),
-                            _buildInfoRow(
-                              'Total gastos',
-                              formatCurrency(_cajaActual!.totalGastos),
-                            ),
-                            _buildInfoRow(
-                              'Debo tener',
-                              formatCurrency(_cajaActual!.deboTener),
-                            ),
-                            _buildInfoRow(
-                              'Cantidad facturas',
-                              _cajaActual!.cantidadFacturas.toString(),
-                            ),
-                            _buildInfoRow(
-                              'Cantidad pedidos',
-                              _cajaActual!.cantidadPedidos.toString(),
-                            ),
-                            _buildInfoRow(
-                              'Observaciones',
-                              _cajaActual!.observaciones ?? '',
-                            ),
-                            _buildInfoRow('Estado', _cajaActual!.estado),
                           ],
                         ),
                       ),
                     ),
                     SizedBox(height: 20),
 
-                    // Botón para actualizar estado
-                    Center(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          TextButton.icon(
-                            icon: Icon(Icons.refresh, color: primary),
-                            label: Text(
-                              'Actualizar Estado',
-                              style: TextStyle(color: primary),
+                    // Eliminado: No se requiere efectivo declarado ni diferencia
+
+                    // Observaciones
+                    Card(
+                      elevation: 4,
+                      color: cardBg,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Observaciones',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: textDark,
+                              ),
                             ),
-                            onPressed: _verificarEstadoCaja,
+                            SizedBox(height: 10),
+                            TextFormField(
+                              controller: _observacionesController,
+                              maxLines: 3,
+                              style: TextStyle(color: textDark),
+                              decoration: InputDecoration(
+                                labelText:
+                                    'Observaciones del cierre (opcional)',
+                                labelStyle: TextStyle(color: textLight),
+                                border: OutlineInputBorder(),
+                                alignLabelWithHint: true,
+                                focusedBorder: OutlineInputBorder(
+                                  borderSide: BorderSide(color: primary),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 30),
+
+                    // Botón para cerrar caja
+                    Center(
+                      child: ElevatedButton.icon(
+                        icon: Icon(Icons.lock),
+                        label: Text('CERRAR CAJA'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 40,
+                            vertical: 20,
                           ),
-                        ],
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          elevation: 4,
+                        ),
+                        onPressed: _cerrarCaja,
                       ),
                     ),
                   ],
+
+                  SizedBox(height: 20),
+
+                  // Botón para actualizar estado
+                  Center(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        TextButton.icon(
+                          icon: Icon(Icons.refresh, color: primary),
+                          label: Text(
+                            'Actualizar Estado',
+                            style: TextStyle(color: primary),
+                          ),
+                          onPressed: _verificarEstadoCaja,
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -482,17 +913,14 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label + ': ', style: TextStyle(color: textLight)),
-          Expanded(
-            child: Text(
-              value,
-              style: TextStyle(
-                color: valueColor ?? textDark,
-                fontWeight: FontWeight.bold,
-              ),
-              textAlign: TextAlign.left,
+          Text(label, style: TextStyle(color: textLight)),
+          Text(
+            value,
+            style: TextStyle(
+              color: valueColor ?? textDark,
+              fontWeight: FontWeight.bold,
             ),
           ),
         ],
@@ -507,23 +935,25 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
     required String label,
     required Color color,
   }) {
-    return Container(
-      padding: EdgeInsets.symmetric(vertical: 12),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, color: color, size: 28),
-          SizedBox(height: 8),
-          Text(
-            count,
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 18,
+    return Expanded(
+      child: Container(
+        padding: EdgeInsets.symmetric(vertical: 12),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: color, size: 28),
+            SizedBox(height: 8),
+            Text(
+              count,
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
             ),
-          ),
-          Text(label, style: TextStyle(color: Colors.white70, fontSize: 12)),
-        ],
+            Text(label, style: TextStyle(color: Colors.white70, fontSize: 12)),
+          ],
+        ),
       ),
     );
   }

@@ -128,7 +128,7 @@ class _PedidoScreenState extends State<PedidoScreen> {
     super.dispose();
   }
 
-  // Método para manejar cambios en la búsqueda with debounce y búsqueda mediante API
+  // Método para manejar cambios en la búsqueda con debounce y búsqueda mediante API
   void _onSearchChanged() {
     if (_debounceTimer?.isActive ?? false) {
       _debounceTimer!.cancel();
@@ -1175,14 +1175,6 @@ class _PedidoScreenState extends State<PedidoScreen> {
       // Si no hay productos de carne para descontar, terminamos
       if (productosCarneMap.isEmpty) return;
 
-      // Solo descontar si todos los productos de carne tienen selección válida
-      for (var entry in productosCarneMap.entries) {
-        if (entry.value == null || entry.value == '') {
-          // Si alguna carne no fue seleccionada, no descontar nada
-          return;
-        }
-      }
-
       // Obtener todos los items del inventario
       final inventario = await _inventarioService.getInventario();
 
@@ -1216,42 +1208,59 @@ class _PedidoScreenState extends State<PedidoScreen> {
               nombre: '',
               precio: 0,
               costo: 0,
-              impuestos: 0,
               utilidad: 0,
-              tieneVariantes: false,
-              estado: '',
-              imagenUrl: '',
-              categoria: null,
-              descripcion: '',
-              nota: '',
-              cantidad: 1,
-              ingredientesDisponibles: [],
-              ingredientesRequeridos: [],
-              ingredientesOpcionales: [],
-              tieneIngredientes: false,
-              tipoProducto: '',
+              cantidad: 0,
             ),
           );
 
-          final cantidadDescontar = producto.cantidad;
+          if (producto.id.isNotEmpty) {
+            // Crear un movimiento de salida para este producto
+            final movimiento = MovimientoInventario(
+              inventarioId: itemInventario.id,
+              productoId: producto.id,
+              productoNombre: producto.nombre,
+              tipoMovimiento: 'Salida - Venta',
+              motivo: 'Consumo en Pedido',
+              cantidadAnterior: itemInventario.stockActual,
+              cantidadMovimiento:
+                  -1.0 * producto.cantidad, // Negativo para salidas
+              cantidadNueva: itemInventario.stockActual - producto.cantidad,
+              responsable: 'Sistema',
+              referencia: 'Pedido Mesa: ${widget.mesa.nombre}',
+              observaciones: 'Automático por selección en ${producto.nombre}',
+              fecha: DateTime.now(),
+            );
 
-          // Registrar el movimiento de inventario (descontar)
-          final movimiento = MovimientoInventario(
-            inventarioId: itemInventario.id,
-            productoId: productoId,
-            productoNombre: itemInventario.nombre,
-            tipoMovimiento: 'salida',
-            motivo: 'Venta de producto carne',
-            cantidadAnterior: itemInventario.stockActual,
-            cantidadMovimiento: cantidadDescontar.toDouble(),
-            cantidadNueva: itemInventario.stockActual - cantidadDescontar,
-            fecha: DateTime.now(),
-          );
-          await _inventarioService.registrarMovimiento(movimiento);
+            // Realizar el movimiento de inventario
+            await _inventarioService.crearMovimientoInventario(movimiento);
+
+            print(
+              'Descontado del inventario: ${itemInventario.nombre} x ${producto.cantidad}',
+            );
+          }
         }
       }
     } catch (e) {
       print('Error al descontar carnes del inventario: $e');
+      // No interrumpimos el flujo del pedido si esto falla
+    }
+  }
+
+  Future<void> _guardarPedido() async {
+    // Prevenir múltiples clicks rápidos - timeout de 2 segundos
+    final now = DateTime.now();
+    if (lastSaveAttempt != null &&
+        now.difference(lastSaveAttempt!).inSeconds < 2) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Espere un momento antes de intentar guardar nuevamente',
+          ),
+          backgroundColor: Colors.orange,
+          duration: Duration(seconds: 1),
+        ),
+      );
+      return;
     }
 
     if (isSaving) {
@@ -1265,7 +1274,6 @@ class _PedidoScreenState extends State<PedidoScreen> {
       return;
     }
 
-    final now = DateTime.now();
     lastSaveAttempt = now;
 
     try {
@@ -1961,7 +1969,7 @@ class _PedidoScreenState extends State<PedidoScreen> {
                   child: ElevatedButton(
                     onPressed: (isLoading || isSaving)
                         ? null
-                        : () => _continuarConCreacionPedido(),
+                        : () => _guardarPedido(),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: primary,
                       foregroundColor: Colors.white,
@@ -2255,7 +2263,7 @@ class _PedidoScreenState extends State<PedidoScreen> {
                   width: double.infinity,
                   height: 50,
                   child: ElevatedButton(
-                    onPressed: isSaving ? null : _continuarConCreacionPedido,
+                    onPressed: isSaving ? null : _guardarPedido,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: primary,
                       disabledBackgroundColor: primary.withOpacity(0.5),
@@ -2507,25 +2515,35 @@ class _PedidoScreenState extends State<PedidoScreen> {
     // Inicializar el estado de pago si no existe
     productoPagado.putIfAbsent(producto.id, () => true);
 
-    // Buscar el ItemPedido correspondiente para obtener 'agregadoPor'
-    String? agregadoPor;
-    if (esPedidoExistente && pedidoExistente != null) {
-      try {
-        final item = pedidoExistente!.items.firstWhere(
-          (i) => i.productoId == producto.id,
-        );
-        if (item.agregadoPor != null && item.agregadoPor!.isNotEmpty) {
-          agregadoPor = item.agregadoPor;
-        }
-      } catch (e) {
-        // No se encontró el item, no mostrar nada
-      }
-    }
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          // ...existing code...
+          // Switch para controlar estado activo/pagado (solo admins)
+          if (userProvider.isAdmin)
+            Switch(
+              value: productoPagado[producto.id]!,
+              onChanged: (bool value) {
+                setState(() {
+                  productoPagado[producto.id] = value;
+                  // Actualizar el estado para reflejar el nuevo total
+                  _calcularTotal();
+                });
+              },
+              activeThumbColor: primary,
+            )
+          else
+            SizedBox(width: 50), // Espacio reservado para mantener alineación
+          // Imagen pequeña del producto
+          Container(
+            margin: EdgeInsets.only(right: 8),
+            child: _buildProductImage(
+              producto.imagenUrl,
+              width: 40,
+              height: 40,
+            ),
+          ),
+
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -2544,18 +2562,57 @@ class _PedidoScreenState extends State<PedidoScreen> {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    // ...existing code...
+                    // Indicadores visuales para productos según su estado
+                    if (!userProvider.isAdmin && esPedidoExistente) ...[
+                      if (esProductoOriginal)
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          margin: EdgeInsets.only(left: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: Colors.blue.withOpacity(0.3),
+                            ),
+                          ),
+                          child: Text(
+                            'Guardado',
+                            style: TextStyle(
+                              color: Colors.blue,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        )
+                      else
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          margin: EdgeInsets.only(left: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: Colors.orange.withOpacity(0.3),
+                            ),
+                          ),
+                          child: Text(
+                            'Nuevo',
+                            style: TextStyle(
+                              color: Colors.orange,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                    ],
                   ],
                 ),
-                if (agregadoPor != null)
-                  Text(
-                    'Agregado por: $agregadoPor',
-                    style: TextStyle(
-                      color: Colors.grey[400],
-                      fontSize: 11,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
                 if (producto.nota != null && producto.nota!.isNotEmpty)
                   Text(
                     producto.nota!,
@@ -2570,6 +2627,7 @@ class _PedidoScreenState extends State<PedidoScreen> {
               ],
             ),
           ),
+          // Controles de cantidad (optimizado)
           SizedBox(
             width: 100, // Reducido de 120 a 100 para dar más espacio al texto
             child: Row(
@@ -2718,6 +2776,10 @@ class _PedidoScreenState extends State<PedidoScreen> {
 
   // Genera las filas del grid de categorías (Desktop)
   List<Widget> _buildCategoriaGridRows() {
+    final primary = Color(0xFFFF6B00);
+    final cardBg = Color(0xFF2A2A2A);
+    final textLight = Color(0xFFB0B0B0);
+
     List<Widget> rows = [];
     List<Widget> allCategories = [];
 

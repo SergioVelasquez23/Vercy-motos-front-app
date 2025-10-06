@@ -1,106 +1,161 @@
 class CuadreCaja {
   final String? id;
-  final String? nombre;
-  final DateTime? fechaCierre;
-  final DateTime? fechaInicio;
-  final DateTime? fechaFin;
+  final String nombre;
   final String responsable;
+  final DateTime fechaApertura;
+  final DateTime? fechaCierre;
   final double fondoInicial;
-  final double efectivoInicial;
-  final double transferenciasIniciales;
-  final double totalInicial;
-  final double ventasEfectivo;
-  final double ventasTransferencias;
-  final double ventasTarjetas;
-  final double totalVentas;
-  final double totalPropinas;
-  final double totalGastos;
-  final double deboTener;
-  final int cantidadFacturas;
-  final int cantidadPedidos;
+  final double efectivoDeclarado;
+  final double efectivoEsperado;
+  final double diferencia;
+  final bool cuadrado;
+  final bool cerrada;
+  final double tolerancia;
   final String? observaciones;
   final String estado;
+  final String? aprobadoPor;
+  final DateTime? fechaAprobacion;
+  final String? urlComprobanteDiario;
+  final String? urlInventario;
 
   CuadreCaja({
     this.id,
-    this.nombre,
-    this.fechaCierre,
-    this.fechaInicio,
-    this.fechaFin,
+    required this.nombre,
     required this.responsable,
+    required this.fechaApertura,
+    this.fechaCierre,
     required this.fondoInicial,
-    required this.efectivoInicial,
-    required this.transferenciasIniciales,
-    required this.totalInicial,
-    required this.ventasEfectivo,
-    required this.ventasTransferencias,
-    required this.ventasTarjetas,
-    required this.totalVentas,
-    required this.totalPropinas,
-    required this.totalGastos,
-    required this.deboTener,
-    required this.cantidadFacturas,
-    required this.cantidadPedidos,
+    required this.efectivoDeclarado,
+    required this.efectivoEsperado,
+    required this.diferencia,
+    required this.cuadrado,
+    required this.cerrada,
+    required this.tolerancia,
     this.observaciones,
-    required this.estado,
+    this.estado = 'pendiente',
+    this.aprobadoPor,
+    this.fechaAprobacion,
+    this.urlComprobanteDiario,
+    this.urlInventario,
   });
 
   factory CuadreCaja.fromJson(Map<String, dynamic> json) {
     return CuadreCaja(
       id: json['_id'],
-      nombre: json['nombre'],
+      nombre: json['nombre'] ?? '',
+      responsable: json['responsable'] ?? '',
+      fechaApertura: DateTime.parse(json['fechaApertura']),
       fechaCierre: json['fechaCierre'] != null
           ? DateTime.parse(json['fechaCierre'])
           : null,
-      fechaInicio: json['fechaInicio'] != null
-          ? DateTime.parse(json['fechaInicio'])
-          : null,
-      fechaFin: json['fechaFin'] != null
-          ? DateTime.parse(json['fechaFin'])
-          : null,
-      responsable: json['responsable'] ?? '',
-      fondoInicial: (json['fondoInicial'] ?? 0.0).toDouble(),
-      efectivoInicial: (json['efectivoInicial'] ?? 0.0).toDouble(),
-      transferenciasIniciales: (json['transferenciasIniciales'] ?? 0.0)
-          .toDouble(),
-      totalInicial: (json['totalInicial'] ?? 0.0).toDouble(),
-      ventasEfectivo: (json['ventasEfectivo'] ?? 0.0).toDouble(),
-      ventasTransferencias: (json['ventasTransferencias'] ?? 0.0).toDouble(),
-      ventasTarjetas: (json['ventasTarjetas'] ?? 0.0).toDouble(),
-      totalVentas: (json['totalVentas'] ?? 0.0).toDouble(),
-      totalPropinas: (json['totalPropinas'] ?? 0.0).toDouble(),
-      totalGastos: (json['totalGastos'] ?? 0.0).toDouble(),
-      deboTener: (json['deboTener'] ?? 0.0).toDouble(),
-      cantidadFacturas: (json['cantidadFacturas'] ?? 0),
-      cantidadPedidos: (json['cantidadPedidos'] ?? 0),
+      fondoInicial: (json['fondoInicial'] ?? 0).toDouble(),
+      efectivoDeclarado: (json['efectivoDeclarado'] ?? 0).toDouble(),
+      efectivoEsperado: (json['efectivoEsperado'] ?? 0).toDouble(),
+      diferencia: (json['diferencia'] ?? 0).toDouble(),
+      cuadrado: json['cuadrado'] ?? false,
+      cerrada: json['cerrada'] ?? false,
+      tolerancia: (json['tolerancia'] ?? 0).toDouble(),
       observaciones: json['observaciones'],
-      estado: json['estado'] ?? '',
+      estado: json['estado'] ?? 'pendiente',
+      aprobadoPor: json['aprobadoPor'],
+      fechaAprobacion: json['fechaAprobacion'] != null
+          ? DateTime.parse(json['fechaAprobacion'])
+          : null,
+      urlComprobanteDiario: json['urlComprobanteDiario'],
+      urlInventario: json['urlInventario'],
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
       if (id != null) '_id': id,
-      if (nombre != null) 'nombre': nombre,
-      if (fechaCierre != null) 'fechaCierre': fechaCierre!.toIso8601String(),
-      if (fechaInicio != null) 'fechaInicio': fechaInicio!.toIso8601String(),
-      if (fechaFin != null) 'fechaFin': fechaFin!.toIso8601String(),
+      'nombre': nombre,
       'responsable': responsable,
+      'fechaApertura': fechaApertura.toIso8601String(),
+      if (fechaCierre != null) 'fechaCierre': fechaCierre!.toIso8601String(),
       'fondoInicial': fondoInicial,
-      'efectivoInicial': efectivoInicial,
-      'transferenciasIniciales': transferenciasIniciales,
-      'totalInicial': totalInicial,
-      'ventasEfectivo': ventasEfectivo,
-      'ventasTransferencias': ventasTransferencias,
-      'ventasTarjetas': ventasTarjetas,
-      'totalVentas': totalVentas,
-      'totalPropinas': totalPropinas,
-      'totalGastos': totalGastos,
-      'deboTener': deboTener,
-      'cantidadFacturas': cantidadFacturas,
-      'cantidadPedidos': cantidadPedidos,
+      'efectivoDeclarado': efectivoDeclarado,
+      'efectivoEsperado': efectivoEsperado,
+      'diferencia': diferencia,
+      'cuadrado': cuadrado,
+      'cerrada': cerrada,
+      'tolerancia': tolerancia,
       if (observaciones != null) 'observaciones': observaciones,
       'estado': estado,
+      if (aprobadoPor != null) 'aprobadoPor': aprobadoPor,
+      if (fechaAprobacion != null)
+        'fechaAprobacion': fechaAprobacion!.toIso8601String(),
+      if (urlComprobanteDiario != null)
+        'urlComprobanteDiario': urlComprobanteDiario,
+      if (urlInventario != null) 'urlInventario': urlInventario,
     };
+  }
+
+  CuadreCaja copyWith({
+    String? id,
+    String? nombre,
+    String? responsable,
+    DateTime? fechaApertura,
+    DateTime? fechaCierre,
+    double? fondoInicial,
+    double? efectivoDeclarado,
+    double? efectivoEsperado,
+    double? diferencia,
+    bool? cuadrado,
+    bool? cerrada,
+    double? tolerancia,
+    String? observaciones,
+    String? estado,
+    String? aprobadoPor,
+    DateTime? fechaAprobacion,
+    String? urlComprobanteDiario,
+    String? urlInventario,
+  }) {
+    return CuadreCaja(
+      id: id ?? this.id,
+      nombre: nombre ?? this.nombre,
+      responsable: responsable ?? this.responsable,
+      fechaApertura: fechaApertura ?? this.fechaApertura,
+      fechaCierre: fechaCierre ?? this.fechaCierre,
+      fondoInicial: fondoInicial ?? this.fondoInicial,
+      efectivoDeclarado: efectivoDeclarado ?? this.efectivoDeclarado,
+      efectivoEsperado: efectivoEsperado ?? this.efectivoEsperado,
+      diferencia: diferencia ?? this.diferencia,
+      cuadrado: cuadrado ?? this.cuadrado,
+      cerrada: cerrada ?? this.cerrada,
+      tolerancia: tolerancia ?? this.tolerancia,
+      observaciones: observaciones ?? this.observaciones,
+      estado: estado ?? this.estado,
+      aprobadoPor: aprobadoPor ?? this.aprobadoPor,
+      fechaAprobacion: fechaAprobacion ?? this.fechaAprobacion,
+      urlComprobanteDiario: urlComprobanteDiario ?? this.urlComprobanteDiario,
+      urlInventario: urlInventario ?? this.urlInventario,
+    );
+  }
+
+  // Métodos de utilidad
+  bool get estaAprobado => estado == 'aprobado';
+  bool get estaRechazado => estado == 'rechazado';
+  bool get estaPendiente => estado == 'pendiente';
+
+  String get estadoFormatted {
+    switch (estado) {
+      case 'aprobado':
+        return 'Aprobado';
+      case 'rechazado':
+        return 'Rechazado';
+      case 'pendiente':
+        return 'Pendiente';
+      default:
+        return estado;
+    }
+  }
+
+  String get diferenciaFormatted {
+    if (diferencia >= 0) {
+      return '+${diferencia.toStringAsFixed(0)}';
+    } else {
+      return diferencia.toStringAsFixed(0);
+    }
   }
 }
