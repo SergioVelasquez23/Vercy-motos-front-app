@@ -98,7 +98,10 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
       final cuadres = await _cuadreCajaService.getAllCuadres();
 
       // Ordenar cuadres por fecha descendente (más recientes primero)
-      cuadres.sort((a, b) => b.fechaApertura.compareTo(a.fechaApertura));
+      cuadres.sort(
+        (a, b) =>
+            b.fechaInicio?.compareTo(a.fechaInicio ?? DateTime(1900)) ?? 0,
+      );
 
       setState(() {
         _cuadresCaja = cuadres;
@@ -106,9 +109,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
         // 🔧 CORRECCIÓN: Asignar el cuadre actual (el que está abierto/pendiente)
         _cuadreActual =
             cuadres
-                .where(
-                  (cuadre) => cuadre.estado == 'pendiente' && !cuadre.cerrada,
-                )
+                .where((cuadre) => cuadre.estado == 'pendiente')
                 .firstOrNull ??
             (cuadres.isNotEmpty ? cuadres.first : null);
 
@@ -116,7 +117,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
         print(
           '🎯 Cuadre actual asignado: ${_cuadreActual?.id} - ${_cuadreActual?.nombre}',
         );
-        print('� Efectivo esperado: ${_cuadreActual?.efectivoEsperado ?? 0}');
+        // print('� Efectivo esperado: ${_cuadreActual?.efectivoEsperado ?? 0}');
         print('🏦 Estado del cuadre: ${_cuadreActual?.estado ?? 'N/A'}');
       });
     } catch (e) {
@@ -266,7 +267,10 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
       final cuadres = await _cuadreCajaService.getAllCuadres();
 
       // Ordenar cuadres por fecha descendente (más recientes primero)
-      cuadres.sort((a, b) => b.fechaApertura.compareTo(a.fechaApertura));
+      cuadres.sort(
+        (a, b) =>
+            b.fechaInicio?.compareTo(a.fechaInicio ?? DateTime(1900)) ?? 0,
+      );
 
       setState(() {
         _cuadresCaja = cuadres;
@@ -840,7 +844,11 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                           cells: [
                             DataCell(
                               Text(
-                                cuadre.fechaApertura.toString().split(' ')[0],
+                                cuadre.fechaInicio != null
+                                    ? cuadre.fechaInicio.toString().split(
+                                        ' ',
+                                      )[0]
+                                    : '',
                                 style: TextStyle(color: textDark),
                               ),
                             ),
@@ -853,7 +861,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                             ),
                             DataCell(
                               Text(
-                                cuadre.nombre,
+                                cuadre.responsable,
                                 style: TextStyle(color: textDark),
                               ),
                             ),
@@ -865,15 +873,15 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                             ),
                             DataCell(
                               Text(
-                                formatCurrency(cuadre.fondoInicial),
+                                formatCurrency(cuadre.efectivoInicial),
                                 style: TextStyle(color: textDark),
                               ),
                             ),
                             DataCell(
                               Text(
-                                cuadre.cerrada ? 'Sí' : 'No',
+                                cuadre.estado == 'cerrada' ? 'Sí' : 'No',
                                 style: TextStyle(
-                                  color: cuadre.cerrada
+                                  color: cuadre.estado == 'cerrada'
                                       ? Colors.green
                                       : primary,
                                 ),
@@ -1429,7 +1437,9 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                           style: TextStyle(color: textDark),
                         ),
                         Text(
-                          "${_cuadreActual!.fechaApertura.day}/${_cuadreActual!.fechaApertura.month}/${_cuadreActual!.fechaApertura.year}",
+                          _cuadreActual!.fechaInicio != null
+                              ? "${_cuadreActual!.fechaInicio!.day}/${_cuadreActual!.fechaInicio!.month}/${_cuadreActual!.fechaInicio!.year}"
+                              : '',
                           style: TextStyle(color: textDark),
                         ),
                       ],
@@ -2181,7 +2191,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
       ),
       builder: (context, snapshot) {
         double inicial = cuadre.fondoInicial;
-        double ventasEfectivo = cuadre.efectivoEsperado;
+        double ventasEfectivo = 0; // No existe cuadre.efectivoEsperado
         double ventasTransferencias = 0;
         double gastos = 0; // Gastos siempre 0
 
@@ -2410,10 +2420,12 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                               // Información del cuadre
                               _buildInfoCardFallback([
                                 ['Responsable', cuadre.responsable],
-                                ['Caja', cuadre.nombre],
+                                ['Caja', cuadre.nombre ?? 'Sin nombre'],
                                 [
                                   'Fecha apertura',
-                                  _formatearFechaHora(cuadre.fechaApertura),
+                                  cuadre.fechaInicio != null
+                                      ? _formatearFechaHora(cuadre.fechaInicio!)
+                                      : '',
                                 ],
                                 [
                                   'Fecha cierre',
@@ -2423,7 +2435,9 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                                 ],
                                 [
                                   'Estado',
-                                  cuadre.cerrada ? 'Cerrada' : 'Abierta',
+                                  cuadre.estado == 'cerrada'
+                                      ? 'Cerrada'
+                                      : 'Abierta',
                                 ],
                               ]),
                               SizedBox(height: 20),
@@ -2443,10 +2457,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                                   'Fondo inicial',
                                   formatCurrency(cuadre.fondoInicial),
                                 ],
-                                [
-                                  'Efectivo esperado',
-                                  formatCurrency(cuadre.efectivoEsperado),
-                                ],
+                                ['Efectivo esperado', formatCurrency(0)],
                                 // Eliminado: Efectivo declarado y diferencia
                               ]),
                               SizedBox(height: 20),

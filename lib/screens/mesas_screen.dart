@@ -153,9 +153,9 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
   // Key para forzar reconstrucción de widgets después de operaciones
   int _widgetRebuildKey = 0;
 
-  // Subscripciones para actualizaciones en tiempo real (eliminadas)
-  // late StreamSubscription<bool> _pedidoCompletadoSubscription;
-  // late StreamSubscription<bool> _pedidoPagadoSubscription;
+  // Subscripciones para actualizaciones en tiempo real
+  StreamSubscription<bool>? _pedidoCompletadoSubscription;
+  StreamSubscription<bool>? _pedidoPagadoSubscription;
 
   // Paleta de colores mejorada
   static const _backgroundDark = Color(0xFF1A1A1A);
@@ -550,7 +550,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(_mejorarMensajeError(e.toString())),
-            backgroundColor: Colors.red,
+            // backgroundColor: Colors.red, // Botón de recarga eliminado
             duration: Duration(seconds: 4),
           ),
         );
@@ -1414,52 +1414,57 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
   // }
 
   @override
+  @override
   void dispose() {
-    // No hay subscripciones WebSocket activas para cancelar
-    print(
-      '🟢 [DEBUG] dispose: No hay subscripciones WebSocket activas para cancelar.',
-    );
+    // Cancelar subscripciones WebSocket si están activas
+    _pedidoCompletadoSubscription?.cancel();
+    _pedidoPagadoSubscription?.cancel();
     super.dispose();
   }
 
   void _configurarWebSockets() {
-    // NO hay listeners automáticos de recarga de mesas por eventos de pedidos
-    print(
-      '🟢 [DEBUG] _configurarWebSockets: NO hay listeners activos para recarga automática.',
+    // Habilitar listeners automáticos de recarga de mesas por eventos de pedidos
+    _pedidoCompletadoSubscription = _pedidoService.onPedidoCompletado.listen(
+      (_) => _loadMesas(),
     );
-    // _pedidoCompletadoSubscription = _pedidoService.onPedidoCompletado.listen((_) => _loadMesas());
-    // _pedidoPagadoSubscription = _pedidoService.onPedidoPagado.listen((_) => _loadMesas());
+    _pedidoPagadoSubscription = _pedidoService.onPedidoPagado.listen(
+      (_) => _loadMesas(),
+    );
   }
 
   Future<void> _loadMesas() async {
     try {
-      print('🔄 Cargando mesas...');
+      // Reduce log spam: only log errors and summary
       setState(() {
         isLoading = true;
         errorMessage = null;
+        mesas.clear(); // Always clear before reload
       });
       final loadedMesas = await _mesaService.getMesas();
-      print(
-        '✅ ${loadedMesas.length} mesas obtenidas (${loadedMesas.where((m) => m.ocupada).length} ocupadas)',
-      );
-      // Eliminada la sincronización de estado de mesas
+      // Null check: filter out null mesas if any
+      final safeMesas = (loadedMesas ?? []).where((m) => m != null).toList();
       setState(() {
-        mesas = loadedMesas;
+        mesas = safeMesas;
         isLoading = false;
       });
-      print('✅ Carga de mesas completada');
+      // Only summary log
+      print(
+        '✅ Mesas recargadas: ${safeMesas.length} mesas (${safeMesas.where((m) => m.ocupada).length} ocupadas)',
+      );
     } catch (error) {
       print('❌ Error al cargar mesas: $error');
       setState(() {
-        errorMessage = 'Error al cargar mesas: $error';
+        errorMessage = 'Error al cargar mesas';
         isLoading = false;
+        mesas.clear();
       });
     }
   }
 
   /// Método ULTRA AGRESIVO que fuerza actualización tanto en backend como frontend
   Future<void> _recargarMesasConCards() async {
-    print('� INICIANDO RECARGA ULTRA AGRESIVA...');
+    // Only summary log
+    print('🔄 INICIANDO RECARGA ULTRA AGRESIVA...');
 
     try {
       // 1. FORZAR ACTUALIZACIÓN EN EL BACKEND PARA CADA MESA
@@ -1470,16 +1475,12 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
 
       // 3. MÚLTIPLES RECARGAS CON DELAYS LARGOS
       for (int i = 1; i <= 5; i++) {
-        print('🔄 Recarga #$i de 5...');
-        await Future.delayed(
-          Duration(milliseconds: 500 * i),
-        ); // Delays progresivos
+        await Future.delayed(Duration(milliseconds: 500 * i));
         await _loadMesas();
         await _recalcularTotalesDesdeBackend();
-
         if (mounted) {
           setState(() {
-            _widgetRebuildKey += 10; // Incremento grande para asegurar cambio
+            _widgetRebuildKey += 10;
           });
         }
       }
@@ -1499,7 +1500,8 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
   /// FUERZA la actualización de todas las mesas en el backend
   Future<void> _forzarActualizacionBackend() async {
     try {
-      print('🚨 FORZANDO ACTUALIZACIÓN EN BACKEND...');
+      // Only summary log
+      print('🔄 Forzando actualización en backend...');
 
       // Obtener todas las mesas del backend
       final mesasBackend = await _mesaService.getMesas();
@@ -1528,7 +1530,8 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
           // FORZAR actualización en el backend si hay diferencia
           if (mesa.total != totalReal ||
               mesa.ocupada != pedidosActivos.isNotEmpty) {
-            print('🔧 CORRIGIENDO ${mesa.nombre}: ${mesa.total} -> $totalReal');
+            // Only log corrections
+            print('🔧 Corrigiendo ${mesa.nombre}: ${mesa.total} -> $totalReal');
             mesa.total = totalReal;
             mesa.ocupada = pedidosActivos.isNotEmpty;
 
@@ -1551,7 +1554,8 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
 
   /// INVALIDA completamente el cache local
   void _invalidarCacheCompleto() {
-    print('🗑️ INVALIDANDO CACHE COMPLETO...');
+    // Only summary log
+    print('🗑️ Invalidando cache completo...');
 
     // Limpiar completamente la lista de mesas
     mesas.clear();
@@ -1569,7 +1573,8 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
   /// VERIFICA y CORRIGE inconsistencias finales
   Future<void> _verificarYCorregirInconsistencias() async {
     try {
-      print('🔍 VERIFICANDO INCONSISTENCIAS FINALES...');
+      // Only summary log
+      print('🔍 Verificando inconsistencias finales...');
 
       bool hayInconsistencias = false;
 
@@ -1626,6 +1631,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
   /// Recalcula los totales de todas las mesas desde los pedidos activos en el backend
   Future<void> _recalcularTotalesDesdeBackend() async {
     try {
+      // Only summary log
       print('🔄 Recalculando totales desde backend...');
 
       for (int i = 0; i < mesas.length; i++) {
@@ -1668,7 +1674,8 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
   /// ACTUALIZACIÓN ULTRA AGRESIVA de una mesa específica
   Future<void> _actualizarMesaEspecifica(Mesa mesa) async {
     try {
-      print('� ACTUALIZACIÓN ULTRA AGRESIVA de mesa: ${mesa.nombre}');
+      // Only summary log
+      print('🔄 Actualización ultra agresiva de mesa: ${mesa.nombre}');
 
       // 1. FORZAR actualizaci\u00f3n en el backend primero
       await _forzarActualizacionMesaIndividual(mesa);
@@ -1753,7 +1760,8 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
   /// FUERZA actualizaci\u00f3n de una mesa individual en el backend
   Future<void> _forzarActualizacionMesaIndividual(Mesa mesa) async {
     try {
-      print('🔧 FORZANDO actualización backend de ${mesa.nombre}...');
+      // Only summary log
+      print('🔧 Forzando actualización backend de ${mesa.nombre}...');
 
       // Obtener pedidos y calcular total real
       final pedidos = await _pedidoService.getPedidosByMesa(mesa.nombre);
@@ -1791,47 +1799,27 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
 
   /// 🚨 RECONSTRUCCIÓN TOTAL DESDE CERO - MÉTODO DEFINITIVO
   Future<void> _reconstruirCardDesdeCero(Mesa mesa) async {
-    print('🚨 ===== RECONSTRUCCIÓN TOTAL DESDE CERO =====');
-    print('🎯 Objetivo: ${mesa.nombre}');
+    // Only summary log
+    print('🔄 Reconstrucción total desde cero: ${mesa.nombre}');
 
     try {
       // 1. OBTENER DATOS FRESCOS DIRECTAMENTE DEL BACKEND
-      print('🔄 Paso 1: Obteniendo datos frescos del backend...');
       final mesaBackend = await _mesaService.getMesaById(mesa.id);
       final pedidosActivos = await _obtenerPedidosActivosReales(mesa.nombre);
-
-      // 2. CALCULAR TOTALES REALES DESDE PEDIDOS
-      print('📊 Paso 2: Calculando totales reales...');
       double totalReal = 0.0;
       for (final pedido in pedidosActivos) {
         totalReal += pedido.total;
-        print('   - Pedido ${pedido.id}: +${pedido.total}');
       }
       bool ocupadaReal = pedidosActivos.isNotEmpty;
-
-      // ✅ COMENTADO: Logs de totales calculados repetitivos removidos
-      // print('📊 TOTALES CALCULADOS:');
-      // print('   - Total real: $totalReal');
-      // print('   - Ocupada real: $ocupadaReal');
-      // print('   - Pedidos activos: ${pedidosActivos.length}');
-
-      // 3. CREAR OBJETO MESA COMPLETAMENTE NUEVO
-      print('🔆 Paso 3: Creando objeto mesa nuevo...');
       final mesaNueva = Mesa(
         id: mesa.id,
         nombre: mesa.nombre,
         ocupada: ocupadaReal,
         total: totalReal,
-        productos: [], // Lista limpia
+        productos: [],
       );
-
-      // 4. ACTUALIZAR EN EL BACKEND PARA ASEGURAR CONSISTENCIA
-      print('🔄 Paso 4: Actualizando backend...');
       await _mesaService.updateMesa(mesaNueva);
-      await Future.delayed(Duration(milliseconds: 300)); // Esperar confirmación
-
-      // 5. REEMPLAZAR EN LA LISTA LOCAL CON MÚLTIPLES SETSTATE
-      print('🔄 Paso 5: Reemplazando en lista local...');
+      await Future.delayed(Duration(milliseconds: 300));
       final index = mesas.indexWhere((m) => m.id == mesa.id);
       if (index != -1) {
         // Hacer 3 actualizaciones consecutivas para asegurar el cambio
@@ -1903,20 +1891,13 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                   p.estado != EstadoPedido.cancelado,
             )
             .toList();
-
         double totalReal = pedidosActivos.fold(0.0, (sum, p) => sum + p.total);
         bool ocupadaReal = pedidosActivos.isNotEmpty;
-
-        // ✅ COMENTADO: Logs de verificación repetitivos removidos
-        // print('🔍 VERIFICACIÓN REAL ${mesa.nombre}:');
-        // print('   - Card muestra: total=${mesa.total}, ocupada=${mesa.ocupada}');
-        // print('   - Reality check: total=$totalReal, ocupada=$ocupadaReal');
-        // print('   - Pedidos activos: ${pedidosActivos.length}');
-
+        // Only log if inconsistency detected
         if (mesa.total != totalReal || mesa.ocupada != ocupadaReal) {
-          print('🚨 ¡INCONSISTENCIA DETECTADA EN TIEMPO REAL!');
-          print('   - Diferencia total: ${mesa.total} vs $totalReal');
-          print('   - Diferencia ocupada: ${mesa.ocupada} vs $ocupadaReal');
+          print(
+            '🚨 Inconsistencia detectada en tiempo real: mesa=${mesa.nombre}',
+          );
         }
       } catch (e) {
         print('❌ Error verificando estado real: $e');
@@ -1997,10 +1978,16 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                         itemBuilder: (context, index) {
                           final pedido = pedidos[index];
                           return CheckboxListTile(
-                            title: Text(
-                              'Pedido ${pedido.id.substring(0, 8)}...',
-                              style: const TextStyle(color: Color(0xFFE0E0E0)),
-                            ),
+                            title:
+                                (pedido.cliente != null &&
+                                    pedido.cliente!.isNotEmpty)
+                                ? Text(
+                                    pedido.cliente!,
+                                    style: const TextStyle(
+                                      color: Color(0xFFE0E0E0),
+                                    ),
+                                  )
+                                : const SizedBox.shrink(),
                             subtitle: Text(
                               'Total: ${formatCurrency(pedido.total)}',
                               style: TextStyle(
@@ -6942,12 +6929,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
     try {
       final userProvider = Provider.of<UserProvider>(context, listen: false);
 
-      // Debug logs para verificar el rol del usuario
-      print('🔍 DEBUG MESAS - userProvider.isMesero: ${userProvider.isMesero}');
-      print('🔍 DEBUG MESAS - userProvider.roles: ${userProvider.roles}');
-      print(
-        '🔍 DEBUG MESAS - userProvider.isOnlyMesero: ${userProvider.isOnlyMesero}',
-      );
+      // Debug logs removed
 
       if (mounted) {
         if (userProvider.isMesero) {
@@ -8328,25 +8310,22 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
 
   Future<void> _navegarAPedido(String nombreMesa) async {
     // Método simplificado para navegación directa a crear pedido
-    Mesa? mesa = mesas.cast<Mesa?>().firstWhere(
-      (m) => m?.nombre.toLowerCase() == nombreMesa.toLowerCase(),
-      orElse: () => null,
+    // IMPORTANTE: Siempre crear una mesa limpia para forzar nuevo pedido
+    Mesa mesa = Mesa(
+      id: '', // ID vacío para forzar nuevo pedido
+      nombre: nombreMesa,
+      ocupada: false,
+      total: 0.0,
+      productos: [],
     );
 
-    if (mesa == null) {
-      mesa = Mesa(
-        id: '',
-        nombre: nombreMesa,
-        ocupada: false,
-        total: 0.0,
-        productos: [],
-      );
-    }
+    print('🆕 Navegando a crear NUEVO pedido para mesa especial: $nombreMesa');
 
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => PedidoScreen(mesa: mesa!)),
+      MaterialPageRoute(builder: (context) => PedidoScreen(mesa: mesa)),
     );
+
     // Si se creó o actualizó un pedido, recargar las mesas
     if (result == true) {
       await _recargarMesasConCards();

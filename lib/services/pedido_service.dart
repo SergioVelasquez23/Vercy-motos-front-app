@@ -16,6 +16,24 @@ import '../config/api_config.dart';
 import '../services/cuadre_caja_service.dart'; // Para validar caja abierta
 
 class PedidoService {
+  // Eliminar pedido pagado (usa endpoint especial)
+  Future<void> eliminarPedidoPagado(String id) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.delete(
+        Uri.parse('$baseUrl/api/pedidos/$id/pagado'),
+        headers: headers,
+      );
+      if (response.statusCode != 200 && response.statusCode != 204) {
+        throw Exception(
+          'Error al eliminar pedido pagado: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      throw Exception('Error de conexión: $e');
+    }
+  }
+
   static final PedidoService _instance = PedidoService._internal();
   factory PedidoService() => _instance;
 
@@ -29,11 +47,11 @@ class PedidoService {
   final CuadreCajaService _cuadreCajaService = CuadreCajaService();
 
   PedidoService._internal() {
-    print('🔧 PedidoService: Inicializando servicio y StreamControllers');
+    // Log removed
   }
 
   void dispose() {
-    print('🔧 PedidoService: Cerrando StreamControllers');
+    // Log removed
     _pedidoCompletadoController.close();
     _pedidoPagadoController.close();
   }

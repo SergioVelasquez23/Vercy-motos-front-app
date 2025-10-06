@@ -38,8 +38,11 @@ class CuadreCajaService {
             .map((json) => CuadreCaja.fromJson(json))
             .toList();
 
-        // Ordenar cuadres por fecha de apertura descendente (más recientes primero)
-        cuadres.sort((a, b) => b.fechaApertura.compareTo(a.fechaApertura));
+        // Ordenar cuadres por fecha de inicio descendente (más recientes primero)
+        cuadres.sort(
+          (a, b) =>
+              b.fechaInicio?.compareTo(a.fechaInicio ?? DateTime(1900)) ?? 0,
+        );
 
         return cuadres;
       } else {
@@ -88,8 +91,11 @@ class CuadreCajaService {
             .map((json) => CuadreCaja.fromJson(json))
             .toList();
 
-        // Ordenar cuadres por fecha de apertura descendente (más recientes primero)
-        cuadres.sort((a, b) => b.fechaApertura.compareTo(a.fechaApertura));
+        // Ordenar cuadres por fecha de inicio descendente (más recientes primero)
+        cuadres.sort(
+          (a, b) =>
+              b.fechaInicio?.compareTo(a.fechaInicio ?? DateTime(1900)) ?? 0,
+        );
 
         return cuadres;
       } else {
@@ -118,8 +124,11 @@ class CuadreCajaService {
             .map((json) => CuadreCaja.fromJson(json))
             .toList();
 
-        // Ordenar cuadres por fecha de apertura descendente (más recientes primero)
-        cuadres.sort((a, b) => b.fechaApertura.compareTo(a.fechaApertura));
+        // Ordenar cuadres por fecha de inicio descendente (más recientes primero)
+        cuadres.sort(
+          (a, b) =>
+              b.fechaInicio?.compareTo(a.fechaInicio ?? DateTime(1900)) ?? 0,
+        );
 
         return cuadres;
       } else {
@@ -148,8 +157,11 @@ class CuadreCajaService {
             .map((json) => CuadreCaja.fromJson(json))
             .toList();
 
-        // Ordenar cuadres por fecha de apertura descendente (más recientes primero)
-        cuadres.sort((a, b) => b.fechaApertura.compareTo(a.fechaApertura));
+        // Ordenar cuadres por fecha de inicio descendente (más recientes primero)
+        cuadres.sort(
+          (a, b) =>
+              b.fechaInicio?.compareTo(a.fechaInicio ?? DateTime(1900)) ?? 0,
+        );
 
         return cuadres;
       } else {
@@ -178,8 +190,11 @@ class CuadreCajaService {
             .map((json) => CuadreCaja.fromJson(json))
             .toList();
 
-        // Ordenar cuadres por fecha de apertura descendente (más recientes primero)
-        cuadres.sort((a, b) => b.fechaApertura.compareTo(a.fechaApertura));
+        // Ordenar cuadres por fecha de inicio descendente (más recientes primero)
+        cuadres.sort(
+          (a, b) =>
+              b.fechaInicio?.compareTo(a.fechaInicio ?? DateTime(1900)) ?? 0,
+        );
 
         return cuadres;
       } else {
@@ -197,14 +212,16 @@ class CuadreCajaService {
     try {
       print('🔍 Buscando caja activa...');
       final cajasAbiertas = await getCajasAbiertas();
-      
+
       if (cajasAbiertas.isEmpty) {
         print('⚠️ No se encontró ninguna caja abierta');
         return null;
       }
 
       final cajaActiva = cajasAbiertas.first;
-      print('✅ Caja activa encontrada: ${cajaActiva.id} - ${cajaActiva.nombre}');
+      print(
+        '✅ Caja activa encontrada: ${cajaActiva.id} - ${cajaActiva.nombre}',
+      );
       return cajaActiva;
     } catch (e) {
       print('❌ Error al obtener caja activa: $e');
@@ -284,14 +301,14 @@ class CuadreCajaService {
         print('✅ Datos de ventas del cuadre activo obtenidos exitosamente');
       } catch (e) {
         print('⚠️ Error al obtener ventas del cuadre activo: $e');
-        
+
         // Fallback a los métodos antiguos
         try {
           ventasData = await getVentasPorCuadreActivo();
           print('✅ Datos de ventas por fecha obtenidos como fallback');
         } catch (e2) {
           print('⚠️ Error al obtener ventas por fecha: $e2');
-          
+
           try {
             ventasData = await getDetallesVentas();
             print('✅ Datos de ventas obtenidos exitosamente');
@@ -664,7 +681,7 @@ class CuadreCajaService {
     try {
       print('🔍 Obteniendo ventas del cuadre de caja activo...');
       final headers = await _getHeaders();
-      
+
       // Obtener la caja activa
       final cajaActiva = await getCajaActiva();
       if (cajaActiva == null) {
@@ -677,7 +694,7 @@ class CuadreCajaService {
           'otros': 0.0,
         };
       }
-      
+
       print('💰 Obteniendo pedidos pagados del cuadre: ${cajaActiva.id}');
       final response = await http.get(
         Uri.parse('$baseUrl/api/pedidos/cuadre/${cajaActiva.id}/pagados'),
@@ -696,11 +713,15 @@ class CuadreCajaService {
         double totalTransferencias = 0.0;
         double totalTarjeta = 0.0;
         double totalOtros = 0.0;
-        
+
         for (var pedidoJson in pedidos) {
-          final double totalPedido = (pedidoJson['totalPagado'] ?? pedidoJson['total'] ?? 0).toDouble();
-          final String formaPago = (pedidoJson['formaPago'] ?? 'otros').toString().toLowerCase();
-          
+          final double totalPedido =
+              (pedidoJson['totalPagado'] ?? pedidoJson['total'] ?? 0)
+                  .toDouble();
+          final String formaPago = (pedidoJson['formaPago'] ?? 'otros')
+              .toString()
+              .toLowerCase();
+
           switch (formaPago) {
             case 'efectivo':
               totalEfectivo += totalPedido;
@@ -715,16 +736,19 @@ class CuadreCajaService {
               totalOtros += totalPedido;
           }
         }
-        
-        final double total = totalEfectivo + totalTransferencias + totalTarjeta + totalOtros;
-        
+
+        final double total =
+            totalEfectivo + totalTransferencias + totalTarjeta + totalOtros;
+
         print('📊 Resumen de ventas del cuadre ${cajaActiva.id}:');
         print('  - Efectivo: \$${totalEfectivo.toStringAsFixed(2)}');
-        print('  - Transferencias: \$${totalTransferencias.toStringAsFixed(2)}');
+        print(
+          '  - Transferencias: \$${totalTransferencias.toStringAsFixed(2)}',
+        );
         print('  - Tarjetas: \$${totalTarjeta.toStringAsFixed(2)}');
         print('  - Otros: \$${totalOtros.toStringAsFixed(2)}');
         print('  - Total: \$${total.toStringAsFixed(2)}');
-        
+
         return {
           'total': total,
           'efectivo': totalEfectivo,
@@ -735,7 +759,7 @@ class CuadreCajaService {
       } else {
         print('❌ Error al obtener pedidos del cuadre: ${response.statusCode}');
         print('📝 Body de error: ${response.body}');
-        
+
         return {
           'total': 0.0,
           'efectivo': 0.0,
@@ -781,7 +805,9 @@ class CuadreCajaService {
 
   // Método para compatibilidad con código legacy - alias de getVentasPorCuadreActivo
   Future<Map<String, dynamic>> getVentasPorTipoPago() async {
-    print('🔄 getVentasPorTipoPago() - redirigiendo a getVentasPorCuadreActivo()');
+    print(
+      '🔄 getVentasPorTipoPago() - redirigiendo a getVentasPorCuadreActivo()',
+    );
     return await getVentasPorCuadreActivo();
   }
 
