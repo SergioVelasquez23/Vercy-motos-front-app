@@ -581,10 +581,14 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: _isLoading ? null : _loadStats,
-                    icon: Icon(Icons.refresh),
-                    label: Text('Actualizar Stats'),
+                    icon: Icon(Icons.refresh, color: Colors.white),
+                    label: Text(
+                      'Actualizar Stats',
+                      style: TextStyle(color: Colors.white),
+                    ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primary,
+                      backgroundColor: Colors.black,
+                      foregroundColor: Colors.white,
                     ),
                   ),
                 ),
@@ -592,10 +596,14 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: _isLoading ? null : _resetMesas,
-                    icon: Icon(Icons.table_restaurant),
-                    label: Text('Resetear Mesas'),
+                    icon: Icon(Icons.table_restaurant, color: Colors.white),
+                    label: Text(
+                      'Resetear Mesas',
+                      style: TextStyle(color: Colors.white),
+                    ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange,
+                      backgroundColor: Colors.black,
+                      foregroundColor: Colors.white,
                     ),
                   ),
                 ),
@@ -610,10 +618,14 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: _isLoading ? null : _contarPorFechas,
-                    icon: Icon(Icons.analytics),
-                    label: Text('Contar por Fechas'),
+                    icon: Icon(Icons.analytics, color: Colors.white),
+                    label: Text(
+                      'Contar por Fechas',
+                      style: TextStyle(color: Colors.white),
+                    ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
+                      backgroundColor: Colors.black,
+                      foregroundColor: Colors.white,
                     ),
                   ),
                 ),
@@ -621,10 +633,14 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: _isLoading ? null : _eliminarPorFechas,
-                    icon: Icon(Icons.delete_forever),
-                    label: Text('Eliminar por Fechas'),
+                    icon: Icon(Icons.delete_forever, color: Colors.white),
+                    label: Text(
+                      'Eliminar por Fechas',
+                      style: TextStyle(color: Colors.white),
+                    ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
+                      backgroundColor: Colors.black,
+                      foregroundColor: Colors.white,
                     ),
                   ),
                 ),
@@ -638,10 +654,13 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
               width: double.infinity,
               child: ElevatedButton.icon(
                 onPressed: _isLoading ? null : _eliminarTodosPedidosActivos,
-                icon: Icon(Icons.delete_sweep),
-                label: Text('🚨 ELIMINAR TODOS LOS PEDIDOS ACTIVOS'),
+                icon: Icon(Icons.delete_sweep, color: Colors.white),
+                label: Text(
+                  '🚨 ELIMINAR TODOS LOS PEDIDOS ACTIVOS',
+                  style: TextStyle(color: Colors.white),
+                ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red[800],
+                  backgroundColor: Colors.black,
                   foregroundColor: Colors.white,
                   padding: EdgeInsets.symmetric(vertical: 14),
                 ),
@@ -655,10 +674,14 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
               width: double.infinity,
               child: ElevatedButton.icon(
                 onPressed: _isLoading ? null : _eliminarPedidoEspecifico,
-                icon: Icon(Icons.delete_outline),
-                label: Text('Eliminar Pedido Específico'),
+                icon: Icon(Icons.delete_outline, color: Colors.white),
+                label: Text(
+                  'Eliminar Pedido Específico',
+                  style: TextStyle(color: Colors.white),
+                ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.deepOrange,
+                  backgroundColor: Colors.black,
+                  foregroundColor: Colors.white,
                   padding: EdgeInsets.symmetric(vertical: 12),
                 ),
               ),
@@ -671,10 +694,14 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
               width: double.infinity,
               child: ElevatedButton.icon(
                 onPressed: _isLoading ? null : _clearAllData,
-                icon: Icon(Icons.warning),
-                label: Text('ELIMINAR TODOS LOS DATOS'),
+                icon: Icon(Icons.warning, color: Colors.white),
+                label: Text(
+                  'ELIMINAR TODOS LOS DATOS',
+                  style: TextStyle(color: Colors.white),
+                ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red[900],
+                  backgroundColor: Colors.black,
+                  foregroundColor: Colors.white,
                   padding: EdgeInsets.symmetric(vertical: 16),
                 ),
               ),

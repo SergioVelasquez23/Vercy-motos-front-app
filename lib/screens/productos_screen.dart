@@ -1,5 +1,5 @@
 import '../widgets/imagen_producto_widget.dart';
-import '../widgets/image_upload_helper.dart';
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../theme/app_theme.dart';
@@ -219,26 +219,6 @@ class _ProductosScreenState extends State<ProductosScreen> {
         elevation: 0,
         centerTitle: true,
         actions: [
-          Container(
-            margin: EdgeInsets.only(right: AppTheme.spacingSmall),
-            child: IconButton(
-              icon: Container(
-                padding: EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-                ),
-                child: Icon(Icons.image, size: 20),
-              ),
-              onPressed: () {
-                showDialog(
-                  context: context,
-                  builder: (context) => ImageUploadHelper(),
-                );
-              },
-              tooltip: 'Gestionar Imágenes',
-            ),
-          ),
           Container(
             margin: EdgeInsets.only(right: AppTheme.spacingSmall),
             child: IconButton(

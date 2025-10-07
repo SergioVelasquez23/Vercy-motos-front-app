@@ -118,6 +118,11 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
         );
         print('� Efectivo esperado: ${_cuadreActual?.efectivoEsperado ?? 0}');
         print('🏦 Estado del cuadre: ${_cuadreActual?.estado ?? 'N/A'}');
+
+        // ✅ SOLUCIÓN: Cargar ingresos reales del backend
+        if (_cuadreActual != null && _cuadreActual!.id != null) {
+          _cargarIngresosReales(_cuadreActual!.id!);
+        }
       });
     } catch (e) {
       setState(() {
@@ -127,6 +132,30 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
       setState(() {
         _isLoading = false;
       });
+    }
+  }
+
+  // ✅ NUEVA FUNCIÓN: Cargar ingresos reales del backend
+  Future<void> _cargarIngresosReales(String cuadreId) async {
+    try {
+      final resumen = await _resumenCierreService.getResumenCierre(cuadreId);
+
+      setState(() {
+        // Actualizar _totalIngresos con los datos reales del backend
+        _totalIngresos = resumen.movimientosEfectivo.ingresosEfectivo;
+
+        // También actualizar los controladores para mostrar los valores reales
+        _montoEfectivoController.text = resumen
+            .movimientosEfectivo
+            .ingresosEfectivo
+            .toStringAsFixed(2);
+        _montoTransferenciasController.text = '0.00'; // Por ahora solo efectivo
+      });
+
+      print('💰 Ingresos reales cargados: ${_totalIngresos}');
+    } catch (e) {
+      print('❌ Error al cargar ingresos reales: $e');
+      // No mostrar error al usuario, usar valores por defecto
     }
   }
 
@@ -2637,55 +2666,8 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
 
           SizedBox(height: 20),
 
-          // Resumen de ventas
-          _buildSeccionTitulo('Resumen de Ventas'),
-          Builder(
-            builder: (context) {
-              // Calcular datos basados en pedidos realmente pagados
-              final pedidosPagados = resumen.resumenVentas.detallesPedidos
-                  .where((pedido) {
-                    bool tieneTotalValido = pedido.total > 0;
-                    bool tieneFechaPago =
-                        pedido.fechaPago.isNotEmpty &&
-                        pedido.fechaPago != 'null';
-                    return tieneTotalValido && tieneFechaPago;
-                  })
-                  .toList();
-
-              final totalPedidosPagados = pedidosPagados.length;
-              final totalVentasPagadas = pedidosPagados.fold<double>(
-                0,
-                (sum, pedido) => sum + pedido.total,
-              );
-
-              return _buildInfoCard([
-                ['Total pedidos (realmente pagados)', '$totalPedidosPagados'],
-                [
-                  'Total pedidos (incluye cancelados/movidos)',
-                  '${resumen.resumenVentas.totalPedidos}',
-                ],
-                ['Total ventas', '\$${totalVentasPagadas.toStringAsFixed(2)}'],
-              ]);
-            },
-          ),
-
-          SizedBox(height: 10),
-
-          // Ventas por forma de pago
-          if (resumen.resumenVentas.ventasPorFormaPago.isNotEmpty) ...[
-            _buildSeccionTitulo('Ventas por Forma de Pago'),
-            _buildVentasFormaPagoTable(resumen.resumenVentas),
-            SizedBox(height: 20),
-          ],
-
+          // Detalles de ventas ocultos por solicitud del usuario
           SizedBox(height: 20),
-
-          // Detalle de pedidos
-          if (resumen.resumenVentas.detallesPedidos.isNotEmpty) ...[
-            _buildSeccionTitulo('Detalle de Pedidos'),
-            _buildDetallesPedidosTable(resumen.resumenVentas.detallesPedidos),
-            SizedBox(height: 20),
-          ],
 
           // Resumen de gastos
           if (resumen.resumenGastos.totalRegistros > 0) ...[
@@ -2712,191 +2694,6 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
             ]),
             SizedBox(height: 20),
           ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildVentasFormaPagoTable(ResumenVentas resumenVentas) {
-    return Container(
-      decoration: BoxDecoration(
-        color: cardBg,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: primary.withOpacity(0.3)),
-      ),
-      child: Table(
-        border: TableBorder.all(color: primary.withOpacity(0.2), width: 1),
-        children: [
-          TableRow(
-            decoration: BoxDecoration(color: primary.withOpacity(0.1)),
-            children: [
-              _buildTableHeader('Forma de Pago'),
-              _buildTableHeader('Cantidad'),
-              _buildTableHeader('Total'),
-            ],
-          ),
-          ...resumenVentas.ventasPorFormaPago.entries.map((entry) {
-            final cantidad = resumenVentas.cantidadPorFormaPago[entry.key] ?? 0;
-            return TableRow(
-              children: [
-                _buildTableCell(entry.key.toUpperCase()),
-                _buildTableCell('$cantidad'),
-                _buildTableCell('\$${entry.value.toStringAsFixed(2)}'),
-              ],
-            );
-          }),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDetallesPedidosTable(List<DetallePedido> pedidos) {
-    // 🔍 FILTRAR SOLO PEDIDOS REALMENTE PAGADOS
-    final pedidosPagados = pedidos.where((pedido) {
-      // Un pedido está realmente pagado si:
-      // 1. Tiene un total mayor a 0
-      // 2. Tiene una fecha de pago válida (no vacía y no 'null')
-      bool tieneTotalValido = pedido.total > 0;
-      bool tieneFechaPago =
-          pedido.fechaPago.isNotEmpty && pedido.fechaPago != 'null';
-
-      print(
-        '🔍 Filtro pedido ${pedido.id}: total=${pedido.total}, fechaPago="${pedido.fechaPago}", válido=${tieneTotalValido && tieneFechaPago}',
-      );
-
-      return tieneTotalValido && tieneFechaPago;
-    }).toList();
-
-    print('📊 Total pedidos recibidos: ${pedidos.length}');
-    print('✅ Pedidos realmente pagados: ${pedidosPagados.length}');
-
-    return Container(
-      decoration: BoxDecoration(
-        color: cardBg,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: primary.withOpacity(0.3)),
-      ),
-      child: Column(
-        children: [
-          Container(
-            padding: EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: primary.withOpacity(0.1),
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(8),
-                topRight: Radius.circular(8),
-              ),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  flex: 1,
-                  child: Text(
-                    'Mesa',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: textDark,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Text(
-                    'Fecha',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: textDark,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 1,
-                  child: Text(
-                    'Pago',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: textDark,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 1,
-                  child: Text(
-                    'Total',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: textDark,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // Mostrar mensaje si no hay pedidos pagados
-          if (pedidosPagados.isEmpty)
-            Container(
-              padding: EdgeInsets.all(20),
-              child: Text(
-                'No hay pedidos pagados en este período',
-                style: TextStyle(
-                  color: textDark.withOpacity(0.7),
-                  fontStyle: FontStyle.italic,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            )
-          else
-            // Mostrar solo los pedidos realmente pagados
-            ...pedidosPagados.take(10).map((pedido) {
-              return Container(
-                padding: EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(color: primary.withOpacity(0.2)),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      flex: 1,
-                      child: Text(
-                        pedido.mesa,
-                        style: TextStyle(color: textDark),
-                      ),
-                    ),
-                    Expanded(
-                      flex: 2,
-                      child: Text(
-                        _formatearFecha(DateTime.parse(pedido.fechaPago)),
-                        style: TextStyle(color: textDark, fontSize: 12),
-                      ),
-                    ),
-                    Expanded(
-                      flex: 1,
-                      child: Text(
-                        pedido.formaPago.toUpperCase(),
-                        style: TextStyle(color: textDark, fontSize: 12),
-                      ),
-                    ),
-                    Expanded(
-                      flex: 1,
-                      child: Text(
-                        formatCurrency(pedido.total),
-                        style: TextStyle(color: textDark),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }),
-          if (pedidos.length > 10)
-            Container(
-              padding: EdgeInsets.all(12),
-              child: Text(
-                'Mostrando 10 de ${pedidos.length} pedidos',
-                style: TextStyle(color: textLight, fontStyle: FontStyle.italic),
-              ),
-            ),
         ],
       ),
     );
@@ -2950,32 +2747,6 @@ Widget _buildInfoCard(List<List<String>> datos) {
       ),
     ),
   );
-}
-
-Widget _buildTableHeader(String text) {
-  return Container(
-    padding: EdgeInsets.all(12),
-    child: Text(
-      text,
-      style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-      textAlign: TextAlign.center,
-    ),
-  );
-}
-
-Widget _buildTableCell(String text) {
-  return Container(
-    padding: EdgeInsets.all(12),
-    child: Text(
-      text,
-      style: TextStyle(color: Colors.white),
-      textAlign: TextAlign.center,
-    ),
-  );
-}
-
-String _formatearFecha(DateTime fecha) {
-  return '${fecha.day.toString().padLeft(2, '0')}/${fecha.month.toString().padLeft(2, '0')}/${fecha.year} ${fecha.hour.toString().padLeft(2, '0')}:${fecha.minute.toString().padLeft(2, '0')}';
 }
 
 // Helper para construir tarjetas de información en el fallback

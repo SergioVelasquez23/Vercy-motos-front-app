@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/pedido.dart';
 import '../models/producto.dart';
+import '../models/cuadre_caja.dart';
 import '../services/pedido_service.dart';
+import '../services/cuadre_caja_service.dart';
 import '../providers/user_provider.dart';
 import '../utils/format_utils.dart';
 import '../theme/app_theme.dart';
@@ -39,10 +41,14 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
   late ScrollController _scrollController;
 
   final PedidoService _pedidoService = PedidoService();
+  final CuadreCajaService _cuadreCajaService = CuadreCajaService();
   List<Pedido> _pedidos = [];
   List<Pedido> _pedidosFiltrados = [];
+  List<Pedido> _pedidosPorPeriodoCaja =
+      []; // Pedidos del período de caja actual
   bool _isLoading = true;
   String? _error;
+  CuadreCaja? _cajaActiva;
 
   // Filtros
   TipoPedido? _tipoFiltro;
@@ -107,13 +113,49 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
     });
 
     try {
-      final pedidos = await _pedidoService.getAllPedidos();
+      // Cargar pedidos y caja activa en paralelo
+      final futures = await Future.wait([
+        _pedidoService.getAllPedidos(),
+        _cuadreCajaService.getCajaActiva(),
+      ]);
+
+      final pedidos = futures[0] as List<Pedido>;
+      final cajaActiva = futures[1] as CuadreCaja?;
 
       // Ordenar pedidos por fecha descendente (más recientes primero)
       pedidos.sort((a, b) => b.fecha.compareTo(a.fecha));
 
+      // Filtrar pedidos por período de caja (solo pedidos PAGADOS desde la apertura de caja)
+      List<Pedido> pedidosPorPeriodoCaja = [];
+      if (cajaActiva != null) {
+        pedidosPorPeriodoCaja = pedidos.where((pedido) {
+          // Solo incluir pedidos pagados que estén dentro del período de caja
+          // y excluir mesas que quedan pendientes (activas)
+          return pedido.estado == EstadoPedido.pagado &&
+              pedido.fecha.isAfter(cajaActiva.fechaApertura);
+        }).toList();
+
+        print(
+          '📊 Caja activa: ${cajaActiva.nombre} (${cajaActiva.fechaApertura})',
+        );
+        print(
+          '💰 Pedidos del período de caja: ${pedidosPorPeriodoCaja.length}',
+        );
+      } else {
+        print('⚠️ No hay caja activa - mostrando todas las estadísticas');
+        // Si no hay caja activa, mostrar solo pedidos pagados del día actual
+        final hoy = DateTime.now();
+        final inicioDelDia = DateTime(hoy.year, hoy.month, hoy.day);
+        pedidosPorPeriodoCaja = pedidos.where((pedido) {
+          return pedido.estado == EstadoPedido.pagado &&
+              pedido.fecha.isAfter(inicioDelDia);
+        }).toList();
+      }
+
       setState(() {
         _pedidos = pedidos;
+        _cajaActiva = cajaActiva;
+        _pedidosPorPeriodoCaja = pedidosPorPeriodoCaja;
         _isLoading = false;
       });
       _aplicarFiltros();
@@ -908,13 +950,13 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                             children: [
                               _buildStatItem(
                                 'Total',
-                                '${_pedidosFiltrados.length}',
+                                '${_pedidosPorPeriodoCaja.length}',
                                 Icons.receipt_long,
                               ),
                               _buildStatItem(
                                 'Monto',
                                 formatCurrency(
-                                  _pedidosFiltrados.fold<double>(
+                                  _pedidosPorPeriodoCaja.fold<double>(
                                     0,
                                     (sum, pedido) => sum + pedido.total,
                                   ),
@@ -923,12 +965,47 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                               ),
                               _buildStatItem(
                                 'Items',
-                                '${_pedidosFiltrados.fold<int>(0, (sum, pedido) => sum + pedido.items.length)}',
+                                '${_pedidosPorPeriodoCaja.fold<int>(0, (sum, pedido) => sum + pedido.items.length)}',
                                 Icons.shopping_cart,
                               ),
                             ],
                           ),
                         ),
+
+                        // Indicador de período de caja
+                        if (_cajaActiva != null)
+                          Container(
+                            margin: EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 4,
+                            ),
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: primary.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: primary.withOpacity(0.3),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.schedule, size: 14, color: primary),
+                                SizedBox(width: 6),
+                                Text(
+                                  'Período de caja: ${_cajaActiva!.nombre} (desde ${_formatearFecha(_cajaActiva!.fechaApertura)})',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: textDark.withOpacity(0.8),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
 
                         // Lista de pedidos compacta y scrollable
                         Expanded(
@@ -1261,6 +1338,21 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
         ),
       ],
     );
+  }
+
+  String _formatearFecha(DateTime fecha) {
+    final ahora = DateTime.now();
+    final hoy = DateTime(ahora.year, ahora.month, ahora.day);
+    final ayer = hoy.subtract(Duration(days: 1));
+    final fechaSinHora = DateTime(fecha.year, fecha.month, fecha.day);
+
+    if (fechaSinHora == hoy) {
+      return 'hoy ${fecha.hour.toString().padLeft(2, '0')}:${fecha.minute.toString().padLeft(2, '0')}';
+    } else if (fechaSinHora == ayer) {
+      return 'ayer ${fecha.hour.toString().padLeft(2, '0')}:${fecha.minute.toString().padLeft(2, '0')}';
+    } else {
+      return '${fecha.day.toString().padLeft(2, '0')}/${fecha.month.toString().padLeft(2, '0')} ${fecha.hour.toString().padLeft(2, '0')}:${fecha.minute.toString().padLeft(2, '0')}';
+    }
   }
 }
 

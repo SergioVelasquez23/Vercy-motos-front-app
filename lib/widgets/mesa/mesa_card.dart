@@ -31,15 +31,15 @@ class MesaCard extends StatelessWidget {
   Widget build(BuildContext context) {
     bool isOcupada = mesa.ocupada || mesa.total > 0;
 
-    // DEBUG ULTRA DETALLADO
-    final timestamp = DateTime.now().toIso8601String().substring(11, 19);
-    print('🏗️ [$timestamp] ===== CONSTRUYENDO CARD ${mesa.nombre} =====');
-    print('🔍 Mesa ID: ${mesa.id}');
-    print('🔍 Mesa.ocupada: ${mesa.ocupada}');
-    print('🔍 Mesa.total: ${mesa.total}');
-    print('🔍 isOcupada calculado: $isOcupada');
-    print('🔍 Widget key: mesa_card_${mesa.id}_$widgetRebuildKey');
-    print('🔍 Rebuild key actual: $widgetRebuildKey');
+    // ✅ OPTIMIZACIÓN: Logs de debug comentados para mejorar rendimiento
+    // final timestamp = DateFormat('HH:mm:ss').format(DateTime.now());
+    // print('🏗️ [$timestamp] ===== CONSTRUYENDO CARD ${mesa.nombre} =====');
+    // print('🔍 Mesa ID: ${mesa.id}');
+    // print('🔍 Mesa.ocupada: ${mesa.ocupada}');
+    // print('🔍 Mesa.total: ${mesa.total}');
+    // print('🔍 isOcupada calculado: $isOcupada');
+    // print('🔍 Widget key: mesa_card_${mesa.id}_$widgetRebuildKey');
+    // print('🔍 Rebuild key actual: $widgetRebuildKey');
 
     // VERIFICACIÓN ADICIONAL: obtener pedidos en tiempo real para comparar
     onVerificarEstadoReal(mesa);

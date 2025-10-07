@@ -80,7 +80,9 @@ class WebSocketService {
   bool _isReconnecting = false;
   int _reconnectAttempts = 0;
   static const int _maxReconnectAttempts = 5;
-  static const Duration _heartbeatInterval = Duration(seconds: 30);
+  static const Duration _heartbeatInterval = Duration(
+    seconds: 60,
+  ); // Reducido para menos tráfico
   static const Duration _reconnectDelay = Duration(seconds: 5);
 
   /// Stream público para escuchar eventos
@@ -101,7 +103,8 @@ class WebSocketService {
     }
 
     // TODO: Implementar WebSocket STOMP correctamente
-    print('⚠️ WebSocket: Deshabilitado temporalmente - usando polling');
+    // ✅ OPTIMIZACIÓN: Log comentado para mejorar rendimiento
+    // print('⚠️ WebSocket: Deshabilitado temporalmente - usando polling');
     return;
 
     try {

@@ -26,6 +26,10 @@ class _PagoParcialDialogState extends State<PagoParcialDialog> {
   // Items seleccionados para pagar (todos por defecto)
   late Map<String, bool> itemsSeleccionados;
 
+  // ✅ NUEVO: Cantidades específicas para cada producto
+  late Map<String, int> cantidadesSeleccionadas;
+  late Map<String, TextEditingController> cantidadControllers;
+
   // Datos del pago
   String formaPago = 'efectivo';
   double propina = 0.0;
@@ -55,9 +59,32 @@ class _PagoParcialDialogState extends State<PagoParcialDialog> {
     super.initState();
     // Inicializar todos los items como seleccionados
     itemsSeleccionados = {};
+    cantidadesSeleccionadas = {};
+    cantidadControllers = {};
+
     for (int i = 0; i < widget.pedido.items.length; i++) {
       itemsSeleccionados[i.toString()] = true;
+      cantidadesSeleccionadas[i.toString()] = widget.pedido.items[i].cantidad;
+      cantidadControllers[i.toString()] = TextEditingController(
+        text: widget.pedido.items[i].cantidad.toString(),
+      );
     }
+  }
+
+  @override
+  void dispose() {
+    // Limpiar controllers
+    for (var controller in cantidadControllers.values) {
+      controller.dispose();
+    }
+    propinaController.dispose();
+    billetesController.dispose();
+    descuentoPorcentajeController.dispose();
+    descuentoValorController.dispose();
+    montoEfectivoController.dispose();
+    montoTarjetaController.dispose();
+    montoTransferenciaController.dispose();
+    super.dispose();
   }
 
   double get totalSeleccionado {
@@ -65,7 +92,8 @@ class _PagoParcialDialogState extends State<PagoParcialDialog> {
     for (int i = 0; i < widget.pedido.items.length; i++) {
       if (itemsSeleccionados[i.toString()] == true) {
         final item = widget.pedido.items[i];
-        total += item.precio * item.cantidad;
+        final cantidadSeleccionada = cantidadesSeleccionadas[i.toString()] ?? 0;
+        total += item.precio * cantidadSeleccionada;
       }
     }
     return total;
@@ -104,7 +132,23 @@ class _PagoParcialDialogState extends State<PagoParcialDialog> {
     List<ItemPedido> items = [];
     for (int i = 0; i < widget.pedido.items.length; i++) {
       if (itemsSeleccionados[i.toString()] == true) {
-        items.add(widget.pedido.items[i]);
+        final item = widget.pedido.items[i];
+        final cantidadSeleccionada = cantidadesSeleccionadas[i.toString()] ?? 0;
+
+        // Crear una copia del item con la cantidad específica seleccionada
+        final itemCopia = ItemPedido(
+          id: item.id,
+          productoId: item.productoId,
+          productoNombre: item.productoNombre,
+          precioUnitario: item.precioUnitario,
+          cantidad: cantidadSeleccionada, // Usar cantidad específica
+          ingredientesSeleccionados: item.ingredientesSeleccionados,
+          notas: item.notas,
+          agregadoPor: item.agregadoPor,
+          fechaAgregado: item.fechaAgregado,
+        );
+
+        items.add(itemCopia);
       }
     }
     return items;
@@ -219,7 +263,6 @@ class _PagoParcialDialogState extends State<PagoParcialDialog> {
                           final item = widget.pedido.items[index];
                           final isSelected =
                               itemsSeleccionados[index.toString()] ?? false;
-                          final subtotal = item.precio * item.cantidad;
 
                           return Container(
                             decoration: BoxDecoration(
@@ -233,73 +276,203 @@ class _PagoParcialDialogState extends State<PagoParcialDialog> {
                                 ),
                               ),
                             ),
-                            child: CheckboxListTile(
-                              value: isSelected,
-                              onChanged: (value) {
-                                setState(() {
-                                  itemsSeleccionados[index.toString()] =
-                                      value ?? false;
-                                });
-                              },
-                              activeColor: AppTheme.primary,
-                              title: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                            child: Padding(
+                              padding: EdgeInsets.all(12),
+                              child: Row(
                                 children: [
-                                  Text(
-                                    '${item.cantidad}x ${item.productoNombre ?? 'Producto'}',
-                                    style: TextStyle(
-                                      color: AppTheme.textPrimary,
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 15,
+                                  // Checkbox
+                                  Checkbox(
+                                    value: isSelected,
+                                    onChanged: (value) {
+                                      setState(() {
+                                        itemsSeleccionados[index.toString()] =
+                                            value ?? false;
+                                      });
+                                    },
+                                    activeColor: AppTheme.primary,
+                                  ),
+
+                                  // Información del producto
+                                  Expanded(
+                                    flex: 3,
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          '${item.productoNombre ?? 'Producto'}',
+                                          style: TextStyle(
+                                            color: AppTheme.textPrimary,
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 15,
+                                          ),
+                                        ),
+                                        Text(
+                                          'Precio unitario: ${formatCurrency(item.precioUnitario)}',
+                                          style: TextStyle(
+                                            color: AppTheme.textSecondary,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                        if (item
+                                            .ingredientesSeleccionados
+                                            .isNotEmpty) ...[
+                                          SizedBox(height: 2),
+                                          Text(
+                                            'Ingredientes: ${item.ingredientesSeleccionados.join(', ')}',
+                                            style: TextStyle(
+                                              color: AppTheme.textSecondary,
+                                              fontSize: 12,
+                                              fontStyle: FontStyle.italic,
+                                            ),
+                                          ),
+                                        ],
+                                        if (item.agregadoPor != null) ...[
+                                          SizedBox(height: 2),
+                                          Text(
+                                            '👤 Agregado por: ${item.agregadoPor}',
+                                            style: TextStyle(
+                                              color: AppTheme.textSecondary
+                                                  .withOpacity(0.8),
+                                              fontSize: 11,
+                                              fontStyle: FontStyle.italic,
+                                            ),
+                                          ),
+                                        ],
+                                        if (item.notas != null &&
+                                            item.notas!.isNotEmpty) ...[
+                                          SizedBox(height: 4),
+                                          Text(
+                                            item.notas!,
+                                            style: TextStyle(
+                                              color: AppTheme.textSecondary,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ],
+                                      ],
                                     ),
                                   ),
-                                  if (item
-                                      .ingredientesSeleccionados
-                                      .isNotEmpty) ...[
-                                    SizedBox(height: 2),
-                                    Text(
-                                      'Ingredientes: ${item.ingredientesSeleccionados.join(', ')}',
-                                      style: TextStyle(
-                                        color: AppTheme.textSecondary,
-                                        fontSize: 12,
-                                        fontStyle: FontStyle.italic,
-                                      ),
+
+                                  // Campo de cantidad
+                                  Expanded(
+                                    flex: 1,
+                                    child: Column(
+                                      children: [
+                                        Text(
+                                          'Cantidad',
+                                          style: TextStyle(
+                                            color: AppTheme.textSecondary,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                        Container(
+                                          width: 60,
+                                          child: TextField(
+                                            controller:
+                                                cantidadControllers[index
+                                                    .toString()],
+                                            keyboardType: TextInputType.number,
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              color: AppTheme.textPrimary,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                            decoration: InputDecoration(
+                                              border: OutlineInputBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
+                                              focusedBorder: OutlineInputBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                                borderSide: BorderSide(
+                                                  color: AppTheme.primary,
+                                                ),
+                                              ),
+                                              contentPadding:
+                                                  EdgeInsets.symmetric(
+                                                    vertical: 8,
+                                                  ),
+                                              hintText: '0',
+                                              hintStyle: TextStyle(
+                                                color: AppTheme.textSecondary,
+                                              ),
+                                            ),
+                                            onChanged: (value) {
+                                              setState(() {
+                                                final cantidad =
+                                                    int.tryParse(value) ?? 0;
+                                                final cantidadMaxima =
+                                                    item.cantidad;
+
+                                                // Limitar la cantidad a la disponible
+                                                if (cantidad > cantidadMaxima) {
+                                                  cantidadControllers[index
+                                                          .toString()]!
+                                                      .text = cantidadMaxima
+                                                      .toString();
+                                                  cantidadesSeleccionadas[index
+                                                          .toString()] =
+                                                      cantidadMaxima;
+                                                } else if (cantidad < 0) {
+                                                  cantidadControllers[index
+                                                              .toString()]!
+                                                          .text =
+                                                      '0';
+                                                  cantidadesSeleccionadas[index
+                                                          .toString()] =
+                                                      0;
+                                                } else {
+                                                  cantidadesSeleccionadas[index
+                                                          .toString()] =
+                                                      cantidad;
+                                                }
+                                              });
+                                            },
+                                          ),
+                                        ),
+                                        Text(
+                                          'de ${item.cantidad}',
+                                          style: TextStyle(
+                                            color: AppTheme.textSecondary,
+                                            fontSize: 10,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  ],
-                                  if (item.agregadoPor != null) ...[
-                                    SizedBox(height: 2),
-                                    Text(
-                                      '👤 Agregado por: ${item.agregadoPor}',
-                                      style: TextStyle(
-                                        color: AppTheme.textSecondary
-                                            .withOpacity(0.8),
-                                        fontSize: 11,
-                                        fontStyle: FontStyle.italic,
-                                      ),
+                                  ),
+
+                                  // Total
+                                  Expanded(
+                                    flex: 1,
+                                    child: Column(
+                                      children: [
+                                        Text(
+                                          'Total',
+                                          style: TextStyle(
+                                            color: AppTheme.textSecondary,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                        Text(
+                                          formatCurrency(
+                                            item.precioUnitario *
+                                                (cantidadesSeleccionadas[index
+                                                        .toString()] ??
+                                                    0),
+                                          ),
+                                          style: TextStyle(
+                                            color: AppTheme.primary,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  ],
-                                  if (item.notas != null &&
-                                      item.notas!.isNotEmpty) ...[
-                                    SizedBox(height: 4),
-                                    Text(
-                                      item.notas!,
-                                      style: TextStyle(
-                                        color: AppTheme.textSecondary,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ],
+                                  ),
                                 ],
                               ),
-                              secondary: Text(
-                                formatCurrency(subtotal),
-                                style: TextStyle(
-                                  color: AppTheme.primary,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
-                              ),
-                              controlAffinity: ListTileControlAffinity.leading,
                             ),
                           );
                         },
