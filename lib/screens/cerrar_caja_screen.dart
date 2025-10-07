@@ -14,6 +14,8 @@ class CerrarCajaScreen extends StatefulWidget {
 }
 
 class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
+  // Store cuadre completo response
+  Map<String, dynamic>? _cuadreCompletoData;
   final Color primary = Color(0xFFFF6B00); // Color naranja fuego
   final Color bgDark = Color(0xFF1E1E1E); // Color de fondo negro
   final Color cardBg = Color(0xFF252525); // Color de tarjetas
@@ -99,6 +101,9 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
       try {
         final cuadreCompleto = await _cuadreCajaService.getCuadreCompleto();
         print('✅ Datos del cuadre completo: $cuadreCompleto');
+        setState(() {
+          _cuadreCompletoData = cuadreCompleto;
+        });
 
         // Debug: Mostrar específicamente los campos de cantidad
         print('🔍 DEBUG CAMPOS CANTIDAD:');
@@ -705,7 +710,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
                     ),
                     SizedBox(height: 16),
 
-                    // Información de la caja abierta
+                    // Información de la caja abierta (campos del cuadre completo)
                     Card(
                       elevation: 4,
                       color: cardBg,
@@ -726,18 +731,37 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
                               ),
                             ),
                             SizedBox(height: 12),
-                            _buildInfoRow('Caja:', _cajaActual!.nombre),
+                            _buildInfoRow(
+                              'Caja:',
+                              _cajaActual?.nombre ?? 'Caja Principal',
+                            ),
                             _buildInfoRow(
                               'Responsable:',
-                              _cajaActual!.responsable,
+                              _cuadreCompletoData?['responsable'] ?? '',
                             ),
                             _buildInfoRow(
                               'Fecha apertura:',
-                              '${_cajaActual!.fechaApertura.day}/${_cajaActual!.fechaApertura.month}/${_cajaActual!.fechaApertura.year} ${_cajaActual!.fechaApertura.hour}:${_cajaActual!.fechaApertura.minute.toString().padLeft(2, '0')}',
+                              _cuadreCompletoData?['fechaInicio'] != null
+                                  ? _cuadreCompletoData!['fechaInicio']
+                                        .toString()
+                                        .substring(0, 16)
+                                        .replaceFirst('T', ' ')
+                                  : '',
+                            ),
+                            _buildInfoRow(
+                              'Fecha cierre:',
+                              _cuadreCompletoData?['fechaFin'] != null
+                                  ? _cuadreCompletoData!['fechaFin']
+                                        .toString()
+                                        .substring(0, 16)
+                                        .replaceFirst('T', ' ')
+                                  : '',
                             ),
                             _buildInfoRow(
                               'Monto inicial:',
-                              formatCurrency(_cajaActual!.fondoInicial),
+                              formatCurrency(
+                                _cuadreCompletoData?['totalInicial'] ?? 0,
+                              ),
                             ),
                           ],
                         ),
@@ -745,7 +769,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
                     ),
                     SizedBox(height: 20),
 
-                    // Información financiera
+                    // Información financiera (campos del cuadre completo)
                     Card(
                       elevation: 4,
                       color: cardBg,
@@ -768,50 +792,88 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
                             SizedBox(height: 12),
                             _buildInfoRow(
                               'Monto inicial:',
-                              formatCurrency(_cajaActual!.fondoInicial),
+                              formatCurrency(
+                                _cuadreCompletoData?['totalInicial'] ?? 0,
+                              ),
                             ),
                             _buildInfoRow(
                               'Ventas en efectivo:',
-                              formatCurrency(_ventasEfectivo),
+                              formatCurrency(
+                                _cuadreCompletoData?['ventasEfectivo'] ?? 0,
+                              ),
                               valueColor: Colors.blue,
                             ),
-                            // Mostrar transferencias (siempre mostrar, aunque sea 0)
                             _buildInfoRow(
                               'Ventas en transferencias:',
-                              formatCurrency(_transferenciasEsperadas),
-                              valueColor: _transferenciasEsperadas > 0
-                                  ? Colors.green
-                                  : Colors.grey,
-                            ),
-                            // Mostrar gastos si los hay
-                            if (_totalGastos > 0)
-                              _buildInfoRow(
-                                'Total gastos:',
-                                formatCurrency(_totalGastos),
-                                valueColor: Colors.red,
-                              ),
-                            // Mostrar domicilios siempre (como las transferencias)
-                            _buildInfoRow(
-                              'Ventas domicilio:',
-                              formatCurrency(_totalDomicilios),
-                              valueColor: _totalDomicilios > 0
-                                  ? Colors.orange
-                                  : Colors.grey,
-                            ),
-                            // Separador visual
-                            if (_transferenciasEsperadas > 0 ||
-                                _totalGastos > 0) ...[
-                              SizedBox(height: 8),
-                              Divider(color: Colors.grey.withOpacity(0.3)),
-                              SizedBox(height: 8),
-                            ],
-                            _buildInfoRow(
-                              'Total esperado en caja:',
                               formatCurrency(
-                                _cajaActual!.fondoInicial + _efectivoEsperado,
+                                _cuadreCompletoData?['ventasTransferencias'] ??
+                                    0,
                               ),
                               valueColor: Colors.green,
                             ),
+                            _buildInfoRow(
+                              'Ventas en tarjetas:',
+                              formatCurrency(
+                                _cuadreCompletoData?['ventasTarjetas'] ?? 0,
+                              ),
+                              valueColor: Colors.purple,
+                            ),
+                            _buildInfoRow(
+                              'Total ventas:',
+                              formatCurrency(
+                                _cuadreCompletoData?['totalVentas'] ?? 0,
+                              ),
+                              valueColor: Colors.blueGrey,
+                            ),
+                            _buildInfoRow(
+                              'Total propinas:',
+                              formatCurrency(
+                                _cuadreCompletoData?['totalPropinas'] ?? 0,
+                              ),
+                              valueColor: Colors.teal,
+                            ),
+                            _buildInfoRow(
+                              'Total gastos:',
+                              formatCurrency(
+                                _cuadreCompletoData?['totalGastos'] ?? 0,
+                              ),
+                              valueColor: Colors.red,
+                            ),
+                            if (_cuadreCompletoData?['gastosPorTipo'] != null)
+                              ..._cuadreCompletoData!['gastosPorTipo'].entries
+                                  .map(
+                                    (e) => _buildInfoRow(
+                                      'Gasto: ${e.key}',
+                                      formatCurrency(e.value),
+                                      valueColor: Colors.red,
+                                    ),
+                                  ),
+                            _buildInfoRow(
+                              'Total esperado en caja:',
+                              formatCurrency(
+                                _cuadreCompletoData?['debeTener'] ?? 0,
+                              ),
+                              valueColor: Colors.green,
+                            ),
+                            _buildInfoRow(
+                              'Cantidad facturas:',
+                              (_cuadreCompletoData?['cantidadFacturas'] ?? 0)
+                                  .toString(),
+                            ),
+                            _buildInfoRow(
+                              'Cantidad pedidos:',
+                              (_cuadreCompletoData?['cantidadPedidos'] ?? 0)
+                                  .toString(),
+                            ),
+                            if (_cuadreCompletoData?['detalleVentas'] != null)
+                              ..._cuadreCompletoData!['detalleVentas'].entries
+                                  .map(
+                                    (e) => _buildInfoRow(
+                                      'Detalle venta: ${e.key}',
+                                      formatCurrency(e.value),
+                                      valueColor: Colors.blue,
+                                    ),
+                                  ),
                           ],
                         ),
                       ),

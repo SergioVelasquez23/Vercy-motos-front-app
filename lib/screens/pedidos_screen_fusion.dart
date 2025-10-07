@@ -977,7 +977,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Mesa ${pedido.mesa} - ${pedido.id}',
+                        'Mesa ${pedido.mesa}',
                         style: TextStyle(
                           color: textDark,
                           fontSize: 16,

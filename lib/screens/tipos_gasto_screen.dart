@@ -10,11 +10,11 @@ class TiposGastoScreen extends StatefulWidget {
 }
 
 class _TiposGastoScreenState extends State<TiposGastoScreen> {
-  final Color primary = Color(0xFFFF6B00); // Color naranja fuego
-  final Color bgDark = Color(0xFF1E1E1E); // Color de fondo negro
-  final Color cardBg = Color(0xFF252525); // Color de tarjetas
-  final Color textDark = Color(0xFFE0E0E0); // Color de texto claro
-  final Color textLight = Color(0xFFA0A0A0); // Color de texto más suave
+  final Color primary = Color(0xFFFF6B00); // Naranja fuego
+  final Color bgDark = Color(0xFF1E1E1E); // Fondo oscuro
+  final Color cardBg = Color(0xFF252525); // Tarjetas
+  final Color textDark = Color(0xFFE0E0E0); // Texto claro
+  final Color textLight = Color(0xFFA0A0A0); // Texto suave
 
   // Services
   final GastoService _gastoService = GastoService();
@@ -240,6 +240,8 @@ class _TiposGastoScreenState extends State<TiposGastoScreen> {
       appBar: AppBar(
         backgroundColor: primary,
         title: Text('Tipos de Gasto', style: TextStyle(color: Colors.white)),
+        iconTheme: IconThemeData(color: Colors.white),
+        elevation: 0,
       ),
       floatingActionButton: !_showForm
           ? FloatingActionButton(
@@ -258,94 +260,81 @@ class _TiposGastoScreenState extends State<TiposGastoScreen> {
 
   Widget _buildForm() {
     return SingleChildScrollView(
-      padding: EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          Row(
+      child: Card(
+        color: cardBg,
+        margin: EdgeInsets.all(16),
+        child: Padding(
+          padding: EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              IconButton(
-                icon: Icon(Icons.arrow_back, color: textDark),
-                onPressed: () => setState(() => _showForm = false),
-              ),
-              Text(
-                _tipoEditando != null
-                    ? 'Editar Tipo de Gasto'
-                    : 'Nuevo Tipo de Gasto',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: textDark,
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 20),
-
-          // Formulario
-          Card(
-            color: cardBg,
-            child: Padding(
-              padding: EdgeInsets.all(16),
-              child: Column(
+              Row(
                 children: [
-                  // Nombre
-                  TextFormField(
-                    controller: _nombreController,
-                    decoration: InputDecoration(
-                      labelText: 'Nombre del Tipo de Gasto',
-                      labelStyle: TextStyle(color: textLight),
-                      border: OutlineInputBorder(),
+                  Icon(Icons.category, color: primary),
+                  SizedBox(width: 8),
+                  Text(
+                    _tipoEditando != null
+                        ? 'Editar Tipo de Gasto'
+                        : 'Nuevo Tipo de Gasto',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 22,
+                      color: textDark,
                     ),
-                    style: TextStyle(color: textDark),
-                  ),
-                  SizedBox(height: 16),
-
-                  // Descripción
-                  TextFormField(
-                    controller: _descripcionController,
-                    decoration: InputDecoration(
-                      labelText: 'Descripción (Opcional)',
-                      labelStyle: TextStyle(color: textLight),
-                      border: OutlineInputBorder(),
-                    ),
-                    style: TextStyle(color: textDark),
-                    maxLines: 3,
-                  ),
-                  SizedBox(height: 20),
-
-                  // Botones
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.grey,
-                            padding: EdgeInsets.symmetric(vertical: 16),
-                          ),
-                          onPressed: () => setState(() => _showForm = false),
-                          child: Text('Cancelar'),
-                        ),
-                      ),
-                      SizedBox(width: 16),
-                      Expanded(
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: primary,
-                            padding: EdgeInsets.symmetric(vertical: 16),
-                          ),
-                          onPressed: _saveTipoGasto,
-                          child: Text('Guardar'),
-                        ),
-                      ),
-                    ],
                   ),
                 ],
               ),
-            ),
+              SizedBox(height: 20),
+              TextFormField(
+                controller: _nombreController,
+                decoration: InputDecoration(
+                  labelText: 'Nombre del Tipo de Gasto',
+                  labelStyle: TextStyle(color: textLight),
+                  border: OutlineInputBorder(),
+                ),
+                style: TextStyle(color: textDark),
+              ),
+              SizedBox(height: 16),
+              TextFormField(
+                controller: _descripcionController,
+                decoration: InputDecoration(
+                  labelText: 'Descripción (Opcional)',
+                  labelStyle: TextStyle(color: textLight),
+                  border: OutlineInputBorder(),
+                ),
+                style: TextStyle(color: textDark),
+                maxLines: 3,
+              ),
+              SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.grey,
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                      ),
+                      onPressed: () => setState(() => _showForm = false),
+                      child: Text('Cancelar'),
+                    ),
+                  ),
+                  SizedBox(width: 16),
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: primary,
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                      ),
+                      onPressed: _saveTipoGasto,
+                      child: Text('Guardar'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -393,7 +382,7 @@ class _TiposGastoScreenState extends State<TiposGastoScreen> {
               final tipo = _tiposGasto[index];
               return Card(
                 color: cardBg,
-                margin: EdgeInsets.only(bottom: 8),
+                margin: EdgeInsets.only(bottom: 12),
                 child: ListTile(
                   title: Text(
                     tipo.nombre,
@@ -402,7 +391,8 @@ class _TiposGastoScreenState extends State<TiposGastoScreen> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  subtitle: tipo.descripcion != null
+                  subtitle:
+                      tipo.descripcion != null && tipo.descripcion!.isNotEmpty
                       ? Text(
                           tipo.descripcion!,
                           style: TextStyle(color: textLight),
@@ -411,7 +401,6 @@ class _TiposGastoScreenState extends State<TiposGastoScreen> {
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Indicator de estado
                       Container(
                         padding: EdgeInsets.symmetric(
                           horizontal: 8,

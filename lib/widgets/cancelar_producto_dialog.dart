@@ -179,6 +179,18 @@ class _CancelarProductoDialogState extends State<CancelarProductoDialog> {
                                             fontWeight: FontWeight.w600,
                                           ),
                                         ),
+                                        if (item
+                                            .ingredientesSeleccionados
+                                            .isNotEmpty) ...[
+                                          SizedBox(height: 2),
+                                          Text(
+                                            'Ingredientes: ${item.ingredientesSeleccionados.join(', ')}',
+                                            style: AppTheme.bodySmall.copyWith(
+                                              fontStyle: FontStyle.italic,
+                                              color: AppTheme.textSecondary,
+                                            ),
+                                          ),
+                                        ],
                                         if (item.notas != null &&
                                             item.notas!.isNotEmpty)
                                           Text(

@@ -250,8 +250,11 @@ class _ProductosScreenState extends State<ProductosScreen> {
                 ),
                 child: Icon(Icons.category, size: 20),
               ),
-              onPressed: () {
-                Navigator.pushNamed(context, '/categorias');
+              onPressed: () async {
+                await Navigator.pushNamed(context, '/categorias');
+                if (mounted) {
+                  await _cargarDatos();
+                }
               },
               tooltip: 'Gestionar Categorías',
             ),

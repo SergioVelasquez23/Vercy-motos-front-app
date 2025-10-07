@@ -64,12 +64,8 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
       final facturas = await _facturaCompraService.getFacturasCompras();
 
       // Verificar las fechas de creación de las facturas
-      print('📊 Facturas cargadas: ${facturas.length}');
       for (var i = 0; i < facturas.length && i < 5; i++) {
         var factura = facturas[i];
-        print(
-          '📅 Factura ${factura.numeroFactura} creada: ${_formatearFechaConHora(factura.fechaCreacion)}',
-        );
       }
 
       setState(() {
@@ -77,7 +73,6 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
         _aplicarFiltros();
       });
     } catch (e) {
-      print('❌ Error al cargar facturas: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error al cargar facturas: $e'),
@@ -139,10 +134,8 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
       }).toList();
 
       // Imprimir fechas antes de ordenar
-      print('📅 Fechas antes de ordenar:');
       for (var i = 0; i < _facturasFiltradas.length && i < 5; i++) {
         final factura = _facturasFiltradas[i];
-        print('📆 ${factura.numeroFactura}: ${factura.fechaCreacion}');
       }
 
       // Ordenar por fecha de creación primero, luego por fecha de factura si hay empate
@@ -160,15 +153,10 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
       });
 
       // Imprimir logs para debug después de ordenar
-      print('📋 Facturas filtradas (ordenadas): ${_facturasFiltradas.length}');
-      print('📅 Filtro de estado: $_filtroEstado');
       for (var i = 0; i < _facturasFiltradas.length && i < 5; i++) {
         final factura = _facturasFiltradas[i];
         final fechaStr =
             "${factura.fechaCreacion.day}/${factura.fechaCreacion.month}/${factura.fechaCreacion.year} ${factura.fechaCreacion.hour}:${factura.fechaCreacion.minute}";
-        print(
-          '📝 Factura $i: ${factura.numeroFactura} - Estado: ${factura.estado} - PagadaCaja: ${factura.pagadoDesdeCaja} - Fecha: $fechaStr',
-        );
       }
     });
   }

@@ -123,28 +123,38 @@ class MesaCard extends StatelessWidget {
 
                   // Nombre de la mesa
                   Flexible(
-                    child: Container(
-                      width: double.infinity,
-                      padding: EdgeInsets.symmetric(
-                        horizontal: AppTheme.spacingSmall,
-                        vertical: AppTheme.spacingXSmall,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppTheme.surfaceDark.withOpacity(0.3),
-                        borderRadius: BorderRadius.circular(
-                          AppTheme.radiusSmall,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: double.infinity,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: AppTheme.spacingSmall,
+                            vertical: AppTheme.spacingXSmall,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppTheme.surfaceDark.withOpacity(0.3),
+                            borderRadius: BorderRadius.circular(
+                              AppTheme.radiusSmall,
+                            ),
+                          ),
+                          child: Text(
+                            mesa.nombre,
+                            style: AppTheme.bodyMedium.copyWith(
+                              fontWeight: FontWeight.w700,
+                              fontSize: constraints.maxWidth * 0.13,
+                            ),
+                            textAlign: TextAlign.center,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                      ),
-                      child: Text(
-                        mesa.nombre,
-                        style: AppTheme.bodyMedium.copyWith(
-                          fontWeight: FontWeight.w700,
-                          fontSize: constraints.maxWidth * 0.13,
-                        ),
-                        textAlign: TextAlign.center,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                        // Espacio extra si está disponible y es mesa especial
+                        if (!isOcupada &&
+                            mesa.tipo != null &&
+                            mesa.tipo != 'NORMAL')
+                          SizedBox(height: constraints.maxHeight * 0.03),
+                      ],
                     ),
                   ),
 

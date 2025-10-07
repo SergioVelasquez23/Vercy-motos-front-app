@@ -19,6 +19,7 @@ class _UsersScreenState extends State<UsersScreen> {
 
   List<User> _users = [];
   List<Role> _roles = [];
+  Map<String, List<Role>> _userRolesMap = {};
   bool _isLoading = true;
   String _searchText = '';
   final TextEditingController _searchController = TextEditingController();
@@ -46,9 +47,24 @@ class _UsersScreenState extends State<UsersScreen> {
       print('✅ Usuarios cargados: ${usersResult.length}');
       print('✅ Roles cargados: ${rolesResult.length}');
 
+      // Obtener roles actuales de cada usuario desde el backend
+      Map<String, List<Role>> userRolesMap = {};
+      for (final user in usersResult) {
+        if (user.id != null) {
+          try {
+            final roles = await _userService.getRolesByUserId(user.id!);
+            userRolesMap[user.id!] = roles;
+          } catch (e) {
+            print('Error obteniendo roles para usuario ${user.id}: $e');
+            userRolesMap[user.id!] = [];
+          }
+        }
+      }
+
       setState(() {
         _users = usersResult;
         _roles = rolesResult;
+        _userRolesMap = userRolesMap;
         _isLoading = false;
       });
 
@@ -185,6 +201,15 @@ class _UsersScreenState extends State<UsersScreen> {
   }
 
   Widget _buildUserCard(User user) {
+    // Obtener nombres de roles actuales desde el backend, solo uno por usuario
+    final userRoleNames =
+        _userRolesMap[user.id]?.map((role) => role.nombre).toSet().toList() ??
+        [];
+    // Mostrar solo el primer rol si hay más de uno
+    final displayedRoles = userRoleNames.isNotEmpty
+        ? [userRoleNames.first]
+        : [];
+
     return Card(
       color: Colors.grey[850],
       margin: const EdgeInsets.only(bottom: 12),
@@ -216,70 +241,82 @@ class _UsersScreenState extends State<UsersScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        user.displayName,
+                        user.nombre != null && user.nombre!.isNotEmpty
+                            ? user.nombre!
+                            : 'Sin nombre',
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 16,
                           fontWeight: FontWeight.bold,
+                          fontSize: 20,
                         ),
                       ),
-                      const SizedBox(height: 4),
                       Text(
                         user.email,
-                        style: TextStyle(color: Colors.grey[400], fontSize: 14),
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        children: displayedRoles
+                            .map(
+                              (role) => Chip(
+                                label: Text(role),
+                                backgroundColor: Colors.blueGrey[700],
+                                labelStyle: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            )
+                            .toList(),
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Email: ${user.email}',
+                            style: TextStyle(
+                              color: Colors.grey[300],
+                              fontSize: 14,
+                            ),
+                          ),
+                          Row(
+                            children: [
+                              IconButton(
+                                onPressed: () =>
+                                    _mostrarDialogoUsuario(user: user),
+                                icon: const Icon(
+                                  Icons.edit,
+                                  color: Color(0xFFFF6B00),
+                                ),
+                                tooltip: 'Editar Usuario',
+                              ),
+                              IconButton(
+                                onPressed: () => _mostrarDialogoRol(user),
+                                icon: const Icon(
+                                  Icons.admin_panel_settings,
+                                  color: Colors.blue,
+                                ),
+                                tooltip: 'Cambiar Rol',
+                              ),
+                              IconButton(
+                                onPressed: () => _confirmarEliminar(user),
+                                icon: const Icon(
+                                  Icons.delete,
+                                  color: Colors.red,
+                                ),
+                                tooltip: 'Eliminar',
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: user.activo ? Colors.green : Colors.red,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    user.activo ? 'Activo' : 'Inactivo',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Email: ${user.email}',
-                  style: TextStyle(color: Colors.grey[300], fontSize: 14),
-                ),
-                Row(
-                  children: [
-                    IconButton(
-                      onPressed: () => _mostrarDialogoUsuario(user: user),
-                      icon: const Icon(Icons.edit, color: Color(0xFFFF6B00)),
-                      tooltip: 'Editar Usuario',
-                    ),
-                    IconButton(
-                      onPressed: () => _mostrarDialogoRol(user),
-                      icon: const Icon(
-                        Icons.admin_panel_settings,
-                        color: Colors.blue,
-                      ),
-                      tooltip: 'Cambiar Rol',
-                    ),
-                    IconButton(
-                      onPressed: () => _confirmarEliminar(user),
-                      icon: const Icon(Icons.delete, color: Colors.red),
-                      tooltip: 'Eliminar',
-                    ),
-                  ],
                 ),
               ],
             ),
@@ -525,6 +562,16 @@ class _UsersScreenState extends State<UsersScreen> {
   Future<void> _cambiarRolUsuario(User user, String roleId) async {
     try {
       print('🔄 Cambiando rol del usuario ${user.email} al rol $roleId');
+
+      // Eliminar todos los roles previos antes de asignar el nuevo
+      final relacionesActuales = await _userRoleService.getRolesByUser(
+        user.id!,
+      );
+      for (final relacion in relacionesActuales) {
+        if (relacion.id != null) {
+          await _userRoleService.deleteUserRole(relacion.id!);
+        }
+      }
 
       await _userRoleService.assignRoleToUser(user.id!, roleId);
 

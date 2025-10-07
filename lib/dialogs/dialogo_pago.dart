@@ -18,6 +18,8 @@ class DialogoPago extends StatefulWidget {
 }
 
 class _DialogoPagoState extends State<DialogoPago> {
+  // Mapa para controlar la cantidad parcial seleccionada por producto
+  Map<ItemPedido, int> cantidadesParciales = {};
   // Controladores
   late TextEditingController descuentoPorcentajeController;
   late TextEditingController descuentoValorController;
@@ -198,6 +200,8 @@ class _DialogoPagoState extends State<DialogoPago> {
 
   Widget _buildProductoItem(ItemPedido item) {
     final isSelected = productosSeleccionados.contains(item);
+    final cantidadMax = item.cantidad;
+    final cantidadParcial = cantidadesParciales[item] ?? cantidadMax;
 
     return Container(
       margin: EdgeInsets.symmetric(vertical: 8),
@@ -213,6 +217,7 @@ class _DialogoPagoState extends State<DialogoPago> {
       ),
       padding: EdgeInsets.all(12),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Checkbox(
             value: isSelected,
@@ -220,8 +225,10 @@ class _DialogoPagoState extends State<DialogoPago> {
               setState(() {
                 if (value == true) {
                   productosSeleccionados.add(item);
+                  cantidadesParciales[item] = cantidadMax;
                 } else {
                   productosSeleccionados.remove(item);
+                  cantidadesParciales.remove(item);
                 }
               });
             },
@@ -241,10 +248,69 @@ class _DialogoPagoState extends State<DialogoPago> {
                   ),
                 ),
                 SizedBox(height: 4),
-                Text(
-                  'Cantidad: ${item.cantidad}',
-                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+                Row(
+                  children: [
+                    Text(
+                      'Cantidad: $cantidadMax',
+                      style: TextStyle(
+                        color: AppTheme.textSecondary,
+                        fontSize: 14,
+                      ),
+                    ),
+                    SizedBox(width: 12),
+                    if (isSelected)
+                      SizedBox(
+                        width: 80,
+                        child: TextField(
+                          decoration: InputDecoration(
+                            labelText: 'Mover/Pagar',
+                            border: OutlineInputBorder(),
+                            isDense: true,
+                          ),
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                          ],
+                          controller: TextEditingController(
+                            text: cantidadParcial.toString(),
+                          ),
+                          onChanged: (value) {
+                            int nuevaCantidad =
+                                int.tryParse(value) ?? cantidadMax;
+                            if (nuevaCantidad < 1) nuevaCantidad = 1;
+                            if (nuevaCantidad > cantidadMax)
+                              nuevaCantidad = cantidadMax;
+                            setState(() {
+                              cantidadesParciales[item] = nuevaCantidad;
+                            });
+                          },
+                        ),
+                      ),
+                  ],
                 ),
+                // Mostrar quien agregó el producto en vista resumida
+                if (item.agregadoPor != null &&
+                    item.agregadoPor!.isNotEmpty) ...[
+                  SizedBox(height: 2),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.person,
+                        size: 12,
+                        color: Colors.green.withOpacity(0.7),
+                      ),
+                      SizedBox(width: 4),
+                      Text(
+                        'por ${item.agregadoPor}',
+                        style: TextStyle(
+                          color: Colors.green.withOpacity(0.8),
+                          fontSize: 11,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
@@ -260,7 +326,7 @@ class _DialogoPagoState extends State<DialogoPago> {
                 ),
               ),
               Text(
-                'Total: ${formatCurrency(item.precio * item.cantidad)}',
+                'Total: ${formatCurrency(item.precio * cantidadParcial)}',
                 style: TextStyle(
                   color: AppTheme.primary,
                   fontWeight: FontWeight.bold,
@@ -909,6 +975,14 @@ class _DialogoPagoState extends State<DialogoPago> {
 
   void _procesarPago() {
     // Crear el resultado con todos los datos del pago
+    // Generar lista de productos con cantidad parcial seleccionada
+    final productosParciales = productosSeleccionados.map((item) {
+      return {
+        'item': item,
+        'cantidad': cantidadesParciales[item] ?? item.cantidad,
+      };
+    }).toList();
+
     final resultado = {
       'medioPago': medioPago,
       'incluyePropina': incluyePropina,
@@ -922,9 +996,7 @@ class _DialogoPagoState extends State<DialogoPago> {
       'montoEfectivo': montoEfectivoController.text,
       'montoTarjeta': montoTarjetaController.text,
       'montoTransferencia': montoTransferenciaController.text,
-      'productosSeleccionados': productosSeleccionados.isEmpty
-          ? []
-          : productosSeleccionados,
+      'productosSeleccionados': productosParciales,
     };
 
     Navigator.pop(context, resultado);

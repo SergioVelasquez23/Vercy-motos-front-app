@@ -290,23 +290,43 @@ class _MoverProductosDialogState extends State<MoverProductosDialog> {
                               },
                               activeColor: AppTheme.primary,
                               checkColor: Colors.white,
-                              title: Text(
-                                '${item.cantidad}x ${item.productoNombre ?? 'Producto'}',
-                                style: TextStyle(
-                                  color: AppTheme.textPrimary,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              subtitle:
-                                  item.notas != null && item.notas!.isNotEmpty
-                                  ? Text(
+                              title: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '${item.cantidad}x ${item.productoNombre ?? 'Producto'}',
+                                    style: TextStyle(
+                                      color: AppTheme.textPrimary,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  if (item
+                                      .ingredientesSeleccionados
+                                      .isNotEmpty) ...[
+                                    SizedBox(height: 2),
+                                    Text(
+                                      'Ingredientes: ${item.ingredientesSeleccionados.join(', ')}',
+                                      style: TextStyle(
+                                        color: AppTheme.textSecondary,
+                                        fontSize: 12,
+                                        fontStyle: FontStyle.italic,
+                                      ),
+                                    ),
+                                  ],
+                                  if (item.notas != null &&
+                                      item.notas!.isNotEmpty) ...[
+                                    SizedBox(height: 2),
+                                    Text(
                                       item.notas!,
                                       style: TextStyle(
                                         color: AppTheme.textSecondary,
                                         fontSize: 12,
                                       ),
-                                    )
-                                  : null,
+                                    ),
+                                  ],
+                                ],
+                              ),
+                              subtitle: null,
                               secondary: Text(
                                 formatCurrency(item.precio * item.cantidad),
                                 style: TextStyle(

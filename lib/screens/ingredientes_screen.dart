@@ -497,7 +497,7 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Categoría: ${_obtenerNombreCategoria(item.categoria)} | Unidad: ${item.unidad}',
+                                'Categoría: ${_obtenerNombreCategoria(item.categoria)} | Unidad: ${item.unidad.isNotEmpty ? item.unidad : "-"}',
                                 style: AppTheme.bodySmall,
                               ),
                               SizedBox(height: 4),
@@ -537,7 +537,7 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
                                   Text(
-                                    'Stock: ${item.stock} ${item.unidad}',
+                                    'Stock: ${item.stock} ${item.unidad.isNotEmpty ? item.unidad : "-"}',
                                     style: TextStyle(
                                       color: esStockBajo
                                           ? Colors.red

@@ -253,6 +253,19 @@ class _PagoParcialDialogState extends State<PagoParcialDialog> {
                                       fontSize: 15,
                                     ),
                                   ),
+                                  if (item
+                                      .ingredientesSeleccionados
+                                      .isNotEmpty) ...[
+                                    SizedBox(height: 2),
+                                    Text(
+                                      'Ingredientes: ${item.ingredientesSeleccionados.join(', ')}',
+                                      style: TextStyle(
+                                        color: AppTheme.textSecondary,
+                                        fontSize: 12,
+                                        fontStyle: FontStyle.italic,
+                                      ),
+                                    ),
+                                  ],
                                   if (item.agregadoPor != null) ...[
                                     SizedBox(height: 2),
                                     Text(
