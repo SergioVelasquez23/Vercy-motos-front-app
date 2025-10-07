@@ -79,7 +79,7 @@ class _DocumentosMesaScreenState extends State<DocumentosMesaScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 1, vsync: this);
     _cargarDocumentos();
   }
 
@@ -101,9 +101,6 @@ class _DocumentosMesaScreenState extends State<DocumentosMesaScreen>
           ? await _documentoService.getDocumentosPorMesa(widget.mesa!.nombre)
           : await _documentoService.getDocumentos();
 
-      // Debug: verificar qué datos de pago están llegando      for (var doc in documentos.take(3)) {
-      for (var doc in documentos.take(3)) {}
-
       // Ordenar documentos por fecha descendente (más recientes primero)
       documentos.sort((a, b) {
         final fechaA = a.fechaCreacion ?? a.fecha;
@@ -123,17 +120,9 @@ class _DocumentosMesaScreenState extends State<DocumentosMesaScreen>
     }
   }
 
-  List<DocumentoMesa> get _documentosPendientes =>
-      _documentos.where((doc) => !doc.pagado && !doc.anulado).toList();
-
-  List<DocumentoMesa> get _documentosPagados =>
-      _documentos.where((doc) => doc.pagado && !doc.anulado).toList();
-
-  double get _totalPendiente =>
-      _documentosPendientes.fold(0.0, (sum, doc) => sum + doc.total);
-
-  double get _totalPagado =>
-      _documentosPagados.fold(0.0, (sum, doc) => sum + doc.total);
+  double get _totalGeneral => _documentos
+      .where((doc) => !doc.anulado)
+      .fold(0.0, (sum, doc) => sum + doc.total);
 
   @override
   Widget build(BuildContext context) {
@@ -157,9 +146,10 @@ class _DocumentosMesaScreenState extends State<DocumentosMesaScreen>
           labelColor: AppTheme.textDark,
           unselectedLabelColor: AppTheme.textLight,
           tabs: [
-            Tab(text: 'Todos (${_documentos.length})'),
-            Tab(text: 'Pendientes (${_documentosPendientes.length})'),
-            Tab(text: 'Pagados (${_documentosPagados.length})'),
+            Tab(
+              text:
+                  'Documentos (${_documentos.where((doc) => !doc.anulado).length})',
+            ),
           ],
         ),
       ),
@@ -199,83 +189,60 @@ class _DocumentosMesaScreenState extends State<DocumentosMesaScreen>
   }
 
   Widget _buildResumenCard() {
+    final documentosActivos = _documentos.where((doc) => !doc.anulado).toList();
+
     return Card(
       margin: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       color: _cardBg,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Pendiente',
-                    style: TextStyle(color: Colors.amber, fontSize: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Total Documentos',
+                  style: TextStyle(
+                    color: _primary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
                   ),
-                  SizedBox(height: 2),
-                  Text(
-                    formatCurrency(_totalPendiente),
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  '${documentosActivos.length}',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
                   ),
-                  SizedBox(height: 1),
-                  Text(
-                    '${_documentosPendientes.length} documentos',
-                    style: TextStyle(
-                      color: _textLight.withOpacity(0.7),
-                      fontSize: 10,
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
-            Container(
-              height: 36,
-              width: 1,
-              color: Colors.grey.withOpacity(0.3),
-            ),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: EdgeInsets.only(left: 8),
-                    child: Text(
-                      'Pagado',
-                      style: TextStyle(color: Colors.green, fontSize: 12),
-                    ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  'Total Ventas',
+                  style: TextStyle(
+                    color: _primary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
                   ),
-                  SizedBox(height: 2),
-                  Padding(
-                    padding: EdgeInsets.only(left: 8),
-                    child: Text(
-                      formatCurrency(_totalPagado),
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  formatCurrency(_totalGeneral),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
                   ),
-                  SizedBox(height: 1),
-                  Padding(
-                    padding: EdgeInsets.only(left: 8),
-                    child: Text(
-                      '${_documentosPagados.length} documentos',
-                      style: TextStyle(
-                        color: _textLight.withOpacity(0.7),
-                        fontSize: 10,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ],
         ),
@@ -317,22 +284,10 @@ class _DocumentosMesaScreenState extends State<DocumentosMesaScreen>
           .toList();
     }
 
-    // Determinar qué documentos mostrar según la pestaña seleccionada
-    final List<DocumentoMesa> documentosAMostrar;
-    switch (_tabController.index) {
-      case 1:
-        documentosAMostrar = documentosFiltrados
-            .where((doc) => !doc.pagado && !doc.anulado)
-            .toList();
-        break;
-      case 2:
-        documentosAMostrar = documentosFiltrados
-            .where((doc) => doc.pagado && !doc.anulado)
-            .toList();
-        break;
-      default:
-        documentosAMostrar = documentosFiltrados;
-    }
+    // Mostrar solo documentos activos (no anulados)
+    final List<DocumentoMesa> documentosAMostrar = documentosFiltrados
+        .where((doc) => !doc.anulado)
+        .toList();
 
     if (documentosAMostrar.isEmpty) {
       return Center(
@@ -1044,7 +999,7 @@ class _DocumentosMesaScreenState extends State<DocumentosMesaScreen>
 
                     pdfServiceWeb.generarYDescargarPDF(resumen: resumen);
                     Navigator.of(context).pop(); // Cerrar loading
-                    
+
                     // Mostrar mensaje de éxito
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(

@@ -385,102 +385,157 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
         return Card(
           color: cardBg,
           margin: EdgeInsets.only(bottom: 12),
-          child: InkWell(
-            onTap: () => _mostrarDetalleFactura(factura),
-            borderRadius: BorderRadius.circular(4),
-            child: Padding(
-              padding: EdgeInsets.all(12),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  // Icono a la izquierda
-                  CircleAvatar(
-                    backgroundColor: primary,
-                    child: Icon(Icons.receipt, color: Colors.white),
-                  ),
-                  SizedBox(width: 12),
-
-                  // Columna con información principal
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          factura.numeroFactura,
-                          style: TextStyle(
-                            color: textDark,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        Text(
-                          factura.proveedorNombre,
-                          style: TextStyle(color: textDark),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        Text(
-                          'NIT: ${factura.proveedorNit ?? 'No especificado'}',
-                          style: TextStyle(color: textLight, fontSize: 12),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        // Mostrar fecha de creación en lugar de fecha de factura para facilitar la verificación del orden
-                        Text(
-                          'Creado: ${_formatearFechaConHora(factura.fechaCreacion)} - Factura: ${_formatearFecha(factura.fechaFactura)}',
-                          style: TextStyle(color: textLight, fontSize: 12),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  SizedBox(width: 12),
-
-                  // Columna de estado y precio
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.end,
+          child: Column(
+            children: [
+              InkWell(
+                onTap: () => _mostrarDetalleFactura(factura),
+                borderRadius: BorderRadius.circular(4),
+                child: Padding(
+                  padding: EdgeInsets.all(12),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // Si la factura está pagada desde caja, mostrar el indicador
-                          if (_estaFacturaPagada(factura))
-                            Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 2,
+                      // Icono a la izquierda
+                      CircleAvatar(
+                        backgroundColor: primary,
+                        child: Icon(Icons.receipt, color: Colors.white),
+                      ),
+                      SizedBox(width: 12),
+
+                      // Columna con información principal
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              factura.numeroFactura,
+                              style: TextStyle(
+                                color: textDark,
+                                fontWeight: FontWeight.bold,
                               ),
-                              margin: EdgeInsets.only(right: 4),
-                              decoration: BoxDecoration(
-                                color: Colors.green.withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: Colors.green),
-                              ),
-                              child: Icon(
-                                Icons.account_balance_wallet,
-                                size: 12,
-                                color: Colors.green,
-                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
-                          // Si está pagado desde caja, mostrar como PAGADA independientemente del estado
-                          _buildEstadoChip(
-                            factura.pagadoDesdeCaja ? 'PAGADA' : factura.estado,
+                            Text(
+                              factura.proveedorNombre,
+                              style: TextStyle(color: textDark),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Text(
+                              'NIT: ${factura.proveedorNit ?? 'No especificado'}',
+                              style: TextStyle(color: textLight, fontSize: 12),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            // Mostrar fecha de creación en lugar de fecha de factura para facilitar la verificación del orden
+                            Text(
+                              'Creado: ${_formatearFechaConHora(factura.fechaCreacion)} - Factura: ${_formatearFecha(factura.fechaFactura)}',
+                              style: TextStyle(color: textLight, fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      SizedBox(width: 12),
+
+                      // Columna de estado y precio
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // Si la factura está pagada desde caja, mostrar el indicador
+                              if (_estaFacturaPagada(factura))
+                                Container(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  margin: EdgeInsets.only(right: 4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: Colors.green),
+                                  ),
+                                  child: Icon(
+                                    Icons.account_balance_wallet,
+                                    size: 12,
+                                    color: Colors.green,
+                                  ),
+                                ),
+                              // Si está pagado desde caja, mostrar como PAGADA independientemente del estado
+                              _buildEstadoChip(
+                                factura.pagadoDesdeCaja
+                                    ? 'PAGADA'
+                                    : factura.estado,
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            '\$${factura.total.toStringAsFixed(0)}',
+                            style: TextStyle(
+                              color: primary,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
                           ),
                         ],
                       ),
-                      SizedBox(height: 4),
-                      Text(
-                        '\$${factura.total.toStringAsFixed(0)}',
-                        style: TextStyle(
-                          color: primary,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
+                    ],
+                  ),
+                ),
+              ),
+              // Botones de edición y eliminación
+              Container(height: 1, color: Colors.grey.shade800),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  // Botón Editar
+                  Expanded(
+                    child: InkWell(
+                      onTap: () => _editarFactura(factura),
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(vertical: 8),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.edit, size: 16, color: Colors.blue),
+                            SizedBox(width: 6),
+                            Text(
+                              'Editar',
+                              style: TextStyle(color: Colors.blue),
+                            ),
+                          ],
                         ),
                       ),
-                    ],
+                    ),
+                  ),
+                  // Separador vertical
+                  Container(height: 24, width: 1, color: Colors.grey[800]),
+                  // Botón Eliminar
+                  Expanded(
+                    child: InkWell(
+                      onTap: () => _confirmarEliminarFactura(factura),
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(vertical: 8),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.delete, size: 16, color: Colors.red),
+                            SizedBox(width: 6),
+                            Text(
+                              'Eliminar',
+                              style: TextStyle(color: Colors.red),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ),
-            ),
+            ],
           ),
         );
       },
@@ -537,6 +592,86 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
     ).then((_) => _cargarFacturas());
   }
 
+  // Método para editar una factura
+  void _editarFactura(FacturaCompra factura) {
+    // Edición no implementada aún
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('La edición de facturas no está disponible aún')),
+    );
+    /* 
+    Para implementar cuando se agregue el parámetro facturaParaEditar en CrearFacturaCompraScreen
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CrearFacturaCompraScreen(),
+      ),
+    ).then((_) => _cargarFacturas());
+    */
+  }
+
+  // Método para confirmar la eliminación de una factura
+  Future<void> _confirmarEliminarFactura(FacturaCompra factura) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: cardBg,
+        title: Text('Eliminar Factura', style: TextStyle(color: textDark)),
+        content: Text(
+          '¿Estás seguro de que deseas eliminar la factura ${factura.numeroFactura}?\n\n'
+          'Esta acción no se puede deshacer y afectará al inventario.',
+          style: TextStyle(color: textLight),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text('Cancelar', style: TextStyle(color: textLight)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text('Eliminar', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      setState(() => _isLoading = true);
+      try {
+        final resultado = await _facturaCompraService.eliminarFacturaCompra(
+          factura.id!,
+        );
+
+        if (resultado['success'] == true) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Factura eliminada correctamente'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          await _cargarFacturas();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Error: ${resultado['message'] ?? "No se pudo eliminar la factura"}',
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al eliminar factura: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      } finally {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
   String _formatearFecha(DateTime fecha) {
     return '${fecha.day.toString().padLeft(2, '0')}/${fecha.month.toString().padLeft(2, '0')}/${fecha.year}';
   }
@@ -548,7 +683,7 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
 }
 
 class CrearFacturaCompraScreen extends StatefulWidget {
-  const CrearFacturaCompraScreen({super.key});
+  const CrearFacturaCompraScreen({Key? key}) : super(key: key);
 
   @override
   _CrearFacturaCompraScreenState createState() =>

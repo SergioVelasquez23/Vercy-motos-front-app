@@ -72,13 +72,14 @@ El frontend ha sido actualizado para integrar completamente con las nuevas funci
 
 #### Archivos Modificados:
 
-- 📄 `lib/services/cuadre_caja_service.dart` - Método `updateCuadre()` actualizado
+- 📄 `lib/services/cuadre_caja_service.dart` - Método `updateCuadre()` actualizado y documentado
 
 #### Funcionalidades:
 
 - ✅ Limpieza automática de cache al cerrar caja (cerrarCaja: true)
-- ✅ Logging mejorado para debugging
+- ✅ Logging mejorado para debugging con detalles de limpieza
 - ✅ Confirmación de limpieza de cache
+- ✅ Documentación detallada del proceso automatizado
 
 ---
 
@@ -89,7 +90,7 @@ El frontend ha sido actualizado para integrar completamente con las nuevas funci
 
 #### Archivos Modificados:
 
-- 📄 `lib/services/factura_compra_service.dart` - Métodos de eliminación añadidos
+- 📄 `lib/services/factura_compra_service.dart` - Métodos de eliminación mejorados
 
 #### Funcionalidades:
 
@@ -97,6 +98,8 @@ El frontend ha sido actualizado para integrar completamente con las nuevas funci
 - ✅ Reversión automática de dinero del cuadre de caja
 - ✅ Anulación de facturas (alternativa para auditoría)
 - ✅ Registro en historial de ediciones
+- ✅ Detalles completos de reversión en respuestas
+- ✅ Manejo consistente de respuestas de error
 
 ---
 
@@ -148,17 +151,24 @@ Todos los servicios implementan:
    - Filtros por fecha y tipo de edición
    - Iconos según tipo de cambio
 
-2. **Indicadores de Reversión**
+2. ✅ **Indicadores de Reversión**
 
-   - Mostrar cuando un pedido fue eliminado con reversión
-   - Confirmaciones de seguridad para eliminaciones
+   - ✅ Mostrar cuando un pedido fue eliminado con reversión
+   - ✅ Confirmaciones de seguridad para eliminaciones
+   - ✅ Diálogos de confirmación para operaciones críticas de caja
 
 3. **Panel de Ingresos Adicionales**
 
    - Formulario para registrar ingresos extra
    - Vista de ingresos del día en cierre de caja
 
-4. **Notificaciones de Cache**
+4. ✅ **Validación de Efectivo**
+
+   - ✅ Validación antes de crear gastos que afectan caja
+   - ✅ Información de efectivo disponible
+   - ✅ Prevención de operaciones sin fondos suficientes
+
+5. **Notificaciones de Cache**
    - Indicador visual cuando se limpia cache
    - Confirmación de cierre de caja exitoso
 
@@ -170,19 +180,25 @@ Todos los servicios implementan:
 
 - `lib/models/historial_edicion.dart`
 - `lib/services/historial_edicion_service.dart`
+- `lib/utils/validacion_caja_util.dart` - Validación de efectivo disponible
+- `lib/utils/caja_error_handler.dart` - Manejo de errores específicos de caja
+- `lib/dialogs/dialogo_confirmacion.dart` - Diálogos de confirmación para operaciones críticas
 
 ### Archivos Modificados:
 
 - `lib/services/pedido_service.dart` - Eliminación con reversión
-- `lib/services/cuadre_caja_service.dart` - Limpieza de cache
+- `lib/services/cuadre_caja_service.dart` - Limpieza de cache mejorada
 - `lib/services/ingreso_caja_service.dart` - Servicio mejorado
 - `lib/services/factura_compra_service.dart` - Eliminación con reversión
+- `lib/services/gasto_service.dart` - Validación de efectivo y manejo de reversión
 
 ### Estado General:
 
 - ✅ **Backend**: 100% funcional con todas las características avanzadas
 - ✅ **Frontend**: 100% integrado con nuevos endpoints
 - ✅ **Compatibilidad**: Mantiene compatibilidad con funcionalidades existentes
-- ✅ **Robustez**: Manejo de errores y logging mejorado
+- ✅ **Robustez**: Manejo de errores y validaciones mejoradas
+- ✅ **Seguridad**: Confirmaciones antes de operaciones críticas
+- ✅ **Usabilidad**: Mejor información al usuario sobre operaciones de caja
 
 **El frontend está ahora completamente preparado para aprovechar todas las nuevas funcionalidades automáticas del backend.** 🚀

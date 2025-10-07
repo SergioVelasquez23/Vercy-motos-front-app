@@ -316,4 +316,95 @@ class DocumentoMesaService {
       return false;
     }
   }
+
+  /// Obtiene solo los documentos pendientes de pago
+  Future<List<DocumentoMesa>> getDocumentosPendientes({String? mesa}) async {
+    final documentos = mesa != null
+        ? await getDocumentosPorMesa(mesa)
+        : await getDocumentos();
+
+    return documentos.where((doc) => !doc.pagado && !doc.anulado).toList();
+  }
+
+  /// Obtiene solo los documentos pagados
+  Future<List<DocumentoMesa>> getDocumentosPagados({String? mesa}) async {
+    final documentos = mesa != null
+        ? await getDocumentosPorMesa(mesa)
+        : await getDocumentos();
+
+    return documentos.where((doc) => doc.pagado && !doc.anulado).toList();
+  }
+
+  /// Filtra documentos por rango de fechas mejorado
+  List<DocumentoMesa> filtrarPorFechas(
+    List<DocumentoMesa> documentos,
+    DateTime? fechaInicio,
+    DateTime? fechaFin,
+  ) {
+    if (fechaInicio == null && fechaFin == null) return documentos;
+
+    return documentos.where((doc) {
+      final fecha = doc.fechaCreacion ?? doc.fecha;
+
+      // Normalizar fechas para comparación solo por día
+      final fechaDoc = DateTime(fecha.year, fecha.month, fecha.day);
+
+      if (fechaInicio != null) {
+        final inicioNormalizado = DateTime(
+          fechaInicio.year,
+          fechaInicio.month,
+          fechaInicio.day,
+        );
+        if (fechaDoc.isBefore(inicioNormalizado)) {
+          return false;
+        }
+      }
+
+      if (fechaFin != null) {
+        final finNormalizado = DateTime(
+          fechaFin.year,
+          fechaFin.month,
+          fechaFin.day,
+        );
+        if (fechaDoc.isAfter(finNormalizado)) {
+          return false;
+        }
+      }
+
+      return true;
+    }).toList();
+  }
+
+  /// Obtiene documentos con formato de fecha mejorado
+  String formatearFechaCompleta(DateTime fecha) {
+    final ahora = DateTime.now();
+    final diferencia = ahora.difference(fecha);
+
+    if (diferencia.inDays == 0) {
+      return 'Hoy ${_formatearHora(fecha)}';
+    } else if (diferencia.inDays == 1) {
+      return 'Ayer ${_formatearHora(fecha)}';
+    } else if (diferencia.inDays < 7) {
+      return '${_obtenerNombreDia(fecha)} ${_formatearHora(fecha)}';
+    } else {
+      return '${fecha.day}/${fecha.month}/${fecha.year} ${_formatearHora(fecha)}';
+    }
+  }
+
+  String _formatearHora(DateTime fecha) {
+    return '${fecha.hour.toString().padLeft(2, '0')}:${fecha.minute.toString().padLeft(2, '0')}';
+  }
+
+  String _obtenerNombreDia(DateTime fecha) {
+    const diasSemana = [
+      'Lunes',
+      'Martes',
+      'Miércoles',
+      'Jueves',
+      'Viernes',
+      'Sábado',
+      'Domingo',
+    ];
+    return diasSemana[fecha.weekday - 1];
+  }
 }

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'item_pedido.dart'; // Importar el ItemPedido correcto
+import 'historial_edicion.dart'; // Para el historial de cambios
+import 'pago_parcial.dart'; // Para pagos mixtos
 
 enum TipoPedido { normal, rt, interno, cancelado, cortesia, domicilio }
 
@@ -55,6 +57,14 @@ class Pedido {
   double descuento;
   String? cuadreId; // ID del cuadre de caja al que pertenece este pedido
 
+  // Campos adicionales para pagos según la guía de integración
+  double totalPagado = 0.0;
+  List<PagoParcial> pagosParciales = [];
+  List<HistorialEdicion> historialEdiciones = [];
+  DateTime? fechaPago;
+  String? pagadoPor;
+  double propina = 0.0;
+
   void setFormaPago(String formaPago) {
     this.formaPago = formaPago;
   }
@@ -86,6 +96,12 @@ class Pedido {
     this.incluyePropina = false,
     this.descuento = 0,
     this.cuadreId, // ID del cuadre de caja (opcional pero recomendado)
+    this.totalPagado = 0.0,
+    this.pagosParciales = const [],
+    this.historialEdiciones = const [],
+    this.fechaPago,
+    this.pagadoPor,
+    this.propina = 0.0,
   });
 
   String get tipoTexto {
@@ -158,7 +174,7 @@ class Pedido {
     'items': items.map((item) => item.toJson()).toList(),
     'total': total,
     'estado': estado.toJson(),
-    'notas': notas,
+    'notas': notas ?? "", // Asegurar que notas nunca sea null
     'plataforma': plataforma,
     'pedidoPor': pedidoPor,
     'guardadoPor': guardadoPor,
@@ -166,10 +182,35 @@ class Pedido {
     'formaPago': formaPago,
     'incluyePropina': incluyePropina,
     'descuento': descuento,
-    if (cuadreId != null) 'cuadreId': cuadreId, // Añadimos el cuadreId si existe
+    if (cuadreId != null)
+      'cuadreId': cuadreId, // Añadimos el cuadreId si existe
+    'totalPagado': totalPagado,
+    if (pagosParciales.isNotEmpty)
+      'pagosParciales': pagosParciales.map((pago) => pago.toJson()).toList(),
+    if (historialEdiciones.isNotEmpty)
+      'historialEdiciones': historialEdiciones.map((h) => h.toJson()).toList(),
+    if (fechaPago != null) 'fechaPago': fechaPago!.toIso8601String(),
+    if (pagadoPor != null) 'pagadoPor': pagadoPor,
+    'propina': propina,
   };
 
   factory Pedido.fromJson(Map<String, dynamic> json) {
+    // Parsear historial de ediciones si está presente
+    List<HistorialEdicion> historial = [];
+    if (json['historialEdiciones'] != null) {
+      historial = (json['historialEdiciones'] as List<dynamic>)
+          .map((item) => HistorialEdicion.fromJson(item))
+          .toList();
+    }
+
+    // Parsear pagos parciales si están presentes
+    List<PagoParcial> pagosParciales = [];
+    if (json['pagosParciales'] != null) {
+      pagosParciales = (json['pagosParciales'] as List<dynamic>)
+          .map((item) => PagoParcial.fromJson(item))
+          .toList();
+    }
+
     return Pedido(
       id: json['_id'] ?? json['id'] ?? '',
       fecha: DateTime.parse(json['fecha']),
@@ -196,7 +237,16 @@ class Pedido {
       formaPago: json['formaPago'],
       incluyePropina: json['incluyePropina'] ?? false,
       descuento: (json['descuento'] ?? 0).toDouble(),
-      cuadreId: json['cuadreId']?.toString(), // Capturamos el ID del cuadre de caja
+      cuadreId: json['cuadreId']
+          ?.toString(), // Capturamos el ID del cuadre de caja
+      totalPagado: (json['totalPagado'] ?? 0).toDouble(),
+      pagosParciales: pagosParciales,
+      historialEdiciones: historial,
+      fechaPago: json['fechaPago'] != null
+          ? DateTime.parse(json['fechaPago'])
+          : null,
+      pagadoPor: json['pagadoPor'],
+      propina: (json['propina'] ?? 0).toDouble(),
     );
   }
 }

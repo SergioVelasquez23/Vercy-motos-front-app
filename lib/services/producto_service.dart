@@ -31,7 +31,7 @@ class ProductoService {
 
       // Asegurar que la URL esté correctamente formada
       final url = '$baseUrl/api/productos/con-nombres-ingredientes';
-      print('📦 Obteniendo productos de URL: $url');
+      // Obteniendo productos de URL: $url
 
       final response = await http
           .get(Uri.parse(url), headers: headers)
@@ -90,8 +90,8 @@ class ProductoService {
           .get(Uri.parse('$baseUrl/api/categorias'), headers: headers)
           .timeout(Duration(seconds: 10));
 
-      print('📂 Response status: ${response.statusCode}');
-      print('📂 Response body: ${response.body}');
+      // Response status: ${response.statusCode}
+      // Response body: ${response.body}
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);

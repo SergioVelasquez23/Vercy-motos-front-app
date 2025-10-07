@@ -450,4 +450,93 @@ class ImageService {
       return false;
     }
   }
+
+  /// Sube el logo del negocio al servidor
+  Future<String> uploadNegocioLogo(XFile image) async {
+    try {
+      print('🏢 Subiendo logo del negocio: ${image.name}');
+
+      if (kIsWeb) {
+        // Flutter Web: usar upload base64
+        return await _uploadNegocioLogoBase64(image);
+      } else {
+        // Mobile/Desktop: usar multipart
+        return await _uploadNegocioLogoMultipart(image);
+      }
+    } catch (e) {
+      print('❌ Error subiendo logo del negocio: $e');
+      throw Exception('No se pudo subir el logo del negocio: $e');
+    }
+  }
+
+  /// Sube logo del negocio usando base64 (para web)
+  Future<String> _uploadNegocioLogoBase64(XFile image) async {
+    final bytes = await image.readAsBytes();
+    final base64Image = base64Encode(bytes);
+
+    final response = await http
+        .post(
+          Uri.parse(_apiConfig.endpoints.negocio.uploadLogo),
+          headers: _headers,
+          body: json.encode({
+            'fileName': image.name,
+            'imageBase64': base64Image,
+          }),
+        )
+        .timeout(Duration(seconds: 30));
+
+    print('🏢 Upload logo base64 response: ${response.statusCode}');
+    print('🏢 Response body: ${response.body}');
+
+    if (response.statusCode == 200) {
+      final jsonData = json.decode(response.body);
+      // El backend retorna la información en el campo 'data'
+      String logoUrl = jsonData['data'] as String;
+
+      print('✅ Logo del negocio subido exitosamente (web): $logoUrl');
+      return logoUrl;
+    } else {
+      throw Exception(
+        'Error del servidor (web): ${response.statusCode} - ${response.body}',
+      );
+    }
+  }
+
+  /// Sube logo del negocio usando multipart (para mobile/desktop)
+  Future<String> _uploadNegocioLogoMultipart(XFile image) async {
+    final uri = Uri.parse(_apiConfig.endpoints.negocio.uploadLogo);
+    final request = http.MultipartRequest('POST', uri);
+
+    request.headers.addAll(_multipartHeaders);
+
+    // Agregar el archivo
+    request.files.add(
+      await http.MultipartFile.fromPath(
+        'file', // El backend espera 'file' como nombre del parámetro
+        image.path,
+        contentType: MediaType('image', _getImageExtension(image.name)),
+      ),
+    );
+
+    print('🏢 Sending logo multipart request to: $uri');
+
+    final streamResponse = await request.send().timeout(Duration(seconds: 30));
+    final response = await http.Response.fromStream(streamResponse);
+
+    print('🏢 Upload logo multipart response: ${response.statusCode}');
+    print('🏢 Response body: ${response.body}');
+
+    if (response.statusCode == 200) {
+      final jsonData = json.decode(response.body);
+      // El backend retorna la información en el campo 'data'
+      String logoUrl = jsonData['data'] as String;
+
+      print('✅ Logo del negocio subido exitosamente (multipart): $logoUrl');
+      return logoUrl;
+    } else {
+      throw Exception(
+        'Error del servidor (multipart): ${response.statusCode} - ${response.body}',
+      );
+    }
+  }
 }

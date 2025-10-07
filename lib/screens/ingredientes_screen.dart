@@ -140,6 +140,11 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
   }
 
   void _mostrarDialogoNuevoIngrediente([Ingrediente? ingrediente]) {
+    print('🔍 _mostrarDialogoNuevoIngrediente llamado con:');
+    print('   - Ingrediente: ${ingrediente?.nombre ?? 'null'}');
+    print('   - ID: ${ingrediente?.id ?? 'null'}');
+    print('   - Es nulo: ${ingrediente == null}');
+
     final formKey = GlobalKey<FormState>();
     final nombreController = TextEditingController(
       text: ingrediente?.nombre ?? '',
@@ -326,12 +331,15 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
               onPressed: () async {
                 if (formKey.currentState?.validate() ?? false) {
                   try {
+                    final costo = double.parse(costoController.text);
+                    print('💰 Costo parseado del controlador: $costo');
+
                     final nuevoIngrediente = Ingrediente(
                       id: ingrediente?.id ?? '',
                       nombre: nombreController.text,
                       categoria: categoriaSeleccionada ?? '',
                       unidad: unidadController.text,
-                      costo: double.parse(costoController.text),
+                      costo: costo,
                       cantidad: double.parse(cantidadController.text),
                       stockActual: double.parse(
                         cantidadController.text,
@@ -340,6 +348,18 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
                       estado: ingrediente?.estado ?? 'Activo',
                       descontable: esDescontable,
                     );
+
+                    print(
+                      '🏗️ Ingrediente construido - Costo: ${nuevoIngrediente.costo}',
+                    );
+
+                    print('🔎 Verificando operación:');
+                    print('   - ingrediente == null: ${ingrediente == null}');
+                    print(
+                      '   - Operación: ${ingrediente == null ? 'CREATE' : 'UPDATE'}',
+                    );
+                    print('   - ID original: ${ingrediente?.id ?? 'No ID'}');
+                    print('   - ID nuevo ingrediente: ${nuevoIngrediente.id}');
 
                     if (ingrediente == null) {
                       // Nuevo ingrediente

@@ -71,20 +71,16 @@ class IngredienteService {
     try {
       final todosIngredientes = await getAllIngredientes();
 
-      print('DEBUG: Total ingredientes obtenidos: ${todosIngredientes.length}');
+      // DEBUG: Total ingredientes obtenidos: ${todosIngredientes.length}
 
       if (todosIngredientes.isEmpty) {
-        print(
-          'DEBUG: No hay ingredientes en el backend, retornando lista vacía',
-        );
+        // DEBUG: No hay ingredientes en el backend, retornando lista vacía
         return [];
       }
 
       // Imprimir todos los ingredientes para debug
       for (var ingrediente in todosIngredientes) {
-        print(
-          'DEBUG: Ingrediente: ${ingrediente.nombre} - Categoría: ${ingrediente.categoria}',
-        );
+        // DEBUG: Ingrediente: ${ingrediente.nombre} - Categoría: ${ingrediente.categoria}
       }
 
       // Filtrar por categoría que contenga "carne" (case insensitive)
@@ -94,14 +90,10 @@ class IngredienteService {
             ingrediente.categoria.toLowerCase().contains('proteína');
       }).toList();
 
-      print(
-        'DEBUG: getIngredientesCarnes found: ${ingredientesCarnes.length} ingredientes de carne',
-      );
+      // DEBUG: getIngredientesCarnes found: ${ingredientesCarnes.length} ingredientes de carne
 
       if (ingredientesCarnes.isEmpty) {
-        print(
-          'DEBUG: No se encontraron ingredientes de carne, retornando lista vacía',
-        );
+        // DEBUG: No se encontraron ingredientes de carne, retornando lista vacía
       }
 
       return ingredientesCarnes;
@@ -198,25 +190,46 @@ class IngredienteService {
   Future<Ingrediente> updateIngrediente(Ingrediente ingrediente) async {
     try {
       final headers = await _getHeaders();
+      final requestBody = ingrediente.toJson();
+
+      print(
+        '🔄 IngredienteService - updateIngrediente request body: ${json.encode(requestBody)}',
+      );
+      print('🔄 Ingrediente costo enviado: ${ingrediente.costo}');
+
       final response = await http.put(
         Uri.parse('$baseUrl/api/ingredientes/${ingrediente.id}'),
         headers: headers,
-        body: json.encode(ingrediente.toJson()),
+        body: json.encode(requestBody),
       );
 
       print(
-        'IngredienteService - updateIngrediente response: ${response.statusCode}',
+        '📡 IngredienteService - updateIngrediente response: ${response.statusCode}',
       );
-      print('IngredienteService - updateIngrediente body: ${response.body}');
+      print(
+        '📡 IngredienteService - updateIngrediente response body: ${response.body}',
+      );
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
         if (responseData is Map<String, dynamic>) {
+          Map<String, dynamic> ingredienteData;
           if (responseData.containsKey('data')) {
-            return Ingrediente.fromJson(responseData['data']);
+            ingredienteData = responseData['data'];
           } else {
-            return Ingrediente.fromJson(responseData);
+            ingredienteData = responseData;
           }
+
+          // WORKAROUND: Si el backend no devuelve el costo, usar el del ingrediente original
+          if (!ingredienteData.containsKey('costo') ||
+              ingredienteData['costo'] == null) {
+            print(
+              '⚠️ Backend no devolvió campo costo, usando costo original: ${ingrediente.costo}',
+            );
+            ingredienteData['costo'] = ingrediente.costo;
+          }
+
+          return Ingrediente.fromJson(ingredienteData);
         } else {
           throw Exception('Formato de respuesta inválido');
         }

@@ -1,12 +1,13 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:http/http.dart' as http;
-import 'package:http_parser/http_parser.dart';
+import 'package:image_picker/image_picker.dart';
 import '../config/api_config.dart';
 import '../models/negocio_info.dart';
+import 'image_service.dart';
 
 class NegocioInfoService {
   final ApiConfig _apiConfig = ApiConfig();
+  final ImageService _imageService = ImageService();
 
   /// Obtener información del negocio
   Future<NegocioInfo?> getNegocioInfo() async {
@@ -89,42 +90,19 @@ class NegocioInfoService {
     }
   }
 
-  /// Subir logo del negocio
-  Future<String> uploadLogo(File logoFile) async {
+  /// Subir logo del negocio usando ImageService
+  Future<String> uploadLogo(XFile logoFile) async {
     try {
-      final uri = Uri.parse('${_apiConfig.baseUrl}/api/negocio/logo');
-      final request = http.MultipartRequest('POST', uri);
+      print('🏢 Subiendo logo del negocio...');
 
-      // Agregar archivo
-      request.files.add(
-        await http.MultipartFile.fromPath(
-          'logo',
-          logoFile.path,
-          contentType: MediaType(
-            'image',
-            'jpeg',
-          ), // Ajustar según el tipo de archivo
-        ),
-      );
+      // Usar el ImageService para subir el logo
+      final logoUrl = await _imageService.uploadNegocioLogo(logoFile);
 
-      print('📤 POST /api/negocio/logo');
-
-      final streamedResponse = await request.send();
-      final response = await http.Response.fromStream(streamedResponse);
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final logoUrl = data['logoUrl'] as String;
-        print('✅ Logo subido correctamente: $logoUrl');
-        return logoUrl;
-      } else {
-        print('❌ Error al subir logo: ${response.statusCode}');
-        print('Response: ${response.body}');
-        throw Exception('Error al subir logo: ${response.statusCode}');
-      }
+      print('✅ Logo del negocio subido correctamente: $logoUrl');
+      return logoUrl;
     } catch (e) {
-      print('❌ Excepción al subir logo: $e');
-      throw Exception('Error de conexión: $e');
+      print('❌ Error uploadLogo: $e');
+      throw Exception('Error al subir el logo: $e');
     }
   }
 

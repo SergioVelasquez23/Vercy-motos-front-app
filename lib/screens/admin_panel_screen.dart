@@ -276,21 +276,21 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
       await _loadStats();
     } catch (e) {
       _showError('Error eliminando pedido: $e');
-      print('❌ Error completo: $e');
+      print('Error completo: $e');
     } finally {
       setState(() => _isLoading = false);
     }
   }
 
-  // ✅ NUEVA: Función para eliminar TODOS los pedidos activos
+  // NUEVA: Función para eliminar TODOS los pedidos activos
   Future<void> _eliminarTodosPedidosActivos() async {
     final confirmed = await _showConfirmDialog(
-      '🚨 ELIMINAR TODOS LOS PEDIDOS ACTIVOS',
+      'ELIMINAR TODOS LOS PEDIDOS ACTIVOS',
       'Esto eliminará ABSOLUTAMENTE TODOS los pedidos activos sin importar:\n'
-          '• Su estado (activo, pagado, completado, etc.)\n'
-          '• Su método de pago (efectivo, tarjeta, transferencia)\n'
-          '• Su mesa (incluye domicilios y mesas especiales)\n\n'
-          '🔴 Esta operación NO se puede deshacer.\n\n'
+          '- Su estado (activo, pagado, completado, etc.)\n'
+          '- Su método de pago (efectivo, tarjeta, transferencia)\n'
+          '- Su mesa (incluye domicilios y mesas especiales)\n\n'
+          'Esta operación NO se puede deshacer.\n\n'
           '¿Estás COMPLETAMENTE seguro?',
     );
 
@@ -298,22 +298,29 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
 
     setState(() => _isLoading = true);
     try {
-      final response = await http.delete(
-        Uri.parse('$baseUrl/api/admin/eliminar-todos-pedidos-activos'),
-        headers: headers,
-      );
+      // Usar el servicio PedidoService para la eliminación
+      final pedidoService = PedidoService();
+      final result = await pedidoService.eliminarTodosPedidosActivos();
 
-      final data = json.decode(response.body);
-      if (data['success']) {
+      if (result['success'] == true) {
+        int deletedCount = 0;
+        if (result.containsKey('deletedCount')) {
+          deletedCount = result['deletedCount'] ?? 0;
+        }
+
         _showSuccess(
-          '✅ Todos los pedidos activos eliminados: ${data['deletedCount']} pedidos',
+          'Todos los pedidos activos eliminados${deletedCount > 0 ? ': $deletedCount pedidos' : ''}',
         );
+
         setState(
-          () => _lastResult = '🗑️ Pedidos eliminados: ${data['deletedCount']}',
+          () => _lastResult =
+              'Pedidos eliminados${deletedCount > 0 ? ': $deletedCount' : ' correctamente'}',
         );
+
+        // Recargar estadísticas
         await _loadStats();
       } else {
-        _showError('Error: ${data['message']}');
+        _showError('Error: ${result['message'] ?? 'Operación fallida'}');
       }
     } catch (e) {
       _showError('Error eliminando pedidos activos: $e');
@@ -332,7 +339,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     buffer.writeln('');
 
     conteos.forEach((key, value) {
-      buffer.writeln('• $key: $value');
+      buffer.writeln('- $key: $value');
     });
 
     buffer.writeln('');
@@ -352,7 +359,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     buffer.writeln('');
 
     eliminados.forEach((key, value) {
-      buffer.writeln('• $key: $value eliminados');
+      buffer.writeln('- $key: $value eliminados');
     });
 
     buffer.writeln('');
@@ -649,14 +656,14 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
 
             SizedBox(height: 12),
 
-            // ✅ NUEVO: Botón para eliminar TODOS los pedidos activos
+            // NUEVO: Botón para eliminar TODOS los pedidos activos
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
                 onPressed: _isLoading ? null : _eliminarTodosPedidosActivos,
                 icon: Icon(Icons.delete_sweep, color: Colors.white),
                 label: Text(
-                  '🚨 ELIMINAR TODOS LOS PEDIDOS ACTIVOS',
+                  'ELIMINAR TODOS LOS PEDIDOS ACTIVOS',
                   style: TextStyle(color: Colors.white),
                 ),
                 style: ElevatedButton.styleFrom(
@@ -723,7 +730,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              '📋 Último Resultado',
+              'Último Resultado',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,

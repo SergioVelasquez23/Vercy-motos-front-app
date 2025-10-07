@@ -29,11 +29,11 @@ class PedidoService {
   final CuadreCajaService _cuadreCajaService = CuadreCajaService();
 
   PedidoService._internal() {
-    print('🔧 PedidoService: Inicializando servicio y StreamControllers');
+    // PedidoService: Inicializando servicio y StreamControllers
   }
 
   void dispose() {
-    print('🔧 PedidoService: Cerrando StreamControllers');
+    // PedidoService: Cerrando StreamControllers
     _pedidoCompletadoController.close();
     _pedidoPagadoController.close();
   }
@@ -424,6 +424,12 @@ class PedidoService {
 
       // Debug: Imprimir el JSON que se va a enviar
       final pedidoJson = pedido.toJson();
+
+      // Asegurar que el campo notas nunca sea nulo para evitar error en el backend
+      if (pedidoJson['notas'] == null) {
+        pedidoJson['notas'] = "";
+      }
+
       print(
         '🔄 Actualizando pedido ${pedido.id} con datos: ${json.encode(pedidoJson)}',
       );
@@ -578,6 +584,51 @@ class PedidoService {
       }
     } catch (e) {
       print('❌ ADMIN: Error eliminando pedido: $e');
+      throw Exception('Error de conexión: $e');
+    }
+  }
+
+  /// Eliminar pedido pagado - Revierte automáticamente el dinero de las ventas
+  /// Este método utiliza el endpoint especial que maneja la reversión de pagos
+  Future<void> eliminarPedidoPagado(String id) async {
+    try {
+      print('💰 Eliminando pedido pagado: $id (con reversión de dinero)');
+
+      final headers = await _getHeaders();
+      final response = await http.delete(
+        Uri.parse('$baseUrl/api/pedidos/$id/pagado'),
+        headers: headers,
+      );
+
+      print('💰 Respuesta del servidor: ${response.statusCode}');
+      if (response.body.isNotEmpty) {
+        print('💰 Cuerpo de respuesta: ${response.body}');
+      }
+
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        print('✅ Pedido pagado eliminado exitosamente con reversión de dinero');
+        return;
+      }
+
+      // Manejar errores específicos
+      String errorMsg =
+          'Error al eliminar pedido pagado: ${response.statusCode}';
+
+      if (response.body.isNotEmpty) {
+        try {
+          final errorData = json.decode(response.body);
+          if (errorData is Map<String, dynamic> &&
+              errorData.containsKey('message')) {
+            errorMsg = errorData['message'];
+          }
+        } catch (e) {
+          // Si no se puede parsear el JSON, usar mensaje por defecto
+        }
+      }
+
+      throw Exception(errorMsg);
+    } catch (e) {
+      print('❌ Error eliminando pedido pagado: $e');
       throw Exception('Error de conexión: $e');
     }
   }
@@ -1144,6 +1195,7 @@ class PedidoService {
     String pedidoId, {
     String formaPago = 'efectivo',
     double propina = 0.0,
+    double totalPagado = 0.0,
     String procesadoPor = '',
     String notas = '',
     TipoPedido? tipoPedido,
@@ -1152,6 +1204,8 @@ class PedidoService {
     String? motivoCortesia,
     String? tipoConsumoInterno,
     double descuento = 0.0, // ✅ NUEVO: Parámetro para descuento
+    List<Map<String, dynamic>>?
+    pagosParciales, // ✅ NUEVO: Soporte para pagos mixtos
   }) async {
     try {
       final headers = await _getHeaders();
@@ -1175,8 +1229,11 @@ class PedidoService {
 
       // Solo incluir campos específicos para pagos normales
       if (tipoPago == 'pagado') {
-        // Validar forma de pago
-        if (formaPago != 'efectivo' && formaPago != 'transferencia') {
+        // Validar forma de pago principal
+        if (formaPago != 'efectivo' &&
+            formaPago != 'transferencia' &&
+            formaPago != 'tarjeta' &&
+            formaPago != 'multiple') {
           print(
             '⚠️ Forma de pago en pagarPedido no reconocida: "$formaPago". Usando efectivo por defecto.',
           );
@@ -1185,11 +1242,19 @@ class PedidoService {
 
         pagarData['formaPago'] = formaPago;
         pagarData['propina'] = propina;
-        pagarData['descuento'] =
-            descuento; // ✅ NUEVO: Incluir descuento en el JSON
+        pagarData['descuento'] = descuento; // Incluir descuento en el JSON
         pagarData['pagado'] = true;
         pagarData['estado'] = 'Pagado'; // Asegurar que el estado sea explícito
         pagarData['fechaPago'] = _formatearFechaParaBackend(DateTime.now());
+        pagarData['totalPagado'] = totalPagado > 0
+            ? totalPagado
+            : null; // Enviar solo si es diferente de 0
+
+        // Incluir pagos parciales si es un pago mixto
+        if (pagosParciales != null && pagosParciales.isNotEmpty) {
+          pagarData['pagosParciales'] = pagosParciales;
+          print('💳 Pagos parciales configurados: ${pagosParciales.length}');
+        }
 
         // Log adicional para forma de pago
         print('💵 Forma de pago configurada: $formaPago');
@@ -1552,6 +1617,65 @@ class PedidoService {
     } catch (e) {
       print('❌ Error moviendo productos específicos: $e');
       return {'success': false, 'message': 'Error al mover productos: $e'};
+    }
+  }
+
+  /// Elimina todos los pedidos activos (solo para administradores)
+  ///
+  /// Hace una solicitud DELETE al endpoint de administrador para eliminar todos los pedidos activos.
+  /// Devuelve un mapa con 'success' (bool) y 'message' (String) indicando el resultado.
+  Future<Map<String, dynamic>> eliminarTodosPedidosActivos() async {
+    try {
+      print('🔧 ADMIN: Intentando eliminar todos los pedidos activos');
+
+      final headers = await _getHeaders();
+
+      final response = await http.delete(
+        Uri.parse('$baseUrl/api/admin/eliminar-todos-pedidos-activos'),
+        headers: headers,
+      );
+
+      print('🔧 ADMIN: Respuesta del servidor: ${response.statusCode}');
+      print('🔧 ADMIN: Cuerpo de respuesta: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        print('✅ ADMIN: Todos los pedidos activos eliminados correctamente');
+
+        // Notificar que se han actualizado los pedidos
+        _pedidoCompletadoController.add(true);
+
+        return {
+          'success': true,
+          'message':
+              'Todos los pedidos activos han sido eliminados correctamente',
+        };
+      }
+
+      // Manejo de errores
+      String errorMessage = 'Error al eliminar pedidos activos';
+      try {
+        if (response.body.isNotEmpty) {
+          final errorData = json.decode(response.body);
+          if (errorData['message'] != null) {
+            errorMessage = errorData['message'];
+          }
+        }
+      } catch (_) {
+        // Si no se puede decodificar la respuesta, usar el mensaje por defecto
+      }
+
+      print('❌ ADMIN: Error al eliminar pedidos activos: $errorMessage');
+      return {
+        'success': false,
+        'message': errorMessage,
+        'statusCode': response.statusCode,
+      };
+    } catch (e) {
+      print('❌ ADMIN: Excepción al eliminar pedidos activos: $e');
+      return {
+        'success': false,
+        'message': 'Error al conectar con el servidor: $e',
+      };
     }
   }
 }

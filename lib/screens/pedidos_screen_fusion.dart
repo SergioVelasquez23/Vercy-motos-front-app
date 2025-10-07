@@ -375,15 +375,19 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
   }
 
   Future<void> _mostrarDialogoEliminarPedidos() async {
-    // Obtener pedidos activos que pueden ser eliminados
+    // Obtener pedidos activos y pagados que pueden ser eliminados
     final pedidosActivos = _pedidosFiltrados
         .where((pedido) => pedido.estado == EstadoPedido.activo)
         .toList();
 
-    if (pedidosActivos.isEmpty) {
+    final pedidosPagados = _pedidosFiltrados
+        .where((pedido) => pedido.estado == EstadoPedido.pagado)
+        .toList();
+
+    if (pedidosActivos.isEmpty && pedidosPagados.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('No hay pedidos activos que se puedan eliminar'),
+          content: Text('No hay pedidos que se puedan eliminar'),
           backgroundColor: Colors.orange,
         ),
       );
@@ -391,7 +395,8 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
     }
 
     // Mostrar lista de pedidos para seleccionar cuáles eliminar
-    List<String> pedidosSeleccionados = [];
+    List<String> pedidosActivosSeleccionados = [];
+    List<String> pedidosPagadosSeleccionados = [];
 
     await showDialog(
       context: context,
@@ -412,48 +417,144 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
               ),
               content: Container(
                 width: double.maxFinite,
-                height: 300,
+                height: 400,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Selecciona los pedidos activos que deseas eliminar:',
+                      'Selecciona los pedidos que deseas eliminar:',
                       style: AppTheme.bodyMedium,
                     ),
                     SizedBox(height: 16),
-                    Expanded(
-                      child: ListView.builder(
-                        itemCount: pedidosActivos.length,
-                        itemBuilder: (context, index) {
-                          final pedido = pedidosActivos[index];
-                          final isSelected = pedidosSeleccionados.contains(
-                            pedido.id,
-                          );
 
-                          return CheckboxListTile(
-                            value: isSelected,
-                            onChanged: (bool? value) {
-                              setState(() {
-                                if (value == true) {
-                                  pedidosSeleccionados.add(pedido.id);
-                                } else {
-                                  pedidosSeleccionados.remove(pedido.id);
-                                }
-                              });
-                            },
-                            title: Text(
-                              'Mesa ${pedido.mesa} - ${pedido.cliente ?? "Sin cliente"}',
-                              style: TextStyle(color: AppTheme.textPrimary),
-                            ),
-                            subtitle: Text(
-                              'Total: ${formatCurrency(pedido.total)} - ${pedido.items.length} productos',
-                              style: TextStyle(color: AppTheme.textSecondary),
-                            ),
-                            activeColor: Colors.red,
-                          );
-                        },
+                    // Sección de pedidos activos
+                    if (pedidosActivos.isNotEmpty) ...[
+                      Text(
+                        '🔄 Pedidos Activos (${pedidosActivos.length})',
+                        style: AppTheme.bodyMedium.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.orange,
+                        ),
                       ),
-                    ),
+                      SizedBox(height: 8),
+                      Container(
+                        height: 120,
+                        child: ListView.builder(
+                          itemCount: pedidosActivos.length,
+                          itemBuilder: (context, index) {
+                            final pedido = pedidosActivos[index];
+                            final isSelected = pedidosActivosSeleccionados
+                                .contains(pedido.id);
+
+                            return CheckboxListTile(
+                              value: isSelected,
+                              onChanged: (bool? value) {
+                                setState(() {
+                                  if (value == true) {
+                                    pedidosActivosSeleccionados.add(pedido.id);
+                                  } else {
+                                    pedidosActivosSeleccionados.remove(
+                                      pedido.id,
+                                    );
+                                  }
+                                });
+                              },
+                              title: Text(
+                                'Mesa ${pedido.mesa} - ${pedido.cliente ?? "Sin cliente"}',
+                                style: TextStyle(
+                                  color: AppTheme.textPrimary,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              subtitle: Text(
+                                'Total: ${formatCurrency(pedido.total)}',
+                                style: TextStyle(
+                                  color: AppTheme.textSecondary,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              activeColor: Colors.orange,
+                            );
+                          },
+                        ),
+                      ),
+                      SizedBox(height: 16),
+                    ],
+
+                    // Sección de pedidos pagados
+                    if (pedidosPagados.isNotEmpty) ...[
+                      Container(
+                        padding: EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: Colors.red.withOpacity(0.3),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '💰 Pedidos Pagados (${pedidosPagados.length})',
+                              style: AppTheme.bodyMedium.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.red,
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              '⚠️ IMPORTANTE: Al eliminar pedidos pagados se reversará automáticamente el dinero de las ventas y se descontará de la caja.',
+                              style: AppTheme.bodySmall.copyWith(
+                                color: Colors.red[700],
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Expanded(
+                        child: ListView.builder(
+                          itemCount: pedidosPagados.length,
+                          itemBuilder: (context, index) {
+                            final pedido = pedidosPagados[index];
+                            final isSelected = pedidosPagadosSeleccionados
+                                .contains(pedido.id);
+
+                            return CheckboxListTile(
+                              value: isSelected,
+                              onChanged: (bool? value) {
+                                setState(() {
+                                  if (value == true) {
+                                    pedidosPagadosSeleccionados.add(pedido.id);
+                                  } else {
+                                    pedidosPagadosSeleccionados.remove(
+                                      pedido.id,
+                                    );
+                                  }
+                                });
+                              },
+                              title: Text(
+                                'Mesa ${pedido.mesa} - ${pedido.cliente ?? "Sin cliente"}',
+                                style: TextStyle(
+                                  color: AppTheme.textPrimary,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              subtitle: Text(
+                                'Total: ${formatCurrency(pedido.total)} - ${pedido.formaPago ?? "N/A"}',
+                                style: TextStyle(
+                                  color: AppTheme.textSecondary,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              activeColor: Colors.red,
+                            );
+                          },
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -466,17 +567,30 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                   ),
                 ),
                 ElevatedButton(
-                  onPressed: pedidosSeleccionados.isEmpty
+                  onPressed:
+                      (pedidosActivosSeleccionados.isEmpty &&
+                          pedidosPagadosSeleccionados.isEmpty)
                       ? null
                       : () async {
                           Navigator.of(context).pop();
-                          await _eliminarPedidosSeleccionados(
-                            pedidosSeleccionados,
-                          );
+
+                          // Eliminar pedidos activos primero
+                          if (pedidosActivosSeleccionados.isNotEmpty) {
+                            await _eliminarPedidosSeleccionados(
+                              pedidosActivosSeleccionados,
+                            );
+                          }
+
+                          // Luego eliminar pedidos pagados
+                          if (pedidosPagadosSeleccionados.isNotEmpty) {
+                            await _eliminarPedidosPagadosSeleccionados(
+                              pedidosPagadosSeleccionados,
+                            );
+                          }
                         },
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
                   child: Text(
-                    'Eliminar ${pedidosSeleccionados.length} pedido(s)',
+                    'Eliminar ${pedidosActivosSeleccionados.length + pedidosPagadosSeleccionados.length} pedido(s)',
                     style: TextStyle(color: Colors.white),
                   ),
                 ),
@@ -546,6 +660,75 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error eliminando pedidos: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  /// Eliminar pedidos pagados - Revierte automáticamente el dinero de las ventas
+  Future<void> _eliminarPedidosPagadosSeleccionados(
+    List<String> pedidosIds,
+  ) async {
+    try {
+      setState(() {
+        _isLoading = true;
+      });
+
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      final usuarioEliminacion = userProvider.userName ?? 'Usuario Desconocido';
+
+      int exitosos = 0;
+      int fallidos = 0;
+
+      for (String pedidoId in pedidosIds) {
+        try {
+          await _pedidoService.eliminarPedidoPagado(pedidoId);
+          exitosos++;
+          print(
+            '✅ Pedido pagado $pedidoId eliminado exitosamente (con reversión de dinero) por $usuarioEliminacion',
+          );
+        } catch (e) {
+          fallidos++;
+          print('❌ Error eliminando pedido pagado $pedidoId: $e');
+        }
+      }
+
+      // Recargar la lista de pedidos
+      await _cargarPedidos();
+
+      // Mostrar resultado
+      String mensaje;
+      Color color;
+
+      if (fallidos == 0) {
+        mensaje =
+            '✅ Se eliminaron $exitosos pedido(s) pagado(s) correctamente\n💰 El dinero fue revertido automáticamente';
+        color = Colors.green;
+      } else if (exitosos == 0) {
+        mensaje = '❌ No se pudo eliminar ningún pedido pagado';
+        color = Colors.red;
+      } else {
+        mensaje =
+            '⚠️ Se eliminaron $exitosos pedido(s) pagado(s). $fallidos falló(s)\n💰 Se revirtió el dinero de los exitosos';
+        color = Colors.orange;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(mensaje),
+          backgroundColor: color,
+          duration: Duration(seconds: 4),
+        ),
+      );
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error eliminando pedidos pagados: $e'),
           backgroundColor: Colors.red,
         ),
       );

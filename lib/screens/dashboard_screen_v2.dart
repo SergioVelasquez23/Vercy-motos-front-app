@@ -304,7 +304,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
 
   Future<void> _cargarIngresosVsEgresos() async {
     try {
-      print('📊 Cargando datos de ingresos vs egresos...');
       // Obtener ingresos vs egresos de los últimos 12 meses desde el backend
       final ingresosVsEgresos = await _reportesService.getIngresosVsEgresos(12);
 
@@ -1230,15 +1229,9 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
       );
 
       // 8. Documentos / Mis Pedidos - Condicional según el rol
-      print('🔍 DEBUG - userProvider.isMesero: ${userProvider.isMesero}');
-      print('🔍 DEBUG - userProvider.roles: ${userProvider.roles}');
-      print(
-        '🔍 DEBUG - userProvider.isOnlyMesero: ${userProvider.isOnlyMesero}',
-      );
 
       if (userProvider.isMesero) {
         // Cualquier usuario con rol de mesero ve "Mis Pedidos"
-        print('✅ Agregando botón "Mis Pedidos" para mesero');
         navItems.add(
           _buildNavItem(Icons.receipt_long, 'Mis Pedidos', 7, () {
             Navigator.pushNamed(context, '/mesero');
@@ -1246,7 +1239,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         );
       } else {
         // Solo usuarios sin rol de mesero ven "Documentos"
-        print('❌ Agregando botón "Documentos" para no-mesero');
         navItems.add(
           _buildNavItem(Icons.description, 'Documentos', 7, () {
             Navigator.push(

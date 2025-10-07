@@ -295,4 +295,92 @@ class ImpresionService {
       };
     }
   }
+
+  /// Limpia el resumen de los IDs de MongoDB para mostrar solo información relevante al usuario
+  Map<String, dynamic> limpiarResumenParaVisualizacion(
+    Map<String, dynamic> resumen,
+  ) {
+    // Crear una copia del resumen original
+    Map<String, dynamic> resumenLimpio = Map<String, dynamic>.from(resumen);
+
+    // Lista de campos que contienen IDs de MongoDB que queremos ocultar
+    List<String> camposAEliminar = [
+      '_id',
+      'pedidoId',
+      'id',
+      'mongo_id',
+      'mongoId',
+      'objectId',
+    ];
+
+    // Eliminar campos de ID del nivel superior
+    for (String campo in camposAEliminar) {
+      resumenLimpio.remove(campo);
+    }
+
+    // Limpiar productos si existen
+    if (resumenLimpio['productos'] is List) {
+      List<dynamic> productosLimpios = [];
+      for (var producto in (resumenLimpio['productos'] as List)) {
+        if (producto is Map<String, dynamic>) {
+          Map<String, dynamic> productoLimpio = Map<String, dynamic>.from(
+            producto,
+          );
+          // Eliminar IDs de los productos
+          for (String campo in camposAEliminar) {
+            productoLimpio.remove(campo);
+          }
+          productosLimpios.add(productoLimpio);
+        } else {
+          productosLimpios.add(producto);
+        }
+      }
+      resumenLimpio['productos'] = productosLimpios;
+    }
+
+    // Generar un número de pedido más amigable para mostrar al usuario
+    // Usar timestamp o número secuencial en lugar del ID de MongoDB
+    if (!resumenLimpio.containsKey('numeroPedido')) {
+      // Si tenemos fecha y hora, generar un número basado en el timestamp
+      String fecha = resumenLimpio['fecha'] ?? '';
+      String hora = resumenLimpio['hora'] ?? '';
+
+      if (fecha.isNotEmpty && hora.isNotEmpty) {
+        try {
+          // Extraer números de la fecha y hora para crear un identificador más amigable
+          String fechaNumeros = fecha.replaceAll(RegExp(r'[^0-9]'), '');
+          String horaNumeros = hora.replaceAll(RegExp(r'[^0-9]'), '');
+
+          if (fechaNumeros.length >= 6 && horaNumeros.length >= 4) {
+            // Formato: DDMMAA-HHMM (ej: 251224-1430)
+            String dia = fechaNumeros.substring(0, 2);
+            String mes = fechaNumeros.substring(2, 4);
+            String anio = fechaNumeros.substring(4, 6);
+            String horaMins = horaNumeros.substring(0, 4);
+
+            resumenLimpio['numeroPedido'] = '$dia$mes$anio-$horaMins';
+          } else {
+            // Fallback: usar timestamp actual
+            resumenLimpio['numeroPedido'] = DateTime.now()
+                .millisecondsSinceEpoch
+                .toString()
+                .substring(8);
+          }
+        } catch (e) {
+          // Fallback: usar timestamp actual
+          resumenLimpio['numeroPedido'] = DateTime.now().millisecondsSinceEpoch
+              .toString()
+              .substring(8);
+        }
+      } else {
+        // Fallback: usar timestamp actual
+        resumenLimpio['numeroPedido'] = DateTime.now().millisecondsSinceEpoch
+            .toString()
+            .substring(8);
+      }
+    }
+
+    print('🧹 Resumen limpiado - IDs de MongoDB removidos');
+    return resumenLimpio;
+  }
 }

@@ -481,7 +481,15 @@ class CuadreCajaService {
     }
   }
 
-  // Actualizar cuadre de caja (con limpieza automática de cache)
+  /// Actualizar cuadre de caja con limpieza automática de cache
+  ///
+  /// El parámetro [cerrarCaja] es crítico:
+  /// - Si es `true`, el backend:
+  ///   1. Limpia automáticamente el cache de pedidos y mesas
+  ///   2. Calcula e incluye ingresos adicionales en el resumen
+  ///   3. Registra el cierre en el historial
+  ///   4. Actualiza el estado del cuadre a "cerrado"
+  /// - Todo esto ocurre en una sola transacción para mantener integridad de datos
   Future<CuadreCaja> updateCuadre(
     String id, {
     String? nombre,
@@ -491,7 +499,7 @@ class CuadreCajaService {
     double? efectivoEsperado,
     double? tolerancia,
     String? observaciones,
-    bool? cerrarCaja, // Cambio de cerrada a cerrarCaja
+    bool? cerrarCaja, // Parámetro crítico para cerrar caja y limpiar cache
     String? estado,
   }) async {
     try {
@@ -526,6 +534,22 @@ class CuadreCajaService {
         // - Registra el cierre en historial
         if (cerrarCaja == true) {
           print('✅ Caja cerrada - Cache limpiado automáticamente por backend');
+
+          // Extraer información adicional del cierre si está disponible
+          Map<String, dynamic> detallesCierre = {};
+          if (responseData.containsKey('detallesCierre')) {
+            detallesCierre = responseData['detallesCierre'];
+          }
+
+          // Registrar detalles del proceso de limpieza
+          print('🧹 Limpieza de cache completada:');
+          print(
+            '   - Pedidos en cache limpiados: ${detallesCierre['pedidosLimpiados'] ?? "N/A"}',
+          );
+          print(
+            '   - Mesas en cache limpiadas: ${detallesCierre['mesasLimpiadas'] ?? "N/A"}',
+          );
+          print('   - Hora de limpieza: ${DateTime.now().toIso8601String()}');
         }
 
         return CuadreCaja.fromJson(responseData['data']);

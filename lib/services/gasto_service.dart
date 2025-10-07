@@ -4,6 +4,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../models/gasto.dart';
 import '../models/tipo_gasto.dart';
 import '../config/api_config.dart';
+import '../utils/caja_error_handler.dart';
 
 class GastoService {
   static final GastoService _instance = GastoService._internal();
@@ -109,7 +110,9 @@ class GastoService {
     }
   }
 
-  // Crear nuevo gasto
+  /// Crear nuevo gasto
+  ///
+  /// Retorna el gasto creado o lanza una excepción si hay algún error.
   Future<Gasto> createGasto({
     required String cuadreCajaId,
     required String tipoGastoId,
@@ -126,6 +129,30 @@ class GastoService {
     bool? pagadoDesdeCaja,
   }) async {
     try {
+      // Validación de efectivo comentada por problemas de conexión
+      // if (validarEfectivo &&
+      //     pagadoDesdeCaja == true &&
+      //     formaPago?.toLowerCase() == 'efectivo') {
+      //   final hayEfectivo = await ValidacionCajaUtil.validarEfectivoDisponible(
+      //     monto,
+      //   );
+
+      //   if (!hayEfectivo) {
+      //     throw Exception('No hay suficiente efectivo en caja para este gasto');
+      //   }
+
+      //   // Si hay efectivo suficiente, confirmar la operación
+      //   final confirmado = await ValidacionCajaUtil.confirmarOperacionEfectivo(
+      //     monto: monto,
+      //     tipoOperacion: 'Gasto',
+      //     detalleOperacion: concepto,
+      //   );
+
+      //   if (!confirmado) {
+      //     throw Exception('Operación cancelada por el usuario');
+      //   }
+      // }
+
       final headers = await _getHeaders();
       final body = {
         'cuadreCajaId': cuadreCajaId,
@@ -158,11 +185,13 @@ class GastoService {
         final responseData = json.decode(response.body);
         return Gasto.fromJson(responseData['data']);
       } else {
-        final errorData = json.decode(response.body);
-        throw Exception(errorData['message'] ?? 'Error al crear gasto');
+        final error = CajaErrorHandler.procesarRespuesta(response);
+        CajaErrorHandler.mostrarError(error);
+        throw Exception(error['message'] ?? 'Error al crear gasto');
       }
     } catch (e) {
-      throw Exception('Error de conexión: $e');
+      print('Error completo al crear gasto: $e');
+      throw Exception('Error al crear gasto: ${e.toString()}');
     }
   }
 
@@ -219,19 +248,92 @@ class GastoService {
     }
   }
 
-  // Eliminar gasto
-  Future<bool> deleteGasto(String id) async {
+  /// Eliminar gasto con reversión automática de dinero
+  ///
+  /// Si el gasto fue pagado desde caja, el backend automáticamente:
+  /// - Revertirá el dinero al cuadre de caja
+  /// - Actualizará los totales
+  /// - Registrará la acción en el historial
+  ///
+  /// Retorna un mapa con información sobre la eliminación:
+  /// - success: true si fue exitoso, false en caso contrario
+  /// - message: mensaje descriptivo
+  /// - dineroRevertido: true si se revertió dinero a la caja
+  Future<Map<String, dynamic>> deleteGasto(String id) async {
     try {
       final headers = await _getHeaders();
+
+      // Obtener información del gasto antes de eliminarlo
+      final gastoInfo = await getGastoById(id);
+      final pagadoDesdeCaja = gastoInfo?.pagadoDesdeCaja ?? false;
+      final monto = gastoInfo?.monto ?? 0.0;
+
+      print('🗑️ Eliminando gasto ID: $id');
+      print('💰 Pagado desde caja: $pagadoDesdeCaja');
+      if (pagadoDesdeCaja) {
+        print('💰 Monto a revertir: \$${monto.toStringAsFixed(2)}');
+      }
+
       final response = await http.delete(
         Uri.parse('$baseUrl/api/gastos/$id'),
         headers: headers,
       );
 
-      return response.statusCode == 200;
+      print('🗑️ Status eliminación: ${response.statusCode}');
+      print('🗑️ Response body: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        // Preparar respuesta exitosa
+        Map<String, dynamic> result = {
+          'success': true,
+          'message': 'Gasto eliminado correctamente',
+          'dineroRevertido': pagadoDesdeCaja,
+          'montoRevertido': pagadoDesdeCaja ? monto : 0.0,
+        };
+
+        // Intentar obtener más información de la respuesta si está disponible
+        try {
+          if (response.body.isNotEmpty) {
+            final responseData = json.decode(response.body);
+            if (responseData is Map<String, dynamic>) {
+              if (responseData['message'] != null) {
+                result['message'] = responseData['message'];
+              }
+              if (responseData['dineroRevertido'] != null) {
+                result['dineroRevertido'] = responseData['dineroRevertido'];
+              }
+              if (responseData['detalles'] != null) {
+                result['detalles'] = responseData['detalles'];
+              }
+            }
+          }
+        } catch (_) {
+          // Si no se puede parsear la respuesta, usar los valores por defecto
+        }
+
+        if (result['dineroRevertido'] == true) {
+          print('✅ Dinero revertido automáticamente al cuadre de caja');
+        }
+
+        return result;
+      } else {
+        final error = CajaErrorHandler.procesarRespuesta(response);
+        CajaErrorHandler.mostrarError(error);
+        return {
+          'success': false,
+          'message': error['message'] ?? 'Error al eliminar gasto',
+          'errorType': error['errorType'] ?? 'unknown',
+          'dineroRevertido': false,
+        };
+      }
     } catch (e) {
-      print('Error deleting gasto: $e');
-      return false;
+      print('❌ Error eliminando gasto: $e');
+      return {
+        'success': false,
+        'message': 'Error de conexión: $e',
+        'errorType': 'connection',
+        'dineroRevertido': false,
+      };
     }
   }
 

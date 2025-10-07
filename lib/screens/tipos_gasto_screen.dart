@@ -53,7 +53,10 @@ class _TiposGastoScreenState extends State<TiposGastoScreen> {
         await _crearTiposPredeterminados();
       }
     } catch (e) {
-      _showError('Error al cargar tipos de gasto: $e');
+      _showError(
+        'Error al cargar tipos de gasto: ${e.toString().split(':').first}',
+      );
+      print('Error detallado: $e');
     } finally {
       setState(() => _isLoading = false);
     }
@@ -158,10 +161,27 @@ class _TiposGastoScreenState extends State<TiposGastoScreen> {
   }
 
   bool _validateForm() {
-    if (_nombreController.text.trim().isEmpty) {
+    final nombre = _nombreController.text.trim();
+    if (nombre.isEmpty) {
       _showError('El nombre es requerido');
       return false;
     }
+
+    // Validar longitud del nombre (para prevenir nombres excesivamente largos)
+    if (nombre.length > 50) {
+      _showError('El nombre no puede superar los 50 caracteres');
+      return false;
+    }
+
+    // Validar si ya existe un tipo con el mismo nombre
+    if (_tipoEditando == null &&
+        _tiposGasto.any(
+          (tipo) => tipo.nombre.toLowerCase() == nombre.toLowerCase(),
+        )) {
+      _showError('Ya existe un tipo de gasto con este nombre');
+      return false;
+    }
+
     return true;
   }
 
@@ -171,9 +191,28 @@ class _TiposGastoScreenState extends State<TiposGastoScreen> {
       builder: (context) => AlertDialog(
         backgroundColor: cardBg,
         title: Text('Confirmar eliminación', style: TextStyle(color: textDark)),
-        content: Text(
-          '¿Está seguro de eliminar este tipo de gasto?',
-          style: TextStyle(color: textLight),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '¿Está seguro de eliminar este tipo de gasto?',
+              style: TextStyle(color: textLight),
+            ),
+            SizedBox(height: 12),
+            Text(
+              'Nombre: ${tipo.nombre}',
+              style: TextStyle(color: textDark, fontWeight: FontWeight.bold),
+            ),
+            if (tipo.descripcion != null && tipo.descripcion!.isNotEmpty)
+              Padding(
+                padding: EdgeInsets.only(top: 4),
+                child: Text(
+                  'Descripción: ${tipo.descripcion}',
+                  style: TextStyle(color: textLight, fontSize: 14),
+                ),
+              ),
+          ],
         ),
         actions: [
           TextButton(
@@ -191,15 +230,31 @@ class _TiposGastoScreenState extends State<TiposGastoScreen> {
     if (confirm == true) {
       try {
         setState(() => _isLoading = true);
+
+        if (tipo.id == null) {
+          throw Exception('ID del tipo de gasto no válido');
+        }
+
         final success = await _gastoService.deleteTipoGasto(tipo.id!);
         if (success) {
-          _showSuccess('Tipo de gasto eliminado exitosamente');
+          _showSuccess('Tipo de gasto "${tipo.nombre}" eliminado exitosamente');
           await _loadTiposGasto();
         } else {
-          _showError('Error al eliminar el tipo de gasto');
+          _showError('No se pudo eliminar el tipo de gasto');
         }
       } catch (e) {
-        _showError('Error al eliminar tipo de gasto: $e');
+        // Verificar si hay error por referencia (gastos asociados)
+        if (e.toString().contains('referencias') ||
+            e.toString().contains('constraint') ||
+            e.toString().contains('reference')) {
+          _showError(
+            'No se puede eliminar este tipo porque existen gastos asociados. ' +
+                'Considere desactivarlo en su lugar.',
+          );
+        } else {
+          _showError('Error al eliminar: ${e.toString().split(':').first}');
+          print('Error detallado: $e');
+        }
       } finally {
         setState(() => _isLoading = false);
       }
@@ -223,13 +278,35 @@ class _TiposGastoScreenState extends State<TiposGastoScreen> {
 
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red),
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(Icons.error_outline, color: Colors.white),
+            SizedBox(width: 8),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+        duration: Duration(seconds: 4),
+      ),
     );
   }
 
   void _showSuccess(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.green),
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(Icons.check_circle_outline, color: Colors.white),
+            SizedBox(width: 8),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: Colors.green,
+        behavior: SnackBarBehavior.floating,
+        duration: Duration(seconds: 3),
+      ),
     );
   }
 
@@ -242,19 +319,30 @@ class _TiposGastoScreenState extends State<TiposGastoScreen> {
         title: Text('Tipos de Gasto', style: TextStyle(color: Colors.white)),
         iconTheme: IconThemeData(color: Colors.white),
         elevation: 0,
+        actions: [
+          if (!_showForm && !_isLoading)
+            IconButton(
+              icon: Icon(Icons.refresh),
+              tooltip: 'Actualizar lista',
+              onPressed: _loadTiposGasto,
+            ),
+        ],
       ),
       floatingActionButton: !_showForm
           ? FloatingActionButton(
               onPressed: () => _showFormDialog(),
               backgroundColor: primary,
+              tooltip: 'Crear nuevo tipo de gasto',
               child: Icon(Icons.add, color: Colors.white),
             )
           : null,
-      body: _isLoading
-          ? Center(child: CircularProgressIndicator(color: primary))
-          : _showForm
-          ? _buildForm()
-          : _buildTiposList(),
+      body: SafeArea(
+        child: _isLoading
+            ? Center(child: CircularProgressIndicator(color: primary))
+            : _showForm
+            ? _buildForm()
+            : _buildTiposList(),
+      ),
     );
   }
 

@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/user_provider.dart';
 import '../models/cuadre_caja.dart';
-import '../models/resumen_cierre.dart';
+
 import '../services/cuadre_caja_service.dart';
 import '../services/resumen_cierre_service.dart';
+
 import 'ingresos_caja_screen.dart';
+import 'resumen_cierre_detallado_screen.dart';
 import '../utils/format_utils.dart';
 import 'contador_efectivo_screen.dart';
 import 'package:http/http.dart' as http;
@@ -383,6 +385,29 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
     }
   }
 
+  // Método para mostrar el resumen detallado del cuadre
+  void _mostrarResumenDetallado(CuadreCaja cuadre) {
+    if (cuadre.id == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: ID del cuadre no disponible'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ResumenCierreDetalladoScreen(
+          cuadreId: cuadre.id!,
+          nombreCuadre: cuadre.nombre,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // Check if user has admin permissions
@@ -620,7 +645,37 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                             ),
                           ),
                           onTap: () async {
-                            // Aquí se podría mostrar un DatePicker
+                            final date = await showDatePicker(
+                              context: context,
+                              initialDate: DateTime.now(),
+                              firstDate: DateTime(2020),
+                              lastDate: DateTime.now(),
+                              builder: (context, child) {
+                                return Theme(
+                                  data: ThemeData.dark().copyWith(
+                                    primaryColor: primary,
+                                    colorScheme: ColorScheme.dark(
+                                      primary: primary,
+                                      onPrimary: Colors.white,
+                                      surface: cardBg,
+                                      onSurface: textDark,
+                                    ),
+                                    buttonTheme: ButtonThemeData(
+                                      textTheme: ButtonTextTheme.primary,
+                                    ),
+                                  ),
+                                  child: child!,
+                                );
+                              },
+                            );
+                            if (date != null) {
+                              setState(() {
+                                _desdeController.text =
+                                    "${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}";
+                                // Aplicar filtros inmediatamente cuando se selecciona una fecha
+                                _buscarCuadres();
+                              });
+                            }
                           },
                           readOnly: true,
                         ),
@@ -642,7 +697,37 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                             ),
                           ),
                           onTap: () async {
-                            // Aquí se podría mostrar un DatePicker
+                            final date = await showDatePicker(
+                              context: context,
+                              initialDate: DateTime.now(),
+                              firstDate: DateTime(2020),
+                              lastDate: DateTime.now().add(Duration(days: 1)),
+                              builder: (context, child) {
+                                return Theme(
+                                  data: ThemeData.dark().copyWith(
+                                    primaryColor: primary,
+                                    colorScheme: ColorScheme.dark(
+                                      primary: primary,
+                                      onPrimary: Colors.white,
+                                      surface: cardBg,
+                                      onSurface: textDark,
+                                    ),
+                                    buttonTheme: ButtonThemeData(
+                                      textTheme: ButtonTextTheme.primary,
+                                    ),
+                                  ),
+                                  child: child!,
+                                );
+                              },
+                            );
+                            if (date != null) {
+                              setState(() {
+                                _hastaController.text =
+                                    "${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}";
+                                // Aplicar filtros inmediatamente cuando se selecciona una fecha
+                                _buscarCuadres();
+                              });
+                            }
                           },
                           readOnly: true,
                         ),
@@ -1987,802 +2072,4 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
       ),
     );
   }
-
-  // Mostrar diálogo con detalles completos del cuadre cerrado
-  void _mostrarDialogoDetalleCuadre(CuadreCaja cuadre) {
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (BuildContext context) {
-        return Dialog(
-          backgroundColor: cardBg,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15),
-          ),
-          child: SizedBox(
-            width: MediaQuery.of(context).size.width * 0.9,
-            height: MediaQuery.of(context).size.height * 0.9,
-            child: Column(
-              children: [
-                // Header del diálogo
-                Container(
-                  padding: EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: primary,
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(15),
-                      topRight: Radius.circular(15),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        "Resumen de Cierre",
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.close, color: Colors.white),
-                        onPressed: () => Navigator.of(context).pop(),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Contenido del diálogo con FutureBuilder
-                Expanded(
-                  child: FutureBuilder<ResumenCierre>(
-                    future: ResumenCierreService().getResumenCierre(
-                      cuadre.id ?? '',
-                    ),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              CircularProgressIndicator(),
-                              SizedBox(height: 16),
-                              Text(
-                                'Generando resumen detallado...',
-                                style: TextStyle(color: textDark),
-                              ),
-                            ],
-                          ),
-                        );
-                      }
-
-                      if (snapshot.hasError) {
-                        return Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.error, color: Colors.red, size: 64),
-                              SizedBox(height: 16),
-                              Text(
-                                'Error al cargar el resumen',
-                                style: TextStyle(color: textDark, fontSize: 18),
-                              ),
-                              SizedBox(height: 8),
-                              Text(
-                                '${snapshot.error}',
-                                style: TextStyle(color: Colors.red),
-                                textAlign: TextAlign.center,
-                              ),
-                              SizedBox(height: 16),
-                              ElevatedButton(
-                                onPressed: () {
-                                  Navigator.of(context).pop();
-                                  _mostrarDialogoDetalleCuadre(
-                                    cuadre,
-                                  ); // Reintentar
-                                },
-                                child: Text('Reintentar'),
-                              ),
-                            ],
-                          ),
-                        );
-                      }
-
-                      if (!snapshot.hasData) {
-                        return Center(
-                          child: Text(
-                            'No hay datos disponibles',
-                            style: TextStyle(color: textDark),
-                          ),
-                        );
-                      }
-
-                      final resumen = snapshot.data!;
-                      return _buildResumenCierreContent(resumen);
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  // Helper para formatear fecha y hora
-  String _formatearFechaHora(DateTime fecha) {
-    return "${fecha.year}-${fecha.month.toString().padLeft(2, '0')}-${fecha.day.toString().padLeft(2, '0')} ${fecha.hour.toString().padLeft(2, '0')}:${fecha.minute.toString().padLeft(2, '0')}:${fecha.second.toString().padLeft(2, '0')} ${fecha.hour >= 12 ? 'p. m.' : 'a. m.'}";
-  }
-
-  // Helper para construir secciones de detalle
-  Widget _buildSeccionDetalle(String titulo, List<String> contenido) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          titulo,
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: textDark,
-          ),
-        ),
-        SizedBox(height: 10),
-        ...contenido.map(
-          (item) => Padding(
-            padding: EdgeInsets.only(bottom: 4),
-            child: Text(item, style: TextStyle(color: textDark)),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // Helper para construir tablas de detalle
-  Widget _buildTablaDetalle(String titulo, List<List<String>> filas) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (titulo.isNotEmpty) ...[
-          Center(
-            child: Text(
-              titulo,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: textDark,
-              ),
-            ),
-          ),
-          SizedBox(height: 10),
-        ],
-        Container(
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey.shade600),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Table(
-            border: TableBorder.all(color: Colors.grey.shade600),
-            children: filas.asMap().entries.map((entry) {
-              int index = entry.key;
-              List<String> fila = entry.value;
-              bool esEncabezado = index == 0;
-
-              return TableRow(
-                decoration: BoxDecoration(
-                  color: esEncabezado
-                      ? Colors.grey.shade800.withOpacity(0.3)
-                      : null,
-                ),
-                children: fila
-                    .map(
-                      (celda) => Padding(
-                        padding: EdgeInsets.all(12),
-                        child: Text(
-                          celda,
-                          style: TextStyle(
-                            color: textDark,
-                            fontWeight: esEncabezado
-                                ? FontWeight.bold
-                                : FontWeight.normal,
-                          ),
-                          textAlign: fila.length > 2 && celda.contains('\$')
-                              ? TextAlign.right
-                              : TextAlign.left,
-                        ),
-                      ),
-                    )
-                    .toList(),
-              );
-            }).toList(),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // Helper para construir el resumen final - Sin gastos
-  Widget _buildResumenFinal(CuadreCaja cuadre) {
-    return FutureBuilder<Map<String, dynamic>>(
-      future: _cuadreCajaService.getEfectivoEsperado().then(
-        (efectivoData) => {'efectivoData': efectivoData},
-      ),
-      builder: (context, snapshot) {
-        double inicial = cuadre.fondoInicial;
-        double ventasEfectivo = cuadre.efectivoEsperado;
-        double ventasTransferencias = 0;
-        double gastos = 0; // Gastos siempre 0
-
-        if (snapshot.hasData) {
-          final data = snapshot.data!;
-
-          // Obtener transferencias
-          final efectivoData = data['efectivoData'] as Map<String, dynamic>;
-          ventasTransferencias =
-              (efectivoData['transferenciasEsperadas'] ??
-                      efectivoData['transferenciaEsperada'] ??
-                      0)
-                  .toDouble();
-        }
-
-        double totalVentas = ventasEfectivo + ventasTransferencias;
-        double facturas = 0; // Podrías agregar otra consulta para facturas
-        double totalEfectivo = inicial + ventasEfectivo - gastos - facturas;
-
-        return _buildTablaDetalle("Resumen", [
-          ["", ""],
-          [
-            "Inicial + ventas efectivo",
-            formatCurrency(inicial + ventasEfectivo),
-          ],
-          ["Transferencias", formatCurrency(ventasTransferencias)],
-          [
-            "Total inicial + ventas + transferencias",
-            formatCurrency(inicial + totalVentas),
-          ],
-          ["Pagos facturas de compras", "-${formatCurrency(facturas)}"],
-          ["Total Gastos", "-${formatCurrency(gastos)}"],
-          ["Total Efectivo en caja", formatCurrency(totalEfectivo)],
-          ["", ""],
-          ["Debe tener en efectivo", formatCurrency(totalEfectivo)],
-          [
-            "Debe tener en transferencias",
-            formatCurrency(ventasTransferencias),
-          ],
-          ["", ""],
-          // Eliminado: Domicilios
-        ]);
-      },
-    );
-  }
-
-  // Método que valida el cuadre antes de generar el resumen
-  Future<ResumenCierre> _generarResumenConValidacion(String cuadreId) async {
-    try {
-      if (cuadreId.isEmpty) {
-        throw Exception('ID de cuadre no válido');
-      }
-
-      // Validar que el cuadre existe
-      final cuadreExiste = await _resumenCierreService.validarCuadreExiste(
-        cuadreId,
-      );
-      if (!cuadreExiste) {
-        throw Exception('El cuadre especificado no existe o no es accesible');
-      }
-
-      // Generar el resumen
-      return await _resumenCierreService.getResumenCierre(cuadreId);
-    } catch (e) {
-      rethrow;
-    }
-  }
-
-  void _mostrarResumenDetallado(CuadreCaja cuadre) {
-    final Color primary = Color(0xFF1976D2);
-    final Color cardBg = Color(0xFF2C2C2C);
-    final Color textDark = Color(0xFFFFFFFF);
-    final Color textLight = Color(0xFFBBBBBB);
-
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (BuildContext context) {
-        return Dialog(
-          backgroundColor: cardBg,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15),
-          ),
-          child: SizedBox(
-            width: MediaQuery.of(context).size.width * 0.9,
-            height: MediaQuery.of(context).size.height * 0.9,
-            child: Column(
-              children: [
-                // Header del diálogo
-                Container(
-                  padding: EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: primary,
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(15),
-                      topRight: Radius.circular(15),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        "Resumen de Cierre Detallado",
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.close, color: Colors.white),
-                        onPressed: () => Navigator.of(context).pop(),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Contenido del diálogo con FutureBuilder
-                Expanded(
-                  child: FutureBuilder<ResumenCierre>(
-                    future: _generarResumenConValidacion(cuadre.id ?? ''),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              CircularProgressIndicator(color: primary),
-                              SizedBox(height: 16),
-                              Text(
-                                'Generando resumen detallado...',
-                                style: TextStyle(color: textDark),
-                              ),
-                              SizedBox(height: 8),
-                              Text(
-                                'Esto puede tomar unos segundos',
-                                style: TextStyle(
-                                  color: textLight,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      }
-
-                      if (snapshot.hasError) {
-                        return SingleChildScrollView(
-                          padding: EdgeInsets.all(20),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Mostrar error pero permitir ver información básica
-                              Container(
-                                padding: EdgeInsets.all(12),
-                                margin: EdgeInsets.only(bottom: 20),
-                                decoration: BoxDecoration(
-                                  color: Colors.red.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(
-                                    color: Colors.red.withOpacity(0.3),
-                                  ),
-                                ),
-                                child: Column(
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          Icons.warning,
-                                          color: Colors.red,
-                                          size: 20,
-                                        ),
-                                        SizedBox(width: 8),
-                                        Expanded(
-                                          child: Text(
-                                            'Resumen completo no disponible',
-                                            style: TextStyle(
-                                              color: Colors.red,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    SizedBox(height: 8),
-                                    Text(
-                                      '${snapshot.error}',
-                                      style: TextStyle(
-                                        color: Colors.red,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                    SizedBox(height: 8),
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        TextButton.icon(
-                                          onPressed: () {
-                                            Navigator.of(context).pop();
-                                            _mostrarResumenDetallado(cuadre);
-                                          },
-                                          icon: Icon(Icons.refresh, size: 16),
-                                          label: Text('Reintentar'),
-                                          style: TextButton.styleFrom(
-                                            foregroundColor: Colors.orange,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-
-                              // Mostrar información básica disponible
-                              Text(
-                                'Información Básica Disponible',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: textDark,
-                                ),
-                              ),
-                              SizedBox(height: 16),
-
-                              // Información del cuadre
-                              _buildInfoCardFallback([
-                                ['Responsable', cuadre.responsable],
-                                ['Caja', cuadre.nombre],
-                                [
-                                  'Fecha apertura',
-                                  _formatearFechaHora(cuadre.fechaApertura),
-                                ],
-                                [
-                                  'Fecha cierre',
-                                  cuadre.fechaCierre != null
-                                      ? _formatearFechaHora(cuadre.fechaCierre!)
-                                      : 'No cerrada',
-                                ],
-                                [
-                                  'Estado',
-                                  cuadre.cerrada ? 'Cerrada' : 'Abierta',
-                                ],
-                              ]),
-                              SizedBox(height: 20),
-
-                              // Información financiera básica
-                              Text(
-                                'Información Financiera',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: textDark,
-                                ),
-                              ),
-                              SizedBox(height: 10),
-                              _buildInfoCardFallback([
-                                [
-                                  'Fondo inicial',
-                                  formatCurrency(cuadre.fondoInicial),
-                                ],
-                                [
-                                  'Efectivo esperado',
-                                  formatCurrency(cuadre.efectivoEsperado),
-                                ],
-                                // Eliminado: Efectivo declarado y diferencia
-                              ]),
-                              SizedBox(height: 20),
-
-                              // Observaciones si las hay
-                              if (cuadre.observaciones != null &&
-                                  cuadre.observaciones!.isNotEmpty) ...[
-                                Text(
-                                  'Observaciones',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: textDark,
-                                  ),
-                                ),
-                                SizedBox(height: 8),
-                                Container(
-                                  width: double.infinity,
-                                  padding: EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(
-                                      color: Colors.grey.withOpacity(0.3),
-                                    ),
-                                  ),
-                                  child: Text(
-                                    cuadre.observaciones!,
-                                    style: TextStyle(color: textDark),
-                                  ),
-                                ),
-                                SizedBox(height: 20),
-                              ],
-
-                              // Nota sobre limitaciones
-                              Container(
-                                padding: EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: Colors.blue.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(
-                                    color: Colors.blue.withOpacity(0.3),
-                                  ),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          Icons.info,
-                                          color: Colors.blue,
-                                          size: 20,
-                                        ),
-                                        SizedBox(width: 8),
-                                        Text(
-                                          'Información limitada',
-                                          style: TextStyle(
-                                            color: Colors.blue,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    SizedBox(height: 8),
-                                    Text(
-                                      'El resumen completo no está disponible debido a un problema técnico. Se muestra la información básica del cuadre. Para el resumen detallado, puede intentar nuevamente o contactar soporte.',
-                                      style: TextStyle(
-                                        color: Colors.blue,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      }
-
-                      if (!snapshot.hasData) {
-                        return Center(
-                          child: Text(
-                            'No hay datos disponibles',
-                            style: TextStyle(color: textDark),
-                          ),
-                        );
-                      }
-
-                      final resumen = snapshot.data!;
-                      return _buildResumenCierreContent(resumen);
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildResumenCierreContent(ResumenCierre resumen) {
-    return SingleChildScrollView(
-      padding: EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Información básica
-          _buildSeccionTitulo('Información General'),
-          _buildInfoCard([
-            ['Responsable', resumen.cuadreInfo.responsable],
-            ['Caja', resumen.cuadreInfo.nombre],
-            [
-              'Fecha apertura',
-              _formatearFechaHora(
-                DateTime.parse(resumen.cuadreInfo.fechaApertura),
-              ),
-            ],
-            [
-              'Fecha cierre',
-              resumen.cuadreInfo.fechaCierre != null
-                  ? _formatearFechaHora(
-                      DateTime.parse(resumen.cuadreInfo.fechaCierre!),
-                    )
-                  : 'No cerrada',
-            ],
-            ['Estado', resumen.cuadreInfo.estado],
-          ]),
-
-          SizedBox(height: 20),
-
-          // Resumen financiero
-          _buildSeccionTitulo('Resumen Financiero'),
-          _buildInfoCard([
-            ['Fondo inicial', formatCurrency(resumen.cuadreInfo.fondoInicial)],
-            ['Total ventas', formatCurrency(resumen.resumenFinal.totalVentas)],
-            [
-              'Ingresos de caja',
-              formatCurrency(resumen.movimientosEfectivo.ingresosEfectivo),
-            ],
-            ['Total gastos', formatCurrency(resumen.resumenFinal.totalGastos)],
-            [
-              'Total compras',
-              formatCurrency(resumen.resumenFinal.totalCompras),
-            ],
-            [
-              'Utilidad bruta',
-              formatCurrency(resumen.resumenFinal.utilidadBruta),
-            ],
-            [
-              'Efectivo esperado',
-              formatCurrency(resumen.resumenFinal.efectivoEsperado),
-            ],
-          ]),
-
-          SizedBox(height: 20),
-
-          // Movimientos de efectivo
-          _buildSeccionTitulo('Movimientos de Efectivo'),
-          _buildInfoCard([
-            [
-              'Fondo inicial',
-              '\$${resumen.movimientosEfectivo.fondoInicial.toStringAsFixed(2)}',
-            ],
-            [
-              'Ventas en efectivo',
-              '\$${resumen.movimientosEfectivo.ventasEfectivo.toStringAsFixed(2)}',
-            ],
-            [
-              'Ingresos de caja',
-              '\$${resumen.movimientosEfectivo.ingresosEfectivo.toStringAsFixed(2)}',
-            ],
-            [
-              'Gastos en efectivo',
-              '\$${resumen.movimientosEfectivo.gastosEfectivo.toStringAsFixed(2)}',
-            ],
-            [
-              'Compras en efectivo',
-              '\$${resumen.movimientosEfectivo.comprasEfectivo.toStringAsFixed(2)}',
-            ],
-            [
-              'Efectivo esperado',
-              '\$${resumen.movimientosEfectivo.efectivoEsperado.toStringAsFixed(2)}',
-            ],
-            // Eliminado: Efectivo declarado, diferencia, tolerancia y cuadrado
-          ]),
-
-          SizedBox(height: 20),
-
-          // Detalles de ventas ocultos por solicitud del usuario
-          SizedBox(height: 20),
-
-          // Resumen de gastos
-          if (resumen.resumenGastos.totalRegistros > 0) ...[
-            _buildSeccionTitulo('Resumen de Gastos'),
-            _buildInfoCard([
-              ['Total registros', '${resumen.resumenGastos.totalRegistros}'],
-              [
-                'Total gastos',
-                '\$${resumen.resumenGastos.totalGastos.toStringAsFixed(2)}',
-              ],
-            ]),
-            SizedBox(height: 20),
-          ],
-
-          // Resumen de compras
-          if (resumen.resumenCompras.totalFacturas > 0) ...[
-            _buildSeccionTitulo('Resumen de Compras'),
-            _buildInfoCard([
-              ['Total facturas', '${resumen.resumenCompras.totalFacturas}'],
-              [
-                'Total compras',
-                '\$${resumen.resumenCompras.totalCompras.toStringAsFixed(2)}',
-              ],
-            ]),
-            SizedBox(height: 20),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-Widget _buildSeccionTitulo(String titulo) {
-  final Color primary = Color(0xFF1976D2);
-
-  return Padding(
-    padding: EdgeInsets.only(bottom: 12),
-    child: Text(
-      titulo,
-      style: TextStyle(
-        fontSize: 18,
-        fontWeight: FontWeight.bold,
-        color: primary,
-      ),
-    ),
-  );
-}
-
-Widget _buildInfoCard(List<List<String>> datos) {
-  final Color cardBg = Color(0xFF2C2C2C);
-  final Color textDark = Color(0xFFFFFFFF);
-  final Color textLight = Color(0xFFBBBBBB);
-
-  return Card(
-    color: cardBg,
-    child: Padding(
-      padding: EdgeInsets.all(16),
-      child: Column(
-        children: datos.map((fila) {
-          return Padding(
-            padding: EdgeInsets.symmetric(vertical: 4),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(fila[0], style: TextStyle(color: textLight)),
-                Text(
-                  fila[1],
-                  style: TextStyle(
-                    color: textDark,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          );
-        }).toList(),
-      ),
-    ),
-  );
-}
-
-// Helper para construir tarjetas de información en el fallback
-Widget _buildInfoCardFallback(List<List<String>> items) {
-  final Color cardBg = Color(0xFF2C2C2C);
-  final Color textDark = Color(0xFFFFFFFF);
-  final Color textLight = Color(0xFFBBBBBB);
-
-  return Container(
-    width: double.infinity,
-    padding: EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      color: cardBg.withOpacity(0.3),
-      borderRadius: BorderRadius.circular(8),
-      border: Border.all(color: Colors.grey.withOpacity(0.3)),
-    ),
-    child: Column(
-      children: items.map((item) {
-        return Padding(
-          padding: EdgeInsets.symmetric(vertical: 4),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(item[0], style: TextStyle(color: textLight, fontSize: 14)),
-              Text(
-                item[1],
-                style: TextStyle(
-                  color: textDark,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        );
-      }).toList(),
-    ),
-  );
 }

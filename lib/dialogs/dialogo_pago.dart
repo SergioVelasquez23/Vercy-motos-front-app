@@ -4,6 +4,7 @@ import '../../theme/app_theme.dart';
 import '../../models/mesa.dart';
 import '../../models/pedido.dart';
 import '../../models/item_pedido.dart';
+import '../../models/pago_parcial.dart';
 import '../../widgets/common/common_widgets.dart';
 import '../../utils/format_utils.dart';
 
@@ -189,6 +190,72 @@ class _DialogoPagoState extends State<DialogoPago> {
       }
     }
     return items;
+  }
+
+  // Genera los pagos parciales según la selección actual
+  List<PagoParcial> generarPagosParciales(String nombreUsuario) {
+    final pagosParciales = <PagoParcial>[];
+    final now = DateTime.now();
+
+    if (pagoMultiple) {
+      // Procesar pagos parciales con diferentes medios
+      if (montoEfectivoController.text.isNotEmpty) {
+        final montoEfectivo =
+            double.tryParse(montoEfectivoController.text) ?? 0.0;
+        if (montoEfectivo > 0) {
+          pagosParciales.add(
+            PagoParcial(
+              monto: montoEfectivo,
+              formaPago: 'efectivo',
+              fecha: now,
+              procesadoPor: nombreUsuario,
+            ),
+          );
+        }
+      }
+
+      if (montoTarjetaController.text.isNotEmpty) {
+        final montoTarjeta =
+            double.tryParse(montoTarjetaController.text) ?? 0.0;
+        if (montoTarjeta > 0) {
+          pagosParciales.add(
+            PagoParcial(
+              monto: montoTarjeta,
+              formaPago: 'tarjeta',
+              fecha: now,
+              procesadoPor: nombreUsuario,
+            ),
+          );
+        }
+      }
+
+      if (montoTransferenciaController.text.isNotEmpty) {
+        final montoTransferencia =
+            double.tryParse(montoTransferenciaController.text) ?? 0.0;
+        if (montoTransferencia > 0) {
+          pagosParciales.add(
+            PagoParcial(
+              monto: montoTransferencia,
+              formaPago: 'transferencia',
+              fecha: now,
+              procesadoPor: nombreUsuario,
+            ),
+          );
+        }
+      }
+    } else {
+      // Pago simple con un solo medio de pago
+      pagosParciales.add(
+        PagoParcial(
+          monto: totalConPropina,
+          formaPago: medioPago,
+          fecha: now,
+          procesadoPor: nombreUsuario,
+        ),
+      );
+    }
+
+    return pagosParciales;
   }
 
   @override
@@ -1267,13 +1334,48 @@ class _DialogoPagoState extends State<DialogoPago> {
       return;
     }
 
+    // Validar los montos totales si es pago múltiple
+    if (pagoMultiple) {
+      final totalPagos = _calcularTotalPagosMultiples();
+      final diferencia = totalPagos - totalConPropina;
+
+      // Diferencia máxima permitida de 10 pesos
+      if (diferencia.abs() > 10) {
+        String mensaje;
+        if (diferencia < 0) {
+          mensaje =
+              'El monto total es insuficiente. Faltan ${formatCurrency(diferencia.abs())}.';
+        } else {
+          mensaje =
+              'El monto total excede lo requerido. Sobran ${formatCurrency(diferencia)}.';
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(mensaje, style: TextStyle(color: Colors.white)),
+            backgroundColor: AppTheme.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+    }
+
+    // Calcular propina
+    final propina = propinaController.text.isNotEmpty
+        ? double.tryParse(propinaController.text) ?? 0.0
+        : 0.0;
+
+    // Generar los pagos parciales
+    final pagosParciales = _generarPagosParciales();
+
     // ✅ SINCRONIZADO: Usar itemsParaPagar del getter
     final resultado = {
       'medioPago': medioPago,
       'incluyePropina': incluyePropina,
       'descuentoPorcentaje': descuentoPorcentajeController.text,
       'descuentoValor': descuentoValorController.text,
-      'propina': propinaController.text,
+      'propina': propina,
       'esCortesia': esCortesia,
       'esConsumoInterno': esConsumoInterno,
       'billetesRecibidos': billetesSeleccionados,
@@ -1284,8 +1386,96 @@ class _DialogoPagoState extends State<DialogoPago> {
       'productosSeleccionados': itemsParaPagar, // ✅ Usar getter sincronizado
       'totalCalculado': totalConPropina, // ✅ Usar getter sincronizado
       'subtotalSeleccionado': totalSeleccionado, // ✅ Usar getter sincronizado
+      'pagosParciales': pagosParciales,
+      'totalPagado': pagoMultiple
+          ? _calcularTotalPagosMultiples()
+          : totalConPropina,
+      'fechaPago': DateTime.now(),
     };
 
     Navigator.pop(context, resultado);
+  }
+
+  // Calcular el total de los pagos múltiples
+  double _calcularTotalPagosMultiples() {
+    final montoEfectivo = montoEfectivoController.text.isNotEmpty
+        ? double.tryParse(montoEfectivoController.text) ?? 0.0
+        : 0.0;
+
+    final montoTarjeta = montoTarjetaController.text.isNotEmpty
+        ? double.tryParse(montoTarjetaController.text) ?? 0.0
+        : 0.0;
+
+    final montoTransferencia = montoTransferenciaController.text.isNotEmpty
+        ? double.tryParse(montoTransferenciaController.text) ?? 0.0
+        : 0.0;
+
+    return montoEfectivo + montoTarjeta + montoTransferencia;
+  }
+
+  // Generar los pagos parciales según los montos ingresados
+  List<PagoParcial> _generarPagosParciales() {
+    final List<PagoParcial> pagosParciales = [];
+    final now = DateTime.now();
+    final String procesadoPor = 'Sistema'; // Idealmente obtenido del context
+
+    if (pagoMultiple) {
+      // Agregar pago en efectivo si hay monto
+      if (montoEfectivoController.text.isNotEmpty) {
+        final monto = double.tryParse(montoEfectivoController.text);
+        if (monto != null && monto > 0) {
+          pagosParciales.add(
+            PagoParcial(
+              monto: monto,
+              formaPago: 'efectivo',
+              fecha: now,
+              procesadoPor: procesadoPor,
+            ),
+          );
+        }
+      }
+
+      // Agregar pago con tarjeta si hay monto
+      if (montoTarjetaController.text.isNotEmpty) {
+        final monto = double.tryParse(montoTarjetaController.text);
+        if (monto != null && monto > 0) {
+          pagosParciales.add(
+            PagoParcial(
+              monto: monto,
+              formaPago: 'tarjeta',
+              fecha: now,
+              procesadoPor: procesadoPor,
+            ),
+          );
+        }
+      }
+
+      // Agregar pago con transferencia si hay monto
+      if (montoTransferenciaController.text.isNotEmpty) {
+        final monto = double.tryParse(montoTransferenciaController.text);
+        if (monto != null && monto > 0) {
+          pagosParciales.add(
+            PagoParcial(
+              monto: monto,
+              formaPago: 'transferencia',
+              fecha: now,
+              procesadoPor: procesadoPor,
+            ),
+          );
+        }
+      }
+    } else {
+      // Agregar un solo pago con el medio seleccionado
+      pagosParciales.add(
+        PagoParcial(
+          monto: totalConPropina,
+          formaPago: medioPago,
+          fecha: now,
+          procesadoPor: procesadoPor,
+        ),
+      );
+    }
+
+    return pagosParciales;
   }
 }

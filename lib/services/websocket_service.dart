@@ -156,6 +156,13 @@ class WebSocketService {
 
   /// Desconectar del WebSocket
   Future<void> disconnect() async {
+    // No desconectar si la aplicación está en la pantalla de mesas
+    // Esto es para mantener la conexión viva incluso cuando el usuario cambia de pantalla
+    if (_keepAlive) {
+      print('🔌 WebSocket: Desconexión ignorada - modo keep-alive activo');
+      return;
+    }
+
     print('🔌 WebSocket: Desconectando...');
 
     _isConnected = false;
@@ -166,6 +173,17 @@ class WebSocketService {
     _channel = null;
 
     print('✅ WebSocket: Desconectado');
+  }
+
+  // Variable para mantener activa la conexión
+  bool _keepAlive = false;
+
+  /// Establece el modo keep-alive para evitar desconexiones
+  void setKeepAlive(bool keepAlive) {
+    _keepAlive = keepAlive;
+    if (keepAlive && !_isConnected) {
+      connect(); // Reconectar si se activa keep-alive y no hay conexión
+    }
   }
 
   /// Enviar mensaje al servidor
@@ -286,7 +304,10 @@ extension WebSocketServiceUtils on WebSocketService {
     return events.where(
       (event) =>
           event.event == WebSocketEvent.mesaOcupada ||
-          event.event == WebSocketEvent.mesaLiberada,
+          event.event == WebSocketEvent.mesaLiberada ||
+          event.event == WebSocketEvent.pedidoCreado ||
+          event.event == WebSocketEvent.pedidoPagado ||
+          event.event == WebSocketEvent.pedidoCancelado,
     );
   }
 

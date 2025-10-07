@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models/negocio_info.dart';
 import '../services/negocio_info_service.dart';
@@ -36,7 +37,7 @@ class _NegocioInfoScreenState extends State<NegocioInfoScreen> {
   bool _isSaving = false;
   String? _error;
   NegocioInfo? _currentInfo;
-  File? _selectedLogo;
+  XFile? _selectedLogo;
 
   // Valores de dropdown
   String _selectedPais = 'Colombia';
@@ -161,7 +162,7 @@ class _NegocioInfoScreenState extends State<NegocioInfoScreen> {
 
       if (image != null) {
         setState(() {
-          _selectedLogo = File(image.path);
+          _selectedLogo = image;
         });
       }
     } catch (e) {
@@ -472,7 +473,12 @@ class _NegocioInfoScreenState extends State<NegocioInfoScreen> {
             child: _selectedLogo != null
                 ? ClipRRect(
                     borderRadius: BorderRadius.circular(8),
-                    child: Image.file(_selectedLogo!, fit: BoxFit.cover),
+                    child: kIsWeb
+                        ? Image.network(_selectedLogo!.path, fit: BoxFit.cover)
+                        : Image.file(
+                            File(_selectedLogo!.path),
+                            fit: BoxFit.cover,
+                          ),
                   )
                 : _currentInfo?.logoUrl != null
                 ? ClipRRect(

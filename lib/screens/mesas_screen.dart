@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/mesa_websocket_mixin.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'dart:async';
@@ -52,7 +53,8 @@ class MesasScreen extends StatefulWidget {
   State<MesasScreen> createState() => _MesasScreenState();
 }
 
-class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
+class _MesasScreenState extends State<MesasScreen>
+    with ImpresionMixin, MesaWebSocketMixin {
   // Recarga toda la pestaña de mesas y navega al mismo módulo/tab
   void _recargarPestanaActual() {
     final currentRoute = ModalRoute.of(context)?.settings.name;
@@ -84,12 +86,6 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
         (mesa) => mesa.nombre.toLowerCase() == 'deudas',
         orElse: () => throw StateError('Mesa Deudas no encontrada'),
       );
-
-      print(
-        '✅ Mesa Deudas encontrada: ${mesaDeudas.nombre} (Tipo: ${mesaDeudas.tipo})',
-      );
-      print('   📍 Estado: ${mesaDeudas.ocupada ? "Ocupada" : "Disponible"}');
-      print('   💰 Total: \$${mesaDeudas.total}');
     } catch (e) {
       print('⚠️ Mesa Deudas no encontrada en el sistema');
       print(
@@ -163,8 +159,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
   // Key para forzar reconstrucción de widgets después de operaciones
   int _widgetRebuildKey = 0;
 
-  // Subscripción WebSocket para eventos de mesa
-  StreamSubscription? _mesaWebSocketSubscription;
+  // La subscripción WebSocket ahora se maneja en el mixin MesaWebSocketMixin
 
   // Paleta de colores mejorada
   static const _backgroundDark = Color(0xFF1A1A1A);
@@ -354,18 +349,8 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
       String formapagoValidada = formaPago ?? 'efectivo';
       if (formapagoValidada != 'efectivo' &&
           formapagoValidada != 'transferencia') {
-        print(
-          '⚠️ Forma de pago no reconocida: "$formapagoValidada". Usando efectivo por defecto.',
-        );
         formapagoValidada = 'efectivo';
       }
-
-      print('💰 Datos del documento:');
-      print('  - Mesa: ${pedido.mesa}');
-      print('  - Forma de pago: $formapagoValidada');
-      print('  - Propina: ${propina ?? 0.0}');
-      print('  - Pagado por: ${pagadoPor ?? vendedor}');
-
       // Crear documento usando el servicio real
       final documento = await _documentoMesaService.crearDocumento(
         mesaNombre: pedido.mesa,
@@ -642,7 +627,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
       final textoImpresion = _impresionService.generarTextoImpresion(resumen);
       await Share.share(
         textoImpresion,
-        subject: 'Resumen de Pedido - ${resumen['pedidoId']}',
+        subject: 'Resumen de Pedido - ${resumen['numeroPedido'] ?? 'N/A'}',
       );
     } catch (e) {
       if (mounted) {
@@ -742,7 +727,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
         // Guardar temporalmente el PDF
         final tempDir = Directory.systemTemp;
         final fileName =
-            'resumen_pedido_${resumen['pedidoId']}_${DateTime.now().millisecondsSinceEpoch}.pdf';
+            'resumen_pedido_${resumen['numeroPedido'] ?? DateTime.now().millisecondsSinceEpoch}_${DateTime.now().millisecondsSinceEpoch}.pdf';
         final file = File('${tempDir.path}/$fileName');
         await file.writeAsBytes(pdfBytes);
 
@@ -753,7 +738,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
         // Compartir el archivo PDF
         await Share.shareXFiles([
           XFile(file.path),
-        ], subject: 'Resumen de Pedido - ${resumen['pedidoId']}');
+        ], subject: 'Resumen de Pedido - ${resumen['numeroPedido'] ?? 'N/A'}');
       }
     } catch (e) {
       if (Navigator.canPop(context)) {
@@ -1064,8 +1049,6 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
     try {
       // Simular guardado en base de datos local o archivo
       // En una implementación real, esto debería enviar a tu backend
-      print('📁 Guardando deuda: ${jsonEncode(deuda)}');
-
       // Simular delay de red
       await Future.delayed(Duration(milliseconds: 500));
     } catch (e) {
@@ -1348,7 +1331,6 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
 
   // Método para construir item de producto con ingredientes
   Widget _buildProductoItemConIngredientes(Map<String, dynamic> producto) {
-    print('Producto en dialogo pago: ${producto.toString()}');
     return Container(
       margin: EdgeInsets.symmetric(vertical: 4),
       padding: EdgeInsets.all(12),
@@ -1434,11 +1416,9 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
   void initState() {
     super.initState();
     _loadMesas();
-    _configurarWebSockets();
+    // Configurar WebSocket para actualización en tiempo real
+    setupMesaWebSockets(() => _recargarMesasConCards());
     _verificarMesaDeudas(); // ✅ Verificar mesa Deudas al iniciar
-    print(
-      '🟢 [DEBUG] initState: WebSocket listeners ACTIVOS para recarga automática.',
-    );
   }
 
   // void _iniciarSincronizacion() {
@@ -1447,76 +1427,71 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
 
   @override
   void dispose() {
-    // Cancelar subscripción WebSocket si existe
-    _mesaWebSocketSubscription?.cancel();
-    print('🟢 [DEBUG] dispose: Subscripción WebSocket cancelada.');
+    // Liberar recursos de WebSocket
+    disposeMesaWebSockets();
+
+    // Desactivar el modo keep-alive cuando se salga de la pantalla
+    final ws = WebSocketService();
+    ws.setKeepAlive(false);
+
     super.dispose();
   }
 
-  void _configurarWebSockets() {
-    // Activar listeners automáticos de recarga de mesas por eventos de WebSocket
-    // print(
-    //   '🟢 [DEBUG] _configurarWebSockets: Activando listeners WebSocket para mesas.',
-    // );
-    try {
-      final ws = WebSocketService();
-      ws.connect(); // Asegura conexión
-      _mesaWebSocketSubscription = ws.mesaEvents.listen((event) async {
-        // print('🟢 [WebSocket] Evento de mesa recibido: \\${event.event}');
-        // Buscar la mesa afectada por ID o nombre
-        String? mesaId;
-        if (event.data.containsKey('mesaId')) {
-          mesaId = event.data['mesaId']?.toString();
-        } else if (event.data.containsKey('id')) {
-          mesaId = event.data['id']?.toString();
-        }
-        if (mesaId != null) {
-          final mesa = mesas.firstWhereOrNull((m) => m.id.toString() == mesaId);
-          if (mesa != null) {
-            // print(
-            //   '🟢 [WebSocket] Actualizando card de mesa: \\${mesa.nombre} (ID: \\${mesa.id})',
-            // );
-            await _actualizarMesaEspecifica(mesa);
-          } else {
-            print(
-              '⚠️ [WebSocket] Mesa con id=\\$mesaId no encontrada en lista local.',
-            );
-          }
-        } else {
-          print(
-            '⚠️ [WebSocket] Evento de mesa sin id. Se recarga todo por fallback.',
-          );
-          await _loadMesas();
-        }
-      });
-    } catch (e) {
-      print('❌ [WebSocket] Error al configurar listeners: \\${e.toString()}');
-    }
-  }
+  // Este método ha sido reemplazado por el mixin MesaWebSocketMixin
+  // WebSocket configuration is now handled by MesaWebSocketMixin
 
   Future<void> _loadMesas() async {
     try {
-      // print('🔄 Cargando mesas...');
+      print('🔄 Cargando todas las mesas de una vez...');
       setState(() {
         isLoading = true;
         errorMessage = null;
       });
+
+      // Obtener todas las mesas en una sola llamada
       final loadedMesas = await _mesaService.getMesas();
-      print(
-        '✅ ${loadedMesas.length} mesas obtenidas (${loadedMesas.where((m) => m.ocupada).length} ocupadas)',
-      );
-      // Eliminada la sincronización de estado de mesas
+
+      // Para cada mesa, también cargar sus pedidos en la misma llamada
+      // Esto se hace para evitar múltiples llamadas individuales posteriormente
+      final List<Future<void>> pedidosFutures = [];
+
+      for (final mesa in loadedMesas) {
+        if (mesa.ocupada) {
+          // Hacer esto solo para mesas ocupadas para ahorrar recursos
+          pedidosFutures.add(_cargarPedidosParaMesa(mesa));
+        }
+      }
+
+      // Esperar a que todas las cargas de pedidos terminen (en paralelo)
+      if (pedidosFutures.isNotEmpty) {
+        await Future.wait(pedidosFutures);
+      }
+
       setState(() {
         mesas = loadedMesas;
         isLoading = false;
       });
-      print('✅ Carga de mesas completada');
+
+      print('✅ Carga de mesas completa - ${loadedMesas.length} mesas cargadas');
     } catch (error) {
       print('❌ Error al cargar mesas: $error');
       setState(() {
         errorMessage = 'Error al cargar mesas: $error';
         isLoading = false;
       });
+    }
+  }
+
+  // Método auxiliar para cargar pedidos de una mesa específica
+  Future<void> _cargarPedidosParaMesa(Mesa mesa) async {
+    try {
+      // Obtener los pedidos de la mesa
+      await _pedidoService.getPedidosByMesa(mesa.nombre);
+      // No necesitamos guardar la variable ya que solo queremos pre-cargar los datos
+      // para que estén en caché cuando los necesitemos
+    } catch (e) {
+      print('⚠️ Error al cargar pedidos para mesa ${mesa.nombre}: $e');
+      // No lanzamos excepción para que la carga de otras mesas pueda continuar
     }
   }
 
@@ -1538,8 +1513,6 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
   /// Actualización OPTIMIZADA de una mesa específica (sin múltiples llamadas)
   Future<void> _actualizarMesaEspecifica(Mesa mesa) async {
     try {
-      print('� ACTUALIZACIÓN ULTRA AGRESIVA de mesa: ${mesa.nombre}');
-
       // print('🔄 Actualizando mesa específica: ${mesa.nombre}');
 
       // 1. Una sola llamada para obtener pedidos activos
@@ -1638,7 +1611,6 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
       );
 
       // 4. ACTUALIZAR EN EL BACKEND PARA ASEGURAR CONSISTENCIA
-      print('🔄 Paso 4: Actualizando backend...');
       await _mesaService.updateMesa(mesaNueva);
       await Future.delayed(Duration(milliseconds: 300)); // Esperar confirmación
 
@@ -1659,14 +1631,12 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
               );
               _widgetRebuildKey += 50; // Incremento masivo
             });
-            print('🔄 Actualización #$i: key=$_widgetRebuildKey');
             await Future.delayed(Duration(milliseconds: 150));
           }
         }
       }
 
       // 6. FORZAR RECARGA COMPLETA ADICIONAL
-      print('🔄 Paso 6: Recarga completa adicional...');
       await Future.delayed(Duration(milliseconds: 500));
       await _loadMesas();
 
@@ -1675,10 +1645,6 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
           _widgetRebuildKey += 100; // Incremento final masivo
         });
       }
-
-      print('✅ RECONSTRUCCIÓN TOTAL COMPLETADA');
-      print('🎯 ${mesa.nombre}: ${mesa.total} -> $totalReal');
-      print('🔑 Key final: $_widgetRebuildKey');
     } catch (e) {
       print('❌ Error en reconstrucción total: $e');
       // Fallback: recarga ultra agresiva
@@ -1889,11 +1855,8 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
 
   Future<Pedido?> _obtenerPedidoActivoDeMesa(Mesa mesa) async {
     try {
-      print('🔍 Buscando pedido activo para mesa: ${mesa.id}');
-
       // Siempre buscar en el servidor para obtener el ID más actualizado
       final pedidos = await _pedidoService.getPedidosByMesa(mesa.nombre);
-      print('📋 Pedidos encontrados para la mesa: ${pedidos.length}');
 
       final pedidoActivo = pedidos.firstWhere(
         (pedido) => pedido.estado == EstadoPedido.activo,
@@ -1902,7 +1865,6 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
 
       // Verificar que el ID no esté vacío
       if (pedidoActivo.id.isEmpty) {
-        print('❌ ERROR: El pedido activo no tiene ID válido');
         throw Exception('El pedido activo no tiene ID válido');
       }
 
@@ -1912,9 +1874,6 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
 
       // Si no hay pedido activo pero la mesa aparece ocupada, corregir automáticamente
       if (mesa.ocupada || mesa.total > 0) {
-        print(
-          '🔧 Corrigiendo estado de mesa ${mesa.nombre} sin pedidos activos...',
-        );
         try {
           mesa.ocupada = false;
           mesa.productos = [];
@@ -3182,25 +3141,6 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                     Expanded(
                                       child: ElevatedButton.icon(
                                         onPressed: () async {
-                                          print(
-                                            '🔄 USUARIO PRESIONÓ BOTÓN MOVER PRODUCTOS',
-                                          );
-                                          print('📊 ESTADO ACTUAL:');
-                                          print(
-                                            '   • Mesa origen: ${mesa.nombre} (ID: ${mesa.id})',
-                                          );
-                                          print('   • Pedido: ${pedido.id}');
-                                          print(
-                                            '   • Productos seleccionados: ${productosSeleccionados.length}',
-                                          );
-                                          print(
-                                            '   • Total de mesas disponibles: ${mesas.where((m) => m.id != mesa.id).length}',
-                                          );
-
-                                          // Mostrar diálogo para seleccionar mesa destino
-                                          print(
-                                            '📋 MOSTRANDO DIÁLOGO DE SELECCIÓN DE MESA...',
-                                          );
                                           final mesaDestino = await showDialog<Mesa>(
                                             context: context,
                                             builder: (context) => AlertDialog(
@@ -3281,13 +3221,6 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                                           );
 
                                           if (mesaDestino != null) {
-                                            print(
-                                              '🎯 USUARIO SELECCIONÓ MESA DESTINO: ${mesaDestino.nombre}',
-                                            );
-                                            print(
-                                              '📦 PRODUCTOS SELECCIONADOS PARA MOVER: ${productosSeleccionados.length}',
-                                            );
-
                                             // Cerrar diálogo principal primero
                                             Navigator.pop(context);
 
@@ -5338,22 +5271,22 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
         if (esCortesia) tipoTexto = ' (Cortesía)';
         if (esConsumoInterno) tipoTexto = ' (Consumo Interno)';
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Pedido pagado y documento generado exitosamente$tipoTexto',
+        // Mostrar mensaje de éxito inmediatamente
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Pedido pagado y documento generado exitosamente$tipoTexto',
+              ),
+              backgroundColor: Colors.green,
             ),
-            backgroundColor: Colors.green,
-          ),
-        );
-
-        // 🚨 RECONSTRUCCIÓN TOTAL DESDE CERO
-        await _reconstruirCardDesdeCero(mesa);
-
-        // Solo actualizar la card de la mesa (no recargar todas)
-        await _actualizarMesaEspecifica(mesa);
+          );
+        }
 
         print('✅ Procesamiento completado exitosamente');
+
+        // Realizar actualizaciones de UI en background (sin bloquear)
+        _actualizarUIEnBackground(mesa);
       } catch (e) {
         print('❌ Error en procesamiento: $e');
 
@@ -5365,9 +5298,32 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
             ),
           );
         }
+      } finally {
+        // Asegurar que el diálogo de carga siempre se cierre
+        if (mounted) {
+          Navigator.of(context).pop();
+        }
       }
     } else {
       print('⏭️ Usuario canceló el diálogo');
+    }
+  }
+
+  /// Actualiza la UI en background después de un pago exitoso
+  void _actualizarUIEnBackground(Mesa mesa) async {
+    try {
+      print('🔄 Iniciando actualización de UI en background...');
+
+      // 🚨 RECONSTRUCCIÓN TOTAL DESDE CERO
+      await _reconstruirCardDesdeCero(mesa);
+
+      // Solo actualizar la card de la mesa (no recargar todas)
+      await _actualizarMesaEspecifica(mesa);
+
+      print('✅ Actualización de UI completada en background');
+    } catch (e) {
+      print('⚠️ Error en actualización de UI background: $e');
+      // No mostrar error al usuario, la operación crítica ya se completó
     }
   }
 
@@ -6809,7 +6765,12 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
       }
 
       // Actualizar resumen con información del negocio
-      final resumen = await actualizarConInfoNegocio(resumenNullable);
+      final resumenConInfo = await actualizarConInfoNegocio(resumenNullable);
+
+      // Limpiar el resumen de IDs de MongoDB para mejor presentación
+      final resumen = _impresionService.limpiarResumenParaVisualizacion(
+        resumenConInfo,
+      );
 
       // Cerrar diálogo de carga
       Navigator.of(context).pop();
@@ -6861,7 +6822,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
 
                   // Información del pedido
                   _buildSeccionResumen('INFORMACIÓN DEL PEDIDO', [
-                    'Pedido: ${resumen['pedidoId'] ?? 'N/A'}',
+                    'N° Pedido: ${resumen['numeroPedido'] ?? 'N/A'}',
                     'Fecha: ${resumen['fecha'] ?? 'N/A'}',
                     'Hora: ${resumen['hora'] ?? 'N/A'}',
                     if (resumen['mesa'] != null) 'Mesa: ${resumen['mesa']}',
@@ -7002,7 +6963,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
       final textoImpresion = _impresionService.generarTextoImpresion(resumen);
       await Share.share(
         textoImpresion,
-        subject: 'Resumen de Pedido - ${resumen['pedidoId']}',
+        subject: 'Resumen de Pedido - ${resumen['numeroPedido'] ?? 'N/A'}',
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -7389,7 +7350,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
       // Guardar archivo PDF
       final tempDir = Directory.systemTemp;
       final pdfFile = File(
-        '${tempDir.path}/ticket_${resumen['pedidoId'] ?? DateTime.now().millisecondsSinceEpoch}.pdf',
+        '${tempDir.path}/ticket_${resumen['numeroPedido'] ?? DateTime.now().millisecondsSinceEpoch}.pdf',
       );
 
       await pdfFile.writeAsBytes(pdfBytes);
@@ -8959,10 +8920,8 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
 
       print('📦 Total final de pedidos encontrados: ${pedidos.length}');
 
-      // Debug: mostrar todos los pedidos encontrados
-      for (int i = 0; i < pedidos.length; i++) {
-        final p = pedidos[i];
-      }
+      // Debug: No es necesario iterar sobre los pedidos solo para contarlos
+      // El total ya se muestra en el log anterior
 
       // Filtrar solo pedidos activos (no pagados, no cancelados)
       final pedidosActivos = pedidos

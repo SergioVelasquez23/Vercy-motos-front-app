@@ -17,6 +17,7 @@ class CuadreCaja {
   final DateTime? fechaAprobacion;
   final String? urlComprobanteDiario;
   final String? urlInventario;
+  final double totalIngresos; // Nuevo campo para el total de ingresos
 
   CuadreCaja({
     this.id,
@@ -37,6 +38,7 @@ class CuadreCaja {
     this.fechaAprobacion,
     this.urlComprobanteDiario,
     this.urlInventario,
+    this.totalIngresos = 0.0, // Valor por defecto
   });
 
   factory CuadreCaja.fromJson(Map<String, dynamic> json) {
@@ -63,6 +65,7 @@ class CuadreCaja {
           : null,
       urlComprobanteDiario: json['urlComprobanteDiario'],
       urlInventario: json['urlInventario'],
+      totalIngresos: (json['totalIngresos'] ?? 0).toDouble(),
     );
   }
 
@@ -88,6 +91,7 @@ class CuadreCaja {
       if (urlComprobanteDiario != null)
         'urlComprobanteDiario': urlComprobanteDiario,
       if (urlInventario != null) 'urlInventario': urlInventario,
+      'totalIngresos': totalIngresos,
     };
   }
 
@@ -110,6 +114,7 @@ class CuadreCaja {
     DateTime? fechaAprobacion,
     String? urlComprobanteDiario,
     String? urlInventario,
+    double? totalIngresos,
   }) {
     return CuadreCaja(
       id: id ?? this.id,
@@ -130,6 +135,7 @@ class CuadreCaja {
       fechaAprobacion: fechaAprobacion ?? this.fechaAprobacion,
       urlComprobanteDiario: urlComprobanteDiario ?? this.urlComprobanteDiario,
       urlInventario: urlInventario ?? this.urlInventario,
+      totalIngresos: totalIngresos ?? this.totalIngresos,
     );
   }
 

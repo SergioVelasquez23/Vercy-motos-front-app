@@ -16,7 +16,7 @@ class ReportesService {
         (json) => json,
       );
 
-      print('📡 Respuesta recibida - Success: ${response.isSuccess}');
+      // Respuesta recibida - Success: ${response.isSuccess}
       print('📦 Data: ${response.data != null ? 'Presente' : 'Null'}');
 
       if (response.isSuccess && response.data != null) {

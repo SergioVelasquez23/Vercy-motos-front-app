@@ -871,12 +871,33 @@ class _PedidoScreenState extends State<PedidoScreen> {
   }
 
   Future<void> _agregarProducto(Producto producto) async {
-    // --- NUEVA LÓGICA: Si el producto ya existe con las mismas opciones, solo incrementar cantidad ---
+    // --- NUEVA LÓGICA: Si el producto ya existe, crear un nuevo item con mismas características ---
     int index = productosMesa.indexWhere((p) => p.id == producto.id);
     if (index != -1) {
-      // Si ya existe y tiene las mismas opciones, solo incrementar cantidad y salir
-      // Puedes agregar aquí más comparaciones si tienes variantes/opciones en el producto
-      productosMesa[index].cantidad++;
+      // En lugar de incrementar la cantidad, agregamos un nuevo producto idéntico
+      // Esto evita los problemas en el backend con la comparación de notas
+      Producto nuevoProducto = Producto(
+        id: producto.id,
+        nombre: producto.nombre,
+        descripcion: producto.descripcion,
+        precio: producto.precio,
+        costo: producto.costo,
+        utilidad: producto.utilidad,
+        categoria: producto.categoria,
+        cantidad: 1, // Siempre cantidad 1 para el nuevo item
+        tieneIngredientes: producto.tieneIngredientes,
+        tipoProducto: producto.tipoProducto,
+        ingredientesRequeridos: producto.ingredientesRequeridos,
+        ingredientesOpcionales: producto.ingredientesOpcionales,
+      );
+
+      // Si hay una nota existente, copiamos esa nota también
+      if (productosMesa[index].nota != null) {
+        nuevoProducto.nota = productosMesa[index].nota;
+      }
+
+      // Añadir el nuevo producto a la lista
+      productosMesa.add(nuevoProducto);
       _calcularTotal();
       return;
     }
@@ -1406,6 +1427,8 @@ class _PedidoScreenState extends State<PedidoScreen> {
         items: items,
         total: total,
         estado: EstadoPedido.activo,
+        notas:
+            "", // Siempre proporcionar un valor vacío para notas para evitar el error del backend
         cliente:
             clienteFinal ??
             pedidoExistente!
@@ -1429,6 +1452,8 @@ class _PedidoScreenState extends State<PedidoScreen> {
         items: items,
         total: total,
         estado: EstadoPedido.activo,
+        notas:
+            "", // Siempre proporcionar un valor vacío para notas para evitar el error del backend
         cliente: clienteFinal,
       );
 

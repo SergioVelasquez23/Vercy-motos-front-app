@@ -723,7 +723,7 @@ class FacturaCompraService {
   }
 
   /// Eliminar factura de compra (con reversión automática de stock y dinero)
-  Future<void> eliminarFacturaCompra(String id) async {
+  Future<Map<String, dynamic>> eliminarFacturaCompra(String id) async {
     try {
       print('🗑️ Eliminando factura de compra: $id');
 
@@ -740,11 +740,47 @@ class FacturaCompraService {
         // - Reversión de stock de productos/ingredientes
         // - Reversión de dinero del cuadre de caja
         // - Registro en historial de ediciones
+
         print('✅ Factura eliminada con reversión automática');
-        return;
+
+        // Intentar parsear la respuesta para obtener detalles de la reversión
+        Map<String, dynamic> result = {
+          'success': true,
+          'message': 'Factura eliminada correctamente',
+          'stockRevertido': true,
+          'dineroRevertido': true,
+        };
+
+        try {
+          if (response.statusCode == 200 && response.body.isNotEmpty) {
+            final responseData = json.decode(response.body);
+            if (responseData is Map<String, dynamic>) {
+              // Si hay datos de reversión, agregarlos al resultado
+              if (responseData.containsKey('stockRevertido')) {
+                result['stockRevertido'] = responseData['stockRevertido'];
+              }
+              if (responseData.containsKey('dineroRevertido')) {
+                result['dineroRevertido'] = responseData['dineroRevertido'];
+              }
+              if (responseData.containsKey('message')) {
+                result['message'] = responseData['message'];
+              }
+              if (responseData.containsKey('detallesReversion')) {
+                result['detallesReversion'] = responseData['detallesReversion'];
+              }
+            }
+          }
+        } catch (parseError) {
+          print(
+            '⚠️ No se pudo parsear la respuesta de eliminación: $parseError',
+          );
+        }
+
+        return result;
       } else {
         // Intentar obtener mensaje de error del backend
         String errorMsg = 'Error al eliminar factura: ${response.statusCode}';
+
         try {
           final errorData = json.decode(response.body);
           if (errorData['message'] != null) {
@@ -753,6 +789,7 @@ class FacturaCompraService {
         } catch (_) {
           // Usar mensaje genérico si no se puede parsear
         }
+
         throw Exception(errorMsg);
       }
     } catch (e) {
@@ -762,7 +799,7 @@ class FacturaCompraService {
   }
 
   /// Anular factura de compra (alternativa a eliminación para auditoría)
-  Future<FacturaCompra> anularFacturaCompra(
+  Future<Map<String, dynamic>> anularFacturaCompra(
     String id,
     String motivoAnulacion,
   ) async {
@@ -776,6 +813,7 @@ class FacturaCompraService {
       );
 
       print('🚫 Status anulación: ${response.statusCode}');
+      print('🚫 Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
@@ -792,10 +830,48 @@ class FacturaCompraService {
           throw Exception('Formato de respuesta inválido');
         }
 
+        // Crear FacturaCompra desde los datos recibidos
+        final facturaAnulada = FacturaCompra.fromJson(facturaData);
+
+        // Preparar resultado con datos de reversión
+        Map<String, dynamic> result = {
+          'success': true,
+          'message': 'Factura anulada correctamente',
+          'stockRevertido': true,
+          'dineroRevertido': facturaAnulada.pagadoDesdeCaja,
+          'factura': facturaAnulada,
+        };
+
+        // Si la respuesta tiene detalles adicionales de reversión
+        if (responseData.containsKey('stockRevertido')) {
+          result['stockRevertido'] = responseData['stockRevertido'];
+        }
+        if (responseData.containsKey('dineroRevertido')) {
+          result['dineroRevertido'] = responseData['dineroRevertido'];
+        }
+        if (responseData.containsKey('message')) {
+          result['message'] = responseData['message'];
+        }
+        if (responseData.containsKey('detallesReversion')) {
+          result['detallesReversion'] = responseData['detallesReversion'];
+        }
+
         print('✅ Factura anulada con reversión automática');
-        return FacturaCompra.fromJson(facturaData);
+        return result;
       } else {
-        throw Exception('Error al anular factura: ${response.statusCode}');
+        // Intentar obtener mensaje de error del backend
+        String errorMsg = 'Error al anular factura: ${response.statusCode}';
+
+        try {
+          final errorData = json.decode(response.body);
+          if (errorData['message'] != null) {
+            errorMsg = errorData['message'];
+          }
+        } catch (_) {
+          // Usar mensaje genérico si no se puede parsear
+        }
+
+        throw Exception(errorMsg);
       }
     } catch (e) {
       print('❌ Error anulando factura: $e');

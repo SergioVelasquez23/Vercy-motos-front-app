@@ -344,8 +344,8 @@ class _GastosScreenState extends State<GastosScreen> {
     if (confirm == true) {
       try {
         setState(() => _isLoading = true);
-        final success = await _gastoService.deleteGasto(gasto.id!);
-        if (success) {
+        final response = await _gastoService.deleteGasto(gasto.id!);
+        if (response['success'] == true) {
           _showSuccess('Gasto eliminado exitosamente');
           await _loadGastos();
         } else {
@@ -756,6 +756,8 @@ class _GastosScreenState extends State<GastosScreen> {
                             setState(() {
                               _pagadoDesdeCaja = value;
                             });
+                            // Recalcular total cuando cambia el switch
+                            _calculateTotal();
                           },
                           activeColor: primary,
                         ),

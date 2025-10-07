@@ -48,6 +48,9 @@ class EndpointsConfig {
 
   /// Endpoints para manejo de imágenes
   ImageEndpoints get images => ImageEndpoints(currentBaseUrl);
+
+  /// Endpoints para información del negocio
+  NegocioEndpoints get negocio => NegocioEndpoints(currentBaseUrl);
 }
 
 /// Endpoints relacionados con autenticación y usuarios
@@ -255,4 +258,25 @@ class ImageEndpoints {
 
   /// Eliminar imagen
   String delete(String filename) => '$base/platos/$filename';
+}
+
+/// Endpoints relacionados con información del negocio
+class NegocioEndpoints {
+  final String baseUrl;
+
+  NegocioEndpoints(this.baseUrl);
+
+  String get base => '$baseUrl/api/negocio';
+
+  /// Subir logo del negocio
+  String get uploadLogo => '$base/logo';
+
+  /// Obtener información del negocio
+  String get info => base;
+
+  /// Actualizar información del negocio
+  String update(String id) => '$base/$id';
+
+  /// Eliminar negocio
+  String delete(String id) => '$base/$id';
 }

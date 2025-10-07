@@ -9,8 +9,6 @@ import 'producto.dart';
 class ItemPedidoTestSuite {
   /// Ejecuta todas las pruebas de compatibilidad
   static void runAllTests() {
-    print('🧪 Iniciando pruebas de ItemPedido unificado...\n');
-
     _testCreacionBasica();
     _testCalculoSubtotal();
     _testSerializacionJSON();
@@ -19,14 +17,10 @@ class ItemPedidoTestSuite {
     _testValidaciones();
     _testMigrationFromOldFormat();
     _testRoundTripCompatibility();
-
-    print('\n✅ Todas las pruebas de ItemPedido completadas exitosamente!');
   }
 
   /// Test 1: Creación básica del modelo
   static void _testCreacionBasica() {
-    print('📝 Test 1: Creación básica...');
-
     try {
       // Crear ItemPedido mínimo
       final item = ItemPedido(
@@ -41,11 +35,7 @@ class ItemPedidoTestSuite {
       assert(item.subtotal == 31.00);
       assert(item.ingredientesSeleccionados.isEmpty);
       assert(item.isValid);
-
-      print('  ✅ Creación básica - OK');
-    } catch (e) {
-      print('  ❌ Error en creación básica: $e');
-    }
+    } catch (e) {}
 
     try {
       // Crear ItemPedido completo
@@ -64,17 +54,11 @@ class ItemPedidoTestSuite {
       assert(itemCompleto.tieneNotas == true);
       assert(itemCompleto.tieneIngredientesSeleccionados == true);
       assert(itemCompleto.subtotal == 38.25); // 3 * 12.75
-
-      print('  ✅ Creación completa - OK');
-    } catch (e) {
-      print('  ❌ Error en creación completa: $e');
-    }
+    } catch (e) {}
   }
 
   /// Test 2: Cálculo de subtotal
   static void _testCalculoSubtotal() {
-    print('📊 Test 2: Cálculo de subtotal...');
-
     final testCases = [
       {'cantidad': 1, 'precio': 10.00, 'esperado': 10.00},
       {'cantidad': 2, 'precio': 15.50, 'esperado': 31.00},
@@ -97,10 +81,6 @@ class ItemPedidoTestSuite {
           (subtotalCalculado - subtotalEsperado).abs() < 0.01,
           'Subtotal incorrecto: esperado $subtotalEsperado, obtenido $subtotalCalculado',
         );
-
-        print(
-          '  ✅ ${test['cantidad']}x ${test['precio']} = $subtotalCalculado',
-        );
       } catch (e) {
         print('  ❌ Error en cálculo: $e');
       }
@@ -109,8 +89,6 @@ class ItemPedidoTestSuite {
 
   /// Test 3: Serialización a JSON
   static void _testSerializacionJSON() {
-    print('📤 Test 3: Serialización JSON...');
-
     try {
       final item = ItemPedido(
         id: 'item_789',
@@ -133,9 +111,6 @@ class ItemPedidoTestSuite {
       assert(json['subtotal'] == 37.00);
       assert(json['notas'] == 'Masa delgada');
       assert(json['ingredientesSeleccionados'].length == 3);
-
-      print('  ✅ JSON generado correctamente:');
-      print('    ${jsonEncode(json)}');
     } catch (e) {
       print('  ❌ Error en serialización: $e');
     }
@@ -143,8 +118,6 @@ class ItemPedidoTestSuite {
 
   /// Test 4: Deserialización desde JSON
   static void _testDeserializacionJSON() {
-    print('📥 Test 4: Deserialización JSON...');
-
     // JSON en formato del backend Java
     final jsonBackend = {
       'id': 'item_999',
@@ -168,8 +141,6 @@ class ItemPedidoTestSuite {
       assert(item.subtotal == 14.75);
       assert(item.notas == 'Sin crutones');
       assert(item.ingredientesSeleccionados.length == 3);
-
-      print('  ✅ Deserialización desde backend - OK');
     } catch (e) {
       print('  ❌ Error en deserialización: $e');
     }
@@ -177,8 +148,6 @@ class ItemPedidoTestSuite {
 
   /// Test 5: Compatibilidad con formato del backend
   static void _testCompatibilidadBackend() {
-    print('🔄 Test 5: Compatibilidad con backend...');
-
     // Simular diferentes formatos que puede enviar el backend
     final formatosBackend = [
       // Formato nuevo (precioUnitario)
@@ -218,8 +187,6 @@ class ItemPedidoTestSuite {
           (item.subtotal - subtotalEsperado).abs() < 0.01,
           'Subtotal incorrecto en formato ${i + 1}',
         );
-
-        print('  ✅ Formato backend ${i + 1} - OK (subtotal: ${item.subtotal})');
       } catch (e) {
         print('  ❌ Error en formato backend ${i + 1}: $e');
       }
@@ -228,8 +195,6 @@ class ItemPedidoTestSuite {
 
   /// Test 6: Validaciones
   static void _testValidaciones() {
-    print('🔍 Test 6: Validaciones...');
-
     // Test validaciones positivas
     try {
       final itemValido = ItemPedido(
@@ -240,8 +205,6 @@ class ItemPedidoTestSuite {
 
       assert(itemValido.isValid);
       assert(itemValido.validationErrors.isEmpty);
-
-      print('  ✅ Validación positiva - OK');
     } catch (e) {
       print('  ❌ Error en validación positiva: $e');
     }
@@ -259,7 +222,6 @@ class ItemPedidoTestSuite {
     for (int i = 0; i < casosInvalidos.length; i++) {
       try {
         casosInvalidos[i]();
-        print('  ❌ Debería haber fallado el caso ${i + 1}');
       } catch (e) {
         print(
           '  ✅ Validación negativa ${i + 1} - OK (${e.toString().split(':').last.trim()})',
@@ -270,8 +232,6 @@ class ItemPedidoTestSuite {
 
   /// Test 7: Migración desde formato anterior
   static void _testMigrationFromOldFormat() {
-    print('🔄 Test 7: Migración desde formato anterior...');
-
     try {
       // Crear usando factory legacy
       final itemLegacy = ItemPedido.legacy(
@@ -286,8 +246,6 @@ class ItemPedidoTestSuite {
 
       // Test getter deprecated
       assert(itemLegacy.precio == itemLegacy.precioUnitario);
-
-      print('  ✅ Migración desde formato legacy - OK');
     } catch (e) {
       print('  ❌ Error en migración legacy: $e');
     }
@@ -295,8 +253,6 @@ class ItemPedidoTestSuite {
 
   /// Test 8: Round-trip compatibility (Java ↔ Flutter)
   static void _testRoundTripCompatibility() {
-    print('🔄 Test 8: Round-trip compatibility...');
-
     try {
       // 1. Crear ItemPedido en Flutter
       final itemOriginal = ItemPedido(
@@ -332,10 +288,6 @@ class ItemPedidoTestSuite {
         itemOriginal.ingredientesSeleccionados.length ==
             itemReconstruido.ingredientesSeleccionados.length,
       );
-
-      print('  ✅ Round-trip compatibility - OK');
-      print('    Original: ${itemOriginal.subtotal}');
-      print('    Reconstruido: ${itemReconstruido.subtotal}');
     } catch (e) {
       print('  ❌ Error en round-trip: $e');
     }
@@ -344,19 +296,5 @@ class ItemPedidoTestSuite {
 
 /// Función principal para ejecutar todas las pruebas
 void testItemPedidoUnificado() {
-  print('=' * 50);
-  print('🧪 SUITE DE PRUEBAS - ItemPedido Unificado');
-  print('=' * 50);
-
   ItemPedidoTestSuite.runAllTests();
-
-  print('\n${'=' * 50}');
-  print('📊 RESUMEN:');
-  print('✅ Creación y validación: OK');
-  print('✅ Cálculos automáticos: OK');
-  print('✅ Serialización JSON: OK');
-  print('✅ Compatibilidad backend: OK');
-  print('✅ Migración legacy: OK');
-  print('✅ Round-trip: OK');
-  print('=' * 50);
 }
