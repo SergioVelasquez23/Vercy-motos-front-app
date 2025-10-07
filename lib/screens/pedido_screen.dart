@@ -1639,16 +1639,16 @@ class _PedidoScreenState extends State<PedidoScreen> {
                     ),
                   ),
 
-                // Filtro de categorías - Grid con scroll vertical (solo 1 fila visible)
+                // Filtro de categorías - Scroll horizontal con 2 filas
                 Container(
-                  height: 70, // Altura para mostrar solo 1 fila
+                  height: 110, // Altura para mostrar 2 filas
                   margin: EdgeInsets.symmetric(horizontal: 16),
                   child: Scrollbar(
                     thumbVisibility: true,
                     trackVisibility: true,
                     child: SingleChildScrollView(
-                      scrollDirection: Axis.vertical,
-                      child: Column(children: _buildCategoriaGridRows()),
+                      scrollDirection: Axis.horizontal,
+                      child: Row(children: _buildCategoriaGridColumns()),
                     ),
                   ),
                 ),
@@ -2009,17 +2009,17 @@ class _PedidoScreenState extends State<PedidoScreen> {
             ),
           ),
 
-        // Lista de categorías - Grid vertical (solo 1 fila visible)
+        // Lista de categorías - Scroll horizontal con 2 filas
         if (categorias.isNotEmpty)
           Container(
-            height: 50, // Solo una fila visible para móvil
+            height: 110, // Altura para 2 filas en móvil
             margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Scrollbar(
               thumbVisibility: true,
               trackVisibility: true,
               child: SingleChildScrollView(
-                scrollDirection: Axis.vertical,
-                child: Column(children: _buildCategoriaGridRowsMobile()),
+                scrollDirection: Axis.horizontal,
+                child: Row(children: _buildCategoriaGridColumnsMobile()),
               ),
             ),
           ),
@@ -2706,13 +2706,8 @@ class _PedidoScreenState extends State<PedidoScreen> {
     );
   }
 
-  // Genera las filas del grid de categorías (Desktop)
-  List<Widget> _buildCategoriaGridRows() {
-    final primary = Color(0xFFFF6B00);
-    final cardBg = Color(0xFF2A2A2A);
-    final textLight = Color(0xFFB0B0B0);
-
-    List<Widget> rows = [];
+  // Genera columnas con 2 filas de categorías (Desktop)
+  List<Widget> _buildCategoriaGridColumns() {
     List<Widget> allCategories = [];
 
     // Agregar opción "Todos"
@@ -2736,117 +2731,124 @@ class _PedidoScreenState extends State<PedidoScreen> {
       ),
     );
 
-    // Dividir en filas de 4 elementos para desktop
-    for (int i = 0; i < allCategories.length; i += 4) {
-      List<Widget> rowItems = allCategories.skip(i).take(4).toList();
+    // Dividir en 2 filas y crear columnas
+    List<Widget> columns = [];
+    int itemsPerColumn = 2; // 2 filas
 
-      // Rellenar la fila si no tiene 4 elementos
-      while (rowItems.length < 4) {
-        rowItems.add(SizedBox(width: 120)); // Espaciador del mismo tamaño
+    for (int i = 0; i < allCategories.length; i += itemsPerColumn) {
+      List<Widget> columnItems = allCategories
+          .skip(i)
+          .take(itemsPerColumn)
+          .toList();
+
+      // Si solo hay un elemento en la columna, agregar un espaciador
+      if (columnItems.length == 1) {
+        columnItems.add(SizedBox(height: 50));
       }
 
-      rows.add(
+      columns.add(
         Container(
-          height: 50,
-          child: Row(
+          margin: EdgeInsets.only(right: 8),
+          child: Column(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: rowItems,
+            children: columnItems,
           ),
         ),
       );
     }
 
-    return rows;
+    return columns;
   }
 
-  // Genera las filas del grid de categorías (Mobile)
-  List<Widget> _buildCategoriaGridRowsMobile() {
-    final primary = Color(0xFFFF6B00);
-    final cardBg = Color(0xFF2A2A2A);
-    final textLight = Color(0xFFB0B0B0);
-
-    List<Widget> rows = [];
+  // Genera columnas con 2 filas de categorías (Mobile)
+  List<Widget> _buildCategoriaGridColumnsMobile() {
     List<Widget> allCategories = [];
 
     // Agregar opción "Todos"
     allCategories.add(
-      Container(
-        margin: EdgeInsets.only(right: 8),
-        child: GestureDetector(
-          onTap: () => setState(() => categoriaSelecionadaId = null),
-          child: Container(
-            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: categoriaSelecionadaId == null ? primary : cardBg,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: categoriaSelecionadaId == null
-                    ? primary
-                    : Colors.grey.withOpacity(0.3),
-              ),
-            ),
-            child: Text(
-              'Todos',
-              style: TextStyle(
-                color: categoriaSelecionadaId == null
-                    ? Colors.white
-                    : textLight,
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ),
+      _buildCategoriaChipMobile(
+        nombre: 'Todos',
+        isSelected: categoriaSelecionadaId == null,
+        onTap: () => setState(() => categoriaSelecionadaId = null),
       ),
     );
 
     // Agregar todas las categorías
     allCategories.addAll(
-      categorias.map((categoria) {
-        final isSelected = categoriaSelecionadaId == categoria.id;
-        return Container(
-          margin: EdgeInsets.only(right: 8),
-          child: GestureDetector(
-            onTap: () => setState(() => categoriaSelecionadaId = categoria.id),
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: isSelected ? primary : cardBg,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: isSelected ? primary : Colors.grey.withOpacity(0.3),
-                ),
-              ),
-              child: Text(
-                categoria.nombre,
-                style: TextStyle(
-                  color: isSelected ? Colors.white : textLight,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          ),
-        );
-      }),
+      categorias.map(
+        (categoria) => _buildCategoriaChipMobile(
+          nombre: categoria.nombre,
+          imagenUrl: categoria.imagenUrl,
+          isSelected: categoriaSelecionadaId == categoria.id,
+          onTap: () => setState(() => categoriaSelecionadaId = categoria.id),
+        ),
+      ),
     );
 
-    // Dividir en filas de 3 elementos para móvil
-    for (int i = 0; i < allCategories.length; i += 3) {
-      List<Widget> rowItems = allCategories.skip(i).take(3).toList();
+    // Dividir en 2 filas y crear columnas
+    List<Widget> columns = [];
+    int itemsPerColumn = 2; // 2 filas
 
-      rows.add(
+    for (int i = 0; i < allCategories.length; i += itemsPerColumn) {
+      List<Widget> columnItems = allCategories
+          .skip(i)
+          .take(itemsPerColumn)
+          .toList();
+
+      // Si solo hay un elemento en la columna, agregar un espaciador
+      if (columnItems.length == 1) {
+        columnItems.add(SizedBox(height: 50));
+      }
+
+      columns.add(
         Container(
-          height: 40,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.start,
-            children: rowItems,
+          margin: EdgeInsets.only(right: 8),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: columnItems,
           ),
         ),
       );
     }
 
-    return rows;
+    return columns;
+  }
+
+  // Widget helper para categorías en móvil
+  Widget _buildCategoriaChipMobile({
+    required String nombre,
+    String? imagenUrl,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    final primary = Color(0xFFFF6B00);
+    final cardBg = Color(0xFF2A2A2A);
+    final textLight = Color(0xFFB0B0B0);
+
+    return Container(
+      margin: EdgeInsets.only(bottom: 4, right: 4),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: isSelected ? primary : cardBg,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isSelected ? primary : Colors.grey.withOpacity(0.3),
+            ),
+          ),
+          child: Text(
+            nombre,
+            style: TextStyle(
+              color: isSelected ? Colors.white : textLight,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   // Widget para chips de categoría con imagen circular

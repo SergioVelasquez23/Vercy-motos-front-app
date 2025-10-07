@@ -721,4 +721,85 @@ class FacturaCompraService {
     print('🔧 Pruebas de conectividad completadas');
     return result;
   }
+
+  /// Eliminar factura de compra (con reversión automática de stock y dinero)
+  Future<void> eliminarFacturaCompra(String id) async {
+    try {
+      print('🗑️ Eliminando factura de compra: $id');
+
+      final response = await http.delete(
+        Uri.parse('$baseUrl/$id'),
+        headers: headers,
+      );
+
+      print('🗑️ Status eliminación: ${response.statusCode}');
+      print('🗑️ Response body: ${response.body}');
+
+      if (response.statusCode == 204 || response.statusCode == 200) {
+        // El backend maneja automáticamente:
+        // - Reversión de stock de productos/ingredientes
+        // - Reversión de dinero del cuadre de caja
+        // - Registro en historial de ediciones
+        print('✅ Factura eliminada con reversión automática');
+        return;
+      } else {
+        // Intentar obtener mensaje de error del backend
+        String errorMsg = 'Error al eliminar factura: ${response.statusCode}';
+        try {
+          final errorData = json.decode(response.body);
+          if (errorData['message'] != null) {
+            errorMsg = errorData['message'];
+          }
+        } catch (_) {
+          // Usar mensaje genérico si no se puede parsear
+        }
+        throw Exception(errorMsg);
+      }
+    } catch (e) {
+      print('❌ Error eliminando factura de compra: $e');
+      throw Exception('Error de conexión: $e');
+    }
+  }
+
+  /// Anular factura de compra (alternativa a eliminación para auditoría)
+  Future<FacturaCompra> anularFacturaCompra(
+    String id,
+    String motivoAnulacion,
+  ) async {
+    try {
+      print('🚫 Anulando factura de compra: $id');
+
+      final response = await http.patch(
+        Uri.parse('$baseUrl/$id/anular'),
+        headers: headers,
+        body: json.encode({'motivoAnulacion': motivoAnulacion}),
+      );
+
+      print('🚫 Status anulación: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+
+        // Manejar respuesta con wrapper de éxito
+        Map<String, dynamic> facturaData;
+        if (responseData is Map<String, dynamic> &&
+            responseData['success'] == true &&
+            responseData['data'] != null) {
+          facturaData = responseData['data'] as Map<String, dynamic>;
+        } else if (responseData is Map<String, dynamic>) {
+          facturaData = responseData;
+        } else {
+          throw Exception('Formato de respuesta inválido');
+        }
+
+        print('✅ Factura anulada con reversión automática');
+        return FacturaCompra.fromJson(facturaData);
+      } else {
+        throw Exception('Error al anular factura: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ Error anulando factura: $e');
+      throw Exception('Error de conexión: $e');
+    }
+  }
 }

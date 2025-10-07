@@ -483,7 +483,7 @@ class PedidoService {
     return await PedidoService().actualizarEstadoPedido(pedidoId, nuevoEstado);
   }
 
-  // Eliminar pedido
+  // Eliminar pedido (con reversión automática de dinero en caja)
   Future<void> eliminarPedido(String id) async {
     try {
       final headers = await _getHeaders();
@@ -492,10 +492,31 @@ class PedidoService {
         headers: headers,
       );
 
-      if (response.statusCode != 204) {
-        throw Exception('Error al eliminar pedido: ${response.statusCode}');
+      print('🔧 Eliminando pedido $id - Status: ${response.statusCode}');
+      print('🔧 Response body: ${response.body}');
+
+      if (response.statusCode == 204 || response.statusCode == 200) {
+        // El backend maneja automáticamente:
+        // - Reversión de dinero en caja si el pedido estaba pagado
+        // - Limpieza de cache
+        // - Registro en historial de ediciones
+        print('✅ Pedido eliminado con reversión automática de dinero');
+        return;
+      } else {
+        // Intentar obtener mensaje de error del backend
+        String errorMsg = 'Error al eliminar pedido: ${response.statusCode}';
+        try {
+          final errorData = json.decode(response.body);
+          if (errorData['message'] != null) {
+            errorMsg = errorData['message'];
+          }
+        } catch (_) {
+          // Usar mensaje genérico si no se puede parsear
+        }
+        throw Exception(errorMsg);
       }
     } catch (e) {
+      print('❌ Error eliminando pedido: $e');
       throw Exception('Error de conexión: $e');
     }
   }

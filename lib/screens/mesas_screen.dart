@@ -2612,19 +2612,92 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
     Map<String, dynamic> resultado,
   ) async {
     try {
-      // Procesar según el tipo de pago
+      // Extraer información del resultado
       final medioPago = resultado['medioPago'] as String;
       final incluyePropina = resultado['incluyePropina'] as bool;
       final esCortesia = resultado['esCortesia'] as bool;
       final esConsumoInterno = resultado['esConsumoInterno'] as bool;
+      final productosSeleccionados =
+          resultado['productosSeleccionados'] as List<dynamic>;
+      final totalCalculado = resultado['totalCalculado'] as double;
+      final subtotalSeleccionado = resultado['subtotalSeleccionado'] as double;
 
-      // Aquí se incluiría la lógica de procesamiento de pago del método original
-      // Por ahora, solo mostramos un mensaje de confirmación
+      // Procesar productos con cantidades parciales
+      List<String> detallesPago = [];
+      for (final productoData in productosSeleccionados) {
+        final item = productoData['item'] as ItemPedido;
+        final cantidad = productoData['cantidad'] as int;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Pago procesado exitosamente'),
-          backgroundColor: AppTheme.success,
+        if (cantidad < item.cantidad) {
+          detallesPago.add(
+            '${item.productoNombre}: $cantidad de ${item.cantidad}',
+          );
+        } else {
+          detallesPago.add('${item.productoNombre}: $cantidad');
+        }
+      }
+
+      // Crear mensaje de confirmación detallado
+      String mensaje = 'Pago procesado exitosamente\n';
+      mensaje += 'Método: ${medioPago.toUpperCase()}\n';
+      mensaje += 'Total: \$${totalCalculado.toStringAsFixed(0)}\n';
+
+      if (productosSeleccionados.length < pedido.items.length) {
+        mensaje +=
+            'Pago parcial de ${productosSeleccionados.length}/${pedido.items.length} productos';
+      }
+
+      // Mostrar confirmación con detalles
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: AppTheme.backgroundDark,
+          title: Row(
+            children: [
+              Icon(Icons.check_circle, color: AppTheme.success),
+              SizedBox(width: 12),
+              Text(
+                'Pago Procesado',
+                style: TextStyle(color: AppTheme.textPrimary),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(mensaje, style: TextStyle(color: AppTheme.textPrimary)),
+              if (detallesPago.isNotEmpty) ...[
+                SizedBox(height: 16),
+                Text(
+                  'Productos procesados:',
+                  style: TextStyle(
+                    color: AppTheme.textPrimary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(height: 8),
+                ...detallesPago.map(
+                  (detalle) => Padding(
+                    padding: EdgeInsets.only(left: 8, bottom: 4),
+                    child: Text(
+                      '• $detalle',
+                      style: TextStyle(color: AppTheme.textSecondary),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(
+                'Continuar',
+                style: TextStyle(color: AppTheme.primary),
+              ),
+            ),
+          ],
         ),
       );
 
@@ -2830,8 +2903,59 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                       ],
                     ),
                   ),
-                  SizedBox(height: 32), // Más espacio
-                  // Sección: Productos con selección
+                  SizedBox(height: 32),
+
+                  // 1. BÚSQUEDA DE CLIENTE
+                  _buildSeccionTitulo('Información del Cliente'),
+                  SizedBox(height: 16),
+                  Container(
+                    padding: EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: _cardBg.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: _primary.withOpacity(0.2)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Mesa: ${mesa.nombre}',
+                          style: TextStyle(
+                            color: _textPrimary,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          'Pedido ID: ${pedido.id}',
+                          style: TextStyle(color: _textSecondary, fontSize: 14),
+                        ),
+                        SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.table_restaurant,
+                              color: _primary,
+                              size: 16,
+                            ),
+                            SizedBox(width: 8),
+                            Text(
+                              'Estado: ${pedido.estado.toString().split('.').last}',
+                              style: TextStyle(
+                                color: _textPrimary,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: 32),
+
+                  // 2. PRODUCTOS SELECCIONADOS
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
@@ -3240,7 +3364,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                   ],
                   SizedBox(height: 32),
 
-                  // SUBTOTAL - Nueva sección
+                  // 3. SUBTOTAL
                   _buildSeccionTitulo('Subtotal'),
                   SizedBox(height: 16),
                   Container(
@@ -3262,7 +3386,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                           ),
                         ),
                         Text(
-                          '\$${pedido.total.toStringAsFixed(0)}',
+                          '\$${calcularTotalSeleccionados().toStringAsFixed(0)}',
                           style: TextStyle(
                             color: _primary,
                             fontSize: 20,
@@ -3274,7 +3398,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                   ),
                   SizedBox(height: 32),
 
-                  // DESCUENTOS - Movido para estar después del subtotal
+                  // 4. DESCUENTOS
                   _buildSeccionTitulo('Descuento'),
                   SizedBox(height: 16),
                   Container(
@@ -3380,7 +3504,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                   ),
                   SizedBox(height: 32),
 
-                  // TOTAL - Nueva sección para mostrar el total final
+                  // 5. TOTAL
                   _buildSeccionTitulo('Total'),
                   SizedBox(height: 16),
                   Container(
@@ -3406,7 +3530,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                         ),
                         Text(
                           '\$${(() {
-                            double total = pedido.total;
+                            double total = calcularTotalSeleccionados();
                             double descuento = 0;
 
                             if (descuentoPorcentajeController.text.isNotEmpty) {
@@ -3434,7 +3558,307 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                   ),
                   SizedBox(height: 32),
 
-                  // Sección: Forma de pago
+                  // 6. OPCIONES ESPECIALES
+                  _buildSeccionTitulo('Opciones Especiales'),
+                  SizedBox(height: 16),
+                  Container(
+                    padding: EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: _cardBg.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: _primary.withOpacity(0.2)),
+                    ),
+                    child: Column(
+                      children: [
+                        // Opción Es cortesía
+                        Container(
+                          padding: EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: esCortesia0
+                                ? _primary.withOpacity(0.1)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: esCortesia0
+                                  ? _primary
+                                  : _textPrimary.withOpacity(0.2),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.card_giftcard,
+                                color: esCortesia0 ? _primary : _textSecondary,
+                                size: 24,
+                              ),
+                              SizedBox(width: 16),
+                              Expanded(
+                                child: Text(
+                                  'Es cortesía',
+                                  style: TextStyle(
+                                    color: _textPrimary,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                              Switch(
+                                value: esCortesia0,
+                                activeThumbColor: _primary,
+                                onChanged: (value) {
+                                  setState(() {
+                                    esCortesia0 = value;
+                                    if (value) {
+                                      esConsumoInterno0 = false;
+                                    }
+                                  });
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(height: 16),
+                        // Opción Consumo interno
+                        Container(
+                          padding: EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: esConsumoInterno0
+                                ? _primary.withOpacity(0.1)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: esConsumoInterno0
+                                  ? _primary
+                                  : _textPrimary.withOpacity(0.2),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.people,
+                                color: esConsumoInterno0
+                                    ? _primary
+                                    : _textSecondary,
+                                size: 24,
+                              ),
+                              SizedBox(width: 16),
+                              Expanded(
+                                child: Text(
+                                  'Consumo interno',
+                                  style: TextStyle(
+                                    color: _textPrimary,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                              Switch(
+                                value: esConsumoInterno0,
+                                activeThumbColor: _primary,
+                                onChanged: (value) {
+                                  setState(() {
+                                    esConsumoInterno0 = value;
+                                    if (value) {
+                                      esCortesia0 = false;
+                                    }
+                                  });
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: 32),
+
+                  // 7. TOGGLE DE PROPINA
+                  _buildSeccionTitulo('Configurar Propina'),
+                  SizedBox(height: 16),
+                  Container(
+                    padding: EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: _cardBg.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: _primary.withOpacity(0.2)),
+                    ),
+                    child: Column(
+                      children: [
+                        // Campo de propina
+                        TextField(
+                          controller: propinaController,
+                          decoration: InputDecoration(
+                            labelText: 'Propina (%)',
+                            labelStyle: TextStyle(color: _textPrimary),
+                            suffixText: '%',
+                            prefixIcon: Icon(Icons.star, color: _primary),
+                            enabledBorder: OutlineInputBorder(
+                              borderSide: BorderSide(color: _textMuted),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderSide: BorderSide(color: _primary, width: 2),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          style: TextStyle(color: _textPrimary, fontSize: 16),
+                          keyboardType: TextInputType.number,
+                          onChanged: (value) {
+                            setState(() {
+                              incluyePropina =
+                                  value.isNotEmpty &&
+                                  double.tryParse(value) != null &&
+                                  double.parse(value) > 0;
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: 32),
+
+                  // 8. BOTONES DE BILLETES COMPACTOS
+                  _buildSeccionTitulo('Selector de Billetes'),
+                  SizedBox(height: 16),
+                  Container(
+                    padding: EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: _cardBg.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: _primary.withOpacity(0.2)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Campo para entrada manual
+                        TextField(
+                          controller: billetesController,
+                          decoration: InputDecoration(
+                            labelText: 'Total recibido',
+                            labelStyle: TextStyle(color: _textPrimary),
+                            prefixText: '\$',
+                            enabledBorder: OutlineInputBorder(
+                              borderSide: BorderSide(color: _textMuted),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderSide: BorderSide(color: _primary, width: 2),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          style: TextStyle(color: _textPrimary, fontSize: 16),
+                          keyboardType: TextInputType.number,
+                          onChanged: (value) {
+                            setState(() {
+                              billetesSeleccionados =
+                                  double.tryParse(value) ?? 0.0;
+                              if (value.isNotEmpty) {
+                                contadorBilletes.updateAll((key, val) => 0);
+                              }
+                            });
+                          },
+                        ),
+                        SizedBox(height: 20),
+                        Text(
+                          'O selecciona los billetes:',
+                          style: TextStyle(
+                            color: _textPrimary,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 16,
+                          ),
+                        ),
+                        SizedBox(height: 16),
+                        // Botones de billetes mejorados
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            buildBilletButton(50000, setState),
+                            buildBilletButton(20000, setState),
+                            buildBilletButton(10000, setState),
+                          ],
+                        ),
+                        SizedBox(height: 12),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            buildBilletButton(5000, setState),
+                            buildBilletButton(2000, setState),
+                            buildBilletButton(1000, setState),
+                          ],
+                        ),
+                        SizedBox(height: 16),
+                        // Botones de acción para billetes
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: () {
+                                  setState(() {
+                                    contadorBilletes.updateAll(
+                                      (key, value) => 0,
+                                    );
+                                    double subtotal =
+                                        calcularTotalSeleccionados();
+                                    double propinaPercent =
+                                        double.tryParse(
+                                          propinaController.text,
+                                        ) ??
+                                        0.0;
+                                    double propinaMonto =
+                                        (subtotal * propinaPercent / 100)
+                                            .roundToDouble();
+                                    double total = subtotal + propinaMonto;
+                                    billetesSeleccionados = total;
+                                    billetesController.text =
+                                        billetesSeleccionados.toStringAsFixed(
+                                          0,
+                                        );
+                                  });
+                                },
+                                icon: Icon(Icons.check, size: 18),
+                                label: Text('Exacto'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.green,
+                                  foregroundColor: Colors.white,
+                                  padding: EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            SizedBox(width: 12),
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: () {
+                                  setState(() {
+                                    billetesSeleccionados = 0.0;
+                                    billetesController.text = '0';
+                                    contadorBilletes.updateAll(
+                                      (key, value) => 0,
+                                    );
+                                  });
+                                },
+                                icon: Icon(Icons.clear, size: 18),
+                                label: Text('Limpiar'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.red,
+                                  foregroundColor: Colors.white,
+                                  padding: EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: 32),
+
+                  // 9. MÉTODOS DE PAGO
                   _buildSeccionTitulo('Método de Pago'),
                   SizedBox(height: 16),
                   Container(
@@ -3691,10 +4115,115 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                         ],
                       ),
                     ),
-                    SizedBox(height: 24),
+                    SizedBox(height: 32),
                   ],
 
-                  // Sección: Pago Múltiple
+                  // 10. MONTO RECIBIDO Y CAMBIO
+                  if (medioPago0 == 'efectivo' &&
+                      billetesSeleccionados > 0) ...[
+                    _buildSeccionTitulo('Cálculo de Cambio'),
+                    SizedBox(height: 16),
+                    Container(
+                      padding: EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: _cardBg.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: _primary.withOpacity(0.2)),
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Recibido:',
+                                style: TextStyle(
+                                  color: _textPrimary,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              Text(
+                                formatCurrency(billetesSeleccionados),
+                                style: TextStyle(
+                                  color: _textPrimary,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 12),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Cambio:',
+                                style: TextStyle(
+                                  color: _textPrimary,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Builder(
+                                builder: (context) {
+                                  double total = calcularTotalSeleccionados();
+                                  double descuento = 0;
+                                  if (descuentoPorcentajeController
+                                      .text
+                                      .isNotEmpty) {
+                                    final porcentaje =
+                                        double.tryParse(
+                                          descuentoPorcentajeController.text,
+                                        ) ??
+                                        0;
+                                    descuento = total * (porcentaje / 100);
+                                  } else if (descuentoValorController
+                                      .text
+                                      .isNotEmpty) {
+                                    descuento =
+                                        double.tryParse(
+                                          descuentoValorController.text,
+                                        ) ??
+                                        0;
+                                  }
+                                  double propina = 0;
+                                  if (incluyePropina &&
+                                      propinaController.text.isNotEmpty) {
+                                    propina =
+                                        double.tryParse(
+                                          propinaController.text,
+                                        ) ??
+                                        0;
+                                  }
+                                  double totalFinal =
+                                      total - descuento + propina;
+                                  double cambio =
+                                      billetesSeleccionados - totalFinal;
+
+                                  return Text(
+                                    cambio >= 0
+                                        ? formatCurrency(cambio)
+                                        : '-${formatCurrency(-cambio)}',
+                                    style: TextStyle(
+                                      color: cambio >= 0
+                                          ? Colors.green
+                                          : Colors.red,
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(height: 32),
+                  ],
+
+                  // 11. OTROS MÉTODOS DE PAGO (PAGO MÚLTIPLE)
                   _buildSeccionTitulo('Pago Múltiple'),
                   SizedBox(height: 16),
                   Container(
@@ -3891,10 +4420,9 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                       ],
                     ),
                   ),
-                  SizedBox(height: 24),
+                  SizedBox(height: 32),
 
-                  // Sección: Propina y Totales
-                  _buildSeccionTitulo('Propina y Totales'),
+                  // 12. RESUMEN FINAL DE TOTALES\n                  _buildSeccionTitulo('Resumen Final'),
                   SizedBox(height: 16),
                   Container(
                     padding: EdgeInsets.all(20),
@@ -4168,127 +4696,7 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
                   ),
                   SizedBox(height: 32),
 
-                  // Sección: Opciones Especiales
-                  _buildSeccionTitulo('Opciones Especiales'),
-                  SizedBox(height: 16),
-                  Container(
-                    padding: EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: _cardBg.withOpacity(0.3),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: _primary.withOpacity(0.2)),
-                    ),
-                    child: Column(
-                      children: [
-                        // Opción Es cortesía
-                        Container(
-                          padding: EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: esCortesia0
-                                ? _primary.withOpacity(0.1)
-                                : Colors.transparent,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: esCortesia0
-                                  ? _primary
-                                  : _textPrimary.withOpacity(0.2),
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.card_giftcard,
-                                color: esCortesia0 ? _primary : _textSecondary,
-                                size: 24,
-                              ),
-                              SizedBox(width: 16),
-                              Expanded(
-                                child: Text(
-                                  'Es cortesía',
-                                  style: TextStyle(
-                                    color: _textPrimary,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ),
-                              Switch(
-                                value: esCortesia0,
-                                activeThumbColor: _primary,
-                                onChanged: (value) {
-                                  setState(() {
-                                    esCortesia0 = value;
-                                    if (value) {
-                                      esConsumoInterno0 = false;
-                                    }
-                                  });
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
-                        SizedBox(height: 16),
-
-                        // Opción Consumo interno
-                        Container(
-                          padding: EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: esConsumoInterno0
-                                ? _primary.withOpacity(0.1)
-                                : Colors.transparent,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: esConsumoInterno0
-                                  ? _primary
-                                  : _textPrimary.withOpacity(0.2),
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.people,
-                                color: esConsumoInterno0
-                                    ? _primary
-                                    : _textSecondary,
-                                size: 24,
-                              ),
-                              SizedBox(width: 16),
-                              Expanded(
-                                child: Text(
-                                  'Consumo interno',
-                                  style: TextStyle(
-                                    color: _textPrimary,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ),
-                              Switch(
-                                value: esConsumoInterno0,
-                                activeThumbColor: _primary,
-                                onChanged: (value) {
-                                  setState(() {
-                                    esConsumoInterno0 = value;
-                                    if (value) {
-                                      esCortesia0 = false;
-                                    }
-                                  });
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
-                        SizedBox(height: 16),
-
-                        // 📝 NOTA: Opción 'Mover a otra mesa' removida por solicitud del usuario
-                      ],
-                    ),
-                  ),
-
-                  SizedBox(height: 32),
-
-                  // INFORMACIÓN DEL PEDIDO (BÚSQUEDA DE CLIENTE) - Movido después de opciones especiales
-                  SizedBox(height: 32),
+                  // 13. BOTONES DE ACCIÓN FINAL
 
                   // Botones principales
                   Row(
@@ -7539,39 +7947,57 @@ class _MesasScreenState extends State<MesasScreen> with ImpresionMixin {
             : 140;
 
         if (isMobile) {
-          // Vista móvil: diseño en una sola columna con más espacio
+          // Vista móvil: diseño en grid 2x2 como en desktop
           return Column(
             children: [
-              buildMesaEspecial(
-                'Domicilio',
-                Icons.delivery_dining,
-                'disponible',
-                () => _mostrarPedidosMesaEspecial('Domicilio'),
-                height: especialHeight,
+              // Primera fila: Domicilio y Caja
+              Row(
+                children: [
+                  Expanded(
+                    child: buildMesaEspecial(
+                      'Domicilio',
+                      Icons.delivery_dining,
+                      'disponible',
+                      () => _mostrarPedidosMesaEspecial('Domicilio'),
+                      height: especialHeight,
+                    ),
+                  ),
+                  SizedBox(width: AppTheme.spacingMedium),
+                  Expanded(
+                    child: buildMesaEspecial(
+                      'Caja',
+                      Icons.point_of_sale,
+                      'disponible',
+                      () => _mostrarPedidosMesaEspecial('Caja'),
+                      height: especialHeight,
+                    ),
+                  ),
+                ],
               ),
               SizedBox(height: AppTheme.spacingMedium),
-              buildMesaEspecial(
-                'Caja',
-                Icons.point_of_sale,
-                'disponible',
-                () => _mostrarPedidosMesaEspecial('Caja'),
-                height: especialHeight,
-              ),
-              SizedBox(height: AppTheme.spacingMedium),
-              buildMesaEspecial(
-                'Mesa Auxiliar',
-                Icons.table_restaurant,
-                'disponible',
-                () => _mostrarPedidosMesaEspecial('Mesa Auxiliar'),
-                height: especialHeight,
-              ),
-              SizedBox(height: AppTheme.spacingMedium),
-              buildMesaEspecial(
-                'Deudas',
-                Icons.account_balance_wallet,
-                'disponible',
-                () => _mostrarPedidosMesaEspecial('Deudas'),
-                height: especialHeight,
+              // Segunda fila: Mesa Auxiliar y Deudas
+              Row(
+                children: [
+                  Expanded(
+                    child: buildMesaEspecial(
+                      'Mesa Auxiliar',
+                      Icons.table_restaurant,
+                      'disponible',
+                      () => _mostrarPedidosMesaEspecial('Mesa Auxiliar'),
+                      height: especialHeight,
+                    ),
+                  ),
+                  SizedBox(width: AppTheme.spacingMedium),
+                  Expanded(
+                    child: buildMesaEspecial(
+                      'Deudas',
+                      Icons.account_balance_wallet,
+                      'disponible',
+                      () => _mostrarPedidosMesaEspecial('Deudas'),
+                      height: especialHeight,
+                    ),
+                  ),
+                ],
               ),
             ],
           );

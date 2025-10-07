@@ -76,7 +76,8 @@ class _DialogoPagoState extends State<DialogoPago> {
   }
 
   double get _totalCalculado {
-    double total = widget.pedido.total;
+    // Calcular el total basado en los productos seleccionados con sus cantidades parciales
+    double total = _subtotalProductosSeleccionados;
     double descuento = 0;
 
     if (descuentoPorcentajeController.text.isNotEmpty) {
@@ -93,6 +94,22 @@ class _DialogoPagoState extends State<DialogoPago> {
     }
 
     return total - descuento + propina;
+  }
+
+  // Nuevo getter para calcular el subtotal de productos seleccionados
+  double get _subtotalProductosSeleccionados {
+    if (productosSeleccionados.isEmpty) {
+      return widget
+          .pedido
+          .total; // Si no hay productos seleccionados, usar el total completo
+    }
+
+    double subtotal = 0;
+    for (final item in productosSeleccionados) {
+      final cantidadParcial = cantidadesParciales[item] ?? item.cantidad;
+      subtotal += item.precio * cantidadParcial;
+    }
+    return subtotal;
   }
 
   @override
@@ -168,21 +185,59 @@ class _DialogoPagoState extends State<DialogoPago> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             SeccionTitulo(titulo: 'Productos del Pedido'),
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: AppTheme.primary.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AppTheme.primary.withOpacity(0.3)),
-              ),
-              child: Text(
-                '${productosSeleccionados.length}/${widget.pedido.items.length}',
-                style: TextStyle(
-                  color: AppTheme.primary,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
+            Row(
+              children: [
+                // Botón seleccionar todos
+                TextButton.icon(
+                  onPressed: _seleccionarTodos,
+                  icon: Icon(
+                    Icons.select_all,
+                    size: 16,
+                    color: AppTheme.primary,
+                  ),
+                  label: Text(
+                    'Todos',
+                    style: TextStyle(color: AppTheme.primary, fontSize: 12),
+                  ),
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    minimumSize: Size.zero,
+                  ),
                 ),
-              ),
+                SizedBox(width: 8),
+                // Botón deseleccionar todos
+                TextButton.icon(
+                  onPressed: _deseleccionarTodos,
+                  icon: Icon(Icons.clear_all, size: 16, color: AppTheme.error),
+                  label: Text(
+                    'Ninguno',
+                    style: TextStyle(color: AppTheme.error, fontSize: 12),
+                  ),
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    minimumSize: Size.zero,
+                  ),
+                ),
+                SizedBox(width: 12),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: AppTheme.primary.withOpacity(0.3),
+                    ),
+                  ),
+                  child: Text(
+                    '${productosSeleccionados.length}/${widget.pedido.items.length}',
+                    style: TextStyle(
+                      color: AppTheme.primary,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -251,41 +306,29 @@ class _DialogoPagoState extends State<DialogoPago> {
                 Row(
                   children: [
                     Text(
-                      'Cantidad: $cantidadMax',
+                      'Cantidad disponible: $cantidadMax',
                       style: TextStyle(
                         color: AppTheme.textSecondary,
                         fontSize: 14,
                       ),
                     ),
-                    SizedBox(width: 12),
-                    if (isSelected)
-                      SizedBox(
-                        width: 80,
-                        child: TextField(
-                          decoration: InputDecoration(
-                            labelText: 'Mover/Pagar',
-                            border: OutlineInputBorder(),
-                            isDense: true,
-                          ),
-                          keyboardType: TextInputType.number,
-                          inputFormatters: [
-                            FilteringTextInputFormatter.digitsOnly,
-                          ],
-                          controller: TextEditingController(
-                            text: cantidadParcial.toString(),
-                          ),
-                          onChanged: (value) {
-                            int nuevaCantidad =
-                                int.tryParse(value) ?? cantidadMax;
-                            if (nuevaCantidad < 1) nuevaCantidad = 1;
-                            if (nuevaCantidad > cantidadMax)
-                              nuevaCantidad = cantidadMax;
-                            setState(() {
-                              cantidadesParciales[item] = nuevaCantidad;
-                            });
-                          },
+                    if (isSelected) ...[
+                      SizedBox(width: 12),
+                      Text(
+                        'Seleccionar:',
+                        style: TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
+                      SizedBox(width: 8),
+                      _buildCantidadSelector(
+                        item,
+                        cantidadMax,
+                        cantidadParcial,
+                      ),
+                    ],
                   ],
                 ),
                 // Mostrar quien agregó el producto en vista resumida
@@ -347,25 +390,57 @@ class _DialogoPagoState extends State<DialogoPago> {
         SeccionTitulo(titulo: 'Subtotal'),
         SizedBox(height: 16),
         SeccionContainer(
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: Column(
             children: [
-              Text(
-                'Subtotal:',
-                style: TextStyle(
-                  color: AppTheme.textPrimary,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w500,
-                ),
+              // Subtotal del pedido completo
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Subtotal pedido completo:',
+                    style: TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  Text(
+                    formatCurrency(widget.pedido.total),
+                    style: TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
               ),
-              Text(
-                formatCurrency(widget.pedido.total),
-                style: TextStyle(
-                  color: AppTheme.primary,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
+              if (productosSeleccionados.isNotEmpty) ...[
+                SizedBox(height: 12),
+                Divider(color: AppTheme.textSecondary.withOpacity(0.3)),
+                SizedBox(height: 12),
+                // Subtotal de productos seleccionados
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Subtotal seleccionado:',
+                      style: TextStyle(
+                        color: AppTheme.textPrimary,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    Text(
+                      formatCurrency(_subtotalProductosSeleccionados),
+                      style: TextStyle(
+                        color: AppTheme.primary,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
+              ],
             ],
           ),
         ),
@@ -475,25 +550,42 @@ class _DialogoPagoState extends State<DialogoPago> {
               width: 2,
             ),
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: Column(
             children: [
-              Text(
-                'TOTAL A PAGAR:',
-                style: TextStyle(
-                  color: AppTheme.textPrimary,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'TOTAL A PAGAR:',
+                    style: TextStyle(
+                      color: AppTheme.textPrimary,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    formatCurrency(_totalCalculado),
+                    style: TextStyle(
+                      color: AppTheme.primary,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
               ),
-              Text(
-                formatCurrency(_totalCalculado),
-                style: TextStyle(
-                  color: AppTheme.primary,
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
+              if (productosSeleccionados.isNotEmpty &&
+                  productosSeleccionados.length <
+                      widget.pedido.items.length) ...[
+                SizedBox(height: 8),
+                Text(
+                  'Pago parcial de ${productosSeleccionados.length} de ${widget.pedido.items.length} productos',
+                  style: TextStyle(
+                    color: AppTheme.textSecondary,
+                    fontSize: 14,
+                    fontStyle: FontStyle.italic,
+                  ),
                 ),
-              ),
+              ],
             ],
           ),
         ),
@@ -973,7 +1065,147 @@ class _DialogoPagoState extends State<DialogoPago> {
     );
   }
 
+  void _seleccionarTodos() {
+    setState(() {
+      productosSeleccionados.clear();
+      cantidadesParciales.clear();
+
+      for (final item in widget.pedido.items) {
+        productosSeleccionados.add(item);
+        cantidadesParciales[item] = item.cantidad;
+      }
+    });
+  }
+
+  void _deseleccionarTodos() {
+    setState(() {
+      productosSeleccionados.clear();
+      cantidadesParciales.clear();
+    });
+  }
+
+  Widget _buildCantidadSelector(
+    ItemPedido item,
+    int cantidadMax,
+    int cantidadParcial,
+  ) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Botón decrementar
+        Container(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            color: cantidadParcial > 1
+                ? AppTheme.primary
+                : AppTheme.textSecondary.withOpacity(0.3),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: IconButton(
+            padding: EdgeInsets.zero,
+            iconSize: 16,
+            onPressed: cantidadParcial > 1
+                ? () {
+                    setState(() {
+                      cantidadesParciales[item] = cantidadParcial - 1;
+                    });
+                  }
+                : null,
+            icon: Icon(
+              Icons.remove,
+              color: cantidadParcial > 1
+                  ? Colors.white
+                  : AppTheme.textSecondary,
+            ),
+          ),
+        ),
+        // Campo de cantidad
+        Container(
+          width: 60,
+          margin: EdgeInsets.symmetric(horizontal: 8),
+          child: TextField(
+            textAlign: TextAlign.center,
+            decoration: InputDecoration(
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(6),
+                borderSide: BorderSide(
+                  color: AppTheme.primary.withOpacity(0.3),
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(6),
+                borderSide: BorderSide(color: AppTheme.primary, width: 2),
+              ),
+              isDense: true,
+              contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+            ),
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            controller: TextEditingController(text: cantidadParcial.toString()),
+            onChanged: (value) {
+              int nuevaCantidad = int.tryParse(value) ?? 1;
+              if (nuevaCantidad < 1) nuevaCantidad = 1;
+              if (nuevaCantidad > cantidadMax) nuevaCantidad = cantidadMax;
+              setState(() {
+                cantidadesParciales[item] = nuevaCantidad;
+              });
+            },
+            style: TextStyle(
+              color: AppTheme.textPrimary,
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        // Botón incrementar
+        Container(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            color: cantidadParcial < cantidadMax
+                ? AppTheme.primary
+                : AppTheme.textSecondary.withOpacity(0.3),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: IconButton(
+            padding: EdgeInsets.zero,
+            iconSize: 16,
+            onPressed: cantidadParcial < cantidadMax
+                ? () {
+                    setState(() {
+                      cantidadesParciales[item] = cantidadParcial + 1;
+                    });
+                  }
+                : null,
+            icon: Icon(
+              Icons.add,
+              color: cantidadParcial < cantidadMax
+                  ? Colors.white
+                  : AppTheme.textSecondary,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   void _procesarPago() {
+    // Validar que al menos un producto esté seleccionado
+    if (productosSeleccionados.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Debes seleccionar al menos un producto para procesar el pago',
+            style: TextStyle(color: Colors.white),
+          ),
+          backgroundColor: AppTheme.error,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
     // Crear el resultado con todos los datos del pago
     // Generar lista de productos con cantidad parcial seleccionada
     final productosParciales = productosSeleccionados.map((item) {
@@ -997,6 +1229,8 @@ class _DialogoPagoState extends State<DialogoPago> {
       'montoTarjeta': montoTarjetaController.text,
       'montoTransferencia': montoTransferenciaController.text,
       'productosSeleccionados': productosParciales,
+      'totalCalculado': _totalCalculado,
+      'subtotalSeleccionado': _subtotalProductosSeleccionados,
     };
 
     Navigator.pop(context, resultado);
