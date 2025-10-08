@@ -1685,7 +1685,11 @@ class _PedidoScreenState extends State<PedidoScreen> {
                   child: GridView.builder(
                     padding: EdgeInsets.symmetric(horizontal: 16),
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 4, // 4 columnas para desktop
+                      crossAxisCount: MediaQuery.of(context).size.width > 1200
+                          ? 4 // 4 columnas para desktop grande
+                          : MediaQuery.of(context).size.width > 800
+                          ? 3 // 3 columnas para tablet/desktop pequeño
+                          : 2, // 2 columnas para móvil
                       childAspectRatio:
                           1.0, // Proporción 1:1 para tarjetas cuadradas
                       crossAxisSpacing: 12,
@@ -2449,200 +2453,222 @@ class _PedidoScreenState extends State<PedidoScreen> {
 
     // Si no es admin y es un pedido existente, verificar si el producto era original
     if (!userProvider.isAdmin && esPedidoExistente) {
-      // Encontrar el índice de este producto en la lista actual
       int indexActual = productosMesa.indexOf(producto);
-
-      // Si el índice es menor que la cantidad de productos originales, era un producto original
       if (indexActual >= 0 && indexActual < cantidadProductosOriginales) {
         puedeEliminar = false;
         esProductoOriginal = true;
-        print(
-          '🔒 Producto ${producto.nombre} es ORIGINAL (índice: $indexActual < $cantidadProductosOriginales) - NO se puede eliminar',
-        );
       } else {
-        // Es un producto nuevo agregado en esta sesión, sí se puede eliminar
         puedeEliminar = true;
         esProductoOriginal = false;
-        print(
-          '✅ Producto ${producto.nombre} es NUEVO (índice: $indexActual >= $cantidadProductosOriginales) - SÍ se puede eliminar',
-        );
       }
     }
 
     // Inicializar el estado de pago si no existe
     productoPagado.putIfAbsent(producto.id, () => true);
 
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          // Switch para controlar estado activo/pagado (solo admins)
-          if (userProvider.isAdmin)
-            Switch(
-              value: productoPagado[producto.id]!,
-              onChanged: (bool value) {
-                setState(() {
-                  productoPagado[producto.id] = value;
-                  // Actualizar el estado para reflejar el nuevo total
-                  _calcularTotal();
-                });
-              },
-              activeThumbColor: primary,
-            )
-          else
-            SizedBox(width: 50), // Espacio reservado para mantener alineación
-          // Imagen pequeña del producto
-          Container(
-            margin: EdgeInsets.only(right: 8),
-            child: _buildProductImage(
-              producto.imagenUrl,
-              width: 40,
-              height: 40,
-            ),
-          ),
+    // Detectar si es móvil para ajustar el layout
+    final isMovil = MediaQuery.of(context).size.width < 768;
 
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+    return Container(
+      margin: EdgeInsets.symmetric(vertical: 4),
+      padding: EdgeInsets.all(isMovil ? 12 : 8),
+      decoration: BoxDecoration(
+        color: Colors.grey[900]?.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: primary.withOpacity(0.2), width: 0.5),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              // Switch para controlar estado activo/pagado (solo admins en desktop)
+              if (userProvider.isAdmin && !isMovil)
+                Switch(
+                  value: productoPagado[producto.id]!,
+                  onChanged: (bool value) {
+                    setState(() {
+                      productoPagado[producto.id] = value;
+                      _calcularTotal();
+                    });
+                  },
+                  activeThumbColor: primary,
+                )
+              else if (!isMovil)
+                SizedBox(width: 50),
+
+              // Imagen pequeña del producto
+              Container(
+                margin: EdgeInsets.only(right: 8),
+                child: _buildProductImage(
+                  producto.imagenUrl,
+                  width: isMovil ? 50 : 40,
+                  height: isMovil ? 50 : 40,
+                ),
+              ),
+
+              // Información del producto
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: Text(
-                        producto.nombre,
-                        style: TextStyle(
-                          color: textLight,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            producto.nombre,
+                            style: TextStyle(
+                              color: textLight,
+                              fontSize: isMovil ? 16 : 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            maxLines: isMovil ? 2 : 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                        // Indicadores visuales (solo desktop)
+                        if (!userProvider.isAdmin &&
+                            esPedidoExistente &&
+                            !isMovil)
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 4,
+                              vertical: 2,
+                            ),
+                            margin: EdgeInsets.only(left: 4),
+                            decoration: BoxDecoration(
+                              color: esProductoOriginal
+                                  ? Colors.blue.withOpacity(0.2)
+                                  : Colors.orange.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              esProductoOriginal ? 'Guardado' : 'Nuevo',
+                              style: TextStyle(
+                                color: esProductoOriginal
+                                    ? Colors.blue
+                                    : Colors.orange,
+                                fontSize: 9,
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
-                    // Indicadores visuales para productos según su estado
-                    if (!userProvider.isAdmin && esPedidoExistente) ...[
-                      if (esProductoOriginal)
-                        Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
+                    if (producto.nota != null && producto.nota!.isNotEmpty)
+                      Padding(
+                        padding: EdgeInsets.only(top: 4),
+                        child: Text(
+                          producto.nota!,
+                          style: TextStyle(
+                            color: productoPagado[producto.id]!
+                                ? primary.withOpacity(0.7)
+                                : primary.withOpacity(0.3),
+                            fontSize: isMovil ? 12 : 11,
+                            fontStyle: FontStyle.italic,
                           ),
-                          margin: EdgeInsets.only(left: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.blue.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: Colors.blue.withOpacity(0.3),
-                            ),
-                          ),
-                          child: Text(
-                            'Guardado',
-                            style: TextStyle(
-                              color: Colors.blue,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        )
-                      else
-                        Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          margin: EdgeInsets.only(left: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.orange.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: Colors.orange.withOpacity(0.3),
-                            ),
-                          ),
-                          child: Text(
-                            'Nuevo',
-                            style: TextStyle(
-                              color: Colors.orange,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
+                          maxLines: isMovil ? 2 : 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                    ],
+                      ),
                   ],
                 ),
-                if (producto.nota != null && producto.nota!.isNotEmpty)
-                  Text(
-                    producto.nota!,
-                    style: TextStyle(
-                      color: productoPagado[producto.id]!
-                          ? primary.withOpacity(0.7)
-                          : primary.withOpacity(0.3),
-                      fontSize: 12,
-                      fontStyle: FontStyle.italic,
+              ),
+            ],
+          ),
+
+          SizedBox(height: isMovil ? 12 : 8),
+
+          // Controles de cantidad y precio
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Controles de cantidad
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: Icon(
+                      Icons.remove_circle,
+                      color: (productoPagado[producto.id]! && puedeEliminar)
+                          ? Colors.red
+                          : Colors.grey.withOpacity(0.3),
+                    ),
+                    onPressed: (productoPagado[producto.id]! && puedeEliminar)
+                        ? () => _eliminarProducto(producto)
+                        : null,
+                    iconSize: isMovil ? 24 : 20,
+                    padding: EdgeInsets.zero,
+                    constraints: BoxConstraints(minWidth: 32, minHeight: 32),
+                  ),
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isMovil ? 16 : 12,
+                      vertical: isMovil ? 8 : 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: primary.withOpacity(0.3)),
+                    ),
+                    child: Text(
+                      '${producto.cantidad}',
+                      style: TextStyle(
+                        color: textLight,
+                        fontSize: isMovil ? 18 : 14,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-              ],
-            ),
-          ),
-          // Controles de cantidad (optimizado)
-          SizedBox(
-            width: 100, // Reducido de 120 a 100 para dar más espacio al texto
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                IconButton(
-                  icon: Icon(
-                    Icons.remove_circle,
-                    color: (productoPagado[producto.id]! && puedeEliminar)
-                        ? Colors.red
-                        : Colors.grey.withOpacity(0.3),
+                  IconButton(
+                    icon: Icon(Icons.add_circle, color: Colors.green),
+                    onPressed: () {
+                      _agregarProducto(producto);
+                      setState(() {});
+                    },
+                    iconSize: isMovil ? 24 : 20,
+                    padding: EdgeInsets.zero,
+                    constraints: BoxConstraints(minWidth: 32, minHeight: 32),
                   ),
-                  onPressed: (productoPagado[producto.id]! && puedeEliminar)
-                      ? () => _eliminarProducto(producto)
-                      : null,
-                  iconSize: 18, // Reducido de 20 a 18 para mejor ajuste
-                  padding: EdgeInsets.zero,
-                  constraints: BoxConstraints(minWidth: 24, minHeight: 24),
-                ),
-                SizedBox(width: 6), // Reducido de 8 a 6
-                Text(
-                  '${producto.cantidad}',
-                  style: TextStyle(
-                    color: textLight,
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                SizedBox(width: 6), // Reducido de 8 a 6
-                IconButton(
-                  icon: Icon(Icons.add_circle, color: Colors.green),
-                  onPressed: () {
-                    _agregarProducto(producto);
-                    // Actualizar el total después de incrementar la cantidad
-                    setState(() {});
-                  },
-                  iconSize: 18, // Reducido de 20 a 18
-                  padding: EdgeInsets.zero,
-                  constraints: BoxConstraints(minWidth: 24, minHeight: 24),
-                ),
-              ],
-            ),
-          ),
-          // Precio (optimizado)
-          SizedBox(
-            width: 70, // Reducido de 80 a 70 para dar más espacio al texto
-            child: Text(
-              formatCurrency(producto.precio * producto.cantidad),
-              style: TextStyle(
-                color: productoPagado[producto.id]!
-                    ? primary
-                    : primary.withOpacity(0.5),
-                fontWeight: FontWeight.bold,
-                fontSize: 13, // Reducido de 14 a 13 para mejor ajuste
+                ],
               ),
-              textAlign: TextAlign.end,
-            ),
+
+              // Precio
+              Text(
+                formatCurrency(producto.precio * producto.cantidad),
+                style: TextStyle(
+                  color: productoPagado[producto.id]!
+                      ? primary
+                      : primary.withOpacity(0.5),
+                  fontWeight: FontWeight.bold,
+                  fontSize: isMovil ? 18 : 13,
+                ),
+              ),
+            ],
           ),
+
+          // Switch de admin en móvil (abajo)
+          if (userProvider.isAdmin && isMovil)
+            Padding(
+              padding: EdgeInsets.only(top: 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Producto activo:',
+                    style: TextStyle(color: textLight, fontSize: 14),
+                  ),
+                  Switch(
+                    value: productoPagado[producto.id]!,
+                    onChanged: (bool value) {
+                      setState(() {
+                        productoPagado[producto.id] = value;
+                        _calcularTotal();
+                      });
+                    },
+                    activeThumbColor: primary,
+                  ),
+                ],
+              ),
+            ),
         ],
       ),
     );

@@ -2352,9 +2352,11 @@ class _MesasScreenState extends State<MesasScreen>
 
     // Función local para construir botones de billetes mejorados
     Widget buildBilletButton(int valor, Function(VoidCallback) setStateLocal) {
+      final isMovil = MediaQuery.of(context).size.width < 768;
+
       return Expanded(
         child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 4),
+          padding: EdgeInsets.symmetric(horizontal: isMovil ? 2 : 4),
           child: InkWell(
             onTap: () {
               setStateLocal(() {
@@ -2366,7 +2368,7 @@ class _MesasScreenState extends State<MesasScreen>
               });
             },
             child: Container(
-              height: 80, // Más alto
+              height: isMovil ? 60 : 80, // Más compacto en móvil
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [_primary, _primary.withOpacity(0.8)],
@@ -2407,15 +2409,19 @@ class _MesasScreenState extends State<MesasScreen>
                   ],
 
                   // Icono de billete
-                  Icon(Icons.money, color: Colors.white, size: 20),
-                  SizedBox(height: 4),
+                  Icon(
+                    Icons.money,
+                    color: Colors.white,
+                    size: isMovil ? 16 : 20,
+                  ),
+                  SizedBox(height: isMovil ? 2 : 4),
 
                   // Valor del billete
                   Text(
                     '${formatCurrency(valor / 1000)}K',
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 14,
+                      fontSize: isMovil ? 12 : 14,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -2472,781 +2478,976 @@ class _MesasScreenState extends State<MesasScreen>
       context: context,
       barrierDismissible: false,
       builder: (context) => StatefulBuilder(
-        builder: (context, setState) => Dialog(
-          backgroundColor: Colors.transparent,
-          child: Container(
-            width: MediaQuery.of(context).size.width * 0.9,
-            constraints: BoxConstraints(
-              maxHeight: MediaQuery.of(context).size.height * 0.9,
-            ),
-            decoration: BoxDecoration(
-              color: const Color(0xFF2C2C2E),
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
-                  blurRadius: 20,
-                  offset: Offset(0, 10),
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Header con estilo moderno
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFF6B35),
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(20),
-                      topRight: Radius.circular(20),
+        builder: (context, setState) {
+          final isMovil = MediaQuery.of(context).size.width < 768;
+          final screenWidth = MediaQuery.of(context).size.width;
+          final screenHeight = MediaQuery.of(context).size.height;
+
+          return Dialog(
+            backgroundColor: Colors.transparent,
+            child: Container(
+              width: isMovil ? screenWidth * 0.98 : screenWidth * 0.8,
+              constraints: BoxConstraints(
+                maxHeight: isMovil ? screenHeight * 0.98 : screenHeight * 0.9,
+                maxWidth: isMovil ? screenWidth * 0.98 : 800,
+              ),
+              decoration: BoxDecoration(
+                color: const Color(0xFF2C2C2E),
+                borderRadius: BorderRadius.circular(isMovil ? 8 : 20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.3),
+                    blurRadius: 20,
+                    offset: Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Header con estilo moderno
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isMovil ? 12 : 24,
+                      vertical: isMovil ? 8 : 20,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFF6B35),
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(isMovil ? 8 : 20),
+                        topRight: Radius.circular(isMovil ? 8 : 20),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        if (!isMovil) // Ocultar icono en móvil para ahorrar espacio
+                          Container(
+                            padding: EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              Icons.credit_card,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                          ),
+                        if (!isMovil) SizedBox(width: 12),
+                        Text(
+                          isMovil ? 'Pago' : 'Procesar Pago',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: isMovil ? 16 : 20,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Spacer(),
+                        if (isMovil) // En móvil, mostrar mesa en header
+                          Text(
+                            'Mesa ${mesa.nombre}',
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.9),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        if (!isMovil)
+                          Text(
+                            '${productosSeleccionados.length}/${pedido.items.length}',
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.9),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                      ],
                     ),
                   ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Icon(
-                          Icons.credit_card,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                      ),
-                      SizedBox(width: 12),
-                      Text(
-                        'Procesar Pago',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      Spacer(),
-                      Text(
-                        '${productosSeleccionados.length}/${pedido.items.length}',
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.9),
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
 
-                // Contenido scrolleable
-                Flexible(
-                  child: SingleChildScrollView(
-                    padding: EdgeInsets.all(24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Información de la mesa con estilo moderno
-                        Container(
-                          padding: EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Color(0xFF3A3A3C),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: Color(0xFFFF6B35).withOpacity(0.3),
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: Color(0xFFFF6B35).withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Icon(
-                                  Icons.table_restaurant,
-                                  color: Color(0xFFFF6B35),
-                                  size: 20,
+                  // Contenido scrolleable
+                  Flexible(
+                    child: SingleChildScrollView(
+                      padding: EdgeInsets.all(isMovil ? 8 : 24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Información de la mesa con estilo moderno
+                          if (!isMovil) // Ocultar en móvil ya que está en header
+                            Container(
+                              padding: EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Color(0xFF3A3A3C),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: Color(0xFFFF6B35).withOpacity(0.3),
                                 ),
                               ),
-                              SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Mesa: ${mesa.nombre}',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
-                                      ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: Color(0xFFFF6B35).withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(8),
                                     ),
-                                    SizedBox(height: 2),
-                                    Text(
-                                      'Pedido #${pedido.id}',
-                                      style: TextStyle(
-                                        color: Colors.white70,
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        SizedBox(height: 24),
-
-                        // Header de productos con botones de selección
-                        Row(
-                          children: [
-                            Text(
-                              'Productos del Pedido',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            Spacer(),
-                            // Botón "Todos"
-                            GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  for (
-                                    int i = 0;
-                                    i < pedido.items.length;
-                                    i++
-                                  ) {
-                                    final indexKey = i.toString();
-                                    itemsSeleccionados[indexKey] = true;
-                                    cantidadesSeleccionadas[indexKey] =
-                                        pedido.items[i].cantidad;
-                                    cantidadControllers[indexKey]!.text = pedido
-                                        .items[i]
-                                        .cantidad
-                                        .toString();
-                                  }
-                                  // Actualizar lista de productos seleccionados
-                                  productosSeleccionados.clear();
-                                  for (
-                                    int i = 0;
-                                    i < pedido.items.length;
-                                    i++
-                                  ) {
-                                    final indexKey = i.toString();
-                                    if (itemsSeleccionados[indexKey] == true) {
-                                      final item = pedido.items[i];
-                                      final cantidad =
-                                          cantidadesSeleccionadas[indexKey] ??
-                                          0;
-                                      if (cantidad > 0) {
-                                        productosSeleccionados.add(
-                                          ItemPedido(
-                                            id: item.id,
-                                            productoId: item.productoId,
-                                            productoNombre: item.productoNombre,
-                                            cantidad: cantidad,
-                                            precioUnitario: item.precioUnitario,
-                                            agregadoPor: item.agregadoPor,
-                                          ),
-                                        );
-                                      }
-                                    }
-                                  }
-                                });
-                              },
-                              child: Container(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Color(0xFFFF6B35),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.check_box,
-                                      color: Colors.white,
-                                      size: 16,
-                                    ),
-                                    SizedBox(width: 4),
-                                    Text(
-                                      'Todos',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            SizedBox(width: 8),
-                            // Botón "Ninguno"
-                            GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  for (
-                                    int i = 0;
-                                    i < pedido.items.length;
-                                    i++
-                                  ) {
-                                    final indexKey = i.toString();
-                                    itemsSeleccionados[indexKey] = false;
-                                    cantidadesSeleccionadas[indexKey] = 0;
-                                    cantidadControllers[indexKey]!.text = '0';
-                                  }
-                                  productosSeleccionados.clear();
-                                });
-                              },
-                              child: Container(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Color(0xFF4A4A4C),
-                                  borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(color: Colors.white24),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.check_box_outline_blank,
-                                      color: Colors.white70,
-                                      size: 16,
-                                    ),
-                                    SizedBox(width: 4),
-                                    Text(
-                                      'Ninguno',
-                                      style: TextStyle(
-                                        color: Colors.white70,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 16),
-                        Container(
-                          padding: EdgeInsets.all(20), // Más padding
-                          decoration: BoxDecoration(
-                            color: _cardBg.withOpacity(0.3),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: _primary.withOpacity(0.2),
-                            ),
-                          ),
-                          child: Column(
-                            children: List.generate(pedido.items.length, (
-                              index,
-                            ) {
-                              final item = pedido.items[index];
-                              final indexKey = index.toString();
-                              final isSelected =
-                                  itemsSeleccionados[indexKey] == true;
-
-                              return Padding(
-                                padding: EdgeInsets.symmetric(
-                                  vertical: 8,
-                                ), // Más padding vertical
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    color: isSelected
-                                        ? _primary.withOpacity(0.1)
-                                        : Colors.transparent,
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(
-                                      color: isSelected
-                                          ? _primary
-                                          : Colors.transparent,
-                                      width: 1,
+                                    child: Icon(
+                                      Icons.table_restaurant,
+                                      color: Color(0xFFFF6B35),
+                                      size: 20,
                                     ),
                                   ),
-                                  padding: EdgeInsets.all(12),
+                                  SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Mesa: ${mesa.nombre}',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        SizedBox(height: 2),
+                                        Text(
+                                          'Pedido #${pedido.id}',
+                                          style: TextStyle(
+                                            color: Colors.white70,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          SizedBox(height: isMovil ? 12 : 24),
+
+                          // Header de productos con botones de selección
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  isMovil
+                                      ? 'Productos (${productosSeleccionados.length}/${pedido.items.length})'
+                                      : 'Productos del Pedido',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: isMovil ? 14 : 18,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                              Spacer(),
+                              // Botón "Todos"
+                              GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    for (
+                                      int i = 0;
+                                      i < pedido.items.length;
+                                      i++
+                                    ) {
+                                      final indexKey = i.toString();
+                                      itemsSeleccionados[indexKey] = true;
+                                      cantidadesSeleccionadas[indexKey] =
+                                          pedido.items[i].cantidad;
+                                      cantidadControllers[indexKey]!.text =
+                                          pedido.items[i].cantidad.toString();
+                                    }
+                                    // Actualizar lista de productos seleccionados
+                                    productosSeleccionados.clear();
+                                    for (
+                                      int i = 0;
+                                      i < pedido.items.length;
+                                      i++
+                                    ) {
+                                      final indexKey = i.toString();
+                                      if (itemsSeleccionados[indexKey] ==
+                                          true) {
+                                        final item = pedido.items[i];
+                                        final cantidad =
+                                            cantidadesSeleccionadas[indexKey] ??
+                                            0;
+                                        if (cantidad > 0) {
+                                          productosSeleccionados.add(
+                                            ItemPedido(
+                                              id: item.id,
+                                              productoId: item.productoId,
+                                              productoNombre:
+                                                  item.productoNombre,
+                                              cantidad: cantidad,
+                                              precioUnitario:
+                                                  item.precioUnitario,
+                                              agregadoPor: item.agregadoPor,
+                                            ),
+                                          );
+                                        }
+                                      }
+                                    }
+                                  });
+                                },
+                                child: Container(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Color(0xFFFF6B35),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
                                   child: Row(
+                                    mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      // Checkbox para seleccionar producto
-                                      Checkbox(
-                                        value: isSelected,
-                                        onChanged: (bool? value) {
-                                          setState(() {
-                                            itemsSeleccionados[indexKey] =
-                                                value ?? false;
-                                            if (value == true) {
-                                              // Al seleccionar, inicializar con cantidad máxima
-                                              cantidadesSeleccionadas[indexKey] =
-                                                  item.cantidad;
-                                              cantidadControllers[indexKey]
-                                                  ?.text = item.cantidad
-                                                  .toString();
-                                              productosSeleccionados.add(item);
-                                            } else {
-                                              // Al deseleccionar, limpiar cantidad
-                                              cantidadesSeleccionadas[indexKey] =
-                                                  0;
-                                              cantidadControllers[indexKey]
-                                                      ?.text =
-                                                  '0';
-                                              productosSeleccionados.remove(
-                                                item,
-                                              );
-                                            }
-                                          });
-                                        },
-                                        activeColor: _primary,
+                                      Icon(
+                                        Icons.check_box,
+                                        color: Colors.white,
+                                        size: 16,
                                       ),
-                                      SizedBox(width: 12),
-
-                                      // Información del producto
-                                      Expanded(
-                                        flex: 3,
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              '${item.productoNombre ?? 'Producto'}',
-                                              style: TextStyle(
-                                                color: _textPrimary,
-                                                fontWeight: FontWeight.w600,
-                                                fontSize: 15,
-                                              ),
-                                            ),
-                                            Text(
-                                              'Precio unitario: ${formatCurrency(item.precioUnitario)}',
-                                              style: TextStyle(
-                                                color: _textPrimary.withOpacity(
-                                                  0.7,
-                                                ),
-                                                fontSize: 12,
-                                              ),
-                                            ),
-                                            // ✅ NUEVO: Mostrar ingredientes seleccionados
-                                            if (item
-                                                .ingredientesSeleccionados
-                                                .isNotEmpty) ...[
-                                              SizedBox(height: 2),
-                                              Text(
-                                                'Ingredientes: ${item.ingredientesSeleccionados.join(', ')}',
-                                                style: TextStyle(
-                                                  color: _textPrimary
-                                                      .withOpacity(0.7),
-                                                  fontSize: 12,
-                                                  fontStyle: FontStyle.italic,
-                                                ),
-                                              ),
-                                            ],
-                                            // Mostrar quien agregó el producto
-                                            if (item.agregadoPor != null &&
-                                                item
-                                                    .agregadoPor!
-                                                    .isNotEmpty) ...[
-                                              SizedBox(height: 2),
-                                              Text(
-                                                '👤 Agregado por: ${item.agregadoPor}',
-                                                style: TextStyle(
-                                                  color: _textPrimary
-                                                      .withOpacity(0.8),
-                                                  fontSize: 11,
-                                                  fontStyle: FontStyle.italic,
-                                                ),
-                                              ),
-                                            ],
-                                            if (item.notas != null &&
-                                                item.notas!.isNotEmpty) ...[
-                                              SizedBox(height: 4),
-                                              Text(
-                                                item.notas!,
-                                                style: TextStyle(
-                                                  color: _textPrimary
-                                                      .withOpacity(0.7),
-                                                  fontSize: 12,
-                                                ),
-                                              ),
-                                            ],
-                                          ],
+                                      SizedBox(width: 4),
+                                      Text(
+                                        'Todos',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
                                         ),
-                                      ),
-
-                                      // ✅ NUEVO: Campo de cantidad específica
-                                      if (isSelected)
-                                        Expanded(
-                                          flex: 1,
-                                          child: Column(
-                                            children: [
-                                              Text(
-                                                'Cantidad',
-                                                style: TextStyle(
-                                                  color: _textPrimary
-                                                      .withOpacity(0.7),
-                                                  fontSize: 12,
-                                                ),
-                                              ),
-                                              Container(
-                                                width: 60,
-                                                child: TextField(
-                                                  controller:
-                                                      cantidadControllers[indexKey],
-                                                  keyboardType:
-                                                      TextInputType.number,
-                                                  textAlign: TextAlign.center,
-                                                  style: TextStyle(
-                                                    color: _textPrimary,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                  decoration: InputDecoration(
-                                                    border: OutlineInputBorder(
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            8,
-                                                          ),
-                                                    ),
-                                                    focusedBorder:
-                                                        OutlineInputBorder(
-                                                          borderRadius:
-                                                              BorderRadius.circular(
-                                                                8,
-                                                              ),
-                                                          borderSide:
-                                                              BorderSide(
-                                                                color: _primary,
-                                                              ),
-                                                        ),
-                                                    contentPadding:
-                                                        EdgeInsets.symmetric(
-                                                          vertical: 8,
-                                                        ),
-                                                    hintText: '0',
-                                                    hintStyle: TextStyle(
-                                                      color: _textPrimary
-                                                          .withOpacity(0.5),
-                                                    ),
-                                                  ),
-                                                  onChanged: (value) {
-                                                    final cantidad =
-                                                        int.tryParse(value) ??
-                                                        0;
-                                                    if (cantidad >= 0 &&
-                                                        cantidad <=
-                                                            item.cantidad) {
-                                                      setState(() {
-                                                        cantidadesSeleccionadas[indexKey] =
-                                                            cantidad;
-                                                      });
-                                                    }
-                                                  },
-                                                ),
-                                              ),
-                                              Text(
-                                                'Max: ${item.cantidad}',
-                                                style: TextStyle(
-                                                  color: _textPrimary
-                                                      .withOpacity(0.6),
-                                                  fontSize: 10,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-
-                                      // Precio
-                                      Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.end,
-                                        children: [
-                                          Text(
-                                            formatCurrency(item.precioUnitario),
-                                            style: TextStyle(
-                                              color: _textPrimary,
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 14,
-                                            ),
-                                          ),
-                                          if (isSelected)
-                                            Text(
-                                              'Total: ${formatCurrency(item.precioUnitario * (cantidadesSeleccionadas[indexKey] ?? 0))}',
-                                              style: TextStyle(
-                                                color: _primary,
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 12,
-                                              ),
-                                            ),
-                                        ],
                                       ),
                                     ],
                                   ),
                                 ),
-                              );
-                            }),
+                              ),
+                              SizedBox(width: 8),
+                              // Botón "Ninguno"
+                              GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    for (
+                                      int i = 0;
+                                      i < pedido.items.length;
+                                      i++
+                                    ) {
+                                      final indexKey = i.toString();
+                                      itemsSeleccionados[indexKey] = false;
+                                      cantidadesSeleccionadas[indexKey] = 0;
+                                      cantidadControllers[indexKey]!.text = '0';
+                                    }
+                                    productosSeleccionados.clear();
+                                  });
+                                },
+                                child: Container(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Color(0xFF4A4A4C),
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(color: Colors.white24),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.check_box_outline_blank,
+                                        color: Colors.white70,
+                                        size: 16,
+                                      ),
+                                      SizedBox(width: 4),
+                                      Text(
+                                        'Ninguno',
+                                        style: TextStyle(
+                                          color: Colors.white70,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-
-                        // Acciones rápidas para productos seleccionados
-                        if (productosSeleccionados.isNotEmpty) ...[
                           SizedBox(height: 16),
                           Container(
-                            padding: EdgeInsets.all(16),
+                            padding: EdgeInsets.all(20), // Más padding
                             decoration: BoxDecoration(
-                              color: _primary.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(12),
+                              color: _cardBg.withOpacity(0.3),
+                              borderRadius: BorderRadius.circular(16),
                               border: Border.all(
-                                color: _primary.withOpacity(0.3),
+                                color: _primary.withOpacity(0.2),
                               ),
                             ),
                             child: Column(
-                              children: [
-                                Text(
-                                  '${productosSeleccionados.length} producto${productosSeleccionados.length > 1 ? 's' : ''} seleccionado${productosSeleccionados.length > 1 ? 's' : ''}',
-                                  style: TextStyle(
-                                    color: _textPrimary,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                SizedBox(height: 12),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: ElevatedButton.icon(
-                                        onPressed: () async {
-                                          // Cancelar productos seleccionados
-                                          final motivo = await showDialog<String>(
-                                            context: context,
-                                            builder: (context) => AlertDialog(
-                                              backgroundColor: _cardBg,
-                                              title: Text(
-                                                'Cancelar Productos',
+                              children: List.generate(pedido.items.length, (
+                                index,
+                              ) {
+                                final item = pedido.items[index];
+                                final indexKey = index.toString();
+                                final isSelected =
+                                    itemsSeleccionados[indexKey] == true;
+
+                                return Padding(
+                                  padding: EdgeInsets.symmetric(
+                                    vertical: 8,
+                                  ), // Más padding vertical
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: isSelected
+                                          ? _primary.withOpacity(0.1)
+                                          : Colors.transparent,
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                        color: isSelected
+                                            ? _primary
+                                            : Colors.transparent,
+                                        width: 1,
+                                      ),
+                                    ),
+                                    padding: EdgeInsets.all(12),
+                                    child: Row(
+                                      children: [
+                                        // Checkbox para seleccionar producto
+                                        Checkbox(
+                                          value: isSelected,
+                                          onChanged: (bool? value) {
+                                            setState(() {
+                                              itemsSeleccionados[indexKey] =
+                                                  value ?? false;
+                                              if (value == true) {
+                                                // Al seleccionar, inicializar con cantidad máxima
+                                                cantidadesSeleccionadas[indexKey] =
+                                                    item.cantidad;
+                                                cantidadControllers[indexKey]
+                                                    ?.text = item.cantidad
+                                                    .toString();
+                                                productosSeleccionados.add(
+                                                  item,
+                                                );
+                                              } else {
+                                                // Al deseleccionar, limpiar cantidad
+                                                cantidadesSeleccionadas[indexKey] =
+                                                    0;
+                                                cantidadControllers[indexKey]
+                                                        ?.text =
+                                                    '0';
+                                                productosSeleccionados.remove(
+                                                  item,
+                                                );
+                                              }
+                                            });
+                                          },
+                                          activeColor: _primary,
+                                        ),
+                                        SizedBox(width: 12),
+
+                                        // Información del producto
+                                        Expanded(
+                                          flex: 3,
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                '${item.productoNombre ?? 'Producto'}',
                                                 style: TextStyle(
                                                   color: _textPrimary,
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: 15,
                                                 ),
                                               ),
-                                              content: Column(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  Text(
-                                                    '¿Está seguro de cancelar ${productosSeleccionados.length} producto${productosSeleccionados.length > 1 ? 's' : ''}?',
+                                              Text(
+                                                'Precio unitario: ${formatCurrency(item.precioUnitario)}',
+                                                style: TextStyle(
+                                                  color: _textPrimary
+                                                      .withOpacity(0.7),
+                                                  fontSize: 12,
+                                                ),
+                                              ),
+                                              // ✅ NUEVO: Mostrar ingredientes seleccionados
+                                              if (item
+                                                  .ingredientesSeleccionados
+                                                  .isNotEmpty) ...[
+                                                SizedBox(height: 2),
+                                                Text(
+                                                  'Ingredientes: ${item.ingredientesSeleccionados.join(', ')}',
+                                                  style: TextStyle(
+                                                    color: _textPrimary
+                                                        .withOpacity(0.7),
+                                                    fontSize: 12,
+                                                    fontStyle: FontStyle.italic,
+                                                  ),
+                                                ),
+                                              ],
+                                              // Mostrar quien agregó el producto
+                                              if (item.agregadoPor != null &&
+                                                  item
+                                                      .agregadoPor!
+                                                      .isNotEmpty) ...[
+                                                SizedBox(height: 2),
+                                                Text(
+                                                  '👤 Agregado por: ${item.agregadoPor}',
+                                                  style: TextStyle(
+                                                    color: _textPrimary
+                                                        .withOpacity(0.8),
+                                                    fontSize: 11,
+                                                    fontStyle: FontStyle.italic,
+                                                  ),
+                                                ),
+                                              ],
+                                              if (item.notas != null &&
+                                                  item.notas!.isNotEmpty) ...[
+                                                SizedBox(height: 4),
+                                                Text(
+                                                  item.notas!,
+                                                  style: TextStyle(
+                                                    color: _textPrimary
+                                                        .withOpacity(0.7),
+                                                    fontSize: 12,
+                                                  ),
+                                                ),
+                                              ],
+                                            ],
+                                          ),
+                                        ),
+
+                                        // ✅ NUEVO: Campo de cantidad específica
+                                        if (isSelected)
+                                          Expanded(
+                                            flex: 1,
+                                            child: Column(
+                                              children: [
+                                                Text(
+                                                  'Cantidad',
+                                                  style: TextStyle(
+                                                    color: _textPrimary
+                                                        .withOpacity(0.7),
+                                                    fontSize: 12,
+                                                  ),
+                                                ),
+                                                Container(
+                                                  width: 60,
+                                                  child: TextField(
+                                                    controller:
+                                                        cantidadControllers[indexKey],
+                                                    keyboardType:
+                                                        TextInputType.number,
+                                                    textAlign: TextAlign.center,
                                                     style: TextStyle(
                                                       color: _textPrimary,
+                                                      fontWeight:
+                                                          FontWeight.bold,
                                                     ),
-                                                  ),
-                                                  SizedBox(height: 16),
-                                                  TextField(
                                                     decoration: InputDecoration(
-                                                      labelText:
-                                                          'Motivo (opcional)',
-                                                      labelStyle: TextStyle(
-                                                        color: _textPrimary,
+                                                      border: OutlineInputBorder(
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              8,
+                                                            ),
                                                       ),
-                                                      enabledBorder:
-                                                          OutlineInputBorder(
-                                                            borderSide:
-                                                                BorderSide(
-                                                                  color:
-                                                                      _textMuted,
-                                                                ),
-                                                          ),
                                                       focusedBorder:
                                                           OutlineInputBorder(
+                                                            borderRadius:
+                                                                BorderRadius.circular(
+                                                                  8,
+                                                                ),
                                                             borderSide:
                                                                 BorderSide(
                                                                   color:
                                                                       _primary,
                                                                 ),
                                                           ),
+                                                      contentPadding:
+                                                          EdgeInsets.symmetric(
+                                                            vertical: 8,
+                                                          ),
+                                                      hintText: '0',
+                                                      hintStyle: TextStyle(
+                                                        color: _textPrimary
+                                                            .withOpacity(0.5),
+                                                      ),
                                                     ),
-                                                    style: TextStyle(
-                                                      color: _textPrimary,
-                                                    ),
-                                                    onChanged: (value) {},
+                                                    onChanged: (value) {
+                                                      final cantidad =
+                                                          int.tryParse(value) ??
+                                                          0;
+                                                      if (cantidad >= 0 &&
+                                                          cantidad <=
+                                                              item.cantidad) {
+                                                        setState(() {
+                                                          cantidadesSeleccionadas[indexKey] =
+                                                              cantidad;
+                                                        });
+                                                      }
+                                                    },
                                                   ),
-                                                ],
-                                              ),
-                                              actions: [
-                                                TextButton(
-                                                  onPressed: () =>
-                                                      Navigator.pop(context),
-                                                  child: Text('Cancelar'),
                                                 ),
-                                                ElevatedButton(
-                                                  onPressed: () =>
-                                                      Navigator.pop(
-                                                        context,
-                                                        'Cancelado por usuario',
-                                                      ),
-                                                  style:
-                                                      ElevatedButton.styleFrom(
-                                                        backgroundColor:
-                                                            Colors.red,
-                                                      ),
-                                                  child: Text(
-                                                    'Confirmar',
-                                                    style: TextStyle(
-                                                      color: Colors.white,
-                                                    ),
+                                                Text(
+                                                  'Max: ${item.cantidad}',
+                                                  style: TextStyle(
+                                                    color: _textPrimary
+                                                        .withOpacity(0.6),
+                                                    fontSize: 10,
                                                   ),
                                                 ),
                                               ],
                                             ),
-                                          );
-
-                                          if (motivo != null) {
-                                            print(
-                                              '🗑️ Iniciando cancelación de ${productosSeleccionados.length} productos',
-                                            );
-
-                                            // Cerrar diálogo principal primero
-                                            Navigator.pop(context);
-
-                                            // Procesar cancelación de productos DESPUÉS
-                                            await _procesarCancelacionProductos(
-                                              mesa,
-                                              pedido,
-                                              productosSeleccionados,
-                                              motivo,
-                                            );
-                                          }
-                                        },
-                                        icon: Icon(
-                                          Icons.remove_circle_outline,
-                                          size: 16,
-                                        ),
-                                        label: Text('Cancelar'),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: _primary,
-                                          foregroundColor: _textPrimary,
-                                          padding: EdgeInsets.symmetric(
-                                            vertical: 8,
                                           ),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              8,
+
+                                        // Precio
+                                        Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.end,
+                                          children: [
+                                            Text(
+                                              formatCurrency(
+                                                item.precioUnitario,
+                                              ),
+                                              style: TextStyle(
+                                                color: _textPrimary,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                            if (isSelected)
+                                              Text(
+                                                'Total: ${formatCurrency(item.precioUnitario * (cantidadesSeleccionadas[indexKey] ?? 0))}',
+                                                style: TextStyle(
+                                                  color: _primary,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 12,
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              }),
+                            ),
+                          ),
+
+                          // Acciones rápidas para productos seleccionados
+                          if (productosSeleccionados.isNotEmpty) ...[
+                            SizedBox(height: 16),
+                            Container(
+                              padding: EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: _primary.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: _primary.withOpacity(0.3),
+                                ),
+                              ),
+                              child: Column(
+                                children: [
+                                  Text(
+                                    '${productosSeleccionados.length} producto${productosSeleccionados.length > 1 ? 's' : ''} seleccionado${productosSeleccionados.length > 1 ? 's' : ''}',
+                                    style: TextStyle(
+                                      color: _textPrimary,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  SizedBox(height: 12),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: ElevatedButton.icon(
+                                          onPressed: () async {
+                                            // Cancelar productos seleccionados
+                                            final motivo = await showDialog<String>(
+                                              context: context,
+                                              builder: (context) => AlertDialog(
+                                                backgroundColor: _cardBg,
+                                                title: Text(
+                                                  'Cancelar Productos',
+                                                  style: TextStyle(
+                                                    color: _textPrimary,
+                                                  ),
+                                                ),
+                                                content: Column(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  children: [
+                                                    Text(
+                                                      '¿Está seguro de cancelar ${productosSeleccionados.length} producto${productosSeleccionados.length > 1 ? 's' : ''}?',
+                                                      style: TextStyle(
+                                                        color: _textPrimary,
+                                                      ),
+                                                    ),
+                                                    SizedBox(height: 16),
+                                                    TextField(
+                                                      decoration: InputDecoration(
+                                                        labelText:
+                                                            'Motivo (opcional)',
+                                                        labelStyle: TextStyle(
+                                                          color: _textPrimary,
+                                                        ),
+                                                        enabledBorder:
+                                                            OutlineInputBorder(
+                                                              borderSide:
+                                                                  BorderSide(
+                                                                    color:
+                                                                        _textMuted,
+                                                                  ),
+                                                            ),
+                                                        focusedBorder:
+                                                            OutlineInputBorder(
+                                                              borderSide:
+                                                                  BorderSide(
+                                                                    color:
+                                                                        _primary,
+                                                                  ),
+                                                            ),
+                                                      ),
+                                                      style: TextStyle(
+                                                        color: _textPrimary,
+                                                      ),
+                                                      onChanged: (value) {},
+                                                    ),
+                                                  ],
+                                                ),
+                                                actions: [
+                                                  TextButton(
+                                                    onPressed: () =>
+                                                        Navigator.pop(context),
+                                                    child: Text('Cancelar'),
+                                                  ),
+                                                  ElevatedButton(
+                                                    onPressed: () =>
+                                                        Navigator.pop(
+                                                          context,
+                                                          'Cancelado por usuario',
+                                                        ),
+                                                    style:
+                                                        ElevatedButton.styleFrom(
+                                                          backgroundColor:
+                                                              Colors.red,
+                                                        ),
+                                                    child: Text(
+                                                      'Confirmar',
+                                                      style: TextStyle(
+                                                        color: Colors.white,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            );
+
+                                            if (motivo != null) {
+                                              print(
+                                                '🗑️ Iniciando cancelación de ${productosSeleccionados.length} productos',
+                                              );
+
+                                              // Cerrar diálogo principal primero
+                                              Navigator.pop(context);
+
+                                              // Procesar cancelación de productos DESPUÉS
+                                              await _procesarCancelacionProductos(
+                                                mesa,
+                                                pedido,
+                                                productosSeleccionados,
+                                                motivo,
+                                              );
+                                            }
+                                          },
+                                          icon: Icon(
+                                            Icons.remove_circle_outline,
+                                            size: 16,
+                                          ),
+                                          label: Text('Cancelar'),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: _primary,
+                                            foregroundColor: _textPrimary,
+                                            padding: EdgeInsets.symmetric(
+                                              vertical: 8,
+                                            ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
                                             ),
                                           ),
                                         ),
                                       ),
-                                    ),
-                                    SizedBox(width: 8),
-                                    Expanded(
-                                      child: ElevatedButton.icon(
-                                        onPressed: () async {
-                                          final mesaDestino = await showDialog<Mesa>(
-                                            context: context,
-                                            builder: (context) => AlertDialog(
-                                              backgroundColor: _cardBg,
-                                              title: Text(
-                                                'Mover Productos',
-                                                style: TextStyle(
-                                                  color: _textPrimary,
-                                                ),
-                                              ),
-                                              content: Column(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  Text(
-                                                    'Seleccione la mesa destino para ${productosSeleccionados.length} producto${productosSeleccionados.length > 1 ? 's' : ''}:',
-                                                    style: TextStyle(
-                                                      color: _textPrimary,
-                                                    ),
+                                      SizedBox(width: 8),
+                                      Expanded(
+                                        child: ElevatedButton.icon(
+                                          onPressed: () async {
+                                            final mesaDestino = await showDialog<Mesa>(
+                                              context: context,
+                                              builder: (context) => AlertDialog(
+                                                backgroundColor: _cardBg,
+                                                title: Text(
+                                                  'Mover Productos',
+                                                  style: TextStyle(
+                                                    color: _textPrimary,
                                                   ),
-                                                  SizedBox(height: 16),
-                                                  Container(
-                                                    height: 200,
-                                                    width: double.maxFinite,
-                                                    child: ListView.builder(
-                                                      itemCount: mesas
-                                                          .where(
-                                                            (m) =>
-                                                                m.id != mesa.id,
-                                                          )
-                                                          .length,
-                                                      itemBuilder: (context, index) {
-                                                        final mesaOption = mesas
+                                                ),
+                                                content: Column(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  children: [
+                                                    Text(
+                                                      'Seleccione la mesa destino para ${productosSeleccionados.length} producto${productosSeleccionados.length > 1 ? 's' : ''}:',
+                                                      style: TextStyle(
+                                                        color: _textPrimary,
+                                                      ),
+                                                    ),
+                                                    SizedBox(height: 16),
+                                                    Container(
+                                                      height: 200,
+                                                      width: double.maxFinite,
+                                                      child: ListView.builder(
+                                                        itemCount: mesas
                                                             .where(
                                                               (m) =>
                                                                   m.id !=
                                                                   mesa.id,
                                                             )
-                                                            .toList()[index];
-                                                        return ListTile(
-                                                          leading: Icon(
-                                                            Icons
-                                                                .table_restaurant,
-                                                            color: _primary,
-                                                          ),
-                                                          title: Text(
-                                                            mesaOption.nombre,
-                                                            style: TextStyle(
-                                                              color:
-                                                                  _textPrimary,
+                                                            .length,
+                                                        itemBuilder: (context, index) {
+                                                          final mesaOption = mesas
+                                                              .where(
+                                                                (m) =>
+                                                                    m.id !=
+                                                                    mesa.id,
+                                                              )
+                                                              .toList()[index];
+                                                          return ListTile(
+                                                            leading: Icon(
+                                                              Icons
+                                                                  .table_restaurant,
+                                                              color: _primary,
                                                             ),
-                                                          ),
-                                                          subtitle: Text(
-                                                            'Mesa disponible',
-                                                            style: TextStyle(
-                                                              color:
-                                                                  _textSecondary,
-                                                            ),
-                                                          ),
-                                                          onTap: () =>
-                                                              Navigator.pop(
-                                                                context,
-                                                                mesaOption,
+                                                            title: Text(
+                                                              mesaOption.nombre,
+                                                              style: TextStyle(
+                                                                color:
+                                                                    _textPrimary,
                                                               ),
-                                                        );
-                                                      },
+                                                            ),
+                                                            subtitle: Text(
+                                                              'Mesa disponible',
+                                                              style: TextStyle(
+                                                                color:
+                                                                    _textSecondary,
+                                                              ),
+                                                            ),
+                                                            onTap: () =>
+                                                                Navigator.pop(
+                                                                  context,
+                                                                  mesaOption,
+                                                                ),
+                                                          );
+                                                        },
+                                                      ),
                                                     ),
+                                                  ],
+                                                ),
+                                                actions: [
+                                                  TextButton(
+                                                    onPressed: () =>
+                                                        Navigator.pop(context),
+                                                    child: Text('Cancelar'),
                                                   ),
                                                 ],
                                               ),
-                                              actions: [
-                                                TextButton(
-                                                  onPressed: () =>
-                                                      Navigator.pop(context),
-                                                  child: Text('Cancelar'),
-                                                ),
-                                              ],
-                                            ),
-                                          );
-
-                                          if (mesaDestino != null) {
-                                            // Cerrar diálogo principal primero
-                                            Navigator.pop(context);
-
-                                            // Procesar el movimiento de productos DESPUÉS
-                                            await _procesarMovimientoProductos(
-                                              mesa,
-                                              pedido,
-                                              productosSeleccionados,
-                                              mesaDestino,
                                             );
-                                          }
-                                        },
-                                        icon: Icon(Icons.swap_horiz, size: 16),
-                                        label: Text('Mover'),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: Color(0xFF9C27B0),
-                                          foregroundColor: _textPrimary,
-                                          padding: EdgeInsets.symmetric(
-                                            vertical: 8,
+
+                                            if (mesaDestino != null) {
+                                              // Cerrar diálogo principal primero
+                                              Navigator.pop(context);
+
+                                              // Procesar el movimiento de productos DESPUÉS
+                                              await _procesarMovimientoProductos(
+                                                mesa,
+                                                pedido,
+                                                productosSeleccionados,
+                                                mesaDestino,
+                                              );
+                                            }
+                                          },
+                                          icon: Icon(
+                                            Icons.swap_horiz,
+                                            size: 16,
                                           ),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              8,
+                                          label: Text('Mover'),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Color(0xFF9C27B0),
+                                            foregroundColor: _textPrimary,
+                                            padding: EdgeInsets.symmetric(
+                                              vertical: 8,
+                                            ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
                                             ),
                                           ),
                                         ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                          SizedBox(height: 32),
+
+                          // 3. SUBTOTAL
+                          _buildSeccionTitulo('Subtotal'),
+                          SizedBox(height: 16),
+                          Container(
+                            padding: EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: _cardBg.withOpacity(0.3),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: _primary.withOpacity(0.2),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Subtotal:',
+                                  style: TextStyle(
+                                    color: _textPrimary,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                Text(
+                                  '\$${calcularTotalSeleccionados().toStringAsFixed(0)}',
+                                  style: TextStyle(
+                                    color: _primary,
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          SizedBox(height: 32),
+
+                          // 4. DESCUENTOS
+                          _buildSeccionTitulo('Descuento'),
+                          SizedBox(height: 16),
+                          Container(
+                            padding: EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: _cardBg.withOpacity(0.3),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: _primary.withOpacity(0.2),
+                              ),
+                            ),
+                            child: Column(
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: TextField(
+                                        controller:
+                                            descuentoPorcentajeController,
+                                        keyboardType: TextInputType.number,
+                                        style: TextStyle(
+                                          color: _textPrimary,
+                                          fontSize: 16,
+                                        ),
+                                        decoration: InputDecoration(
+                                          labelText: 'Descuento (%)',
+                                          labelStyle: TextStyle(
+                                            color: _textSecondary,
+                                          ),
+                                          prefixIcon: Icon(
+                                            Icons.percent,
+                                            color: _primary,
+                                          ),
+                                          border: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                            borderSide: BorderSide(
+                                              color: _primary.withOpacity(0.3),
+                                            ),
+                                          ),
+                                          focusedBorder: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                            borderSide: BorderSide(
+                                              color: _primary,
+                                              width: 2,
+                                            ),
+                                          ),
+                                        ),
+                                        onChanged: (value) {
+                                          setState(() {
+                                            if (value.isNotEmpty) {
+                                              descuentoValorController.clear();
+                                            }
+                                          });
+                                        },
+                                      ),
+                                    ),
+                                    SizedBox(width: 16),
+                                    Text(
+                                      'O',
+                                      style: TextStyle(
+                                        color: _textSecondary,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    SizedBox(width: 16),
+                                    Expanded(
+                                      child: TextField(
+                                        controller: descuentoValorController,
+                                        keyboardType: TextInputType.number,
+                                        style: TextStyle(
+                                          color: _textPrimary,
+                                          fontSize: 16,
+                                        ),
+                                        decoration: InputDecoration(
+                                          labelText: 'Valor fijo',
+                                          labelStyle: TextStyle(
+                                            color: _textSecondary,
+                                          ),
+                                          prefixIcon: Icon(
+                                            Icons.attach_money,
+                                            color: _primary,
+                                          ),
+                                          border: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                            borderSide: BorderSide(
+                                              color: _primary.withOpacity(0.3),
+                                            ),
+                                          ),
+                                          focusedBorder: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                            borderSide: BorderSide(
+                                              color: _primary,
+                                              width: 2,
+                                            ),
+                                          ),
+                                        ),
+                                        onChanged: (value) {
+                                          setState(() {
+                                            if (value.isNotEmpty) {
+                                              descuentoPorcentajeController
+                                                  .clear();
+                                            }
+                                          });
+                                        },
                                       ),
                                     ),
                                   ],
@@ -3254,676 +3455,238 @@ class _MesasScreenState extends State<MesasScreen>
                               ],
                             ),
                           ),
-                        ],
-                        SizedBox(height: 32),
+                          SizedBox(height: 32),
 
-                        // 3. SUBTOTAL
-                        _buildSeccionTitulo('Subtotal'),
-                        SizedBox(height: 16),
-                        Container(
-                          padding: EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: _cardBg.withOpacity(0.3),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: _primary.withOpacity(0.2),
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'Subtotal:',
-                                style: TextStyle(
-                                  color: _textPrimary,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w500,
-                                ),
+                          // 5. TOTAL
+                          _buildSeccionTitulo('Total'),
+                          SizedBox(height: 16),
+                          Container(
+                            padding: EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: _primary.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: _primary.withOpacity(0.3),
+                                width: 2,
                               ),
-                              Text(
-                                '\$${calcularTotalSeleccionados().toStringAsFixed(0)}',
-                                style: TextStyle(
-                                  color: _primary,
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        SizedBox(height: 32),
-
-                        // 4. DESCUENTOS
-                        _buildSeccionTitulo('Descuento'),
-                        SizedBox(height: 16),
-                        Container(
-                          padding: EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: _cardBg.withOpacity(0.3),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: _primary.withOpacity(0.2),
                             ),
-                          ),
-                          child: Column(
-                            children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: TextField(
-                                      controller: descuentoPorcentajeController,
-                                      keyboardType: TextInputType.number,
-                                      style: TextStyle(
-                                        color: _textPrimary,
-                                        fontSize: 16,
-                                      ),
-                                      decoration: InputDecoration(
-                                        labelText: 'Descuento (%)',
-                                        labelStyle: TextStyle(
-                                          color: _textSecondary,
-                                        ),
-                                        prefixIcon: Icon(
-                                          Icons.percent,
-                                          color: _primary,
-                                        ),
-                                        border: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
-                                          borderSide: BorderSide(
-                                            color: _primary.withOpacity(0.3),
-                                          ),
-                                        ),
-                                        focusedBorder: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
-                                          borderSide: BorderSide(
-                                            color: _primary,
-                                            width: 2,
-                                          ),
-                                        ),
-                                      ),
-                                      onChanged: (value) {
-                                        setState(() {
-                                          if (value.isNotEmpty) {
-                                            descuentoValorController.clear();
-                                          }
-                                        });
-                                      },
-                                    ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'TOTAL A PAGAR:',
+                                  style: TextStyle(
+                                    color: _textPrimary,
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
                                   ),
-                                  SizedBox(width: 16),
-                                  Text(
-                                    'O',
-                                    style: TextStyle(
-                                      color: _textSecondary,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  SizedBox(width: 16),
-                                  Expanded(
-                                    child: TextField(
-                                      controller: descuentoValorController,
-                                      keyboardType: TextInputType.number,
-                                      style: TextStyle(
-                                        color: _textPrimary,
-                                        fontSize: 16,
-                                      ),
-                                      decoration: InputDecoration(
-                                        labelText: 'Valor fijo',
-                                        labelStyle: TextStyle(
-                                          color: _textSecondary,
-                                        ),
-                                        prefixIcon: Icon(
-                                          Icons.attach_money,
-                                          color: _primary,
-                                        ),
-                                        border: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
-                                          borderSide: BorderSide(
-                                            color: _primary.withOpacity(0.3),
-                                          ),
-                                        ),
-                                        focusedBorder: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
-                                          borderSide: BorderSide(
-                                            color: _primary,
-                                            width: 2,
-                                          ),
-                                        ),
-                                      ),
-                                      onChanged: (value) {
-                                        setState(() {
-                                          if (value.isNotEmpty) {
-                                            descuentoPorcentajeController
-                                                .clear();
-                                          }
-                                        });
-                                      },
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                        SizedBox(height: 32),
+                                ),
+                                Text(
+                                  '\$${(() {
+                                    double total = calcularTotalSeleccionados();
+                                    double descuento = 0;
 
-                        // 5. TOTAL
-                        _buildSeccionTitulo('Total'),
-                        SizedBox(height: 16),
-                        Container(
-                          padding: EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: _primary.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: _primary.withOpacity(0.3),
-                              width: 2,
+                                    if (descuentoPorcentajeController.text.isNotEmpty) {
+                                      final porcentaje = double.tryParse(descuentoPorcentajeController.text) ?? 0;
+                                      descuento = total * (porcentaje / 100);
+                                    } else if (descuentoValorController.text.isNotEmpty) {
+                                      descuento = double.tryParse(descuentoValorController.text) ?? 0;
+                                    }
+
+                                    double propina = 0;
+                                    if (incluyePropina && propinaController.text.isNotEmpty) {
+                                      propina = double.tryParse(propinaController.text) ?? 0;
+                                    }
+
+                                    return (total - descuento + propina).toStringAsFixed(0);
+                                  })()}',
+                                  style: TextStyle(
+                                    color: _primary,
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'TOTAL A PAGAR:',
-                                style: TextStyle(
-                                  color: _textPrimary,
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                          SizedBox(height: 32),
+
+                          // 6. OPCIONES ESPECIALES
+                          _buildSeccionTitulo('Opciones Especiales'),
+                          SizedBox(height: 16),
+                          Container(
+                            padding: EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: _cardBg.withOpacity(0.3),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: _primary.withOpacity(0.2),
                               ),
-                              Text(
-                                '\$${(() {
-                                  double total = calcularTotalSeleccionados();
-                                  double descuento = 0;
-
-                                  if (descuentoPorcentajeController.text.isNotEmpty) {
-                                    final porcentaje = double.tryParse(descuentoPorcentajeController.text) ?? 0;
-                                    descuento = total * (porcentaje / 100);
-                                  } else if (descuentoValorController.text.isNotEmpty) {
-                                    descuento = double.tryParse(descuentoValorController.text) ?? 0;
-                                  }
-
-                                  double propina = 0;
-                                  if (incluyePropina && propinaController.text.isNotEmpty) {
-                                    propina = double.tryParse(propinaController.text) ?? 0;
-                                  }
-
-                                  return (total - descuento + propina).toStringAsFixed(0);
-                                })()}',
-                                style: TextStyle(
-                                  color: _primary,
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        SizedBox(height: 32),
-
-                        // 6. OPCIONES ESPECIALES
-                        _buildSeccionTitulo('Opciones Especiales'),
-                        SizedBox(height: 16),
-                        Container(
-                          padding: EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: _cardBg.withOpacity(0.3),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: _primary.withOpacity(0.2),
                             ),
-                          ),
-                          child: Column(
-                            children: [
-                              // Opción Es cortesía
-                              Container(
-                                padding: EdgeInsets.all(16),
-                                decoration: BoxDecoration(
-                                  color: esCortesia0
-                                      ? _primary.withOpacity(0.1)
-                                      : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
+                            child: Column(
+                              children: [
+                                // Opción Es cortesía
+                                Container(
+                                  padding: EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
                                     color: esCortesia0
-                                        ? _primary
-                                        : _textPrimary.withOpacity(0.2),
-                                  ),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      Icons.card_giftcard,
+                                        ? _primary.withOpacity(0.1)
+                                        : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
                                       color: esCortesia0
                                           ? _primary
-                                          : _textSecondary,
-                                      size: 24,
+                                          : _textPrimary.withOpacity(0.2),
                                     ),
-                                    SizedBox(width: 16),
-                                    Expanded(
-                                      child: Text(
-                                        'Es cortesía',
-                                        style: TextStyle(
-                                          color: _textPrimary,
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w500,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.card_giftcard,
+                                        color: esCortesia0
+                                            ? _primary
+                                            : _textSecondary,
+                                        size: 24,
+                                      ),
+                                      SizedBox(width: 16),
+                                      Expanded(
+                                        child: Text(
+                                          'Es cortesía',
+                                          style: TextStyle(
+                                            color: _textPrimary,
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w500,
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                    Switch(
-                                      value: esCortesia0,
-                                      activeThumbColor: _primary,
-                                      onChanged: (value) {
-                                        setState(() {
-                                          esCortesia0 = value;
-                                          if (value) {
-                                            esConsumoInterno0 = false;
-                                          }
-                                        });
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              SizedBox(height: 16),
-                              // Opción Consumo interno
-                              Container(
-                                padding: EdgeInsets.all(16),
-                                decoration: BoxDecoration(
-                                  color: esConsumoInterno0
-                                      ? _primary.withOpacity(0.1)
-                                      : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: esConsumoInterno0
-                                        ? _primary
-                                        : _textPrimary.withOpacity(0.2),
+                                      Switch(
+                                        value: esCortesia0,
+                                        activeThumbColor: _primary,
+                                        onChanged: (value) {
+                                          setState(() {
+                                            esCortesia0 = value;
+                                            if (value) {
+                                              esConsumoInterno0 = false;
+                                            }
+                                          });
+                                        },
+                                      ),
+                                    ],
                                   ),
                                 ),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      Icons.people,
+                                SizedBox(height: 16),
+                                // Opción Consumo interno
+                                Container(
+                                  padding: EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: esConsumoInterno0
+                                        ? _primary.withOpacity(0.1)
+                                        : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
                                       color: esConsumoInterno0
                                           ? _primary
-                                          : _textSecondary,
-                                      size: 24,
+                                          : _textPrimary.withOpacity(0.2),
                                     ),
-                                    SizedBox(width: 16),
-                                    Expanded(
-                                      child: Text(
-                                        'Consumo interno',
-                                        style: TextStyle(
-                                          color: _textPrimary,
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w500,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.people,
+                                        color: esConsumoInterno0
+                                            ? _primary
+                                            : _textSecondary,
+                                        size: 24,
+                                      ),
+                                      SizedBox(width: 16),
+                                      Expanded(
+                                        child: Text(
+                                          'Consumo interno',
+                                          style: TextStyle(
+                                            color: _textPrimary,
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w500,
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                    Switch(
-                                      value: esConsumoInterno0,
-                                      activeThumbColor: _primary,
-                                      onChanged: (value) {
-                                        setState(() {
-                                          esConsumoInterno0 = value;
-                                          if (value) {
-                                            esCortesia0 = false;
-                                          }
-                                        });
-                                      },
-                                    ),
-                                  ],
+                                      Switch(
+                                        value: esConsumoInterno0,
+                                        activeThumbColor: _primary,
+                                        onChanged: (value) {
+                                          setState(() {
+                                            esConsumoInterno0 = value;
+                                            if (value) {
+                                              esCortesia0 = false;
+                                            }
+                                          });
+                                        },
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        SizedBox(height: 32),
-
-                        // 7. TOGGLE DE PROPINA
-                        _buildSeccionTitulo('Configurar Propina'),
-                        SizedBox(height: 16),
-                        Container(
-                          padding: EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: _cardBg.withOpacity(0.3),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: _primary.withOpacity(0.2),
+                              ],
                             ),
                           ),
-                          child: Column(
-                            children: [
-                              // Campo de propina
-                              TextField(
-                                controller: propinaController,
-                                decoration: InputDecoration(
-                                  labelText: 'Propina (%)',
-                                  labelStyle: TextStyle(color: _textPrimary),
-                                  suffixText: '%',
-                                  prefixIcon: Icon(Icons.star, color: _primary),
-                                  enabledBorder: OutlineInputBorder(
-                                    borderSide: BorderSide(color: _textMuted),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  focusedBorder: OutlineInputBorder(
-                                    borderSide: BorderSide(
+                          SizedBox(height: 32),
+
+                          // 7. TOGGLE DE PROPINA
+                          _buildSeccionTitulo('Configurar Propina'),
+                          SizedBox(height: 16),
+                          Container(
+                            padding: EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: _cardBg.withOpacity(0.3),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: _primary.withOpacity(0.2),
+                              ),
+                            ),
+                            child: Column(
+                              children: [
+                                // Campo de propina
+                                TextField(
+                                  controller: propinaController,
+                                  decoration: InputDecoration(
+                                    labelText: 'Propina (%)',
+                                    labelStyle: TextStyle(color: _textPrimary),
+                                    suffixText: '%',
+                                    prefixIcon: Icon(
+                                      Icons.star,
                                       color: _primary,
-                                      width: 2,
                                     ),
-                                    borderRadius: BorderRadius.circular(12),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderSide: BorderSide(color: _textMuted),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderSide: BorderSide(
+                                        color: _primary,
+                                        width: 2,
+                                      ),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
                                   ),
+                                  style: TextStyle(
+                                    color: _textPrimary,
+                                    fontSize: 16,
+                                  ),
+                                  keyboardType: TextInputType.number,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      incluyePropina =
+                                          value.isNotEmpty &&
+                                          double.tryParse(value) != null &&
+                                          double.parse(value) > 0;
+                                    });
+                                  },
                                 ),
-                                style: TextStyle(
-                                  color: _textPrimary,
-                                  fontSize: 16,
-                                ),
-                                keyboardType: TextInputType.number,
-                                onChanged: (value) {
-                                  setState(() {
-                                    incluyePropina =
-                                        value.isNotEmpty &&
-                                        double.tryParse(value) != null &&
-                                        double.parse(value) > 0;
-                                  });
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
-                        SizedBox(height: 32),
-
-                        // 8. BOTONES DE BILLETES COMPACTOS
-                        _buildSeccionTitulo('Selector de Billetes'),
-                        SizedBox(height: 16),
-                        Container(
-                          padding: EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: _cardBg.withOpacity(0.3),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: _primary.withOpacity(0.2),
+                              ],
                             ),
                           ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Campo para entrada manual
-                              TextField(
-                                controller: billetesController,
-                                decoration: InputDecoration(
-                                  labelText: 'Total recibido',
-                                  labelStyle: TextStyle(color: _textPrimary),
-                                  prefixText: '\$',
-                                  enabledBorder: OutlineInputBorder(
-                                    borderSide: BorderSide(color: _textMuted),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  focusedBorder: OutlineInputBorder(
-                                    borderSide: BorderSide(
-                                      color: _primary,
-                                      width: 2,
-                                    ),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                                style: TextStyle(
-                                  color: _textPrimary,
-                                  fontSize: 16,
-                                ),
-                                keyboardType: TextInputType.number,
-                                onChanged: (value) {
-                                  setState(() {
-                                    billetesSeleccionados =
-                                        double.tryParse(value) ?? 0.0;
-                                    if (value.isNotEmpty) {
-                                      contadorBilletes.updateAll(
-                                        (key, val) => 0,
-                                      );
-                                    }
-                                  });
-                                },
-                              ),
-                              SizedBox(height: 20),
-                              Text(
-                                'O selecciona los billetes:',
-                                style: TextStyle(
-                                  color: _textPrimary,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 16,
-                                ),
-                              ),
-                              SizedBox(height: 16),
-                              // Botones de billetes mejorados
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceEvenly,
-                                children: [
-                                  buildBilletButton(50000, setState),
-                                  buildBilletButton(20000, setState),
-                                  buildBilletButton(10000, setState),
-                                ],
-                              ),
-                              SizedBox(height: 12),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceEvenly,
-                                children: [
-                                  buildBilletButton(5000, setState),
-                                  buildBilletButton(2000, setState),
-                                  buildBilletButton(1000, setState),
-                                ],
-                              ),
-                              SizedBox(height: 16),
-                              // Botones de acción para billetes
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: ElevatedButton.icon(
-                                      onPressed: () {
-                                        setState(() {
-                                          contadorBilletes.updateAll(
-                                            (key, value) => 0,
-                                          );
-                                          double subtotal =
-                                              calcularTotalSeleccionados();
-                                          double propinaPercent =
-                                              double.tryParse(
-                                                propinaController.text,
-                                              ) ??
-                                              0.0;
-                                          double propinaMonto =
-                                              (subtotal * propinaPercent / 100)
-                                                  .roundToDouble();
-                                          double total =
-                                              subtotal + propinaMonto;
-                                          billetesSeleccionados = total;
-                                          billetesController.text =
-                                              billetesSeleccionados
-                                                  .toStringAsFixed(0);
-                                        });
-                                      },
-                                      icon: Icon(Icons.check, size: 18),
-                                      label: Text('Exacto'),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.green,
-                                        foregroundColor: Colors.white,
-                                        padding: EdgeInsets.symmetric(
-                                          vertical: 12,
-                                        ),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            10,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  SizedBox(width: 12),
-                                  Expanded(
-                                    child: ElevatedButton.icon(
-                                      onPressed: () {
-                                        setState(() {
-                                          billetesSeleccionados = 0.0;
-                                          billetesController.text = '0';
-                                          contadorBilletes.updateAll(
-                                            (key, value) => 0,
-                                          );
-                                        });
-                                      },
-                                      icon: Icon(Icons.clear, size: 18),
-                                      label: Text('Limpiar'),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.red,
-                                        foregroundColor: Colors.white,
-                                        padding: EdgeInsets.symmetric(
-                                          vertical: 12,
-                                        ),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            10,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                        SizedBox(height: 32),
+                          SizedBox(height: 32),
 
-                        // 9. MÉTODOS DE PAGO
-                        _buildSeccionTitulo('Método de Pago'),
-                        SizedBox(height: 16),
-                        Container(
-                          padding: EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: _cardBg.withOpacity(0.3),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: _primary.withOpacity(0.2),
-                            ),
-                          ),
-                          child: Column(
-                            children: [
-                              // Botones de método de pago mejorados
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: GestureDetector(
-                                      onTap: () => setState(
-                                        () => medioPago0 = 'efectivo',
-                                      ),
-                                      child: Container(
-                                        padding: EdgeInsets.all(16),
-                                        decoration: BoxDecoration(
-                                          color: medioPago0 == 'efectivo'
-                                              ? _primary.withOpacity(0.2)
-                                              : Colors.transparent,
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
-                                          border: Border.all(
-                                            color: medioPago0 == 'efectivo'
-                                                ? _primary
-                                                : _textMuted,
-                                            width: 2,
-                                          ),
-                                        ),
-                                        child: Column(
-                                          children: [
-                                            Icon(
-                                              Icons.money,
-                                              color: medioPago0 == 'efectivo'
-                                                  ? _primary
-                                                  : _textSecondary,
-                                              size: 24,
-                                            ),
-                                            SizedBox(height: 8),
-                                            Text(
-                                              'Efectivo',
-                                              style: TextStyle(
-                                                color: medioPago0 == 'efectivo'
-                                                    ? _primary
-                                                    : _textSecondary,
-                                                fontWeight: FontWeight.w600,
-                                                fontSize: 14,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  SizedBox(width: 16),
-                                  Expanded(
-                                    child: GestureDetector(
-                                      onTap: () => setState(
-                                        () => medioPago0 = 'transferencia',
-                                      ),
-                                      child: Container(
-                                        padding: EdgeInsets.all(16),
-                                        decoration: BoxDecoration(
-                                          color: medioPago0 == 'transferencia'
-                                              ? _primary.withOpacity(0.2)
-                                              : Colors.transparent,
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
-                                          border: Border.all(
-                                            color: medioPago0 == 'transferencia'
-                                                ? _primary
-                                                : _textMuted,
-                                            width: 2,
-                                          ),
-                                        ),
-                                        child: Column(
-                                          children: [
-                                            Icon(
-                                              Icons.credit_card,
-                                              color:
-                                                  medioPago0 == 'transferencia'
-                                                  ? _primary
-                                                  : _textSecondary,
-                                              size: 24,
-                                            ),
-                                            SizedBox(height: 8),
-                                            Text(
-                                              'Tarjeta/Transfer.',
-                                              textAlign: TextAlign.center,
-                                              style: TextStyle(
-                                                color:
-                                                    medioPago0 ==
-                                                        'transferencia'
-                                                    ? _primary
-                                                    : _textSecondary,
-                                                fontWeight: FontWeight.w600,
-                                                fontSize: 14,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                        SizedBox(height: 32),
-
-                        // Sección: Pago en efectivo (condicional)
-                        if (medioPago0 == 'efectivo') ...[
-                          _buildSeccionTitulo('Cálculo de Cambio'),
+                          // 8. BOTONES DE BILLETES COMPACTOS
+                          _buildSeccionTitulo('Selector de Billetes'),
                           SizedBox(height: 16),
                           Container(
                             padding: EdgeInsets.all(20),
@@ -3974,7 +3737,6 @@ class _MesasScreenState extends State<MesasScreen>
                                   },
                                 ),
                                 SizedBox(height: 20),
-
                                 Text(
                                   'O selecciona los billetes:',
                                   style: TextStyle(
@@ -3984,7 +3746,6 @@ class _MesasScreenState extends State<MesasScreen>
                                   ),
                                 ),
                                 SizedBox(height: 16),
-
                                 // Botones de billetes mejorados
                                 Row(
                                   mainAxisAlignment:
@@ -4006,7 +3767,6 @@ class _MesasScreenState extends State<MesasScreen>
                                   ],
                                 ),
                                 SizedBox(height: 16),
-
                                 // Botones de acción para billetes
                                 Row(
                                   children: [
@@ -4087,12 +3847,9 @@ class _MesasScreenState extends State<MesasScreen>
                             ),
                           ),
                           SizedBox(height: 32),
-                        ],
 
-                        // 10. MONTO RECIBIDO Y CAMBIO
-                        if (medioPago0 == 'efectivo' &&
-                            billetesSeleccionados > 0) ...[
-                          _buildSeccionTitulo('Cálculo de Cambio'),
+                          // 9. MÉTODOS DE PAGO
+                          _buildSeccionTitulo('Método de Pago'),
                           SizedBox(height: 16),
                           Container(
                             padding: EdgeInsets.all(20),
@@ -4105,93 +3862,108 @@ class _MesasScreenState extends State<MesasScreen>
                             ),
                             child: Column(
                               children: [
+                                // Botones de método de pago mejorados
                                 Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Text(
-                                      'Recibido:',
-                                      style: TextStyle(
-                                        color: _textPrimary,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                    Text(
-                                      formatCurrency(billetesSeleccionados),
-                                      style: TextStyle(
-                                        color: _textPrimary,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                SizedBox(height: 12),
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      'Cambio:',
-                                      style: TextStyle(
-                                        color: _textPrimary,
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    Builder(
-                                      builder: (context) {
-                                        double total =
-                                            calcularTotalSeleccionados();
-                                        double descuento = 0;
-                                        if (descuentoPorcentajeController
-                                            .text
-                                            .isNotEmpty) {
-                                          final porcentaje =
-                                              double.tryParse(
-                                                descuentoPorcentajeController
-                                                    .text,
-                                              ) ??
-                                              0;
-                                          descuento =
-                                              total * (porcentaje / 100);
-                                        } else if (descuentoValorController
-                                            .text
-                                            .isNotEmpty) {
-                                          descuento =
-                                              double.tryParse(
-                                                descuentoValorController.text,
-                                              ) ??
-                                              0;
-                                        }
-                                        double propina = 0;
-                                        if (incluyePropina &&
-                                            propinaController.text.isNotEmpty) {
-                                          propina =
-                                              double.tryParse(
-                                                propinaController.text,
-                                              ) ??
-                                              0;
-                                        }
-                                        double totalFinal =
-                                            total - descuento + propina;
-                                        double cambio =
-                                            billetesSeleccionados - totalFinal;
-
-                                        return Text(
-                                          cambio >= 0
-                                              ? formatCurrency(cambio)
-                                              : '-${formatCurrency(-cambio)}',
-                                          style: TextStyle(
-                                            color: cambio >= 0
-                                                ? Colors.green
-                                                : Colors.red,
-                                            fontSize: 20,
-                                            fontWeight: FontWeight.bold,
+                                    Expanded(
+                                      child: GestureDetector(
+                                        onTap: () => setState(
+                                          () => medioPago0 = 'efectivo',
+                                        ),
+                                        child: Container(
+                                          padding: EdgeInsets.all(16),
+                                          decoration: BoxDecoration(
+                                            color: medioPago0 == 'efectivo'
+                                                ? _primary.withOpacity(0.2)
+                                                : Colors.transparent,
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                            border: Border.all(
+                                              color: medioPago0 == 'efectivo'
+                                                  ? _primary
+                                                  : _textMuted,
+                                              width: 2,
+                                            ),
                                           ),
-                                        );
-                                      },
+                                          child: Column(
+                                            children: [
+                                              Icon(
+                                                Icons.money,
+                                                color: medioPago0 == 'efectivo'
+                                                    ? _primary
+                                                    : _textSecondary,
+                                                size: 24,
+                                              ),
+                                              SizedBox(height: 8),
+                                              Text(
+                                                'Efectivo',
+                                                style: TextStyle(
+                                                  color:
+                                                      medioPago0 == 'efectivo'
+                                                      ? _primary
+                                                      : _textSecondary,
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: 14,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    SizedBox(width: 16),
+                                    Expanded(
+                                      child: GestureDetector(
+                                        onTap: () => setState(
+                                          () => medioPago0 = 'transferencia',
+                                        ),
+                                        child: Container(
+                                          padding: EdgeInsets.all(16),
+                                          decoration: BoxDecoration(
+                                            color: medioPago0 == 'transferencia'
+                                                ? _primary.withOpacity(0.2)
+                                                : Colors.transparent,
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                            border: Border.all(
+                                              color:
+                                                  medioPago0 == 'transferencia'
+                                                  ? _primary
+                                                  : _textMuted,
+                                              width: 2,
+                                            ),
+                                          ),
+                                          child: Column(
+                                            children: [
+                                              Icon(
+                                                Icons.credit_card,
+                                                color:
+                                                    medioPago0 ==
+                                                        'transferencia'
+                                                    ? _primary
+                                                    : _textSecondary,
+                                                size: 24,
+                                              ),
+                                              SizedBox(height: 8),
+                                              Text(
+                                                'Tarjeta/Transfer.',
+                                                textAlign: TextAlign.center,
+                                                style: TextStyle(
+                                                  color:
+                                                      medioPago0 ==
+                                                          'transferencia'
+                                                      ? _primary
+                                                      : _textSecondary,
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: 14,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -4199,637 +3971,571 @@ class _MesasScreenState extends State<MesasScreen>
                             ),
                           ),
                           SizedBox(height: 32),
-                        ],
 
-                        // 11. OTROS MÉTODOS DE PAGO (PAGO MÚLTIPLE)
-                        _buildSeccionTitulo('Pago Múltiple'),
-                        SizedBox(height: 16),
-                        Container(
-                          padding: EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: _cardBg.withOpacity(0.3),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: _primary.withOpacity(0.3),
-                              width: 1.5,
-                            ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
+                          // Sección: Pago en efectivo (condicional)
+                          if (medioPago0 == 'efectivo') ...[
+                            _buildSeccionTitulo('Cálculo de Cambio'),
+                            SizedBox(height: 16),
+                            Container(
+                              padding: EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: _cardBg.withOpacity(0.3),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: _primary.withOpacity(0.2),
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Icon(
-                                    Icons.account_balance_wallet,
-                                    color: _primary,
-                                    size: 24,
-                                  ),
-                                  SizedBox(width: 12),
-                                  Text(
-                                    'Dividir pago entre métodos',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                      color: _textPrimary,
+                                  // Campo para entrada manual
+                                  TextField(
+                                    controller: billetesController,
+                                    decoration: InputDecoration(
+                                      labelText: 'Total recibido',
+                                      labelStyle: TextStyle(
+                                        color: _textPrimary,
+                                      ),
+                                      prefixText: '\$',
+                                      enabledBorder: OutlineInputBorder(
+                                        borderSide: BorderSide(
+                                          color: _textMuted,
+                                        ),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderSide: BorderSide(
+                                          color: _primary,
+                                          width: 2,
+                                        ),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
                                     ),
-                                  ),
-                                  Spacer(),
-                                  Switch(
-                                    value: pagoMultiple,
+                                    style: TextStyle(
+                                      color: _textPrimary,
+                                      fontSize: 16,
+                                    ),
+                                    keyboardType: TextInputType.number,
                                     onChanged: (value) {
                                       setState(() {
-                                        pagoMultiple = value;
-                                        if (!value) {
-                                          // Limpiar campos cuando se desactive
-                                          montoEfectivoController.clear();
-                                          montoTarjetaController.clear();
-                                          montoTransferenciaController.clear();
+                                        billetesSeleccionados =
+                                            double.tryParse(value) ?? 0.0;
+                                        if (value.isNotEmpty) {
+                                          contadorBilletes.updateAll(
+                                            (key, val) => 0,
+                                          );
                                         }
                                       });
                                     },
-                                    activeColor: _primary,
+                                  ),
+                                  SizedBox(height: 20),
+
+                                  Text(
+                                    'O selecciona los billetes:',
+                                    style: TextStyle(
+                                      color: _textPrimary,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                  SizedBox(height: 16),
+
+                                  // Botones de billetes mejorados
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceEvenly,
+                                    children: [
+                                      buildBilletButton(50000, setState),
+                                      buildBilletButton(20000, setState),
+                                      buildBilletButton(10000, setState),
+                                    ],
+                                  ),
+                                  SizedBox(height: 12),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceEvenly,
+                                    children: [
+                                      buildBilletButton(5000, setState),
+                                      buildBilletButton(2000, setState),
+                                      buildBilletButton(1000, setState),
+                                    ],
+                                  ),
+                                  SizedBox(height: 16),
+
+                                  // Botones de acción para billetes
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: ElevatedButton.icon(
+                                          onPressed: () {
+                                            setState(() {
+                                              contadorBilletes.updateAll(
+                                                (key, value) => 0,
+                                              );
+                                              double subtotal =
+                                                  calcularTotalSeleccionados();
+                                              double propinaPercent =
+                                                  double.tryParse(
+                                                    propinaController.text,
+                                                  ) ??
+                                                  0.0;
+                                              double propinaMonto =
+                                                  (subtotal *
+                                                          propinaPercent /
+                                                          100)
+                                                      .roundToDouble();
+                                              double total =
+                                                  subtotal + propinaMonto;
+                                              billetesSeleccionados = total;
+                                              billetesController.text =
+                                                  billetesSeleccionados
+                                                      .toStringAsFixed(0);
+                                            });
+                                          },
+                                          icon: Icon(Icons.check, size: 18),
+                                          label: Text('Exacto'),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.green,
+                                            foregroundColor: Colors.white,
+                                            padding: EdgeInsets.symmetric(
+                                              vertical: 12,
+                                            ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      SizedBox(width: 12),
+                                      Expanded(
+                                        child: ElevatedButton.icon(
+                                          onPressed: () {
+                                            setState(() {
+                                              billetesSeleccionados = 0.0;
+                                              billetesController.text = '0';
+                                              contadorBilletes.updateAll(
+                                                (key, value) => 0,
+                                              );
+                                            });
+                                          },
+                                          icon: Icon(Icons.clear, size: 18),
+                                          label: Text('Limpiar'),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.red,
+                                            foregroundColor: Colors.white,
+                                            padding: EdgeInsets.symmetric(
+                                              vertical: 12,
+                                            ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),
-                              if (pagoMultiple) ...[
-                                SizedBox(height: 20),
+                            ),
+                            SizedBox(height: 32),
+                          ],
+
+                          // 10. MONTO RECIBIDO Y CAMBIO
+                          if (medioPago0 == 'efectivo' &&
+                              billetesSeleccionados > 0) ...[
+                            _buildSeccionTitulo('Cálculo de Cambio'),
+                            SizedBox(height: 16),
+                            Container(
+                              padding: EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: _cardBg.withOpacity(0.3),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: _primary.withOpacity(0.2),
+                                ),
+                              ),
+                              child: Column(
+                                children: [
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        'Recibido:',
+                                        style: TextStyle(
+                                          color: _textPrimary,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                      Text(
+                                        formatCurrency(billetesSeleccionados),
+                                        style: TextStyle(
+                                          color: _textPrimary,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  SizedBox(height: 12),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        'Cambio:',
+                                        style: TextStyle(
+                                          color: _textPrimary,
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      Builder(
+                                        builder: (context) {
+                                          double total =
+                                              calcularTotalSeleccionados();
+                                          double descuento = 0;
+                                          if (descuentoPorcentajeController
+                                              .text
+                                              .isNotEmpty) {
+                                            final porcentaje =
+                                                double.tryParse(
+                                                  descuentoPorcentajeController
+                                                      .text,
+                                                ) ??
+                                                0;
+                                            descuento =
+                                                total * (porcentaje / 100);
+                                          } else if (descuentoValorController
+                                              .text
+                                              .isNotEmpty) {
+                                            descuento =
+                                                double.tryParse(
+                                                  descuentoValorController.text,
+                                                ) ??
+                                                0;
+                                          }
+                                          double propina = 0;
+                                          if (incluyePropina &&
+                                              propinaController
+                                                  .text
+                                                  .isNotEmpty) {
+                                            propina =
+                                                double.tryParse(
+                                                  propinaController.text,
+                                                ) ??
+                                                0;
+                                          }
+                                          double totalFinal =
+                                              total - descuento + propina;
+                                          double cambio =
+                                              billetesSeleccionados -
+                                              totalFinal;
+
+                                          return Text(
+                                            cambio >= 0
+                                                ? formatCurrency(cambio)
+                                                : '-${formatCurrency(-cambio)}',
+                                            style: TextStyle(
+                                              color: cambio >= 0
+                                                  ? Colors.green
+                                                  : Colors.red,
+                                              fontSize: 20,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            SizedBox(height: 32),
+                          ],
+
+                          // 11. OTROS MÉTODOS DE PAGO (PAGO MÚLTIPLE)
+                          _buildSeccionTitulo('Pago Múltiple'),
+                          SizedBox(height: 16),
+                          Container(
+                            padding: EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: _cardBg.withOpacity(0.3),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: _primary.withOpacity(0.3),
+                                width: 1.5,
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
                                 Row(
                                   children: [
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            'Efectivo (\$)',
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w500,
-                                              color: _textPrimary,
-                                            ),
-                                          ),
-                                          SizedBox(height: 8),
-                                          TextFormField(
-                                            controller: montoEfectivoController,
-                                            keyboardType: TextInputType.number,
-                                            inputFormatters: [
-                                              FilteringTextInputFormatter.allow(
-                                                RegExp(r'^\d*\.?\d*'),
-                                              ),
-                                            ],
-                                            decoration: InputDecoration(
-                                              hintText: '0.00',
-                                              prefixIcon: Icon(
-                                                Icons.money,
-                                                color: Colors.green,
-                                              ),
-                                              border: OutlineInputBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(8),
-                                              ),
-                                              focusedBorder: OutlineInputBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(8),
-                                                borderSide: BorderSide(
-                                                  color: _primary,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
+                                    Icon(
+                                      Icons.account_balance_wallet,
+                                      color: _primary,
+                                      size: 24,
                                     ),
                                     SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            'Tarjeta (\$)',
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w500,
-                                              color: _textPrimary,
-                                            ),
-                                          ),
-                                          SizedBox(height: 8),
-                                          TextFormField(
-                                            controller: montoTarjetaController,
-                                            keyboardType: TextInputType.number,
-                                            inputFormatters: [
-                                              FilteringTextInputFormatter.allow(
-                                                RegExp(r'^\d*\.?\d*'),
-                                              ),
-                                            ],
-                                            decoration: InputDecoration(
-                                              hintText: '0.00',
-                                              prefixIcon: Icon(
-                                                Icons.credit_card,
-                                                color: Colors.blue,
-                                              ),
-                                              border: OutlineInputBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(8),
-                                              ),
-                                              focusedBorder: OutlineInputBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(8),
-                                                borderSide: BorderSide(
-                                                  color: _primary,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ],
+                                    Text(
+                                      'Dividir pago entre métodos',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                        color: _textPrimary,
                                       ),
                                     ),
-                                    SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            'Transferencia (\$)',
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w500,
-                                              color: _textPrimary,
-                                            ),
-                                          ),
-                                          SizedBox(height: 8),
-                                          TextFormField(
-                                            controller:
-                                                montoTransferenciaController,
-                                            keyboardType: TextInputType.number,
-                                            inputFormatters: [
-                                              FilteringTextInputFormatter.allow(
-                                                RegExp(r'^\d*\.?\d*'),
-                                              ),
-                                            ],
-                                            decoration: InputDecoration(
-                                              hintText: '0.00',
-                                              prefixIcon: Icon(
-                                                Icons.account_balance,
-                                                color: Colors.purple,
-                                              ),
-                                              border: OutlineInputBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(8),
-                                              ),
-                                              focusedBorder: OutlineInputBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(8),
-                                                borderSide: BorderSide(
-                                                  color: _primary,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
+                                    Spacer(),
+                                    Switch(
+                                      value: pagoMultiple,
+                                      onChanged: (value) {
+                                        setState(() {
+                                          pagoMultiple = value;
+                                          if (!value) {
+                                            // Limpiar campos cuando se desactive
+                                            montoEfectivoController.clear();
+                                            montoTarjetaController.clear();
+                                            montoTransferenciaController
+                                                .clear();
+                                          }
+                                        });
+                                      },
+                                      activeColor: _primary,
                                     ),
                                   ],
                                 ),
-                              ],
-                            ],
-                          ),
-                        ),
-                        SizedBox(height: 32),
-
-                        // 12. RESUMEN FINAL DE TOTALES\n                  _buildSeccionTitulo('Resumen Final'),
-                        SizedBox(height: 16),
-                        Container(
-                          padding: EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: _cardBg.withOpacity(0.3),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: _primary.withOpacity(0.2),
-                            ),
-                          ),
-                          child: Column(
-                            children: [
-                              // Campo de propina
-                              TextField(
-                                controller: propinaController,
-                                decoration: InputDecoration(
-                                  labelText: 'Propina (%)',
-                                  labelStyle: TextStyle(color: _textPrimary),
-                                  suffixText: '%',
-                                  prefixIcon: Icon(Icons.star, color: _primary),
-                                  enabledBorder: OutlineInputBorder(
-                                    borderSide: BorderSide(color: _textMuted),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  focusedBorder: OutlineInputBorder(
-                                    borderSide: BorderSide(
-                                      color: _primary,
-                                      width: 2,
-                                    ),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                                style: TextStyle(
-                                  color: _textPrimary,
-                                  fontSize: 16,
-                                ),
-                                keyboardType: TextInputType.number,
-                                onChanged: (value) {
-                                  setState(() {
-                                    incluyePropina =
-                                        value.isNotEmpty &&
-                                        double.tryParse(value) != null &&
-                                        double.parse(value) > 0;
-                                  });
-                                },
-                              ),
-                              SizedBox(height: 24),
-
-                              // Resumen de totales
-                              Builder(
-                                builder: (context) {
-                                  double subtotal =
-                                      calcularTotalSeleccionados();
-                                  double propinaPercent =
-                                      double.tryParse(propinaController.text) ??
-                                      0.0;
-                                  double propinaMonto =
-                                      (subtotal * propinaPercent / 100)
-                                          .roundToDouble();
-
-                                  // ✅ Calcular descuento
-                                  double descuento = 0.0;
-                                  String descuentoPorcentajeStr =
-                                      descuentoPorcentajeController.text;
-                                  String descuentoValorStr =
-                                      descuentoValorController.text;
-
-                                  if (descuentoPorcentajeStr.isNotEmpty) {
-                                    double descuentoPorcentaje =
-                                        double.tryParse(
-                                          descuentoPorcentajeStr,
-                                        ) ??
-                                        0.0;
-                                    descuento =
-                                        (subtotal * descuentoPorcentaje / 100);
-                                  } else if (descuentoValorStr.isNotEmpty) {
-                                    descuento =
-                                        double.tryParse(descuentoValorStr) ??
-                                        0.0;
-                                  }
-
-                                  // ✅ Total con descuento aplicado
-                                  double total =
-                                      subtotal - descuento + propinaMonto;
-
-                                  return Container(
-                                    padding: EdgeInsets.all(20),
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        colors: [
-                                          _primary.withOpacity(0.1),
-                                          _primary.withOpacity(0.05),
-                                        ],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                      ),
-                                      borderRadius: BorderRadius.circular(16),
-                                      border: Border.all(
-                                        color: _primary.withOpacity(0.3),
-                                      ),
-                                    ),
-                                    child: Column(
-                                      children: [
-                                        Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.spaceBetween,
+                                if (pagoMultiple) ...[
+                                  SizedBox(height: 20),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
                                             Text(
-                                              'Subtotal:',
+                                              'Efectivo (\$)',
                                               style: TextStyle(
-                                                color: _textPrimary,
-                                                fontSize: 16,
-                                              ),
-                                            ),
-                                            Text(
-                                              formatCurrency(subtotal),
-                                              style: TextStyle(
-                                                color: _textPrimary,
-                                                fontSize: 16,
+                                                fontSize: 14,
                                                 fontWeight: FontWeight.w500,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        // ✅ Mostrar descuento si está aplicado
-                                        if (descuento > 0) ...[
-                                          SizedBox(height: 12),
-                                          Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Text(
-                                                'Descuento:',
-                                                style: TextStyle(
-                                                  color: Colors.green,
-                                                  fontSize: 16,
-                                                ),
-                                              ),
-                                              Text(
-                                                '-${formatCurrency(descuento)}',
-                                                style: TextStyle(
-                                                  color: Colors.green,
-                                                  fontSize: 16,
-                                                  fontWeight: FontWeight.w500,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                        if (propinaPercent > 0) ...[
-                                          SizedBox(height: 12),
-                                          Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Text(
-                                                'Propina ($propinaPercent%):',
-                                                style: TextStyle(
-                                                  color: _textPrimary,
-                                                  fontSize: 16,
-                                                ),
-                                              ),
-                                              Text(
-                                                formatCurrency(propinaMonto),
-                                                style: TextStyle(
-                                                  color: _textPrimary,
-                                                  fontSize: 16,
-                                                  fontWeight: FontWeight.w500,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                        SizedBox(height: 16),
-                                        Divider(
-                                          color: _primary.withOpacity(0.3),
-                                          thickness: 2,
-                                        ),
-                                        SizedBox(height: 16),
-                                        Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            Text(
-                                              'TOTAL:',
-                                              style: TextStyle(
                                                 color: _textPrimary,
-                                                fontSize: 22,
-                                                fontWeight: FontWeight.bold,
-                                                letterSpacing: 1.2,
                                               ),
                                             ),
-                                            Text(
-                                              formatCurrency(total),
-                                              style: TextStyle(
-                                                color: _primary,
-                                                fontSize: 26,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-
-                                        // Mostrar cálculo de cambio para efectivo
-                                        if (medioPago0 == 'efectivo' &&
-                                            billetesSeleccionados > 0) ...[
-                                          SizedBox(height: 20),
-                                          Container(
-                                            padding: EdgeInsets.all(16),
-                                            decoration: BoxDecoration(
-                                              color: _cardBg.withOpacity(0.5),
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
-                                            ),
-                                            child: Column(
-                                              children: [
-                                                Row(
-                                                  mainAxisAlignment:
-                                                      MainAxisAlignment
-                                                          .spaceBetween,
-                                                  children: [
-                                                    Text(
-                                                      'Recibido:',
-                                                      style: TextStyle(
-                                                        color: _textPrimary,
-                                                        fontSize: 15,
-                                                      ),
-                                                    ),
-                                                    Text(
-                                                      formatCurrency(
-                                                        billetesSeleccionados,
-                                                      ),
-                                                      style: TextStyle(
-                                                        color: _textPrimary,
-                                                        fontSize: 15,
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                                SizedBox(height: 8),
-                                                Row(
-                                                  mainAxisAlignment:
-                                                      MainAxisAlignment
-                                                          .spaceBetween,
-                                                  children: [
-                                                    Text(
-                                                      'Cambio:',
-                                                      style: TextStyle(
-                                                        color: _textPrimary,
-                                                        fontSize: 17,
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                      ),
-                                                    ),
-                                                    Text(
-                                                      (billetesSeleccionados -
-                                                                  total) >=
-                                                              0
-                                                          ? formatCurrency(
-                                                              billetesSeleccionados -
-                                                                  total,
-                                                            )
-                                                          : '-${formatCurrency(total - billetesSeleccionados)}',
-                                                      style: TextStyle(
-                                                        color:
-                                                            (billetesSeleccionados -
-                                                                    total) >=
-                                                                0
-                                                            ? Colors.green
-                                                            : Colors.red,
-                                                        fontSize: 18,
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                      ),
-                                                    ),
-                                                  ],
+                                            SizedBox(height: 8),
+                                            TextFormField(
+                                              controller:
+                                                  montoEfectivoController,
+                                              keyboardType:
+                                                  TextInputType.number,
+                                              inputFormatters: [
+                                                FilteringTextInputFormatter.allow(
+                                                  RegExp(r'^\d*\.?\d*'),
                                                 ),
                                               ],
-                                            ),
-                                          ),
-                                        ],
-                                      ],
-                                    ),
-                                  );
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
-                        SizedBox(height: 32),
-
-                        // 13. BOTONES DE ACCIÓN FINAL
-
-                        // Botones principales
-                        Row(
-                          children: [
-                            // Botón Compartir Resumen (solo compartir, no facturar)
-                            Expanded(
-                              flex: 2,
-                              child: ElevatedButton.icon(
-                                onPressed: () async {
-                                  try {
-                                    // Mostrar indicador de carga
-                                    showDialog(
-                                      context: context,
-                                      barrierDismissible: false,
-                                      builder: (context) => AlertDialog(
-                                        backgroundColor: _cardBg,
-                                        content: Row(
-                                          children: [
-                                            CircularProgressIndicator(
-                                              color: _primary,
-                                            ),
-                                            SizedBox(width: 20),
-                                            Text(
-                                              'Generando resumen...',
-                                              style: TextStyle(
-                                                color: _textPrimary,
+                                              decoration: InputDecoration(
+                                                hintText: '0.00',
+                                                prefixIcon: Icon(
+                                                  Icons.money,
+                                                  color: Colors.green,
+                                                ),
+                                                border: OutlineInputBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                ),
+                                                focusedBorder:
+                                                    OutlineInputBorder(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            8,
+                                                          ),
+                                                      borderSide: BorderSide(
+                                                        color: _primary,
+                                                      ),
+                                                    ),
                                               ),
                                             ),
                                           ],
                                         ),
                                       ),
-                                    );
-
-                                    // Generar resumen
-                                    var resumenNullable =
-                                        await _impresionService
-                                            .generarResumenPedido(pedido.id);
-
-                                    // Cerrar diálogo de carga
-                                    Navigator.of(context).pop();
-
-                                    if (resumenNullable != null) {
-                                      final resumen =
-                                          await actualizarConInfoNegocio(
-                                            resumenNullable,
-                                          );
-                                      await _mostrarOpcionesCompartir(resumen);
-                                    } else {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            'No se pudo generar el resumen',
-                                          ),
-                                          backgroundColor: Colors.red,
+                                      SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              'Tarjeta (\$)',
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w500,
+                                                color: _textPrimary,
+                                              ),
+                                            ),
+                                            SizedBox(height: 8),
+                                            TextFormField(
+                                              controller:
+                                                  montoTarjetaController,
+                                              keyboardType:
+                                                  TextInputType.number,
+                                              inputFormatters: [
+                                                FilteringTextInputFormatter.allow(
+                                                  RegExp(r'^\d*\.?\d*'),
+                                                ),
+                                              ],
+                                              decoration: InputDecoration(
+                                                hintText: '0.00',
+                                                prefixIcon: Icon(
+                                                  Icons.credit_card,
+                                                  color: Colors.blue,
+                                                ),
+                                                border: OutlineInputBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                ),
+                                                focusedBorder:
+                                                    OutlineInputBorder(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            8,
+                                                          ),
+                                                      borderSide: BorderSide(
+                                                        color: _primary,
+                                                      ),
+                                                    ),
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                      );
-                                    }
-                                  } catch (e) {
-                                    Navigator.of(
-                                      context,
-                                    ).pop(); // Cerrar carga si hay error
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('Error: $e'),
-                                        backgroundColor: _error,
                                       ),
-                                    );
-                                  }
-                                },
-                                icon: Icon(Icons.share, size: 20),
-                                label: Text('Compartir Resumen'),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Color(0xFF1976D2),
-                                  foregroundColor: _textPrimary,
-                                  padding: EdgeInsets.symmetric(vertical: 16),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(15),
+                                      SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              'Transferencia (\$)',
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w500,
+                                                color: _textPrimary,
+                                              ),
+                                            ),
+                                            SizedBox(height: 8),
+                                            TextFormField(
+                                              controller:
+                                                  montoTransferenciaController,
+                                              keyboardType:
+                                                  TextInputType.number,
+                                              inputFormatters: [
+                                                FilteringTextInputFormatter.allow(
+                                                  RegExp(r'^\d*\.?\d*'),
+                                                ),
+                                              ],
+                                              decoration: InputDecoration(
+                                                hintText: '0.00',
+                                                prefixIcon: Icon(
+                                                  Icons.account_balance,
+                                                  color: Colors.purple,
+                                                ),
+                                                border: OutlineInputBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                ),
+                                                focusedBorder:
+                                                    OutlineInputBorder(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            8,
+                                                          ),
+                                                      borderSide: BorderSide(
+                                                        color: _primary,
+                                                      ),
+                                                    ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                  elevation: 3,
-                                ),
+                                ],
+                              ],
+                            ),
+                          ),
+                          SizedBox(height: 32),
+
+                          // 12. RESUMEN FINAL DE TOTALES\n                  _buildSeccionTitulo('Resumen Final'),
+                          SizedBox(height: 16),
+                          Container(
+                            padding: EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: _cardBg.withOpacity(0.3),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: _primary.withOpacity(0.2),
                               ),
                             ),
-                            SizedBox(width: 16),
-
-                            // Botón Cancelar
-                            Expanded(
-                              child: OutlinedButton(
-                                onPressed: () => Navigator.pop(context),
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: _textPrimary,
-                                  padding: EdgeInsets.symmetric(vertical: 16),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(15),
+                            child: Column(
+                              children: [
+                                // Campo de propina
+                                TextField(
+                                  controller: propinaController,
+                                  decoration: InputDecoration(
+                                    labelText: 'Propina (%)',
+                                    labelStyle: TextStyle(color: _textPrimary),
+                                    suffixText: '%',
+                                    prefixIcon: Icon(
+                                      Icons.star,
+                                      color: _primary,
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderSide: BorderSide(color: _textMuted),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderSide: BorderSide(
+                                        color: _primary,
+                                        width: 2,
+                                      ),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
                                   ),
-                                  side: BorderSide(color: _textMuted),
-                                ),
-                                child: Text(
-                                  'Cancelar',
                                   style: TextStyle(
+                                    color: _textPrimary,
                                     fontSize: 16,
-                                    fontWeight: FontWeight.w600,
                                   ),
+                                  keyboardType: TextInputType.number,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      incluyePropina =
+                                          value.isNotEmpty &&
+                                          double.tryParse(value) != null &&
+                                          double.parse(value) > 0;
+                                    });
+                                  },
                                 ),
-                              ),
-                            ),
-                            SizedBox(width: 16),
+                                SizedBox(height: 24),
 
-                            // Botón Confirmar Pago
-                            Expanded(
-                              flex: 2,
-                              child: ElevatedButton.icon(
-                                onPressed: () async {
-                                  // ✅ NUEVA LÓGICA: Verificar si es pago múltiple parcial
-                                  if (pagoMultiple) {
-                                    double montoEfectivo =
+                                // Resumen de totales
+                                Builder(
+                                  builder: (context) {
+                                    double subtotal =
+                                        calcularTotalSeleccionados();
+                                    double propinaPercent =
                                         double.tryParse(
-                                          montoEfectivoController.text,
+                                          propinaController.text,
                                         ) ??
                                         0.0;
-                                    double montoTarjeta =
-                                        double.tryParse(
-                                          montoTarjetaController.text,
-                                        ) ??
-                                        0.0;
-                                    double montoTransferencia =
-                                        double.tryParse(
-                                          montoTransferenciaController.text,
-                                        ) ??
-                                        0.0;
-                                    double totalPagando =
-                                        montoEfectivo +
-                                        montoTarjeta +
-                                        montoTransferencia;
+                                    double propinaMonto =
+                                        (subtotal * propinaPercent / 100)
+                                            .roundToDouble();
 
-                                    // Calcular descuento
+                                    // ✅ Calcular descuento
                                     double descuento = 0.0;
                                     String descuentoPorcentajeStr =
                                         descuentoPorcentajeController.text;
@@ -4837,124 +4543,472 @@ class _MesasScreenState extends State<MesasScreen>
                                         descuentoValorController.text;
 
                                     if (descuentoPorcentajeStr.isNotEmpty) {
-                                      double porcentaje =
+                                      double descuentoPorcentaje =
                                           double.tryParse(
                                             descuentoPorcentajeStr,
                                           ) ??
                                           0.0;
                                       descuento =
-                                          (pedido.total * porcentaje) / 100;
+                                          (subtotal *
+                                          descuentoPorcentaje /
+                                          100);
                                     } else if (descuentoValorStr.isNotEmpty) {
                                       descuento =
                                           double.tryParse(descuentoValorStr) ??
                                           0.0;
                                     }
 
-                                    double totalConDescuento =
-                                        pedido.total - descuento;
+                                    // ✅ Total con descuento aplicado
+                                    double total =
+                                        subtotal - descuento + propinaMonto;
 
-                                    print('💰 VERIFICANDO PAGO MÚLTIPLE:');
-                                    print(
-                                      '   - Total pedido: \$${pedido.total}',
-                                    );
-                                    print('   - Descuento: \$${descuento}');
-                                    print(
-                                      '   - Total con descuento: \$${totalConDescuento}',
-                                    );
-                                    print('   - Pagando: \$${totalPagando}');
+                                    return Container(
+                                      padding: EdgeInsets.all(20),
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            _primary.withOpacity(0.1),
+                                            _primary.withOpacity(0.05),
+                                          ],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        ),
+                                        borderRadius: BorderRadius.circular(16),
+                                        border: Border.all(
+                                          color: _primary.withOpacity(0.3),
+                                        ),
+                                      ),
+                                      child: Column(
+                                        children: [
+                                          Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Text(
+                                                'Subtotal:',
+                                                style: TextStyle(
+                                                  color: _textPrimary,
+                                                  fontSize: 16,
+                                                ),
+                                              ),
+                                              Text(
+                                                formatCurrency(subtotal),
+                                                style: TextStyle(
+                                                  color: _textPrimary,
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          // ✅ Mostrar descuento si está aplicado
+                                          if (descuento > 0) ...[
+                                            SizedBox(height: 12),
+                                            Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment
+                                                      .spaceBetween,
+                                              children: [
+                                                Text(
+                                                  'Descuento:',
+                                                  style: TextStyle(
+                                                    color: Colors.green,
+                                                    fontSize: 16,
+                                                  ),
+                                                ),
+                                                Text(
+                                                  '-${formatCurrency(descuento)}',
+                                                  style: TextStyle(
+                                                    color: Colors.green,
+                                                    fontSize: 16,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                          if (propinaPercent > 0) ...[
+                                            SizedBox(height: 12),
+                                            Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment
+                                                      .spaceBetween,
+                                              children: [
+                                                Text(
+                                                  'Propina ($propinaPercent%):',
+                                                  style: TextStyle(
+                                                    color: _textPrimary,
+                                                    fontSize: 16,
+                                                  ),
+                                                ),
+                                                Text(
+                                                  formatCurrency(propinaMonto),
+                                                  style: TextStyle(
+                                                    color: _textPrimary,
+                                                    fontSize: 16,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                          SizedBox(height: 16),
+                                          Divider(
+                                            color: _primary.withOpacity(0.3),
+                                            thickness: 2,
+                                          ),
+                                          SizedBox(height: 16),
+                                          Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Text(
+                                                'TOTAL:',
+                                                style: TextStyle(
+                                                  color: _textPrimary,
+                                                  fontSize: 22,
+                                                  fontWeight: FontWeight.bold,
+                                                  letterSpacing: 1.2,
+                                                ),
+                                              ),
+                                              Text(
+                                                formatCurrency(total),
+                                                style: TextStyle(
+                                                  color: _primary,
+                                                  fontSize: 26,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
 
-                                    if (totalPagando < totalConDescuento) {
-                                      // PAGO PARCIAL - Crear pedido de deuda por el restante
-                                      double montoPendiente =
-                                          totalConDescuento - totalPagando;
-                                      print(
-                                        '⚠️ PAGO PARCIAL: Queda pendiente \$${montoPendiente}',
+                                          // Mostrar cálculo de cambio para efectivo
+                                          if (medioPago0 == 'efectivo' &&
+                                              billetesSeleccionados > 0) ...[
+                                            SizedBox(height: 20),
+                                            Container(
+                                              padding: EdgeInsets.all(16),
+                                              decoration: BoxDecoration(
+                                                color: _cardBg.withOpacity(0.5),
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                              ),
+                                              child: Column(
+                                                children: [
+                                                  Row(
+                                                    mainAxisAlignment:
+                                                        MainAxisAlignment
+                                                            .spaceBetween,
+                                                    children: [
+                                                      Text(
+                                                        'Recibido:',
+                                                        style: TextStyle(
+                                                          color: _textPrimary,
+                                                          fontSize: 15,
+                                                        ),
+                                                      ),
+                                                      Text(
+                                                        formatCurrency(
+                                                          billetesSeleccionados,
+                                                        ),
+                                                        style: TextStyle(
+                                                          color: _textPrimary,
+                                                          fontSize: 15,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  SizedBox(height: 8),
+                                                  Row(
+                                                    mainAxisAlignment:
+                                                        MainAxisAlignment
+                                                            .spaceBetween,
+                                                    children: [
+                                                      Text(
+                                                        'Cambio:',
+                                                        style: TextStyle(
+                                                          color: _textPrimary,
+                                                          fontSize: 17,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
+                                                      ),
+                                                      Text(
+                                                        (billetesSeleccionados -
+                                                                    total) >=
+                                                                0
+                                                            ? formatCurrency(
+                                                                billetesSeleccionados -
+                                                                    total,
+                                                              )
+                                                            : '-${formatCurrency(total - billetesSeleccionados)}',
+                                                        style: TextStyle(
+                                                          color:
+                                                              (billetesSeleccionados -
+                                                                      total) >=
+                                                                  0
+                                                              ? Colors.green
+                                                              : Colors.red,
+                                                          fontSize: 18,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                          SizedBox(height: 32),
+
+                          // 13. BOTONES DE ACCIÓN FINAL
+
+                          // Botones principales
+                          Row(
+                            children: [
+                              // Botón Compartir Resumen (solo compartir, no facturar)
+                              Expanded(
+                                flex: 2,
+                                child: ElevatedButton.icon(
+                                  onPressed: () async {
+                                    try {
+                                      // Mostrar indicador de carga
+                                      showDialog(
+                                        context: context,
+                                        barrierDismissible: false,
+                                        builder: (context) => AlertDialog(
+                                          backgroundColor: _cardBg,
+                                          content: Row(
+                                            children: [
+                                              CircularProgressIndicator(
+                                                color: _primary,
+                                              ),
+                                              SizedBox(width: 20),
+                                              Text(
+                                                'Generando resumen...',
+                                                style: TextStyle(
+                                                  color: _textPrimary,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
                                       );
 
-                                      // Procesar pago parcial
-                                      Navigator.pop(context);
-                                      await _procesarPagoMultipleParcial(
-                                        mesa,
-                                        pedido,
-                                        totalPagando,
-                                        montoPendiente,
-                                        {
-                                          'medioPago': medioPago0,
-                                          'incluyePropina': incluyePropina,
-                                          'descuentoPorcentaje':
-                                              descuentoPorcentajeController
-                                                  .text,
-                                          'descuentoValor':
-                                              descuentoValorController.text,
-                                          'propina': propinaController.text,
-                                          'esCortesia': esCortesia0,
-                                          'esConsumoInterno': esConsumoInterno0,
-                                          'pagoMultiple': pagoMultiple,
-                                          'montoEfectivo':
-                                              montoEfectivoController.text,
-                                          'montoTarjeta':
-                                              montoTarjetaController.text,
-                                          'montoTransferencia':
-                                              montoTransferenciaController.text,
-                                          'descuento': descuento,
-                                        },
+                                      // Generar resumen
+                                      var resumenNullable =
+                                          await _impresionService
+                                              .generarResumenPedido(pedido.id);
+
+                                      // Cerrar diálogo de carga
+                                      Navigator.of(context).pop();
+
+                                      if (resumenNullable != null) {
+                                        final resumen =
+                                            await actualizarConInfoNegocio(
+                                              resumenNullable,
+                                            );
+                                        await _mostrarOpcionesCompartir(
+                                          resumen,
+                                        );
+                                      } else {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              'No se pudo generar el resumen',
+                                            ),
+                                            backgroundColor: Colors.red,
+                                          ),
+                                        );
+                                      }
+                                    } catch (e) {
+                                      Navigator.of(
+                                        context,
+                                      ).pop(); // Cerrar carga si hay error
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text('Error: $e'),
+                                          backgroundColor: _error,
+                                        ),
                                       );
-                                      return;
                                     }
-                                  }
+                                  },
+                                  icon: Icon(Icons.share, size: 20),
+                                  label: Text('Compartir Resumen'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Color(0xFF1976D2),
+                                    foregroundColor: _textPrimary,
+                                    padding: EdgeInsets.symmetric(vertical: 16),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(15),
+                                    ),
+                                    elevation: 3,
+                                  ),
+                                ),
+                              ),
+                              SizedBox(width: 16),
 
-                                  // Verificar si todos los productos están seleccionados o ninguno
-                                  bool todosProdutosSeleccionados =
-                                      productosSeleccionados.length ==
-                                      pedido.items.length;
+                              // Botón Cancelar
+                              Expanded(
+                                child: OutlinedButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: _textPrimary,
+                                    padding: EdgeInsets.symmetric(
+                                      vertical: isMovil ? 12 : 16,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(
+                                        isMovil ? 8 : 15,
+                                      ),
+                                    ),
+                                    side: BorderSide(color: _textMuted),
+                                  ),
+                                  child: Text(
+                                    'Cancelar',
+                                    style: TextStyle(
+                                      fontSize: isMovil ? 14 : 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(width: isMovil ? 8 : 16),
 
-                                  // Si no hay productos seleccionados O todos están seleccionados, usar pago completo
-                                  if (productosSeleccionados.isEmpty ||
-                                      todosProdutosSeleccionados) {
-                                    print(
-                                      '🔄 Usando flujo de pago COMPLETO - Productos seleccionados: ${productosSeleccionados.length}/${pedido.items.length}',
-                                    );
+                              // Botón Confirmar Pago
+                              Expanded(
+                                flex: isMovil ? 2 : 2,
+                                child: ElevatedButton.icon(
+                                  onPressed: () async {
+                                    // ✅ NUEVA LÓGICA: Verificar si es pago múltiple parcial
+                                    if (pagoMultiple) {
+                                      double montoEfectivo =
+                                          double.tryParse(
+                                            montoEfectivoController.text,
+                                          ) ??
+                                          0.0;
+                                      double montoTarjeta =
+                                          double.tryParse(
+                                            montoTarjetaController.text,
+                                          ) ??
+                                          0.0;
+                                      double montoTransferencia =
+                                          double.tryParse(
+                                            montoTransferenciaController.text,
+                                          ) ??
+                                          0.0;
+                                      double totalPagando =
+                                          montoEfectivo +
+                                          montoTarjeta +
+                                          montoTransferencia;
 
-                                    // Pago total del pedido (usar flujo completo que maneja bien la caja)
-                                    Navigator.pop(context, {
-                                      'medioPago': medioPago0,
-                                      'incluyePropina': incluyePropina,
-                                      'descuentoPorcentaje':
-                                          descuentoPorcentajeController.text,
-                                      'descuentoValor':
-                                          descuentoValorController.text,
-                                      'propina': propinaController.text,
-                                      'esCortesia': esCortesia0,
-                                      'esConsumoInterno': esConsumoInterno0,
-                                      'mesaDestinoId': mesaDestinoId0,
-                                      'billetesRecibidos':
-                                          billetesSeleccionados,
-                                      // ✅ NUEVO: Campos de pago múltiple
-                                      'pagoMultiple': pagoMultiple,
-                                      'montoEfectivo':
-                                          montoEfectivoController.text,
-                                      'montoTarjeta':
-                                          montoTarjetaController.text,
-                                      'montoTransferencia':
-                                          montoTransferenciaController.text,
-                                      'productosSeleccionados':
-                                          [], // Lista vacía = pagar todo
-                                    });
-                                  } else {
-                                    // Pago parcial REAL - solo algunos productos seleccionados
-                                    print(
-                                      '🔄 Usando flujo de pago PARCIAL con ${productosSeleccionados.length}/${pedido.items.length} productos',
-                                    );
+                                      // Calcular descuento
+                                      double descuento = 0.0;
+                                      String descuentoPorcentajeStr =
+                                          descuentoPorcentajeController.text;
+                                      String descuentoValorStr =
+                                          descuentoValorController.text;
 
-                                    // Cerrar diálogo primero para evitar bloqueo
-                                    Navigator.pop(context);
+                                      if (descuentoPorcentajeStr.isNotEmpty) {
+                                        double porcentaje =
+                                            double.tryParse(
+                                              descuentoPorcentajeStr,
+                                            ) ??
+                                            0.0;
+                                        descuento =
+                                            (pedido.total * porcentaje) / 100;
+                                      } else if (descuentoValorStr.isNotEmpty) {
+                                        descuento =
+                                            double.tryParse(
+                                              descuentoValorStr,
+                                            ) ??
+                                            0.0;
+                                      }
 
-                                    // Procesar pago parcial DESPUÉS de cerrar diálogo
-                                    await _pagarProductosParciales(
-                                      mesa,
-                                      pedido,
-                                      productosSeleccionados,
-                                      {
+                                      double totalConDescuento =
+                                          pedido.total - descuento;
+
+                                      print('💰 VERIFICANDO PAGO MÚLTIPLE:');
+                                      print(
+                                        '   - Total pedido: \$${pedido.total}',
+                                      );
+                                      print('   - Descuento: \$${descuento}');
+                                      print(
+                                        '   - Total con descuento: \$${totalConDescuento}',
+                                      );
+                                      print('   - Pagando: \$${totalPagando}');
+
+                                      if (totalPagando < totalConDescuento) {
+                                        // PAGO PARCIAL - Crear pedido de deuda por el restante
+                                        double montoPendiente =
+                                            totalConDescuento - totalPagando;
+                                        print(
+                                          '⚠️ PAGO PARCIAL: Queda pendiente \$${montoPendiente}',
+                                        );
+
+                                        // Procesar pago parcial
+                                        Navigator.pop(context);
+                                        await _procesarPagoMultipleParcial(
+                                          mesa,
+                                          pedido,
+                                          totalPagando,
+                                          montoPendiente,
+                                          {
+                                            'medioPago': medioPago0,
+                                            'incluyePropina': incluyePropina,
+                                            'descuentoPorcentaje':
+                                                descuentoPorcentajeController
+                                                    .text,
+                                            'descuentoValor':
+                                                descuentoValorController.text,
+                                            'propina': propinaController.text,
+                                            'esCortesia': esCortesia0,
+                                            'esConsumoInterno':
+                                                esConsumoInterno0,
+                                            'pagoMultiple': pagoMultiple,
+                                            'montoEfectivo':
+                                                montoEfectivoController.text,
+                                            'montoTarjeta':
+                                                montoTarjetaController.text,
+                                            'montoTransferencia':
+                                                montoTransferenciaController
+                                                    .text,
+                                            'descuento': descuento,
+                                          },
+                                        );
+                                        return;
+                                      }
+                                    }
+
+                                    // Verificar si todos los productos están seleccionados o ninguno
+                                    bool todosProdutosSeleccionados =
+                                        productosSeleccionados.length ==
+                                        pedido.items.length;
+
+                                    // Si no hay productos seleccionados O todos están seleccionados, usar pago completo
+                                    if (productosSeleccionados.isEmpty ||
+                                        todosProdutosSeleccionados) {
+                                      print(
+                                        '🔄 Usando flujo de pago COMPLETO - Productos seleccionados: ${productosSeleccionados.length}/${pedido.items.length}',
+                                      );
+
+                                      // Pago total del pedido (usar flujo completo que maneja bien la caja)
+                                      Navigator.pop(context, {
                                         'medioPago': medioPago0,
                                         'incluyePropina': incluyePropina,
                                         'descuentoPorcentaje':
@@ -4975,34 +5029,86 @@ class _MesasScreenState extends State<MesasScreen>
                                             montoTarjetaController.text,
                                         'montoTransferencia':
                                             montoTransferenciaController.text,
-                                      },
-                                    );
-                                  }
-                                },
-                                icon: Icon(Icons.payment, size: 20),
-                                label: Text('Confirmar Pago'),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: _primary,
-                                  foregroundColor: Colors.white,
-                                  padding: EdgeInsets.symmetric(vertical: 16),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(15),
+                                        'productosSeleccionados':
+                                            [], // Lista vacía = pagar todo
+                                      });
+                                    } else {
+                                      // Pago parcial REAL - solo algunos productos seleccionados
+                                      print(
+                                        '🔄 Usando flujo de pago PARCIAL con ${productosSeleccionados.length}/${pedido.items.length} productos',
+                                      );
+
+                                      // Cerrar diálogo primero para evitar bloqueo
+                                      Navigator.pop(context);
+
+                                      // Procesar pago parcial DESPUÉS de cerrar diálogo
+                                      await _pagarProductosParciales(
+                                        mesa,
+                                        pedido,
+                                        productosSeleccionados,
+                                        {
+                                          'medioPago': medioPago0,
+                                          'incluyePropina': incluyePropina,
+                                          'descuentoPorcentaje':
+                                              descuentoPorcentajeController
+                                                  .text,
+                                          'descuentoValor':
+                                              descuentoValorController.text,
+                                          'propina': propinaController.text,
+                                          'esCortesia': esCortesia0,
+                                          'esConsumoInterno': esConsumoInterno0,
+                                          'mesaDestinoId': mesaDestinoId0,
+                                          'billetesRecibidos':
+                                              billetesSeleccionados,
+                                          // ✅ NUEVO: Campos de pago múltiple
+                                          'pagoMultiple': pagoMultiple,
+                                          'montoEfectivo':
+                                              montoEfectivoController.text,
+                                          'montoTarjeta':
+                                              montoTarjetaController.text,
+                                          'montoTransferencia':
+                                              montoTransferenciaController.text,
+                                        },
+                                      );
+                                    }
+                                  },
+                                  icon: Icon(
+                                    Icons.payment,
+                                    size: isMovil ? 18 : 20,
                                   ),
-                                  elevation: 5,
+                                  label: Text(
+                                    isMovil ? 'Pagar' : 'Confirmar Pago',
+                                    style: TextStyle(
+                                      fontSize: isMovil ? 14 : 16,
+                                    ),
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: _primary,
+                                    foregroundColor: Colors.white,
+                                    padding: EdgeInsets.symmetric(
+                                      vertical: isMovil ? 12 : 16,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(
+                                        isMovil ? 8 : 15,
+                                      ),
+                                    ),
+                                    elevation: 5,
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                      ], // Cierra el Column dentro del SingleChildScrollView
+                            ],
+                          ),
+                        ], // Cierra el Column dentro del SingleChildScrollView
+                      ),
                     ),
-                  ),
-                ), // Cierra el Flexible
-              ], // Cierra el Column principal
+                  ), // Cierra el Flexible
+                ], // Cierra el Column principal
+              ),
             ),
-          ), // Cierra el Container principal
-        ), // Cierra el StatefulBuilder
-      ), // Cierra el showDialog
+          );
+        },
+      ),
     );
 
     if (formResult != null) {

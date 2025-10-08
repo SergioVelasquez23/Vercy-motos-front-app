@@ -78,7 +78,10 @@ class _UnidadesScreenState extends State<UnidadesScreen> {
             onPressed: () => Navigator.of(context).pop(),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: primary),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: primary,
+              foregroundColor: Colors.white,
+            ),
             child: Text('Guardar'),
             onPressed: () {
               final nuevaUnidad = _nuevaUnidadController.text.trim();

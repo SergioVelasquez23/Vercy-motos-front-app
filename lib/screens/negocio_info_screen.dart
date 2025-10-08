@@ -326,7 +326,10 @@ class _NegocioInfoScreenState extends State<NegocioInfoScreen> {
           SizedBox(height: 24),
           ElevatedButton(
             onPressed: _cargarInformacion,
-            style: ElevatedButton.styleFrom(backgroundColor: _primary),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _primary,
+              foregroundColor: Colors.white,
+            ),
             child: Text('Reintentar'),
           ),
         ],
@@ -460,37 +463,42 @@ class _NegocioInfoScreenState extends State<NegocioInfoScreen> {
           ),
         ),
         SizedBox(height: 8),
-        GestureDetector(
-          onTap: _seleccionarLogo,
-          child: Container(
-            height: 120,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: Colors.grey[800],
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.grey[600]!),
+        Center(
+          child: GestureDetector(
+            onTap: _seleccionarLogo,
+            child: Container(
+              height: 150,
+              width: 200,
+              decoration: BoxDecoration(
+                color: Colors.grey[800],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey[600]!),
+              ),
+              child: _selectedLogo != null
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: kIsWeb
+                          ? Image.network(
+                              _selectedLogo!.path,
+                              fit: BoxFit.contain,
+                            )
+                          : Image.file(
+                              File(_selectedLogo!.path),
+                              fit: BoxFit.contain,
+                            ),
+                    )
+                  : _currentInfo?.logoUrl != null
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(
+                        _currentInfo!.logoUrl!,
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) =>
+                            _buildLogoPlaceholder(),
+                      ),
+                    )
+                  : _buildLogoPlaceholder(),
             ),
-            child: _selectedLogo != null
-                ? ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: kIsWeb
-                        ? Image.network(_selectedLogo!.path, fit: BoxFit.cover)
-                        : Image.file(
-                            File(_selectedLogo!.path),
-                            fit: BoxFit.cover,
-                          ),
-                  )
-                : _currentInfo?.logoUrl != null
-                ? ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.network(
-                      _currentInfo!.logoUrl!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) =>
-                          _buildLogoPlaceholder(),
-                    ),
-                  )
-                : _buildLogoPlaceholder(),
           ),
         ),
       ],

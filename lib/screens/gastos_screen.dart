@@ -59,6 +59,13 @@ class _GastosScreenState extends State<GastosScreen> {
   // Opciones de forma de pago
   final List<String> _formasPago = ['Efectivo', 'Transferencia', 'Cheque'];
 
+  // Variables para filtros de búsqueda
+  DateTime? _fechaInicio;
+  DateTime? _fechaFin;
+  String? _filtroConcepto;
+  final TextEditingController _conceptoBusquedaController =
+      TextEditingController();
+
   @override
   void initState() {
     super.initState();
@@ -74,6 +81,7 @@ class _GastosScreenState extends State<GastosScreen> {
     _numeroFacturaController.dispose();
     _subtotalController.dispose();
     _impuestosController.dispose();
+    _conceptoBusquedaController.dispose();
     super.dispose();
   }
 
@@ -145,6 +153,51 @@ class _GastosScreenState extends State<GastosScreen> {
     } catch (e) {
       _showError('Error al cargar gastos: $e');
     }
+  }
+
+  List<Gasto> get _gastosFiltrados {
+    List<Gasto> gastosFiltrados = List.from(_gastos);
+
+    // Filtrar por concepto
+    if (_filtroConcepto != null && _filtroConcepto!.isNotEmpty) {
+      gastosFiltrados = gastosFiltrados
+          .where(
+            (gasto) => gasto.concepto.toLowerCase().contains(
+              _filtroConcepto!.toLowerCase(),
+            ),
+          )
+          .toList();
+    }
+
+    // Filtrar por rango de fechas
+    if (_fechaInicio != null && _fechaFin != null) {
+      gastosFiltrados = gastosFiltrados.where((gasto) {
+        final fechaGasto = DateTime(
+          gasto.fechaGasto.year,
+          gasto.fechaGasto.month,
+          gasto.fechaGasto.day,
+        );
+        final inicio = DateTime(
+          _fechaInicio!.year,
+          _fechaInicio!.month,
+          _fechaInicio!.day,
+        );
+        final fin = DateTime(_fechaFin!.year, _fechaFin!.month, _fechaFin!.day);
+        return fechaGasto.isAfter(inicio.subtract(Duration(days: 1))) &&
+            fechaGasto.isBefore(fin.add(Duration(days: 1)));
+      }).toList();
+    }
+
+    return gastosFiltrados;
+  }
+
+  void _limpiarFiltros() {
+    setState(() {
+      _fechaInicio = null;
+      _fechaFin = null;
+      _filtroConcepto = null;
+      _conceptoBusquedaController.clear();
+    });
   }
 
   void _showFormDialog({Gasto? gasto}) {
@@ -809,6 +862,7 @@ class _GastosScreenState extends State<GastosScreen> {
                         child: ElevatedButton(
                           style: ElevatedButton.styleFrom(
                             backgroundColor: primary,
+                            foregroundColor: Colors.white,
                             padding: EdgeInsets.symmetric(vertical: 16),
                           ),
                           onPressed: _saveGasto,
@@ -827,58 +881,249 @@ class _GastosScreenState extends State<GastosScreen> {
   }
 
   Widget _buildGastosList() {
+    final gastosMostrar = _gastosFiltrados;
+
     return Column(
       children: [
-        // Filtros
-        if (widget.cuadreCajaId == null)
-          Card(
-            color: cardBg,
-            margin: EdgeInsets.all(16),
-            child: Padding(
-              padding: EdgeInsets.all(16),
-              child: DropdownButtonFormField<String>(
-                decoration: InputDecoration(
-                  labelText: 'Filtrar por Cuadre',
-                  labelStyle: TextStyle(color: textLight),
-                  border: OutlineInputBorder(),
+        // Panel de filtros expandido
+        Card(
+          color: cardBg,
+          margin: EdgeInsets.all(16),
+          child: Padding(
+            padding: EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Título de filtros
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Filtros de Búsqueda',
+                      style: TextStyle(
+                        color: textDark,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: _limpiarFiltros,
+                      child: Text('Limpiar', style: TextStyle(color: primary)),
+                    ),
+                  ],
                 ),
-                initialValue: _selectedCuadreId,
-                dropdownColor: cardBg,
-                style: TextStyle(color: textDark),
-                items: [
-                  DropdownMenuItem(
-                    value: null,
-                    child: Text('Todos los cuadres'),
+                SizedBox(height: 16),
+
+                // Fila 1: Cuadre y concepto
+                Row(
+                  children: [
+                    // Filtro por cuadre
+                    if (widget.cuadreCajaId == null)
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          decoration: InputDecoration(
+                            labelText: 'Filtrar por Cuadre',
+                            labelStyle: TextStyle(color: textLight),
+                            border: OutlineInputBorder(),
+                          ),
+                          value: _selectedCuadreId,
+                          dropdownColor: cardBg,
+                          style: TextStyle(color: textDark),
+                          items: [
+                            DropdownMenuItem(
+                              value: null,
+                              child: Text('Todos los cuadres'),
+                            ),
+                            ..._cuadresDisponibles.map((cuadre) {
+                              return DropdownMenuItem(
+                                value: cuadre.id,
+                                child: Text(
+                                  '${cuadre.nombre} - ${cuadre.responsable}',
+                                ),
+                              );
+                            }),
+                          ],
+                          onChanged: (value) {
+                            setState(() => _selectedCuadreId = value);
+                            _loadGastos();
+                          },
+                        ),
+                      ),
+
+                    if (widget.cuadreCajaId == null) SizedBox(width: 16),
+
+                    // Filtro por concepto
+                    Expanded(
+                      child: TextFormField(
+                        controller: _conceptoBusquedaController,
+                        style: TextStyle(color: textDark),
+                        decoration: InputDecoration(
+                          labelText: 'Buscar por concepto',
+                          labelStyle: TextStyle(color: textLight),
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.search, color: textLight),
+                          suffixIcon:
+                              _conceptoBusquedaController.text.isNotEmpty
+                              ? IconButton(
+                                  icon: Icon(Icons.clear, color: textLight),
+                                  onPressed: () {
+                                    _conceptoBusquedaController.clear();
+                                    setState(() => _filtroConcepto = null);
+                                  },
+                                )
+                              : null,
+                        ),
+                        onChanged: (value) {
+                          setState(() {
+                            _filtroConcepto = value.isEmpty ? null : value;
+                          });
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+
+                SizedBox(height: 16),
+
+                // Fila 2: Filtros de fecha
+                Row(
+                  children: [
+                    // Fecha inicio
+                    Expanded(
+                      child: InkWell(
+                        onTap: () async {
+                          final fecha = await showDatePicker(
+                            context: context,
+                            initialDate: _fechaInicio ?? DateTime.now(),
+                            firstDate: DateTime(2020),
+                            lastDate: DateTime.now(),
+                            builder: (context, child) {
+                              return Theme(
+                                data: Theme.of(context).copyWith(
+                                  colorScheme: ColorScheme.dark(
+                                    primary: primary,
+                                    surface: cardBg,
+                                  ),
+                                ),
+                                child: child!,
+                              );
+                            },
+                          );
+                          if (fecha != null) {
+                            setState(() => _fechaInicio = fecha);
+                          }
+                        },
+                        child: Container(
+                          padding: EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: textLight),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.calendar_today, color: textLight),
+                              SizedBox(width: 8),
+                              Text(
+                                _fechaInicio != null
+                                    ? '${_fechaInicio!.day}/${_fechaInicio!.month}/${_fechaInicio!.year}'
+                                    : 'Fecha inicio',
+                                style: TextStyle(color: textDark),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    SizedBox(width: 16),
+
+                    // Fecha fin
+                    Expanded(
+                      child: InkWell(
+                        onTap: () async {
+                          final fecha = await showDatePicker(
+                            context: context,
+                            initialDate: _fechaFin ?? DateTime.now(),
+                            firstDate: DateTime(2020),
+                            lastDate: DateTime.now(),
+                            builder: (context, child) {
+                              return Theme(
+                                data: Theme.of(context).copyWith(
+                                  colorScheme: ColorScheme.dark(
+                                    primary: primary,
+                                    surface: cardBg,
+                                  ),
+                                ),
+                                child: child!,
+                              );
+                            },
+                          );
+                          if (fecha != null) {
+                            setState(() => _fechaFin = fecha);
+                          }
+                        },
+                        child: Container(
+                          padding: EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: textLight),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.calendar_today, color: textLight),
+                              SizedBox(width: 8),
+                              Text(
+                                _fechaFin != null
+                                    ? '${_fechaFin!.day}/${_fechaFin!.month}/${_fechaFin!.year}'
+                                    : 'Fecha fin',
+                                style: TextStyle(color: textDark),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                // Información de resultados
+                if (gastosMostrar.length != _gastos.length)
+                  Padding(
+                    padding: EdgeInsets.only(top: 16),
+                    child: Text(
+                      'Mostrando ${gastosMostrar.length} de ${_gastos.length} gastos',
+                      style: TextStyle(color: textLight, fontSize: 14),
+                    ),
                   ),
-                  ..._cuadresDisponibles.map((cuadre) {
-                    return DropdownMenuItem(
-                      value: cuadre.id,
-                      child: Text('${cuadre.nombre} - ${cuadre.responsable}'),
-                    );
-                  }),
-                ],
-                onChanged: (value) {
-                  setState(() => _selectedCuadreId = value);
-                  _loadGastos();
-                },
-              ),
+              ],
             ),
           ),
+        ),
 
         // Lista de gastos
         Expanded(
-          child: _gastos.isEmpty
+          child: gastosMostrar.isEmpty
               ? Center(
-                  child: Text(
-                    'No hay gastos registrados',
-                    style: TextStyle(color: textLight, fontSize: 16),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.search_off, size: 64, color: textLight),
+                      SizedBox(height: 16),
+                      Text(
+                        _gastos.isEmpty
+                            ? 'No hay gastos registrados'
+                            : 'No se encontraron gastos con los filtros aplicados',
+                        style: TextStyle(color: textLight, fontSize: 16),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
                   ),
                 )
               : ListView.builder(
                   padding: EdgeInsets.all(16),
-                  itemCount: _gastos.length,
+                  itemCount: gastosMostrar.length,
                   itemBuilder: (context, index) {
-                    final gasto = _gastos[index];
+                    final gasto = gastosMostrar[index];
                     return Card(
                       color: cardBg,
                       margin: EdgeInsets.only(bottom: 12),

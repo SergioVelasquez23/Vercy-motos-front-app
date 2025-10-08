@@ -462,7 +462,10 @@ class _MovimientoInventarioDialogState
         ),
         ElevatedButton(
           onPressed: _isLoading ? null : _guardarMovimiento,
-          style: ElevatedButton.styleFrom(backgroundColor: primary),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: primary,
+            foregroundColor: Colors.white,
+          ),
           child: _isLoading
               ? SizedBox(
                   width: 20,

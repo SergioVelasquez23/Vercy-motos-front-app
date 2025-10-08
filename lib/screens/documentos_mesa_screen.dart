@@ -427,6 +427,7 @@ class _DocumentosMesaScreenState extends State<DocumentosMesaScreen>
                     label: Text('Buscar', style: TextStyle(fontSize: 13)),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: _primary,
+                      foregroundColor: Colors.white,
                       padding: EdgeInsets.symmetric(
                         horizontal: 10,
                         vertical: 8,

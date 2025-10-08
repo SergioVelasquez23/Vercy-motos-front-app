@@ -447,7 +447,10 @@ class _TiposGastoScreenState extends State<TiposGastoScreen> {
                       onPressed: () => _showFormDialog(),
                       icon: Icon(Icons.add),
                       label: Text('Crear Tipo Manual'),
-                      style: ElevatedButton.styleFrom(backgroundColor: primary),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: primary,
+                        foregroundColor: Colors.white,
+                      ),
                     ),
                     SizedBox(width: 16),
                     ElevatedButton.icon(
