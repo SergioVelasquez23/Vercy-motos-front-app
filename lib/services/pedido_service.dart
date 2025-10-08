@@ -899,8 +899,15 @@ class PedidoService {
         );
       }
     } catch (e) {
-      print('❌ Exception in getPedidosByMesa: $e');
-      throw Exception('Error de conexión: $e');
+      // Error de conexión manejado silenciosamente
+      if (e.toString().contains('TimeoutException') ||
+          e.toString().contains('SocketException') ||
+          e.toString().contains('connection')) {
+        throw Exception(
+          'Error de conexión a internet. Verifica tu conectividad WiFi.',
+        );
+      }
+      throw Exception('Error al cargar pedidos. Intenta nuevamente.');
     }
   }
 

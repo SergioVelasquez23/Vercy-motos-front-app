@@ -89,7 +89,15 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
         await _cargarEfectivoEsperado();
       }
     } catch (e) {
-      print('Error verificando estado de caja: $e');
+      String mensajeAmigable = _obtenerMensajeAmigable(e.toString());
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(mensajeAmigable),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 4),
+        ),
+      );
+      print('❌ Error verificando estado de caja: $e');
     } finally {
       setState(() {
         _isLoading = false;
@@ -214,8 +222,15 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
         _calcularDiferencia();
         return;
       } catch (e) {
-        print(
-          '⚠️ Error obteniendo cuadre completo, usando método tradicional: $e',
+        // Error específico del cuadre completo - usar método alternativo
+        print('❌ Error obteniendo cuadre completo: $e');
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Obteniendo datos de caja con método alternativo...'),
+            backgroundColor: Colors.blue,
+            duration: Duration(seconds: 3),
+          ),
         );
       }
 
@@ -278,18 +293,28 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
         });
         _calcularDiferencia();
       } catch (ventasError) {
-        print(
-          '⚠️ No se pudieron obtener datos del endpoint de pedidos: $ventasError',
-        );
+        // Error en método de respaldo - manejar silenciosamente
+        print('❌ Error obteniendo ventas por tipo de pago: $ventasError');
       }
     } catch (e) {
-      print('💥 Error cargando efectivo esperado: $e');
+      String mensajeAmigable = _obtenerMensajeAmigable(e.toString());
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error cargando datos de efectivo: $e'),
-          backgroundColor: Colors.orange,
+          content: Row(
+            children: [
+              Icon(Icons.warning, color: Colors.white, size: 20),
+              SizedBox(width: 8),
+              Expanded(child: Text(mensajeAmigable)),
+            ],
+          ),
+          backgroundColor: Colors.orange.shade700,
+          duration: Duration(seconds: 5),
+          behavior: SnackBarBehavior.floating,
         ),
       );
+
+      print('❌ Error cargando efectivo esperado: $e');
 
       // Intentar obtener contadores por separado si falló todo lo demás
       try {
@@ -299,9 +324,8 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
           _totalGastos = (resumenVentas['totalGastos'] ?? 0.0).toDouble();
         });
       } catch (fallbackError) {
-        print(
-          '⚠️ No se pudieron obtener contadores de emergencia: $fallbackError',
-        );
+        // Error en fallback de emergencia - manejar silenciosamente
+        print('❌ Error obteniendo resumen de ventas de hoy: $fallbackError');
       }
 
       // Usar el valor del cuadre actual como fallback final
@@ -332,6 +356,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
         '📊 Datos de compras: ${resumenCompleto.resumenCompras.detallesComprasDesdeCaja.length} compras desde caja',
       );
     } catch (e) {
+      // Error cargando resumen completo - continuar con datos básicos
       print('❌ Error cargando resumen completo: $e');
     }
   }
@@ -387,17 +412,21 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
         throw Exception('Error al cerrar el cuadre');
       }
     } catch (e) {
-      String errorMessage = 'Error al cerrar caja: $e';
-
       // Verificar si es el error específico de caja ya cerrada
       if (e.toString().contains('La caja ya está cerrada')) {
-        errorMessage =
-            'La caja ya está cerrada. No se puede cerrar una caja que ya ha sido cerrada.';
         // Actualizar el estado
         await _verificarEstadoCaja();
       }
 
-      _mostrarError(errorMessage);
+      String mensajeAmigable = _obtenerMensajeAmigable(e.toString());
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(mensajeAmigable),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 4),
+        ),
+      );
+      print('❌ Error cerrando caja: $e');
     } finally {
       setState(() {
         _isLoading = false;
@@ -622,220 +651,8 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
                       ),
                     ),
                   ] else if (_cajaActual != null) ...[
-                    // Panel de Resumen de Ventas (estilo pedidos_screen)
-                    Card(
-                      elevation: 4,
-                      color: Color(0xFF2F1500), // Color marrón oscuro
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Padding(
-                        padding: EdgeInsets.all(16),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
-                          children: [
-                            // Total Pedidos
-                            _buildCounterCard(
-                              icon: Icons.receipt,
-                              count: _totalPedidos.toString(),
-                              label: 'Total',
-                              color: primary,
-                            ),
-                            // Total Items
-                            _buildCounterCard(
-                              icon: Icons.fastfood,
-                              count: _totalProductos.toString(),
-                              label: 'Items',
-                              color: primary,
-                            ),
-                            // Valor Total
-                            _buildCounterCard(
-                              icon: Icons.attach_money,
-                              count:
-                                  '\$${_valorTotalVentas.toStringAsFixed(0)}',
-                              label: 'Valor Total',
-                              color: primary,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: 16),
-
-                    // Información de la caja abierta (campos del cuadre completo)
-                    Card(
-                      elevation: 4,
-                      color: cardBg,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Padding(
-                        padding: EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Información de la Caja Abierta',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: textDark,
-                              ),
-                            ),
-                            SizedBox(height: 12),
-                            _buildInfoRow(
-                              'Caja:',
-                              _cajaActual?.nombre ?? 'Caja Principal',
-                            ),
-                            _buildInfoRow(
-                              'Responsable:',
-                              _cuadreCompletoData?['responsable'] ?? '',
-                            ),
-                            _buildInfoRow(
-                              'Fecha apertura:',
-                              _cuadreCompletoData?['fechaInicio'] != null
-                                  ? _cuadreCompletoData!['fechaInicio']
-                                        .toString()
-                                        .substring(0, 16)
-                                        .replaceFirst('T', ' ')
-                                  : '',
-                            ),
-                            _buildInfoRow(
-                              'Fecha cierre:',
-                              _cuadreCompletoData?['fechaFin'] != null
-                                  ? _cuadreCompletoData!['fechaFin']
-                                        .toString()
-                                        .substring(0, 16)
-                                        .replaceFirst('T', ' ')
-                                  : '',
-                            ),
-                            _buildInfoRow(
-                              'Monto inicial:',
-                              formatCurrency(
-                                _cuadreCompletoData?['totalInicial'] ?? 0,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: 20),
-
-                    // Información financiera (campos del cuadre completo)
-                    Card(
-                      elevation: 4,
-                      color: cardBg,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Padding(
-                        padding: EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Resumen Financiero',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: textDark,
-                              ),
-                            ),
-                            SizedBox(height: 12),
-                            _buildInfoRow(
-                              'Monto inicial:',
-                              formatCurrency(
-                                _cuadreCompletoData?['totalInicial'] ?? 0,
-                              ),
-                            ),
-                            _buildInfoRow(
-                              'Ventas en efectivo:',
-                              formatCurrency(
-                                _cuadreCompletoData?['ventasEfectivo'] ?? 0,
-                              ),
-                              valueColor: Colors.blue,
-                            ),
-                            _buildInfoRow(
-                              'Ventas en transferencias:',
-                              formatCurrency(
-                                _cuadreCompletoData?['ventasTransferencias'] ??
-                                    0,
-                              ),
-                              valueColor: Colors.green,
-                            ),
-                            _buildInfoRow(
-                              'Ventas en tarjetas:',
-                              formatCurrency(
-                                _cuadreCompletoData?['ventasTarjetas'] ?? 0,
-                              ),
-                              valueColor: Colors.purple,
-                            ),
-                            _buildInfoRow(
-                              'Total ventas:',
-                              formatCurrency(
-                                _cuadreCompletoData?['totalVentas'] ?? 0,
-                              ),
-                              valueColor: Colors.blueGrey,
-                            ),
-                            _buildInfoRow(
-                              'Total propinas:',
-                              formatCurrency(
-                                _cuadreCompletoData?['totalPropinas'] ?? 0,
-                              ),
-                              valueColor: Colors.teal,
-                            ),
-                            _buildInfoRow(
-                              'Total gastos:',
-                              formatCurrency(
-                                _cuadreCompletoData?['totalGastos'] ?? 0,
-                              ),
-                              valueColor: Colors.red,
-                            ),
-                            if (_cuadreCompletoData?['gastosPorTipo'] != null)
-                              ..._cuadreCompletoData!['gastosPorTipo'].entries
-                                  .map(
-                                    (e) => _buildInfoRow(
-                                      'Gasto: ${e.key}',
-                                      formatCurrency(e.value),
-                                      valueColor: Colors.red,
-                                    ),
-                                  ),
-                            _buildInfoRow(
-                              'Total esperado en caja:',
-                              formatCurrency(
-                                _cuadreCompletoData?['debeTener'] ?? 0,
-                              ),
-                              valueColor: Colors.green,
-                            ),
-                            _buildInfoRow(
-                              'Cantidad facturas:',
-                              (_cuadreCompletoData?['cantidadFacturas'] ?? 0)
-                                  .toString(),
-                            ),
-                            _buildInfoRow(
-                              'Cantidad pedidos:',
-                              (_cuadreCompletoData?['cantidadPedidos'] ?? 0)
-                                  .toString(),
-                            ),
-                            if (_cuadreCompletoData?['detalleVentas'] != null)
-                              ..._cuadreCompletoData!['detalleVentas'].entries
-                                  .map(
-                                    (e) => _buildInfoRow(
-                                      'Detalle venta: ${e.key}',
-                                      formatCurrency(e.value),
-                                      valueColor: Colors.blue,
-                                    ),
-                                  ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: 20),
-
                     // Secciones del Resumen Completo
                     if (_resumenCompletoData != null) ...[
-                      _buildResumenFinalSection(),
-                      SizedBox(height: 20),
                       _buildMovimientosEfectivoSection(),
                       SizedBox(height: 20),
                       _buildResumenGastosSection(),
@@ -1411,5 +1228,58 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
     } catch (e) {
       return fecha;
     }
+  }
+
+  /// Convierte errores técnicos en mensajes amigables para el usuario
+  String _obtenerMensajeAmigable(String error) {
+    // Convertir a minúsculas para comparaciones más fáciles
+    final errorLower = error.toLowerCase();
+
+    // Errores de conexión
+    if (errorLower.contains('clientexception') ||
+        errorLower.contains('failed to fetch') ||
+        errorLower.contains('network error') ||
+        errorLower.contains('connection') ||
+        errorLower.contains('timeout') ||
+        errorLower.contains('socketexception') ||
+        errorLower.contains('no internet') ||
+        errorLower.contains('unable to reach') ||
+        errorLower.contains('host not found')) {
+      return 'Error de conexión a WiFi';
+    }
+
+    // Errores de servidor
+    if (errorLower.contains('500') ||
+        errorLower.contains('internal server error') ||
+        errorLower.contains('server error')) {
+      return 'Error del servidor. Intente más tarde';
+    }
+
+    // Errores de autenticación
+    if (errorLower.contains('401') ||
+        errorLower.contains('unauthorized') ||
+        errorLower.contains('authentication')) {
+      return 'Error de autenticación. Inicie sesión nuevamente';
+    }
+
+    // Errores de permisos
+    if (errorLower.contains('403') ||
+        errorLower.contains('forbidden') ||
+        errorLower.contains('access denied')) {
+      return 'Sin permisos para realizar esta acción';
+    }
+
+    // Errores de datos no encontrados
+    if (errorLower.contains('404') || errorLower.contains('not found')) {
+      return 'Información no encontrada';
+    }
+
+    // Errores específicos de caja
+    if (errorLower.contains('caja') && errorLower.contains('cerrada')) {
+      return 'La caja ya está cerrada';
+    }
+
+    // Para cualquier otro error, mostrar mensaje genérico
+    return 'Error del sistema. Intente nuevamente';
   }
 }

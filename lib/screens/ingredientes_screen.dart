@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../config/constants.dart';
 import '../services/ingrediente_service.dart';
 import '../services/producto_service.dart';
 import '../models/ingrediente.dart';
@@ -51,8 +50,8 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
         _error = '';
       });
     } catch (e) {
-      setState(() => _error = kErrorCargaDatos);
-      print('Error cargando datos: $e');
+      setState(() => _error = 'Error al cargar ingredientes: $e');
+      print('❌ Error al cargar ingredientes: $e');
     } finally {
       setState(() => _isLoading = false);
     }
@@ -115,17 +114,22 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
       try {
         await _ingredienteService.deleteIngrediente(ingrediente.id);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ingrediente eliminado correctamente')),
+          SnackBar(
+            content: Text('Ingrediente eliminado correctamente'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 3),
+          ),
         );
         _cargarIngredientes();
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error al eliminar el ingrediente'),
+            content: Text('Error al eliminar ingrediente: $e'),
             backgroundColor: Colors.red,
+            duration: Duration(seconds: 4),
           ),
         );
-        print('Error eliminando ingrediente: $e');
+        print('❌ Error al eliminar ingrediente: $e');
       }
     }
   }
@@ -367,7 +371,11 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
                         nuevoIngrediente,
                       );
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Ingrediente agregado')),
+                        SnackBar(
+                          content: Text('Ingrediente agregado correctamente'),
+                          backgroundColor: Colors.green,
+                          duration: Duration(seconds: 3),
+                        ),
                       );
                     } else {
                       // Editar ingrediente
@@ -375,7 +383,13 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
                         nuevoIngrediente,
                       );
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Ingrediente actualizado')),
+                        SnackBar(
+                          content: Text(
+                            'Ingrediente actualizado correctamente',
+                          ),
+                          backgroundColor: Colors.green,
+                          duration: Duration(seconds: 3),
+                        ),
                       );
                     }
 
@@ -383,9 +397,13 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
                     _cargarIngredientes();
                   } catch (e) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Error al guardar ingrediente')),
+                      SnackBar(
+                        content: Text('Error al guardar ingrediente: $e'),
+                        backgroundColor: Colors.red,
+                        duration: Duration(seconds: 4),
+                      ),
                     );
-                    print('Error al guardar ingrediente: $e');
+                    print('❌ Error al guardar ingrediente: $e');
                   }
                 }
               },

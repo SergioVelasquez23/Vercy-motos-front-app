@@ -101,21 +101,29 @@ class DocumentoMesaService {
         'pagado': pagado,
       };
 
-      // Añadir datos de pago si el documento está pagado
+      // ✅ CORREGIDO: Incluir método de pago SIEMPRE, no solo cuando esté pagado
+      bodyData['formaPago'] =
+          formaPago ?? 'efectivo'; // Siempre incluir método de pago
+      bodyData['pagadoPor'] = pagadoPor ?? vendedor;
+      bodyData['propina'] = propina ?? 0.0;
+
+      // Datos específicos según el estado de pago
       if (pagado) {
         bodyData['estado'] = estado ?? 'Pagado';
-        bodyData['formaPago'] =
-            formaPago ?? 'efectivo'; // Puede ser 'efectivo' o 'transferencia'
-        bodyData['pagadoPor'] = pagadoPor ?? vendedor;
-        bodyData['propina'] = propina ?? 0.0;
         bodyData['fechaPago'] = (fechaPago ?? DateTime.now()).toIso8601String();
-
-        // Debug: mostrar información de forma de pago
-        print('📝 Datos de pago en crearDocumento:');
-        print('  - Forma de pago: $formaPago');
-        print('  - Es pagado: $pagado');
-        print('  - Estado: ${estado ?? 'Pagado'}');
+      } else {
+        bodyData['estado'] = estado ?? 'Pendiente';
+        bodyData['fechaPago'] = null; // Null para documentos pendientes
       }
+
+      // Debug: mostrar información de forma de pago
+      print('📝 Datos en crearDocumento:');
+      print('  - Forma de pago: ${formaPago ?? 'efectivo'}');
+      print('  - Es pagado: $pagado');
+      print(
+        '  - Estado: ${pagado ? (estado ?? 'Pagado') : (estado ?? 'Pendiente')}',
+      );
+      print('  - Pagado por: ${pagadoPor ?? vendedor}');
 
       final body = json.encode(bodyData);
 

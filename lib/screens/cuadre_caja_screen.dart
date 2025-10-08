@@ -114,12 +114,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                 .firstOrNull ??
             (cuadres.isNotEmpty ? cuadres.first : null);
 
-        print('📊 Cuadres cargados: ${cuadres.length}');
-        print(
-          '🎯 Cuadre actual asignado: ${_cuadreActual?.id} - ${_cuadreActual?.nombre}',
-        );
-        print('� Efectivo esperado: ${_cuadreActual?.efectivoEsperado ?? 0}');
-        print('🏦 Estado del cuadre: ${_cuadreActual?.estado ?? 'N/A'}');
+        // Cuadres cargados silenciosamente
 
         // ✅ SOLUCIÓN: Cargar ingresos reales del backend
         if (_cuadreActual != null && _cuadreActual!.id != null) {
@@ -154,10 +149,9 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
         _montoTransferenciasController.text = '0.00'; // Por ahora solo efectivo
       });
 
-      print('💰 Ingresos reales cargados: ${_totalIngresos}');
+      // Ingresos reales cargados silenciosamente
     } catch (e) {
-      print('❌ Error al cargar ingresos reales: $e');
-      // No mostrar error al usuario, usar valores por defecto
+      // Error al cargar ingresos reales - usar valores por defecto silenciosamente
     }
   }
 

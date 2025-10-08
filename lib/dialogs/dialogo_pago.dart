@@ -478,10 +478,39 @@ class _DialogoPagoState extends State<DialogoPago> {
                     ),
                   ),
                 ],
-                if (item.agregadoPor != null) ...[
+                // Debug: Verificar si agregadoPor tiene valor
+                () {
+                  print(
+                    '🐛 Debug - Item: ${item.productoNombre}, agregadoPor: ${item.agregadoPor}',
+                  );
+                  return Container();
+                }(),
+                if (item.agregadoPor != null &&
+                    item.agregadoPor!.isNotEmpty) ...[
                   SizedBox(height: 2),
                   Text(
                     '👤 Agregado por: ${item.agregadoPor}',
+                    style: TextStyle(
+                      color: AppTheme.textSecondary.withOpacity(0.8),
+                      fontSize: 11,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ] else if (widget.pedido.guardadoPor != null &&
+                    widget.pedido.guardadoPor!.isNotEmpty) ...[
+                  SizedBox(height: 2),
+                  Text(
+                    '👤 Pedido por: ${widget.pedido.guardadoPor}',
+                    style: TextStyle(
+                      color: AppTheme.textSecondary.withOpacity(0.8),
+                      fontSize: 11,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ] else if (widget.pedido.mesero.isNotEmpty) ...[
+                  SizedBox(height: 2),
+                  Text(
+                    '👤 Mesero: ${widget.pedido.mesero}',
                     style: TextStyle(
                       color: AppTheme.textSecondary.withOpacity(0.8),
                       fontSize: 11,

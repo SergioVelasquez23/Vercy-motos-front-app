@@ -724,7 +724,7 @@ class _PedidoScreenState extends State<PedidoScreen> {
             productoId: item.productoId,
           );
           print(
-            '📦 Cargando producto: ${productoObj?.nombre ?? "Sin nombre"} (ID: ${item.productoId})',
+            '📦 Cargando producto: ${productoObj?.nombre ?? "Sin nombre"} (ID: ${item.productoId}) - Imagen: ${productoObj?.imagenUrl ?? "Sin imagen"}',
           );
 
           // Crear una copia del producto con la cantidad y notas del item
@@ -737,6 +737,8 @@ class _PedidoScreenState extends State<PedidoScreen> {
             descripcion: productoObj?.descripcion ?? "",
             categoria: productoObj?.categoria,
             tieneVariantes: productoObj?.tieneVariantes ?? false,
+            imagenUrl: productoObj
+                ?.imagenUrl, // ✅ AGREGADO: Conservar la URL de la imagen
             ingredientesDisponibles: item.ingredientesSeleccionados,
             cantidad: item.cantidad,
             nota: item.notas,
@@ -791,6 +793,9 @@ class _PedidoScreenState extends State<PedidoScreen> {
                   item.producto,
                   forceNonNull: true,
                 )!;
+                print(
+                  '📦 Cargando producto de mesa ocupada: ${productoOriginal.nombre} (ID: ${productoOriginal.id}) - Imagen: ${productoOriginal.imagenUrl ?? "Sin imagen"}',
+                );
                 final productoParaMesa = Producto(
                   id: productoOriginal.id,
                   nombre: productoOriginal.nombre,
@@ -800,6 +805,8 @@ class _PedidoScreenState extends State<PedidoScreen> {
                   descripcion: productoOriginal.descripcion,
                   categoria: productoOriginal.categoria,
                   tieneVariantes: productoOriginal.tieneVariantes,
+                  imagenUrl: productoOriginal
+                      .imagenUrl, // ✅ AGREGADO: Conservar la URL de la imagen
                   ingredientesDisponibles: item.ingredientesSeleccionados,
                   cantidad: item.cantidad,
                   nota: item.notas,
@@ -838,6 +845,16 @@ class _PedidoScreenState extends State<PedidoScreen> {
         } catch (e) {
           print('⚠️ Error cargando pedido existente: $e');
           esPedidoExistente = false;
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Error cargando pedidos de la mesa'),
+                backgroundColor: Colors.red,
+                duration: Duration(seconds: 2),
+              ),
+            );
+          }
 
           // Fallback: usar productos de la mesa
           if (widget.mesa.productos.isNotEmpty) {
