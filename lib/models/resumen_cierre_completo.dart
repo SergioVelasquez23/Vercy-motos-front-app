@@ -143,6 +143,12 @@ class MovimientosEfectivoCompleto {
   });
 
   factory MovimientosEfectivoCompleto.fromJson(Map<String, dynamic> json) {
+    // Print the complete JSON for debugging
+    print('📋 MovimientosEfectivoCompleto.fromJson - Datos recibidos:');
+    json.forEach((key, value) {
+      print('  - $key: $value');
+    });
+
     double safeToDouble(dynamic value) {
       if (value == null) return 0.0;
       if (value is double) return value;
@@ -160,6 +166,34 @@ class MovimientosEfectivoCompleto {
       return result;
     }
 
+    // Check alternative keys for ventasEfectivo and ventasTransferencia
+    double ventasEf = 0.0;
+    double ventasTrans = 0.0;
+
+    // Try different possible field names in the API response
+    if (json['ventasEfectivo'] != null) {
+      ventasEf = safeToDouble(json['ventasEfectivo']);
+    } else if (json['efectivo'] != null) {
+      ventasEf = safeToDouble(json['efectivo']);
+    } else if (json['totalEfectivo'] != null) {
+      ventasEf = safeToDouble(json['totalEfectivo']);
+    }
+
+    if (json['ventasTransferencia'] != null) {
+      ventasTrans = safeToDouble(json['ventasTransferencia']);
+    } else if (json['transferencia'] != null) {
+      ventasTrans = safeToDouble(json['transferencia']);
+    } else if (json['ventasTransferencias'] != null) {
+      ventasTrans = safeToDouble(json['ventasTransferencias']);
+    } else if (json['totalTransferencia'] != null) {
+      ventasTrans = safeToDouble(json['totalTransferencia']);
+    }
+
+    print('💵 MovimientosEfectivoCompleto - ventas efectivo: $ventasEf');
+    print(
+      '💸 MovimientosEfectivoCompleto - ventas transferencia: $ventasTrans',
+    );
+
     return MovimientosEfectivoCompleto(
       ingresosTransferencia: safeToDouble(json['ingresosTransferencia']),
       ingresosEfectivo: safeToDouble(json['ingresosEfectivo']),
@@ -172,8 +206,8 @@ class MovimientosEfectivoCompleto {
       totalIngresosCaja: safeToDouble(json['totalIngresosCaja']),
       fondoInicial: safeToDouble(json['fondoInicial']),
       comprasTransferencia: safeToDouble(json['comprasTransferencia']),
-      ventasEfectivo: safeToDouble(json['ventasEfectivo']),
-      ventasTransferencia: safeToDouble(json['ventasTransferencia']),
+      ventasEfectivo: ventasEf,
+      ventasTransferencia: ventasTrans,
       gastosEfectivo: safeToDouble(json['gastosEfectivo']),
       comprasEfectivo: safeToDouble(json['comprasEfectivo']),
     );
@@ -410,6 +444,12 @@ class ResumenVentasCompleto {
   });
 
   factory ResumenVentasCompleto.fromJson(Map<String, dynamic> json) {
+    // Print the complete JSON for debugging
+    print('📋 ResumenVentasCompleto.fromJson - Datos recibidos:');
+    json.forEach((key, value) {
+      print('  - $key: $value');
+    });
+
     double safeToDouble(dynamic value) {
       if (value == null) return 0.0;
       if (value is double) return value;

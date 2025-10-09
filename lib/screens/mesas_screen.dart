@@ -9,6 +9,7 @@ import '../theme/app_theme.dart';
 import '../models/mesa.dart';
 import '../models/pedido.dart';
 import '../models/item_pedido.dart';
+import '../models/tipo_mesa.dart';
 import '../models/documento_mesa.dart';
 import '../services/pedido_service.dart';
 import '../services/mesa_service.dart';
@@ -19,6 +20,7 @@ import '../services/documento_automatico_service.dart';
 import '../services/impresion_service.dart';
 import '../services/notification_service.dart';
 import '../services/cuadre_caja_service.dart';
+import '../services/historial_edicion_service.dart';
 import '../providers/user_provider.dart';
 import '../utils/format_utils.dart';
 import '../utils/impresion_mixin.dart';
@@ -77,6 +79,7 @@ class _MesasScreenState extends State<MesasScreen>
   final DocumentoAutomaticoService _documentoAutomaticoService =
       DocumentoAutomaticoService();
   final CuadreCajaService _cuadreCajaService = CuadreCajaService();
+  final HistorialEdicionService _historialService = HistorialEdicionService();
 
   /// Verifica si existe la mesa "Deudas" y sugiere crearla si no existe
   Future<void> _verificarMesaDeudas() async {
@@ -219,9 +222,10 @@ class _MesasScreenState extends State<MesasScreen>
         formaPago: paymentInfo['metodoPago'] ?? 'efectivo',
         pagadoPor: vendedor,
         propina: paymentInfo['propina'] ?? 0.0,
-        pagado: false, // Documento pendiente hasta que se procese el pago
-        estado: 'Pendiente',
-        fechaPago: null,
+        pagado:
+            true, // ✅ CORREGIDO: Si hay método de pago, el documento está pagado
+        estado: 'Pagado',
+        fechaPago: DateTime.now(),
       );
 
       if (documentoCreado != null) {
@@ -1682,6 +1686,17 @@ class _MesasScreenState extends State<MesasScreen>
   void initState() {
     super.initState();
     _loadMesas();
+
+    // Suscribirse a eventos de pedidos pagados para recargar las mesas
+    _pedidoService.onPedidoPagado.listen((event) {
+      if (mounted) {
+        print(
+          '🔔 MesasScreen: Recibida notificación de pago - recargando mesas...',
+        );
+        _recargarMesasConCards();
+      }
+    });
+
     // Configurar WebSocket para actualización en tiempo real
     setupMesaWebSockets(() => _recargarMesasConCards());
     _verificarMesaDeudas(); // ✅ Verificar mesa Deudas al iniciar
@@ -1814,21 +1829,63 @@ class _MesasScreenState extends State<MesasScreen>
   // _obtenerPedidosActivosReales han sido eliminados y reemplazados
   // por el sistema optimizado de debounce
 
+  /// Detecta el tipo de mesa basado en su nombre
+  TipoMesa _detectarTipoMesa(String nombreMesa) {
+    final nombreUpper = nombreMesa.toUpperCase();
+
+    if (nombreUpper == 'DOMICILIO') {
+      return TipoMesa.auxiliar;
+    } else if (nombreUpper == 'CAJA') {
+      return TipoMesa.normal;
+    } else if (nombreUpper == 'DEUDAS') {
+      return TipoMesa.deudas;
+    } else if (nombreUpper.contains('VIP')) {
+      return TipoMesa.vip;
+    } else if (nombreUpper.contains('TERRAZA')) {
+      return TipoMesa.terraza;
+    } else if (nombreUpper.contains('PRIVAD')) {
+      return TipoMesa.privada;
+    } else {
+      // Por defecto, usar el tipo especial
+      return TipoMesa.especial;
+    }
+  }
+
   /// VERIFICA el estado real de una mesa en tiempo de construcción del widget
   void _verificarEstadoRealMesa(Mesa mesa) {
     // Hacer esta verificación de forma asíncrona para no bloquear el build
     Future.microtask(() async {
       try {
         final pedidos = await _pedidoService.getPedidosByMesa(mesa.nombre);
-        final pedidosActivos = pedidos
-            .where(
-              (p) =>
-                  p.estado != 'pagado' &&
-                  p.estado != 'cancelado' &&
-                  p.estado != EstadoPedido.pagado &&
-                  p.estado != EstadoPedido.cancelado,
-            )
-            .toList();
+        final pedidosActivos = pedidos.where((p) {
+          // Usar la nueva propiedad estaPagado para una verificación robusta
+          bool pagado = p.estaPagado;
+          bool cancelado =
+              p.estado == EstadoPedido.cancelado ||
+              p.estado.toString().toLowerCase() == 'cancelado';
+
+          // Si está pagado o cancelado, no es activo
+          if (pagado) {
+            // Verificar si hay inconsistencia con el estado
+            if (p.estado == EstadoPedido.activo ||
+                p.estado.toString().toLowerCase() == 'pendiente') {
+              print(
+                '⚠️ Pedido con estado inconsistente: ID=${p.id}, Estado=${p.estado} pero pagadoPor=${p.pagadoPor}',
+              );
+              print(
+                '   Este pedido se considera como PAGADO basado en sus propiedades',
+              );
+            }
+            return false;
+          }
+
+          if (cancelado) {
+            return false;
+          }
+
+          // Si llegamos aquí, es un pedido activo
+          return true;
+        }).toList();
 
         double totalReal = pedidosActivos.fold(0.0, (sum, p) => sum + p.total);
         bool ocupadaReal = pedidosActivos.isNotEmpty;
@@ -2478,12 +2535,16 @@ class _MesasScreenState extends State<MesasScreen>
     Map<String, int> cantidadesSeleccionadas = {};
     Map<String, TextEditingController> cantidadControllers = {};
 
-    // Inicializar controladores para cada producto
+    // Inicializar controladores para cada producto (todos seleccionados por defecto)
     for (int i = 0; i < pedido.items.length; i++) {
       final indexKey = i.toString();
-      itemsSeleccionados[indexKey] = false;
-      cantidadesSeleccionadas[indexKey] = 0;
-      cantidadControllers[indexKey] = TextEditingController(text: '0');
+      final item = pedido.items[i];
+      itemsSeleccionados[indexKey] = true;
+      cantidadesSeleccionadas[indexKey] = item.cantidad;
+      cantidadControllers[indexKey] = TextEditingController(
+        text: item.cantidad.toString(),
+      );
+      productosSeleccionados.add(item); // Agregar a la lista de seleccionados
     }
 
     // NUEVAS VARIABLES PARA SELECTOR DE BILLETES Y CAMBIO
@@ -4530,31 +4591,42 @@ class _MesasScreenState extends State<MesasScreen>
                                             // Limpiar campos de pago múltiple para evitar datos residuales
                                             montoEfectivoController.clear();
                                             montoTarjetaController.clear();
-                                            montoTransferenciaController.clear();
+                                            montoTransferenciaController
+                                                .clear();
                                           });
                                         },
                                         icon: Icon(
-                                          medioPago0 == 'efectivo' 
-                                            ? Icons.money 
-                                            : medioPago0 == 'transferencia'
+                                          medioPago0 == 'efectivo'
+                                              ? Icons.money
+                                              : medioPago0 == 'transferencia'
                                               ? Icons.account_balance
                                               : Icons.credit_card,
                                           size: 16,
-                                          color: !pagoMultiple ? _primary : _textSecondary,
+                                          color: !pagoMultiple
+                                              ? _primary
+                                              : _textSecondary,
                                         ),
                                         label: Text('Pago Simple'),
                                         style: OutlinedButton.styleFrom(
-                                          foregroundColor: !pagoMultiple ? _primary : _textSecondary,
-                                          backgroundColor: !pagoMultiple ? _primary.withOpacity(0.1) : null,
+                                          foregroundColor: !pagoMultiple
+                                              ? _primary
+                                              : _textSecondary,
+                                          backgroundColor: !pagoMultiple
+                                              ? _primary.withOpacity(0.1)
+                                              : null,
                                           padding: EdgeInsets.symmetric(
                                             horizontal: 16,
                                             vertical: 12,
                                           ),
                                           shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(8),
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
                                           ),
                                           side: BorderSide(
-                                            color: !pagoMultiple ? _primary : _textMuted,
+                                            color: !pagoMultiple
+                                                ? _primary
+                                                : _textMuted,
                                             width: !pagoMultiple ? 2 : 1,
                                           ),
                                         ),
@@ -4572,21 +4644,31 @@ class _MesasScreenState extends State<MesasScreen>
                                         icon: Icon(
                                           Icons.payment,
                                           size: 16,
-                                          color: pagoMultiple ? _primary : _textSecondary,
+                                          color: pagoMultiple
+                                              ? _primary
+                                              : _textSecondary,
                                         ),
                                         label: Text('Pago Mixto'),
                                         style: OutlinedButton.styleFrom(
-                                          foregroundColor: pagoMultiple ? _primary : _textSecondary,
-                                          backgroundColor: pagoMultiple ? _primary.withOpacity(0.1) : null,
+                                          foregroundColor: pagoMultiple
+                                              ? _primary
+                                              : _textSecondary,
+                                          backgroundColor: pagoMultiple
+                                              ? _primary.withOpacity(0.1)
+                                              : null,
                                           padding: EdgeInsets.symmetric(
                                             horizontal: 16,
                                             vertical: 12,
                                           ),
                                           shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(8),
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
                                           ),
                                           side: BorderSide(
-                                            color: pagoMultiple ? _primary : _textMuted,
+                                            color: pagoMultiple
+                                                ? _primary
+                                                : _textMuted,
                                             width: pagoMultiple ? 2 : 1,
                                           ),
                                         ),
@@ -4617,7 +4699,11 @@ class _MesasScreenState extends State<MesasScreen>
                                         SizedBox(width: 8),
                                         Expanded(
                                           child: Text(
-                                            'Pago con ${medioPago0 == 'efectivo' ? 'efectivo' : medioPago0 == 'transferencia' ? 'transferencia' : 'tarjeta'} únicamente',
+                                            'Pago con ${medioPago0 == 'efectivo'
+                                                ? 'efectivo'
+                                                : medioPago0 == 'transferencia'
+                                                ? 'transferencia'
+                                                : 'tarjeta'} únicamente',
                                             style: TextStyle(
                                               color: Colors.green,
                                               fontSize: 12,
@@ -5498,17 +5584,17 @@ class _MesasScreenState extends State<MesasScreen>
                                     ),
                                     SizedBox(width: isMovil ? 8 : 16),
 
-                                    // Botón Confirmar Pago
-                                    Expanded(
-                                      flex: isMovil ? 2 : 2,
-                                      child: ElevatedButton.icon(
-                                        onPressed: () async {
-                                          print('🔄 INICIANDO PROCESO DE PAGO');
-                                          print('   - Modo pago múltiple: $pagoMultiple');
-                                          print('   - Método de pago seleccionado: $medioPago0');
-                                          
-                                          // ✅ NUEVA LÓGICA: Verificar si es pago múltiple parcial
-                                          if (pagoMultiple) {
+                                    // Botón Pago Mixto - Solo visible cuando hay pago múltiple
+                                    if (pagoMultiple) ...[
+                                      Expanded(
+                                        flex: isMovil ? 2 : 2,
+                                        child: ElevatedButton.icon(
+                                          onPressed: () async {
+                                            print(
+                                              '🔄 INICIANDO PROCESO DE PAGO MIXTO',
+                                            );
+                                            print('   - Método de pago: mixto');
+
                                             double montoEfectivo =
                                                 double.tryParse(
                                                   montoEfectivoController.text,
@@ -5529,6 +5615,30 @@ class _MesasScreenState extends State<MesasScreen>
                                                 montoEfectivo +
                                                 montoTarjeta +
                                                 montoTransferencia;
+
+                                            // Validar que al menos haya dos métodos de pago
+                                            int metodosUsados = 0;
+                                            if (montoEfectivo > 0)
+                                              metodosUsados++;
+                                            if (montoTarjeta > 0)
+                                              metodosUsados++;
+                                            if (montoTransferencia > 0)
+                                              metodosUsados++;
+
+                                            if (metodosUsados < 2) {
+                                              ScaffoldMessenger.of(
+                                                context,
+                                              ).showSnackBar(
+                                                SnackBar(
+                                                  content: Text(
+                                                    'Para pago mixto debe usar al menos 2 métodos de pago',
+                                                  ),
+                                                  backgroundColor:
+                                                      Colors.orange,
+                                                ),
+                                              );
+                                              return;
+                                            }
 
                                             // Calcular descuento
                                             double descuento = 0.0;
@@ -5560,92 +5670,25 @@ class _MesasScreenState extends State<MesasScreen>
                                             double totalConDescuento =
                                                 pedido.total - descuento;
 
-                                            print(
-                                              '💰 VERIFICANDO PAGO MÚLTIPLE:',
-                                            );
-                                            print(
-                                              '   - Total pedido: \$${pedido.total}',
-                                            );
-                                            print(
-                                              '   - Descuento: \$${descuento}',
-                                            );
-                                            print(
-                                              '   - Total con descuento: \$${totalConDescuento}',
-                                            );
-                                            print(
-                                              '   - Pagando: \$${totalPagando}',
-                                            );
-
                                             if (totalPagando <
                                                 totalConDescuento) {
-                                              // PAGO PARCIAL - Crear pedido de deuda por el restante
-                                              double montoPendiente =
-                                                  totalConDescuento -
-                                                  totalPagando;
-                                              print(
-                                                '⚠️ PAGO PARCIAL: Queda pendiente \$${montoPendiente}',
-                                              );
-
-                                              // Procesar pago parcial
-                                              Navigator.pop(context);
-                                              await _procesarPagoMultipleParcial(
-                                                mesa,
-                                                pedido,
-                                                totalPagando,
-                                                montoPendiente,
-                                                {
-                                                  'medioPago': medioPago0,
-                                                  'incluyePropina':
-                                                      incluyePropina,
-                                                  'descuentoPorcentaje':
-                                                      descuentoPorcentajeController
-                                                          .text,
-                                                  'descuentoValor':
-                                                      descuentoValorController
-                                                          .text,
-                                                  'propina':
-                                                      propinaController.text,
-                                                  'esCortesia': esCortesia0,
-                                                  'esConsumoInterno':
-                                                      esConsumoInterno0,
-                                                  'pagoMultiple': pagoMultiple,
-                                                  'montoEfectivo':
-                                                      montoEfectivoController
-                                                          .text,
-                                                  'montoTarjeta':
-                                                      montoTarjetaController
-                                                          .text,
-                                                  'montoTransferencia':
-                                                      montoTransferenciaController
-                                                          .text,
-                                                  'descuento': descuento,
-                                                },
+                                              ScaffoldMessenger.of(
+                                                context,
+                                              ).showSnackBar(
+                                                SnackBar(
+                                                  content: Text(
+                                                    'El monto total no cubre el valor del pedido',
+                                                  ),
+                                                  backgroundColor: Colors.red,
+                                                ),
                                               );
                                               return;
                                             }
-                                          }
 
-                                          // Verificar si todos los productos están seleccionados o ninguno
-                                          bool todosProdutosSeleccionados =
-                                              productosSeleccionados.length ==
-                                              pedido.items.length;
-
-                                          // Si no hay productos seleccionados O todos están seleccionados, usar pago completo
-                                          if (productosSeleccionados.isEmpty ||
-                                              todosProdutosSeleccionados) {
-                                            print(
-                                              '🔄 Usando flujo de pago COMPLETO - Productos seleccionados: ${productosSeleccionados.length}/${pedido.items.length}',
-                                            );
-                                            
-                                            if (!pagoMultiple) {
-                                              print('✅ PAGO SIMPLE CON $medioPago0 - Total: \$${pedido.total}');
-                                            } else {
-                                              print('✅ PAGO MÚLTIPLE COMPLETO - Total: \$${pedido.total}');
-                                            }
-
-                                            // Pago total del pedido (usar flujo completo que maneja bien la caja)
+                                            // Pago mixto completo
                                             Navigator.pop(context, {
-                                              'medioPago': medioPago0,
+                                              'medioPago':
+                                                  'mixto', // ✅ FIJO: método específico para mixto
                                               'incluyePropina': incluyePropina,
                                               'descuentoPorcentaje':
                                                   descuentoPorcentajeController
@@ -5659,8 +5702,7 @@ class _MesasScreenState extends State<MesasScreen>
                                               'mesaDestinoId': mesaDestinoId0,
                                               'billetesRecibidos':
                                                   billetesSeleccionados,
-                                              // ✅ NUEVO: Campos de pago múltiple
-                                              'pagoMultiple': pagoMultiple,
+                                              'pagoMultiple': true,
                                               'montoEfectivo':
                                                   montoEfectivoController.text,
                                               'montoTarjeta':
@@ -5668,25 +5710,210 @@ class _MesasScreenState extends State<MesasScreen>
                                               'montoTransferencia':
                                                   montoTransferenciaController
                                                       .text,
-                                              'productosSeleccionados':
-                                                  [], // Lista vacía = pagar todo
+                                              'productosSeleccionados': [],
                                             });
-                                          } else {
-                                            // Pago parcial REAL - solo algunos productos seleccionados
+                                          },
+                                          icon: Icon(
+                                            Icons.payment_outlined,
+                                            size: isMovil ? 18 : 20,
+                                          ),
+                                          label: Text(
+                                            'Pago Mixto',
+                                            style: TextStyle(
+                                              fontSize: isMovil ? 14 : 16,
+                                            ),
+                                          ),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.orange,
+                                            foregroundColor: Colors.white,
+                                            padding: EdgeInsets.symmetric(
+                                              vertical: isMovil ? 12 : 16,
+                                            ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(
+                                                    isMovil ? 8 : 15,
+                                                  ),
+                                            ),
+                                            elevation: 5,
+                                          ),
+                                        ),
+                                      ),
+                                      SizedBox(width: isMovil ? 8 : 16),
+                                    ],
+
+                                    // Botón Confirmar Pago (cuando no es pago mixto, o cuando es cortesía/consumo interno)
+                                    if (!pagoMultiple ||
+                                        esCortesia0 ||
+                                        esConsumoInterno0) ...[
+                                      Expanded(
+                                        flex: isMovil ? 2 : 2,
+                                        child: ElevatedButton.icon(
+                                          onPressed: () async {
                                             print(
-                                              '🔄 Usando flujo de pago PARCIAL con ${productosSeleccionados.length}/${pedido.items.length} productos',
+                                              '🔄 INICIANDO PROCESO DE PAGO',
+                                            );
+                                            print(
+                                              '   - Modo pago múltiple: $pagoMultiple',
+                                            );
+                                            print(
+                                              '   - Método de pago seleccionado: $medioPago0',
                                             );
 
-                                            // Cerrar diálogo primero para evitar bloqueo
-                                            Navigator.pop(context);
+                                            // ✅ NUEVA LÓGICA: Verificar si es pago múltiple parcial
+                                            if (pagoMultiple) {
+                                              double montoEfectivo =
+                                                  double.tryParse(
+                                                    montoEfectivoController
+                                                        .text,
+                                                  ) ??
+                                                  0.0;
+                                              double montoTarjeta =
+                                                  double.tryParse(
+                                                    montoTarjetaController.text,
+                                                  ) ??
+                                                  0.0;
+                                              double montoTransferencia =
+                                                  double.tryParse(
+                                                    montoTransferenciaController
+                                                        .text,
+                                                  ) ??
+                                                  0.0;
+                                              double totalPagando =
+                                                  montoEfectivo +
+                                                  montoTarjeta +
+                                                  montoTransferencia;
 
-                                            // Procesar pago parcial DESPUÉS de cerrar diálogo
-                                            await _pagarProductosParciales(
-                                              mesa,
-                                              pedido,
-                                              productosSeleccionados,
-                                              {
-                                                'medioPago': medioPago0,
+                                              // Calcular descuento
+                                              double descuento = 0.0;
+                                              String descuentoPorcentajeStr =
+                                                  descuentoPorcentajeController
+                                                      .text;
+                                              String descuentoValorStr =
+                                                  descuentoValorController.text;
+
+                                              if (descuentoPorcentajeStr
+                                                  .isNotEmpty) {
+                                                double porcentaje =
+                                                    double.tryParse(
+                                                      descuentoPorcentajeStr,
+                                                    ) ??
+                                                    0.0;
+                                                descuento =
+                                                    (pedido.total *
+                                                        porcentaje) /
+                                                    100;
+                                              } else if (descuentoValorStr
+                                                  .isNotEmpty) {
+                                                descuento =
+                                                    double.tryParse(
+                                                      descuentoValorStr,
+                                                    ) ??
+                                                    0.0;
+                                              }
+
+                                              double totalConDescuento =
+                                                  pedido.total - descuento;
+
+                                              print(
+                                                '💰 VERIFICANDO PAGO MÚLTIPLE:',
+                                              );
+                                              print(
+                                                '   - Total pedido: \$${pedido.total}',
+                                              );
+                                              print(
+                                                '   - Descuento: \$${descuento}',
+                                              );
+                                              print(
+                                                '   - Total con descuento: \$${totalConDescuento}',
+                                              );
+                                              print(
+                                                '   - Pagando: \$${totalPagando}',
+                                              );
+
+                                              if (totalPagando <
+                                                  totalConDescuento) {
+                                                // PAGO PARCIAL - Crear pedido de deuda por el restante
+                                                double montoPendiente =
+                                                    totalConDescuento -
+                                                    totalPagando;
+                                                print(
+                                                  '⚠️ PAGO PARCIAL: Queda pendiente \$${montoPendiente}',
+                                                );
+
+                                                // Procesar pago parcial
+                                                Navigator.pop(context);
+                                                await _procesarPagoMultipleParcial(
+                                                  mesa,
+                                                  pedido,
+                                                  totalPagando,
+                                                  montoPendiente,
+                                                  {
+                                                    'medioPago':
+                                                        'multiple', // ✅ CORREGIDO: pago múltiple parcial
+                                                    'incluyePropina':
+                                                        incluyePropina,
+                                                    'descuentoPorcentaje':
+                                                        descuentoPorcentajeController
+                                                            .text,
+                                                    'descuentoValor':
+                                                        descuentoValorController
+                                                            .text,
+                                                    'propina':
+                                                        propinaController.text,
+                                                    'esCortesia': esCortesia0,
+                                                    'esConsumoInterno':
+                                                        esConsumoInterno0,
+                                                    'pagoMultiple':
+                                                        pagoMultiple,
+                                                    'montoEfectivo':
+                                                        montoEfectivoController
+                                                            .text,
+                                                    'montoTarjeta':
+                                                        montoTarjetaController
+                                                            .text,
+                                                    'montoTransferencia':
+                                                        montoTransferenciaController
+                                                            .text,
+                                                    'descuento': descuento,
+                                                  },
+                                                );
+                                                return;
+                                              }
+                                            }
+
+                                            // Verificar si todos los productos están seleccionados o ninguno
+                                            bool todosProdutosSeleccionados =
+                                                productosSeleccionados.length ==
+                                                pedido.items.length;
+
+                                            // Si no hay productos seleccionados O todos están seleccionados, usar pago completo
+                                            if (productosSeleccionados
+                                                    .isEmpty ||
+                                                todosProdutosSeleccionados) {
+                                              print(
+                                                '🔄 Usando flujo de pago COMPLETO - Productos seleccionados: ${productosSeleccionados.length}/${pedido.items.length}',
+                                              );
+
+                                              if (!pagoMultiple) {
+                                                print(
+                                                  '✅ PAGO SIMPLE CON $medioPago0 - Total: \$${pedido.total}',
+                                                );
+                                              } else {
+                                                print(
+                                                  '✅ PAGO MÚLTIPLE COMPLETO - Total: \$${pedido.total}',
+                                                );
+                                              }
+
+                                              // Pago total del pedido (usar flujo completo que maneja bien la caja)
+                                              // ✅ CORREGIDO: Determinar método de pago correcto
+                                              String metodoPagoFinal =
+                                                  pagoMultiple
+                                                  ? 'multiple'
+                                                  : medioPago0;
+
+                                              Navigator.pop(context, {
+                                                'medioPago': metodoPagoFinal,
                                                 'incluyePropina':
                                                     incluyePropina,
                                                 'descuentoPorcentaje':
@@ -5713,37 +5940,93 @@ class _MesasScreenState extends State<MesasScreen>
                                                 'montoTransferencia':
                                                     montoTransferenciaController
                                                         .text,
-                                              },
-                                            );
-                                          }
-                                        },
-                                        icon: Icon(
-                                          Icons.payment,
-                                          size: isMovil ? 18 : 20,
-                                        ),
-                                        label: Text(
-                                          isMovil
-                                              ? 'Pago Directo'
-                                              : 'Pago Directo',
-                                          style: TextStyle(
-                                            fontSize: isMovil ? 14 : 16,
+                                                'productosSeleccionados':
+                                                    [], // Lista vacía = pagar todo
+                                              });
+                                            } else {
+                                              // Pago parcial REAL - solo algunos productos seleccionados
+                                              print(
+                                                '🔄 Usando flujo de pago PARCIAL con ${productosSeleccionados.length}/${pedido.items.length} productos',
+                                              );
+
+                                              // Cerrar diálogo primero para evitar bloqueo
+                                              Navigator.pop(context);
+
+                                              // Procesar pago parcial DESPUÉS de cerrar diálogo
+                                              // ✅ CORREGIDO: Determinar método de pago correcto para pago parcial
+                                              String metodoPagoParcial =
+                                                  pagoMultiple
+                                                  ? 'multiple'
+                                                  : medioPago0;
+
+                                              await _pagarProductosParciales(
+                                                mesa,
+                                                pedido,
+                                                productosSeleccionados,
+                                                {
+                                                  'medioPago':
+                                                      metodoPagoParcial,
+                                                  'incluyePropina':
+                                                      incluyePropina,
+                                                  'descuentoPorcentaje':
+                                                      descuentoPorcentajeController
+                                                          .text,
+                                                  'descuentoValor':
+                                                      descuentoValorController
+                                                          .text,
+                                                  'propina':
+                                                      propinaController.text,
+                                                  'esCortesia': esCortesia0,
+                                                  'esConsumoInterno':
+                                                      esConsumoInterno0,
+                                                  'mesaDestinoId':
+                                                      mesaDestinoId0,
+                                                  'billetesRecibidos':
+                                                      billetesSeleccionados,
+                                                  // ✅ NUEVO: Campos de pago múltiple
+                                                  'pagoMultiple': pagoMultiple,
+                                                  'montoEfectivo':
+                                                      montoEfectivoController
+                                                          .text,
+                                                  'montoTarjeta':
+                                                      montoTarjetaController
+                                                          .text,
+                                                  'montoTransferencia':
+                                                      montoTransferenciaController
+                                                          .text,
+                                                },
+                                              );
+                                            }
+                                          },
+                                          icon: Icon(
+                                            Icons.payment,
+                                            size: isMovil ? 18 : 20,
                                           ),
-                                        ),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: _primary,
-                                          foregroundColor: Colors.white,
-                                          padding: EdgeInsets.symmetric(
-                                            vertical: isMovil ? 12 : 16,
-                                          ),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              isMovil ? 8 : 15,
+                                          label: Text(
+                                            isMovil
+                                                ? 'Pago Directo'
+                                                : 'Pago Directo',
+                                            style: TextStyle(
+                                              fontSize: isMovil ? 14 : 16,
                                             ),
                                           ),
-                                          elevation: 5,
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: _primary,
+                                            foregroundColor: Colors.white,
+                                            padding: EdgeInsets.symmetric(
+                                              vertical: isMovil ? 12 : 16,
+                                            ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(
+                                                    isMovil ? 8 : 15,
+                                                  ),
+                                            ),
+                                            elevation: 5,
+                                          ),
                                         ),
                                       ),
-                                    ),
+                                    ], // Cierra el if (!pagoMultiple || esCortesia0 || esConsumoInterno0)
                                   ],
                                 ),
                               ], // Cierra el Column dentro del SingleChildScrollView
@@ -5833,7 +6116,20 @@ class _MesasScreenState extends State<MesasScreen>
 
         // Validar forma de pago
         String medioPago = formResult['medioPago'] ?? 'efectivo';
-        if (medioPago != 'efectivo' && medioPago != 'transferencia') {
+        bool esPagoMultipleFlag = formResult['pagoMultiple'] ?? false;
+
+        // Si es pago múltiple, usar 'mixto' como forma de pago
+        if (esPagoMultipleFlag) {
+          medioPago = 'mixto';
+          print('🔍 ANALISIS DEL TIPO DE PAGO:');
+          print(
+            '  - pagoMultiple desde diálogo: ${formResult['pagoMultiple']}',
+          );
+          print('  - esPagoMultiple calculado: $esPagoMultipleFlag');
+          print('  - medioPago seleccionado: $medioPago');
+        } else if (medioPago != 'efectivo' &&
+            medioPago != 'transferencia' &&
+            medioPago != 'tarjeta') {
           print(
             '⚠️ Forma de pago no reconocida: "$medioPago". Usando efectivo por defecto.',
           );
@@ -5875,12 +6171,12 @@ class _MesasScreenState extends State<MesasScreen>
 
         // ✅ NUEVO: Verificar si es pago múltiple completo
         bool esPagoMultiple = formResult['pagoMultiple'] == true;
-        
+
         print('🔍 ANALISIS DEL TIPO DE PAGO:');
         print('  - pagoMultiple desde diálogo: ${formResult['pagoMultiple']}');
         print('  - esPagoMultiple calculado: $esPagoMultiple');
         print('  - medioPago seleccionado: $medioPago');
-        
+
         if (esPagoMultiple) {
           print('💳 PROCESANDO PAGO MÚLTIPLE COMPLETO');
 
@@ -5927,23 +6223,18 @@ class _MesasScreenState extends State<MesasScreen>
             });
           }
 
-          // Determinar el método de pago principal para el pago múltiple
-          String metodoPagoPrincipal = 'otro'; // Por defecto
-          if (montoEfectivo > 0 &&
-              montoEfectivo >= montoTarjeta &&
-              montoEfectivo >= montoTransferencia) {
-            metodoPagoPrincipal = 'efectivo';
-          } else if (montoTransferencia > 0 &&
-              montoTransferencia >= montoTarjeta) {
-            metodoPagoPrincipal = 'transferencia';
-          } else if (montoTarjeta > 0) {
-            metodoPagoPrincipal = 'tarjeta';
-          }
+          // Establecer el método de pago como mixto para pagos múltiples
+          String metodoPagoPrincipal = 'mixto';
+
+          print('💳 PROCESANDO PAGO MÚLTIPLE COMPLETO');
+          print('   - Efectivo: ${formatCurrency(montoEfectivo)}');
+          print('   - Tarjeta: ${formatCurrency(montoTarjeta)}');
+          print('   - Transferencia: ${formatCurrency(montoTransferencia)}');
 
           // Procesar pago múltiple usando pagosParciales
           await _pedidoService.pagarPedido(
             pedido.id,
-            formaPago: metodoPagoPrincipal, // ✅ CORREGIDO: Usar método válido
+            formaPago: metodoPagoPrincipal, // Usar 'mixto' como método de pago
             propina: propina,
             procesadoPor: usuarioPago,
             esCortesia: esCortesia,
@@ -5970,7 +6261,7 @@ class _MesasScreenState extends State<MesasScreen>
           print('  - Es cortesía: $esCortesia');
           print('  - Es consumo interno: $esConsumoInterno');
           print('  - Descuento: $descuento');
-          
+
           await _pedidoService.pagarPedido(
             pedido.id,
             formaPago: medioPago,
@@ -5989,7 +6280,26 @@ class _MesasScreenState extends State<MesasScreen>
         print('✅ Pago procesado exitosamente');
 
         // Actualizar el objeto pedido con el estado devuelto por el servidor
-        pedido.estado = EstadoPedido.pagado;
+        EstadoPedido estadoFinal;
+
+        if (esCortesia) {
+          estadoFinal = EstadoPedido.cortesia;
+          pedido.estado = EstadoPedido.cortesia;
+        } else if (esConsumoInterno) {
+          estadoFinal = EstadoPedido
+              .pagado; // Consumo interno también se marca como pagado
+          pedido.estado = EstadoPedido.pagado;
+        } else {
+          estadoFinal = EstadoPedido.pagado;
+          pedido.estado = EstadoPedido.pagado;
+        }
+
+        // Asegurar que el pedido sea marcado correctamente en la UI
+        await _pedidoService.updateEstadoPedidoLocal(pedido.id, estadoFinal);
+
+        // Forzar recarga de datos para actualizar la UI
+        await _recargarMesasConCards();
+
         print('  - Estado actualizado a: ${pedido.estado}');
         print('  - Tipo final confirmado: ${pedido.tipo}');
 
@@ -6027,15 +6337,19 @@ class _MesasScreenState extends State<MesasScreen>
           print('🔍 DEBUG - Determinando forma de pago para documento:');
           print('  - formResult[\'medioPago\']: ${formResult['medioPago']}');
           print('  - medioPago fallback: $medioPago');
-          
+
           formaPagoDocumento = formResult['medioPago'] ?? medioPago;
-          print('💰 Método de pago seleccionado para documento: $formaPagoDocumento');
-          
+          print(
+            '💰 Método de pago seleccionado para documento: $formaPagoDocumento',
+          );
+
           // Validar que el método de pago sea válido para el backend
-          if (formaPagoDocumento != 'efectivo' && 
-              formaPagoDocumento != 'transferencia' && 
+          if (formaPagoDocumento != 'efectivo' &&
+              formaPagoDocumento != 'transferencia' &&
               formaPagoDocumento != 'tarjeta') {
-            print('⚠️ Método de pago no válido para documento: $formaPagoDocumento, usando efectivo');
+            print(
+              '⚠️ Método de pago no válido para documento: $formaPagoDocumento, usando efectivo',
+            );
             formaPagoDocumento = 'efectivo';
           }
         }
@@ -9693,16 +10007,7 @@ class _MesasScreenState extends State<MesasScreen>
                   child: OutlinedButton(
                     onPressed: () async {
                       Navigator.pop(context); // Cerrar el modal
-                      final result = await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => PedidoScreen(mesa: mesa),
-                        ),
-                      );
-                      // Si se creó o actualizó un pedido, recargar las mesas
-                      if (result == true) {
-                        await _recargarMesasConCards();
-                      }
+                      await _agregarProductosConHistorial(mesa);
                     },
                     style: OutlinedButton.styleFrom(
                       foregroundColor: _primary,
@@ -9718,6 +10023,33 @@ class _MesasScreenState extends State<MesasScreen>
                         SizedBox(width: 8),
                         Text('Agregar Nuevo Pedido'),
                       ],
+                    ),
+                  ),
+                ),
+
+                // Botón para ver historial de ediciones
+                SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: TextButton.icon(
+                    onPressed: () async {
+                      Navigator.pop(context); // Cerrar el modal
+                      await _mostrarHistorialMesa(mesa);
+                    },
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.grey[400],
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    icon: Icon(
+                      Icons.history,
+                      size: 18,
+                      color: Colors.grey[400],
+                    ),
+                    label: Text(
+                      'Ver Historial de Ediciones',
+                      style: TextStyle(color: Colors.grey[400]),
                     ),
                   ),
                 ),
@@ -9753,16 +10085,127 @@ class _MesasScreenState extends State<MesasScreen>
         ocupada: false,
         total: 0.0,
         productos: [],
+        tipo: _detectarTipoMesa(nombreMesa),
       );
     }
 
+    await _agregarProductosConHistorial(mesa);
+  }
+
+  /// Navega a PedidoScreen para agregar productos a una mesa
+  /// El backend registra automáticamente en el historial cuando se actualizan pedidos
+  Future<void> _agregarProductosConHistorial(Mesa mesa) async {
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => PedidoScreen(mesa: mesa!)),
+      MaterialPageRoute(builder: (context) => PedidoScreen(mesa: mesa)),
     );
+
     // Si se creó o actualizó un pedido, recargar las mesas
     if (result == true) {
       await _recargarMesasConCards();
+
+      // El backend ya registra automáticamente en el historial cuando se modifican pedidos
+      print(
+        '✅ Pedidos actualizados en mesa ${mesa.nombre} - Historial registrado automáticamente por el backend',
+      );
+    }
+  }
+
+  /// Muestra el historial de ediciones de una mesa específica
+  Future<void> _mostrarHistorialMesa(Mesa mesa) async {
+    try {
+      final historial = await _historialService.getHistorialMesa(mesa.nombre);
+
+      if (!mounted) return;
+
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: AppTheme.cardBg,
+          title: Text(
+            'Historial de Ediciones - ${mesa.nombre}',
+            style: AppTheme.headlineMedium,
+          ),
+          content: SizedBox(
+            width: double.maxFinite,
+            height: 400,
+            child: historial.isEmpty
+                ? Center(
+                    child: Text(
+                      'No hay historial de ediciones para esta mesa',
+                      style: AppTheme.bodyMedium,
+                    ),
+                  )
+                : ListView.builder(
+                    itemCount: historial.length,
+                    itemBuilder: (context, index) {
+                      final edicion = historial[index];
+                      return Card(
+                        color: AppTheme.backgroundDark,
+                        margin: EdgeInsets.symmetric(vertical: 4),
+                        child: ListTile(
+                          leading: Text(
+                            edicion.icono,
+                            style: TextStyle(fontSize: 20),
+                          ),
+                          title: Text(
+                            edicion.descripcionTipo,
+                            style: AppTheme.bodyMedium.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (edicion.descripcion != null)
+                                Text(
+                                  edicion.descripcion!,
+                                  style: AppTheme.bodySmall,
+                                ),
+                              Text(
+                                'Por: ${edicion.usuarioEditor} - ${_formatearFecha(edicion.fechaEdicion)}',
+                                style: AppTheme.bodySmall.copyWith(
+                                  color: Colors.grey[400],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Cerrar'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al cargar historial: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  /// Formatea fecha para mostrar en el historial
+  String _formatearFecha(DateTime fecha) {
+    final now = DateTime.now();
+    final difference = now.difference(fecha);
+
+    if (difference.inDays > 0) {
+      return '${difference.inDays} día${difference.inDays > 1 ? 's' : ''} atrás';
+    } else if (difference.inHours > 0) {
+      return '${difference.inHours} hora${difference.inHours > 1 ? 's' : ''} atrás';
+    } else if (difference.inMinutes > 0) {
+      return '${difference.inMinutes} minuto${difference.inMinutes > 1 ? 's' : ''} atrás';
+    } else {
+      return 'Hace unos segundos';
     }
   }
 

@@ -25,6 +25,9 @@ class PedidoService {
   final _pedidoPagadoController = StreamController<bool>.broadcast();
   Stream<bool> get onPedidoPagado => _pedidoPagadoController.stream;
 
+  // Mantener un caché local de pedidos para actualizaciones rápidas
+  final Map<String, Pedido> _pedidosCache = {};
+
   final InventarioService _inventarioService = InventarioService();
   final CuadreCajaService _cuadreCajaService = CuadreCajaService();
 
@@ -36,6 +39,44 @@ class PedidoService {
     // PedidoService: Cerrando StreamControllers
     _pedidoCompletadoController.close();
     _pedidoPagadoController.close();
+  }
+
+  /// Actualiza el estado de un pedido en la caché local
+  /// Útil para asegurar que el estado se refleje correctamente en la UI
+  /// independientemente de la respuesta del servidor
+  Future<void> updateEstadoPedidoLocal(
+    String pedidoId,
+    EstadoPedido nuevoEstado,
+  ) async {
+    try {
+      print(
+        '🔄 Actualizando estado de pedido localmente: $pedidoId -> ${nuevoEstado.name}',
+      );
+
+      // Buscar el pedido en caché si existe
+      Pedido? pedido = _pedidosCache[pedidoId];
+
+      // Si no está en caché, intentar obtenerlo del servidor
+      if (pedido == null) {
+        final pedidoActualizado = await getPedidoById(pedidoId);
+        if (pedidoActualizado != null) {
+          // Actualizar el estado y guardar en caché
+          pedidoActualizado.estado = nuevoEstado;
+          _pedidosCache[pedidoId] = pedidoActualizado;
+          print('✅ Estado del pedido actualizado localmente desde servidor');
+        }
+      } else {
+        // Actualizar el pedido existente en caché
+        pedido.estado = nuevoEstado;
+        _pedidosCache[pedidoId] = pedido;
+        print('✅ Estado del pedido actualizado localmente desde caché');
+      }
+
+      // Notificar el cambio para actualizar la UI
+      _pedidoPagadoController.add(true);
+    } catch (e) {
+      print('❌ Error al actualizar estado local del pedido: $e');
+    }
   }
 
   /// Helper para formatear fechas de manera consistente con el backend
@@ -145,11 +186,122 @@ class PedidoService {
         );
       }
 
+      // Log detallado para depuración de reportes
+      print(
+        '🔍 REPORTE DETALLADO: Recibidos ${jsonList.length} pedidos del servidor',
+      );
+      int pedidosFiltrados = 0;
+
       // Convertir JSON a objetos Pedido
-      pedidos = jsonList.map((json) => Pedido.fromJson(json)).toList();
+      pedidos = jsonList.map((json) {
+        final pedido = Pedido.fromJson(json);
+        final estadoOriginal = pedido.estado;
+        final bool teoriaPagado = pedido.estaPagado;
+
+        // Corregir estados inconsistentes
+        if (pedido.estado == EstadoPedido.activo &&
+            pedido.pagadoPor != null &&
+            pedido.pagadoPor!.isNotEmpty) {
+          print(
+            '⚠️ Estado inconsistente en _parseListResponse: ID=${pedido.id}, estado=${pedido.estado}, pagadoPor=${pedido.pagadoPor}',
+          );
+          print('✅ Corrigiendo estado a PAGADO automáticamente');
+          pedido.estado = EstadoPedido.pagado;
+          pedidosFiltrados++;
+        }
+
+        // Verificar si el tipo es cortesía pero el estado no lo refleja
+        if (pedido.tipo == TipoPedido.cortesia &&
+            pedido.estado != EstadoPedido.cortesia) {
+          print(
+            '⚠️ Estado inconsistente en _parseListResponse: pedido tipo CORTESÍA pero estado=${pedido.estado}',
+          );
+          print('✅ Corrigiendo estado a CORTESÍA automáticamente');
+          pedido.estado = EstadoPedido.cortesia;
+        }
+
+        // Si estado es "pendiente", convertirlo a activo o pagado según otros campos
+        if (pedido.estado.toString().toLowerCase() == "pendiente") {
+          if (pedido.pagadoPor != null && pedido.pagadoPor!.isNotEmpty) {
+            print(
+              '⚠️ Estado "pendiente" detectado con pagadoPor: ${pedido.pagadoPor}',
+            );
+            print('✅ Corrigiendo estado a PAGADO automáticamente');
+            pedido.estado = EstadoPedido.pagado;
+            pedidosFiltrados++;
+          } else {
+            print('⚠️ Estado "pendiente" detectado sin pagadoPor');
+            print('✅ Corrigiendo estado a ACTIVO automáticamente');
+            pedido.estado = EstadoPedido.activo;
+            pedidosFiltrados++;
+          }
+        }
+
+        // Verificar inconsistencias adicionales para diagnóstico
+        if (estadoOriginal != pedido.estado) {
+          print('📊 DIAGNÓSTICO VENTAS - Pedido ID: ${pedido.id}');
+          print('  - Estado original: $estadoOriginal');
+          print('  - Estado corregido: ${pedido.estado}');
+          print('  - estaPagado: $teoriaPagado');
+          print('  - pagadoPor: ${pedido.pagadoPor ?? "NULL"}');
+          print('  - formaPago: ${pedido.formaPago ?? "NULL"}');
+          print(
+            '  - fechaPago: ${pedido.fechaPago != null ? "PRESENTE" : "NULL"}',
+          );
+        }
+
+        // Guardar en caché para acceso rápido
+        if (pedido.id.isNotEmpty) {
+          _pedidosCache[pedido.id] = pedido;
+        }
+
+        return pedido;
+      }).toList();
 
       // Ordenar pedidos por fecha descendente (más recientes primero)
       pedidos.sort((a, b) => b.fecha.compareTo(a.fecha));
+
+      // Análisis de pedidos pagados para diagnóstico de ventas
+      int pedidosPagados = 0;
+      int pedidosActivos = 0;
+      int pedidosCortesia = 0;
+      int pedidosCancelados = 0;
+      int pedidosConEstadoPagado = 0;
+      int pedidosConPagadoPorSinEstadoPagado = 0;
+
+      for (var pedido in pedidos) {
+        final bool realmentePagado = pedido.estaPagado;
+
+        if (realmentePagado) {
+          pedidosPagados++;
+        }
+
+        if (pedido.estado == EstadoPedido.activo) {
+          pedidosActivos++;
+          // Verificar si tiene pagadoPor pero no está marcado como pagado
+          if (pedido.pagadoPor != null && pedido.pagadoPor!.isNotEmpty) {
+            pedidosConPagadoPorSinEstadoPagado++;
+          }
+        } else if (pedido.estado == EstadoPedido.pagado) {
+          pedidosConEstadoPagado++;
+        } else if (pedido.estado == EstadoPedido.cortesia) {
+          pedidosCortesia++;
+        } else if (pedido.estado == EstadoPedido.cancelado) {
+          pedidosCancelados++;
+        }
+      }
+
+      // Imprimir resumen para diagnóstico
+      print('📊 ANÁLISIS DE VENTAS - Total pedidos: ${pedidos.length}');
+      print('  - Pedidos realmente pagados (estaPagado): $pedidosPagados');
+      print('  - Pedidos con estado=PAGADO: $pedidosConEstadoPagado');
+      print(
+        '  - Pedidos con pagadoPor pero sin estado PAGADO: $pedidosConPagadoPorSinEstadoPagado',
+      );
+      print('  - Pedidos CORTESÍA: $pedidosCortesia');
+      print('  - Pedidos ACTIVOS: $pedidosActivos');
+      print('  - Pedidos CANCELADOS: $pedidosCancelados');
+      print('  - Pedidos con estados corregidos: $pedidosFiltrados');
 
       // Cargar productos para cada pedido
       for (var pedido in pedidos) {
@@ -200,6 +352,36 @@ class PedidoService {
   // Método estático para compatibilidad
   static Future<List<Pedido>> getPedidos() async {
     return await PedidoService().getAllPedidos();
+  }
+
+  // Obtener pedidos de hoy para analizar ventas
+  Future<List<Pedido>> getPedidosHoy() async {
+    try {
+      final headers = await _getHeaders();
+      final hoy = DateTime.now();
+      final String fechaHoy =
+          "${hoy.year}-${hoy.month.toString().padLeft(2, '0')}-${hoy.day.toString().padLeft(2, '0')}";
+
+      print('🔍 Obteniendo pedidos de hoy: $fechaHoy');
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/pedidos/por-fecha?fecha=$fechaHoy'),
+        headers: headers,
+      );
+
+      print('Response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        return _parseListResponse(responseData);
+      } else {
+        print('⚠️ Error al obtener pedidos de hoy: ${response.statusCode}');
+        return [];
+      }
+    } catch (e) {
+      print('❌ Error obteniendo pedidos de hoy: $e');
+      return [];
+    }
   }
 
   // Obtener pedidos por tipo
@@ -824,16 +1006,46 @@ class PedidoService {
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
+        Pedido? pedido;
 
         // Manejar respuesta con wrapper de éxito
         if (responseData is Map<String, dynamic>) {
           if (responseData['success'] == true && responseData['data'] != null) {
-            return Pedido.fromJson(responseData['data']);
+            pedido = Pedido.fromJson(responseData['data']);
           } else if (responseData.containsKey('_id') ||
               responseData.containsKey('id')) {
             // Respuesta directa sin wrapper
-            return Pedido.fromJson(responseData);
+            pedido = Pedido.fromJson(responseData);
           }
+
+          // Corregir estados inconsistentes
+          if (pedido != null) {
+            // Si el pedido está inconsistente (estado=pendiente pero pagadoPor existe)
+            if (pedido.estado == EstadoPedido.activo &&
+                pedido.pagadoPor != null &&
+                pedido.pagadoPor!.isNotEmpty) {
+              print(
+                '⚠️ Estado inconsistente detectado: ID=${pedido.id}, estado=${pedido.estado}, pagadoPor=${pedido.pagadoPor}',
+              );
+              print('✅ Corrigiendo estado a PAGADO automáticamente');
+              pedido.estado = EstadoPedido.pagado;
+            }
+
+            // Verificar si el tipo es cortesía pero el estado no lo refleja
+            if (pedido.tipo == TipoPedido.cortesia &&
+                pedido.estado != EstadoPedido.cortesia) {
+              print(
+                '⚠️ Estado inconsistente detectado: pedido tipo CORTESÍA pero estado=${pedido.estado}',
+              );
+              print('✅ Corrigiendo estado a CORTESÍA automáticamente');
+              pedido.estado = EstadoPedido.cortesia;
+            }
+
+            // Guardar en caché para acceso rápido
+            _pedidosCache[pedidoId] = pedido;
+          }
+
+          return pedido;
         }
 
         print('⚠️ Formato de respuesta inesperado: $responseData');
@@ -881,6 +1093,49 @@ class PedidoService {
             .map((json) {
               try {
                 final pedido = Pedido.fromJson(json);
+
+                // Corregir estados inconsistentes
+                if (pedido.estado == EstadoPedido.activo &&
+                    pedido.pagadoPor != null &&
+                    pedido.pagadoPor!.isNotEmpty) {
+                  print(
+                    '⚠️ Estado inconsistente detectado (mesa ${nombreMesa}): ID=${pedido.id}, estado=${pedido.estado}, pagadoPor=${pedido.pagadoPor}',
+                  );
+                  print('✅ Corrigiendo estado a PAGADO automáticamente');
+                  pedido.estado = EstadoPedido.pagado;
+                }
+
+                // Verificar si el tipo es cortesía pero el estado no lo refleja
+                if (pedido.tipo == TipoPedido.cortesia &&
+                    pedido.estado != EstadoPedido.cortesia) {
+                  print(
+                    '⚠️ Estado inconsistente detectado: pedido tipo CORTESÍA pero estado=${pedido.estado}',
+                  );
+                  print('✅ Corrigiendo estado a CORTESÍA automáticamente');
+                  pedido.estado = EstadoPedido.cortesia;
+                }
+
+                // Si estado es "pendiente", convertirlo a activo o pagado según otros campos
+                if (pedido.estado.toString().toLowerCase() == "pendiente") {
+                  if (pedido.pagadoPor != null &&
+                      pedido.pagadoPor!.isNotEmpty) {
+                    print(
+                      '⚠️ Estado "pendiente" detectado con pagadoPor: ${pedido.pagadoPor}',
+                    );
+                    print('✅ Corrigiendo estado a PAGADO automáticamente');
+                    pedido.estado = EstadoPedido.pagado;
+                  } else {
+                    print('⚠️ Estado "pendiente" detectado sin pagadoPor');
+                    print('✅ Corrigiendo estado a ACTIVO automáticamente');
+                    pedido.estado = EstadoPedido.activo;
+                  }
+                }
+
+                // Guardar en caché para acceso rápido
+                if (pedido.id.isNotEmpty) {
+                  _pedidosCache[pedido.id] = pedido;
+                }
+
                 return pedido;
               } catch (e) {
                 print('❌ Error parsing pedido: $e');
@@ -1240,7 +1495,8 @@ class PedidoService {
         if (formaPago != 'efectivo' &&
             formaPago != 'transferencia' &&
             formaPago != 'tarjeta' &&
-            formaPago != 'multiple') {
+            formaPago != 'multiple' &&
+            formaPago != 'mixto') {
           print(
             '⚠️ Forma de pago en pagarPedido no reconocida: "$formaPago". Usando efectivo por defecto.',
           );
@@ -1291,6 +1547,20 @@ class PedidoService {
       ); // ✅ NUEVO: Log de descuento
       print('  - Es cortesía: $esCortesia');
       print('  - Es consumo interno: $esConsumoInterno');
+
+      // Asegurar que el estado está correctamente configurado en la solicitud
+      if (tipoPago == 'pagado' && !pagarData.containsKey('estado')) {
+        pagarData['estado'] = 'Pagado';
+        print('⚠️ Forzando estado=Pagado en la solicitud');
+      } else if (tipoPago == 'cortesia' && !pagarData.containsKey('estado')) {
+        pagarData['estado'] = 'Cortesia';
+        print('⚠️ Forzando estado=Cortesia en la solicitud');
+      } else if (tipoPago == 'consumo_interno' &&
+          !pagarData.containsKey('estado')) {
+        pagarData['estado'] = 'Pagado'; // También se marca como pagado
+        print('⚠️ Forzando estado=Pagado para consumo interno en la solicitud');
+      }
+
       print('  - Datos completos: ${json.encode(pagarData)}');
 
       final response = await http.put(
@@ -1306,6 +1576,20 @@ class PedidoService {
         final responseData = json.decode(response.body);
         if (responseData['success'] == true && responseData['data'] != null) {
           final pedidoPagado = Pedido.fromJson(responseData['data']);
+
+          // Asegurarse de que el pedido tenga el estado correcto
+          if (tipoPago == 'pagado' &&
+              pedidoPagado.estado != EstadoPedido.pagado) {
+            pedidoPagado.estado = EstadoPedido.pagado;
+            print('⚠️ Estado del pedido corregido a PAGADO');
+          } else if (tipoPago == 'cortesia' &&
+              pedidoPagado.estado != EstadoPedido.cortesia) {
+            pedidoPagado.estado = EstadoPedido.cortesia;
+            print('⚠️ Estado del pedido corregido a CORTESÍA');
+          }
+
+          // Actualizar la caché con el pedido pagado
+          _pedidosCache[pedidoId] = pedidoPagado;
 
           // Notificar que se pagó un pedido para actualizar el dashboard
           _pedidoPagadoController.add(true);

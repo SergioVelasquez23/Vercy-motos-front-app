@@ -126,6 +126,13 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
           _totalDomicilios = (cuadreCompleto['totalDomicilios'] ?? 0.0)
               .toDouble();
           _totalGastos = (cuadreCompleto['totalGastos'] ?? 0.0).toDouble();
+
+          // Log important values for debugging
+          print('💰 Valores de ventas cargados:');
+          print('  - Ventas Efectivo desde cuadreCompleto: $_ventasEfectivo');
+          print(
+            '  - Transferencias desde cuadreCompleto: $_transferenciasEsperadas',
+          );
         });
 
         // Cargar datos del resumen completo si existe caja actual
@@ -363,6 +370,28 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
         // Actualizar el efectivo esperado desde el resumen completo
         _efectivoEsperado =
             resumenCompleto.movimientosEfectivo.efectivoEsperado;
+
+        // Also sync the sales values between cuadreCompleto and resumenCompleto
+        if (resumenCompleto.movimientosEfectivo.ventasEfectivo > 0 ||
+            resumenCompleto.movimientosEfectivo.ventasTransferencia > 0) {
+          print('💰 Sincronizando valores de ventas del resumen completo');
+          print(
+            '  - Ventas Efectivo: ${resumenCompleto.movimientosEfectivo.ventasEfectivo}',
+          );
+          print(
+            '  - Ventas Transferencia: ${resumenCompleto.movimientosEfectivo.ventasTransferencia}',
+          );
+
+          // Update the values from _ventasEfectivo and _transferenciasEsperadas
+          if (_ventasEfectivo == 0) {
+            _ventasEfectivo =
+                resumenCompleto.movimientosEfectivo.ventasEfectivo;
+          }
+          if (_transferenciasEsperadas == 0) {
+            _transferenciasEsperadas =
+                resumenCompleto.movimientosEfectivo.ventasTransferencia;
+          }
+        }
       });
       print('✅ Resumen completo cargado exitosamente');
       print('💰 Efectivo esperado actualizado: ${_efectivoEsperado}');
@@ -684,11 +713,11 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
                     if (_resumenCompletoData != null) ...[
                       _buildMovimientosEfectivoSection(),
                       SizedBox(height: 20),
+                      _buildResumenVentasSection(),
+                      SizedBox(height: 20),
                       _buildResumenGastosSection(),
                       SizedBox(height: 20),
                       _buildResumenComprasSection(),
-                      SizedBox(height: 20),
-                      _buildResumenVentasSection(),
                       SizedBox(height: 20),
                     ],
 
@@ -805,6 +834,41 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
 
   Widget _buildMovimientosEfectivoSection() {
     final movimientos = _resumenCompletoData!.movimientosEfectivo;
+
+    // Ensure consistent data between sections
+    if (movimientos.ventasEfectivo == 0 &&
+        _resumenCompletoData!.resumenVentas.ventasPorFormaPago.containsKey(
+          'efectivo',
+        )) {
+      // If movimientos has zero but resumenVentas has a value, use that instead
+      final efectivoValue =
+          _resumenCompletoData!.resumenVentas.ventasPorFormaPago['efectivo'] ??
+          0.0;
+      if (efectivoValue > 0) {
+        print('⚠️ Corrigiendo valor de ventas efectivo: $efectivoValue');
+        // Can't modify the object directly, but we can update the display values
+        _ventasEfectivo = efectivoValue;
+      }
+    }
+
+    if (movimientos.ventasTransferencia == 0 &&
+        _resumenCompletoData!.resumenVentas.ventasPorFormaPago.containsKey(
+          'transferencia',
+        )) {
+      // If movimientos has zero but resumenVentas has a value, use that instead
+      final transferenciaValue =
+          _resumenCompletoData!
+              .resumenVentas
+              .ventasPorFormaPago['transferencia'] ??
+          0.0;
+      if (transferenciaValue > 0) {
+        print(
+          '⚠️ Corrigiendo valor de ventas transferencia: $transferenciaValue',
+        );
+        // Can't modify the object directly, but we can update the display values
+        _transferenciasEsperadas = transferenciaValue;
+      }
+    }
     final Color cardBg = Color(0xFF2A2A2A);
 
     return Card(
@@ -831,12 +895,20 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
             ),
             _buildInfoRow(
               'Ventas Efectivo:',
-              formatCurrency(movimientos.ventasEfectivo),
+              formatCurrency(
+                _ventasEfectivo > 0
+                    ? _ventasEfectivo
+                    : movimientos.ventasEfectivo,
+              ),
               valueColor: Colors.green,
             ),
             _buildInfoRow(
               'Ventas Transferencia:',
-              formatCurrency(movimientos.ventasTransferencia),
+              formatCurrency(
+                _transferenciasEsperadas > 0
+                    ? _transferenciasEsperadas
+                    : movimientos.ventasTransferencia,
+              ),
               valueColor: Colors.blue,
             ),
             _buildInfoRow(
@@ -851,7 +923,11 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
             ),
             _buildInfoRow(
               'Efectivo Esperado:',
-              formatCurrency(movimientos.efectivoEsperado),
+              formatCurrency(
+                _efectivoEsperado > 0
+                    ? _efectivoEsperado
+                    : movimientos.efectivoEsperado,
+              ),
               valueColor: Colors.yellow,
             ),
           ],
@@ -1113,6 +1189,23 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
               valueColor: Colors.green,
             ),
             _buildInfoRow(
+              'Promedio por Pedido:',
+              ventas.totalPedidos > 0
+                  ? formatCurrency(ventas.totalVentas / ventas.totalPedidos)
+                  : formatCurrency(0),
+              valueColor: Colors.amber,
+            ),
+            Divider(color: Colors.grey.withOpacity(0.3), height: 24),
+            Text(
+              'Ventas por Forma de Pago:',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Colors.white70,
+              ),
+            ),
+            SizedBox(height: 8),
+            _buildInfoRow(
               'Ventas Efectivo:',
               formatCurrency(ventas.ventasPorFormaPago['efectivo'] ?? 0),
               valueColor: Colors.green,
@@ -1122,53 +1215,97 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
               formatCurrency(ventas.ventasPorFormaPago['transferencia'] ?? 0),
               valueColor: Colors.blue,
             ),
-
-            if (ventas.detallesPedidos.isNotEmpty) ...[
-              SizedBox(height: 16),
-              Text(
-                'Últimos Pedidos:',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                ),
+            if ((ventas.ventasPorFormaPago['tarjeta'] ?? 0) > 0)
+              _buildInfoRow(
+                'Ventas Tarjeta:',
+                formatCurrency(ventas.ventasPorFormaPago['tarjeta'] ?? 0),
+                valueColor: Colors.orange,
               ),
-              SizedBox(height: 8),
-              ...ventas.detallesPedidos
-                  .take(5)
-                  .map(
-                    (pedido) => Container(
-                      margin: EdgeInsets.only(bottom: 8),
-                      padding: EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.green.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: Colors.green.withOpacity(0.3),
+            if ((ventas.ventasPorFormaPago['mixto'] ?? 0) > 0)
+              _buildInfoRow(
+                'Ventas Mixtas:',
+                formatCurrency(ventas.ventasPorFormaPago['mixto'] ?? 0),
+                valueColor: Colors.purple,
+              ),
+
+            // Add quantity info by payment method
+            Divider(color: Colors.grey.withOpacity(0.3), height: 24),
+            Text(
+              'Cantidad de Pedidos por Forma de Pago:',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Colors.white70,
+              ),
+            ),
+            SizedBox(height: 8),
+            _buildInfoRow(
+              'Pedidos en Efectivo:',
+              ventas.cantidadPorFormaPago['efectivo']?.toString() ?? "0",
+              valueColor: Colors.green,
+            ),
+            _buildInfoRow(
+              'Pedidos por Transferencia:',
+              ventas.cantidadPorFormaPago['transferencia']?.toString() ?? "0",
+              valueColor: Colors.blue,
+            ),
+            if ((ventas.cantidadPorFormaPago['tarjeta'] ?? 0) > 0)
+              _buildInfoRow(
+                'Pedidos con Tarjeta:',
+                ventas.cantidadPorFormaPago['tarjeta']?.toString() ?? "0",
+                valueColor: Colors.orange,
+              ),
+            if ((ventas.cantidadPorFormaPago['mixto'] ?? 0) > 0)
+              _buildInfoRow(
+                'Pedidos con Pago Mixto:',
+                ventas.cantidadPorFormaPago['mixto']?.toString() ?? "0",
+                valueColor: Colors.purple,
+              ),
+
+            // Add a summary of today's sales instead of individual orders
+            SizedBox(height: 16),
+            Text(
+              'Resumen General',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              ),
+            ),
+            SizedBox(height: 8),
+            Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.green.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.green.withOpacity(0.3)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Pedidos del día: ${ventas.totalPedidos}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green,
                         ),
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Pedido #${pedido.id}',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.green,
-                            ),
-                          ),
-                          Text(
-                            formatCurrency(pedido.total),
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.green,
-                            ),
-                          ),
-                        ],
+                      SizedBox(height: 4),
+                      Text(
+                        'Ventas totales: ${formatCurrency(ventas.totalVentas)}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white70,
+                        ),
                       ),
-                    ),
+                    ],
                   ),
-            ],
+                ],
+              ),
+            ),
           ],
         ),
       ),

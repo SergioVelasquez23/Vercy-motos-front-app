@@ -107,8 +107,29 @@ class DocumentoMesaService {
       bodyData['pagadoPor'] = pagadoPor ?? vendedor;
       bodyData['propina'] = propina ?? 0.0;
 
+      // CORREGIDO: Si formaPago y pagadoPor están establecidos, el documento debe estar pagado
+      // independientemente del valor de pagado (para corregir inconsistencias)
+      bool deberiaEstarPagado = pagado;
+      if (formaPago != null &&
+          formaPago.isNotEmpty &&
+          pagadoPor != null &&
+          pagadoPor.isNotEmpty) {
+        deberiaEstarPagado = true;
+
+        // Log para depuración
+        if (!pagado) {
+          print(
+            '⚠️ DocumentoMesaService: Corrigiendo estado inconsistente - ' +
+                'documento tiene formaPago ("$formaPago") y pagadoPor ("$pagadoPor") ' +
+                'pero pagado=$pagado, forzando a pagado=true',
+          );
+        }
+      }
+
       // Datos específicos según el estado de pago
-      if (pagado) {
+      if (deberiaEstarPagado) {
+        bodyData['pagado'] =
+            true; // Asegurar que el documento esté marcado como pagado
         bodyData['estado'] = estado ?? 'Pagado';
         bodyData['fechaPago'] = (fechaPago ?? DateTime.now()).toIso8601String();
       } else {
@@ -156,10 +177,14 @@ class DocumentoMesaService {
           print('  - Pagado: ${documento.pagado}');
           return documento;
         } else {
-          print('❌ DocumentoMesaService: Formato de respuesta incorrecto: ${response.body}');
+          print(
+            '❌ DocumentoMesaService: Formato de respuesta incorrecto: ${response.body}',
+          );
         }
       } else {
-        print('❌ DocumentoMesaService: Error creando documento: Código ${response.statusCode}');
+        print(
+          '❌ DocumentoMesaService: Error creando documento: Código ${response.statusCode}',
+        );
         print('  - Respuesta: ${response.body}');
       }
       return null;

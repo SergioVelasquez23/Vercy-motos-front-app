@@ -163,7 +163,7 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
       text: (ingrediente?.stockActual ?? ingrediente?.cantidad ?? 0).toString(),
     );
 
-    bool esDescontable = ingrediente?.descontable ?? true;
+    bool esDescontable = ingrediente?.descontable ?? false;
     String? categoriaSeleccionada = ingrediente?.categoria;
 
     showDialog(
@@ -300,7 +300,7 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
                         value: esDescontable,
                         onChanged: (value) {
                           setDialogState(() {
-                            esDescontable = value ?? true;
+                            esDescontable = value ?? false;
                           });
                         },
                       ),

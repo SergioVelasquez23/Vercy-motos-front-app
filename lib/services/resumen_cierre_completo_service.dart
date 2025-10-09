@@ -38,6 +38,24 @@ class ResumenCierreCompletoService {
         // Verificar que la respuesta sea exitosa
         if (jsonData['success'] == true && jsonData['data'] != null) {
           print('📊 Parseando datos del resumen...');
+
+          // Debug the sales data from API response
+          var data = jsonData['data'];
+          if (data != null && data is Map) {
+            var movimientos = data['movimientosEfectivo'];
+            if (movimientos != null && movimientos is Map) {
+              print('💰 Datos de ventas en API response:');
+              print('  - ventasEfectivo: ${movimientos['ventasEfectivo']}');
+              print(
+                '  - ventasTransferencia: ${movimientos['ventasTransferencia']}',
+              );
+              print('  - efectivo (alternativo): ${movimientos['efectivo']}');
+              print(
+                '  - transferencia (alternativo): ${movimientos['transferencia']}',
+              );
+            }
+          }
+
           final resumen = ResumenCierreCompleto.fromJson(jsonData['data']);
 
           // Obtener datos complementarios del cuadre completo

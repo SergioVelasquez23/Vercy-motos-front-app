@@ -1,5 +1,8 @@
 import 'base_api_service.dart';
 import '../models/dashboard_data.dart';
+import '../models/pedido.dart';
+import '../services/pedido_service.dart'; // Para acceder a pedidos directamente
+import '../utils/dashboard_helper.dart'; // Utilidad para cálculos de ventas correctos
 
 class ReportesService {
   static final ReportesService _instance = ReportesService._internal();
@@ -7,6 +10,7 @@ class ReportesService {
   ReportesService._internal();
 
   final BaseApiService _apiService = BaseApiService();
+  final PedidoService _pedidoService = PedidoService();
 
   // Obtener dashboard
   Future<DashboardData?> getDashboard() async {
@@ -21,6 +25,64 @@ class ReportesService {
 
       if (response.isSuccess && response.data != null) {
         final dashboardData = DashboardData.fromJson(response.data!);
+
+        // CORRECIÓN: Obtener pedidos de hoy para verificar datos
+        final pedidosHoy = await _pedidoService.getPedidosHoy();
+
+        // Calcular total real de ventas usando nuestra lógica mejorada
+        final totalVentasCorrectas = DashboardHelper.calcularTotalVentas(
+          pedidosHoy,
+        );
+
+        // Contar pedidos realmente pagados
+        int pedidosRealmentePagados = 0;
+        for (var pedido in pedidosHoy) {
+          if (pedido.estaPagado) {
+            pedidosRealmentePagados++;
+          }
+        }
+
+        print('🔍 CORRECCIÓN DE DASHBOARD:');
+        print('  - Ventas según servidor: ${dashboardData.ventasHoy.total}');
+        print('  - Ventas corregidas: $totalVentasCorrectas');
+        print(
+          '  - Diferencia: ${totalVentasCorrectas - dashboardData.ventasHoy.total}',
+        );
+        print(
+          '  - Pedidos pagados según servidor: ${dashboardData.ventasHoy.pedidosPagados}',
+        );
+        print('  - Pedidos pagados corregidos: $pedidosRealmentePagados');
+
+        // Si hay una diferencia significativa, usar nuestros valores
+        if ((totalVentasCorrectas - dashboardData.ventasHoy.total).abs() >
+            1000) {
+          print(
+            '⚠️ Diferencia significativa detectada, usando valores corregidos',
+          );
+
+          // Crear una versión corregida de ventasHoy
+          final ventasHoyCorrected = VentasHoy(
+            objetivo: dashboardData.ventasHoy.objetivo,
+            total: totalVentasCorrectas,
+            facturas: dashboardData.ventasHoy.facturas,
+            cantidad: dashboardData.ventasHoy.cantidad,
+            porcentaje: dashboardData.ventasHoy.porcentaje,
+            pedidosPagados: pedidosRealmentePagados,
+          );
+
+          // Crear una versión corregida del dashboard
+          return DashboardData(
+            fecha: dashboardData.fecha,
+            ventas7Dias: dashboardData.ventas7Dias,
+            ventas30Dias: dashboardData.ventas30Dias,
+            facturacion: dashboardData.facturacion,
+            ventasAnio: dashboardData.ventasAnio,
+            ventasHoy: ventasHoyCorrected,
+            inventario: dashboardData.inventario,
+            pedidosHoy: dashboardData.pedidosHoy,
+          );
+        }
+
         return dashboardData;
       } else {
         print(

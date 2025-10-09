@@ -267,10 +267,23 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
         // Para el tab "Pagados", excluir cortesía y consumo interno
         // porque tienen sus propios tabs
         if (_estadoFiltro == EstadoPedido.pagado) {
-          return pedido.estado == EstadoPedido.pagado &&
+          // Usar el método estaPagado para una detección robusta
+          return pedido.estaPagado &&
               pedido.tipo != TipoPedido.cortesia &&
               pedido.tipo != TipoPedido.interno;
         }
+
+        // Para cortesía, verificar tanto el estado como el tipo
+        if (_estadoFiltro == EstadoPedido.cortesia) {
+          return pedido.estado == EstadoPedido.cortesia ||
+              pedido.tipo == TipoPedido.cortesia;
+        }
+
+        // Para pedidos activos, asegurarse de que no estén realmente pagados
+        if (_estadoFiltro == EstadoPedido.activo) {
+          return !pedido.estaPagado && pedido.estado != EstadoPedido.cancelado;
+        }
+
         return pedido.estado == _estadoFiltro;
       }).toList();
       print(

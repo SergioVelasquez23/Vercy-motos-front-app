@@ -18,7 +18,7 @@ class Ingrediente {
     required this.unidad,
     required this.costo,
     this.estado = 'Activo',
-    this.descontable = true,
+    this.descontable = false,
     this.stockActual,
     this.stockMinimo,
   });
@@ -57,7 +57,7 @@ class Ingrediente {
       unidad: json['unidad']?.toString() ?? '',
       costo: (json['costo'] as num?)?.toDouble() ?? 0.0,
       estado: json['estado']?.toString() ?? 'Activo',
-      descontable: json['descontable'] ?? true,
+      descontable: json['descontable'] ?? false,
       stockActual: (json['stockActual'] as num?)?.toDouble(),
       stockMinimo: (json['stockMinimo'] as num?)?.toDouble(),
     );

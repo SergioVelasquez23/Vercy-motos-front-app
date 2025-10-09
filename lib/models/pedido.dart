@@ -134,6 +134,42 @@ class Pedido {
     }
   }
 
+  // Método para verificar si un pedido está realmente pagado, considerando
+  // todas las formas posibles de determinar el estado
+  bool get estaPagado {
+    // Estado explícito como pagado o cortesía
+    if (estado == EstadoPedido.pagado || estado == EstadoPedido.cortesia) {
+      return true;
+    }
+
+    // Si tiene pagadoPor definido, se considera como pagado
+    if (pagadoPor != null && pagadoPor!.isNotEmpty) {
+      return true;
+    }
+
+    // Si tiene fechaPago, se considera como pagado
+    if (fechaPago != null) {
+      return true;
+    }
+
+    // Si tiene formaPago definido, se considera como pagado
+    if (formaPago != null && formaPago!.isNotEmpty) {
+      return true;
+    }
+
+    // Si tiene totalPagado > 0, se considera como pagado
+    if (totalPagado > 0) {
+      return true;
+    }
+
+    // Si tiene pagosParciales, se considera como pagado
+    if (pagosParciales.isNotEmpty) {
+      return true;
+    }
+
+    return false;
+  }
+
   Color getColorByTipo() {
     switch (tipo) {
       case TipoPedido.normal:

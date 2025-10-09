@@ -11,7 +11,6 @@ import 'documentos_mesa_screen.dart';
 import 'ingredientes_screen.dart';
 import 'facturas_compras_screen.dart';
 import 'proveedores_screen.dart';
-import 'unidades_screen.dart';
 import 'historial_inventario_screen.dart';
 import 'configuracion_screen.dart';
 import 'gastos_screen.dart';
@@ -1107,27 +1106,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                   SizedBox(width: 8),
                   Text(
                     'Proveedores',
-                    style: TextStyle(color: AppTheme.textPrimary),
-                  ),
-                ],
-              ),
-            ),
-            PopupMenuItem<String>(
-              value: 'unidades',
-              onTap: () {
-                Future.delayed(Duration.zero, () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => UnidadesScreen()),
-                  );
-                });
-              },
-              child: Row(
-                children: [
-                  Icon(Icons.straighten, color: Colors.teal, size: 18),
-                  SizedBox(width: 8),
-                  Text(
-                    'Unidades',
                     style: TextStyle(color: AppTheme.textPrimary),
                   ),
                 ],

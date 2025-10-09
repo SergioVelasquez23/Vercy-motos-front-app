@@ -80,7 +80,8 @@ class _PedidoScreenState extends State<PedidoScreen> {
   List<Producto> productosMesa = [];
   List<Producto> productosDisponibles = [];
 
-  // Mapa para guardar los IDs de productos de carne para descontar del inventario
+  // Mapa para guardar la relación entre productos (key: productoId) y sus opciones de carne seleccionadas (value: opcionCarneId)
+  // Esto permite reutilizar las selecciones previas y descontar correctamente del inventario
   Map<String, String> productosCarneMap = {};
   List<Categoria> categorias = [];
 
@@ -117,6 +118,10 @@ class _PedidoScreenState extends State<PedidoScreen> {
   @override
   void initState() {
     super.initState();
+
+    // Establecer el estado inicial basado en si hay un pedido existente
+    esPedidoExistente = widget.pedidoExistente != null;
+
     _loadData();
 
     // Configurar el controlador de búsqueda con debounce
@@ -911,6 +916,11 @@ class _PedidoScreenState extends State<PedidoScreen> {
   Future<void> _agregarProducto(Producto producto) async {
     // --- LÓGICA CORREGIDA: Agrupar productos iguales con mismas características ---
     // Buscar producto existente con mismas características (ID y notas vacías por ahora)
+
+    // Verificamos si es un menú ejecutivo
+    bool esEjecutivo = producto.nombre.toLowerCase().contains('ejecutivo');
+
+    // Buscar un producto existente que coincida por ID
     int index = productosMesa.indexWhere(
       (p) =>
           p.id == producto.id &&
@@ -918,8 +928,20 @@ class _PedidoScreenState extends State<PedidoScreen> {
               p.nota!.isEmpty), // Solo agrupar productos sin notas especiales
     );
 
-    if (index != -1) {
-      // Si encontramos un producto igual sin notas especiales, incrementar cantidad
+    // Si es un ejecutivo y ya hay uno igual en la mesa con carne seleccionada
+    if (esEjecutivo &&
+        index != -1 &&
+        productosCarneMap.containsKey(productosMesa[index].id)) {
+      // Encontramos un ejecutivo igual, incrementar cantidad reutilizando la selección de carne
+      setState(() {
+        productosMesa[index].cantidad++;
+        _calcularTotal();
+      });
+      return;
+    }
+
+    // Si no es ejecutivo pero encontramos un producto igual, incrementar cantidad normalmente
+    if (!esEjecutivo && index != -1) {
       setState(() {
         productosMesa[index].cantidad++;
         _calcularTotal();
