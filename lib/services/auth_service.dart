@@ -55,7 +55,7 @@ class AuthService {
   }) async {
     try {
       print('🔄 Intentando iniciar sesión en: $baseUrl');
-      print('📱 Con credenciales: $email / [CONTRASEÑA OCULTA]');
+      print('INFO: Con credenciales: $email / [CONTRASEÑA OCULTA]');
 
       // Verificar conectividad antes de intentar login
       bool isConnected = await ConnectivityUtils.checkServerConnection(

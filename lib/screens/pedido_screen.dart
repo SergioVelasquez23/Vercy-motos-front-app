@@ -18,6 +18,7 @@ import '../models/movimiento_inventario.dart';
 import '../models/inventario.dart';
 import '../models/tipo_mesa.dart';
 import '../providers/user_provider.dart';
+import '../providers/datos_provider.dart';
 import '../utils/format_utils.dart';
 
 class PedidoScreen extends StatefulWidget {
@@ -99,10 +100,14 @@ class _PedidoScreenState extends State<PedidoScreen> {
 
   // Variables para el debounce en la búsqueda
   Timer? _debounceTimer;
-  final int _debounceMilliseconds = 300;
+  final int _debounceMilliseconds =
+      150; // ✅ OPTIMIZADO: Reducido de 300ms a 150ms
 
   // Variable para almacenar los productos filtrados por la API
-  List<Producto>? _productosFiltered; // Variables para manejar pedido existente
+  List<Producto>? _productosFiltered;
+  // ✅ OPTIMIZACIÓN: Cache de productos para vista para evitar recálculos en build
+  List<Producto> _productosVista = [];
+  // Variables para manejar pedido existente
   Pedido? pedidoExistente;
   bool esPedidoExistente = false;
   List<Producto> productosOriginales =
@@ -140,14 +145,14 @@ class _PedidoScreenState extends State<PedidoScreen> {
           filtro = query.toLowerCase();
         });
 
-        // Si el texto de búsqueda es suficientemente largo, o si hay una categoría seleccionada, realizar búsqueda API
-        if ((query.isNotEmpty && query.isNotEmpty) ||
-            categoriaSelecionadaId != null) {
+        // ✅ OPTIMIZACIÓN: Búsqueda más inteligente con threshold
+        if ((query.length >= 2) || categoriaSelecionadaId != null) {
           _searchProductosAPI(query);
         } else {
-          // Si no hay texto ni categoría seleccionada, limpiar resultados filtrados
+          // Si no hay suficiente texto ni categoría, limpiar resultados filtrados
           setState(() {
             _productosFiltered = null;
+            _actualizarProductosVista(); // ✅ Actualizar cache
           });
         }
       }
@@ -165,6 +170,7 @@ class _PedidoScreenState extends State<PedidoScreen> {
       if (mounted) {
         setState(() {
           _productosFiltered = results;
+          _actualizarProductosVista(); // ✅ Actualizar cache
         });
       }
     } catch (error) {
@@ -173,6 +179,7 @@ class _PedidoScreenState extends State<PedidoScreen> {
       if (mounted) {
         setState(() {
           _productosFiltered = _filtrarProductosLocal();
+          _actualizarProductosVista(); // ✅ Actualizar cache
         });
       }
     }
@@ -698,9 +705,16 @@ class _PedidoScreenState extends State<PedidoScreen> {
         errorMessage = null;
       });
 
-      // Load products and categories from backend
-      final productos = await _productoService.getProductos();
-      final categoriasData = await _productoService.getCategorias();
+      // 🚀 OPTIMIZACIÓN: Usar datos del provider global
+      final datosProvider = Provider.of<DatosProvider>(context, listen: false);
+
+      // Si los datos no están inicializados, cargarlos
+      if (!datosProvider.datosInicializados) {
+        await datosProvider.inicializarDatos();
+      }
+
+      final productos = datosProvider.productos;
+      final categoriasData = datosProvider.categorias;
 
       // Si se pasó un pedido existente directamente, usarlo
       if (widget.pedidoExistente != null) {
@@ -719,26 +733,32 @@ class _PedidoScreenState extends State<PedidoScreen> {
         );
 
         for (var item in pedidoExistente!.items) {
-          final productoObj = _getProductoFromItem(
-            item.producto,
-            productoId: item.productoId,
+          // ✅ CORREGIDO: Buscar el producto completo en la lista de productos disponibles
+          Producto? productoObj = productos.firstWhere(
+            (p) => p.id == item.productoId,
+            orElse: () => _getProductoFromItem(
+              item.producto,
+              productoId: item.productoId,
+              forceNonNull: true,
+            )!,
           );
+
           print(
-            '📦 Cargando producto: ${productoObj?.nombre ?? "Sin nombre"} (ID: ${item.productoId}) - Imagen: ${productoObj?.imagenUrl ?? "Sin imagen"}',
+            '📦 Cargando producto: ${productoObj.nombre} (ID: ${item.productoId}) - Imagen: ${productoObj.imagenUrl ?? "Sin imagen"}',
           );
 
           // Crear una copia del producto con la cantidad y notas del item
           final productoParaMesa = Producto(
             id: item.productoId,
-            nombre: productoObj?.nombre ?? "Producto sin nombre",
+            nombre: productoObj.nombre,
             precio: item.precio,
-            costo: productoObj?.costo ?? 0.0,
-            utilidad: productoObj?.utilidad ?? 0.0,
-            descripcion: productoObj?.descripcion ?? "",
-            categoria: productoObj?.categoria,
-            tieneVariantes: productoObj?.tieneVariantes ?? false,
+            costo: productoObj.costo,
+            utilidad: productoObj.utilidad,
+            descripcion: productoObj.descripcion,
+            categoria: productoObj.categoria,
+            tieneVariantes: productoObj.tieneVariantes,
             imagenUrl: productoObj
-                ?.imagenUrl, // ✅ AGREGADO: Conservar la URL de la imagen
+                .imagenUrl, // ✅ CORREGIDO: Ahora preserva la imagen correctamente
             ingredientesDisponibles: item.ingredientesSeleccionados,
             cantidad: item.cantidad,
             nota: item.notas,
@@ -873,6 +893,7 @@ class _PedidoScreenState extends State<PedidoScreen> {
         categorias = categoriasData;
         isLoading = false;
         _productosFiltered = null; // Reset filtered products on load
+        _actualizarProductosVista(); // ✅ Actualizar cache de vista
       });
 
       // Initial search if there's a category selected
@@ -888,34 +909,21 @@ class _PedidoScreenState extends State<PedidoScreen> {
   }
 
   Future<void> _agregarProducto(Producto producto) async {
-    // --- NUEVA LÓGICA: Si el producto ya existe, crear un nuevo item con mismas características ---
-    int index = productosMesa.indexWhere((p) => p.id == producto.id);
+    // --- LÓGICA CORREGIDA: Agrupar productos iguales con mismas características ---
+    // Buscar producto existente con mismas características (ID y notas vacías por ahora)
+    int index = productosMesa.indexWhere(
+      (p) =>
+          p.id == producto.id &&
+          (p.nota == null ||
+              p.nota!.isEmpty), // Solo agrupar productos sin notas especiales
+    );
+
     if (index != -1) {
-      // En lugar de incrementar la cantidad, agregamos un nuevo producto idéntico
-      // Esto evita los problemas en el backend con la comparación de notas
-      Producto nuevoProducto = Producto(
-        id: producto.id,
-        nombre: producto.nombre,
-        descripcion: producto.descripcion,
-        precio: producto.precio,
-        costo: producto.costo,
-        utilidad: producto.utilidad,
-        categoria: producto.categoria,
-        cantidad: 1, // Siempre cantidad 1 para el nuevo item
-        tieneIngredientes: producto.tieneIngredientes,
-        tipoProducto: producto.tipoProducto,
-        ingredientesRequeridos: producto.ingredientesRequeridos,
-        ingredientesOpcionales: producto.ingredientesOpcionales,
-      );
-
-      // Si hay una nota existente, copiamos esa nota también
-      if (productosMesa[index].nota != null) {
-        nuevoProducto.nota = productosMesa[index].nota;
-      }
-
-      // Añadir el nuevo producto a la lista
-      productosMesa.add(nuevoProducto);
-      _calcularTotal();
+      // Si encontramos un producto igual sin notas especiales, incrementar cantidad
+      setState(() {
+        productosMesa[index].cantidad++;
+        _calcularTotal();
+      });
       return;
     }
 
@@ -1701,23 +1709,25 @@ class _PedidoScreenState extends State<PedidoScreen> {
                 Expanded(
                   child: GridView.builder(
                     padding: EdgeInsets.symmetric(horizontal: 16),
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: MediaQuery.of(context).size.width > 1200
-                          ? 4 // 4 columnas para desktop grande
+                    // ✅ OPTIMIZACIÓN: Usar delegado con extent máximo para mejor rendimiento
+                    gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+                      maxCrossAxisExtent:
+                          MediaQuery.of(context).size.width > 1200
+                          ? 300 // Máximo 300px por tarjeta en desktop
                           : MediaQuery.of(context).size.width > 800
-                          ? 3 // 3 columnas para tablet/desktop pequeño
-                          : 2, // 2 columnas para móvil
-                      childAspectRatio:
-                          1.0, // Proporción 1:1 para tarjetas cuadradas
+                          ? 250 // 250px en tablet
+                          : 180, // 180px en móvil
+                      childAspectRatio: 1.0,
                       crossAxisSpacing: 12,
                       mainAxisSpacing: 12,
                     ),
-                    itemCount: _filtrarProductos().length,
+                    // ✅ OPTIMIZACIÓN: Cachear lista filtrada para evitar recálculos
+                    itemCount: _productosVista.length,
                     itemBuilder: (context, index) {
-                      return _buildProductoDisponible(
-                        _filtrarProductos()[index],
-                      );
+                      return _buildProductoDisponible(_productosVista[index]);
                     },
+                    // ✅ OPTIMIZACIÓN: Agregar caching para mejor scroll
+                    cacheExtent: 500, // Pre-render 500px adicionales
                   ),
                 ),
               ],
@@ -2276,7 +2286,7 @@ class _PedidoScreenState extends State<PedidoScreen> {
     }).toList();
   }
 
-  // Nueva implementación que usa la API para filtrar productos
+  // ✅ OPTIMIZADA: Implementación que usa cache para evitar recálculos
   List<Producto> _filtrarProductos() {
     // Si hay productos filtrados por la API, aplicar también el filtro de categoría
     final productos = _productosFiltered ?? productosDisponibles;
@@ -2284,6 +2294,11 @@ class _PedidoScreenState extends State<PedidoScreen> {
     return productos
         .where((producto) => producto.categoria?.id == categoriaSelecionadaId)
         .toList();
+  }
+
+  // ✅ NUEVO: Actualizar cache de productos para vista
+  void _actualizarProductosVista() {
+    _productosVista = _filtrarProductos();
   }
 
   double _calcularTotal() {
@@ -2472,12 +2487,16 @@ class _PedidoScreenState extends State<PedidoScreen> {
     if (!userProvider.isAdmin && esPedidoExistente) {
       int indexActual = productosMesa.indexOf(producto);
       if (indexActual >= 0 && indexActual < cantidadProductosOriginales) {
-        puedeEliminar = false;
+        puedeEliminar = false; // No puede eliminar productos originales
         esProductoOriginal = true;
       } else {
-        puedeEliminar = true;
+        puedeEliminar = true; // Puede eliminar productos nuevos que agregó
         esProductoOriginal = false;
       }
+    } else if (!userProvider.isAdmin && !esPedidoExistente) {
+      // Si no es admin pero está creando un pedido nuevo, puede eliminar cualquier producto
+      puedeEliminar = true;
+      esProductoOriginal = false;
     }
 
     // Inicializar el estado de pago si no existe
@@ -2783,7 +2802,10 @@ class _PedidoScreenState extends State<PedidoScreen> {
       _buildCategoriaChip(
         nombre: 'Todos',
         isSelected: categoriaSelecionadaId == null,
-        onTap: () => setState(() => categoriaSelecionadaId = null),
+        onTap: () => setState(() {
+          categoriaSelecionadaId = null;
+          _actualizarProductosVista();
+        }),
       ),
     );
 
@@ -2794,7 +2816,10 @@ class _PedidoScreenState extends State<PedidoScreen> {
           nombre: categoria.nombre,
           imagenUrl: categoria.imagenUrl,
           isSelected: categoriaSelecionadaId == categoria.id,
-          onTap: () => setState(() => categoriaSelecionadaId = categoria.id),
+          onTap: () => setState(() {
+            categoriaSelecionadaId = categoria.id;
+            _actualizarProductosVista();
+          }),
         ),
       ),
     );
@@ -2837,7 +2862,10 @@ class _PedidoScreenState extends State<PedidoScreen> {
       _buildCategoriaChipMobile(
         nombre: 'Todos',
         isSelected: categoriaSelecionadaId == null,
-        onTap: () => setState(() => categoriaSelecionadaId = null),
+        onTap: () => setState(() {
+          categoriaSelecionadaId = null;
+          _actualizarProductosVista();
+        }),
       ),
     );
 
@@ -2848,7 +2876,10 @@ class _PedidoScreenState extends State<PedidoScreen> {
           nombre: categoria.nombre,
           imagenUrl: categoria.imagenUrl,
           isSelected: categoriaSelecionadaId == categoria.id,
-          onTap: () => setState(() => categoriaSelecionadaId = categoria.id),
+          onTap: () => setState(() {
+            categoriaSelecionadaId = categoria.id;
+            _actualizarProductosVista();
+          }),
         ),
       ),
     );

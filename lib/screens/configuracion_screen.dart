@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'users_screen.dart';
 import 'roles_screen.dart';
 import 'negocio_info_screen.dart';
+import 'exportar_mensual_screen.dart';
 import '../models/mesa.dart';
 import '../models/tipo_mesa.dart';
 import '../services/mesa_service.dart';
@@ -21,7 +22,7 @@ class _ConfiguracionScreenState extends State<ConfiguracionScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
   }
 
   @override
@@ -66,6 +67,7 @@ class _ConfiguracionScreenState extends State<ConfiguracionScreen>
                 Tab(icon: Icon(Icons.admin_panel_settings), text: 'Roles'),
                 Tab(icon: Icon(Icons.table_restaurant), text: 'Mesas'),
                 Tab(icon: Icon(Icons.business), text: 'Negocio'),
+                Tab(icon: Icon(Icons.file_download), text: 'Exportar'),
               ],
             ),
           ),
@@ -77,6 +79,7 @@ class _ConfiguracionScreenState extends State<ConfiguracionScreen>
                 RolesScreen(),
                 MesasConfigScreen(),
                 NegocioInfoScreen(),
+                const ExportarMensualScreen(),
               ],
             ),
           ),
@@ -192,7 +195,7 @@ class _MesasConfigScreenState extends State<MesasConfigScreen> {
                   const SizedBox(width: 16),
                   ElevatedButton.icon(
                     onPressed: () {
-                      print('🔥 BOTÓN NUEVO MESAS PRESIONADO!');
+                      print('INFO: BOTÓN NUEVO MESAS PRESIONADO!');
                       _mostrarDialogoMesa();
                     },
                     icon: const Icon(Icons.add, color: Colors.white),

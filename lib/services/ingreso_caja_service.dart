@@ -1,8 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:collection/collection.dart';
 import '../models/ingreso_caja.dart';
 import '../config/api_config.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'cuadre_caja_service.dart';
 
 /// Servicio para gestionar ingresos adicionales de caja
 ///
@@ -60,11 +62,32 @@ class IngresoCajaService {
 
   Future<IngresoCaja> registrarIngreso(IngresoCaja ingreso) async {
     try {
+      // OBTENER CUADRE ACTIVO AUTOMÁTICAMENTE
+      final cuadreService = CuadreCajaService();
+      final cuadres = await cuadreService.getAllCuadres();
+      final cuadreActivo = cuadres
+          .where((c) => c.estado == 'pendiente')
+          .firstOrNull;
+
+      // Crear una copia del ingreso con el cuadreCajaId asignado
+      final ingresoConCuadre = IngresoCaja(
+        id: ingreso.id,
+        cuadreCajaId: cuadreActivo?.id, // Asignar cuadre activo
+        concepto: ingreso.concepto,
+        monto: ingreso.monto,
+        formaPago: ingreso.formaPago,
+        fechaIngreso: ingreso.fechaIngreso,
+        responsable: ingreso.responsable,
+        observaciones: ingreso.observaciones,
+      );
+
+      print('💰 Registrando ingreso con cuadre: ${cuadreActivo?.id}');
+
       final headers = await _getHeaders();
       final resp = await http.post(
         Uri.parse('$_baseUrl/api/ingresos-caja'),
         headers: headers,
-        body: json.encode(ingreso.toJson()),
+        body: json.encode(ingresoConCuadre.toJson()),
       );
 
       print('💰 Registrando ingreso - Status: ${resp.statusCode}');

@@ -21,7 +21,7 @@ class NetworkTestSuite {
 
   /// Test 1: Detección de IP local del dispositivo
   static Future<void> _testLocalIpDetection() async {
-    print('📱 Test 1: Detección de IP local...');
+    print('INFO: Test 1: Detección de IP local...');
 
     try {
       final networkService = NetworkDiscoveryService();
@@ -82,7 +82,7 @@ class NetworkTestSuite {
         }
       } else {
         print('❌ No se pudo encontrar servidor en la red');
-        print('💡 Esto es normal si el servidor no está ejecutándose');
+        print('INFO: Esto es normal si el servidor no está ejecutándose');
       }
     } catch (e) {
       print('❌ Error en descubrimiento de servidor: $e');
@@ -163,7 +163,7 @@ class NetworkTestSuite {
         print('✅ Nueva IP detectada: $newIp');
       } else {
         print('⚠️ Detección forzada no encontró servidor');
-        print('💡 Se usará URL fallback en ApiConfig');
+        print('INFO: Se usará URL fallback en ApiConfig');
       }
     } catch (e) {
       print('❌ Error en mecanismos de fallback: $e');

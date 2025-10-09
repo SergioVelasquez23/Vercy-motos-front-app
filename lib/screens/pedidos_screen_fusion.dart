@@ -136,13 +136,13 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
         }).toList();
 
         print(
-          '📊 Caja activa: ${cajaActiva.nombre} (${cajaActiva.fechaApertura})',
+          'INFO: Caja activa: ${cajaActiva.nombre} (${cajaActiva.fechaApertura})',
         );
         print(
-          '💰 Pedidos del período de caja: ${pedidosPorPeriodoCaja.length}',
+          'INFO: Pedidos del período de caja: ${pedidosPorPeriodoCaja.length}',
         );
       } else {
-        print('⚠️ No hay caja activa - mostrando todas las estadísticas');
+        print('AVISO: No hay caja activa - mostrando todas las estadísticas');
         // Si no hay caja activa, mostrar solo pedidos pagados del día actual
         final hoy = DateTime.now();
         final inicioDelDia = DateTime(hoy.year, hoy.month, hoy.day);
@@ -230,9 +230,9 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
   void _aplicarFiltros() {
     if (!mounted) return;
 
-    print('🔍 Aplicando filtros...');
-    print('📊 Total de pedidos originales: ${_pedidos.length}');
-    print('🎯 Tipo filtro: $_tipoFiltro');
+    print('INFO: Aplicando filtros...');
+    print('INFO: Total de pedidos originales: ${_pedidos.length}');
+    print('INFO: Tipo filtro: $_tipoFiltro');
     print('📈 Estado filtro: $_estadoFiltro');
     print('🔎 Búsqueda: "${_busquedaController.text}"');
 
@@ -243,7 +243,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
       // Eliminar pedidos que parecen ser movimientos vacíos
       if (pedido.total <= 0 && pedido.items.isEmpty) {
         print(
-          '⚠️ Pedido filtrado (vacío): ${pedido.id} - Mesa: ${pedido.mesa}',
+          'AVISO: Pedido filtrado (vacío): ${pedido.id} - Mesa: ${pedido.mesa}',
         );
         return false;
       }
@@ -257,7 +257,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
           .where((pedido) => pedido.tipo == _tipoFiltro)
           .toList();
       print(
-        '⚗️ Después del filtro de tipo: ${pedidosFiltrados.length} (antes: $antes)',
+        'DEBUG: Después del filtro de tipo: ${pedidosFiltrados.length} (antes: $antes)',
       );
     }
     // Solo filtrar por estado si NO hay filtro de tipo específico
@@ -274,7 +274,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
         return pedido.estado == _estadoFiltro;
       }).toList();
       print(
-        '⚗️ Después del filtro de estado: ${pedidosFiltrados.length} (antes: $antes)',
+        'DEBUG: Después del filtro de estado: ${pedidosFiltrados.length} (antes: $antes)',
       );
     }
 
@@ -289,11 +289,11 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
             pedido.mesero.toLowerCase().contains(query);
       }).toList();
       print(
-        '⚗️ Después del filtro de búsqueda: ${pedidosFiltrados.length} (antes: $antes)',
+        'DEBUG: Después del filtro de búsqueda: ${pedidosFiltrados.length} (antes: $antes)',
       );
     }
 
-    print('✅ Pedidos filtrados finales: ${pedidosFiltrados.length}');
+    print('EXITO: Pedidos filtrados finales: ${pedidosFiltrados.length}');
 
     // Mantener orden cronológico inverso después del filtrado
     pedidosFiltrados.sort((a, b) => b.fecha.compareTo(a.fecha));
@@ -430,7 +430,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                     // Sección de pedidos activos
                     if (pedidosActivos.isNotEmpty) ...[
                       Text(
-                        '🔄 Pedidos Activos (${pedidosActivos.length})',
+                        'Pedidos Activos (${pedidosActivos.length})',
                         style: AppTheme.bodyMedium.copyWith(
                           fontWeight: FontWeight.bold,
                           color: Colors.orange,
@@ -496,7 +496,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              '💰 Pedidos Pagados (${pedidosPagados.length})',
+                              'Pedidos Pagados (${pedidosPagados.length})',
                               style: AppTheme.bodyMedium.copyWith(
                                 fontWeight: FontWeight.bold,
                                 color: Colors.red,
@@ -504,7 +504,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                             ),
                             SizedBox(height: 4),
                             Text(
-                              '⚠️ IMPORTANTE: Al eliminar pedidos pagados se reversará automáticamente el dinero de las ventas y se descontará de la caja.',
+                              'IMPORTANTE: Al eliminar pedidos pagados se reversará automáticamente el dinero de las ventas y se descontará de la caja.',
                               style: AppTheme.bodySmall.copyWith(
                                 color: Colors.red[700],
                                 fontStyle: FontStyle.italic,
@@ -619,11 +619,11 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
           await _pedidoService.eliminarPedido(pedidoId);
           exitosos++;
           print(
-            '✅ Pedido $pedidoId eliminado exitosamente por $usuarioEliminacion',
+            'EXITO: Pedido $pedidoId eliminado exitosamente por $usuarioEliminacion',
           );
         } catch (e) {
           fallidos++;
-          print('❌ Error eliminando pedido $pedidoId: $e');
+          print('ERROR: Error eliminando pedido $pedidoId: $e');
         }
       }
 
@@ -635,13 +635,13 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
       Color color;
 
       if (fallidos == 0) {
-        mensaje = '✅ Se eliminaron $exitosos pedido(s) correctamente';
+        mensaje = 'Se eliminaron $exitosos pedido(s) correctamente';
         color = Colors.green;
       } else if (exitosos == 0) {
-        mensaje = '❌ No se pudo eliminar ningún pedido';
+        mensaje = 'No se pudo eliminar ningún pedido';
         color = Colors.red;
       } else {
-        mensaje = '⚠️ Se eliminaron $exitosos pedido(s). $fallidos falló(s)';
+        mensaje = 'Se eliminaron $exitosos pedido(s). $fallidos falló(s)';
         color = Colors.orange;
       }
 
@@ -686,11 +686,11 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
           await _pedidoService.eliminarPedidoPagado(pedidoId);
           exitosos++;
           print(
-            '✅ Pedido pagado $pedidoId eliminado exitosamente (con reversión de dinero) por $usuarioEliminacion',
+            'EXITO: Pedido pagado $pedidoId eliminado exitosamente (con reversión de dinero) por $usuarioEliminacion',
           );
         } catch (e) {
           fallidos++;
-          print('❌ Error eliminando pedido pagado $pedidoId: $e');
+          print('ERROR: Error eliminando pedido pagado $pedidoId: $e');
         }
       }
 
@@ -703,14 +703,14 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
 
       if (fallidos == 0) {
         mensaje =
-            '✅ Se eliminaron $exitosos pedido(s) pagado(s) correctamente\n💰 El dinero fue revertido automáticamente';
+            'Se eliminaron $exitosos pedido(s) pagado(s) correctamente\nEl dinero fue revertido automáticamente';
         color = Colors.green;
       } else if (exitosos == 0) {
-        mensaje = '❌ No se pudo eliminar ningún pedido pagado';
+        mensaje = 'No se pudo eliminar ningún pedido pagado';
         color = Colors.red;
       } else {
         mensaje =
-            '⚠️ Se eliminaron $exitosos pedido(s) pagado(s). $fallidos falló(s)\n💰 Se revirtió el dinero de los exitosos';
+            'Se eliminaron $exitosos pedido(s) pagado(s). $fallidos falló(s)\nSe revirtió el dinero de los exitosos';
         color = Colors.orange;
       }
 
@@ -1212,7 +1212,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
   Widget _buildPedidoCard(Pedido pedido) {
     // Filtrar pedidos sin total o con total 0 que no deberían mostrarse
     if (pedido.total <= 0 && pedido.items.isEmpty) {
-      print('⚠️ Pedido filtrado - Sin total ni items: ${pedido.id}');
+      print('AVISO: Pedido filtrado - Sin total ni items: ${pedido.id}');
       return SizedBox.shrink(); // No mostrar este pedido
     }
 

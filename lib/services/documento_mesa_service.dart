@@ -117,8 +117,9 @@ class DocumentoMesaService {
       }
 
       // Debug: mostrar información de forma de pago
-      print('📝 Datos en crearDocumento:');
-      print('  - Forma de pago: ${formaPago ?? 'efectivo'}');
+      print('📝 DocumentoMesaService: Datos en crearDocumento:');
+      print('  - Forma de pago ORIGINAL: "$formaPago"');
+      print('  - Forma de pago en bodyData: "${bodyData['formaPago']}"');
       print('  - Es pagado: $pagado');
       print(
         '  - Estado: ${pagado ? (estado ?? 'Pagado') : (estado ?? 'Pendiente')}',
@@ -127,9 +128,10 @@ class DocumentoMesaService {
 
       final body = json.encode(bodyData);
 
-      print('🔄 Enviando solicitud para crear documento');
+      print('🔄 DocumentoMesaService: Enviando solicitud para crear documento');
       print('  - URL: ${_endpoints.documentosMesa.crear}');
-      print('  - Datos: $body');
+      print('  - Body JSON completo: $body');
+      print('  - Forma de pago en JSON: "${bodyData['formaPago']}"');
 
       final response = await http.post(
         Uri.parse(_endpoints.documentosMesa.crear),
@@ -146,13 +148,18 @@ class DocumentoMesaService {
         final responseData = json.decode(response.body);
         if (responseData['success'] == true && responseData['data'] != null) {
           final documento = DocumentoMesa.fromJson(responseData['data']);
-          print('✅ Documento creado con ID: ${documento.id}');
+          print('✅ DocumentoMesaService: Documento creado exitosamente');
+          print('  - ID: ${documento.id}');
+          print('  - Número: ${documento.numeroDocumento}');
+          print('  - Forma de pago guardada: "${documento.formaPago}"');
+          print('  - Estado: ${documento.estado}');
+          print('  - Pagado: ${documento.pagado}');
           return documento;
         } else {
-          print('❌ Formato de respuesta incorrecto: ${response.body}');
+          print('❌ DocumentoMesaService: Formato de respuesta incorrecto: ${response.body}');
         }
       } else {
-        print('❌ Error creando documento: Código ${response.statusCode}');
+        print('❌ DocumentoMesaService: Error creando documento: Código ${response.statusCode}');
         print('  - Respuesta: ${response.body}');
       }
       return null;

@@ -47,7 +47,7 @@ class NetworkDiscoveryService {
         return null;
       }
 
-      print('📱 IP local del dispositivo: $localIp');
+      print('INFO: IP local del dispositivo: $localIp');
 
       // 3. Extraer segmento de red (ej: 192.168.1.x)
       final networkSegment = _extractNetworkSegment(localIp);

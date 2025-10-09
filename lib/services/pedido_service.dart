@@ -592,7 +592,7 @@ class PedidoService {
   /// Este método utiliza el endpoint especial que maneja la reversión de pagos
   Future<void> eliminarPedidoPagado(String id) async {
     try {
-      print('💰 Eliminando pedido pagado: $id (con reversión de dinero)');
+      print('INFO: Eliminando pedido pagado: $id (con reversión de dinero)');
 
       final headers = await _getHeaders();
       final response = await http.delete(
@@ -600,9 +600,9 @@ class PedidoService {
         headers: headers,
       );
 
-      print('💰 Respuesta del servidor: ${response.statusCode}');
+      print('INFO: Respuesta del servidor: ${response.statusCode}');
       if (response.body.isNotEmpty) {
-        print('💰 Cuerpo de respuesta: ${response.body}');
+        print('INFO: Cuerpo de respuesta: ${response.body}');
       }
 
       if (response.statusCode == 200 || response.statusCode == 204) {
@@ -1281,7 +1281,7 @@ class PedidoService {
         pagarData['tipoConsumoInterno'] = tipoConsumoInterno;
       }
 
-      print('🚀 Datos enviados al pagar pedido:');
+      print('INFO: Datos enviados al pagar pedido:');
       print('  - Pedido ID: $pedidoId');
       print('  - Tipo de pago: $tipoPago');
       print('  - Forma de pago: $formaPago');
@@ -1378,7 +1378,7 @@ class PedidoService {
         'totalCalculado': totalSeleccionado + propina,
       };
 
-      print('🚀 Datos para pago parcial:');
+      print('INFO: Datos para pago parcial:');
       print('  - Pedido ID: $pedidoId');
       print('  - Items seleccionados: ${itemIds.length}');
       print('  - Total calculado: ${totalSeleccionado + propina}');

@@ -60,6 +60,10 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
   List<String> _usuariosDisponibles = [];
   CuadreCaja? _cuadreActual;
 
+  // ✅ NUEVO: Cache para precarga de datos de cierre
+  final Map<String, dynamic> _cacheResumenCierre = {};
+  bool _precargandoDatos = false;
+
   // Services
   final CuadreCajaService _cuadreCajaService = CuadreCajaService();
   final String baseUrl = 'https://sopa-y-carbon.onrender.com';
@@ -75,6 +79,8 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
     super.initState();
     _loadCuadresCaja();
     _loadUsuariosDisponibles();
+    // ✅ OPTIMIZACIÓN: Precargar datos en paralelo
+    _precargarDatosCierre();
   }
 
   @override
@@ -120,6 +126,9 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
         if (_cuadreActual != null && _cuadreActual!.id != null) {
           _cargarIngresosReales(_cuadreActual!.id!);
         }
+
+        // ✅ OPTIMIZACIÓN: Precargar datos en paralelo
+        _precargarDatosCierre();
       });
     } catch (e) {
       setState(() {
@@ -152,6 +161,52 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
       // Ingresos reales cargados silenciosamente
     } catch (e) {
       // Error al cargar ingresos reales - usar valores por defecto silenciosamente
+    }
+  }
+
+  // ✅ NUEVO: Precarga de datos de cierre para optimizar velocidad
+  Future<void> _precargarDatosCierre() async {
+    if (_precargandoDatos) return;
+
+    _precargandoDatos = true;
+
+    try {
+      // Precargar datos de los últimos 3 cuadres en paralelo para acelerar navegación
+      final futures = <Future<void>>[];
+
+      for (int i = 0; i < _cuadresCaja.length && i < 3; i++) {
+        final cuadre = _cuadresCaja[i];
+        if (cuadre.id != null && !_cacheResumenCierre.containsKey(cuadre.id)) {
+          futures.add(_precargarResumenIndividual(cuadre.id!));
+        }
+      }
+
+      if (futures.isNotEmpty) {
+        await Future.wait(futures);
+      }
+    } catch (e) {
+      // Error en precarga - no afecta funcionalidad principal
+      print('⚠️ Error en precarga de datos: $e');
+    } finally {
+      _precargandoDatos = false;
+    }
+  }
+
+  Future<void> _precargarResumenIndividual(String cuadreId) async {
+    try {
+      final resumen = await _resumenCierreService
+          .getResumenCierre(cuadreId)
+          .timeout(
+            Duration(seconds: 15),
+            onTimeout: () {
+              throw Exception('Timeout en precarga de resumen');
+            },
+          );
+      _cacheResumenCierre[cuadreId] = resumen;
+      print('✅ Resumen precargado para cuadre: $cuadreId');
+    } catch (e) {
+      // Error individual no interrumpe precarga de otros
+      print('⚠️ Error precargando resumen para cuadre $cuadreId: $e');
     }
   }
 
@@ -391,12 +446,16 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
       return;
     }
 
+    // ✅ OPTIMIZACIÓN: Pasar datos precargados si están disponibles
+    final datosCache = _cacheResumenCierre[cuadre.id!];
+
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => ResumenCierreDetalladoScreen(
           cuadreId: cuadre.id!,
           nombreCuadre: cuadre.nombre,
+          datosPrecargados: datosCache, // Pasar datos en cache
         ),
       ),
     );

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
@@ -15,10 +16,9 @@ class ResumenCierreService {
     try {
       print('📊 Obteniendo resumen de cierre para cuadre: $cuadreId');
 
-      final response = await http.get(
-        Uri.parse('$baseUrl/$cuadreId/resumen-cierre'),
-        headers: headers,
-      );
+      final response = await http
+          .get(Uri.parse('$baseUrl/$cuadreId/resumen-cierre'), headers: headers)
+          .timeout(Duration(seconds: 30));
 
       print('📊 Response status: ${response.statusCode}');
       print('📊 Response body: ${response.body}');
@@ -80,6 +80,11 @@ class ResumenCierreService {
 
         throw Exception('Error al obtener resumen de cierre: $errorMessage');
       }
+    } on TimeoutException catch (e) {
+      print('⏰ Timeout al obtener resumen de cierre: $e');
+      throw Exception(
+        'La solicitud tardó demasiado tiempo. Por favor, intenta nuevamente.',
+      );
     } catch (e) {
       print('❌ Error en getResumenCierre: $e');
 

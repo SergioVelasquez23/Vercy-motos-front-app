@@ -2,6 +2,7 @@ import '../widgets/imagen_producto_widget.dart';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
 import '../models/producto.dart';
 import '../models/categoria.dart';
@@ -9,6 +10,7 @@ import '../models/ingrediente.dart';
 import '../services/producto_service.dart';
 import '../services/ingrediente_service.dart';
 import '../services/image_service.dart';
+import '../providers/datos_provider.dart';
 import '../utils/format_utils.dart';
 
 class ProductosScreen extends StatefulWidget {
@@ -54,11 +56,17 @@ class _ProductosScreenState extends State<ProductosScreen> {
     }
 
     try {
-      // Cargar datos en paralelo
-      final categorias = await _productoService.getCategorias();
-      final productos = await _productoService.getProductos();
-      final ingredientesCarnes = await _ingredienteService
-          .getIngredientesCarnes();
+      // 🚀 OPTIMIZACIÓN: Usar datos del provider global
+      final datosProvider = Provider.of<DatosProvider>(context, listen: false);
+
+      // Si los datos no están inicializados, cargarlos
+      if (!datosProvider.datosInicializados) {
+        await datosProvider.inicializarDatos();
+      }
+
+      final categorias = datosProvider.categorias;
+      final productos = datosProvider.productos;
+      final ingredientesCarnes = datosProvider.ingredientesCarnes;
 
       if (mounted) {
         setState(() {
@@ -221,14 +229,15 @@ class _ProductosScreenState extends State<ProductosScreen> {
         actions: [
           Container(
             margin: EdgeInsets.only(right: AppTheme.spacingSmall),
-            child: IconButton(
-              icon: Container(
-                padding: EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+            child: TextButton.icon(
+              icon: Icon(Icons.category, size: 20, color: Colors.white),
+              label: Text(
+                'Categorías',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
                 ),
-                child: Icon(Icons.category, size: 20),
               ),
               onPressed: () async {
                 await Navigator.pushNamed(context, '/categorias');
@@ -236,7 +245,13 @@ class _ProductosScreenState extends State<ProductosScreen> {
                   await _cargarDatos();
                 }
               },
-              tooltip: 'Gestionar Categorías',
+              style: TextButton.styleFrom(
+                backgroundColor: Colors.white.withOpacity(0.1),
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                ),
+              ),
             ),
           ),
         ],
@@ -2082,20 +2097,45 @@ class _ProductosScreenState extends State<ProductosScreen> {
       }),
     );
 
-    // Dividir en filas de 2 elementos
-    for (int i = 0; i < allCategories.length; i += 2) {
-      List<Widget> rowItems = allCategories.skip(i).take(2).toList();
+    // Dividir en columnas con 2 filas cada una (como en pedido_screen)
+    List<Widget> columns = [];
+    int itemsPerColumn = 2; // 2 filas por columna
 
-      rows.add(
+    for (int i = 0; i < allCategories.length; i += itemsPerColumn) {
+      List<Widget> columnItems = allCategories
+          .skip(i)
+          .take(itemsPerColumn)
+          .toList();
+
+      // Si solo hay un elemento en la columna, agregar un espaciador
+      if (columnItems.length == 1) {
+        columnItems.add(SizedBox(height: 50));
+      }
+
+      columns.add(
         Container(
-          height: 50,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.start,
-            children: rowItems,
+          margin: EdgeInsets.only(right: 8),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: columnItems,
           ),
         ),
       );
     }
+
+    // Crear 2 filas con las columnas distribuidas
+    rows.add(
+      Container(
+        height: 110, // Altura para 2 filas de categorías
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: columns,
+          ),
+        ),
+      ),
+    );
 
     return rows;
   }

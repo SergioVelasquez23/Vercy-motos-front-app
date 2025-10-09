@@ -7,11 +7,13 @@ import '../theme/app_theme.dart';
 class ResumenCierreDetalladoScreen extends StatefulWidget {
   final String cuadreId;
   final String nombreCuadre;
+  final dynamic datosPrecargados; // ✅ NUEVO: Datos precargados
 
   const ResumenCierreDetalladoScreen({
     super.key,
     required this.cuadreId,
     required this.nombreCuadre,
+    this.datosPrecargados, // Opcional
   });
 
   @override
@@ -38,7 +40,13 @@ class _ResumenCierreDetalladoScreenState
   @override
   void initState() {
     super.initState();
-    _loadResumenDetallado();
+    // ✅ OPTIMIZACIÓN: Usar datos precargados si están disponibles
+    if (widget.datosPrecargados != null) {
+      _resumen = widget.datosPrecargados;
+      _isLoading = false;
+    } else {
+      _loadResumenDetallado();
+    }
   }
 
   Future<void> _loadResumenDetallado() async {

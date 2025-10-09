@@ -390,4 +390,478 @@ class ExcelExportService {
       'valorMonedas': totalesPorTipo['monedas'],
     };
   }
+
+  /// Exporta las estadísticas mensuales a un archivo Excel
+  static Future<String?> exportarEstadisticasMensuales({
+    required Map<String, dynamic> datosEstadisticas,
+    String? nombreUsuario,
+    String? observaciones,
+  }) async {
+    try {
+      // Crear nuevo Excel
+      var excel = Excel.createExcel();
+      excel.delete('Sheet1'); // Eliminar hoja por defecto
+
+      // Obtener información del período
+      final periodoInfo =
+          datosEstadisticas['periodoInfo'] as Map<String, dynamic>? ?? {};
+      final mes = periodoInfo['mes'] ?? DateTime.now().month;
+      final anio = periodoInfo['año'] ?? DateTime.now().year;
+
+      // Crear hojas
+      excel.copy('Sheet1', 'Resumen');
+      excel.copy('Sheet1', 'Ventas');
+      excel.copy('Sheet1', 'Gastos');
+      excel.copy('Sheet1', 'Facturas');
+      excel.copy('Sheet1', 'Top Productos');
+      excel.copy('Sheet1', 'Cuadres Caja');
+
+      // Configurar estilos
+      CellStyle headerStyle = CellStyle(
+        fontFamily: getFontFamily(FontFamily.Calibri),
+        fontSize: 12,
+        bold: true,
+        backgroundColorHex: ExcelColor.blue,
+        fontColorHex: ExcelColor.white,
+        horizontalAlign: HorizontalAlign.Center,
+      );
+
+      CellStyle titleStyle = CellStyle(
+        fontFamily: getFontFamily(FontFamily.Calibri),
+        fontSize: 16,
+        bold: true,
+        horizontalAlign: HorizontalAlign.Center,
+      );
+
+      // Llenar hoja de resumen
+      _llenarHojaResumen(
+        excel['Resumen'],
+        datosEstadisticas,
+        titleStyle,
+        headerStyle,
+      );
+
+      // Llenar hojas específicas
+      _llenarHojaVentas(
+        excel['Ventas'],
+        datosEstadisticas,
+        titleStyle,
+        headerStyle,
+      );
+      _llenarHojaGastos(
+        excel['Gastos'],
+        datosEstadisticas,
+        titleStyle,
+        headerStyle,
+      );
+      _llenarHojaFacturas(
+        excel['Facturas'],
+        datosEstadisticas,
+        titleStyle,
+        headerStyle,
+      );
+      _llenarHojaTopProductos(
+        excel['Top Productos'],
+        datosEstadisticas,
+        titleStyle,
+        headerStyle,
+      );
+      _llenarHojaCuadresCaja(
+        excel['Cuadres Caja'],
+        datosEstadisticas,
+        titleStyle,
+        headerStyle,
+      );
+
+      // Generar timestamp
+      String timestamp = DateTime.now().millisecondsSinceEpoch.toString();
+
+      // Obtener directorio de descargas
+      Directory? directory;
+      if (Platform.isAndroid) {
+        directory = Directory('/storage/emulated/0/Download');
+        if (!await directory.exists()) {
+          directory = await getExternalStorageDirectory();
+        }
+      } else if (Platform.isIOS) {
+        directory = await getApplicationDocumentsDirectory();
+      }
+
+      if (directory == null) {
+        throw Exception('Error al obtener el directorio de archivos');
+      }
+
+      // Generar nombre del archivo
+      String fileName =
+          'estadisticas_${mes.toString().padLeft(2, '0')}_${anio}_$timestamp.xlsx';
+      File file = File('${directory.path}/$fileName');
+
+      // Guardar archivo
+      await file.writeAsBytes(excel.encode()!);
+
+      print('✅ Archivo Excel generado: ${file.path}');
+      return file.path;
+    } catch (e) {
+      print('❌ Error exportando estadísticas a Excel: $e');
+      return null;
+    }
+  }
+
+  // Métodos auxiliares para llenar las hojas
+  static void _llenarHojaResumen(
+    Sheet sheet,
+    Map<String, dynamic> datos,
+    CellStyle titleStyle,
+    CellStyle headerStyle,
+  ) {
+    final periodoInfo = datos['periodoInfo'] as Map<String, dynamic>? ?? {};
+    final resumenVentas = datos['resumenVentas'] as Map<String, dynamic>? ?? {};
+    final resumenGastos = datos['resumenGastos'] as Map<String, dynamic>? ?? {};
+    final resumenFinanciero =
+        datos['resumenFinanciero'] as Map<String, dynamic>? ?? {};
+
+    // Título
+    sheet.cell(CellIndex.indexByString('A1')).value = TextCellValue(
+      'RESUMEN ESTADÍSTICAS MENSUALES',
+    );
+    sheet.cell(CellIndex.indexByString('A1')).cellStyle = titleStyle;
+    sheet.merge(CellIndex.indexByString('A1'), CellIndex.indexByString('F1'));
+
+    // Información del período
+    int row = 3;
+    sheet.cell(CellIndex.indexByString('A$row')).value = TextCellValue(
+      'Período:',
+    );
+    sheet.cell(CellIndex.indexByString('B$row')).value = TextCellValue(
+      '${periodoInfo['mes']}/${periodoInfo['año']}',
+    );
+
+    row++;
+    sheet.cell(CellIndex.indexByString('A$row')).value = TextCellValue(
+      'Fecha de exportación:',
+    );
+    sheet.cell(CellIndex.indexByString('B$row')).value = TextCellValue(
+      DateTime.now().toString().split('.')[0],
+    );
+
+    // Resumen financiero
+    row += 2;
+    sheet.cell(CellIndex.indexByString('A$row')).value = TextCellValue(
+      'RESUMEN FINANCIERO',
+    );
+    sheet.cell(CellIndex.indexByString('A$row')).cellStyle = headerStyle;
+    sheet.merge(
+      CellIndex.indexByString('A$row'),
+      CellIndex.indexByString('C$row'),
+    );
+
+    row++;
+    sheet.cell(CellIndex.indexByString('A$row')).value = TextCellValue(
+      'Total Ventas:',
+    );
+    sheet.cell(CellIndex.indexByString('B$row')).value = DoubleCellValue(
+      double.tryParse(resumenVentas['totalVentas']?.toString() ?? '0') ?? 0,
+    );
+
+    row++;
+    sheet.cell(CellIndex.indexByString('A$row')).value = TextCellValue(
+      'Total Gastos:',
+    );
+    sheet.cell(CellIndex.indexByString('B$row')).value = DoubleCellValue(
+      double.tryParse(resumenGastos['totalGastos']?.toString() ?? '0') ?? 0,
+    );
+
+    row++;
+    sheet.cell(CellIndex.indexByString('A$row')).value = TextCellValue(
+      'Utilidad Neta:',
+    );
+    sheet.cell(CellIndex.indexByString('B$row')).value = DoubleCellValue(
+      double.tryParse(resumenFinanciero['utilidadNeta']?.toString() ?? '0') ??
+          0,
+    );
+
+    row++;
+    sheet.cell(CellIndex.indexByString('A$row')).value = TextCellValue(
+      'Pedidos Pagados:',
+    );
+    sheet.cell(CellIndex.indexByString('B$row')).value = IntCellValue(
+      int.tryParse(resumenVentas['pedidosPagados']?.toString() ?? '0') ?? 0,
+    );
+  }
+
+  static void _llenarHojaVentas(
+    Sheet sheet,
+    Map<String, dynamic> datos,
+    CellStyle titleStyle,
+    CellStyle headerStyle,
+  ) {
+    final resumenVentas = datos['resumenVentas'] as Map<String, dynamic>? ?? {};
+    final ventasDetalle =
+        resumenVentas['ventasDetalle'] as List<dynamic>? ?? [];
+
+    // Título
+    sheet.cell(CellIndex.indexByString('A1')).value = TextCellValue(
+      'DETALLE DE VENTAS',
+    );
+    sheet.cell(CellIndex.indexByString('A1')).cellStyle = titleStyle;
+    sheet.merge(CellIndex.indexByString('A1'), CellIndex.indexByString('E1'));
+
+    // Headers
+    int row = 3;
+    final headers = ['Fecha', 'Mesa', 'Total', 'Estado', 'Productos'];
+    for (int i = 0; i < headers.length; i++) {
+      String cellAddress = String.fromCharCode(65 + i) + row.toString();
+      sheet.cell(CellIndex.indexByString(cellAddress)).value = TextCellValue(
+        headers[i],
+      );
+      sheet.cell(CellIndex.indexByString(cellAddress)).cellStyle = headerStyle;
+    }
+
+    // Datos
+    row++;
+    for (var venta in ventasDetalle.take(100)) {
+      // Limitar a 100 registros
+      sheet.cell(CellIndex.indexByString('A$row')).value = TextCellValue(
+        venta['fecha']?.toString() ?? '',
+      );
+      sheet.cell(CellIndex.indexByString('B$row')).value = TextCellValue(
+        venta['mesa']?.toString() ?? '',
+      );
+      sheet.cell(CellIndex.indexByString('C$row')).value = DoubleCellValue(
+        double.tryParse(venta['total']?.toString() ?? '0') ?? 0,
+      );
+      sheet.cell(CellIndex.indexByString('D$row')).value = TextCellValue(
+        venta['estado']?.toString() ?? '',
+      );
+      sheet.cell(CellIndex.indexByString('E$row')).value = IntCellValue(
+        int.tryParse(venta['cantidadProductos']?.toString() ?? '0') ?? 0,
+      );
+      row++;
+    }
+  }
+
+  static void _llenarHojaGastos(
+    Sheet sheet,
+    Map<String, dynamic> datos,
+    CellStyle titleStyle,
+    CellStyle headerStyle,
+  ) {
+    final resumenGastos = datos['resumenGastos'] as Map<String, dynamic>? ?? {};
+    final gastosDetalle =
+        resumenGastos['gastosDetalle'] as List<dynamic>? ?? [];
+
+    // Título
+    sheet.cell(CellIndex.indexByString('A1')).value = TextCellValue(
+      'DETALLE DE GASTOS',
+    );
+    sheet.cell(CellIndex.indexByString('A1')).cellStyle = titleStyle;
+    sheet.merge(CellIndex.indexByString('A1'), CellIndex.indexByString('D1'));
+
+    // Headers
+    int row = 3;
+    final headers = ['Fecha', 'Descripción', 'Monto', 'Categoría'];
+    for (int i = 0; i < headers.length; i++) {
+      String cellAddress = String.fromCharCode(65 + i) + row.toString();
+      sheet.cell(CellIndex.indexByString(cellAddress)).value = TextCellValue(
+        headers[i],
+      );
+      sheet.cell(CellIndex.indexByString(cellAddress)).cellStyle = headerStyle;
+    }
+
+    // Datos
+    row++;
+    for (var gasto in gastosDetalle.take(100)) {
+      // Limitar a 100 registros
+      sheet.cell(CellIndex.indexByString('A$row')).value = TextCellValue(
+        gasto['fecha']?.toString() ?? '',
+      );
+      sheet.cell(CellIndex.indexByString('B$row')).value = TextCellValue(
+        gasto['descripcion']?.toString() ?? '',
+      );
+      sheet.cell(CellIndex.indexByString('C$row')).value = DoubleCellValue(
+        double.tryParse(gasto['monto']?.toString() ?? '0') ?? 0,
+      );
+      sheet.cell(CellIndex.indexByString('D$row')).value = TextCellValue(
+        gasto['categoria']?.toString() ?? '',
+      );
+      row++;
+    }
+  }
+
+  static void _llenarHojaFacturas(
+    Sheet sheet,
+    Map<String, dynamic> datos,
+    CellStyle titleStyle,
+    CellStyle headerStyle,
+  ) {
+    final resumenFacturas =
+        datos['resumenFacturas'] as Map<String, dynamic>? ?? {};
+    final facturasDetalle =
+        resumenFacturas['facturasDetalle'] as List<dynamic>? ?? [];
+
+    // Título
+    sheet.cell(CellIndex.indexByString('A1')).value = TextCellValue(
+      'FACTURAS DE COMPRA',
+    );
+    sheet.cell(CellIndex.indexByString('A1')).cellStyle = titleStyle;
+    sheet.merge(CellIndex.indexByString('A1'), CellIndex.indexByString('D1'));
+
+    // Headers
+    int row = 3;
+    final headers = ['Fecha', 'Proveedor', 'Total', 'Estado'];
+    for (int i = 0; i < headers.length; i++) {
+      String cellAddress = String.fromCharCode(65 + i) + row.toString();
+      sheet.cell(CellIndex.indexByString(cellAddress)).value = TextCellValue(
+        headers[i],
+      );
+      sheet.cell(CellIndex.indexByString(cellAddress)).cellStyle = headerStyle;
+    }
+
+    // Datos
+    row++;
+    for (var factura in facturasDetalle.take(100)) {
+      // Limitar a 100 registros
+      sheet.cell(CellIndex.indexByString('A$row')).value = TextCellValue(
+        factura['fecha']?.toString() ?? '',
+      );
+      sheet.cell(CellIndex.indexByString('B$row')).value = TextCellValue(
+        factura['proveedor']?.toString() ?? '',
+      );
+      sheet.cell(CellIndex.indexByString('C$row')).value = DoubleCellValue(
+        double.tryParse(factura['total']?.toString() ?? '0') ?? 0,
+      );
+      sheet.cell(CellIndex.indexByString('D$row')).value = TextCellValue(
+        factura['estado']?.toString() ?? '',
+      );
+      row++;
+    }
+  }
+
+  static void _llenarHojaTopProductos(
+    Sheet sheet,
+    Map<String, dynamic> datos,
+    CellStyle titleStyle,
+    CellStyle headerStyle,
+  ) {
+    final topProductos = datos['topProductos'] as List<dynamic>? ?? [];
+
+    // Título
+    sheet.cell(CellIndex.indexByString('A1')).value = TextCellValue(
+      'TOP PRODUCTOS VENDIDOS',
+    );
+    sheet.cell(CellIndex.indexByString('A1')).cellStyle = titleStyle;
+    sheet.merge(CellIndex.indexByString('A1'), CellIndex.indexByString('D1'));
+
+    // Headers
+    int row = 3;
+    final headers = [
+      'Producto',
+      'Cantidad Vendida',
+      'Total Ventas',
+      'Precio Promedio',
+    ];
+    for (int i = 0; i < headers.length; i++) {
+      String cellAddress = String.fromCharCode(65 + i) + row.toString();
+      sheet.cell(CellIndex.indexByString(cellAddress)).value = TextCellValue(
+        headers[i],
+      );
+      sheet.cell(CellIndex.indexByString(cellAddress)).cellStyle = headerStyle;
+    }
+
+    // Datos
+    row++;
+    for (var producto in topProductos.take(50)) {
+      // Top 50 productos
+      sheet.cell(CellIndex.indexByString('A$row')).value = TextCellValue(
+        producto['nombre']?.toString() ?? '',
+      );
+      sheet.cell(CellIndex.indexByString('B$row')).value = IntCellValue(
+        int.tryParse(producto['cantidadVendida']?.toString() ?? '0') ?? 0,
+      );
+      sheet.cell(CellIndex.indexByString('C$row')).value = DoubleCellValue(
+        double.tryParse(producto['totalVentas']?.toString() ?? '0') ?? 0,
+      );
+      sheet.cell(CellIndex.indexByString('D$row')).value = DoubleCellValue(
+        double.tryParse(producto['precioPromedio']?.toString() ?? '0') ?? 0,
+      );
+      row++;
+    }
+  }
+
+  static void _llenarHojaCuadresCaja(
+    Sheet sheet,
+    Map<String, dynamic> datos,
+    CellStyle titleStyle,
+    CellStyle headerStyle,
+  ) {
+    final cuadresCaja = datos['cuadresCaja'] as List<dynamic>? ?? [];
+
+    // Título
+    sheet.cell(CellIndex.indexByString('A1')).value = TextCellValue(
+      'CUADRES DE CAJA',
+    );
+    sheet.cell(CellIndex.indexByString('A1')).cellStyle = titleStyle;
+    sheet.merge(CellIndex.indexByString('A1'), CellIndex.indexByString('E1'));
+
+    // Headers
+    int row = 3;
+    final headers = [
+      'Fecha',
+      'Efectivo Inicial',
+      'Ventas',
+      'Gastos',
+      'Efectivo Final',
+    ];
+    for (int i = 0; i < headers.length; i++) {
+      String cellAddress = String.fromCharCode(65 + i) + row.toString();
+      sheet.cell(CellIndex.indexByString(cellAddress)).value = TextCellValue(
+        headers[i],
+      );
+      sheet.cell(CellIndex.indexByString(cellAddress)).cellStyle = headerStyle;
+    }
+
+    // Datos
+    row++;
+    for (var cuadre in cuadresCaja.take(100)) {
+      // Limitar a 100 registros
+      sheet.cell(CellIndex.indexByString('A$row')).value = TextCellValue(
+        cuadre['fecha']?.toString() ?? '',
+      );
+      sheet.cell(CellIndex.indexByString('B$row')).value = DoubleCellValue(
+        double.tryParse(cuadre['efectivoInicial']?.toString() ?? '0') ?? 0,
+      );
+      sheet.cell(CellIndex.indexByString('C$row')).value = DoubleCellValue(
+        double.tryParse(cuadre['totalVentas']?.toString() ?? '0') ?? 0,
+      );
+      sheet.cell(CellIndex.indexByString('D$row')).value = DoubleCellValue(
+        double.tryParse(cuadre['totalGastos']?.toString() ?? '0') ?? 0,
+      );
+      sheet.cell(CellIndex.indexByString('E$row')).value = DoubleCellValue(
+        double.tryParse(cuadre['efectivoFinal']?.toString() ?? '0') ?? 0,
+      );
+      row++;
+    }
+  }
+
+  /// Verifica si hay datos de estadísticas para exportar
+  static bool hayDatosEstadisticasParaExportar(Map<String, dynamic>? datos) {
+    if (datos == null) return false;
+
+    final resumenVentas = datos['resumenVentas'] as Map<String, dynamic>?;
+    final resumenGastos = datos['resumenGastos'] as Map<String, dynamic>?;
+
+    // Verificar si hay ventas o gastos
+    final tieneVentas =
+        resumenVentas != null &&
+        (double.tryParse(resumenVentas['totalVentas']?.toString() ?? '0') ??
+                0) >
+            0;
+    final tieneGastos =
+        resumenGastos != null &&
+        (double.tryParse(resumenGastos['totalGastos']?.toString() ?? '0') ??
+                0) >
+            0;
+
+    return tieneVentas || tieneGastos;
+  }
 }

@@ -130,7 +130,7 @@ class _UsersScreenState extends State<UsersScreen> {
                 const SizedBox(width: 16),
                 ElevatedButton.icon(
                   onPressed: () {
-                    print('🔥 BOTÓN NUEVO USUARIOS PRESIONADO!');
+                    print('INFO: BOTÓN NUEVO USUARIOS PRESIONADO!');
                     _mostrarDialogoUsuario();
                   },
                   icon: const Icon(Icons.add, color: Colors.white),
@@ -643,7 +643,7 @@ class _UsersScreenState extends State<UsersScreen> {
         activo: true, // Por defecto activo
       );
 
-      print('🚀 Objeto User creado: ${newUser.toJsonCreate()}');
+      print('INFO: Objeto User creado: ${newUser.toJsonCreate()}');
 
       if (isEditing) {
         // Actualizar usuario existente

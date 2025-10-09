@@ -30,6 +30,9 @@ class DocumentoAutomaticoService {
       print('🤖 DocumentoAutomaticoService: Iniciando generación automática');
       print('  - Pedido ID: $pedidoId');
       print('  - Vendedor: $vendedor');
+      print('  - Forma de pago RECIBIDA: $formaPago');
+      print('  - Pagado por: $pagadoPor');
+      print('  - Propina: $propina');
       print('  - Es movimiento: $esMovimiento');
       print('  - Mesa específica: $mesaEspecifica');
 
@@ -145,9 +148,14 @@ class DocumentoAutomaticoService {
 
   /// Valida y normaliza la forma de pago
   String _validarFormaPago(String? formaPago) {
-    final formaNormalizada = formaPago?.toLowerCase() ?? 'efectivo';
+    print('🔍 DocumentoAutomaticoService: Validando forma de pago');
+    print('  - Forma de pago original: "$formaPago"');
     
-    if (formaNormalizada == 'efectivo' || formaNormalizada == 'transferencia') {
+    final formaNormalizada = formaPago?.toLowerCase() ?? 'efectivo';
+    print('  - Forma normalizada: "$formaNormalizada"');
+    
+    if (formaNormalizada == 'efectivo' || formaNormalizada == 'transferencia' || formaNormalizada == 'tarjeta') {
+      print('  - ✅ Forma de pago válida: "$formaNormalizada"');
       return formaNormalizada;
     }
     

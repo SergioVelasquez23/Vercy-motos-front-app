@@ -126,12 +126,14 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
           _totalDomicilios = (cuadreCompleto['totalDomicilios'] ?? 0.0)
               .toDouble();
           _totalGastos = (cuadreCompleto['totalGastos'] ?? 0.0).toDouble();
+        });
 
-          // Cargar datos del resumen completo si existe caja actual
-          if (_cajaActual?.id != null) {
-            _cargarResumenCompleto(_cajaActual!.id!);
-          }
+        // Cargar datos del resumen completo si existe caja actual
+        if (_cajaActual?.id != null) {
+          await _cargarResumenCompleto(_cajaActual!.id!);
+        }
 
+        setState(() {
           // NUEVOS: Obtener contadores del backend con fallbacks mejorados
           // Convertir null a 0 para totalPedidos
           var totalPedidosRaw = cuadreCompleto['totalPedidos'];
@@ -343,12 +345,27 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
   Future<void> _cargarResumenCompleto(String cuadreId) async {
     try {
       print('🔍 Cargando resumen completo para cuadre: $cuadreId');
-      final resumenCompleto = await _resumenService.getResumenCierre(cuadreId);
+
+      // Agregar timeout específico para esta operación
+      final resumenCompleto = await _resumenService
+          .getResumenCierre(cuadreId)
+          .timeout(
+            Duration(seconds: 30),
+            onTimeout: () {
+              throw Exception(
+                'El resumen de cierre tardó demasiado en cargar. Continuando con datos básicos...',
+              );
+            },
+          );
 
       setState(() {
         _resumenCompletoData = resumenCompleto;
+        // Actualizar el efectivo esperado desde el resumen completo
+        _efectivoEsperado =
+            resumenCompleto.movimientosEfectivo.efectivoEsperado;
       });
       print('✅ Resumen completo cargado exitosamente');
+      print('💰 Efectivo esperado actualizado: ${_efectivoEsperado}');
       print(
         '📊 Datos de gastos: ${resumenCompleto.resumenGastos.detallesGastos.length} gastos',
       );
@@ -358,6 +375,18 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
     } catch (e) {
       // Error cargando resumen completo - continuar con datos básicos
       print('❌ Error cargando resumen completo: $e');
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Aviso: Usando datos básicos de caja. Resumen detallado no disponible.',
+            ),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
     }
   }
 
@@ -772,86 +801,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
   }
 
   // Widget para construir tarjetas de contador (similar a pedidos_screen)
-  Widget _buildCounterCard({
-    required IconData icon,
-    required String count,
-    required String label,
-    required Color color,
-  }) {
-    return Expanded(
-      child: Container(
-        padding: EdgeInsets.symmetric(vertical: 12),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: color, size: 28),
-            SizedBox(height: 8),
-            Text(
-              count,
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-              ),
-            ),
-            Text(label, style: TextStyle(color: Colors.white70, fontSize: 12)),
-          ],
-        ),
-      ),
-    );
-  }
-
   // Métodos para construir las secciones del resumen completo
-  Widget _buildResumenFinalSection() {
-    final resumen = _resumenCompletoData!.resumenFinal;
-    final Color cardBg = Color(0xFF2A2A2A);
-    final Color textDark = Colors.white;
-    final Color textLight = Colors.white70;
-
-    return Card(
-      elevation: 4,
-      color: cardBg,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      child: Padding(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Resumen Final',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF4CAF50),
-              ),
-            ),
-            SizedBox(height: 16),
-            _buildInfoRow(
-              'Fondo Inicial:',
-              formatCurrency(resumen.fondoInicial),
-            ),
-            _buildInfoRow(
-              'Ventas Efectivo:',
-              formatCurrency(resumen.ventasEfectivo),
-              valueColor: Colors.green,
-            ),
-            _buildInfoRow(
-              'Total Gastos:',
-              formatCurrency(resumen.totalGastos),
-              valueColor: Colors.red,
-            ),
-            _buildInfoRow(
-              'Efectivo Esperado:',
-              formatCurrency(resumen.efectivoEsperado),
-              valueColor: Colors.blue,
-            ),
-            // _buildInfoRow('Diferencia:', formatCurrency(resumen.diferencia),
-            //   valueColor: resumen.diferencia >= 0 ? Colors.green : Colors.red),
-          ],
-        ),
-      ),
-    );
-  }
 
   Widget _buildMovimientosEfectivoSection() {
     final movimientos = _resumenCompletoData!.movimientosEfectivo;
@@ -889,9 +839,21 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
               formatCurrency(movimientos.ventasTransferencia),
               valueColor: Colors.blue,
             ),
-            // _buildInfoRow('Total Gastos:', formatCurrency(movimientos.totalGastos), valueColor: Colors.red),
-            // _buildInfoRow('Compras desde Caja:', formatCurrency(movimientos.comprasDesdeCaja), valueColor: Colors.orange),
-            // _buildInfoRow('Efectivo Final:', formatCurrency(movimientos.efectivoFinal), valueColor: Colors.yellow),
+            _buildInfoRow(
+              'Gastos Efectivo:',
+              formatCurrency(movimientos.gastosEfectivo),
+              valueColor: Colors.red,
+            ),
+            _buildInfoRow(
+              'Compras Efectivo:',
+              formatCurrency(movimientos.comprasEfectivo),
+              valueColor: Colors.orange,
+            ),
+            _buildInfoRow(
+              'Efectivo Esperado:',
+              formatCurrency(movimientos.efectivoEsperado),
+              valueColor: Colors.yellow,
+            ),
           ],
         ),
       ),
@@ -1045,17 +1007,9 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
               valueColor: Colors.orange,
             ),
             _buildInfoRow(
-              'Total Facturas desde Caja:',
-              compras.totalFacturasDesdeCaja.toString(),
-            ),
-            _buildInfoRow(
               'Total Compras No desde Caja:',
               formatCurrency(compras.totalComprasNoDesdeCaja),
               valueColor: Colors.orange,
-            ),
-            _buildInfoRow(
-              'Total Facturas No desde Caja:',
-              compras.totalFacturasNoDesdeCaja.toString(),
             ),
             _buildInfoRow(
               'Total General de Compras:',

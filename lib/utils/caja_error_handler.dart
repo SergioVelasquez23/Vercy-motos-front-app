@@ -107,31 +107,31 @@ class CajaErrorHandler {
 
     switch (tipo) {
       case 'insufficient_cash':
-        print('⚠️ ALERTA: Efectivo insuficiente en caja');
-        print('💡 $mensaje');
-        print('💡 Verifica el saldo de caja o utiliza otro medio de pago.');
+        print('ALERTA: Efectivo insuficiente en caja');
+        print('INFO: $mensaje');
+        print('INFO: Verifica el saldo de caja o utiliza otro medio de pago.');
         break;
       case 'closed_register':
-        print('⚠️ ALERTA: Operación no permitida en caja cerrada');
-        print('💡 $mensaje');
-        print('💡 Debes abrir un nuevo cuadre de caja para continuar.');
+        print('ALERTA: Operación no permitida en caja cerrada');
+        print('INFO: $mensaje');
+        print('INFO: Debes abrir un nuevo cuadre de caja para continuar.');
         break;
       case 'not_found':
-        print('⚠️ ALERTA: Recurso no encontrado');
-        print('💡 $mensaje');
+        print('ALERTA: Recurso no encontrado');
+        print('INFO: $mensaje');
         break;
       case 'unauthorized':
-        print('⚠️ ALERTA: No autorizado');
-        print('💡 $mensaje');
-        print('💡 Verifica tus credenciales o permisos.');
+        print('ALERTA: No autorizado');
+        print('INFO: $mensaje');
+        print('INFO: Verifica tus credenciales o permisos.');
         break;
       case 'validation':
-        print('⚠️ ALERTA: Error de validación');
-        print('💡 $mensaje');
+        print('ALERTA: Error de validación');
+        print('INFO: $mensaje');
         break;
       default:
-        print('⚠️ ALERTA: Error en la operación');
-        print('💡 $mensaje');
+        print('ALERTA: Error en la operación');
+        print('INFO: $mensaje');
         break;
     }
   }

@@ -164,7 +164,9 @@ class _MesasScreenState extends State<MesasScreen>
   // ========== SISTEMA DE OPTIMIZACIÓN DE RECARGA ==========
   // Control de debounce para evitar múltiples llamadas
   Timer? _debounceTimer;
-  static const Duration _debounceDuration = Duration(milliseconds: 500);
+  static const Duration _debounceDuration = Duration(
+    milliseconds: 200,
+  ); // ✅ Optimizado para mayor velocidad
 
   // Set para trackear mesas que necesitan actualización
   final Set<String> _mesasPendientesActualizacion = <String>{};
@@ -1718,14 +1720,16 @@ class _MesasScreenState extends State<MesasScreen>
       // Obtener todas las mesas en una sola llamada
       final loadedMesas = await _mesaService.getMesas();
 
-      // Para cada mesa, también cargar sus pedidos en la misma llamada
-      // Esto se hace para evitar múltiples llamadas individuales posteriormente
+      // ✅ OPTIMIZACIÓN: Cargar pedidos solo para primeras mesas ocupadas
+      // para acelerar carga inicial, el resto se carga bajo demanda
       final List<Future<void>> pedidosFutures = [];
+      int mesasOcupadasProcesadas = 0;
+      const int maxMesasIniciales = 8; // Reducido para carga más rápida
 
       for (final mesa in loadedMesas) {
-        if (mesa.ocupada) {
-          // Hacer esto solo para mesas ocupadas para ahorrar recursos
+        if (mesa.ocupada && mesasOcupadasProcesadas < maxMesasIniciales) {
           pedidosFutures.add(_cargarPedidosParaMesa(mesa));
+          mesasOcupadasProcesadas++;
         }
       }
 
@@ -3032,18 +3036,7 @@ class _MesasScreenState extends State<MesasScreen>
                                                   textAlign: TextAlign.center,
                                                 ),
                                               ),
-                                              Expanded(
-                                                flex: 1,
-                                                child: Text(
-                                                  'Promo',
-                                                  style: TextStyle(
-                                                    color: _textPrimary,
-                                                    fontWeight: FontWeight.w600,
-                                                    fontSize: 12,
-                                                  ),
-                                                  textAlign: TextAlign.center,
-                                                ),
-                                              ),
+
                                               Expanded(
                                                 flex: 1,
                                                 child: Text(
@@ -3351,20 +3344,6 @@ class _MesasScreenState extends State<MesasScreen>
                                                           formatCurrency(
                                                             item.precioUnitario,
                                                           ),
-                                                          style: TextStyle(
-                                                            color: _textPrimary,
-                                                            fontSize: 12,
-                                                          ),
-                                                          textAlign:
-                                                              TextAlign.center,
-                                                        ),
-                                                      ),
-
-                                                      // Promo (descuento)
-                                                      Expanded(
-                                                        flex: 1,
-                                                        child: Text(
-                                                          '\$ 0',
                                                           style: TextStyle(
                                                             color: _textPrimary,
                                                             fontSize: 12,
@@ -4539,32 +4518,151 @@ class _MesasScreenState extends State<MesasScreen>
                                 ),
                                 SizedBox(height: 32),
 
-                                // Botón "Otro medio de pago" como en la imagen
-                                Center(
-                                  child: OutlinedButton.icon(
-                                    onPressed: () {
-                                      setState(() {
-                                        pagoMultiple = !pagoMultiple;
-                                      });
-                                    },
-                                    icon: Icon(Icons.credit_card, size: 16),
-                                    label: Text('Otro medio de pago'),
-                                    style: OutlinedButton.styleFrom(
-                                      foregroundColor: _primary,
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: 20,
-                                        vertical: 12,
+                                // Botones de pago específicos
+                                Row(
+                                  children: [
+                                    // Botón pago simple
+                                    Expanded(
+                                      child: OutlinedButton.icon(
+                                        onPressed: () {
+                                          setState(() {
+                                            pagoMultiple = false;
+                                            // Limpiar campos de pago múltiple para evitar datos residuales
+                                            montoEfectivoController.clear();
+                                            montoTarjetaController.clear();
+                                            montoTransferenciaController.clear();
+                                          });
+                                        },
+                                        icon: Icon(
+                                          medioPago0 == 'efectivo' 
+                                            ? Icons.money 
+                                            : medioPago0 == 'transferencia'
+                                              ? Icons.account_balance
+                                              : Icons.credit_card,
+                                          size: 16,
+                                          color: !pagoMultiple ? _primary : _textSecondary,
+                                        ),
+                                        label: Text('Pago Simple'),
+                                        style: OutlinedButton.styleFrom(
+                                          foregroundColor: !pagoMultiple ? _primary : _textSecondary,
+                                          backgroundColor: !pagoMultiple ? _primary.withOpacity(0.1) : null,
+                                          padding: EdgeInsets.symmetric(
+                                            horizontal: 16,
+                                            vertical: 12,
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          side: BorderSide(
+                                            color: !pagoMultiple ? _primary : _textMuted,
+                                            width: !pagoMultiple ? 2 : 1,
+                                          ),
+                                        ),
                                       ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      side: BorderSide(color: _primary),
                                     ),
-                                  ),
+                                    SizedBox(width: 12),
+                                    // Botón pago mixto
+                                    Expanded(
+                                      child: OutlinedButton.icon(
+                                        onPressed: () {
+                                          setState(() {
+                                            pagoMultiple = true;
+                                          });
+                                        },
+                                        icon: Icon(
+                                          Icons.payment,
+                                          size: 16,
+                                          color: pagoMultiple ? _primary : _textSecondary,
+                                        ),
+                                        label: Text('Pago Mixto'),
+                                        style: OutlinedButton.styleFrom(
+                                          foregroundColor: pagoMultiple ? _primary : _textSecondary,
+                                          backgroundColor: pagoMultiple ? _primary.withOpacity(0.1) : null,
+                                          padding: EdgeInsets.symmetric(
+                                            horizontal: 16,
+                                            vertical: 12,
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          side: BorderSide(
+                                            color: pagoMultiple ? _primary : _textMuted,
+                                            width: pagoMultiple ? 2 : 1,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
 
-                                // Campos de pago múltiple (aparecen debajo del botón anterior)
+                                // Explicación del modo seleccionado
+                                if (!pagoMultiple) ...[
+                                  SizedBox(height: 12),
+                                  Container(
+                                    padding: EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: Colors.green.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                        color: Colors.green.withOpacity(0.3),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.info_outline,
+                                          color: Colors.green,
+                                          size: 16,
+                                        ),
+                                        SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            'Pago con ${medioPago0 == 'efectivo' ? 'efectivo' : medioPago0 == 'transferencia' ? 'transferencia' : 'tarjeta'} únicamente',
+                                            style: TextStyle(
+                                              color: Colors.green,
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+
+                                // Campos de pago múltiple (aparecen cuando se selecciona pago mixto)
                                 if (pagoMultiple) ...[
+                                  SizedBox(height: 12),
+                                  Container(
+                                    padding: EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: Colors.blue.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                        color: Colors.blue.withOpacity(0.3),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.info_outline,
+                                          color: Colors.blue,
+                                          size: 16,
+                                        ),
+                                        SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            'Pago combinado con múltiples métodos',
+                                            style: TextStyle(
+                                              color: Colors.blue,
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                   SizedBox(height: 16),
                                   Container(
                                     padding: EdgeInsets.all(20),
@@ -5405,6 +5503,10 @@ class _MesasScreenState extends State<MesasScreen>
                                       flex: isMovil ? 2 : 2,
                                       child: ElevatedButton.icon(
                                         onPressed: () async {
+                                          print('🔄 INICIANDO PROCESO DE PAGO');
+                                          print('   - Modo pago múltiple: $pagoMultiple');
+                                          print('   - Método de pago seleccionado: $medioPago0');
+                                          
                                           // ✅ NUEVA LÓGICA: Verificar si es pago múltiple parcial
                                           if (pagoMultiple) {
                                             double montoEfectivo =
@@ -5534,6 +5636,12 @@ class _MesasScreenState extends State<MesasScreen>
                                             print(
                                               '🔄 Usando flujo de pago COMPLETO - Productos seleccionados: ${productosSeleccionados.length}/${pedido.items.length}',
                                             );
+                                            
+                                            if (!pagoMultiple) {
+                                              print('✅ PAGO SIMPLE CON $medioPago0 - Total: \$${pedido.total}');
+                                            } else {
+                                              print('✅ PAGO MÚLTIPLE COMPLETO - Total: \$${pedido.total}');
+                                            }
 
                                             // Pago total del pedido (usar flujo completo que maneja bien la caja)
                                             Navigator.pop(context, {
@@ -5765,17 +5873,118 @@ class _MesasScreenState extends State<MesasScreen>
         print('💰 Descuento: \$${descuento.toStringAsFixed(0)}');
         print('💰 Total final: \$${totalConDescuento.toStringAsFixed(0)}');
 
-        await _pedidoService.pagarPedido(
-          pedido.id,
-          formaPago: medioPago,
-          propina: propina,
-          procesadoPor: usuarioPago, // Cambio de 'pagadoPor' a 'procesadoPor'
-          esCortesia: esCortesia,
-          esConsumoInterno: esConsumoInterno,
-          motivoCortesia: esCortesia ? 'Pedido procesado como cortesía' : null,
-          tipoConsumoInterno: esConsumoInterno ? 'empleado' : null,
-          descuento: descuento, // ✅ NUEVO: Pasar el descuento al servicio
-        );
+        // ✅ NUEVO: Verificar si es pago múltiple completo
+        bool esPagoMultiple = formResult['pagoMultiple'] == true;
+        
+        print('🔍 ANALISIS DEL TIPO DE PAGO:');
+        print('  - pagoMultiple desde diálogo: ${formResult['pagoMultiple']}');
+        print('  - esPagoMultiple calculado: $esPagoMultiple');
+        print('  - medioPago seleccionado: $medioPago');
+        
+        if (esPagoMultiple) {
+          print('💳 PROCESANDO PAGO MÚLTIPLE COMPLETO');
+
+          double montoEfectivo =
+              double.tryParse(formResult['montoEfectivo'] ?? '0') ?? 0.0;
+          double montoTarjeta =
+              double.tryParse(formResult['montoTarjeta'] ?? '0') ?? 0.0;
+          double montoTransferencia =
+              double.tryParse(formResult['montoTransferencia'] ?? '0') ?? 0.0;
+
+          print('   - Efectivo: \$${montoEfectivo.toStringAsFixed(0)}');
+          print('   - Tarjeta: \$${montoTarjeta.toStringAsFixed(0)}');
+          print(
+            '   - Transferencia: \$${montoTransferencia.toStringAsFixed(0)}',
+          );
+
+          // Preparar pagos parciales para el backend
+          List<Map<String, dynamic>> pagosParciales = [];
+
+          if (montoEfectivo > 0) {
+            pagosParciales.add({
+              'metodo': 'efectivo',
+              'monto': montoEfectivo,
+              'procesadoPor': usuarioPago,
+              'fecha': DateTime.now().toIso8601String(),
+            });
+          }
+
+          if (montoTarjeta > 0) {
+            pagosParciales.add({
+              'metodo': 'tarjeta',
+              'monto': montoTarjeta,
+              'procesadoPor': usuarioPago,
+              'fecha': DateTime.now().toIso8601String(),
+            });
+          }
+
+          if (montoTransferencia > 0) {
+            pagosParciales.add({
+              'metodo': 'transferencia',
+              'monto': montoTransferencia,
+              'procesadoPor': usuarioPago,
+              'fecha': DateTime.now().toIso8601String(),
+            });
+          }
+
+          // Determinar el método de pago principal para el pago múltiple
+          String metodoPagoPrincipal = 'otro'; // Por defecto
+          if (montoEfectivo > 0 &&
+              montoEfectivo >= montoTarjeta &&
+              montoEfectivo >= montoTransferencia) {
+            metodoPagoPrincipal = 'efectivo';
+          } else if (montoTransferencia > 0 &&
+              montoTransferencia >= montoTarjeta) {
+            metodoPagoPrincipal = 'transferencia';
+          } else if (montoTarjeta > 0) {
+            metodoPagoPrincipal = 'tarjeta';
+          }
+
+          // Procesar pago múltiple usando pagosParciales
+          await _pedidoService.pagarPedido(
+            pedido.id,
+            formaPago: metodoPagoPrincipal, // ✅ CORREGIDO: Usar método válido
+            propina: propina,
+            procesadoPor: usuarioPago,
+            esCortesia: esCortesia,
+            esConsumoInterno: esConsumoInterno,
+            motivoCortesia: esCortesia
+                ? 'Pedido procesado como cortesía'
+                : null,
+            tipoConsumoInterno: esConsumoInterno ? 'empleado' : null,
+            descuento: descuento,
+            pagosParciales:
+                pagosParciales, // ✅ NUEVO: Enviar los pagos parciales
+          );
+
+          print(
+            '✅ Pago múltiple procesado - ambos métodos enviados al backend como pagosParciales',
+          );
+        } else {
+          // Pago con un solo método
+          print('💰 PROCESANDO PAGO SIMPLE:');
+          print('  - Pedido ID: ${pedido.id}');
+          print('  - Forma de pago: $medioPago');
+          print('  - Propina: $propina');
+          print('  - Usuario: $usuarioPago');
+          print('  - Es cortesía: $esCortesia');
+          print('  - Es consumo interno: $esConsumoInterno');
+          print('  - Descuento: $descuento');
+          
+          await _pedidoService.pagarPedido(
+            pedido.id,
+            formaPago: medioPago,
+            propina: propina,
+            procesadoPor: usuarioPago, // Cambio de 'pagadoPor' a 'procesadoPor'
+            esCortesia: esCortesia,
+            esConsumoInterno: esConsumoInterno,
+            motivoCortesia: esCortesia
+                ? 'Pedido procesado como cortesía'
+                : null,
+            tipoConsumoInterno: esConsumoInterno ? 'empleado' : null,
+            descuento: descuento, // ✅ NUEVO: Pasar el descuento al servicio
+          );
+        }
 
         print('✅ Pago procesado exitosamente');
 
@@ -5786,13 +5995,57 @@ class _MesasScreenState extends State<MesasScreen>
 
         // CREAR DOCUMENTO AUTOMÁTICAMENTE DESPUÉS DEL PAGO EXITOSO
         print('📄 Creando documento automático para pedido pagado...');
-        print('💰 Método de pago seleccionado: ${formResult['medioPago']}');
+
+        // Determinar la forma de pago para el documento
+        String formaPagoDocumento;
+        if (esPagoMultiple) {
+          // Recalcular método principal para el documento
+          double montoEfectivo =
+              double.tryParse(formResult['montoEfectivo'] ?? '0') ?? 0.0;
+          double montoTarjeta =
+              double.tryParse(formResult['montoTarjeta'] ?? '0') ?? 0.0;
+          double montoTransferencia =
+              double.tryParse(formResult['montoTransferencia'] ?? '0') ?? 0.0;
+
+          String metodoPrincipalDoc = 'otro';
+          if (montoEfectivo > 0 &&
+              montoEfectivo >= montoTarjeta &&
+              montoEfectivo >= montoTransferencia) {
+            metodoPrincipalDoc = 'efectivo';
+          } else if (montoTransferencia > 0 &&
+              montoTransferencia >= montoTarjeta) {
+            metodoPrincipalDoc = 'transferencia';
+          } else if (montoTarjeta > 0) {
+            metodoPrincipalDoc = 'tarjeta';
+          }
+
+          formaPagoDocumento = metodoPrincipalDoc;
+          print(
+            '💰 Documento con pago múltiple - Método principal: $metodoPrincipalDoc',
+          );
+        } else {
+          print('🔍 DEBUG - Determinando forma de pago para documento:');
+          print('  - formResult[\'medioPago\']: ${formResult['medioPago']}');
+          print('  - medioPago fallback: $medioPago');
+          
+          formaPagoDocumento = formResult['medioPago'] ?? medioPago;
+          print('💰 Método de pago seleccionado para documento: $formaPagoDocumento');
+          
+          // Validar que el método de pago sea válido para el backend
+          if (formaPagoDocumento != 'efectivo' && 
+              formaPagoDocumento != 'transferencia' && 
+              formaPagoDocumento != 'tarjeta') {
+            print('⚠️ Método de pago no válido para documento: $formaPagoDocumento, usando efectivo');
+            formaPagoDocumento = 'efectivo';
+          }
+        }
+
         try {
           final documento = await _documentoAutomaticoService
               .generarDocumentoAutomatico(
                 pedidoId: pedido.id,
                 vendedor: usuarioPago,
-                formaPago: formResult['medioPago'],
+                formaPago: formaPagoDocumento,
                 propina: propina,
                 pagadoPor: usuarioPago,
               );

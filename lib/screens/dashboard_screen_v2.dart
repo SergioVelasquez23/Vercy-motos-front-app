@@ -23,6 +23,7 @@ import '../services/pedido_service.dart';
 import '../services/websocket_service.dart';
 import '../models/dashboard_data.dart';
 import '../providers/user_provider.dart';
+import '../providers/datos_provider.dart';
 import '../widgets/admin_key_detector.dart';
 
 class InfoCardItem {
@@ -159,6 +160,13 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
     setState(() => _isLoading = true);
 
     try {
+      // 🚀 NUEVO: Cargar productos e ingredientes globalmente
+      final datosProvider = Provider.of<DatosProvider>(context, listen: false);
+      final datosFuture = datosProvider.inicializarDatos().catchError((e) {
+        print('⚠️ Error cargando datos globales: $e');
+        return null;
+      });
+
       // Cargar datos en paralelo pero manejar errores individualmente
       final estadisticasFuture = _cargarEstadisticas().catchError((e) {
         return null;
@@ -204,6 +212,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
       });
 
       await Future.wait([
+        datosFuture,
         estadisticasFuture,
         ingresosFuture,
         topProductosFuture,
@@ -757,6 +766,10 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                                     SizedBox(height: AppTheme.spacingXLarge),
                                     // Gráfico de pedidos por hora (más prominente)
                                     _buildPedidosPorHoraChart(context),
+                                    SizedBox(height: AppTheme.spacingXLarge),
+
+                                    // Gráfico de ventas por día
+                                    _buildVentasPorDiaChart(context),
                                     SizedBox(height: AppTheme.spacingXLarge),
 
                                     // Gráficos en fila o columna según el dispositivo
@@ -1999,6 +2012,156 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
     );
   }
 
+  Widget _buildVentasPorDiaChart(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.all(
+        context.isMobile ? AppTheme.spacingMedium : AppTheme.spacingXLarge,
+      ),
+      decoration: AppTheme.elevatedCardDecoration,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.trending_up, color: AppTheme.success, size: 16),
+              SizedBox(width: 12),
+              Text(
+                'VENTAS ÚLTIMOS 7 DÍAS',
+                style: TextStyle(
+                  color: AppTheme.textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 24),
+          SizedBox(
+            height: 280,
+            child: _ventasPorDia.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(color: AppTheme.primary),
+                        SizedBox(height: 8),
+                        Text(
+                          'Cargando ventas...',
+                          style: TextStyle(
+                            color: AppTheme.textSecondary,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : BarChart(
+                    BarChartData(
+                      alignment: BarChartAlignment.spaceAround,
+                      maxY: _getMaxVentasDia(),
+                      gridData: FlGridData(
+                        show: true,
+                        drawVerticalLine: false,
+                        getDrawingHorizontalLine: (value) {
+                          return FlLine(
+                            color: Colors.grey.withOpacity(0.3),
+                            strokeWidth: 1,
+                          );
+                        },
+                      ),
+                      titlesData: FlTitlesData(
+                        show: true,
+                        bottomTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            getTitlesWidget: (value, meta) {
+                              final index = value.toInt();
+                              if (index >= 0 && index < _ventasPorDia.length) {
+                                final dia = _ventasPorDia[index]['dia'] ?? '';
+                                final ventas =
+                                    ((_ventasPorDia[index]['ventas'] as num?)
+                                        ?.toDouble() ??
+                                    0.0);
+                                return Padding(
+                                  padding: EdgeInsets.only(top: 8),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        dia,
+                                        style: TextStyle(
+                                          color: AppTheme.textSecondary,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                      SizedBox(height: 4),
+                                      Text(
+                                        '\$${_formatCurrency(ventas)}',
+                                        style: TextStyle(
+                                          color: AppTheme.success,
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }
+                              return Text('');
+                            },
+                          ),
+                        ),
+                        leftTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 60,
+                            getTitlesWidget: (value, meta) {
+                              return Text(
+                                '\$${_formatCurrency(value)}',
+                                style: TextStyle(
+                                  color: AppTheme.textSecondary,
+                                  fontSize: 8,
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        topTitles: AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+                        rightTitles: AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+                      ),
+                      borderData: FlBorderData(show: false),
+                      barGroups: _ventasPorDia.asMap().entries.map((entry) {
+                        final index = entry.key;
+                        final data = entry.value;
+                        final ventas =
+                            (data['ventas'] as num?)?.toDouble() ?? 0.0;
+
+                        return BarChartGroupData(
+                          x: index,
+                          barRods: [
+                            BarChartRodData(
+                              toY: ventas,
+                              color: AppTheme.success,
+                              width: 20,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ],
+                        );
+                      }).toList(),
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildUltimosPedidos(BuildContext context) {
     return Container(
       padding: EdgeInsets.all(
@@ -2612,13 +2775,46 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
   }
 
   String _formatCurrency(double amount) {
-    if (amount >= 1000000) {
-      return '${(amount / 1000000).toStringAsFixed(1)}M';
+    // Para pesos colombianos, es mejor mostrar los números completos con separadores
+    if (amount >= 1000000000) {
+      // Mil millones o más: 1.234.567.890
+      return _formatFullNumber(amount);
+    } else if (amount >= 100000000) {
+      // Cien millones o más: 123.456.789
+      return _formatFullNumber(amount);
+    } else if (amount >= 1000000) {
+      // Un millón o más: 12.345.678
+      return _formatFullNumber(amount);
+    } else if (amount >= 100000) {
+      // Cien mil o más: 123.456
+      return _formatFullNumber(amount);
     } else if (amount >= 1000) {
-      return '${(amount / 1000).toStringAsFixed(0)}K';
+      // Mil o más: 12.345
+      return _formatFullNumber(amount);
     } else {
+      // Menos de mil: 999
       return amount.toStringAsFixed(0);
     }
+  }
+
+  String _formatFullNumber(double amount) {
+    // Convertir a entero para evitar decimales innecesarios
+    int intAmount = amount.round();
+    String numStr = intAmount.toString();
+
+    // Agregar puntos como separadores de miles
+    String result = '';
+    int counter = 0;
+
+    for (int i = numStr.length - 1; i >= 0; i--) {
+      if (counter > 0 && counter % 3 == 0) {
+        result = '.' + result;
+      }
+      result = numStr[i] + result;
+      counter++;
+    }
+
+    return result;
   }
 
   double _getMaxVentasDia() {

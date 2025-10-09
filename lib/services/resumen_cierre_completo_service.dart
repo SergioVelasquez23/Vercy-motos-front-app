@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:http/http.dart' as http;
 import '../models/resumen_cierre_completo.dart';
 import '../config/api_config.dart';
@@ -19,13 +20,17 @@ class ResumenCierreCompletoService {
     try {
       print('� Obteniendo resumen de cierre para cuadre: $cuadreId');
 
-      final response = await http.get(
-        Uri.parse('$baseUrl/api/cuadres-caja/$cuadreId/resumen-cierre'),
-        headers: await _getHeaders(),
-      );
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl/api/cuadres-caja/$cuadreId/resumen-cierre'),
+            headers: await _getHeaders(),
+          )
+          .timeout(Duration(seconds: 30)); // Agregar timeout
 
       print('� Response status: ${response.statusCode}');
-      print('� Response body: ${response.body}');
+      print(
+        '� Response body (primeros 500 chars): ${response.body.length > 500 ? response.body.substring(0, 500) + '...' : response.body}',
+      );
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonData = json.decode(response.body);
@@ -78,6 +83,11 @@ class ResumenCierreCompletoService {
       } else {
         throw Exception('Error HTTP ${response.statusCode}: ${response.body}');
       }
+    } on TimeoutException catch (e) {
+      print('⏰ Timeout al obtener resumen de cierre: $e');
+      throw Exception(
+        'La solicitud tardó demasiado tiempo. Por favor, intenta nuevamente.',
+      );
     } catch (e) {
       print('❌ Error obteniendo resumen de cierre: $e');
       rethrow;

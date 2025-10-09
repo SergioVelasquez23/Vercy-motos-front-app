@@ -454,7 +454,7 @@ class PDFService {
           esFactura: esFactura,
         );
         print('✅ PDF generado correctamente (${pdfBytes.length} bytes)');
-        print('💡 Error al guardar archivo. PDF generado pero no guardado.');
+        print('INFO: Error al guardar archivo. PDF generado pero no guardado.');
       } catch (e2) {
         print('❌ Error generando PDF: $e2');
         rethrow;
@@ -480,7 +480,7 @@ class PDFService {
       await file.writeAsBytes(pdfBytes);
 
       print('✅ PDF guardado en: ${file.path}');
-      print('💡 Abrir manualmente el archivo desde: ${file.path}');
+      print('INFO: Abrir manualmente el archivo desde: ${file.path}');
     } catch (e) {
       print('❌ Error guardando PDF: $e');
       rethrow;

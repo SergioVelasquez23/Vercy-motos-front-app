@@ -14,6 +14,7 @@ import 'screens/pedidos_screen_fusion.dart';
 import 'screens/documentos_mesa_screen.dart';
 import 'models/mesa.dart';
 import 'providers/user_provider.dart';
+import 'providers/datos_provider.dart';
 
 void main() async {
   // Aseguramos que Flutter esté inicializado
@@ -24,7 +25,10 @@ void main() async {
   // ...existing code...
   runApp(
     MultiProvider(
-      providers: [ChangeNotifierProvider(create: (_) => UserProvider())],
+      providers: [
+        ChangeNotifierProvider(create: (_) => UserProvider()),
+        ChangeNotifierProvider(create: (_) => DatosProvider()),
+      ],
       child: MyApp(),
     ),
   );

@@ -71,17 +71,24 @@ class _DialogoPagoState extends State<DialogoPago> {
     montoTransferenciaController = TextEditingController();
   }
 
-  // ✅ NUEVO: Inicializar control de cantidades específicas
+  // ✅ OPTIMIZADO: Inicializar control de cantidades de forma más eficiente
   void _initCantidades() {
-    itemsSeleccionados = {};
-    cantidadesSeleccionadas = {};
-    cantidadControllers = {};
+    final itemCount = widget.pedido.items.length;
 
-    for (int i = 0; i < widget.pedido.items.length; i++) {
-      itemsSeleccionados[i.toString()] = true;
-      cantidadesSeleccionadas[i.toString()] = widget.pedido.items[i].cantidad;
-      cantidadControllers[i.toString()] = TextEditingController(
-        text: widget.pedido.items[i].cantidad.toString(),
+    // Pre-asignar capacidad para evitar redimensionamientos
+    itemsSeleccionados = <String, bool>{};
+    cantidadesSeleccionadas = <String, int>{};
+    cantidadControllers = <String, TextEditingController>{};
+
+    // Inicialización optimizada en un solo loop
+    for (int i = 0; i < itemCount; i++) {
+      final key = i.toString();
+      final item = widget.pedido.items[i];
+
+      itemsSeleccionados[key] = true;
+      cantidadesSeleccionadas[key] = item.cantidad;
+      cantidadControllers[key] = TextEditingController(
+        text: item.cantidad.toString(),
       );
     }
   }

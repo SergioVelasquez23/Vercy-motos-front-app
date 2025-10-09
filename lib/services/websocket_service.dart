@@ -98,7 +98,7 @@ class WebSocketService {
   Future<void> connect() async {
     if (_isConnected || _isReconnecting) {
       // ✅ COMENTADO: Log de WebSocket ya conectado removido
-      // print('🔌 WebSocket: Ya conectado o reconectando');
+      // print('INFO: WebSocket: Ya conectado o reconectando');
       return;
     }
 
@@ -108,7 +108,7 @@ class WebSocketService {
     return;
 
     try {
-      print('🔌 WebSocket: Intentando conectar...');
+      print('INFO: WebSocket: Intentando conectar...');
 
       // Obtener la URL base y convertirla a WebSocket
       final baseUrl = ApiConfig.instance.baseUrl;
@@ -159,11 +159,11 @@ class WebSocketService {
     // No desconectar si la aplicación está en la pantalla de mesas
     // Esto es para mantener la conexión viva incluso cuando el usuario cambia de pantalla
     if (_keepAlive) {
-      print('🔌 WebSocket: Desconexión ignorada - modo keep-alive activo');
+      print('INFO: WebSocket: Desconexión ignorada - modo keep-alive activo');
       return;
     }
 
-    print('🔌 WebSocket: Desconectando...');
+    print('INFO: WebSocket: Desconectando...');
 
     _isConnected = false;
     _heartbeatTimer?.cancel();
@@ -229,7 +229,7 @@ class WebSocketService {
 
   /// Manejar desconexión
   void _onDisconnected() {
-    print('🔌 WebSocket: Conexión cerrada');
+    print('INFO: WebSocket: Conexión cerrada');
     _isConnected = false;
     _heartbeatTimer?.cancel();
 

@@ -6,6 +6,7 @@ import '../config/api_config.dart';
 import '../theme/app_theme.dart';
 import '../utils/format_utils.dart';
 import '../services/pedido_service.dart';
+import 'exportar_mensual_screen.dart';
 
 class AdminPanelScreen extends StatefulWidget {
   const AdminPanelScreen({super.key});
@@ -619,6 +620,26 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
 
             SizedBox(height: 12),
 
+            // Botón de estadísticas mensuales
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _isLoading ? null : _navegarAEstadisticasMensuales,
+                icon: Icon(Icons.file_download, color: Colors.white),
+                label: Text(
+                  'Exportar Estadísticas Mensuales',
+                  style: TextStyle(color: Colors.white),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
+            ),
+
+            SizedBox(height: 12),
+
             // Botones de eliminación por fechas
             Row(
               children: [
@@ -805,6 +826,12 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                 ],
               ),
             ),
+    );
+  }
+
+  void _navegarAEstadisticasMensuales() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (context) => const ExportarMensualScreen()),
     );
   }
 }

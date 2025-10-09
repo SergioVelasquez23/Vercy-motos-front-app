@@ -45,8 +45,23 @@ class _IngresosCajaScreenState extends State<IngresosCajaScreen> {
       builder: (context) => Dialog(child: _IngresoCajaForm()),
     );
     if (result != null) {
-      await _service.registrarIngreso(result);
-      _cargarIngresos();
+      try {
+        await _service.registrarIngreso(result);
+        _cargarIngresos();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ingreso registrado exitosamente'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al registrar ingreso: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
