@@ -323,16 +323,6 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
         ),
         actions: [
           IconButton(
-            icon: Icon(Icons.sync, color: textDark),
-            onPressed: _sincronizarInventario,
-            tooltip: 'Sincronizar inventario',
-          ),
-          IconButton(
-            icon: Icon(Icons.cleaning_services, color: textDark),
-            onPressed: _limpiarMovimientosErroneos,
-            tooltip: 'Limpiar movimientos erróneos',
-          ),
-          IconButton(
             icon: Icon(Icons.refresh, color: textDark),
             onPressed: _cargarMovimientos,
             tooltip: 'Actualizar datos',

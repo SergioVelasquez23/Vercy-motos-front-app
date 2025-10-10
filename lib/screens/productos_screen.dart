@@ -35,6 +35,11 @@ class _ProductosScreenState extends State<ProductosScreen> {
   String? _selectedCategoriaId;
   Future<List<Producto>>? _productosFuture;
 
+  // Variables para la paginación
+  int _paginaActual = 0;
+  int _itemsPorPagina = 10;
+  List<Producto> _productosPaginados = [];
+
   @override
   void initState() {
     super.initState();
@@ -61,7 +66,12 @@ class _ProductosScreenState extends State<ProductosScreen> {
 
       // Si los datos no están inicializados, cargarlos
       if (!datosProvider.datosInicializados) {
+        print(
+          '📝 ProductosScreen: Datos aún no inicializados, usando provider...',
+        );
         await datosProvider.inicializarDatos();
+      } else {
+        print('📝 ProductosScreen: Usando datos en caché del provider');
       }
 
       final categorias = datosProvider.categorias;
@@ -74,6 +84,8 @@ class _ProductosScreenState extends State<ProductosScreen> {
           _productos = productos;
           _ingredientesCarnes = ingredientesCarnes;
           _isLoading = false;
+          // Actualizar la paginación con los productos filtrados
+          _actualizarProductosPaginados(_productos);
           // Inicializar el future para cargar los productos
           _productosFuture = _filtrarProductos();
         });
@@ -90,19 +102,22 @@ class _ProductosScreenState extends State<ProductosScreen> {
 
   Future<List<Producto>> _filtrarProductos() async {
     final query = _searchController.text.toLowerCase();
-
-    if (query.isEmpty && _selectedCategoriaId == null) {
-      return _productos;
-    }
+    List<Producto> productosFiltrados;
 
     try {
-      return await _productoService.searchProductos(
-        query,
-        categoriaId: _selectedCategoriaId,
-      );
+      // Si hay filtros activos, usar el servicio para búsqueda filtrada
+      if (query.isNotEmpty || _selectedCategoriaId != null) {
+        productosFiltrados = await _productoService.searchProductos(
+          query,
+          categoriaId: _selectedCategoriaId,
+        );
+      } else {
+        // Sin filtros, usar la lista completa
+        productosFiltrados = _productos;
+      }
     } catch (e) {
-      // En caso de error, devolver lista local filtrada
-      return _productos.where((producto) {
+      // En caso de error, filtrar la lista local
+      productosFiltrados = _productos.where((producto) {
         final matchesQuery =
             query.isEmpty || producto.nombre.toLowerCase().contains(query);
         final matchesCategory =
@@ -111,6 +126,151 @@ class _ProductosScreenState extends State<ProductosScreen> {
         return matchesQuery && matchesCategory;
       }).toList();
     }
+
+    // Actualizar la lista paginada con el contenido filtrado
+    _actualizarProductosPaginados(productosFiltrados);
+
+    return productosFiltrados;
+  }
+
+  /// Actualiza la lista paginada de productos basada en la página actual
+  void _actualizarProductosPaginados(List<Producto> productos) {
+    int startIndex = _paginaActual * _itemsPorPagina;
+    int endIndex = startIndex + _itemsPorPagina;
+
+    // Asegurar que los índices estén dentro de los límites
+    if (startIndex >= productos.length) {
+      _paginaActual = 0;
+      startIndex = 0;
+      endIndex = _itemsPorPagina;
+    }
+
+    if (endIndex > productos.length) {
+      endIndex = productos.length;
+    }
+
+    // Obtener solo los productos para la página actual
+    _productosPaginados = productos.sublist(startIndex, endIndex);
+  }
+
+  /// Avanza a la siguiente página de productos
+  void _siguientePagina(List<Producto> productos) {
+    int startIndex = (_paginaActual + 1) * _itemsPorPagina;
+
+    if (startIndex < productos.length) {
+      setState(() {
+        _paginaActual++;
+        _actualizarProductosPaginados(productos);
+      });
+    }
+  }
+
+  /// Retrocede a la página anterior de productos
+  void _paginaAnterior() {
+    if (_paginaActual > 0) {
+      setState(() {
+        _paginaActual--;
+        _actualizarProductosPaginados(_productos);
+      });
+    }
+  }
+
+  /// Construye los controles de paginación
+  Widget _buildPaginationControls(List<Producto> productos) {
+    // Calcular el número total de páginas
+    int totalPaginas = (productos.length / _itemsPorPagina).ceil();
+
+    // Si solo hay una página o ninguna, no mostrar controles
+    if (totalPaginas <= 1) {
+      return SizedBox.shrink();
+    }
+
+    return Container(
+      padding: EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceDark,
+        border: Border(
+          top: BorderSide(color: AppTheme.primary.withOpacity(0.2)),
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Botón de página anterior
+          IconButton(
+            icon: Icon(Icons.arrow_back_ios, size: 18),
+            color: _paginaActual > 0 ? AppTheme.primary : AppTheme.textMuted,
+            onPressed: _paginaActual > 0
+                ? () => setState(() {
+                    _paginaActual--;
+                    _actualizarProductosPaginados(productos);
+                  })
+                : null,
+          ),
+
+          // Información de página actual
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppTheme.cardBg,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              'Página ${_paginaActual + 1} de $totalPaginas',
+              style: TextStyle(
+                color: AppTheme.textPrimary,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+
+          // Botón de siguiente página
+          IconButton(
+            icon: Icon(Icons.arrow_forward_ios, size: 18),
+            color: _paginaActual < totalPaginas - 1
+                ? AppTheme.primary
+                : AppTheme.textMuted,
+            onPressed: _paginaActual < totalPaginas - 1
+                ? () => setState(() {
+                    _paginaActual++;
+                    _actualizarProductosPaginados(productos);
+                  })
+                : null,
+          ),
+
+          // Selector de items por página
+          Container(
+            margin: EdgeInsets.only(left: 16),
+            padding: EdgeInsets.symmetric(horizontal: 8),
+            decoration: BoxDecoration(
+              color: AppTheme.cardBg,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<int>(
+                value: _itemsPorPagina,
+                dropdownColor: AppTheme.cardBg,
+                icon: Icon(Icons.arrow_drop_down, color: AppTheme.primary),
+                style: TextStyle(color: AppTheme.textPrimary),
+                items: [5, 10, 20, 50].map<DropdownMenuItem<int>>((int value) {
+                  return DropdownMenuItem<int>(
+                    value: value,
+                    child: Text('$value por página'),
+                  );
+                }).toList(),
+                onChanged: (newValue) {
+                  setState(() {
+                    _itemsPorPagina = newValue!;
+                    _paginaActual = 0; // Reset a primera página
+                    _actualizarProductosPaginados(productos);
+                  });
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -387,13 +547,25 @@ class _ProductosScreenState extends State<ProductosScreen> {
                   );
                 }
 
-                return ListView.builder(
-                  padding: EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: productos.length,
-                  itemBuilder: (context, index) {
-                    final producto = productos[index];
-                    return _buildProductoItem(producto);
-                  },
+                // Actualizar la lista paginada con los productos filtrados
+                _actualizarProductosPaginados(productos);
+
+                return Column(
+                  children: [
+                    Expanded(
+                      child: ListView.builder(
+                        padding: EdgeInsets.symmetric(horizontal: 16),
+                        itemCount: _productosPaginados.length,
+                        itemBuilder: (context, index) {
+                          final producto = _productosPaginados[index];
+                          return _buildProductoItem(producto);
+                        },
+                      ),
+                    ),
+
+                    // Controles de paginación
+                    _buildPaginationControls(productos),
+                  ],
                 );
               },
             ),
@@ -559,6 +731,13 @@ class _ProductosScreenState extends State<ProductosScreen> {
               try {
                 await _productoService.deleteProducto(producto.id);
                 Navigator.of(context).pop();
+
+                // Actualizar datos en el provider
+                final datosProvider = Provider.of<DatosProvider>(
+                  context,
+                  listen: false,
+                );
+                await datosProvider.cargarProductos(forzarActualizacion: true);
 
                 // Recargar datos después de eliminar
                 await _cargarDatos();
@@ -1470,6 +1649,15 @@ class _ProductosScreenState extends State<ProductosScreen> {
                         );
 
                         await _productoService.updateProducto(updatedProducto);
+
+                        // Actualizar datos en el provider después de actualizar producto
+                        final datosProvider = Provider.of<DatosProvider>(
+                          context,
+                          listen: false,
+                        );
+                        await datosProvider.cargarProductos(
+                          forzarActualizacion: true,
+                        );
                       } else {
                         // Crear nuevo producto con el sistema actualizado
                         final nuevoProducto = Producto(
@@ -1495,6 +1683,15 @@ class _ProductosScreenState extends State<ProductosScreen> {
                           ingredientesOpcionales: ingredientesOpcionales,
                         );
                         await _productoService.addProducto(nuevoProducto);
+
+                        // Actualizar datos en el provider después de crear producto
+                        final datosProvider = Provider.of<DatosProvider>(
+                          context,
+                          listen: false,
+                        );
+                        await datosProvider.cargarProductos(
+                          forzarActualizacion: true,
+                        );
                       }
 
                       Navigator.of(context).pop();

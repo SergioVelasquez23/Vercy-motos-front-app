@@ -491,28 +491,6 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  // Botón Editar
-                  Expanded(
-                    child: InkWell(
-                      onTap: () => _editarFactura(factura),
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(vertical: 8),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.edit, size: 16, color: Colors.blue),
-                            SizedBox(width: 6),
-                            Text(
-                              'Editar',
-                              style: TextStyle(color: Colors.blue),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  // Separador vertical
-                  Container(height: 24, width: 1, color: Colors.grey[800]),
                   // Botón Eliminar
                   Expanded(
                     child: InkWell(
@@ -845,11 +823,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
         elevation: 0,
         iconTheme: IconThemeData(color: textDark),
         actions: [
-          IconButton(
-            onPressed: _runDebugTests,
-            icon: Icon(Icons.bug_report, color: Colors.orange),
-            tooltip: 'Debug Backend',
-          ),
+          // Botón Debug eliminado según solicitud del usuario
           TextButton(
             onPressed: _isLoading ? null : _guardarFactura,
             child: Text(

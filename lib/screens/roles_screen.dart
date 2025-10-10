@@ -376,6 +376,9 @@ class _RolesScreenState extends State<RolesScreen> {
 
       if (isEditing) {
         await _roleService.updateRole(newRole);
+        // Reload roles immediately after update
+        await _cargarRoles();
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Rol actualizado correctamente'),
@@ -384,6 +387,9 @@ class _RolesScreenState extends State<RolesScreen> {
         );
       } else {
         await _roleService.createRole(newRole);
+        // Reload roles immediately after create
+        await _cargarRoles();
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Rol creado correctamente'),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/user.dart';
 import '../models/role.dart';
+import '../models/user_role.dart';
 import '../services/user_service.dart';
 import '../services/role_service.dart';
 import '../services/user_role_service.dart';
@@ -41,34 +42,29 @@ class _UsersScreenState extends State<UsersScreen> {
     try {
       print('🔍 Iniciando carga de datos de usuarios y roles...');
 
-      final usersResult = await _userService.getUsers();
-      final rolesResult = await _roleService.getRoles();
+      // Cargar usuarios y roles en paralelo para ahorrar tiempo
+      final futures = await Future.wait([
+        _userService.getUsers(),
+        _roleService.getRoles(),
+      ]);
+
+      final usersResult = futures[0] as List<User>;
+      final rolesResult = futures[1] as List<Role>;
 
       print('✅ Usuarios cargados: ${usersResult.length}');
       print('✅ Roles cargados: ${rolesResult.length}');
 
-      // Obtener roles actuales de cada usuario desde el backend
-      Map<String, List<Role>> userRolesMap = {};
-      for (final user in usersResult) {
-        if (user.id != null) {
-          try {
-            final roles = await _userService.getRolesByUserId(user.id!);
-            userRolesMap[user.id!] = roles;
-          } catch (e) {
-            print('Error obteniendo roles para usuario ${user.id}: $e');
-            userRolesMap[user.id!] = [];
-          }
-        }
-      }
-
+      // Actualizar UI inicialmente con los usuarios y roles sin esperar a obtener todos los roles
       setState(() {
         _users = usersResult;
         _roles = rolesResult;
-        _userRolesMap = userRolesMap;
         _isLoading = false;
       });
 
-      print('🎉 Datos cargados exitosamente');
+      // Obtener roles en segundo plano para no bloquear la UI
+      _cargarRolesUsuariosEnSegundoPlano(usersResult);
+
+      print('🎉 Datos básicos cargados exitosamente');
     } catch (e, stackTrace) {
       print('💥 Error al cargar datos: $e');
       print('📍 Stack trace: $stackTrace');
@@ -83,6 +79,92 @@ class _UsersScreenState extends State<UsersScreen> {
           ),
         );
       }
+    }
+  }
+
+  // Método para cargar los roles de los usuarios en segundo plano
+  Future<void> _cargarRolesUsuariosEnSegundoPlano(List<User> users) async {
+    try {
+      Map<String, List<Role>> userRolesMap = {};
+
+      // Crear una lista de futures para obtener los roles de todos los usuarios en paralelo
+      final futures = users.where((user) => user.id != null).map((user) async {
+        try {
+          final roles = await _userService.getRolesByUserId(user.id!);
+          return MapEntry(user.id!, roles);
+        } catch (e) {
+          print('Error obteniendo roles para usuario ${user.id}: $e');
+          return MapEntry(user.id!, <Role>[]);
+        }
+      });
+
+      // Ejecutar todas las solicitudes en paralelo
+      final results = await Future.wait(futures);
+
+      // Construir el mapa con los resultados
+      for (final entry in results) {
+        userRolesMap[entry.key] = entry.value;
+        // Log detallado de los roles cargados
+        if (entry.value.isNotEmpty) {
+          print(
+            '📋 Usuario ${entry.key}: roles = ${entry.value.map((r) => r.nombre).join(", ")}',
+          );
+        } else {
+          print('📋 Usuario ${entry.key}: sin roles asignados');
+        }
+      }
+
+      // Actualizar el estado con los roles cargados
+      if (mounted) {
+        setState(() {
+          _userRolesMap = userRolesMap;
+        });
+      }
+
+      print(
+        '✅ Roles de usuarios cargados en segundo plano - Total usuarios: ${userRolesMap.length}',
+      );
+    } catch (e) {
+      print('💥 Error al cargar roles en segundo plano: $e');
+    }
+  }
+
+  // Método para actualizar roles de un usuario específico
+  Future<void> _actualizarRolesUsuarioEspecifico(String userId) async {
+    try {
+      print(
+        '🔄 Actualizando roles específicamente para usuario $userId desde servidor',
+      );
+      print(
+        '   • Roles actuales en memoria: ${_userRolesMap[userId]?.map((r) => r.nombre).join(", ") ?? "ninguno"}',
+      );
+
+      final roles = await _userService.getRolesByUserId(userId);
+      print(
+        '   • Roles obtenidos del servidor: ${roles.map((r) => r.nombre).join(", ")}',
+      );
+
+      // Solo actualizar si hay diferencias significativas
+      final rolesActualesEnMemoria = _userRolesMap[userId] ?? [];
+      final nombresMemoria = rolesActualesEnMemoria
+          .map((r) => r.nombre)
+          .toSet();
+      final nombresServidor = roles.map((r) => r.nombre).toSet();
+
+      if (nombresMemoria.toString() != nombresServidor.toString()) {
+        print('   • Se detectaron diferencias, actualizando en memoria');
+        setState(() {
+          _userRolesMap[userId] = roles;
+        });
+      } else {
+        print('   • No hay diferencias, manteniendo roles en memoria');
+      }
+
+      print(
+        '✅ Roles finales para usuario $userId: ${_userRolesMap[userId]?.map((r) => r.nombre).join(", ")}',
+      );
+    } catch (e) {
+      print('💥 Error al actualizar roles del usuario $userId: $e');
     }
   }
 
@@ -201,11 +283,18 @@ class _UsersScreenState extends State<UsersScreen> {
   }
 
   Widget _buildUserCard(User user) {
-    // Obtener nombres de roles actuales desde el backend, solo uno por usuario
-    final userRoleNames =
-        _userRolesMap[user.id]?.map((role) => role.nombre).toSet().toList() ??
-        [];
-    // Mostrar solo el primer rol si hay más de uno
+    // Obtener nombres de roles actuales desde el backend
+    final userRoles = _userRolesMap[user.id] ?? [];
+
+    // Ordenar los roles por fecha de actualización (más reciente primero)
+    userRoles.sort((a, b) {
+      final dateA = a.fechaActualizacion ?? DateTime(1970);
+      final dateB = b.fechaActualizacion ?? DateTime(1970);
+      return dateB.compareTo(dateA); // Orden descendente
+    });
+
+    // Obtener nombres únicos de roles y mostrar solo el más reciente
+    final userRoleNames = userRoles.map((role) => role.nombre).toSet().toList();
     final displayedRoles = userRoleNames.isNotEmpty
         ? [userRoleNames.first]
         : [];
@@ -567,13 +656,97 @@ class _UsersScreenState extends State<UsersScreen> {
       final relacionesActuales = await _userRoleService.getRolesByUser(
         user.id!,
       );
+      print('📋 Roles actuales encontrados: ${relacionesActuales.length}');
+
+      // ✅ NUEVA LÓGICA: Eliminar roles uno por uno y verificar cada eliminación
       for (final relacion in relacionesActuales) {
         if (relacion.id != null) {
-          await _userRoleService.deleteUserRole(relacion.id!);
+          print('🗑️ Eliminando rol ${relacion.id}');
+          final eliminado = await _userRoleService.deleteUserRole(relacion.id!);
+          print(
+            eliminado
+                ? '✅ Rol eliminado correctamente'
+                : '❌ Error al eliminar rol',
+          );
+
+          if (!eliminado) {
+            throw Exception('No se pudo eliminar el rol ${relacion.id}');
+          }
         }
       }
 
-      await _userRoleService.assignRoleToUser(user.id!, roleId);
+      // Esperar más tiempo para asegurar la sincronización con la base de datos
+      print('⏳ Esperando sincronización de la base de datos...');
+      await Future.delayed(Duration(milliseconds: 1500));
+
+      // Verificar que los roles fueron eliminados - intentar hasta 3 veces
+      int intentos = 0;
+      List<UserRole> verificacion;
+
+      do {
+        intentos++;
+        verificacion = await _userRoleService.getRolesByUser(user.id!);
+        print(
+          '🔍 Verificación post-eliminación (intento $intentos): ${verificacion.length} roles restantes',
+        );
+
+        if (verificacion.isNotEmpty && intentos < 3) {
+          print('⏳ Roles aún presentes, esperando más tiempo...');
+          await Future.delayed(Duration(milliseconds: 1000));
+        }
+      } while (verificacion.isNotEmpty && intentos < 3);
+
+      if (verificacion.isNotEmpty) {
+        print(
+          '⚠️ ADVERTENCIA: No se pudieron eliminar todos los roles después de 3 intentos',
+        );
+        print(
+          '   • Roles restantes: ${verificacion.map((r) => r.id ?? "sin-id").join(", ")}',
+        );
+        // Continuar de todas maneras para asignar el nuevo rol
+      }
+
+      print('➕ Asignando nuevo rol $roleId al usuario ${user.id}');
+      final resultado = await _userRoleService.assignRoleToUser(
+        user.id!,
+        roleId,
+      );
+      print('✅ Rol asignado, resultado: $resultado');
+
+      // Esperar para que se procese la asignación
+      await Future.delayed(Duration(milliseconds: 500));
+
+      // Verificar que el nuevo rol se asignó correctamente
+      final rolesFinales = await _userRoleService.getRolesByUser(user.id!);
+      print(
+        '🔍 Verificación post-asignación: ${rolesFinales.length} roles encontrados',
+      );
+
+      if (rolesFinales.length != 1) {
+        print(
+          '⚠️ PROBLEMA: Se esperaba 1 rol pero se encontraron ${rolesFinales.length}',
+        );
+        for (var r in rolesFinales) {
+          print('   • Rol encontrado: ${r.id}');
+        }
+      }
+
+      // Actualizar inmediatamente el mapa de roles en memoria
+      final nuevoRol = _roles.firstWhere(
+        (role) => role.id == roleId,
+        orElse: () {
+          print('❌ No se encontró el rol con ID $roleId en la lista de roles');
+          throw Exception('Rol no encontrado en la lista local');
+        },
+      );
+
+      setState(() {
+        _userRolesMap[user.id!] = [nuevoRol];
+      });
+
+      print(
+        '✅ Rol actualizado en memoria: ${nuevoRol.nombre} para usuario ${user.email}',
+      );
 
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -583,8 +756,11 @@ class _UsersScreenState extends State<UsersScreen> {
         ),
       );
 
-      // Recargar datos para mostrar los cambios
-      _cargarDatos();
+      // Esperar un momento antes de verificar desde el servidor
+      Future.delayed(Duration(milliseconds: 2000), () {
+        // Actualizar roles específico del usuario desde el servidor para confirmar
+        _actualizarRolesUsuarioEspecifico(user.id!);
+      });
     } catch (e) {
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(

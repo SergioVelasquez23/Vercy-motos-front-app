@@ -440,9 +440,8 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
 
     // Eliminado: No se requiere efectivo declarado
 
-    // Mostrar confirmación
-    final confirmar = await _mostrarDialogoConfirmacion();
-    if (!confirmar) return;
+    // ✅ ELIMINADO: Diálogo de confirmación no necesario
+    // Proceder directamente al cierre
 
     setState(() {
       _isLoading = true;
@@ -492,94 +491,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
     }
   }
 
-  Future<bool> _mostrarDialogoConfirmacion() async {
-    return await showDialog<bool>(
-          context: context,
-          barrierDismissible: false,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              backgroundColor: cardBg,
-              title: Text(
-                'Confirmar Cierre de Caja',
-                style: TextStyle(color: textDark),
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '¿Está seguro que desea cerrar la caja?',
-                    style: TextStyle(color: textDark),
-                  ),
-                  SizedBox(height: 16),
-                  Text(
-                    'Resumen:',
-                    style: TextStyle(
-                      color: textDark,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Text(
-                    'Fondo inicial: \$${(_cajaActual?.fondoInicial ?? 0).toStringAsFixed(0)}',
-                    style: TextStyle(color: textLight),
-                  ),
-                  Text(
-                    'Monto inicial: ${formatCurrency(_cajaActual?.fondoInicial ?? 0)}',
-                    style: TextStyle(color: textLight),
-                  ),
-                  Text(
-                    'Ventas en efectivo: \$${_ventasEfectivo.toStringAsFixed(0)}',
-                    style: TextStyle(color: textLight),
-                  ),
-                  // Mostrar transferencias (siempre)
-                  Text(
-                    'Ventas en transferencias: \$${_transferenciasEsperadas.toStringAsFixed(0)}',
-                    style: TextStyle(
-                      color: _transferenciasEsperadas > 0
-                          ? textLight
-                          : Colors.grey,
-                    ),
-                  ),
-                  // Eliminado: No mostrar ventas a domicilio
-                  if (_totalGastos > 0)
-                    Text(
-                      'Total gastos: \$${_totalGastos.toStringAsFixed(0)}',
-                      style: TextStyle(color: Colors.red[300]),
-                    ),
-                  Divider(color: Colors.grey.withOpacity(0.3)),
-                  Text(
-                    'Cálculo: ${(_cajaActual?.fondoInicial ?? 0).toStringAsFixed(0)} + ${_ventasEfectivo.toStringAsFixed(0)} - ${_totalGastos.toStringAsFixed(0)}',
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                  Text(
-                    'Total esperado en caja: \$${((_cajaActual?.fondoInicial ?? 0) + _efectivoEsperado).toStringAsFixed(0)}',
-                    style: TextStyle(
-                      color: Colors.blue,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  // Eliminado: No mostrar efectivo declarado ni diferencia
-                ],
-              ),
-              actions: [
-                TextButton(
-                  child: Text('Cancelar', style: TextStyle(color: textLight)),
-                  onPressed: () => Navigator.of(context).pop(false),
-                ),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: primary),
-                  child: Text(
-                    'Cerrar Caja',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                  onPressed: () => Navigator.of(context).pop(true),
-                ),
-              ],
-            );
-          },
-        ) ??
-        false;
-  }
+  // ✅ ELIMINADO: Función de diálogo de confirmación no necesaria
 
   void _mostrarError(String mensaje) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -1227,6 +1139,33 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
                 formatCurrency(ventas.ventasPorFormaPago['mixto'] ?? 0),
                 valueColor: Colors.purple,
               ),
+
+            // Display Ingresos Caja
+            Divider(color: Colors.grey.withOpacity(0.3), height: 24),
+            Text(
+              'Ingresos Adicionales:',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Colors.white70,
+              ),
+            ),
+            SizedBox(height: 8),
+            _buildInfoRow(
+              'Ingresos Efectivo:',
+              formatCurrency(
+                _resumenCompletoData?.movimientosEfectivo.ingresosEfectivo ?? 0,
+              ),
+              valueColor: Colors.amber,
+            ),
+            _buildInfoRow(
+              'Total Ingresos Caja:',
+              formatCurrency(
+                _resumenCompletoData?.movimientosEfectivo.totalIngresosCaja ??
+                    0,
+              ),
+              valueColor: Colors.amber,
+            ),
 
             // Add quantity info by payment method
             Divider(color: Colors.grey.withOpacity(0.3), height: 24),

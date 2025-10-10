@@ -144,24 +144,25 @@ class _ResumenCierreDetalladoScreenState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildCuadreInfo(),
-          SizedBox(height: 20),
-          _buildResumenFinal(),
-          SizedBox(height: 20),
-          _buildMovimientosEfectivo(),
-          SizedBox(height: 20),
-          _buildIngresosCaja(),
-          SizedBox(height: 20),
-          _buildResumenVentas(),
-          SizedBox(height: 20),
+          // Primera fila: 2 cards por fila
+          _buildGridRow([_buildCuadreInfo(), _buildResumenFinal()]),
+          SizedBox(height: 16),
+
+          // Segunda fila: 2 cards por fila
+          _buildGridRow([_buildMovimientosEfectivo(), _buildIngresosCaja()]),
+          SizedBox(height: 16),
+
+          // Tercera fila: 2 cards por fila
+          _buildGridRow([_buildResumenVentas(), _buildResumenGastos()]),
+          SizedBox(height: 16),
+
+          // Resto de secciones que ocupan todo el ancho (detallados o más complejos)
           _buildDetallesPedidos(),
-          SizedBox(height: 20),
+          SizedBox(height: 16),
           _buildResumenCompras(),
-          SizedBox(height: 20),
-          _buildResumenGastos(),
-          SizedBox(height: 20),
+          SizedBox(height: 16),
           _buildResumenFinalConsolidado(),
-          SizedBox(height: 20),
+          SizedBox(height: 16),
         ],
       ),
     );
@@ -169,23 +170,23 @@ class _ResumenCierreDetalladoScreenState
 
   Widget _buildSectionTitle(String title, IconData icon) {
     return Container(
-      margin: EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 8), // Reduced margin
       child: Row(
         children: [
           Container(
-            padding: EdgeInsets.all(8),
+            padding: EdgeInsets.all(6), // Reduced padding
             decoration: BoxDecoration(
               color: primary.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(6), // Reduced radius
             ),
-            child: Icon(icon, color: primary, size: 20),
+            child: Icon(icon, color: primary, size: 16), // Smaller icon
           ),
-          SizedBox(width: 12),
+          SizedBox(width: 8), // Reduced spacing
           Text(
             title,
             style: TextStyle(
               color: textDark,
-              fontSize: 18,
+              fontSize: 15, // Smaller font size
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -213,18 +214,40 @@ class _ResumenCierreDetalladoScreenState
     );
   }
 
+  Widget _buildGridRow(List<Widget> children) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: children
+          .map(
+            (child) => Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                child: child,
+              ),
+            ),
+          )
+          .toList(),
+    );
+  }
+
   Widget _buildInfoRow(String label, String value, {Color? valueColor}) {
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: 4),
+      padding: EdgeInsets.symmetric(vertical: 2), // Reduced vertical padding
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(color: textLight, fontSize: 14)),
+          Text(
+            label,
+            style: TextStyle(
+              color: textLight,
+              fontSize: 13,
+            ), // Reduced font size
+          ),
           Text(
             value,
             style: TextStyle(
               color: valueColor ?? textDark,
-              fontSize: 14,
+              fontSize: 13, // Reduced font size
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -241,34 +264,77 @@ class _ResumenCierreDetalladoScreenState
         _buildSectionTitle('Información del Cuadre', Icons.info),
         _buildCard(
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildInfoRow('Nombre', info.nombre),
-              _buildInfoRow('Responsable', info.responsable),
-              _buildInfoRow(
-                'Estado',
-                info.estado,
-                valueColor: info.estado == 'pendiente'
-                    ? Colors.orange
-                    : Colors.green,
+              Row(
+                children: [
+                  // Primera columna
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildInfoRow('Nombre', info.nombre),
+                        _buildInfoRow('Responsable', info.responsable),
+                        _buildInfoRow(
+                          'Estado',
+                          info.estado,
+                          valueColor: info.estado == 'pendiente'
+                              ? Colors.orange
+                              : Colors.green,
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Segunda columna
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildInfoRow(
+                          'Fecha Apertura',
+                          _formatDate(info.fechaApertura),
+                        ),
+                        if (info.fechaCierre != null)
+                          _buildInfoRow(
+                            'Fecha Cierre',
+                            _formatDate(info.fechaCierre!),
+                          )
+                        else
+                          _buildInfoRow('Fecha Cierre', '-'),
+                        _buildInfoRow(
+                          'Fondo Inicial',
+                          formatCurrency(info.fondoInicial),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              _buildInfoRow('Fecha Apertura', _formatDate(info.fechaApertura)),
-              if (info.fechaCierre != null)
-                _buildInfoRow('Fecha Cierre', _formatDate(info.fechaCierre!)),
-              _buildInfoRow('Fondo Inicial', formatCurrency(info.fondoInicial)),
               if (info.fondoInicialDesglosado.isNotEmpty) ...[
-                SizedBox(height: 8),
+                Divider(height: 16, color: textLight.withOpacity(0.2)),
                 Text(
                   'Desglose Fondo Inicial:',
                   style: TextStyle(
                     color: textDark,
                     fontWeight: FontWeight.w500,
+                    fontSize: 13,
                   ),
                 ),
-                ...info.fondoInicialDesglosado.entries.map(
-                  (entry) => _buildInfoRow(
-                    '  ${entry.key}',
-                    formatCurrency(entry.value),
-                  ),
+                SizedBox(height: 4),
+                Wrap(
+                  spacing: 16,
+                  runSpacing: 2,
+                  children: info.fondoInicialDesglosado.entries
+                      .map(
+                        (entry) => SizedBox(
+                          width: 120, // Fixed width for each entry
+                          child: _buildInfoRow(
+                            '${entry.key}',
+                            formatCurrency(entry.value),
+                          ),
+                        ),
+                      )
+                      .toList(),
                 ),
               ],
             ],
@@ -286,48 +352,86 @@ class _ResumenCierreDetalladoScreenState
         _buildSectionTitle('Resumen Final', Icons.assessment),
         _buildCard(
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildInfoRow(
-                'Fondo Inicial',
-                formatCurrency(resumen.fondoInicial),
+              // Información principal
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Primera columna
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildInfoRow(
+                          'Fondo Inicial',
+                          formatCurrency(resumen.fondoInicial),
+                        ),
+                        _buildInfoRow(
+                          'Efectivo Esperado',
+                          formatCurrency(resumen.efectivoEsperado),
+                        ),
+                        _buildInfoRow(
+                          'Total Ventas',
+                          formatCurrency(resumen.totalVentas),
+                        ),
+                        _buildInfoRow(
+                          'Ventas Efectivo',
+                          formatCurrency(resumen.ventasEfectivo),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Segunda columna
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildInfoRow(
+                          'Total Gastos',
+                          formatCurrency(resumen.totalGastos),
+                        ),
+                        _buildInfoRow(
+                          'Gastos Efectivo',
+                          formatCurrency(resumen.gastosEfectivo),
+                        ),
+                        _buildInfoRow(
+                          'Total Compras',
+                          formatCurrency(resumen.totalCompras),
+                        ),
+                        _buildInfoRow(
+                          'Compras Efectivo',
+                          formatCurrency(resumen.comprasEfectivo),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              _buildInfoRow(
-                'Efectivo Esperado',
-                formatCurrency(resumen.efectivoEsperado),
+
+              Divider(height: 16, color: textLight.withOpacity(0.3)),
+
+              // Totales finales
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildInfoRow(
+                      'Gastos Directos',
+                      formatCurrency(resumen.gastosDirectos),
+                    ),
+                  ),
+                  Expanded(
+                    child: _buildInfoRow(
+                      'Fact. desde Caja',
+                      formatCurrency(resumen.facturasPagadasDesdeCaja),
+                    ),
+                  ),
+                ],
               ),
-              _buildInfoRow(
-                'Total Ventas',
-                formatCurrency(resumen.totalVentas),
-              ),
-              _buildInfoRow(
-                'Ventas en Efectivo',
-                formatCurrency(resumen.ventasEfectivo),
-              ),
-              _buildInfoRow(
-                'Total Gastos',
-                formatCurrency(resumen.totalGastos),
-              ),
-              _buildInfoRow(
-                'Gastos en Efectivo',
-                formatCurrency(resumen.gastosEfectivo),
-              ),
-              _buildInfoRow(
-                'Gastos Directos',
-                formatCurrency(resumen.gastosDirectos),
-              ),
-              _buildInfoRow(
-                'Total Compras',
-                formatCurrency(resumen.totalCompras),
-              ),
-              _buildInfoRow(
-                'Compras en Efectivo',
-                formatCurrency(resumen.comprasEfectivo),
-              ),
-              _buildInfoRow(
-                'Facturas Pagadas desde Caja',
-                formatCurrency(resumen.facturasPagadasDesdeCaja),
-              ),
-              Divider(color: textLight.withOpacity(0.3)),
+
+              Divider(height: 16, color: textLight.withOpacity(0.3)),
+
+              // Utilidad bruta con estilo destacado
               _buildInfoRow(
                 'Utilidad Bruta',
                 formatCurrency(resumen.utilidadBruta),
@@ -350,75 +454,138 @@ class _ResumenCierreDetalladoScreenState
         _buildSectionTitle('Movimientos de Efectivo', Icons.attach_money),
         _buildCard(
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildInfoRow(
-                'Fondo Inicial',
-                formatCurrency(movimientos.fondoInicial),
+              // Primera fila con información principal
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildInfoRow(
+                          'Fondo Inicial',
+                          formatCurrency(movimientos.fondoInicial),
+                        ),
+                        _buildInfoRow(
+                          'Efectivo Esperado',
+                          formatCurrency(movimientos.efectivoEsperado),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildInfoRow(
+                          'Total Ingresos',
+                          formatCurrency(movimientos.totalIngresosCaja),
+                        ),
+                        _buildInfoRow(
+                          'Transf. Esperada',
+                          formatCurrency(movimientos.transferenciaEsperada),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              _buildInfoRow(
-                'Efectivo Esperado',
-                formatCurrency(movimientos.efectivoEsperado),
-              ),
-              _buildInfoRow(
-                'Total Ingresos Caja',
-                formatCurrency(movimientos.totalIngresosCaja),
-              ),
-              SizedBox(height: 8),
-              Text(
-                'Ingresos:',
-                style: TextStyle(color: textDark, fontWeight: FontWeight.w500),
-              ),
-              _buildInfoRow(
-                '  Efectivo',
-                formatCurrency(movimientos.ingresosEfectivo),
-              ),
-              _buildInfoRow(
-                '  Transferencia',
-                formatCurrency(movimientos.ingresosTransferencia),
-              ),
-              SizedBox(height: 8),
-              Text(
-                'Ventas:',
-                style: TextStyle(color: textDark, fontWeight: FontWeight.w500),
-              ),
-              _buildInfoRow(
-                '  Efectivo',
-                formatCurrency(movimientos.ventasEfectivo),
-              ),
-              _buildInfoRow(
-                '  Transferencia',
-                formatCurrency(movimientos.ventasTransferencia),
-              ),
-              SizedBox(height: 8),
-              Text(
-                'Gastos:',
-                style: TextStyle(color: textDark, fontWeight: FontWeight.w500),
-              ),
-              _buildInfoRow(
-                '  Efectivo',
-                formatCurrency(movimientos.gastosEfectivo),
-              ),
-              _buildInfoRow(
-                '  Transferencia',
-                formatCurrency(movimientos.gastosTransferencia),
-              ),
-              SizedBox(height: 8),
-              Text(
-                'Compras:',
-                style: TextStyle(color: textDark, fontWeight: FontWeight.w500),
-              ),
-              _buildInfoRow(
-                '  Efectivo',
-                formatCurrency(movimientos.comprasEfectivo),
-              ),
-              _buildInfoRow(
-                '  Transferencia',
-                formatCurrency(movimientos.comprasTransferencia),
-              ),
-              Divider(color: textLight.withOpacity(0.3)),
-              _buildInfoRow(
-                'Transferencia Esperada',
-                formatCurrency(movimientos.transferenciaEsperada),
+
+              Divider(height: 16, color: textLight.withOpacity(0.2)),
+
+              // Secciones detalladas en una cuadrícula
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Primera columna: Ingresos y Ventas
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Ingresos:',
+                          style: TextStyle(
+                            color: textDark,
+                            fontWeight: FontWeight.w500,
+                            fontSize: 13,
+                          ),
+                        ),
+                        _buildInfoRow(
+                          'Efectivo',
+                          formatCurrency(movimientos.ingresosEfectivo),
+                        ),
+                        _buildInfoRow(
+                          'Transferencia',
+                          formatCurrency(movimientos.ingresosTransferencia),
+                        ),
+
+                        SizedBox(height: 8),
+
+                        Text(
+                          'Ventas:',
+                          style: TextStyle(
+                            color: textDark,
+                            fontWeight: FontWeight.w500,
+                            fontSize: 13,
+                          ),
+                        ),
+                        _buildInfoRow(
+                          'Efectivo',
+                          formatCurrency(movimientos.ventasEfectivo),
+                        ),
+                        _buildInfoRow(
+                          'Transferencia',
+                          formatCurrency(movimientos.ventasTransferencia),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Segunda columna: Gastos y Compras
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Gastos:',
+                          style: TextStyle(
+                            color: textDark,
+                            fontWeight: FontWeight.w500,
+                            fontSize: 13,
+                          ),
+                        ),
+                        _buildInfoRow(
+                          'Efectivo',
+                          formatCurrency(movimientos.gastosEfectivo),
+                        ),
+                        _buildInfoRow(
+                          'Transferencia',
+                          formatCurrency(movimientos.gastosTransferencia),
+                        ),
+
+                        SizedBox(height: 8),
+
+                        Text(
+                          'Compras:',
+                          style: TextStyle(
+                            color: textDark,
+                            fontWeight: FontWeight.w500,
+                            fontSize: 13,
+                          ),
+                        ),
+                        _buildInfoRow(
+                          'Efectivo',
+                          formatCurrency(movimientos.comprasEfectivo),
+                        ),
+                        _buildInfoRow(
+                          'Transferencia',
+                          formatCurrency(movimientos.comprasTransferencia),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -435,37 +602,76 @@ class _ResumenCierreDetalladoScreenState
         _buildSectionTitle('Resumen de Ventas', Icons.shopping_cart),
         _buildCard(
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildInfoRow('Total Pedidos', ventas.totalPedidos.toString()),
-              _buildInfoRow('Total Ventas', formatCurrency(ventas.totalVentas)),
+              // Información principal en dos columnas
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildInfoRow(
+                      'Total Pedidos',
+                      ventas.totalPedidos.toString(),
+                    ),
+                  ),
+                  Expanded(
+                    child: _buildInfoRow(
+                      'Total Ventas',
+                      formatCurrency(ventas.totalVentas),
+                    ),
+                  ),
+                ],
+              ),
+
               if (ventas.ventasPorFormaPago.isNotEmpty) ...[
-                SizedBox(height: 8),
-                Text(
-                  'Ventas por Forma de Pago:',
-                  style: TextStyle(
-                    color: textDark,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                ...ventas.ventasPorFormaPago.entries.map(
-                  (entry) => _buildInfoRow(
-                    '  ${entry.key}',
-                    formatCurrency(entry.value),
-                  ),
-                ),
-              ],
-              if (ventas.cantidadPorFormaPago.isNotEmpty) ...[
-                SizedBox(height: 8),
-                Text(
-                  'Cantidad por Forma de Pago:',
-                  style: TextStyle(
-                    color: textDark,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                ...ventas.cantidadPorFormaPago.entries.map(
-                  (entry) =>
-                      _buildInfoRow('  ${entry.key}', entry.value.toString()),
+                Divider(height: 16, color: textLight.withOpacity(0.2)),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Ventas por Forma de Pago:',
+                            style: TextStyle(
+                              color: textDark,
+                              fontWeight: FontWeight.w500,
+                              fontSize: 13,
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          ...ventas.ventasPorFormaPago.entries.map(
+                            (entry) => _buildInfoRow(
+                              entry.key,
+                              formatCurrency(entry.value),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (ventas.cantidadPorFormaPago.isNotEmpty)
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Cantidad por Forma de Pago:',
+                              style: TextStyle(
+                                color: textDark,
+                                fontWeight: FontWeight.w500,
+                                fontSize: 13,
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            ...ventas.cantidadPorFormaPago.entries.map(
+                              (entry) => _buildInfoRow(
+                                entry.key,
+                                entry.value.toString(),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
                 ),
               ],
             ],
@@ -635,23 +841,52 @@ class _ResumenCierreDetalladoScreenState
         _buildSectionTitle('Resumen de Gastos', Icons.money_off),
         _buildCard(
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildInfoRow('Total Gastos', formatCurrency(gastos.totalGastos)),
-              _buildInfoRow(
-                'Total Registros',
-                gastos.totalRegistros.toString(),
+              // Primera fila
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildInfoRow(
+                      'Total Gastos',
+                      formatCurrency(gastos.totalGastos),
+                    ),
+                  ),
+                  Expanded(
+                    child: _buildInfoRow(
+                      'Total Registros',
+                      gastos.totalRegistros.toString(),
+                    ),
+                  ),
+                ],
               ),
+
+              Divider(height: 16, color: textLight.withOpacity(0.2)),
+
+              // Segunda fila
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildInfoRow(
+                      'Gastos Desde Caja',
+                      formatCurrency(gastos.totalGastosDesdeCaja),
+                    ),
+                  ),
+                  Expanded(
+                    child: _buildInfoRow(
+                      'Fact. desde Caja',
+                      formatCurrency(gastos.facturasPagadasDesdeCaja),
+                    ),
+                  ),
+                ],
+              ),
+
+              // Total incluyendo facturas
+              Divider(height: 16, color: textLight.withOpacity(0.2)),
               _buildInfoRow(
-                'Total Gastos (incluyendo facturas)',
+                'Total (con facturas)',
                 formatCurrency(gastos.totalGastosIncluyendoFacturas),
-              ),
-              _buildInfoRow(
-                'Total Gastos desde Caja',
-                formatCurrency(gastos.totalGastosDesdeCaja),
-              ),
-              _buildInfoRow(
-                'Facturas Pagadas desde Caja',
-                formatCurrency(gastos.facturasPagadasDesdeCaja),
+                valueColor: Colors.red,
               ),
               if (gastos.gastosPorTipo.isNotEmpty) ...[
                 SizedBox(height: 8),
@@ -795,35 +1030,68 @@ class _ResumenCierreDetalladoScreenState
         _buildSectionTitle('Ingresos de Caja', Icons.account_balance_wallet),
         _buildCard(
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildInfoRow(
-                'Total Ingresos',
-                formatCurrency(movimientos.totalIngresosCaja),
-                valueColor: Colors.green,
+              // Información principal
+              Row(
+                children: [
+                  Expanded(
+                    flex: 2,
+                    child: _buildInfoRow(
+                      'Total Ingresos',
+                      formatCurrency(movimientos.totalIngresosCaja),
+                      valueColor: Colors.green,
+                    ),
+                  ),
+                ],
               ),
-              _buildInfoRow(
-                'Ingresos en Efectivo',
-                formatCurrency(movimientos.ingresosEfectivo),
+
+              Divider(height: 16, color: textLight.withOpacity(0.2)),
+
+              // Detalle de ingresos
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildInfoRow(
+                      'Efectivo',
+                      formatCurrency(movimientos.ingresosEfectivo),
+                    ),
+                  ),
+                  Expanded(
+                    child: _buildInfoRow(
+                      'Transferencia',
+                      formatCurrency(movimientos.ingresosTransferencia),
+                    ),
+                  ),
+                ],
               ),
-              _buildInfoRow(
-                'Ingresos por Transferencia',
-                formatCurrency(movimientos.ingresosTransferencia),
-              ),
+
               if (movimientos.ingresosPorFormaPago.isNotEmpty) ...[
-                SizedBox(height: 8),
+                Divider(height: 16, color: textLight.withOpacity(0.2)),
                 Text(
                   'Ingresos por Forma de Pago:',
                   style: TextStyle(
                     color: textDark,
                     fontWeight: FontWeight.w500,
+                    fontSize: 13,
                   ),
                 ),
-                ...movimientos.ingresosPorFormaPago.entries.map(
-                  (entry) => _buildInfoRow(
-                    '  ${entry.key}',
-                    formatCurrency(entry.value),
-                    valueColor: Colors.green,
-                  ),
+                SizedBox(height: 4),
+                Wrap(
+                  spacing: 16,
+                  runSpacing: 4,
+                  children: movimientos.ingresosPorFormaPago.entries
+                      .map(
+                        (entry) => SizedBox(
+                          width: 120, // Fixed width for each entry
+                          child: _buildInfoRow(
+                            entry.key,
+                            formatCurrency(entry.value),
+                            valueColor: Colors.green,
+                          ),
+                        ),
+                      )
+                      .toList(),
                 ),
               ],
             ],

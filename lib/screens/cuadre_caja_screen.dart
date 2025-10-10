@@ -46,6 +46,8 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
       TextEditingController();
   final TextEditingController _montoTransferenciasController =
       TextEditingController();
+  final TextEditingController _ingresoEfectivoController =
+      TextEditingController();
   final TextEditingController _notasController = TextEditingController();
 
   // Variables para el estado
@@ -59,10 +61,6 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
   List<CuadreCaja> _cuadresCaja = [];
   List<String> _usuariosDisponibles = [];
   CuadreCaja? _cuadreActual;
-
-  // ✅ NUEVO: Cache para precarga de datos de cierre
-  final Map<String, dynamic> _cacheResumenCierre = {};
-  bool _precargandoDatos = false;
 
   // Services
   final CuadreCajaService _cuadreCajaService = CuadreCajaService();
@@ -79,8 +77,8 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
     super.initState();
     _loadCuadresCaja();
     _loadUsuariosDisponibles();
-    // ✅ OPTIMIZACIÓN: Precargar datos en paralelo
-    _precargarDatosCierre();
+    // Inicializar el controller de ingreso efectivo
+    _ingresoEfectivoController.text = _totalIngresos.toStringAsFixed(2);
   }
 
   @override
@@ -91,6 +89,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
     _montoAperturaController.dispose();
     _montoEfectivoController.dispose();
     _montoTransferenciasController.dispose();
+    _ingresoEfectivoController.dispose();
     _notasController.dispose();
     super.dispose();
   }
@@ -126,9 +125,6 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
         if (_cuadreActual != null && _cuadreActual!.id != null) {
           _cargarIngresosReales(_cuadreActual!.id!);
         }
-
-        // ✅ OPTIMIZACIÓN: Precargar datos en paralelo
-        _precargarDatosCierre();
       });
     } catch (e) {
       setState(() {
@@ -153,6 +149,10 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
         // También actualizar los controladores para mostrar los valores reales
         _montoEfectivoController.text = resumen
             .movimientosEfectivo
+            .ventasEfectivo
+            .toStringAsFixed(2);
+        _ingresoEfectivoController.text = resumen
+            .movimientosEfectivo
             .ingresosEfectivo
             .toStringAsFixed(2);
         _montoTransferenciasController.text = '0.00'; // Por ahora solo efectivo
@@ -161,52 +161,6 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
       // Ingresos reales cargados silenciosamente
     } catch (e) {
       // Error al cargar ingresos reales - usar valores por defecto silenciosamente
-    }
-  }
-
-  // ✅ NUEVO: Precarga de datos de cierre para optimizar velocidad
-  Future<void> _precargarDatosCierre() async {
-    if (_precargandoDatos) return;
-
-    _precargandoDatos = true;
-
-    try {
-      // Precargar datos de los últimos 3 cuadres en paralelo para acelerar navegación
-      final futures = <Future<void>>[];
-
-      for (int i = 0; i < _cuadresCaja.length && i < 3; i++) {
-        final cuadre = _cuadresCaja[i];
-        if (cuadre.id != null && !_cacheResumenCierre.containsKey(cuadre.id)) {
-          futures.add(_precargarResumenIndividual(cuadre.id!));
-        }
-      }
-
-      if (futures.isNotEmpty) {
-        await Future.wait(futures);
-      }
-    } catch (e) {
-      // Error en precarga - no afecta funcionalidad principal
-      print('⚠️ Error en precarga de datos: $e');
-    } finally {
-      _precargandoDatos = false;
-    }
-  }
-
-  Future<void> _precargarResumenIndividual(String cuadreId) async {
-    try {
-      final resumen = await _resumenCierreService
-          .getResumenCierre(cuadreId)
-          .timeout(
-            Duration(seconds: 15),
-            onTimeout: () {
-              throw Exception('Timeout en precarga de resumen');
-            },
-          );
-      _cacheResumenCierre[cuadreId] = resumen;
-      print('✅ Resumen precargado para cuadre: $cuadreId');
-    } catch (e) {
-      // Error individual no interrumpe precarga de otros
-      print('⚠️ Error precargando resumen para cuadre $cuadreId: $e');
     }
   }
 
@@ -326,12 +280,13 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
   }
 
   void _actualizarTotales() {
-    double efectivo = double.tryParse(_montoEfectivoController.text) ?? 0;
-    double transferencias =
-        double.tryParse(_montoTransferenciasController.text) ?? 0;
+    // Esta función ya no modifica _totalIngresos para preservar
+    // el valor de ingresosEfectivo que viene del backend
 
+    // Si necesitamos actualizar otros totales en el futuro,
+    // podemos hacerlo aquí
     setState(() {
-      _totalIngresos = efectivo + transferencias;
+      // Solo actualizamos la UI
     });
   }
 
@@ -446,16 +401,12 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
       return;
     }
 
-    // ✅ OPTIMIZACIÓN: Pasar datos precargados si están disponibles
-    final datosCache = _cacheResumenCierre[cuadre.id!];
-
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => ResumenCierreDetalladoScreen(
           cuadreId: cuadre.id!,
           nombreCuadre: cuadre.nombre,
-          datosPrecargados: datosCache, // Pasar datos en cache
         ),
       ),
     );
@@ -1474,6 +1425,64 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                             ),
                           ],
                         ),
+                        // Fila para ingreso efectivo
+                        TableRow(
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Text("Ingreso Efectivo"),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: TextFormField(
+                                controller: _ingresoEfectivoController,
+                                keyboardType: TextInputType.number,
+                                decoration: InputDecoration(
+                                  isDense: true,
+                                  contentPadding: EdgeInsets.symmetric(
+                                    vertical: 8,
+                                    horizontal: 8,
+                                  ),
+                                  border: OutlineInputBorder(),
+                                ),
+                                onChanged: (value) {
+                                  setState(() {
+                                    _totalIngresos =
+                                        double.tryParse(value) ?? 0.0;
+                                  });
+                                },
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.all(4.0),
+                              child: IconButton(
+                                icon: Icon(
+                                  Icons.info_outline,
+                                  color: Colors.blue,
+                                  size: 20,
+                                ),
+                                onPressed: () {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        'Total de ingresos de efectivo registrados en el sistema.',
+                                        style: TextStyle(color: Colors.white),
+                                      ),
+                                      backgroundColor: Colors.blue,
+                                    ),
+                                  );
+                                },
+                                tooltip: 'Información sobre ingresos',
+                                style: IconButton.styleFrom(
+                                  backgroundColor: Colors.blue.withOpacity(0.1),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                         TableRow(
                           children: [
                             Padding(
@@ -1634,15 +1643,12 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                                 ),
                                 margin: EdgeInsets.only(bottom: 8),
                                 decoration: BoxDecoration(
-                                  color:
-                                      (tieneError ? Colors.red : Colors.orange)
-                                          .withOpacity(0.2),
+                                  color: (tieneError ? Colors.red : Colors.blue)
+                                      .withOpacity(0.2),
                                   borderRadius: BorderRadius.circular(8),
                                   border: Border.all(
                                     color:
-                                        (tieneError
-                                                ? Colors.red
-                                                : Colors.orange)
+                                        (tieneError ? Colors.red : Colors.blue)
                                             .withOpacity(0.3),
                                   ),
                                 ),
@@ -1654,7 +1660,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                                       size: 16,
                                       color: tieneError
                                           ? Colors.red
-                                          : Colors.orange,
+                                          : Colors.blue,
                                     ),
                                     SizedBox(width: 4),
                                     Text(
@@ -1665,7 +1671,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                                         fontSize: 12,
                                         color: tieneError
                                             ? Colors.red
-                                            : Colors.orange,
+                                            : Colors.blue,
                                         fontWeight: FontWeight.w500,
                                       ),
                                     ),

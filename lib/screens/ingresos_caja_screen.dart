@@ -12,7 +12,15 @@ class IngresosCajaScreen extends StatefulWidget {
 class _IngresosCajaScreenState extends State<IngresosCajaScreen> {
   final IngresoCajaService _service = IngresoCajaService();
   List<IngresoCaja> _ingresos = [];
+  List<IngresoCaja> _ingresosFiltrados = [];
   bool _loading = true;
+
+  // Filtros
+  final TextEditingController _searchController = TextEditingController();
+  DateTime? _fechaInicio;
+  DateTime? _fechaFin;
+  String _cuadreCajaId = ''; // Corregido de _cuadreId a _cuadreCajaId
+  bool _mostrarFiltros = false;
 
   // Colores estilo GastosScreen
   final Color primary = Color(0xFFFF6B00); // Naranja fuego
@@ -25,18 +33,108 @@ class _IngresosCajaScreenState extends State<IngresosCajaScreen> {
   void initState() {
     super.initState();
     _cargarIngresos();
+    _searchController.addListener(_filtrarIngresos);
   }
 
   Future<void> _cargarIngresos() async {
     setState(() => _loading = true);
     try {
       _ingresos = await _service.obtenerTodos();
+      _filtrarIngresos(); // Aplicar filtros al cargar
     } catch (e) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Error al cargar ingresos: $e')));
     }
     setState(() => _loading = false);
+  }
+
+  @override
+  void dispose() {
+    _searchController.removeListener(_filtrarIngresos);
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _filtrarIngresos() {
+    final String busqueda = _searchController.text.toLowerCase();
+
+    setState(() {
+      _ingresosFiltrados = _ingresos.where((ingreso) {
+        // Filtro por texto (concepto, responsable, observaciones)
+        final bool coincideTexto =
+            busqueda.isEmpty ||
+            ingreso.concepto.toLowerCase().contains(busqueda) ||
+            ingreso.responsable.toLowerCase().contains(busqueda) ||
+            ingreso.observaciones.toLowerCase().contains(busqueda) ||
+            ingreso.formaPago.toLowerCase().contains(busqueda) ||
+            ingreso.monto.toString().contains(busqueda);
+
+        // Filtro por fecha
+        final bool coincideFecha =
+            (_fechaInicio == null ||
+                !ingreso.fechaIngreso.isBefore(_fechaInicio!)) &&
+            (_fechaFin == null ||
+                !ingreso.fechaIngreso.isAfter(
+                  _fechaFin!.add(Duration(days: 1)),
+                ));
+
+        // Filtro por ID de cuadre
+        final bool coincideCuadre =
+            _cuadreCajaId.isEmpty ||
+            (ingreso.cuadreCajaId != null &&
+                ingreso.cuadreCajaId!.contains(_cuadreCajaId));
+
+        return coincideTexto && coincideFecha && coincideCuadre;
+      }).toList();
+    });
+  }
+
+  // Método para seleccionar fechas
+  Future<void> _seleccionarFecha(bool esInicio) async {
+    final DateTime? fechaSeleccionada = await showDatePicker(
+      context: context,
+      initialDate: esInicio
+          ? (_fechaInicio ?? DateTime.now())
+          : (_fechaFin ?? DateTime.now()),
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(Duration(days: 365)),
+      builder: (context, child) {
+        return Theme(
+          data: ThemeData.dark().copyWith(
+            colorScheme: ColorScheme.dark(
+              primary: primary,
+              onPrimary: Colors.white,
+              surface: cardBg,
+              onSurface: textDark,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (fechaSeleccionada != null) {
+      setState(() {
+        if (esInicio) {
+          _fechaInicio = fechaSeleccionada;
+        } else {
+          _fechaFin = fechaSeleccionada;
+        }
+      });
+      _filtrarIngresos();
+    }
+  }
+
+  // Método para limpiar los filtros
+  void _limpiarFiltros() {
+    setState(() {
+      _searchController.clear();
+      _fechaInicio = null;
+      _fechaFin = null;
+      _cuadreCajaId = '';
+    });
+    _filtrarIngresos();
   }
 
   void _mostrarDialogoNuevoIngreso() async {
@@ -82,72 +180,236 @@ class _IngresosCajaScreenState extends State<IngresosCajaScreen> {
       ),
       body: _loading
           ? Center(child: CircularProgressIndicator(color: primary))
-          : RefreshIndicator(
-              onRefresh: _cargarIngresos,
-              child: _ingresos.isEmpty
-                  ? Center(
-                      child: Text(
-                        'No hay ingresos registrados',
-                        style: TextStyle(color: textLight, fontSize: 16),
-                      ),
-                    )
-                  : ListView.builder(
-                      padding: EdgeInsets.all(16),
-                      itemCount: _ingresos.length,
-                      itemBuilder: (context, i) {
-                        final ingreso = _ingresos[i];
-                        return Card(
-                          color: cardBg,
-                          margin: EdgeInsets.only(bottom: 12),
-                          child: ListTile(
-                            title: Text(
-                              ingreso.concepto,
-                              style: TextStyle(
-                                color: textDark,
-                                fontWeight: FontWeight.bold,
-                              ),
+          : Column(
+              children: [
+                // Barra de búsqueda
+                Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      TextField(
+                        controller: _searchController,
+                        decoration: InputDecoration(
+                          hintText:
+                              'Buscar por concepto, monto, responsable...',
+                          hintStyle: TextStyle(color: textLight),
+                          prefixIcon: Icon(Icons.search, color: primary),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _mostrarFiltros
+                                  ? Icons.filter_list_off
+                                  : Icons.filter_list,
+                              color: primary,
                             ),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Monto: ${ingreso.monto} | Forma: ${ingreso.formaPago}',
-                                  style: TextStyle(color: textLight),
-                                ),
-                                Text(
-                                  'Fecha: ${ingreso.fechaIngreso.toLocal()}',
-                                  style: TextStyle(
-                                    color: textLight,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                                if (ingreso.responsable.isNotEmpty)
-                                  Text(
-                                    'Responsable: ${ingreso.responsable}',
-                                    style: TextStyle(
-                                      color: textLight,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                if (ingreso.observaciones.isNotEmpty)
-                                  Text(
-                                    'Obs: ${ingreso.observaciones}',
-                                    style: TextStyle(
-                                      color: Colors.orange,
-                                      fontSize: 12,
-                                      fontStyle: FontStyle.italic,
-                                    ),
-                                  ),
-                              ],
-                            ),
-                            trailing: IconButton(
-                              icon: Icon(Icons.delete, color: Colors.red),
-                              onPressed: () => _eliminarIngreso(ingreso.id!),
-                            ),
+                            onPressed: () {
+                              setState(() {
+                                _mostrarFiltros = !_mostrarFiltros;
+                              });
+                            },
                           ),
-                        );
-                      },
-                    ),
+                          filled: true,
+                          fillColor: cardBg,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                        style: TextStyle(color: textDark),
+                      ),
+
+                      // Panel de filtros expandible
+                      if (_mostrarFiltros) ...[
+                        SizedBox(height: 16),
+                        Container(
+                          padding: EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: cardBg,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Filtros avanzados',
+                                style: TextStyle(
+                                  color: textDark,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              SizedBox(height: 8),
+
+                              // Filtro de fechas
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: TextButton.icon(
+                                      onPressed: () => _seleccionarFecha(true),
+                                      icon: Icon(
+                                        Icons.date_range,
+                                        color: primary,
+                                      ),
+                                      label: Text(
+                                        _fechaInicio == null
+                                            ? 'Desde'
+                                            : 'Desde: ${_fechaInicio!.day}/${_fechaInicio!.month}/${_fechaInicio!.year}',
+                                        style: TextStyle(color: textDark),
+                                      ),
+                                      style: TextButton.styleFrom(
+                                        backgroundColor: Colors.grey[800],
+                                      ),
+                                    ),
+                                  ),
+                                  SizedBox(width: 8),
+                                  Expanded(
+                                    child: TextButton.icon(
+                                      onPressed: () => _seleccionarFecha(false),
+                                      icon: Icon(
+                                        Icons.date_range,
+                                        color: primary,
+                                      ),
+                                      label: Text(
+                                        _fechaFin == null
+                                            ? 'Hasta'
+                                            : 'Hasta: ${_fechaFin!.day}/${_fechaFin!.month}/${_fechaFin!.year}',
+                                        style: TextStyle(color: textDark),
+                                      ),
+                                      style: TextButton.styleFrom(
+                                        backgroundColor: Colors.grey[800],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+
+                              SizedBox(height: 8),
+
+                              // Filtro por cuadre
+                              TextField(
+                                decoration: InputDecoration(
+                                  hintText: 'ID de Cuadre',
+                                  hintStyle: TextStyle(color: textLight),
+                                  prefixIcon: Icon(
+                                    Icons.receipt_long,
+                                    color: primary,
+                                  ),
+                                  filled: true,
+                                  fillColor: Colors.grey[800],
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                ),
+                                style: TextStyle(color: textDark),
+                                onChanged: (value) {
+                                  setState(() {
+                                    _cuadreCajaId = value;
+                                  });
+                                  _filtrarIngresos();
+                                },
+                              ),
+
+                              SizedBox(height: 8),
+
+                              // Botón para limpiar filtros
+                              Center(
+                                child: TextButton.icon(
+                                  onPressed: _limpiarFiltros,
+                                  icon: Icon(
+                                    Icons.clear_all,
+                                    color: Colors.white,
+                                  ),
+                                  label: Text(
+                                    'Limpiar filtros',
+                                    style: TextStyle(color: Colors.white),
+                                  ),
+                                  style: TextButton.styleFrom(
+                                    backgroundColor: Colors.red[700],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+
+                // Lista de ingresos filtrados
+                Expanded(
+                  child: RefreshIndicator(
+                    onRefresh: _cargarIngresos,
+                    child: _ingresosFiltrados.isEmpty
+                        ? Center(
+                            child: Text(
+                              _ingresos.isEmpty
+                                  ? 'No hay ingresos registrados'
+                                  : 'No se encontraron resultados',
+                              style: TextStyle(color: textLight, fontSize: 16),
+                            ),
+                          )
+                        : ListView.builder(
+                            padding: EdgeInsets.symmetric(horizontal: 16),
+                            itemCount: _ingresosFiltrados.length,
+                            itemBuilder: (context, i) {
+                              final ingreso = _ingresosFiltrados[i];
+                              return Card(
+                                color: cardBg,
+                                margin: EdgeInsets.only(bottom: 12),
+                                child: ListTile(
+                                  title: Text(
+                                    ingreso.concepto,
+                                    style: TextStyle(
+                                      color: textDark,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  subtitle: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Monto: ${ingreso.monto} | Forma: ${ingreso.formaPago}',
+                                        style: TextStyle(color: textLight),
+                                      ),
+                                      Text(
+                                        'Fecha: ${ingreso.fechaIngreso.toLocal()}',
+                                        style: TextStyle(
+                                          color: textLight,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                      if (ingreso.responsable.isNotEmpty)
+                                        Text(
+                                          'Responsable: ${ingreso.responsable}',
+                                          style: TextStyle(
+                                            color: textLight,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      if (ingreso.observaciones.isNotEmpty)
+                                        Text(
+                                          'Obs: ${ingreso.observaciones}',
+                                          style: TextStyle(
+                                            color: Colors.orange,
+                                            fontSize: 12,
+                                            fontStyle: FontStyle.italic,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                  trailing: IconButton(
+                                    icon: Icon(Icons.delete, color: Colors.red),
+                                    onPressed: () =>
+                                        _eliminarIngreso(ingreso.id!),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                  ),
+                ),
+              ],
             ),
       floatingActionButton: FloatingActionButton(
         backgroundColor: primary,

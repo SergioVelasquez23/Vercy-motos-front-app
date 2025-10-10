@@ -54,10 +54,49 @@ class MesaCard extends StatelessWidget {
       builder: (context, constraints) {
         return GestureDetector(
           onTap: () async {
+            // ✅ SOLUCIÓN: Verificar si existe un pedido activo antes de navegar
+            print('🔍 [CONCURRENCIA] Click en mesa ${mesa.nombre}');
+            print('   • Estado ocupada: ${mesa.ocupada}');
+            print('   • Total: ${mesa.total}');
+
+            Pedido? pedidoExistente;
+
+            // Solo buscar pedido existente si la mesa parece ocupada
+            if (mesa.ocupada || mesa.total > 0) {
+              print('   • Buscando pedido activo existente...');
+              try {
+                pedidoExistente = await onObtenerPedidoActivo(mesa);
+                if (pedidoExistente != null) {
+                  print(
+                    '   ✅ Pedido existente encontrado: ${pedidoExistente.id}',
+                  );
+                  print(
+                    '   • Items en pedido: ${pedidoExistente.items.length}',
+                  );
+                  print('   • Total del pedido: ${pedidoExistente.total}');
+                } else {
+                  print(
+                    '   ⚠️ No se encontró pedido activo (posible inconsistencia)',
+                  );
+                }
+              } catch (e) {
+                print('   ❌ Error al obtener pedido activo: $e');
+              }
+            } else {
+              print('   • Mesa libre, creando nuevo pedido');
+            }
+
             final result = await Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => PedidoScreen(mesa: mesa)),
+              MaterialPageRoute(
+                builder: (context) => PedidoScreen(
+                  mesa: mesa,
+                  pedidoExistente:
+                      pedidoExistente, // ✅ Pasar el pedido existente si lo hay
+                ),
+              ),
             );
+
             // Si se creó o actualizó un pedido, recargar las mesas
             if (result == true) {
               onRecargarMesas();

@@ -36,9 +36,6 @@ class ResumenCierreService {
           if (errorMessage.contains(
             'Cannot invoke "java.lang.Double.doubleValue()" because the return value of "java.util.Map.get(Object)" is null',
           )) {
-            print(
-              '🔄 Error de Java detectado, intentando generar resumen manual...',
-            );
             return await _generarResumenManual(cuadreId);
           }
 
@@ -66,9 +63,6 @@ class ResumenCierreService {
             if (serverMessage.contains(
               'Cannot invoke "java.lang.Double.doubleValue()" because the return value of "java.util.Map.get(Object)" is null',
             )) {
-              print(
-                '🔄 Error de Java detectado, intentando generar resumen manual...',
-              );
               return await _generarResumenManual(cuadreId);
             }
 

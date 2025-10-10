@@ -16,7 +16,6 @@ import 'configuracion_screen.dart';
 import 'gastos_screen.dart';
 import 'ingresos_caja_screen.dart';
 import 'tipos_gasto_screen.dart';
-import '../config/constants.dart';
 import '../services/reportes_service.dart';
 import '../services/pedido_service.dart';
 import '../services/websocket_service.dart';
@@ -70,6 +69,55 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
   List<Map<String, dynamic>> _ultimosPedidos = [];
   List<Map<String, dynamic>> _vendedoresDelMes = [];
 
+  // Variables para el estado de precarga
+  bool _productosPrecargados = false;
+  bool _ingredientesPrecargados = false;
+
+  /// Construye un indicador visual para mostrar el progreso de la precarga de datos
+  Widget _buildPrecargaIndicator() {
+    // Notificación eliminada según solicitud del usuario - siempre retornar widget vacío
+    return SizedBox.shrink();
+  }
+
+  /// Precarga los productos e ingredientes en segundo plano para mejorar
+  /// la experiencia del usuario al navegar por la aplicación.
+  Future<void> _precargarDatos() async {
+    print(
+      '🚀 Iniciando precarga de datos en segundo plano usando DatosProvider...',
+    );
+
+    try {
+      // Obtener el proveedor de datos
+      final datosProvider = Provider.of<DatosProvider>(context, listen: false);
+
+      // Iniciar la carga de datos (esto los almacenará en caché)
+      await datosProvider.inicializarDatos(forzarActualizacion: true);
+
+      // Actualizar la UI
+      if (mounted) {
+        setState(() {
+          _productosPrecargados = true;
+          _ingredientesPrecargados = true;
+        });
+      }
+
+      print('✅ Precarga de datos completada exitosamente:');
+      print('  - Productos: ${datosProvider.productos.length}');
+      print('  - Ingredientes: ${datosProvider.ingredientes.length}');
+      print('  - Categorías: ${datosProvider.categorias.length}');
+    } catch (error) {
+      print('❌ Error al precargar datos: $error');
+
+      // Marcar como completado para que desaparezca el indicador
+      if (mounted) {
+        setState(() {
+          _productosPrecargados = true;
+          _ingredientesPrecargados = true;
+        });
+      }
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -86,11 +134,14 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         _cargarDatos();
         _setupWebSocket();
 
+        // Precargar productos, imágenes e ingredientes
+        _precargarDatos();
+
         // Suscribirse al stream de eventos de pedidos completados
         _pedidoCompletadoSubscription = _pedidoService.onPedidoCompletado
-            .listen((_) {});
-
-        // Suscribirse al stream de eventos de pedidos pagados
+            .listen(
+              (_) {},
+            ); // Suscribirse al stream de eventos de pedidos pagados
         _pedidoPagadoSubscription = _pedidoService.onPedidoPagado.listen(
           (_) {},
         );
@@ -741,6 +792,8 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
             children: [
               _buildTopBar(),
               _buildNavBar(),
+              // Indicador de precarga de datos
+              _buildPrecargaIndicator(),
               Expanded(
                 child: userProvider.isAdmin || userProvider.isSuperAdmin
                     ? (_isLoading
@@ -956,16 +1009,20 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
             ),
           ),
           SizedBox(width: 12),
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              'Sergio',
-              style: TextStyle(color: Colors.white, fontSize: 14),
-            ),
+          Consumer<UserProvider>(
+            builder: (context, userProvider, child) {
+              return Container(
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  userProvider.userName ?? 'Usuario',
+                  style: TextStyle(color: Colors.white, fontSize: 14),
+                ),
+              );
+            },
           ),
           SizedBox(width: 8),
           IconButton(
@@ -1553,30 +1610,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
     );
   }
 
-  Widget _buildInfoCards() {
-    if (_dashboardData == null) {
-      return SizedBox(
-        height: 150,
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primary),
-              ),
-              SizedBox(height: 16),
-              Text(
-                'Cargando información adicional...',
-                style: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return SizedBox.shrink(); // Widgets removidos
-  }
+  // El método _buildInfoCards ha sido eliminado ya que no se utiliza
 
   Widget _buildIngresosVsEgresosChart(BuildContext context) {
     return Container(

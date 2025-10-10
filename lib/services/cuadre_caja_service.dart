@@ -743,18 +743,55 @@ class CuadreCajaService {
               .toString()
               .toLowerCase();
 
-          switch (formaPago) {
-            case 'efectivo':
-              totalEfectivo += totalPedido;
-              break;
-            case 'transferencia':
-              totalTransferencias += totalPedido;
-              break;
-            case 'tarjeta':
-              totalTarjeta += totalPedido;
-              break;
-            default:
-              totalOtros += totalPedido;
+          // Revisar si tiene pagos parciales para procesarlos individualmente
+          if (pedidoJson['pagosParciales'] != null &&
+              pedidoJson['pagosParciales'] is List &&
+              (pedidoJson['pagosParciales'] as List).isNotEmpty) {
+            print(
+              '💳 Procesando pagos parciales para pedido: ${pedidoJson['_id'] ?? pedidoJson['id']}',
+            );
+
+            // Si tiene pagos parciales, ignorar la forma de pago principal y procesar cada pago
+            final pagosParciales = pedidoJson['pagosParciales'] as List;
+
+            for (var pagoParcial in pagosParciales) {
+              final double montoParcial = (pagoParcial['monto'] ?? 0.0)
+                  .toDouble();
+              final String formaPagoParcial = (pagoParcial['formaPago'] ?? '')
+                  .toString()
+                  .toLowerCase();
+
+              print('  - Pago parcial: $montoParcial (${formaPagoParcial})');
+
+              switch (formaPagoParcial) {
+                case 'efectivo':
+                  totalEfectivo += montoParcial;
+                  break;
+                case 'transferencia':
+                  totalTransferencias += montoParcial;
+                  break;
+                case 'tarjeta':
+                  totalTarjeta += montoParcial;
+                  break;
+                default:
+                  totalOtros += montoParcial;
+              }
+            }
+          } else {
+            // Procesar normalmente si no tiene pagos parciales
+            switch (formaPago) {
+              case 'efectivo':
+                totalEfectivo += totalPedido;
+                break;
+              case 'transferencia':
+                totalTransferencias += totalPedido;
+                break;
+              case 'tarjeta':
+                totalTarjeta += totalPedido;
+                break;
+              default:
+                totalOtros += totalPedido;
+            }
           }
         }
 

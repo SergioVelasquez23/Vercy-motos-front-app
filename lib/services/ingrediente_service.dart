@@ -12,6 +12,18 @@ class IngredienteService {
   String get baseUrl => ApiConfig.instance.baseUrl;
   final storage = FlutterSecureStorage();
 
+  // Caché para ingredientes
+  final Map<String, Ingrediente> _ingredientesCache = {};
+  List<Ingrediente>? _allIngredientesCache;
+  DateTime? _lastCacheUpdate;
+
+  // Getter para verificar si la caché está cargada
+  bool get isCacheLoaded =>
+      _allIngredientesCache != null && _allIngredientesCache!.isNotEmpty;
+
+  // Método para obtener un ingrediente del caché
+  Ingrediente? getIngredienteFromCache(String id) => _ingredientesCache[id];
+
   // Headers con autenticación
   Future<Map<String, String>> _getHeaders() async {
     final token = await storage.read(key: 'jwt_token');
@@ -23,18 +35,30 @@ class IngredienteService {
   }
 
   // Obtener todos los ingredientes
-  Future<List<Ingrediente>> getAllIngredientes() async {
-    try {
-      final headers = await _getHeaders();
-      final response = await http.get(
-        Uri.parse('$baseUrl/api/ingredientes'),
-        headers: headers,
+  Future<List<Ingrediente>> getAllIngredientes({
+    bool forceRefresh = false,
+  }) async {
+    // Si ya tenemos ingredientes en caché y no se solicita forzar actualización, devolver el caché
+    if (!forceRefresh &&
+        _allIngredientesCache != null &&
+        _lastCacheUpdate != null &&
+        DateTime.now().difference(_lastCacheUpdate!).inMinutes < 30) {
+      print(
+        '📦 Devolviendo ${_allIngredientesCache!.length} ingredientes desde caché',
       );
+      return _allIngredientesCache!;
+    }
+
+    try {
+      print('🔄 Cargando ingredientes desde el servidor...');
+      final headers = await _getHeaders();
+      final response = await http
+          .get(Uri.parse('$baseUrl/api/ingredientes'), headers: headers)
+          .timeout(Duration(seconds: 15));
 
       print(
-        'IngredienteService - getAllIngredientes response: ${response.statusCode}',
+        '📡 IngredienteService - getAllIngredientes response: ${response.statusCode}',
       );
-      print('IngredienteService - getAllIngredientes body: ${response.body}');
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
@@ -54,8 +78,30 @@ class IngredienteService {
           throw Exception('Formato de respuesta inesperado');
         }
 
-        return jsonList.map((json) => Ingrediente.fromJson(json)).toList();
+        // Actualizar caché
+        _ingredientesCache.clear();
+        final ingredientes = jsonList.map((item) {
+          final ingrediente = Ingrediente.fromJson(item);
+          _ingredientesCache[ingrediente.id] =
+              ingrediente; // Añadir al caché por ID
+          return ingrediente;
+        }).toList();
+
+        _allIngredientesCache = ingredientes;
+        _lastCacheUpdate = DateTime.now();
+
+        print(
+          '✅ Caché de ingredientes actualizada: ${ingredientes.length} ingredientes',
+        );
+        return ingredientes;
       } else {
+        // Si hay error y tenemos caché, devolver la caché como fallback
+        if (_allIngredientesCache != null &&
+            _allIngredientesCache!.isNotEmpty) {
+          print('⚠️ Error del servidor, usando caché de ingredientes');
+          return _allIngredientesCache!;
+        }
+
         throw Exception(
           'Error al obtener ingredientes: ${response.statusCode}',
         );
@@ -259,6 +305,18 @@ class IngredienteService {
       print('IngredienteService - deleteIngrediente body: ${response.body}');
 
       if (response.statusCode == 200 || response.statusCode == 204) {
+        // Si se elimina con éxito, actualizar el caché
+        if (_ingredientesCache.containsKey(id)) {
+          _ingredientesCache.remove(id);
+        }
+
+        // También actualizar la lista completa si existe
+        if (_allIngredientesCache != null) {
+          _allIngredientesCache = _allIngredientesCache!
+              .where((i) => i.id != id)
+              .toList();
+        }
+
         return true;
       } else {
         throw Exception(
@@ -266,8 +324,8 @@ class IngredienteService {
         );
       }
     } catch (e) {
-      print('Error eliminando ingrediente: $e');
-      throw Exception('Error de conexión: $e');
+      print('❌ Error al eliminar ingrediente: $e');
+      throw Exception('Error de conexión al eliminar ingrediente: $e');
     }
   }
 }

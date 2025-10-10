@@ -598,17 +598,6 @@ class _DocumentosMesaScreenState extends State<DocumentosMesaScreen>
                                     children: [
                                       IconButton(
                                         icon: Icon(
-                                          Icons.visibility,
-                                          color: _primary,
-                                        ),
-                                        onPressed: () =>
-                                            _verDetalleDocumento(documento),
-                                        tooltip: 'Ver detalle',
-                                        iconSize: 28,
-                                        splashRadius: 26,
-                                      ),
-                                      IconButton(
-                                        icon: Icon(
                                           Icons.print,
                                           color: Colors.blue,
                                         ),
@@ -743,24 +732,6 @@ class _DocumentosMesaScreenState extends State<DocumentosMesaScreen>
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      // Botón Ver
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: () => _verDetalleDocumento(documento),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: _primary.withOpacity(0.2),
-                            foregroundColor: _primary,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                          ),
-                          icon: Icon(Icons.visibility, size: 16),
-                          label: Text('Ver', style: TextStyle(fontSize: 12)),
-                        ),
-                      ),
-                      SizedBox(width: 8),
-
                       // Botón Imprimir
                       Expanded(
                         child: ElevatedButton.icon(

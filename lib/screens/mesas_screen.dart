@@ -22,6 +22,7 @@ import '../services/notification_service.dart';
 import '../services/cuadre_caja_service.dart';
 import '../services/historial_edicion_service.dart';
 import '../providers/user_provider.dart';
+import '../providers/datos_provider.dart'; // ✅ NUEVO: Importar DatosProvider
 import '../utils/format_utils.dart';
 import '../utils/impresion_mixin.dart';
 import 'pedido_screen.dart';
@@ -57,6 +58,9 @@ class MesasScreen extends StatefulWidget {
 
 class _MesasScreenState extends State<MesasScreen>
     with ImpresionMixin, MesaWebSocketMixin {
+  // ✅ NUEVO: Variables para controlar la precarga de datos
+  bool _precargandoDatos = false;
+
   // Recarga toda la pestaña de mesas y navega al mismo módulo/tab
   void _recargarPestanaActual() {
     final currentRoute = ModalRoute.of(context)?.settings.name;
@@ -161,6 +165,9 @@ class _MesasScreenState extends State<MesasScreen>
 
   // Key para forzar reconstrucción de widgets después de operaciones
   int _widgetRebuildKey = 0;
+
+  // Callback para cuando se completa un pago desde mesa especial
+  VoidCallback? _onPagoCompletadoCallback;
 
   // La subscripción WebSocket ahora se maneja en el mixin MesaWebSocketMixin
 
@@ -1686,6 +1693,7 @@ class _MesasScreenState extends State<MesasScreen>
   void initState() {
     super.initState();
     _loadMesas();
+    _precargarDatos(); // ✅ NUEVO: Precargar datos al entrar a Mesas Screen
 
     // Suscribirse a eventos de pedidos pagados para recargar las mesas
     _pedidoService.onPedidoPagado.listen((event) {
@@ -1700,6 +1708,46 @@ class _MesasScreenState extends State<MesasScreen>
     // Configurar WebSocket para actualización en tiempo real
     setupMesaWebSockets(() => _recargarMesasConCards());
     _verificarMesaDeudas(); // ✅ Verificar mesa Deudas al iniciar
+  }
+
+  // ✅ NUEVO: Función para precargar productos, imágenes e ingredientes
+  Future<void> _precargarDatos() async {
+    try {
+      print('🚀 MesasScreen: Iniciando precarga de datos...');
+
+      // Obtener el proveedor de datos
+      final datosProvider = Provider.of<DatosProvider>(context, listen: false);
+
+      // Verificar si los datos ya están inicializados
+      if (datosProvider.datosInicializados) {
+        print(
+          '✅ MesasScreen: Datos ya inicializados previamente, usando caché',
+        );
+        return;
+      }
+
+      // Activar indicador de carga
+      setState(() {
+        _precargandoDatos = true;
+      });
+
+      // Iniciar la carga de datos (esto los almacenará en caché)
+      await datosProvider.inicializarDatos(forzarActualizacion: false);
+
+      print('✅ MesasScreen: Precarga de datos completada exitosamente:');
+      print('  - Productos: ${datosProvider.productos.length}');
+      print('  - Ingredientes: ${datosProvider.ingredientes.length}');
+      print('  - Categorías: ${datosProvider.categorias.length}');
+    } catch (error) {
+      print('❌ MesasScreen: Error al precargar datos: $error');
+    } finally {
+      // Desactivar indicador de carga si la pantalla sigue montada
+      if (mounted) {
+        setState(() {
+          _precargandoDatos = false;
+        });
+      }
+    }
   }
 
   // void _iniciarSincronizacion() {
@@ -2067,35 +2115,97 @@ class _MesasScreenState extends State<MesasScreen>
 
   Future<Pedido?> _obtenerPedidoActivoDeMesa(Mesa mesa) async {
     try {
+      print(
+        '🔍 [CONCURRENCIA] Obteniendo pedido activo para mesa ${mesa.nombre}',
+      );
+
+      // Verificar si la mesa está siendo editada por otro usuario
+      if (_verificarSiMesaEstaEnEdicion(mesa.nombre)) {
+        print('   ⚠️ Mesa ${mesa.nombre} está siendo editada por otro usuario');
+        // Mostrar mensaje al usuario sobre el bloqueo temporal
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Mesa ${mesa.nombre} está siendo editada por otro usuario. Inténtalo en unos segundos.',
+            ),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 3),
+          ),
+        );
+        throw Exception('Mesa bloqueada temporalmente');
+      }
+
+      // Bloquear la mesa mientras se obtiene el pedido
+      _bloquearMesaTemporalmente(mesa.nombre);
+
       // Siempre buscar en el servidor para obtener el ID más actualizado
       final pedidos = await _pedidoService.getPedidosByMesa(mesa.nombre);
+      print('   • Pedidos encontrados: ${pedidos.length}');
 
-      final pedidoActivo = pedidos.firstWhere(
-        (pedido) => pedido.estado == EstadoPedido.activo,
-        orElse: () => throw Exception('No hay pedido activo'),
-      );
+      // Filtrar solo pedidos activos
+      final pedidosActivos = pedidos
+          .where((pedido) => pedido.estado == EstadoPedido.activo)
+          .toList();
+      print('   • Pedidos activos: ${pedidosActivos.length}');
+
+      if (pedidosActivos.isEmpty) {
+        print('   • No hay pedidos activos para esta mesa');
+        throw Exception('No hay pedido activo');
+      }
+
+      if (pedidosActivos.length > 1) {
+        print(
+          '   ⚠️ ADVERTENCIA: Múltiples pedidos activos encontrados (${pedidosActivos.length})',
+        );
+        for (int i = 0; i < pedidosActivos.length; i++) {
+          final p = pedidosActivos[i];
+          print(
+            '     ${i + 1}. ID: ${p.id}, Items: ${p.items.length}, Total: ${p.total}',
+          );
+        }
+        print('   • Usando el primer pedido activo encontrado');
+      }
+
+      final pedidoActivo = pedidosActivos.first;
 
       // Verificar que el ID no esté vacío
       if (pedidoActivo.id.isEmpty) {
+        print('   ❌ El pedido activo no tiene ID válido');
         throw Exception('El pedido activo no tiene ID válido');
       }
 
+      print('   ✅ Pedido activo válido encontrado: ${pedidoActivo.id}');
+      print('   • Total items: ${pedidoActivo.items.length}');
+      print('   • Total pedido: ${pedidoActivo.total}');
+
+      // Liberar bloqueo antes del retorno exitoso
+      _liberarBloqueoMesa(mesa.nombre);
+
       return pedidoActivo;
     } catch (e) {
-      print('❌ Error al obtener pedido activo: $e');
+      print(
+        '❌ [CONCURRENCIA] Error al obtener pedido activo para ${mesa.nombre}: $e',
+      );
+
+      // Liberar bloqueo en caso de error
+      _liberarBloqueoMesa(mesa.nombre);
 
       // Si no hay pedido activo pero la mesa aparece ocupada, corregir automáticamente
       if (mesa.ocupada || mesa.total > 0) {
+        print(
+          '   • Mesa aparece ocupada pero sin pedido activo - corrigiendo estado',
+        );
         try {
           mesa.ocupada = false;
           mesa.productos = [];
           mesa.total = 0.0;
           await _mesaService.updateMesa(mesa);
+          print('   ✅ Estado de mesa corregido');
 
           // Recargar las mesas para reflejar el cambio en la UI
           _recargarMesasConCards();
         } catch (updateError) {
-          print('❌ Error al corregir mesa ${mesa.nombre}: $updateError');
+          print('   ❌ Error al corregir mesa ${mesa.nombre}: $updateError');
         }
       }
 
@@ -2512,7 +2622,88 @@ class _MesasScreenState extends State<MesasScreen>
 
   // Función eliminada - ahora se usa MesaCard widget
 
-  void _mostrarDialogoPago(Mesa mesa, Pedido pedido) async {
+  // ✅ NUEVO: Control de concurrencia para evitar modificaciones simultáneas
+  final Map<String, DateTime> _mesasEnEdicion = {};
+  final int _tiempoBloqueoSegundos = 30; // Bloqueo temporal de 30 segundos
+
+  bool _verificarSiMesaEstaEnEdicion(String nombreMesa) {
+    final ahora = DateTime.now();
+    final tiempoBloqueo = _mesasEnEdicion[nombreMesa];
+
+    if (tiempoBloqueo != null) {
+      final diferencia = ahora.difference(tiempoBloqueo).inSeconds;
+      if (diferencia < _tiempoBloqueoSegundos) {
+        print(
+          '⚠️ [CONCURRENCIA] Mesa $nombreMesa bloqueada por ${_tiempoBloqueoSegundos - diferencia} segundos más',
+        );
+        return true;
+      } else {
+        // El bloqueo expiró, removerlo
+        _mesasEnEdicion.remove(nombreMesa);
+      }
+    }
+
+    return false;
+  }
+
+  void _bloquearMesaTemporalmente(String nombreMesa) {
+    _mesasEnEdicion[nombreMesa] = DateTime.now();
+    print('🔒 [CONCURRENCIA] Mesa $nombreMesa bloqueada temporalmente');
+
+    // Auto-remover el bloqueo después del tiempo establecido
+    Future.delayed(Duration(seconds: _tiempoBloqueoSegundos), () {
+      _mesasEnEdicion.remove(nombreMesa);
+      print(
+        '🔓 [CONCURRENCIA] Bloqueo de mesa $nombreMesa removido automáticamente',
+      );
+    });
+  }
+
+  void _liberarBloqueoMesa(String nombreMesa) {
+    _mesasEnEdicion.remove(nombreMesa);
+    print('🔓 [CONCURRENCIA] Bloqueo de mesa $nombreMesa liberado manualmente');
+  }
+
+  // ✅ NUEVA FUNCIÓN: Actualizar productos seleccionados según cantidad específica
+  void _actualizarProductosSeleccionados(
+    List<ItemPedido> itemsPedido,
+    Map<String, bool> itemsSeleccionados,
+    Map<String, int> cantidadesSeleccionadas,
+    List<ItemPedido> productosSeleccionados,
+  ) {
+    productosSeleccionados.clear();
+
+    for (int i = 0; i < itemsPedido.length; i++) {
+      final indexKey = i.toString();
+      final isSelected = itemsSeleccionados[indexKey] == true;
+      final cantidadSeleccionada = cantidadesSeleccionadas[indexKey] ?? 0;
+
+      if (isSelected && cantidadSeleccionada > 0) {
+        final item = itemsPedido[i];
+        productosSeleccionados.add(
+          ItemPedido(
+            id: item.id,
+            productoId: item.productoId,
+            productoNombre: item.productoNombre,
+            cantidad:
+                cantidadSeleccionada, // Usar la cantidad específica seleccionada
+            precioUnitario: item.precioUnitario,
+            agregadoPor: item.agregadoPor,
+            notas: item.notas,
+          ),
+        );
+      }
+    }
+  }
+
+  void _mostrarDialogoPago(
+    Mesa mesa,
+    Pedido pedido, {
+    VoidCallback? onPagoCompletado,
+  }) async {
+    // ✅ Almacenar callback para uso en funciones de pago
+    _onPagoCompletadoCallback = onPagoCompletado;
+
     String medioPago0 = 'efectivo';
     bool incluyePropina = false;
     TextEditingController descuentoPorcentajeController =
@@ -3112,19 +3303,30 @@ class _MesasScreenState extends State<MesasScreen>
                                               ),
                                               Expanded(
                                                 flex: 1,
-                                                child: Text(
-                                                  'Vendedor',
-                                                  style: TextStyle(
-                                                    color: _textPrimary,
-                                                    fontWeight: FontWeight.w600,
-                                                    fontSize: 12,
-                                                  ),
-                                                  textAlign: TextAlign.center,
+                                                child: Row(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment.center,
+                                                  children: [
+                                                    Icon(
+                                                      Icons.person_outline,
+                                                      color: _primary,
+                                                      size: 14,
+                                                    ),
+                                                    SizedBox(width: 4),
+                                                    Text(
+                                                      'Agregado por',
+                                                      style: TextStyle(
+                                                        color: _textPrimary,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                        fontSize: 12,
+                                                      ),
+                                                      textAlign:
+                                                          TextAlign.center,
+                                                    ),
+                                                  ],
                                                 ),
                                               ),
-                                              SizedBox(
-                                                width: 80,
-                                              ), // Espacio para botón cancelar
                                             ],
                                           ),
                                         ),
@@ -3237,35 +3439,297 @@ class _MesasScreenState extends State<MesasScreen>
                                                                         .agregadoPor!
                                                                         .isNotEmpty) ...[
                                                                   SizedBox(
-                                                                    height: 2,
+                                                                    height: 4,
                                                                   ),
-                                                                  Text(
-                                                                    '👤 ${item.agregadoPor}',
-                                                                    style: TextStyle(
-                                                                      color: _textPrimary
+                                                                  // ✅ MEJORADO: Mostrar vendedor con más prominencia (móvil)
+                                                                  Container(
+                                                                    padding: EdgeInsets.symmetric(
+                                                                      horizontal:
+                                                                          6,
+                                                                      vertical:
+                                                                          3,
+                                                                    ),
+                                                                    decoration: BoxDecoration(
+                                                                      color: _primary
                                                                           .withOpacity(
-                                                                            0.7,
+                                                                            0.15,
                                                                           ),
-                                                                      fontSize:
-                                                                          11,
-                                                                      fontStyle:
-                                                                          FontStyle
-                                                                              .italic,
+                                                                      borderRadius:
+                                                                          BorderRadius.circular(
+                                                                            8,
+                                                                          ),
+                                                                      border: Border.all(
+                                                                        color: _primary
+                                                                            .withOpacity(
+                                                                              0.4,
+                                                                            ),
+                                                                        width:
+                                                                            1,
+                                                                      ),
+                                                                    ),
+                                                                    child: Row(
+                                                                      mainAxisSize:
+                                                                          MainAxisSize
+                                                                              .min,
+                                                                      children: [
+                                                                        Icon(
+                                                                          Icons
+                                                                              .person,
+                                                                          color:
+                                                                              _primary,
+                                                                          size:
+                                                                              14,
+                                                                        ),
+                                                                        SizedBox(
+                                                                          width:
+                                                                              4,
+                                                                        ),
+                                                                        Text(
+                                                                          'Agregado por: ${item.agregadoPor}',
+                                                                          style: TextStyle(
+                                                                            color:
+                                                                                _primary,
+                                                                            fontSize:
+                                                                                11,
+                                                                            fontWeight:
+                                                                                FontWeight.w600,
+                                                                          ),
+                                                                        ),
+                                                                      ],
                                                                     ),
                                                                   ),
                                                                 ],
+
+                                                                // ✅ NUEVO: Información de cantidad seleccionada (móvil)
+                                                                SizedBox(
+                                                                  height: 4,
+                                                                ),
+                                                                Text(
+                                                                  'Disponibles: ${item.cantidad} | Seleccionadas: ${cantidadesSeleccionadas[indexKey] ?? 0}',
+                                                                  style: TextStyle(
+                                                                    color:
+                                                                        isSelected
+                                                                        ? _primary
+                                                                        : _textPrimary.withOpacity(
+                                                                            0.5,
+                                                                          ),
+                                                                    fontSize:
+                                                                        10,
+                                                                    fontWeight:
+                                                                        FontWeight
+                                                                            .w500,
+                                                                  ),
+                                                                ),
                                                               ],
                                                             ),
                                                           ),
-                                                          Text(
-                                                            '${item.cantidad}',
-                                                            style: TextStyle(
-                                                              color:
-                                                                  _textPrimary,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .bold,
-                                                            ),
+                                                          Row(
+                                                            children: [
+                                                              // Botón - para disminuir
+                                                              Container(
+                                                                width: 24,
+                                                                height: 24,
+                                                                decoration: BoxDecoration(
+                                                                  color:
+                                                                      _primary,
+                                                                  borderRadius:
+                                                                      BorderRadius.circular(
+                                                                        4,
+                                                                      ),
+                                                                ),
+                                                                child: IconButton(
+                                                                  padding:
+                                                                      EdgeInsets
+                                                                          .zero,
+                                                                  onPressed:
+                                                                      isSelected
+                                                                      ? () {
+                                                                          setState(() {
+                                                                            int
+                                                                            currentCant =
+                                                                                cantidadesSeleccionadas[indexKey] ??
+                                                                                0;
+                                                                            if (currentCant >
+                                                                                0) {
+                                                                              currentCant--;
+                                                                              cantidadesSeleccionadas[indexKey] = currentCant;
+                                                                              cantidadControllers[indexKey]?.text = currentCant.toString();
+
+                                                                              // Actualizar productos seleccionados
+                                                                              _actualizarProductosSeleccionados(
+                                                                                pedido.items,
+                                                                                itemsSeleccionados,
+                                                                                cantidadesSeleccionadas,
+                                                                                productosSeleccionados,
+                                                                              );
+                                                                            }
+                                                                            if (currentCant ==
+                                                                                0) {
+                                                                              itemsSeleccionados[indexKey] = false;
+                                                                            }
+                                                                          });
+                                                                        }
+                                                                      : null,
+                                                                  icon: Icon(
+                                                                    Icons
+                                                                        .remove,
+                                                                    color: Colors
+                                                                        .white,
+                                                                    size: 12,
+                                                                  ),
+                                                                ),
+                                                              ),
+
+                                                              // Campo de cantidad
+                                                              Container(
+                                                                width: 40,
+                                                                height: 24,
+                                                                margin:
+                                                                    EdgeInsets.symmetric(
+                                                                      horizontal:
+                                                                          4,
+                                                                    ),
+                                                                child: TextField(
+                                                                  controller:
+                                                                      cantidadControllers[indexKey],
+                                                                  enabled:
+                                                                      isSelected,
+                                                                  textAlign:
+                                                                      TextAlign
+                                                                          .center,
+                                                                  keyboardType:
+                                                                      TextInputType
+                                                                          .number,
+                                                                  style: TextStyle(
+                                                                    color:
+                                                                        _textPrimary,
+                                                                    fontSize:
+                                                                        11,
+                                                                    fontWeight:
+                                                                        FontWeight
+                                                                            .bold,
+                                                                  ),
+                                                                  decoration: InputDecoration(
+                                                                    contentPadding:
+                                                                        EdgeInsets.all(
+                                                                          2,
+                                                                        ),
+                                                                    border: OutlineInputBorder(
+                                                                      borderRadius:
+                                                                          BorderRadius.circular(
+                                                                            4,
+                                                                          ),
+                                                                      borderSide: BorderSide(
+                                                                        color: _primary
+                                                                            .withOpacity(
+                                                                              0.3,
+                                                                            ),
+                                                                      ),
+                                                                    ),
+                                                                    filled:
+                                                                        true,
+                                                                    fillColor:
+                                                                        isSelected
+                                                                        ? Colors.white.withOpacity(
+                                                                            0.1,
+                                                                          )
+                                                                        : Colors.grey.withOpacity(
+                                                                            0.1,
+                                                                          ),
+                                                                  ),
+                                                                  onChanged: (value) {
+                                                                    setState(() {
+                                                                      int
+                                                                      newCant =
+                                                                          int.tryParse(
+                                                                            value,
+                                                                          ) ??
+                                                                          0;
+                                                                      if (newCant <=
+                                                                              item.cantidad &&
+                                                                          newCant >=
+                                                                              0) {
+                                                                        cantidadesSeleccionadas[indexKey] =
+                                                                            newCant;
+                                                                        if (newCant ==
+                                                                            0) {
+                                                                          itemsSeleccionados[indexKey] =
+                                                                              false;
+                                                                        } else if (newCant >
+                                                                            0) {
+                                                                          itemsSeleccionados[indexKey] =
+                                                                              true;
+                                                                        }
+                                                                        // Actualizar productos seleccionados
+                                                                        _actualizarProductosSeleccionados(
+                                                                          pedido
+                                                                              .items,
+                                                                          itemsSeleccionados,
+                                                                          cantidadesSeleccionadas,
+                                                                          productosSeleccionados,
+                                                                        );
+                                                                      } else {
+                                                                        // Restaurar valor anterior si excede límites
+                                                                        cantidadControllers[indexKey]?.text =
+                                                                            (cantidadesSeleccionadas[indexKey] ??
+                                                                                    0)
+                                                                                .toString();
+                                                                      }
+                                                                    });
+                                                                  },
+                                                                ),
+                                                              ),
+
+                                                              // Botón + para aumentar
+                                                              Container(
+                                                                width: 24,
+                                                                height: 24,
+                                                                decoration: BoxDecoration(
+                                                                  color:
+                                                                      _primary,
+                                                                  borderRadius:
+                                                                      BorderRadius.circular(
+                                                                        4,
+                                                                      ),
+                                                                ),
+                                                                child: IconButton(
+                                                                  padding:
+                                                                      EdgeInsets
+                                                                          .zero,
+                                                                  onPressed:
+                                                                      isSelected
+                                                                      ? () {
+                                                                          setState(() {
+                                                                            int
+                                                                            currentCant =
+                                                                                cantidadesSeleccionadas[indexKey] ??
+                                                                                0;
+                                                                            if (currentCant <
+                                                                                item.cantidad) {
+                                                                              currentCant++;
+                                                                              cantidadesSeleccionadas[indexKey] = currentCant;
+                                                                              cantidadControllers[indexKey]?.text = currentCant.toString();
+
+                                                                              // Actualizar productos seleccionados
+                                                                              _actualizarProductosSeleccionados(
+                                                                                pedido.items,
+                                                                                itemsSeleccionados,
+                                                                                cantidadesSeleccionadas,
+                                                                                productosSeleccionados,
+                                                                              );
+                                                                            }
+                                                                          });
+                                                                        }
+                                                                      : null,
+                                                                  icon: Icon(
+                                                                    Icons.add,
+                                                                    color: Colors
+                                                                        .white,
+                                                                    size: 12,
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                            ],
                                                           ),
                                                         ],
                                                       ),
@@ -3315,17 +3779,225 @@ class _MesasScreenState extends State<MesasScreen>
                                                         ),
                                                       ),
 
-                                                      // Unidad
+                                                      // Unidad - ahora con campo editable
                                                       Expanded(
                                                         flex: 1,
-                                                        child: Text(
-                                                          '${item.cantidad}',
-                                                          style: TextStyle(
-                                                            color: _textPrimary,
-                                                            fontSize: 12,
-                                                          ),
-                                                          textAlign:
-                                                              TextAlign.center,
+                                                        child: Row(
+                                                          mainAxisAlignment:
+                                                              MainAxisAlignment
+                                                                  .center,
+                                                          children: [
+                                                            // Botón - para disminuir
+                                                            Container(
+                                                              width: 24,
+                                                              height: 24,
+                                                              decoration:
+                                                                  BoxDecoration(
+                                                                    color:
+                                                                        _primary,
+                                                                    borderRadius:
+                                                                        BorderRadius.circular(
+                                                                          4,
+                                                                        ),
+                                                                  ),
+                                                              child: IconButton(
+                                                                padding:
+                                                                    EdgeInsets
+                                                                        .zero,
+                                                                onPressed:
+                                                                    isSelected
+                                                                    ? () {
+                                                                        setState(() {
+                                                                          int
+                                                                          currentCant =
+                                                                              cantidadesSeleccionadas[indexKey] ??
+                                                                              0;
+                                                                          if (currentCant >
+                                                                              0) {
+                                                                            currentCant--;
+                                                                            cantidadesSeleccionadas[indexKey] =
+                                                                                currentCant;
+                                                                            cantidadControllers[indexKey]?.text =
+                                                                                currentCant.toString();
+
+                                                                            // Actualizar productos seleccionados
+                                                                            _actualizarProductosSeleccionados(
+                                                                              pedido.items,
+                                                                              itemsSeleccionados,
+                                                                              cantidadesSeleccionadas,
+                                                                              productosSeleccionados,
+                                                                            );
+                                                                          }
+                                                                          if (currentCant ==
+                                                                              0) {
+                                                                            itemsSeleccionados[indexKey] =
+                                                                                false;
+                                                                          }
+                                                                        });
+                                                                      }
+                                                                    : null,
+                                                                icon: Icon(
+                                                                  Icons.remove,
+                                                                  color: Colors
+                                                                      .white,
+                                                                  size: 12,
+                                                                ),
+                                                              ),
+                                                            ),
+
+                                                            // Campo de cantidad
+                                                            Container(
+                                                              width: 40,
+                                                              height: 24,
+                                                              margin:
+                                                                  EdgeInsets.symmetric(
+                                                                    horizontal:
+                                                                        4,
+                                                                  ),
+                                                              child: TextField(
+                                                                controller:
+                                                                    cantidadControllers[indexKey],
+                                                                enabled:
+                                                                    isSelected,
+                                                                textAlign:
+                                                                    TextAlign
+                                                                        .center,
+                                                                keyboardType:
+                                                                    TextInputType
+                                                                        .number,
+                                                                style: TextStyle(
+                                                                  color:
+                                                                      _textPrimary,
+                                                                  fontSize: 11,
+                                                                ),
+                                                                decoration: InputDecoration(
+                                                                  contentPadding:
+                                                                      EdgeInsets.all(
+                                                                        2,
+                                                                      ),
+                                                                  border: OutlineInputBorder(
+                                                                    borderRadius:
+                                                                        BorderRadius.circular(
+                                                                          4,
+                                                                        ),
+                                                                    borderSide: BorderSide(
+                                                                      color: _primary
+                                                                          .withOpacity(
+                                                                            0.3,
+                                                                          ),
+                                                                    ),
+                                                                  ),
+                                                                  filled: true,
+                                                                  fillColor:
+                                                                      isSelected
+                                                                      ? Colors
+                                                                            .white
+                                                                            .withOpacity(
+                                                                              0.1,
+                                                                            )
+                                                                      : Colors
+                                                                            .grey
+                                                                            .withOpacity(
+                                                                              0.1,
+                                                                            ),
+                                                                ),
+                                                                onChanged: (value) {
+                                                                  setState(() {
+                                                                    int
+                                                                    newCant =
+                                                                        int.tryParse(
+                                                                          value,
+                                                                        ) ??
+                                                                        0;
+                                                                    if (newCant <=
+                                                                            item.cantidad &&
+                                                                        newCant >=
+                                                                            0) {
+                                                                      cantidadesSeleccionadas[indexKey] =
+                                                                          newCant;
+                                                                      if (newCant ==
+                                                                          0) {
+                                                                        itemsSeleccionados[indexKey] =
+                                                                            false;
+                                                                      } else if (newCant >
+                                                                          0) {
+                                                                        itemsSeleccionados[indexKey] =
+                                                                            true;
+                                                                      }
+                                                                      // Actualizar productos seleccionados
+                                                                      _actualizarProductosSeleccionados(
+                                                                        pedido
+                                                                            .items,
+                                                                        itemsSeleccionados,
+                                                                        cantidadesSeleccionadas,
+                                                                        productosSeleccionados,
+                                                                      );
+                                                                    } else {
+                                                                      // Restaurar valor anterior si excede límites
+                                                                      cantidadControllers[indexKey]
+                                                                              ?.text =
+                                                                          (cantidadesSeleccionadas[indexKey] ??
+                                                                                  0)
+                                                                              .toString();
+                                                                    }
+                                                                  });
+                                                                },
+                                                              ),
+                                                            ),
+
+                                                            // Botón + para aumentar
+                                                            Container(
+                                                              width: 24,
+                                                              height: 24,
+                                                              decoration:
+                                                                  BoxDecoration(
+                                                                    color:
+                                                                        _primary,
+                                                                    borderRadius:
+                                                                        BorderRadius.circular(
+                                                                          4,
+                                                                        ),
+                                                                  ),
+                                                              child: IconButton(
+                                                                padding:
+                                                                    EdgeInsets
+                                                                        .zero,
+                                                                onPressed:
+                                                                    isSelected
+                                                                    ? () {
+                                                                        setState(() {
+                                                                          int
+                                                                          currentCant =
+                                                                              cantidadesSeleccionadas[indexKey] ??
+                                                                              0;
+                                                                          if (currentCant <
+                                                                              item.cantidad) {
+                                                                            currentCant++;
+                                                                            cantidadesSeleccionadas[indexKey] =
+                                                                                currentCant;
+                                                                            cantidadControllers[indexKey]?.text =
+                                                                                currentCant.toString();
+
+                                                                            // Actualizar productos seleccionados
+                                                                            _actualizarProductosSeleccionados(
+                                                                              pedido.items,
+                                                                              itemsSeleccionados,
+                                                                              cantidadesSeleccionadas,
+                                                                              productosSeleccionados,
+                                                                            );
+                                                                          }
+                                                                        });
+                                                                      }
+                                                                    : null,
+                                                                icon: Icon(
+                                                                  Icons.add,
+                                                                  color: Colors
+                                                                      .white,
+                                                                  size: 12,
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          ],
                                                         ),
                                                       ),
 
@@ -3394,6 +4066,28 @@ class _MesasScreenState extends State<MesasScreen>
                                                                     TextOverflow
                                                                         .ellipsis,
                                                               ),
+
+                                                            // ✅ NUEVO: Información de cantidad seleccionada
+                                                            Text(
+                                                              'Disponibles: ${item.cantidad} | Seleccionadas: ${cantidadesSeleccionadas[indexKey] ?? 0}',
+                                                              style: TextStyle(
+                                                                color:
+                                                                    isSelected
+                                                                    ? _primary
+                                                                    : _textPrimary
+                                                                          .withOpacity(
+                                                                            0.5,
+                                                                          ),
+                                                                fontSize: 9,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w500,
+                                                              ),
+                                                              maxLines: 1,
+                                                              overflow:
+                                                                  TextOverflow
+                                                                      .ellipsis,
+                                                            ),
                                                           ],
                                                         ),
                                                       ),
@@ -3414,16 +4108,22 @@ class _MesasScreenState extends State<MesasScreen>
                                                         ),
                                                       ),
 
-                                                      // Total
+                                                      // Total - ahora basado en cantidad seleccionada
                                                       Expanded(
                                                         flex: 1,
                                                         child: Text(
                                                           formatCurrency(
                                                             item.precioUnitario *
-                                                                item.cantidad,
+                                                                (cantidadesSeleccionadas[indexKey] ??
+                                                                    0),
                                                           ),
                                                           style: TextStyle(
-                                                            color: _primary,
+                                                            color: isSelected
+                                                                ? _primary
+                                                                : _textPrimary
+                                                                      .withOpacity(
+                                                                        0.5,
+                                                                      ),
                                                             fontWeight:
                                                                 FontWeight.bold,
                                                             fontSize: 12,
@@ -3433,53 +4133,47 @@ class _MesasScreenState extends State<MesasScreen>
                                                         ),
                                                       ),
 
-                                                      // Vendedor
+                                                      // ✅ MEJORADO: Vendedor con más prominencia
                                                       Expanded(
                                                         flex: 1,
-                                                        child: Text(
-                                                          item.agregadoPor ??
-                                                              'Sergio',
-                                                          style: TextStyle(
-                                                            color: _textPrimary,
-                                                            fontSize: 11,
-                                                          ),
-                                                          textAlign:
-                                                              TextAlign.center,
-                                                          maxLines: 1,
-                                                          overflow: TextOverflow
-                                                              .ellipsis,
-                                                        ),
-                                                      ),
-
-                                                      // Botón cancelar como en la imagen
-                                                      Container(
-                                                        width: 80,
-                                                        child: ElevatedButton(
-                                                          onPressed: () {
-                                                            // Lógica para cancelar este producto específico
-                                                          },
-                                                          style: ElevatedButton.styleFrom(
-                                                            backgroundColor:
-                                                                _primary,
-                                                            foregroundColor:
-                                                                Colors.white,
-                                                            padding:
-                                                                EdgeInsets.symmetric(
-                                                                  horizontal: 8,
-                                                                  vertical: 4,
+                                                        child: Container(
+                                                          padding:
+                                                              EdgeInsets.symmetric(
+                                                                horizontal: 4,
+                                                                vertical: 2,
+                                                              ),
+                                                          decoration: BoxDecoration(
+                                                            color: _primary
+                                                                .withOpacity(
+                                                                  0.1,
                                                                 ),
-                                                            shape: RoundedRectangleBorder(
-                                                              borderRadius:
-                                                                  BorderRadius.circular(
-                                                                    6,
+                                                            borderRadius:
+                                                                BorderRadius.circular(
+                                                                  4,
+                                                                ),
+                                                            border: Border.all(
+                                                              color: _primary
+                                                                  .withOpacity(
+                                                                    0.3,
                                                                   ),
+                                                              width: 1,
                                                             ),
                                                           ),
                                                           child: Text(
-                                                            'Cancelar',
+                                                            '👤 ${item.agregadoPor ?? 'Sergio'}',
                                                             style: TextStyle(
+                                                              color: _primary,
                                                               fontSize: 10,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w600,
                                                             ),
+                                                            textAlign: TextAlign
+                                                                .center,
+                                                            maxLines: 1,
+                                                            overflow:
+                                                                TextOverflow
+                                                                    .ellipsis,
                                                           ),
                                                         ),
                                                       ),
@@ -4588,6 +5282,10 @@ class _MesasScreenState extends State<MesasScreen>
                                         onPressed: () {
                                           setState(() {
                                             pagoMultiple = false;
+                                            // Ensure medioPago0 is not 'mixto' when going back to single payment
+                                            if (medioPago0 == 'mixto') {
+                                              medioPago0 = 'efectivo';
+                                            }
                                             // Limpiar campos de pago múltiple para evitar datos residuales
                                             montoEfectivoController.clear();
                                             montoTarjetaController.clear();
@@ -4639,6 +5337,8 @@ class _MesasScreenState extends State<MesasScreen>
                                         onPressed: () {
                                           setState(() {
                                             pagoMultiple = true;
+                                            medioPago0 =
+                                                'mixto'; // Update the payment method
                                           });
                                         },
                                         icon: Icon(
@@ -5188,6 +5888,7 @@ class _MesasScreenState extends State<MesasScreen>
                                                         }
                                                       });
                                                     },
+                                                    onEditingComplete: () {},
                                                   ),
                                                 ),
                                               ],
@@ -5686,9 +6387,35 @@ class _MesasScreenState extends State<MesasScreen>
                                             }
 
                                             // Pago mixto completo
+                                            // Preparar la estructura de pagosMixtos según la API
+                                            List<Map<String, dynamic>>
+                                            pagosMixtos = [];
+
+                                            // Agregar los pagos individuales si tienen monto > 0
+                                            if (montoEfectivo > 0) {
+                                              pagosMixtos.add({
+                                                'formaPago': 'efectivo',
+                                                'monto': montoEfectivo,
+                                              });
+                                            }
+
+                                            if (montoTarjeta > 0) {
+                                              pagosMixtos.add({
+                                                'formaPago': 'tarjeta',
+                                                'monto': montoTarjeta,
+                                              });
+                                            }
+
+                                            if (montoTransferencia > 0) {
+                                              pagosMixtos.add({
+                                                'formaPago': 'transferencia',
+                                                'monto': montoTransferencia,
+                                              });
+                                            }
+
                                             Navigator.pop(context, {
                                               'medioPago':
-                                                  'mixto', // ✅ FIJO: método específico para mixto
+                                                  'mixto', // Método específico para mixto
                                               'incluyePropina': incluyePropina,
                                               'descuentoPorcentaje':
                                                   descuentoPorcentajeController
@@ -5710,6 +6437,8 @@ class _MesasScreenState extends State<MesasScreen>
                                               'montoTransferencia':
                                                   montoTransferenciaController
                                                       .text,
+                                              'pagosMixtos':
+                                                  pagosMixtos, // Agregamos la nueva estructura
                                               'productosSeleccionados': [],
                                             });
                                           },
@@ -6231,7 +6960,7 @@ class _MesasScreenState extends State<MesasScreen>
           print('   - Tarjeta: ${formatCurrency(montoTarjeta)}');
           print('   - Transferencia: ${formatCurrency(montoTransferencia)}');
 
-          // Procesar pago múltiple usando pagosParciales
+          // Procesar pago múltiple usando el nuevo sistema directo
           await _pedidoService.pagarPedido(
             pedido.id,
             formaPago: metodoPagoPrincipal, // Usar 'mixto' como método de pago
@@ -6244,8 +6973,13 @@ class _MesasScreenState extends State<MesasScreen>
                 : null,
             tipoConsumoInterno: esConsumoInterno ? 'empleado' : null,
             descuento: descuento,
-            pagosParciales:
-                pagosParciales, // ✅ NUEVO: Enviar los pagos parciales
+            // Usar el nuevo método de pago múltiple
+            pagoMultiple: true,
+            montoEfectivo: montoEfectivo,
+            montoTarjeta: montoTarjeta,
+            montoTransferencia: montoTransferencia,
+            // También mantener compatibilidad con el método anterior
+            pagosParciales: pagosParciales,
           );
 
           print(
@@ -6299,6 +7033,12 @@ class _MesasScreenState extends State<MesasScreen>
 
         // Forzar recarga de datos para actualizar la UI
         await _recargarMesasConCards();
+
+        // ✅ AÑADIDO: Llamar callback de completion para mesas especiales
+        if (_onPagoCompletadoCallback != null) {
+          _onPagoCompletadoCallback!();
+          _onPagoCompletadoCallback = null; // Limpiar callback
+        }
 
         print('  - Estado actualizado a: ${pedido.estado}');
         print('  - Tipo final confirmado: ${pedido.tipo}');
@@ -6662,14 +7402,48 @@ class _MesasScreenState extends State<MesasScreen>
       print('   • Propina: \$${propina}');
       print('   • Usuario: ${userProvider.userName ?? 'Usuario'}');
 
-      // Llamar a la API correcta
+      // Llamar a la API correcta con soporte para pagos múltiples
+      final bool esPagoMultiple = datosPago['pagoMultiple'] == true;
+      final formaPago = esPagoMultiple
+          ? 'multiple'
+          : (datosPago['medioPago'] ?? 'efectivo');
+
+      // Convertir los montos de string a double para el pago múltiple
+      double montoEfectivo = 0.0;
+      double montoTarjeta = 0.0;
+      double montoTransferencia = 0.0;
+
+      if (esPagoMultiple) {
+        montoEfectivo =
+            double.tryParse(datosPago['montoEfectivo']?.toString() ?? '0') ??
+            0.0;
+        montoTarjeta =
+            double.tryParse(datosPago['montoTarjeta']?.toString() ?? '0') ??
+            0.0;
+        montoTransferencia =
+            double.tryParse(
+              datosPago['montoTransferencia']?.toString() ?? '0',
+            ) ??
+            0.0;
+
+        print('   • PAGO MÚLTIPLE DETECTADO:');
+        print('   • Monto Efectivo: \$${montoEfectivo}');
+        print('   • Monto Tarjeta: \$${montoTarjeta}');
+        print('   • Monto Transferencia: \$${montoTransferencia}');
+      }
+
       final resultado = await _pedidoService.pagarProductosParciales(
         pedido.id,
         itemsSeleccionados: itemsSeleccionados,
-        formaPago: datosPago['medioPago'] ?? 'efectivo',
+        formaPago: formaPago,
         propina: propina,
         procesadoPor: userProvider.userName ?? 'Usuario',
         notas: 'Pago parcial desde mesa ${mesa.nombre}',
+        // Parámetros para pago múltiple
+        pagoMultiple: esPagoMultiple,
+        montoEfectivo: montoEfectivo,
+        montoTarjeta: montoTarjeta,
+        montoTransferencia: montoTransferencia,
       );
 
       if (resultado['success'] == true) {
@@ -6690,6 +7464,12 @@ class _MesasScreenState extends State<MesasScreen>
 
         // ✅ ACTUALIZACIÓN OPTIMIZADA - Una sola recarga completa es suficiente
         await _recargarMesasConCards();
+
+        // ✅ AÑADIDO: Llamar callback de completion para mesas especiales
+        if (_onPagoCompletadoCallback != null) {
+          _onPagoCompletadoCallback!();
+          _onPagoCompletadoCallback = null; // Limpiar callback
+        }
 
         // ✅ MANTENER EN PANTALLA DE MESAS - No redirigir después del pago parcial
         print('🏠 Permaneciendo en pantalla de mesas después del pago parcial');
@@ -6848,6 +7628,12 @@ class _MesasScreenState extends State<MesasScreen>
 
       // ✅ REFRESCAR LA UI OPTIMIZADO - Una sola recarga completa
       await _recargarMesasConCards();
+
+      // ✅ AÑADIDO: Llamar callback de completion para mesas especiales
+      if (_onPagoCompletadoCallback != null) {
+        _onPagoCompletadoCallback!();
+        _onPagoCompletadoCallback = null; // Limpiar callback
+      }
 
       // ✅ MANTENER EN PANTALLA DE MESAS - No redirigir después del pago múltiple parcial
       print(
@@ -7222,18 +8008,17 @@ class _MesasScreenState extends State<MesasScreen>
         );
       }
 
-      print('🎯 BUSCANDO COINCIDENCIAS PARA CANCELAR:');
-      for (
-        int canceladoIndex = 0;
-        canceladoIndex < itemsCancelados.length;
-        canceladoIndex++
-      ) {
-        var itemCancelado = itemsCancelados[canceladoIndex];
+      print('🎯 PROCESANDO CANCELACIONES POR CANTIDAD ESPECÍFICA:');
+
+      // ✅ NUEVA LÓGICA: Procesar cada producto cancelado respetando cantidades específicas
+      Map<int, int> cantidadesPorCancelar = {}; // índice -> cantidad a cancelar
+
+      for (var itemCancelado in itemsCancelados) {
         print(
-          '   Buscando: ${itemCancelado.productoNombre} (ProdID: ${itemCancelado.productoId})',
+          '   🔍 Procesando: ${itemCancelado.productoNombre} (Cantidad: ${itemCancelado.cantidad})',
         );
 
-        bool encontrado = false;
+        // Buscar productos coincidentes en el pedido
         for (int i = 0; i < pedido.items.length; i++) {
           final itemOriginal = pedido.items[i];
 
@@ -7242,30 +8027,68 @@ class _MesasScreenState extends State<MesasScreen>
               itemOriginal.productoId.isNotEmpty) {
             esElMismoProducto =
                 itemOriginal.productoId == itemCancelado.productoId;
-            print(
-              '     -> Comparando por ProductoID: ${itemOriginal.productoId} == ${itemCancelado.productoId} = $esElMismoProducto',
-            );
           } else {
             esElMismoProducto =
                 itemOriginal.productoNombre == itemCancelado.productoNombre;
-            print(
-              '     -> Comparando por nombre: "${itemOriginal.productoNombre}" == "${itemCancelado.productoNombre}" = $esElMismoProducto',
-            );
           }
 
-          if (esElMismoProducto && !indicesCancelados.contains(i)) {
-            indicesCancelados.add(i);
-            print(
-              '   ✅ PRODUCTO IDENTIFICADO para cancelar [índice $i]: ${itemOriginal.productoNombre}',
-            );
-            encontrado = true;
-            break;
+          if (esElMismoProducto) {
+            // Determinar cuánto cancelar de este item específico
+            int cantidadDisponible = itemOriginal.cantidad;
+            int cantidadYaCancelada = cantidadesPorCancelar[i] ?? 0;
+            int cantidadRestante = cantidadDisponible - cantidadYaCancelada;
+            int cantidadACancelar = itemCancelado.cantidad;
+
+            if (cantidadRestante > 0) {
+              int cantidadFinalCancelacion =
+                  cantidadACancelar > cantidadRestante
+                  ? cantidadRestante
+                  : cantidadACancelar;
+
+              cantidadesPorCancelar[i] =
+                  cantidadYaCancelada + cantidadFinalCancelacion;
+              itemCancelado = ItemPedido(
+                id: itemCancelado.id,
+                productoId: itemCancelado.productoId,
+                productoNombre: itemCancelado.productoNombre,
+                cantidad:
+                    cantidadACancelar -
+                    cantidadFinalCancelacion, // Cantidad restante por cancelar
+                precioUnitario: itemCancelado.precioUnitario,
+                agregadoPor: itemCancelado.agregadoPor,
+                notas: itemCancelado.notas,
+              );
+
+              print('   ✅ [Índice $i] ${itemOriginal.productoNombre}:');
+              print('      • Disponible: $cantidadDisponible');
+              print('      • Ya cancelado: $cantidadYaCancelada');
+              print('      • Restante: $cantidadRestante');
+              print('      • A cancelar ahora: $cantidadFinalCancelacion');
+              print('      • Total cancelado: ${cantidadesPorCancelar[i]}');
+
+              if (itemCancelado.cantidad <= 0)
+                break; // Ya se canceló toda la cantidad requerida
+            }
           }
         }
 
-        if (!encontrado) {
-          print('   ❌ NO ENCONTRADO: ${itemCancelado.productoNombre}');
+        if (itemCancelado.cantidad > 0) {
+          print(
+            '   ⚠️ ADVERTENCIA: No se pudo cancelar ${itemCancelado.cantidad} unidades de ${itemCancelado.productoNombre}',
+          );
         }
+      }
+
+      // Convertir el mapa a lista de índices para mantener compatibilidad
+      indicesCancelados = cantidadesPorCancelar.keys.toList();
+
+      print('📋 RESUMEN DE CANCELACIONES:');
+      for (int indice in indicesCancelados) {
+        final item = pedido.items[indice];
+        final cantidadCancelada = cantidadesPorCancelar[indice]!;
+        print(
+          '   • [${indice}] ${item.productoNombre}: $cantidadCancelada de ${item.cantidad} unidades',
+        );
       }
 
       print('� RESUMEN DE IDENTIFICACIÓN:');
@@ -7287,18 +8110,39 @@ class _MesasScreenState extends State<MesasScreen>
         );
       }
 
-      // Filtrar productos manteniendo solo los que NO están en los índices cancelados
+      // ✅ NUEVA LÓGICA: Ajustar cantidades en lugar de eliminar items completos
       List<ItemPedido> productosRestantes = [];
+
       for (int i = 0; i < pedido.items.length; i++) {
-        if (!indicesCancelados.contains(i)) {
-          productosRestantes.add(pedido.items[i]);
-          print(
-            '✅ Producto mantenido (índice $i): ${pedido.items[i].productoNombre}',
+        final itemOriginal = pedido.items[i];
+        final cantidadCancelada = cantidadesPorCancelar[i] ?? 0;
+        final cantidadRestante = itemOriginal.cantidad - cantidadCancelada;
+
+        if (cantidadRestante > 0) {
+          // Crear nuevo item con la cantidad reducida
+          final itemAjustado = ItemPedido(
+            id: itemOriginal.id,
+            productoId: itemOriginal.productoId,
+            productoNombre: itemOriginal.productoNombre,
+            cantidad: cantidadRestante,
+            precioUnitario: itemOriginal.precioUnitario,
+            agregadoPor: itemOriginal.agregadoPor,
+            notas: itemOriginal.notas,
           );
+
+          productosRestantes.add(itemAjustado);
+          print(
+            '✅ Producto ajustado (índice $i): ${itemOriginal.productoNombre}',
+          );
+          print('   • Cantidad original: ${itemOriginal.cantidad}');
+          print('   • Cantidad cancelada: $cantidadCancelada');
+          print('   • Cantidad restante: $cantidadRestante');
         } else {
           print(
-            '❌ Producto cancelado (índice $i): ${pedido.items[i].productoNombre}',
+            '❌ Producto completamente cancelado (índice $i): ${itemOriginal.productoNombre}',
           );
+          print('   • Cantidad original: ${itemOriginal.cantidad}');
+          print('   • Cantidad cancelada: $cantidadCancelada');
         }
       }
 
@@ -7338,6 +8182,20 @@ class _MesasScreenState extends State<MesasScreen>
         mesa.productos = [];
         mesa.total = 0.0;
         await _mesaService.updateMesa(mesa);
+
+        // ✅ Forzar actualización inmediata de la UI
+        if (mounted) {
+          setState(() {
+            // Actualizar la mesa en la lista local
+            final mesaIndex = mesas.indexWhere((m) => m.id == mesa.id);
+            if (mesaIndex != -1) {
+              mesas[mesaIndex].ocupada = false;
+              mesas[mesaIndex].productos = [];
+              mesas[mesaIndex].total = 0.0;
+            }
+          });
+        }
+
         print(
           '✅ Mesa ${mesa.nombre} liberada (pedido cancelado completamente)',
         );
@@ -7389,6 +8247,17 @@ class _MesasScreenState extends State<MesasScreen>
         mesa.total = pedidoRespuesta.total;
         await _mesaService.updateMesa(mesa);
 
+        // ✅ Forzar actualización inmediata de la UI
+        if (mounted) {
+          setState(() {
+            // Actualizar el total en la lista local de mesas
+            final mesaIndex = mesas.indexWhere((m) => m.id == mesa.id);
+            if (mesaIndex != -1) {
+              mesas[mesaIndex].total = pedidoRespuesta.total;
+            }
+          });
+        }
+
         print(
           'Pedido actualizado: ${pedidoRespuesta.id} - Total: ${formatCurrency(pedidoRespuesta.total)}',
         );
@@ -7423,7 +8292,8 @@ class _MesasScreenState extends State<MesasScreen>
         ),
       );
 
-      _recargarPestanaActual();
+      // ✅ RECARGA DE MESAS: Actualizar la interfaz para reflejar cambios
+      await _recargarMesasConCards();
 
       print(
         '🎉 =========================== CANCELACIÓN COMPLETADA ===========================',
@@ -7507,6 +8377,20 @@ class _MesasScreenState extends State<MesasScreen>
           print('✅ Mesa destino marcada como ocupada y total actualizado.');
         } catch (e) {
           print('❌ Error actualizando mesa destino: $e');
+        }
+
+        // --- NUEVO: Actualizar mesa origen restando productos movidos ---
+        try {
+          mesaOrigen.total = mesaOrigen.total - totalMovido;
+          // Si ya no hay productos en la mesa origen, marcarla como no ocupada
+          if (mesaOrigen.total <= 0) {
+            mesaOrigen.ocupada = false;
+            mesaOrigen.total = 0; // Asegurarse que no sea negativo
+          }
+          await _mesaService.updateMesa(mesaOrigen);
+          print('✅ Mesa origen actualizada con el total restado.');
+        } catch (e) {
+          print('❌ Error actualizando mesa origen: $e');
         }
 
         // --- Mensaje de confirmación simple ---
@@ -8864,6 +9748,87 @@ class _MesasScreenState extends State<MesasScreen>
     return baseSize * 1.1; // Desktop
   }
 
+  Widget buildMesasGrid() {
+    bool isMobile = MediaQuery.of(context).size.width < 600;
+    return isMobile ? _buildMobileMesasView() : buildMesasPorFilas();
+  }
+
+  // Widget para seleccionar el contenido principal según el estado
+  Widget _buildMainContent() {
+    if (isLoading) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 50,
+              height: 50,
+              child: CircularProgressIndicator(strokeWidth: 3),
+            ),
+            SizedBox(height: 16),
+            Text('Cargando mesas...'),
+          ],
+        ),
+      );
+    } else if (errorMessage != null) {
+      return Center(
+        child: Container(
+          margin: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(30),
+          decoration: BoxDecoration(
+            color: const Color.fromRGBO(30, 30, 30, 0.9),
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.3),
+                blurRadius: 15,
+                offset: const Offset(0, 5),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline, color: Colors.red, size: 60),
+              const SizedBox(height: 16),
+              const Text(
+                'Error al cargar mesas',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                errorMessage!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white70),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: _loadMesas,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Reintentar'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    } else if (mesas.isEmpty) {
+      return const Center(child: Text('No hay mesas disponibles'));
+    } else {
+      // Usar buildMesasLayout que incluye mesas especiales y regulares
+      return buildMesasLayout();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -8948,91 +9913,53 @@ class _MesasScreenState extends State<MesasScreen>
           ),
         ],
       ),
-      body: isLoading
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SizedBox(
-                    width: 50,
-                    height: 50,
-                    child: CircularProgressIndicator(
-                      color: AppTheme.primary,
-                      strokeWidth: 3,
-                    ),
-                  ),
-                  SizedBox(height: AppTheme.spacingMedium),
-                  Text('Cargando mesas...', style: AppTheme.bodyLarge),
-                ],
-              ),
-            )
-          : errorMessage != null
-          ? Center(
+      body: Stack(
+        children: <Widget>[
+          // Contenido principal
+          Positioned.fill(child: _buildMainContent()),
+
+          // Indicador de precarga de datos (solo se muestra durante la precarga)
+          if (_precargandoDatos)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
               child: Container(
-                margin: EdgeInsets.all(AppTheme.spacingLarge),
-                padding: EdgeInsets.all(AppTheme.spacingXLarge),
-                decoration: AppTheme.elevatedCardDecoration.copyWith(
-                  border: Border.all(
-                    color: AppTheme.error.withOpacity(0.3),
-                    width: 1.5,
-                  ),
+                color: Colors.amber.shade800,
+                padding: const EdgeInsets.symmetric(
+                  vertical: 6,
+                  horizontal: 16,
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
+                child: Row(
                   children: [
-                    Container(
-                      padding: EdgeInsets.all(AppTheme.spacingMedium),
-                      decoration: BoxDecoration(
-                        color: AppTheme.error.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(50),
-                      ),
-                      child: Icon(
-                        Icons.error_outline,
-                        color: AppTheme.error,
-                        size: 48,
-                      ),
+                    const Icon(
+                      Icons.info_outline,
+                      color: Colors.white,
+                      size: 16,
                     ),
-                    SizedBox(height: AppTheme.spacingLarge),
-                    Text(
-                      'Error al cargar mesas',
-                      style: AppTheme.headlineMedium,
-                      textAlign: TextAlign.center,
-                    ),
-                    SizedBox(height: AppTheme.spacingMedium),
-                    Container(
-                      padding: EdgeInsets.all(AppTheme.spacingMedium),
-                      decoration: BoxDecoration(
-                        color: AppTheme.surfaceDark,
-                        borderRadius: BorderRadius.circular(
-                          AppTheme.radiusSmall,
-                        ),
-                      ),
+                    const SizedBox(width: 8),
+                    const Expanded(
                       child: Text(
-                        errorMessage!,
-                        style: AppTheme.bodyMedium.copyWith(
-                          color: AppTheme.textSecondary,
-                        ),
-                        textAlign: TextAlign.center,
+                        'Cargando productos e ingredientes...',
+                        style: TextStyle(color: Colors.white, fontSize: 12),
                       ),
                     ),
-                    SizedBox(height: AppTheme.spacingLarge),
-                    ElevatedButton(
-                      onPressed: _loadMesas,
-                      style: AppTheme.primaryButtonStyle,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.refresh, size: 20),
-                          SizedBox(width: AppTheme.spacingSmall),
-                          Text('Reintentar'),
-                        ],
+                    SizedBox(
+                      height: 16,
+                      width: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: const AlwaysStoppedAnimation<Color>(
+                          Colors.white,
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
-            )
-          : buildMesasLayout(),
+            ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
           print(
@@ -10358,10 +11285,17 @@ class _MesasScreenState extends State<MesasScreen>
             Navigator.pop(context); // Cerrar la pantalla de lista
             _navegarAPedido(nombreMesa);
           },
-          onPagarPedido: (pedido) => _pagarPedidoIndividual(pedido),
+          onPagarPedido: (pedido) => _pagarPedidoIndividual(
+            pedido,
+            onPagoCompletado: () {
+              // ✅ AÑADIDO: Rebuild de mesas después de pago parcial
+              _recargarMesasConCards();
+            },
+          ),
           onEditarPedido: (pedido) => _editarPedidoExistente(pedido),
           onRecargarPedidos: () {
             Navigator.pop(context); // Cerrar la pantalla actual
+            _recargarMesasConCards(); // ✅ AÑADIDO: Rebuild de mesas como en mover
             _mostrarPedidosMesaEspecial(nombreMesa); // Recargar
           },
         ),
@@ -10379,7 +11313,10 @@ class _MesasScreenState extends State<MesasScreen>
   }
 
   // Método para pagar un pedido individual
-  void _pagarPedidoIndividual(Pedido pedido) async {
+  void _pagarPedidoIndividual(
+    Pedido pedido, {
+    VoidCallback? onPagoCompletado,
+  }) async {
     try {
       // Crear mesa temporal para el pedido
       final mesaTemporal = Mesa(
@@ -10390,8 +11327,12 @@ class _MesasScreenState extends State<MesasScreen>
         productos: [],
       );
 
-      // Mostrar diálogo de pago
-      _mostrarDialogoPago(mesaTemporal, pedido);
+      // Mostrar diálogo de pago con callback de completion
+      _mostrarDialogoPago(
+        mesaTemporal,
+        pedido,
+        onPagoCompletado: onPagoCompletado,
+      );
     } catch (e) {
       print('❌ Error al procesar pago individual: $e');
       ScaffoldMessenger.of(context).showSnackBar(
@@ -10405,6 +11346,8 @@ class _MesasScreenState extends State<MesasScreen>
 
   // Método para editar un pedido existente
   void _editarPedidoExistente(Pedido pedido) {
+    print('🔧 Editando pedido existente: ${pedido.id} - Mesa: ${pedido.mesa}');
+
     // Crear mesa temporal para navegar al pedido
     final mesaTemporal = Mesa(
       id: pedido.id, // Usar ID del pedido
@@ -10419,7 +11362,7 @@ class _MesasScreenState extends State<MesasScreen>
       MaterialPageRoute(
         builder: (context) => PedidoScreen(
           mesa: mesaTemporal,
-          // Pasar información adicional si la pantalla lo soporta
+          pedidoExistente: pedido, // ✅ CORREGIDO: Pasar el pedido existente
         ),
       ),
     );

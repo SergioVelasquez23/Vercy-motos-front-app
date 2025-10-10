@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../services/ingrediente_service.dart';
-import '../services/producto_service.dart';
 import '../models/ingrediente.dart';
 import '../models/categoria.dart';
 import '../widgets/loading_indicator.dart';
 import '../theme/app_theme.dart';
+import '../providers/datos_provider.dart';
 
 class IngredientesScreen extends StatefulWidget {
   const IngredientesScreen({super.key});
@@ -15,7 +16,6 @@ class IngredientesScreen extends StatefulWidget {
 
 class _IngredientesScreenState extends State<IngredientesScreen> {
   final IngredienteService _ingredienteService = IngredienteService();
-  final ProductoService _productoService = ProductoService();
   List<Ingrediente> _ingredientes = [];
   List<Ingrediente> _ingredientesFiltrados = [];
   List<Categoria> _categorias = [];
@@ -23,6 +23,11 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
   String _error = '';
   final TextEditingController _searchController = TextEditingController();
   String _categoriaSeleccionada = 'Todas';
+
+  // Variables para paginación
+  int _paginaActual = 0;
+  int _itemsPorPagina = 10;
+  List<Ingrediente> _ingredientesPaginados = [];
 
   @override
   void initState() {
@@ -40,14 +45,30 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final ingredientes = await _ingredienteService.getAllIngredientes();
-      final categorias = await _productoService.getCategorias();
+      // Usar el provider para acceder a los datos ya cargados
+      final datosProvider = Provider.of<DatosProvider>(context, listen: false);
+
+      // Si los datos no están inicializados, esperamos a que se carguen
+      if (!datosProvider.datosInicializados) {
+        print(
+          '📝 IngredientesScreen: Datos aún no inicializados, usando provider...',
+        );
+        await datosProvider.inicializarDatos();
+      } else {
+        print('📝 IngredientesScreen: Usando datos en caché del provider');
+      }
+
+      // Obtener datos del provider
+      final ingredientes = datosProvider.ingredientes;
+      final categorias = datosProvider.categorias;
 
       setState(() {
         _ingredientes = ingredientes;
         _ingredientesFiltrados = ingredientes;
         _categorias = categorias;
+        _paginaActual = 0; // Reiniciar a primera página al cargar nuevos datos
         _error = '';
+        _actualizarPaginacion(); // Actualizar la lista paginada
       });
     } catch (e) {
       setState(() => _error = 'Error al cargar ingredientes: $e');
@@ -72,7 +93,131 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
 
         return matchBusqueda && matchCategoria;
       }).toList();
+
+      // Actualizar la lista paginada
+      _actualizarPaginacion();
     });
+  }
+
+  /// Actualiza la lista paginada de ingredientes basada en los filtros actuales
+  void _actualizarPaginacion() {
+    int startIndex = _paginaActual * _itemsPorPagina;
+    int endIndex = startIndex + _itemsPorPagina;
+
+    // Asegurar que los índices estén dentro de los límites
+    if (startIndex >= _ingredientesFiltrados.length) {
+      _paginaActual = 0;
+      startIndex = 0;
+      endIndex = _itemsPorPagina;
+    }
+
+    if (endIndex > _ingredientesFiltrados.length) {
+      endIndex = _ingredientesFiltrados.length;
+    }
+
+    // Obtener solo los ingredientes para la página actual
+    _ingredientesPaginados = _ingredientesFiltrados.sublist(
+      startIndex,
+      endIndex,
+    );
+  }
+
+  /// Construye los controles de paginación
+  Widget _buildPaginationControls() {
+    // Calcular el número total de páginas
+    int totalPaginas = (_ingredientesFiltrados.length / _itemsPorPagina).ceil();
+
+    // Si solo hay una página o ninguna, no mostrar controles
+    if (totalPaginas <= 1) {
+      return SizedBox.shrink();
+    }
+
+    return Container(
+      padding: EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceDark,
+        border: Border(
+          top: BorderSide(color: AppTheme.primary.withOpacity(0.2)),
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Botón de página anterior
+          IconButton(
+            icon: Icon(Icons.arrow_back_ios, size: 18),
+            color: _paginaActual > 0 ? AppTheme.primary : AppTheme.textMuted,
+            onPressed: _paginaActual > 0
+                ? () => setState(() {
+                    _paginaActual--;
+                    _actualizarPaginacion();
+                  })
+                : null,
+          ),
+
+          // Información de página actual
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppTheme.cardBg,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              'Página ${_paginaActual + 1} de $totalPaginas',
+              style: TextStyle(
+                color: AppTheme.textPrimary,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+
+          // Botón de siguiente página
+          IconButton(
+            icon: Icon(Icons.arrow_forward_ios, size: 18),
+            color: _paginaActual < totalPaginas - 1
+                ? AppTheme.primary
+                : AppTheme.textMuted,
+            onPressed: _paginaActual < totalPaginas - 1
+                ? () => setState(() {
+                    _paginaActual++;
+                    _actualizarPaginacion();
+                  })
+                : null,
+          ),
+
+          // Selector de items por página
+          Container(
+            margin: EdgeInsets.only(left: 16),
+            padding: EdgeInsets.symmetric(horizontal: 8),
+            decoration: BoxDecoration(
+              color: AppTheme.cardBg,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<int>(
+                value: _itemsPorPagina,
+                dropdownColor: AppTheme.cardBg,
+                icon: Icon(Icons.arrow_drop_down, color: AppTheme.primary),
+                style: TextStyle(color: AppTheme.textPrimary),
+                items: [5, 10, 20, 50].map<DropdownMenuItem<int>>((int value) {
+                  return DropdownMenuItem<int>(
+                    value: value,
+                    child: Text('$value por página'),
+                  );
+                }).toList(),
+                onChanged: (newValue) {
+                  setState(() {
+                    _itemsPorPagina = newValue!;
+                    _paginaActual = 0; // Reset a primera página
+                    _actualizarPaginacion();
+                  });
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   // Obtener lista de categorías
@@ -113,6 +258,14 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
     if (confirmado == true) {
       try {
         await _ingredienteService.deleteIngrediente(ingrediente.id);
+
+        // Actualizar datos en el provider
+        final datosProvider = Provider.of<DatosProvider>(
+          context,
+          listen: false,
+        );
+        await datosProvider.cargarIngredientes(forzarActualizacion: true);
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Ingrediente eliminado correctamente'),
@@ -365,11 +518,22 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
                     print('   - ID original: ${ingrediente?.id ?? 'No ID'}');
                     print('   - ID nuevo ingrediente: ${nuevoIngrediente.id}');
 
+                    // Obtener el proveedor de datos
+                    final datosProvider = Provider.of<DatosProvider>(
+                      context,
+                      listen: false,
+                    );
+
                     if (ingrediente == null) {
                       // Nuevo ingrediente
                       await _ingredienteService.createIngrediente(
                         nuevoIngrediente,
                       );
+                      // Actualizar datos en el provider
+                      await datosProvider.cargarIngredientes(
+                        forzarActualizacion: true,
+                      );
+
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text('Ingrediente agregado correctamente'),
@@ -382,6 +546,11 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
                       await _ingredienteService.updateIngrediente(
                         nuevoIngrediente,
                       );
+                      // Actualizar datos en el provider
+                      await datosProvider.cargarIngredientes(
+                        forzarActualizacion: true,
+                      );
+
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(
@@ -510,105 +679,123 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
                       style: AppTheme.bodyMedium,
                     ),
                   )
-                : ListView.builder(
-                    itemCount: _ingredientesFiltrados.length,
-                    itemBuilder: (context, index) {
-                      final item = _ingredientesFiltrados[index];
-                      bool esStockBajo =
-                          item.stock <= item.stockMin ||
-                          item.stock <= 10; // Umbral para ingredientes
+                : Column(
+                    children: [
+                      Expanded(
+                        child: ListView.builder(
+                          padding: EdgeInsets.symmetric(vertical: 8),
+                          itemCount: _ingredientesPaginados.length,
+                          itemBuilder: (context, index) {
+                            final item = _ingredientesPaginados[index];
+                            bool esStockBajo =
+                                item.stock <= item.stockMin ||
+                                item.stock <= 10; // Umbral para ingredientes
 
-                      return Card(
-                        margin: EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 4,
-                        ),
-                        color: AppTheme.cardBg,
-                        child: ListTile(
-                          title: Text(
-                            item.nombre,
-                            style: AppTheme.headlineSmall.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Categoría: ${_obtenerNombreCategoria(item.categoria)} | Unidad: ${item.unidad.isNotEmpty ? item.unidad : "-"}',
-                                style: AppTheme.bodySmall,
+                            return Card(
+                              margin: EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 4,
                               ),
-                              SizedBox(height: 4),
-                              Row(
-                                children: [
-                                  Icon(
-                                    item.descontable
-                                        ? Icons.check_circle
-                                        : Icons.cancel,
-                                    size: 16,
-                                    color: item.descontable
-                                        ? Colors.green
-                                        : Colors.orange,
+                              color: AppTheme.cardBg,
+                              child: ListTile(
+                                title: Text(
+                                  item.nombre,
+                                  style: AppTheme.headlineSmall.copyWith(
+                                    fontWeight: FontWeight.bold,
                                   ),
-                                  SizedBox(width: 4),
-                                  Text(
-                                    item.descontable
-                                        ? 'Descontable'
-                                        : 'No descontable',
-                                    style: TextStyle(
-                                      color: item.descontable
-                                          ? Colors.green
-                                          : Colors.orange,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
+                                ),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Categoría: ${_obtenerNombreCategoria(item.categoria)} | Unidad: ${item.unidad.isNotEmpty ? item.unidad : "-"}',
+                                      style: AppTheme.bodySmall,
                                     ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Text(
-                                    'Stock: ${item.stock} ${item.unidad.isNotEmpty ? item.unidad : "-"}',
-                                    style: TextStyle(
-                                      color: esStockBajo
-                                          ? Colors.red
-                                          : AppTheme.textDark,
-                                      fontWeight: esStockBajo
-                                          ? FontWeight.bold
-                                          : FontWeight.normal,
+                                    SizedBox(height: 4),
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          item.descontable
+                                              ? Icons.check_circle
+                                              : Icons.cancel,
+                                          size: 16,
+                                          color: item.descontable
+                                              ? Colors.green
+                                              : Colors.orange,
+                                        ),
+                                        SizedBox(width: 4),
+                                        Text(
+                                          item.descontable
+                                              ? 'Descontable'
+                                              : 'No descontable',
+                                          style: TextStyle(
+                                            color: item.descontable
+                                                ? Colors.green
+                                                : Colors.orange,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  ),
-                                  Text(
-                                    'Costo: \$${item.costo.toStringAsFixed(2)}',
-                                    style: AppTheme.bodySmall,
-                                  ),
-                                ],
+                                  ],
+                                ),
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.end,
+                                      children: [
+                                        Text(
+                                          'Stock: ${item.stock} ${item.unidad.isNotEmpty ? item.unidad : "-"}',
+                                          style: TextStyle(
+                                            color: esStockBajo
+                                                ? Colors.red
+                                                : AppTheme.textDark,
+                                            fontWeight: esStockBajo
+                                                ? FontWeight.bold
+                                                : FontWeight.normal,
+                                          ),
+                                        ),
+                                        Text(
+                                          'Costo: \$${item.costo.toStringAsFixed(2)}',
+                                          style: AppTheme.bodySmall,
+                                        ),
+                                      ],
+                                    ),
+                                    SizedBox(width: 8),
+                                    IconButton(
+                                      icon: Icon(
+                                        Icons.edit,
+                                        color: AppTheme.primary,
+                                      ),
+                                      onPressed: () =>
+                                          _mostrarDialogoNuevoIngrediente(item),
+                                      tooltip: 'Editar ingrediente',
+                                    ),
+                                    IconButton(
+                                      icon: Icon(
+                                        Icons.delete,
+                                        color: Colors.red,
+                                      ),
+                                      onPressed: () =>
+                                          _confirmarEliminarIngrediente(item),
+                                      tooltip: 'Eliminar ingrediente',
+                                    ),
+                                  ],
+                                ),
                               ),
-                              SizedBox(width: 8),
-                              IconButton(
-                                icon: Icon(Icons.edit, color: AppTheme.primary),
-                                onPressed: () =>
-                                    _mostrarDialogoNuevoIngrediente(item),
-                                tooltip: 'Editar ingrediente',
-                              ),
-                              IconButton(
-                                icon: Icon(Icons.delete, color: Colors.red),
-                                onPressed: () =>
-                                    _confirmarEliminarIngrediente(item),
-                                tooltip: 'Eliminar ingrediente',
-                              ),
-                            ],
-                          ),
+                            );
+                          },
                         ),
-                      );
-                    },
+                      ),
+
+                      // Controles de paginación
+                      _buildPaginationControls(),
+                    ],
                   ),
           ),
         ],

@@ -16,6 +16,10 @@ class ProductoService {
   final storage = FlutterSecureStorage();
   final ImagePicker _picker = ImagePicker();
 
+  // Caché de productos para evitar cargar todos los productos repetidamente
+  // y para proporcionar una alternativa cuando ocurre OutOfMemoryError
+  final Map<String, Producto> _productosCache = {};
+
   Future<Map<String, String>> _getHeaders() async {
     final token = await storage.read(key: 'jwt_token');
     return {
@@ -31,30 +35,133 @@ class ProductoService {
 
       // Asegurar que la URL esté correctamente formada
       final url = '$baseUrl/api/productos/con-nombres-ingredientes';
-      // Obteniendo productos de URL: $url
+
+      // 1. Primero intentar con paginación para evitar OutOfMemoryError
+      try {
+        print(
+          '📦 Obteniendo productos con paginación para prevenir OutOfMemoryError...',
+        );
+        return await _getProductosPaginados(headers);
+      } catch (paginationError) {
+        print(
+          '⚠️ Error con paginación: $paginationError, intentando endpoint optimizado...',
+        );
+
+        // 2. Si falla la paginación, intentar con el endpoint optimizado
+        final response = await http
+            .get(Uri.parse(url), headers: headers)
+            .timeout(Duration(seconds: 15)); // Aumentado el timeout
+
+        if (response.statusCode == 200) {
+          final responseData = json.decode(response.body);
+          return _parseListResponse(responseData);
+        } else {
+          print(
+            '❌ Endpoint optimizado no disponible (${response.statusCode}), usando endpoint básico...',
+          );
+          // 3. Fallback al endpoint original
+          return await _getProductosBasico();
+        }
+      }
+    } catch (e) {
+      print('❌ Error con endpoint optimizado: $e');
+
+      // Verificar si es un error de memoria
+      if (e.toString().contains('OutOfMemoryError') ||
+          e.toString().contains('Java heap space')) {
+        print(
+          '🚨 Error de memoria detectado, usando cache local si está disponible...',
+        );
+        // Intentar devolver los productos en caché si existen
+        if (_productosCache.isNotEmpty) {
+          print(
+            '📦 Devolviendo ${_productosCache.length} productos de caché local',
+          );
+          return _productosCache.values.toList();
+        }
+      }
+
+      // Fallback al endpoint básico como último recurso
+      try {
+        return await _getProductosBasico();
+      } catch (fallbackError) {
+        print('💥 Error fatal al cargar productos: $fallbackError');
+        // Devolver lista vacía como último recurso para evitar bloquear la UI
+        return [];
+      }
+    }
+  }
+
+  // Nuevo método para obtener productos con paginación
+  Future<List<Producto>> _getProductosPaginados(
+    Map<String, String> headers,
+  ) async {
+    List<Producto> allProductos = [];
+    int page = 1;
+    int pageSize = 50;
+    bool hasMorePages = true;
+
+    while (hasMorePages) {
+      final url = '$baseUrl/api/productos/paginados?page=$page&size=$pageSize';
+      print('📦 Obteniendo página $page de productos...');
 
       final response = await http
           .get(Uri.parse(url), headers: headers)
           .timeout(Duration(seconds: 10));
 
-      // ✅ COMENTADO: Log de respuesta HTTP removido
-      // print('📦 Response status: ${response.statusCode}');
-
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
-        return _parseListResponse(responseData);
+
+        // Verificar formato de respuesta (con o sin wrapper)
+        final List<dynamic> productosData;
+        if (responseData is Map && responseData.containsKey('data')) {
+          productosData = responseData['data'] as List<dynamic>;
+          // Verificar si hay más páginas
+          hasMorePages =
+              responseData['hasNextPage'] == true ||
+              responseData['hasMore'] == true ||
+              (responseData['page'] != null &&
+                  responseData['totalPages'] != null &&
+                  responseData['page'] < responseData['totalPages']);
+        } else if (responseData is List) {
+          productosData = responseData;
+          // Si devuelve menos items que el tamaño de página, asumimos que no hay más
+          hasMorePages = productosData.length >= pageSize;
+        } else {
+          throw Exception('Formato de respuesta de paginación no reconocido');
+        }
+
+        // Parsear productos y agregarlos a la lista
+        final pageProductos = productosData
+            .map((item) => Producto.fromJson(item))
+            .toList();
+
+        allProductos.addAll(pageProductos);
+
+        // Si no hay más páginas o la página actual está vacía, salir
+        if (pageProductos.isEmpty) {
+          hasMorePages = false;
+        }
+
+        page++;
+      } else if (response.statusCode == 404) {
+        // Si el endpoint de paginación no existe, salir del loop
+        print('⚠️ Endpoint de paginación no disponible');
+        throw Exception('Endpoint de paginación no disponible');
       } else {
-        print(
-          '❌ Endpoint optimizado no disponible (${response.statusCode}), usando endpoint básico...',
+        throw Exception(
+          'Error al obtener página $page: ${response.statusCode}',
         );
-        // Fallback al endpoint original
-        return await _getProductosBasico();
       }
-    } catch (e) {
-      print('❌ Error con endpoint optimizado, usando endpoint básico...: $e');
-      // Fallback al endpoint original
-      return await _getProductosBasico();
     }
+
+    // Guardar en caché
+    for (var producto in allProductos) {
+      _productosCache[producto.id] = producto;
+    }
+
+    print('✅ Obtenidos ${allProductos.length} productos con paginación');
+    return allProductos;
   }
 
   // Obtener todos los productos (endpoint básico como fallback)
@@ -63,19 +170,43 @@ class ProductoService {
       final headers = await _getHeaders();
       final response = await http
           .get(Uri.parse('$baseUrl/api/productos'), headers: headers)
-          .timeout(Duration(seconds: 10));
+          .timeout(Duration(seconds: 15)); // Aumentado el timeout
 
       print('📦 Response status (básico): ${response.statusCode}');
-      print('📦 Response body (básico): ${response.body}');
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
-        return _parseListResponse(responseData);
+        final productos = _parseListResponse(responseData);
+
+        // Guardar en caché
+        for (var producto in productos) {
+          _productosCache[producto.id] = producto;
+        }
+
+        return productos;
       } else {
-        throw Exception('Error del servidor: ${response.statusCode}');
+        // Intenta analizar el mensaje de error
+        String errorMessage = 'Error del servidor: ${response.statusCode}';
+        try {
+          final errorData = json.decode(response.body);
+          if (errorData['message'] != null) {
+            errorMessage = errorData['message'];
+          }
+        } catch (e) {
+          // Error al parsear la respuesta, usar mensaje genérico
+        }
+
+        throw Exception(errorMessage);
       }
     } catch (e) {
       print('❌ Error cargando productos desde backend: $e');
+
+      // Si hay productos en caché, usarlos como último recurso
+      if (_productosCache.isNotEmpty) {
+        print('📦 Fallback a caché local: ${_productosCache.length} productos');
+        return _productosCache.values.toList();
+      }
+
       throw Exception(
         'No se pudieron cargar los productos desde el servidor: $e',
       );
@@ -446,8 +577,11 @@ class ProductoService {
           .timeout(Duration(seconds: 30));
 
       if (response.statusCode == 200) {
+        // Parsear la respuesta para verificar que se guardó correctamente
         final jsonData = json.decode(response.body);
-        print('✅ Imagen guardada como base64 en BD exitosamente');
+        print(
+          '✅ Imagen guardada como base64 en BD exitosamente: ${jsonData['success'] == true ? 'OK' : 'Error'}',
+        );
         // Retornar la data URL para uso inmediato
         return dataUrl;
       } else {

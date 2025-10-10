@@ -122,7 +122,8 @@ class _PedidoScreenState extends State<PedidoScreen> {
     // Establecer el estado inicial basado en si hay un pedido existente
     esPedidoExistente = widget.pedidoExistente != null;
 
-    _loadData();
+    // Cargar datos optimizado para usar el DatosProvider
+    _cargarDatosOptimizado();
 
     // Configurar el controlador de búsqueda con debounce
     busquedaController.addListener(_onSearchChanged);
@@ -138,6 +139,91 @@ class _PedidoScreenState extends State<PedidoScreen> {
     super.dispose();
   }
 
+  // Método optimizado para cargar datos utilizando el DatosProvider
+  Future<void> _cargarDatosOptimizado() async {
+    setState(() {
+      isLoading = true;
+      errorMessage = null;
+    });
+
+    try {
+      // Obtener el provider de datos
+      final datosProvider = Provider.of<DatosProvider>(context, listen: false);
+
+      // Si los datos no están inicializados, cargarlos
+      if (!datosProvider.datosInicializados) {
+        print(
+          '📝 PedidoScreen: Datos aún no inicializados, usando provider...',
+        );
+        await datosProvider.inicializarDatos();
+      } else {
+        print('📝 PedidoScreen: Usando datos en caché del provider');
+      }
+
+      // Obtener categorías y productos desde el provider (caché)
+      final productosCache = datosProvider.productos;
+      final categoriasCache = datosProvider.categorias;
+
+      // Inicializar el pedido existente si es necesario
+      if (widget.pedidoExistente != null) {
+        pedidoExistente = widget.pedidoExistente;
+
+        // Procesar productos del pedido existente
+        for (var item in widget.pedidoExistente!.items) {
+          final productoId = item.productoId;
+
+          // Buscar el producto en la caché
+          final producto = productosCache.firstWhere(
+            (p) => p.id == productoId,
+            orElse: () => Producto(
+              id: productoId,
+              nombre: item.productoNombre ?? 'Producto desconocido',
+              precio: item.precioUnitario,
+              costo: 0,
+              utilidad: 0,
+            ),
+          );
+
+          // Agregar a la lista de productos de la mesa
+          productosMesa.add(producto);
+
+          // Marcar como pagado si el pedido está pagado
+          if (widget.pedidoExistente!.estado == EstadoPedido.pagado) {
+            productoPagado[productoId] = true;
+          }
+        }
+
+        // Registrar cantidad original para comparación
+        cantidadProductosOriginales = productosMesa.length;
+        // Guardar copia para referencia
+        productosOriginales = List.from(productosMesa);
+
+        // Cargar cliente si existe
+        if (widget.pedidoExistente!.cliente != null) {
+          clienteSeleccionado = widget.pedidoExistente!.cliente;
+          clienteController.text = clienteSeleccionado!;
+        }
+      }
+
+      // Actualizar listas
+      setState(() {
+        categorias = categoriasCache;
+        productosDisponibles = productosCache;
+        // Por defecto, seleccionar "Todos" y cargar todos los productos
+        categoriaSelecionadaId = null; // null significa "Todos"
+        _resetearPaginacion();
+        _actualizarProductosVista(); // Actualizar la vista con todos los productos
+        isLoading = false;
+      });
+    } catch (error) {
+      setState(() {
+        isLoading = false;
+        errorMessage = "Error al cargar datos: $error";
+      });
+      print("❌ Error al cargar datos: $error");
+    }
+  }
+
   // Método para manejar cambios en la búsqueda con debounce y búsqueda mediante API
   void _onSearchChanged() {
     if (_debounceTimer?.isActive ?? false) {
@@ -148,6 +234,8 @@ class _PedidoScreenState extends State<PedidoScreen> {
         final query = busquedaController.text;
         setState(() {
           filtro = query.toLowerCase();
+          // Resetear paginación al cambiar la búsqueda
+          _resetearPaginacion();
         });
 
         // ✅ OPTIMIZACIÓN: Búsqueda más inteligente con threshold
@@ -164,13 +252,28 @@ class _PedidoScreenState extends State<PedidoScreen> {
     });
   }
 
-  // Método para realizar la búsqueda de productos mediante la API
+  // Método para realizar la búsqueda de productos usando el cache del provider
   Future<void> _searchProductosAPI(String query) async {
     try {
-      final results = await _productoService.searchProductos(
-        query,
-        categoriaId: categoriaSelecionadaId,
-      );
+      // Usar el provider para filtrar productos localmente (más rápido)
+      final datosProvider = Provider.of<DatosProvider>(context, listen: false);
+
+      // Filtrar productos en memoria desde el caché
+      final productos = datosProvider.productos;
+      final queryLower = query.toLowerCase();
+
+      final results = productos.where((producto) {
+        // Filtrar por categoría si está seleccionada
+        final coincideCategoria =
+            categoriaSelecionadaId == null ||
+            producto.categoria?.id == categoriaSelecionadaId;
+
+        // Filtrar por texto de búsqueda
+        final coincideTexto =
+            query.isEmpty || producto.nombre.toLowerCase().contains(queryLower);
+
+        return coincideCategoria && coincideTexto;
+      }).toList();
 
       if (mounted) {
         setState(() {
@@ -179,7 +282,7 @@ class _PedidoScreenState extends State<PedidoScreen> {
         });
       }
     } catch (error) {
-      print('Error al buscar productos: $error');
+      print('Error al buscar productos en caché: $error');
       // En caso de error, usar filtrado local como fallback
       if (mounted) {
         setState(() {
@@ -896,13 +999,17 @@ class _PedidoScreenState extends State<PedidoScreen> {
       setState(() {
         productosDisponibles = productos;
         categorias = categoriasData;
+        // Establecer la categoría como "Todos" por defecto
+        categoriaSelecionadaId = null;
+        _resetearPaginacion();
         isLoading = false;
         _productosFiltered = null; // Reset filtered products on load
         _actualizarProductosVista(); // ✅ Actualizar cache de vista
       });
 
-      // Initial search if there's a category selected
-      if (categoriaSelecionadaId != null) {
+      // Ya no es necesaria esta verificación ya que siempre queremos mostrar todos los productos
+      // pero mantenemos la búsqueda si hay texto en el campo
+      if (busquedaController.text.isNotEmpty) {
         _searchProductosAPI(busquedaController.text);
       }
     } catch (e) {
@@ -1729,27 +1836,60 @@ class _PedidoScreenState extends State<PedidoScreen> {
 
                 // Lista de productos disponibles
                 Expanded(
-                  child: GridView.builder(
-                    padding: EdgeInsets.symmetric(horizontal: 16),
-                    // ✅ OPTIMIZACIÓN: Usar delegado con extent máximo para mejor rendimiento
-                    gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-                      maxCrossAxisExtent:
-                          MediaQuery.of(context).size.width > 1200
-                          ? 300 // Máximo 300px por tarjeta en desktop
-                          : MediaQuery.of(context).size.width > 800
-                          ? 250 // 250px en tablet
-                          : 180, // 180px en móvil
-                      childAspectRatio: 1.0,
-                      crossAxisSpacing: 12,
-                      mainAxisSpacing: 12,
-                    ),
-                    // ✅ OPTIMIZACIÓN: Cachear lista filtrada para evitar recálculos
-                    itemCount: _productosVista.length,
-                    itemBuilder: (context, index) {
-                      return _buildProductoDisponible(_productosVista[index]);
-                    },
-                    // ✅ OPTIMIZACIÓN: Agregar caching para mejor scroll
-                    cacheExtent: 500, // Pre-render 500px adicionales
+                  child: Column(
+                    children: [
+                      Expanded(
+                        child: GridView.builder(
+                          padding: EdgeInsets.symmetric(horizontal: 16),
+                          // ✅ OPTIMIZACIÓN: Usar delegado con extent máximo para mejor rendimiento
+                          gridDelegate:
+                              SliverGridDelegateWithMaxCrossAxisExtent(
+                                maxCrossAxisExtent:
+                                    MediaQuery.of(context).size.width > 1200
+                                    ? 300 // Máximo 300px por tarjeta en desktop
+                                    : MediaQuery.of(context).size.width > 800
+                                    ? 250 // 250px en tablet
+                                    : 180, // 180px en móvil
+                                childAspectRatio: 1.0,
+                                crossAxisSpacing: 12,
+                                mainAxisSpacing: 12,
+                              ),
+                          // ✅ OPTIMIZACIÓN: Cachear lista filtrada para evitar recálculos
+                          itemCount: _productosVista.length,
+                          itemBuilder: (context, index) {
+                            return _buildProductoDisponible(
+                              _productosVista[index],
+                            );
+                          },
+                          // ✅ OPTIMIZACIÓN: Agregar caching para mejor scroll
+                          cacheExtent: 500, // Pre-render 500px adicionales
+                        ),
+                      ),
+
+                      // Botón "Ver más" si hay más productos disponibles
+                      if (categoriaSelecionadaId != null &&
+                          !_mostrandoTodos &&
+                          _todosProductosFiltrados.length >
+                              _productosVista.length)
+                        Padding(
+                          padding: EdgeInsets.only(bottom: 16),
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              setState(() {
+                                _actualizarProductosVista(cargarMas: true);
+                              });
+                            },
+                            icon: Icon(Icons.expand_more),
+                            label: Text(
+                              'Ver más productos (${_todosProductosFiltrados.length - _productosVista.length} restantes)',
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Color(0xFFFF6B00),
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
               ],
@@ -2104,18 +2244,47 @@ class _PedidoScreenState extends State<PedidoScreen> {
 
         // Lista de productos
         Expanded(
-          child: GridView.builder(
-            padding: EdgeInsets.all(16),
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2, // 2 columnas para móvil
-              childAspectRatio: 1.1, // Proporción más cuadrada para móvil
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
-            ),
-            itemCount: _filtrarProductos().length,
-            itemBuilder: (context, index) {
-              return _buildProductoDisponible(_filtrarProductos()[index]);
-            },
+          child: Column(
+            children: [
+              Expanded(
+                child: GridView.builder(
+                  padding: EdgeInsets.all(16),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2, // 2 columnas para móvil
+                    childAspectRatio: 1.1, // Proporción más cuadrada para móvil
+                    crossAxisSpacing: 16,
+                    mainAxisSpacing: 16,
+                  ),
+                  itemCount: _productosVista.length,
+                  itemBuilder: (context, index) {
+                    return _buildProductoDisponible(_productosVista[index]);
+                  },
+                ),
+              ),
+
+              // Botón "Ver más" si hay más productos disponibles
+              if (categoriaSelecionadaId != null &&
+                  !_mostrandoTodos &&
+                  _todosProductosFiltrados.length > _productosVista.length)
+                Padding(
+                  padding: EdgeInsets.only(bottom: 16),
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      setState(() {
+                        _actualizarProductosVista(cargarMas: true);
+                      });
+                    },
+                    icon: Icon(Icons.expand_more),
+                    label: Text(
+                      'Ver más (${_todosProductosFiltrados.length - _productosVista.length} restantes)',
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Color(0xFFFF6B00),
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
       ],
@@ -2262,13 +2431,18 @@ class _PedidoScreenState extends State<PedidoScreen> {
     );
   }
 
-  // Método de filtrado local (fallback para cuando la API no está disponible)
+  // Método de filtrado local optimizado usando DatosProvider (fallback para cuando la API no está disponible)
   List<Producto> _filtrarProductosLocal() {
+    // Obtener productos frescos del provider en lugar de usar productosDisponibles
+    final datosProvider = Provider.of<DatosProvider>(context, listen: false);
+    final productosCache = datosProvider.productos;
+
+    // Si no hay filtros, devolver todos los productos (desde caché)
     if (filtro.isEmpty && categoriaSelecionadaId == null) {
-      return productosDisponibles;
+      return productosCache;
     }
 
-    return productosDisponibles.where((producto) {
+    return productosCache.where((producto) {
       // Filtrado por nombre mejorado - busca coincidencias parciales en nombre
       // También busca coincidencias en descripción, categoría y otros campos relevantes
       bool matchesNombre = false;
@@ -2318,9 +2492,51 @@ class _PedidoScreenState extends State<PedidoScreen> {
         .toList();
   }
 
-  // ✅ NUEVO: Actualizar cache de productos para vista
-  void _actualizarProductosVista() {
-    _productosVista = _filtrarProductos();
+  // Variables para manejar paginación
+  List<Producto> _todosProductosFiltrados = [];
+  int _paginaActual = 1;
+  int _productosPorPagina = 10;
+  bool _mostrandoTodos = false;
+
+  // ✅ MEJORADO: Actualizar cache de productos para vista con paginación
+  void _actualizarProductosVista({bool cargarMas = false}) {
+    // Primero obtener todos los productos filtrados
+    _todosProductosFiltrados = _filtrarProductos();
+
+    // Implementar paginación: mostrar productos según página actual
+    if (categoriaSelecionadaId != null && !_mostrandoTodos) {
+      // Si hay una categoría seleccionada, aplicar paginación
+      int itemsToShow = _paginaActual * _productosPorPagina;
+
+      // Si se están cargando más, incrementar página
+      if (cargarMas) {
+        _paginaActual++;
+        itemsToShow = _paginaActual * _productosPorPagina;
+      }
+
+      // Limitar a la cantidad disponible
+      if (itemsToShow > _todosProductosFiltrados.length) {
+        itemsToShow = _todosProductosFiltrados.length;
+        _mostrandoTodos = true;
+      }
+
+      _productosVista = _todosProductosFiltrados.take(itemsToShow).toList();
+    } else {
+      // Si no hay categoría seleccionada o se están mostrando todos, mostrar todos
+      _productosVista = _todosProductosFiltrados;
+      _mostrandoTodos = true;
+    }
+
+    // Log de diagnóstico
+    print(
+      '📊 Productos filtrados: ${_todosProductosFiltrados.length}, mostrados: ${_productosVista.length}, página: $_paginaActual',
+    );
+  }
+
+  // Resetear paginación al cambiar categoría o búsqueda
+  void _resetearPaginacion() {
+    _paginaActual = 1;
+    _mostrandoTodos = false;
   }
 
   double _calcularTotal() {
@@ -2679,8 +2895,12 @@ class _PedidoScreenState extends State<PedidoScreen> {
                   IconButton(
                     icon: Icon(Icons.add_circle, color: Colors.green),
                     onPressed: () {
-                      _agregarProducto(producto);
-                      setState(() {});
+                      // Incrementar cantidad del producto existente en lugar de añadir uno nuevo
+                      // Esto mantendrá los ingredientes opcionales ya seleccionados
+                      setState(() {
+                        producto.cantidad++;
+                        _calcularTotal();
+                      });
                     },
                     iconSize: isMovil ? 24 : 20,
                     padding: EdgeInsets.zero,
@@ -2826,6 +3046,7 @@ class _PedidoScreenState extends State<PedidoScreen> {
         isSelected: categoriaSelecionadaId == null,
         onTap: () => setState(() {
           categoriaSelecionadaId = null;
+          _resetearPaginacion();
           _actualizarProductosVista();
         }),
       ),
@@ -2840,6 +3061,7 @@ class _PedidoScreenState extends State<PedidoScreen> {
           isSelected: categoriaSelecionadaId == categoria.id,
           onTap: () => setState(() {
             categoriaSelecionadaId = categoria.id;
+            _resetearPaginacion();
             _actualizarProductosVista();
           }),
         ),
@@ -2886,6 +3108,7 @@ class _PedidoScreenState extends State<PedidoScreen> {
         isSelected: categoriaSelecionadaId == null,
         onTap: () => setState(() {
           categoriaSelecionadaId = null;
+          _resetearPaginacion();
           _actualizarProductosVista();
         }),
       ),
@@ -2900,6 +3123,7 @@ class _PedidoScreenState extends State<PedidoScreen> {
           isSelected: categoriaSelecionadaId == categoria.id,
           onTap: () => setState(() {
             categoriaSelecionadaId = categoria.id;
+            _resetearPaginacion();
             _actualizarProductosVista();
           }),
         ),

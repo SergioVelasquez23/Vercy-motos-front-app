@@ -1468,6 +1468,11 @@ class PedidoService {
     double descuento = 0.0, // ✅ NUEVO: Parámetro para descuento
     List<Map<String, dynamic>>?
     pagosParciales, // ✅ NUEVO: Soporte para pagos mixtos
+    // Campos adicionales para el pago múltiple
+    bool pagoMultiple = false,
+    double montoEfectivo = 0.0,
+    double montoTarjeta = 0.0,
+    double montoTransferencia = 0.0,
   }) async {
     try {
       final headers = await _getHeaders();
@@ -1491,19 +1496,74 @@ class PedidoService {
 
       // Solo incluir campos específicos para pagos normales
       if (tipoPago == 'pagado') {
-        // Validar forma de pago principal
-        if (formaPago != 'efectivo' &&
+        // Validar forma de pago principal - Nueva lógica para pagos múltiples
+        if (pagoMultiple || formaPago == 'mixto' || formaPago == 'multiple') {
+          // Para pagos mixtos o múltiples, mantener 'mixto' que es el esperado por el backend
+          pagarData['formaPago'] = 'mixto';
+          print('💳 Configurando pago como MIXTO (pago múltiple)');
+
+          // Nueva implementación para el nuevo tipo de pago múltiple
+          if (pagoMultiple) {
+            List<Map<String, dynamic>> pagosMixtos = [];
+
+            // Agregar cada método de pago solo si tiene un monto mayor a cero
+            if (montoEfectivo > 0) {
+              pagosMixtos.add({
+                'formaPago': 'efectivo',
+                'monto': montoEfectivo,
+              });
+            }
+
+            if (montoTarjeta > 0) {
+              pagosMixtos.add({'formaPago': 'tarjeta', 'monto': montoTarjeta});
+            }
+
+            if (montoTransferencia > 0) {
+              pagosMixtos.add({
+                'formaPago': 'transferencia',
+                'monto': montoTransferencia,
+              });
+            }
+
+            if (pagosMixtos.isNotEmpty) {
+              pagarData['pagosMixtos'] = pagosMixtos;
+              print('💳 Pagos múltiples configurados: ${pagosMixtos.length}');
+              print('   • Efectivo: $montoEfectivo');
+              print('   • Tarjeta: $montoTarjeta');
+              print('   • Transferencia: $montoTransferencia');
+            }
+          }
+          // Compatibilidad con el método anterior (pagos parciales)
+          else if (pagosParciales != null && pagosParciales.isNotEmpty) {
+            List<Map<String, dynamic>> pagosMixtos = [];
+
+            for (var pago in pagosParciales) {
+              // Convertir el formato interno al formato esperado por la API
+              Map<String, dynamic> pagoMixto = {
+                'formaPago': pago['formaPago'],
+                'monto': pago['monto'],
+              };
+              pagosMixtos.add(pagoMixto);
+            }
+
+            pagarData['pagosMixtos'] = pagosMixtos;
+            print(
+              '💳 Pagos mixtos configurados (modo anterior): ${pagosMixtos.length}',
+            );
+          }
+        } else if (formaPago != 'efectivo' &&
             formaPago != 'transferencia' &&
             formaPago != 'tarjeta' &&
-            formaPago != 'multiple' &&
-            formaPago != 'mixto') {
+            formaPago != 'otro') {
           print(
             '⚠️ Forma de pago en pagarPedido no reconocida: "$formaPago". Usando efectivo por defecto.',
           );
           formaPago = 'efectivo';
+          pagarData['formaPago'] = formaPago;
+        } else {
+          pagarData['formaPago'] = formaPago;
         }
 
-        pagarData['formaPago'] = formaPago;
         pagarData['propina'] = propina;
         pagarData['descuento'] = descuento; // Incluir descuento en el JSON
         pagarData['pagado'] = true;
@@ -1512,12 +1572,6 @@ class PedidoService {
         pagarData['totalPagado'] = totalPagado > 0
             ? totalPagado
             : null; // Enviar solo si es diferente de 0
-
-        // Incluir pagos parciales si es un pago mixto
-        if (pagosParciales != null && pagosParciales.isNotEmpty) {
-          pagarData['pagosParciales'] = pagosParciales;
-          print('💳 Pagos parciales configurados: ${pagosParciales.length}');
-        }
 
         // Log adicional para forma de pago
         print('💵 Forma de pago configurada: $formaPago');
@@ -1629,6 +1683,11 @@ class PedidoService {
     double propina = 0.0,
     String procesadoPor = '',
     String notas = '',
+    // Nuevos parámetros para pago múltiple
+    bool pagoMultiple = false,
+    double montoEfectivo = 0.0,
+    double montoTarjeta = 0.0,
+    double montoTransferencia = 0.0,
   }) async {
     try {
       final headers = await _getHeaders();
@@ -1660,6 +1719,11 @@ class PedidoService {
         'procesadoPor': procesadoPor,
         'notas': notas,
         'totalCalculado': totalSeleccionado + propina,
+        // Campos adicionales para pagos múltiples
+        'pagoMultiple': pagoMultiple,
+        'montoEfectivo': montoEfectivo,
+        'montoTarjeta': montoTarjeta,
+        'montoTransferencia': montoTransferencia,
       };
 
       print('INFO: Datos para pago parcial:');
