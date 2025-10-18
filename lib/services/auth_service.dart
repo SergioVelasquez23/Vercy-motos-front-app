@@ -29,18 +29,18 @@ class AuthService {
         body: jsonEncode({'name': name, 'email': email, 'password': password}),
       );
       if (response.statusCode == 200 || response.statusCode == 201) {
-        return true;
+        return {'success': true, 'message': 'Usuario registrado exitosamente'};
       } else {
         final data = response.body.isNotEmpty
             ? jsonDecode(response.body)
             : null;
         if (data != null && data['message'] != null) {
-          return data['message'];
+          return {'success': false, 'message': data['message']};
         }
-        return 'Error: ${response.statusCode}';
+        return {'success': false, 'message': 'Error: ${response.statusCode}'};
       }
     } catch (e) {
-      return 'Error: $e';
+      return {'success': false, 'message': 'Error: $e'};
     }
   }
 

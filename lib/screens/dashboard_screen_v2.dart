@@ -21,7 +21,6 @@ import '../services/pedido_service.dart';
 import '../services/websocket_service.dart';
 import '../models/dashboard_data.dart';
 import '../providers/user_provider.dart';
-import '../providers/datos_provider.dart';
 import '../widgets/admin_key_detector.dart';
 
 class InfoCardItem {
@@ -82,18 +81,10 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
   /// Precarga los productos e ingredientes en segundo plano para mejorar
   /// la experiencia del usuario al navegar por la aplicación.
   Future<void> _precargarDatos() async {
-    print(
-      '🚀 Iniciando precarga de datos en segundo plano usando DatosProvider...',
-    );
+    print('🚀 Los datos se cargarán bajo demanda cuando sea necesario...');
 
     try {
-      // Obtener el proveedor de datos
-      final datosProvider = Provider.of<DatosProvider>(context, listen: false);
-
-      // Iniciar la carga de datos (esto los almacenará en caché)
-      await datosProvider.inicializarDatos(forzarActualizacion: true);
-
-      // Actualizar la UI
+      // Actualizar la UI para marcar como completado
       if (mounted) {
         setState(() {
           _productosPrecargados = true;
@@ -101,12 +92,9 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         });
       }
 
-      print('✅ Precarga de datos completada exitosamente:');
-      print('  - Productos: ${datosProvider.productos.length}');
-      print('  - Ingredientes: ${datosProvider.ingredientes.length}');
-      print('  - Categorías: ${datosProvider.categorias.length}');
+      print('✅ Preparado para carga bajo demanda');
     } catch (error) {
-      print('❌ Error al precargar datos: $error');
+      print('❌ Error en preparación: $error');
 
       // Marcar como completado para que desaparezca el indicador
       if (mounted) {
@@ -210,12 +198,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
     setState(() => _isLoading = true);
 
     try {
-      // 🚀 NUEVO: Cargar productos e ingredientes globalmente
-      final datosProvider = Provider.of<DatosProvider>(context, listen: false);
-      final datosFuture = datosProvider.inicializarDatos().catchError((e) {
-        print('⚠️ Error cargando datos globales: $e');
-        return null;
-      });
+      // Los datos se cargarán bajo demanda cuando sea necesario
 
       // Cargar datos en paralelo pero manejar errores individualmente
       final estadisticasFuture = _cargarEstadisticas().catchError((e) {
@@ -262,7 +245,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
       });
 
       await Future.wait([
-        datosFuture,
         estadisticasFuture,
         ingresosFuture,
         topProductosFuture,

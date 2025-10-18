@@ -1453,6 +1453,122 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                   .toList(),
             ],
 
+            // Información de pago (si está pagado)
+            if (pedido.estaPagado &&
+                (pedido.formaPago != null ||
+                    pedido.fechaPago != null ||
+                    pedido.pagadoPor != null)) ...[
+              SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: Colors.green.withOpacity(0.3),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.payment, color: Colors.green, size: 16),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Información de pago:',
+                            style: TextStyle(
+                              color: Colors.green,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          if (pedido.formaPago != null &&
+                              pedido.formaPago!.isNotEmpty) ...[
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.credit_card,
+                                  color: textLight,
+                                  size: 12,
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Método: ${pedido.formaPago}',
+                                  style: TextStyle(
+                                    color: textLight,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                          if (pedido.fechaPago != null) ...[
+                            SizedBox(height: 2),
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.schedule,
+                                  color: textLight,
+                                  size: 12,
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Pagado: ${_formatearFecha(pedido.fechaPago!)}',
+                                  style: TextStyle(
+                                    color: textLight,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                          if (pedido.pagadoPor != null &&
+                              pedido.pagadoPor!.isNotEmpty) ...[
+                            SizedBox(height: 2),
+                            Row(
+                              children: [
+                                Icon(Icons.person, color: textLight, size: 12),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Por: ${pedido.pagadoPor}',
+                                  style: TextStyle(
+                                    color: textLight,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                          if (pedido.propina > 0) ...[
+                            SizedBox(height: 2),
+                            Row(
+                              children: [
+                                Icon(Icons.star, color: textLight, size: 12),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Propina: ${formatCurrency(pedido.propina)}',
+                                  style: TextStyle(
+                                    color: textLight,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
             // Notas del pedido (si las hay)
             if (pedido.notas != null && pedido.notas!.isNotEmpty) ...[
               SizedBox(height: 12),

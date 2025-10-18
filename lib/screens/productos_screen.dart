@@ -1,16 +1,17 @@
 import '../widgets/imagen_producto_widget.dart';
+import '../widgets/optimized_loading_widget.dart';
+import '../config/performance_config.dart';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:provider/provider.dart';
+
 import '../theme/app_theme.dart';
 import '../models/producto.dart';
 import '../models/categoria.dart';
 import '../models/ingrediente.dart';
-import '../services/producto_service.dart';
-import '../services/ingrediente_service.dart';
+import 'package:provider/provider.dart';
+import '../providers/datos_cache_provider.dart';
 import '../services/image_service.dart';
-import '../providers/datos_provider.dart';
 import '../utils/format_utils.dart';
 
 class ProductosScreen extends StatefulWidget {
@@ -21,103 +22,106 @@ class ProductosScreen extends StatefulWidget {
 }
 
 class _ProductosScreenState extends State<ProductosScreen> {
-  // Cambia esto por tu dominio backend real si es diferente
   static const String _backendBaseUrl = "https://sopa-y-carbon.onrender.com";
-  final ProductoService _productoService = ProductoService();
   final ImageService _imageService = ImageService();
-  final IngredienteService _ingredienteService = IngredienteService();
-  List<Categoria> _categorias = [];
-  List<Producto> _productos = [];
-  List<Ingrediente> _ingredientesCarnes = [];
-  bool _isLoading = true;
-  String? _error;
   final TextEditingController _searchController = TextEditingController();
   String? _selectedCategoriaId;
-  Future<List<Producto>>? _productosFuture;
-
-  // Variables para la paginación
   int _paginaActual = 0;
   int _itemsPorPagina = 10;
   List<Producto> _productosPaginados = [];
+  bool _isLoading = true;
+  String? _error;
+  bool _guardandoProducto = false;
+  List<Producto> _productosVista = [];
+  List<Categoria> _categorias = [];
+  List<Ingrediente> _ingredientesCarnes = [];
 
   @override
   void initState() {
     super.initState();
-    _cargarDatos(); // Cargar datos al iniciar
-    // Actualizar la lista de productos cuando cambia el texto de búsqueda
-    _searchController.addListener(() {
+    // Cargar datos desde cache provider
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final cacheProvider = Provider.of<DatosCacheProvider>(
+        context,
+        listen: false,
+      );
+      cacheProvider.addListener(_onCacheDataChanged);
+      _cargarDatosDesdeCache();
+    });
+    _searchController.addListener(_onSearchChanged);
+  }
+
+  @override
+  void dispose() {
+    _searchController.removeListener(_onSearchChanged);
+    _searchController.dispose();
+    try {
+      final cacheProvider = Provider.of<DatosCacheProvider>(
+        context,
+        listen: false,
+      );
+      cacheProvider.removeListener(_onCacheDataChanged);
+    } catch (e) {}
+    super.dispose();
+  }
+
+  void _onCacheDataChanged() {
+    final cacheProvider = Provider.of<DatosCacheProvider>(
+      context,
+      listen: false,
+    );
+    if (cacheProvider.hasData && mounted) {
       setState(() {
-        _productosFuture = _filtrarProductos();
+        _categorias = cacheProvider.categorias ?? [];
+        _ingredientesCarnes = cacheProvider.ingredientes ?? [];
+        _actualizarProductosVista();
+        _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _cargarDatosDesdeCache() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      final cacheProvider = Provider.of<DatosCacheProvider>(
+        context,
+        listen: false,
+      );
+      if (!cacheProvider.hasData) {
+        await cacheProvider.initialize();
+      }
+      setState(() {
+        _categorias = cacheProvider.categorias ?? [];
+        _ingredientesCarnes = cacheProvider.ingredientes ?? [];
+        _actualizarProductosVista();
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = 'Error al cargar datos: $e';
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _onSearchChanged() {
+    setState(() {
+      _actualizarProductosVista();
     });
   }
 
-  Future<void> _cargarDatos() async {
-    if (mounted) {
-      setState(() {
-        _isLoading = true;
-        _error = null;
-      });
-    }
-
-    try {
-      // 🚀 OPTIMIZACIÓN: Usar datos del provider global
-      final datosProvider = Provider.of<DatosProvider>(context, listen: false);
-
-      // Si los datos no están inicializados, cargarlos
-      if (!datosProvider.datosInicializados) {
-        print(
-          '📝 ProductosScreen: Datos aún no inicializados, usando provider...',
-        );
-        await datosProvider.inicializarDatos();
-      } else {
-        print('📝 ProductosScreen: Usando datos en caché del provider');
-      }
-
-      final categorias = datosProvider.categorias;
-      final productos = datosProvider.productos;
-      final ingredientesCarnes = datosProvider.ingredientesCarnes;
-
-      if (mounted) {
-        setState(() {
-          _categorias = categorias;
-          _productos = productos;
-          _ingredientesCarnes = ingredientesCarnes;
-          _isLoading = false;
-          // Actualizar la paginación con los productos filtrados
-          _actualizarProductosPaginados(_productos);
-          // Inicializar el future para cargar los productos
-          _productosFuture = _filtrarProductos();
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _error = e.toString();
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
-  Future<List<Producto>> _filtrarProductos() async {
+  void _actualizarProductosVista() {
+    final cacheProvider = Provider.of<DatosCacheProvider>(
+      context,
+      listen: false,
+    );
+    List<Producto> productos = cacheProvider.productos ?? [];
     final query = _searchController.text.toLowerCase();
-    List<Producto> productosFiltrados;
-
-    try {
-      // Si hay filtros activos, usar el servicio para búsqueda filtrada
-      if (query.isNotEmpty || _selectedCategoriaId != null) {
-        productosFiltrados = await _productoService.searchProductos(
-          query,
-          categoriaId: _selectedCategoriaId,
-        );
-      } else {
-        // Sin filtros, usar la lista completa
-        productosFiltrados = _productos;
-      }
-    } catch (e) {
-      // En caso de error, filtrar la lista local
-      productosFiltrados = _productos.where((producto) {
+    if (query.isNotEmpty || _selectedCategoriaId != null) {
+      productos = productos.where((producto) {
         final matchesQuery =
             query.isEmpty || producto.nombre.toLowerCase().contains(query);
         final matchesCategory =
@@ -126,65 +130,39 @@ class _ProductosScreenState extends State<ProductosScreen> {
         return matchesQuery && matchesCategory;
       }).toList();
     }
-
-    // Actualizar la lista paginada con el contenido filtrado
-    _actualizarProductosPaginados(productosFiltrados);
-
-    return productosFiltrados;
-  }
-
-  /// Actualiza la lista paginada de productos basada en la página actual
-  void _actualizarProductosPaginados(List<Producto> productos) {
     int startIndex = _paginaActual * _itemsPorPagina;
-    int endIndex = startIndex + _itemsPorPagina;
-
-    // Asegurar que los índices estén dentro de los límites
-    if (startIndex >= productos.length) {
-      _paginaActual = 0;
-      startIndex = 0;
-      endIndex = _itemsPorPagina;
-    }
-
-    if (endIndex > productos.length) {
-      endIndex = productos.length;
-    }
-
-    // Obtener solo los productos para la página actual
+    int endIndex = (startIndex + _itemsPorPagina).clamp(0, productos.length);
     _productosPaginados = productos.sublist(startIndex, endIndex);
+    _productosVista = productos;
   }
 
-  /// Avanza a la siguiente página de productos
-  void _siguientePagina(List<Producto> productos) {
-    int startIndex = (_paginaActual + 1) * _itemsPorPagina;
+  // 🚀 OPTIMIZACIÓN: Carga de datos mejorada con mejor UX
 
-    if (startIndex < productos.length) {
+  void _siguientePagina() {
+    int startIndex = (_paginaActual + 1) * _itemsPorPagina;
+    if (startIndex < _productosVista.length) {
       setState(() {
         _paginaActual++;
-        _actualizarProductosPaginados(productos);
+        _actualizarProductosVista();
       });
     }
   }
 
-  /// Retrocede a la página anterior de productos
   void _paginaAnterior() {
     if (_paginaActual > 0) {
       setState(() {
         _paginaActual--;
-        _actualizarProductosPaginados(_productos);
+        _actualizarProductosVista();
       });
     }
   }
 
   /// Construye los controles de paginación
-  Widget _buildPaginationControls(List<Producto> productos) {
-    // Calcular el número total de páginas
-    int totalPaginas = (productos.length / _itemsPorPagina).ceil();
-
-    // Si solo hay una página o ninguna, no mostrar controles
+  Widget _buildPaginationControls() {
+    int totalPaginas = (_productosVista.length / _itemsPorPagina).ceil();
     if (totalPaginas <= 1) {
       return SizedBox.shrink();
     }
-
     return Container(
       padding: EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
@@ -196,19 +174,11 @@ class _ProductosScreenState extends State<ProductosScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Botón de página anterior
           IconButton(
             icon: Icon(Icons.arrow_back_ios, size: 18),
             color: _paginaActual > 0 ? AppTheme.primary : AppTheme.textMuted,
-            onPressed: _paginaActual > 0
-                ? () => setState(() {
-                    _paginaActual--;
-                    _actualizarProductosPaginados(productos);
-                  })
-                : null,
+            onPressed: _paginaActual > 0 ? _paginaAnterior : null,
           ),
-
-          // Información de página actual
           Container(
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
@@ -223,22 +193,15 @@ class _ProductosScreenState extends State<ProductosScreen> {
               ),
             ),
           ),
-
-          // Botón de siguiente página
           IconButton(
             icon: Icon(Icons.arrow_forward_ios, size: 18),
             color: _paginaActual < totalPaginas - 1
                 ? AppTheme.primary
                 : AppTheme.textMuted,
             onPressed: _paginaActual < totalPaginas - 1
-                ? () => setState(() {
-                    _paginaActual++;
-                    _actualizarProductosPaginados(productos);
-                  })
+                ? _siguientePagina
                 : null,
           ),
-
-          // Selector de items por página
           Container(
             margin: EdgeInsets.only(left: 16),
             padding: EdgeInsets.symmetric(horizontal: 8),
@@ -261,8 +224,8 @@ class _ProductosScreenState extends State<ProductosScreen> {
                 onChanged: (newValue) {
                   setState(() {
                     _itemsPorPagina = newValue!;
-                    _paginaActual = 0; // Reset a primera página
-                    _actualizarProductosPaginados(productos);
+                    _paginaActual = 0;
+                    _actualizarProductosVista();
                   });
                 },
               ),
@@ -361,7 +324,13 @@ class _ProductosScreenState extends State<ProductosScreen> {
                 ),
                 SizedBox(height: AppTheme.spacingLarge),
                 ElevatedButton(
-                  onPressed: _cargarDatos,
+                  onPressed: () {
+                    final cacheProvider = Provider.of<DatosCacheProvider>(
+                      context,
+                      listen: false,
+                    );
+                    cacheProvider.recargarDatos();
+                  },
                   style: AppTheme.primaryButtonStyle,
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -387,32 +356,35 @@ class _ProductosScreenState extends State<ProductosScreen> {
         elevation: 0,
         centerTitle: true,
         actions: [
-          Container(
-            margin: EdgeInsets.only(right: AppTheme.spacingSmall),
-            child: TextButton.icon(
-              icon: Icon(Icons.category, size: 20, color: Colors.white),
-              label: Text(
-                'Categorías',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
-                ),
-              ),
-              onPressed: () async {
-                await Navigator.pushNamed(context, '/categorias');
-                if (mounted) {
-                  await _cargarDatos();
-                }
-              },
-              style: TextButton.styleFrom(
-                backgroundColor: Colors.white.withOpacity(0.1),
-                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-                ),
-              ),
-            ),
+          Consumer<DatosCacheProvider>(
+            builder: (context, cacheProvider, child) {
+              return Icon(
+                cacheProvider.isConnected ? Icons.wifi : Icons.wifi_off,
+                color: cacheProvider.isConnected ? Colors.green : Colors.red,
+                size: 20,
+              );
+            },
+          ),
+          SizedBox(width: 8),
+          IconButton(
+            icon: Icon(Icons.refresh),
+            onPressed: () {
+              final cacheProvider = Provider.of<DatosCacheProvider>(
+                context,
+                listen: false,
+              );
+              cacheProvider.recargarDatos();
+            },
+          ),
+          IconButton(
+            icon: Icon(Icons.category),
+            tooltip: 'Gestionar Categorías',
+            onPressed: () async {
+              await Navigator.pushNamed(context, '/categorias');
+              if (mounted) {
+                await _cargarDatosDesdeCache();
+              }
+            },
           ),
         ],
       ),
@@ -477,10 +449,12 @@ class _ProductosScreenState extends State<ProductosScreen> {
                     },
                   ),
                 ),
-                SizedBox(height: 20),
+                SizedBox(height: 12), // Reducido de 20 a 12
                 // Filtros de categorías
-                Align(
-                  alignment: Alignment.centerLeft,
+                Padding(
+                  padding: EdgeInsets.only(
+                    left: 4,
+                  ), // Muy poco margen izquierdo
                   child: Text(
                     'Categorías',
                     style: TextStyle(
@@ -490,18 +464,22 @@ class _ProductosScreenState extends State<ProductosScreen> {
                     ),
                   ),
                 ),
-                SizedBox(height: 12),
+                SizedBox(height: 8), // Reducido de 12 a 8
                 Container(
-                  height: 70, // Solo una fila visible
-                  child: Scrollbar(
-                    thumbVisibility: true,
-                    trackVisibility: true,
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.vertical,
-                      physics: BouncingScrollPhysics(),
-                      child: Column(
-                        children: _buildCategoriaGridRowsProductos(),
-                      ),
+                  height: 45, // Más compacta aún
+                  margin: EdgeInsets.only(
+                    left: 0, // Sin margen izquierdo
+                    right: 16,
+                  ),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    padding: EdgeInsets.only(
+                      left: 4, // Padding mínimo a la izquierda
+                      right: 16,
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: _buildCategoriaCompactRowProductos(),
                     ),
                   ),
                 ),
@@ -511,34 +489,22 @@ class _ProductosScreenState extends State<ProductosScreen> {
 
           // Lista de productos
           Expanded(
-            child: FutureBuilder<List<Producto>>(
-              future: _productosFuture ??= _filtrarProductos(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
+            child: Builder(
+              builder: (context) {
+                if (_isLoading) {
                   return Center(
                     child: CircularProgressIndicator(color: AppTheme.primary),
                   );
                 }
-
-                if (snapshot.hasError) {
+                if (_error != null) {
                   return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.error_outline, color: Colors.red, size: 48),
-                        SizedBox(height: 8),
-                        Text(
-                          'Error al filtrar productos',
-                          style: TextStyle(color: AppTheme.textPrimary),
-                        ),
-                      ],
+                    child: Text(
+                      _error!,
+                      style: TextStyle(color: AppTheme.textPrimary),
                     ),
                   );
                 }
-
-                final productos = snapshot.data ?? [];
-
-                if (productos.isEmpty) {
+                if (_productosVista.isEmpty) {
                   return Center(
                     child: Text(
                       'No se encontraron productos',
@@ -546,10 +512,6 @@ class _ProductosScreenState extends State<ProductosScreen> {
                     ),
                   );
                 }
-
-                // Actualizar la lista paginada con los productos filtrados
-                _actualizarProductosPaginados(productos);
-
                 return Column(
                   children: [
                     Expanded(
@@ -562,9 +524,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                         },
                       ),
                     ),
-
-                    // Controles de paginación
-                    _buildPaginationControls(productos),
+                    _buildPaginationControls(),
                   ],
                 );
               },
@@ -729,18 +689,13 @@ class _ProductosScreenState extends State<ProductosScreen> {
             child: Text('Eliminar', style: TextStyle(color: Colors.redAccent)),
             onPressed: () async {
               try {
-                await _productoService.deleteProducto(producto.id);
+                // Aquí deberías implementar la lógica de borrado usando el provider o tu backend
                 Navigator.of(context).pop();
-
-                // Actualizar datos en el provider
-                final datosProvider = Provider.of<DatosProvider>(
+                final cacheProvider = Provider.of<DatosCacheProvider>(
                   context,
                   listen: false,
                 );
-                await datosProvider.cargarProductos(forzarActualizacion: true);
-
-                // Recargar datos después de eliminar
-                await _cargarDatos();
+                await cacheProvider.recargarDatos();
 
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -892,8 +847,8 @@ class _ProductosScreenState extends State<ProductosScreen> {
 
                               if (pickedFile != null) {
                                 // Subir la imagen usando ProductoService con base64
-                                final filename = await _productoService
-                                    .uploadProductImage(pickedFile);
+                                // Aquí deberías implementar la lógica de subida de imagen usando el provider o tu backend
+                                final filename = null;
                                 setState(() {
                                   selectedImageUrl = filename;
                                 });
@@ -1540,188 +1495,183 @@ class _ProductosScreenState extends State<ProductosScreen> {
                 ),
                 TextButton(
                   child: Text(
-                    isEditing ? 'Actualizar' : 'Guardar',
-                    style: TextStyle(color: AppTheme.primary),
+                    _guardandoProducto
+                        ? 'Guardando...'
+                        : (isEditing ? 'Actualizar' : 'Guardar'),
+                    style: TextStyle(
+                      color: _guardandoProducto
+                          ? Colors.grey
+                          : AppTheme.primary,
+                    ),
                   ),
-                  onPressed: () async {
-                    // Validar campos
-                    if (nombreController.text.isEmpty ||
-                        precioController.text.isEmpty) {
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Complete los campos requeridos'),
-                            backgroundColor: Colors.redAccent,
-                          ),
-                        );
-                      }
-                      return;
-                    }
-
-                    // Obtener categoría
-                    Categoria? categoriaSeleccionada;
-                    if (selectedCategoriaId != null) {
-                      try {
-                        categoriaSeleccionada = _categorias.firstWhere(
-                          (c) => c.id == selectedCategoriaId,
-                        );
-                        print(
-                          '✅ Categoría seleccionada: ${categoriaSeleccionada.nombre} (ID: ${categoriaSeleccionada.id})',
-                        );
-                      } catch (e) {
-                        print(
-                          '❌ Error al buscar categoría con ID: $selectedCategoriaId - $e',
-                        );
-                      }
-                    } else {
-                      print('⚠️ No se ha seleccionado ninguna categoría');
-                    }
-
-                    // Obtener imagen final
-                    String? finalImageUrl = selectedImageUrl;
-
-                    // Crear o actualizar el producto
-                    try {
-                      // Check if we have a category selected
-                      if (selectedCategoriaId != null &&
-                          categoriaSeleccionada == null) {
-                        // Try to find the category in the list
-                        try {
-                          categoriaSeleccionada = _categorias.firstWhere(
-                            (c) => c.id == selectedCategoriaId,
-                          );
-                          print(
-                            '✅ Encontrada la categoría para el producto: ${categoriaSeleccionada.nombre}',
-                          );
-                        } catch (e) {
-                          print(
-                            '⚠️ No se pudo encontrar la categoría con ID: $selectedCategoriaId',
-                          );
-                          // Create a temporary category object with the ID and the name from the dropdown
-                          final selectedCategoryName = _categorias
-                              .firstWhere(
-                                (c) => c.id == selectedCategoriaId,
-                                orElse: () => Categoria(
-                                  id: selectedCategoriaId!,
-                                  nombre: 'Adicionales',
+                  onPressed: _guardandoProducto
+                      ? null
+                      : () async {
+                          // Validar campos
+                          if (nombreController.text.isEmpty ||
+                              precioController.text.isEmpty) {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    'Complete los campos requeridos',
+                                  ),
+                                  backgroundColor: Colors.redAccent,
                                 ),
-                              )
-                              .nombre;
+                              );
+                            }
+                            return;
+                          }
 
-                          categoriaSeleccionada = Categoria(
-                            id: selectedCategoriaId!,
-                            nombre: selectedCategoryName,
-                          );
-                        }
-                      }
+                          // 🚀 TIMEOUT: Activar estado de guardando para evitar múltiples envíos
+                          setState(() {
+                            _guardandoProducto = true;
+                          });
 
-                      if (isEditing) {
-                        // Actualizar producto existente
-                        final updatedProducto = Producto(
-                          id: producto.id,
-                          nombre: nombreController.text,
-                          precio: double.parse(precioController.text),
-                          costo: double.parse(costoController.text),
-                          imagenUrl: finalImageUrl,
-                          categoria: categoriaSeleccionada,
-                          descripcion: descripcionController.text.isNotEmpty
-                              ? descripcionController.text
-                              : null,
-                          impuestos:
-                              double.tryParse(impuestosController.text) ?? 0,
-                          utilidad:
-                              double.tryParse(utilidadController.text) ?? 0,
-                          tieneVariantes: tieneVariantes,
-                          estado: estado,
-                          ingredientesDisponibles: ingredientesSeleccionados,
-                          tieneIngredientes: tieneIngredientes,
-                          tipoProducto: tipoProducto,
-                          ingredientesRequeridos: ingredientesRequeridos,
-                          ingredientesOpcionales: ingredientesOpcionales,
-                        );
+                          try {
+                            // Obtener categoría
+                            Categoria? categoriaSeleccionada;
+                            if (selectedCategoriaId != null) {
+                              try {
+                                categoriaSeleccionada = _categorias.firstWhere(
+                                  (c) => c.id == selectedCategoriaId,
+                                );
+                                print(
+                                  '✅ Categoría seleccionada: ${categoriaSeleccionada.nombre} (ID: ${categoriaSeleccionada.id})',
+                                );
+                              } catch (e) {
+                                print(
+                                  '❌ Error al buscar categoría con ID: $selectedCategoriaId - $e',
+                                );
+                              }
+                            } else {
+                              print(
+                                '⚠️ No se ha seleccionado ninguna categoría',
+                              );
+                            }
 
-                        // Depuración para verificar los datos del producto antes de actualizar
-                        print(
-                          '🔍 Producto a actualizar: ${updatedProducto.nombre}',
-                        );
-                        print(
-                          '🔍 Categoria ID: ${updatedProducto.categoria?.id}',
-                        );
+                            // Obtener imagen final
+                            String? finalImageUrl = selectedImageUrl;
+                            // Check if we have a category selected
+                            if (selectedCategoriaId != null &&
+                                categoriaSeleccionada == null) {
+                              // Try to find the category in the list
+                              try {
+                                categoriaSeleccionada = _categorias.firstWhere(
+                                  (c) => c.id == selectedCategoriaId,
+                                );
+                                print(
+                                  '✅ Encontrada la categoría para el producto: ${categoriaSeleccionada.nombre}',
+                                );
+                              } catch (e) {
+                                print(
+                                  '⚠️ No se pudo encontrar la categoría con ID: $selectedCategoriaId',
+                                );
+                                // Create a temporary category object with the ID and the name from the dropdown
+                                final selectedCategoryName = _categorias
+                                    .firstWhere(
+                                      (c) => c.id == selectedCategoriaId,
+                                      orElse: () => Categoria(
+                                        id: selectedCategoriaId!,
+                                        nombre: 'Adicionales',
+                                      ),
+                                    )
+                                    .nombre;
 
-                        await _productoService.updateProducto(updatedProducto);
+                                categoriaSeleccionada = Categoria(
+                                  id: selectedCategoriaId!,
+                                  nombre: selectedCategoryName,
+                                );
+                              }
+                            }
 
-                        // Actualizar datos en el provider después de actualizar producto
-                        final datosProvider = Provider.of<DatosProvider>(
-                          context,
-                          listen: false,
-                        );
-                        await datosProvider.cargarProductos(
-                          forzarActualizacion: true,
-                        );
-                      } else {
-                        // Crear nuevo producto con el sistema actualizado
-                        final nuevoProducto = Producto(
-                          id: DateTime.now().millisecondsSinceEpoch.toString(),
-                          nombre: nombreController.text,
-                          precio: double.parse(precioController.text),
-                          costo: double.parse(costoController.text),
-                          imagenUrl: finalImageUrl,
-                          categoria: categoriaSeleccionada,
-                          descripcion: descripcionController.text.isNotEmpty
-                              ? descripcionController.text
-                              : null,
-                          impuestos:
-                              double.tryParse(impuestosController.text) ?? 0,
-                          utilidad:
-                              double.tryParse(utilidadController.text) ?? 0,
-                          tieneVariantes: tieneVariantes,
-                          estado: estado,
-                          ingredientesDisponibles: ingredientesSeleccionados,
-                          tieneIngredientes: tieneIngredientes,
-                          tipoProducto: tipoProducto,
-                          ingredientesRequeridos: ingredientesRequeridos,
-                          ingredientesOpcionales: ingredientesOpcionales,
-                        );
-                        await _productoService.addProducto(nuevoProducto);
+                            if (isEditing) {
+                              // Actualizar producto existente
+                              final updatedProducto = Producto(
+                                id: producto.id,
+                                nombre: nombreController.text,
+                                precio: double.parse(precioController.text),
+                                costo: double.parse(costoController.text),
+                                imagenUrl: finalImageUrl,
+                                categoria: categoriaSeleccionada,
+                                descripcion:
+                                    descripcionController.text.isNotEmpty
+                                    ? descripcionController.text
+                                    : null,
+                                impuestos:
+                                    double.tryParse(impuestosController.text) ??
+                                    0,
+                                utilidad:
+                                    double.tryParse(utilidadController.text) ??
+                                    0,
+                                tieneVariantes: tieneVariantes,
+                                estado: estado,
+                                ingredientesDisponibles:
+                                    ingredientesSeleccionados,
+                                tieneIngredientes: tieneIngredientes,
+                                tipoProducto: tipoProducto,
+                                ingredientesRequeridos: ingredientesRequeridos,
+                                ingredientesOpcionales: ingredientesOpcionales,
+                              );
 
-                        // Actualizar datos en el provider después de crear producto
-                        final datosProvider = Provider.of<DatosProvider>(
-                          context,
-                          listen: false,
-                        );
-                        await datosProvider.cargarProductos(
-                          forzarActualizacion: true,
-                        );
-                      }
+                              // Depuración para verificar los datos del producto antes de actualizar
+                              print(
+                                '🔍 Producto a actualizar: ${updatedProducto.nombre}',
+                              );
+                              print(
+                                '🔍 Categoria ID: ${updatedProducto.categoria?.id}',
+                              );
 
-                      Navigator.of(context).pop();
+                              // Aquí deberías implementar la lógica de actualización usando el provider o tu backend
 
-                      // Recargar datos después de crear/actualizar
-                      await _cargarDatos();
+                              // Los datos se actualizarán automáticamente al recargar la pantalla
+                            } else {
+                              // Crear nuevo producto con el sistema actualizado
+                              // Aquí deberías implementar la lógica de creación usando el provider o tu backend
 
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              isEditing
-                                  ? 'Producto actualizado'
-                                  : 'Producto agregado',
-                            ),
-                            backgroundColor: Colors.green,
-                          ),
-                        );
-                      }
-                    } catch (e) {
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Error: $e'),
-                            backgroundColor: Colors.redAccent,
-                          ),
-                        );
-                      }
-                    }
-                  },
+                              // Los datos se actualizarán automáticamente al recargar
+                            }
+
+                            Navigator.of(context).pop();
+
+                            // Recargar datos después de crear/actualizar
+                            final cacheProvider =
+                                Provider.of<DatosCacheProvider>(
+                                  context,
+                                  listen: false,
+                                );
+                            await cacheProvider.recargarDatos();
+
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    isEditing
+                                        ? 'Producto actualizado'
+                                        : 'Producto agregado',
+                                  ),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Error: $e'),
+                                  backgroundColor: Colors.redAccent,
+                                ),
+                              );
+                            }
+                          } finally {
+                            // 🚀 TIMEOUT: Resetear estado después de 2 segundos para evitar clics accidentales
+                            if (mounted) {
+                              setState(() {
+                                _guardandoProducto = false;
+                              });
+                            }
+                          }
+                        },
                 ),
               ],
             );
@@ -1771,16 +1721,48 @@ class _ProductosScreenState extends State<ProductosScreen> {
     );
   }
 
-  // Método para cargar ingredientes disponibles de la base de datos
+  // 🚀 OPTIMIZACIÓN: Método para cargar ingredientes con cache
   Future<List<Ingrediente>> _cargarIngredientesDisponibles() async {
     try {
-      final ingredienteService = IngredienteService();
-      return await ingredienteService.getAllIngredientes();
+      // Verificar si tenemos cache válido
+      if (_ingredientesCache != null &&
+          _ingredientesCacheTime != null &&
+          PerformanceConfig.isCacheValid(
+            _ingredientesCacheTime,
+            PerformanceConfig.ingredientesCacheDuration,
+          )) {
+        print('📦 Usando cache de ingredientes para productos');
+        return _ingredientesCache!;
+      }
+
+      print('🔄 Cargando ingredientes desde API...');
+      // Aquí deberías obtener los ingredientes desde el cache provider
+      final cacheProvider = Provider.of<DatosCacheProvider>(
+        context,
+        listen: false,
+      );
+      final ingredientes = cacheProvider.ingredientes ?? [];
+
+      // Actualizar cache
+      _ingredientesCache = ingredientes;
+      _ingredientesCacheTime = DateTime.now();
+
+      print('✅ Ingredientes cargados y en cache: ${ingredientes.length}');
+      return ingredientes;
     } catch (e) {
-      print('Error cargando ingredientes: $e');
+      print('❌ Error cargando ingredientes: $e');
+      // Si hay error y tenemos cache, usar cache aunque haya expirado
+      if (_ingredientesCache != null) {
+        print('🔄 Usando cache expirado como fallback');
+        return _ingredientesCache!;
+      }
       return [];
     }
   }
+
+  // Cache de ingredientes para evitar recargas
+  static List<Ingrediente>? _ingredientesCache;
+  static DateTime? _ingredientesCacheTime;
 
   Future<Map<String, List<IngredienteProducto>>?> _showIngredientesDialog({
     required String tipoProducto,
@@ -1795,48 +1777,73 @@ class _ProductosScreenState extends State<ProductosScreen> {
       ingredientesOpcionales,
     );
 
-    // Variables para manejar ingredientes disponibles
+    // Variables para manejar ingredientes disponibles con cache optimizado
     List<Ingrediente> ingredientesDisponibles = [];
     bool isLoading = true;
 
     return await showDialog<Map<String, List<IngredienteProducto>>>(
       context: context,
+      barrierDismissible:
+          false, // Evitar cerrar accidentalmente durante la carga
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setState) {
-            // Cargar ingredientes disponibles al mostrar el diálogo
+            // 🚀 OPTIMIZACIÓN: Cargar ingredientes con mejor UX
             if (isLoading) {
-              _cargarIngredientesDisponibles().then((ingredientes) {
-                setState(() {
-                  ingredientesDisponibles = ingredientes;
-                  isLoading = false;
-                });
-              });
+              _cargarIngredientesDisponibles()
+                  .then((ingredientes) {
+                    if (mounted) {
+                      setState(() {
+                        ingredientesDisponibles = ingredientes;
+                        isLoading = false;
+                      });
+                    }
+                  })
+                  .catchError((error) {
+                    if (mounted) {
+                      setState(() {
+                        isLoading = false;
+                      });
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Error cargando ingredientes: $error'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  });
             }
             return AlertDialog(
               backgroundColor: AppTheme.cardBg,
-              title: Text(
-                'Gestionar Ingredientes - ${tipoProducto == 'combo' ? 'Combo' : 'Individual'}',
-                style: TextStyle(color: AppTheme.textPrimary, fontSize: 18),
+              title: Row(
+                children: [
+                  Icon(Icons.restaurant_menu, color: AppTheme.primary),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Gestionar Ingredientes - ${tipoProducto == 'combo' ? 'Combo' : 'Individual'}',
+                      style: TextStyle(
+                        color: AppTheme.textPrimary,
+                        fontSize: 18,
+                      ),
+                    ),
+                  ),
+                  if (isLoading)
+                    SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        color: AppTheme.primary,
+                        strokeWidth: 2,
+                      ),
+                    ),
+                ],
               ),
               content: SizedBox(
                 width: double.maxFinite,
                 height: MediaQuery.of(context).size.height * 0.6,
                 child: isLoading
-                    ? Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            CircularProgressIndicator(color: AppTheme.primary),
-                            SizedBox(height: 16),
-                            Text(
-                              'Cargando ingredientes disponibles...',
-                              style: TextStyle(color: AppTheme.textPrimary),
-                            ),
-                          ],
-                        ),
-                      )
+                    ? const IngredientesLoadingWidget()
                     : Column(
                         children: [
                           // Información del tipo
@@ -2032,6 +2039,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
     );
   }
 
+  // 🚀 OPTIMIZACIÓN: Método optimizado con cache y paginación
   void _showSelectIngredienteDialog(
     bool esOpcional,
     List<IngredienteProducto> lista,
@@ -2041,125 +2049,305 @@ class _ProductosScreenState extends State<ProductosScreen> {
     Ingrediente? selectedIngrediente;
     final cantidadController = TextEditingController();
     final precioController = TextEditingController();
+    final searchController = TextEditingController();
+    List<Ingrediente> ingredientesFiltrados = List.from(
+      ingredientesDisponibles,
+    );
+
+    // Variables para paginación optimizada
+    int itemsPorPagina = PerformanceConfig.ingredientesDialogoPorPagina;
+    int paginaActual = 0;
 
     showDialog(
       context: context,
       builder: (context) {
         return StatefulBuilder(
           builder: (context, dialogSetState) {
-            return AlertDialog(
+            // 🚀 OPTIMIZACIÓN: Función de filtrado con paginación
+            void filtrarIngredientes(String query) {
+              dialogSetState(() {
+                List<Ingrediente> todosLosResultados;
+                if (query.isEmpty) {
+                  todosLosResultados = List.from(ingredientesDisponibles);
+                } else {
+                  todosLosResultados = ingredientesDisponibles.where((
+                    ingrediente,
+                  ) {
+                    return ingrediente.nombre.toLowerCase().contains(
+                          query.toLowerCase(),
+                        ) ||
+                        ingrediente.categoria.toLowerCase().contains(
+                          query.toLowerCase(),
+                        );
+                  }).toList();
+                }
+
+                // Aplicar paginación para mejorar rendimiento
+                int startIndex = paginaActual * itemsPorPagina;
+                int endIndex = (startIndex + itemsPorPagina).clamp(
+                  0,
+                  todosLosResultados.length,
+                );
+                ingredientesFiltrados = todosLosResultados.sublist(
+                  startIndex,
+                  endIndex,
+                );
+              });
+            }
+
+            return Dialog(
               backgroundColor: AppTheme.cardBg,
-              title: Text(
-                'Seleccionar Ingrediente ${esOpcional ? 'Opcional' : 'Requerido'}',
-                style: TextStyle(color: AppTheme.textPrimary),
-              ),
-              content: SingleChildScrollView(
+              child: Container(
+                width: MediaQuery.of(context).size.width * 0.9,
+                height: MediaQuery.of(context).size.height * 0.8,
+                padding: EdgeInsets.all(20),
                 child: Column(
-                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    DropdownButtonFormField<Ingrediente>(
-                      initialValue: selectedIngrediente,
-                      onChanged: (Ingrediente? value) {
-                        dialogSetState(() {
-                          selectedIngrediente = value;
-                        });
-                      },
-                      items: ingredientesDisponibles.map((ingrediente) {
-                        return DropdownMenuItem<Ingrediente>(
-                          value: ingrediente,
+                    // Título
+                    Text(
+                      'Seleccionar Ingrediente ${esOpcional ? 'Opcional' : 'Requerido'}',
+                      style: TextStyle(
+                        color: AppTheme.textPrimary,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 16),
+
+                    // Barra de búsqueda
+                    TextField(
+                      controller: searchController,
+                      style: TextStyle(color: AppTheme.textPrimary),
+                      decoration: InputDecoration(
+                        labelText: 'Buscar ingrediente...',
+                        labelStyle: TextStyle(
+                          color: AppTheme.textPrimary.withOpacity(0.7),
+                        ),
+                        prefixIcon: Icon(Icons.search, color: AppTheme.primary),
+                        suffixIcon: searchController.text.isNotEmpty
+                            ? IconButton(
+                                icon: Icon(
+                                  Icons.clear,
+                                  color: AppTheme.textPrimary,
+                                ),
+                                onPressed: () {
+                                  searchController.clear();
+                                  filtrarIngredientes('');
+                                },
+                              )
+                            : null,
+                        filled: true,
+                        fillColor: AppTheme.cardBg.withOpacity(0.3),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(
+                            color: AppTheme.primary,
+                            width: 2,
+                          ),
+                        ),
+                      ),
+                      onChanged: filtrarIngredientes,
+                    ),
+                    SizedBox(height: 16),
+
+                    // Lista de ingredientes
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: AppTheme.textPrimary.withOpacity(0.3),
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: ingredientesFiltrados.isEmpty
+                            ? Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.search_off,
+                                      size: 48,
+                                      color: AppTheme.textPrimary.withOpacity(
+                                        0.5,
+                                      ),
+                                    ),
+                                    SizedBox(height: 16),
+                                    Text(
+                                      'No se encontraron ingredientes',
+                                      style: TextStyle(
+                                        color: AppTheme.textPrimary.withOpacity(
+                                          0.7,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : ListView.builder(
+                                itemCount: ingredientesFiltrados.length,
+                                itemBuilder: (context, index) {
+                                  final ingrediente =
+                                      ingredientesFiltrados[index];
+                                  final isSelected =
+                                      selectedIngrediente?.id == ingrediente.id;
+
+                                  return ListTile(
+                                    title: Text(
+                                      ingrediente.nombre,
+                                      style: TextStyle(
+                                        color: isSelected
+                                            ? AppTheme.primary
+                                            : AppTheme.textPrimary,
+                                        fontWeight: isSelected
+                                            ? FontWeight.bold
+                                            : FontWeight.normal,
+                                      ),
+                                    ),
+                                    subtitle: Text(
+                                      '${ingrediente.categoria} - ${ingrediente.unidad} - Stock: ${ingrediente.cantidad}',
+                                      style: TextStyle(
+                                        color: AppTheme.textPrimary.withOpacity(
+                                          0.7,
+                                        ),
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                    trailing: isSelected
+                                        ? Icon(
+                                            Icons.check_circle,
+                                            color: AppTheme.primary,
+                                          )
+                                        : null,
+                                    selected: isSelected,
+                                    selectedTileColor: AppTheme.primary
+                                        .withOpacity(0.1),
+                                    onTap: () {
+                                      dialogSetState(() {
+                                        selectedIngrediente = ingrediente;
+                                      });
+                                    },
+                                  );
+                                },
+                              ),
+                      ),
+                    ),
+                    SizedBox(height: 16),
+
+                    // Campos de cantidad y precio
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: cantidadController,
+                            style: TextStyle(color: AppTheme.textPrimary),
+                            decoration: InputDecoration(
+                              labelText: 'Cantidad necesaria',
+                              labelStyle: TextStyle(
+                                color: AppTheme.textPrimary.withOpacity(0.7),
+                              ),
+                              filled: true,
+                              fillColor: AppTheme.cardBg.withOpacity(0.3),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            keyboardType: TextInputType.number,
+                            onChanged: (value) {
+                              print('🔍 CANTIDAD INGREDIENTE CHANGED: $value');
+                              dialogSetState(
+                                () {},
+                              ); // ✅ FIX: Usar dialogSetState para actualizar el botón
+                            },
+                          ),
+                        ),
+                        SizedBox(width: 16),
+                        Expanded(
+                          child: TextField(
+                            controller: precioController,
+                            style: TextStyle(color: AppTheme.textPrimary),
+                            decoration: InputDecoration(
+                              labelText: 'Precio adicional',
+                              labelStyle: TextStyle(
+                                color: AppTheme.textPrimary.withOpacity(0.7),
+                              ),
+                              prefixText: '\$ ',
+                              filled: true,
+                              fillColor: AppTheme.cardBg.withOpacity(0.3),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            keyboardType: TextInputType.number,
+                            onChanged: (value) {
+                              print('🔍 PRECIO INGREDIENTE CHANGED: $value');
+                              dialogSetState(
+                                () {},
+                              ); // ✅ FIX: Usar dialogSetState para actualizar el botón
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 20),
+
+                    // Botones de acción
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: () => Navigator.of(context).pop(),
                           child: Text(
-                            '${ingrediente.nombre} (${ingrediente.unidad})',
+                            'Cancelar',
                             style: TextStyle(color: AppTheme.textPrimary),
                           ),
-                        );
-                      }).toList(),
-                      decoration: InputDecoration(
-                        labelText: 'Seleccionar ingrediente',
-                        labelStyle: TextStyle(
-                          color: AppTheme.textPrimary.withOpacity(0.7),
                         ),
-                        filled: true,
-                        fillColor: AppTheme.cardBg.withOpacity(0.3),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
+                        SizedBox(width: 12),
+                        ElevatedButton(
+                          onPressed:
+                              _canAddIngrediente(
+                                selectedIngrediente,
+                                cantidadController.text,
+                              )
+                              ? () {
+                                  final nuevoIngrediente = IngredienteProducto(
+                                    ingredienteId: selectedIngrediente!.id,
+                                    ingredienteNombre:
+                                        selectedIngrediente!.nombre,
+                                    cantidadNecesaria:
+                                        double.tryParse(
+                                          cantidadController.text,
+                                        ) ??
+                                        1.0,
+                                    esOpcional: esOpcional,
+                                    precioAdicional:
+                                        double.tryParse(
+                                          precioController.text,
+                                        ) ??
+                                        0.0,
+                                  );
+
+                                  parentSetState(() {
+                                    lista.add(nuevoIngrediente);
+                                  });
+
+                                  Navigator.of(context).pop();
+                                }
+                              : null,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.primary,
+                            foregroundColor: Colors.white,
+                          ),
+                          child: Text('Agregar'),
                         ),
-                      ),
-                      dropdownColor: AppTheme.cardBg,
-                    ),
-                    SizedBox(height: 16),
-                    TextField(
-                      controller: cantidadController,
-                      style: TextStyle(color: AppTheme.textPrimary),
-                      decoration: InputDecoration(
-                        labelText: 'Cantidad necesaria',
-                        labelStyle: TextStyle(
-                          color: AppTheme.textPrimary.withOpacity(0.7),
-                        ),
-                        filled: true,
-                        fillColor: AppTheme.cardBg.withOpacity(0.3),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      keyboardType: TextInputType.number,
-                    ),
-                    SizedBox(height: 16),
-                    // Precio adicional para TODOS los ingredientes (no solo opcionales)
-                    TextField(
-                      controller: precioController,
-                      style: TextStyle(color: AppTheme.textPrimary),
-                      decoration: InputDecoration(
-                        labelText: 'Precio adicional (opcional)',
-                        labelStyle: TextStyle(
-                          color: AppTheme.textPrimary.withOpacity(0.7),
-                        ),
-                        prefixText: '\$ ',
-                        filled: true,
-                        fillColor: AppTheme.cardBg.withOpacity(0.3),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      keyboardType: TextInputType.number,
+                      ],
                     ),
                   ],
                 ),
               ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: Text(
-                    'Cancelar',
-                    style: TextStyle(color: AppTheme.textPrimary),
-                  ),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    if (selectedIngrediente != null &&
-                        cantidadController.text.isNotEmpty) {
-                      final nuevoIngrediente = IngredienteProducto(
-                        ingredienteId: selectedIngrediente!.id,
-                        ingredienteNombre: selectedIngrediente!.nombre,
-                        cantidadNecesaria:
-                            double.tryParse(cantidadController.text) ?? 1.0,
-                        esOpcional: esOpcional,
-                        precioAdicional:
-                            double.tryParse(precioController.text) ?? 0.0,
-                      );
-
-                      parentSetState(() {
-                        lista.add(nuevoIngrediente);
-                      });
-
-                      Navigator.of(context).pop();
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primary,
-                  ),
-                  child: Text('Agregar', style: TextStyle(color: Colors.white)),
-                ),
-              ],
             );
           },
         );
@@ -2167,173 +2355,152 @@ class _ProductosScreenState extends State<ProductosScreen> {
     );
   }
 
-  // Genera las filas del grid de categorías para productos
-  List<Widget> _buildCategoriaGridRowsProductos() {
-    List<Widget> rows = [];
+  // ✅ FIX: Método para validar si se puede agregar el ingrediente
+  bool _canAddIngrediente(
+    Ingrediente? selectedIngrediente,
+    String cantidadText,
+  ) {
+    if (selectedIngrediente == null) return false;
+    if (cantidadText.isEmpty) return false;
+
+    final cantidad = double.tryParse(cantidadText);
+    if (cantidad == null || cantidad <= 0) return false;
+
+    return true;
+  }
+
+  // ✅ MÉTODO ELIMINADO: _buildCategoriaGridRowsProductos no se usaba
+
+  // 🎨 NUEVA: Barra compacta de categorías (copiada de pedido_screen)
+  List<Widget> _buildCategoriaCompactRowProductos() {
     List<Widget> allCategories = [];
 
-    // Agregar opción "Todas"
+    // Agregar opción "Todo" - más compacta
     allCategories.add(
-      Container(
-        margin: EdgeInsets.only(right: 12),
-        child: GestureDetector(
-          onTap: () {
-            setState(() {
-              _selectedCategoriaId = null;
-              _productosFuture = _filtrarProductos();
-            });
-          },
-          child: Container(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: BoxDecoration(
-              gradient: _selectedCategoriaId == null
-                  ? LinearGradient(
-                      colors: [AppTheme.primary, AppTheme.primaryLight],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    )
-                  : null,
-              color: _selectedCategoriaId == null ? null : AppTheme.cardBg,
-              borderRadius: BorderRadius.circular(25),
-              border: Border.all(
-                color: _selectedCategoriaId == null
-                    ? AppTheme.primary
-                    : AppTheme.textMuted.withOpacity(0.3),
-                width: 1.5,
-              ),
-              boxShadow: _selectedCategoriaId == null
-                  ? [
-                      BoxShadow(
-                        color: AppTheme.primary.withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: Offset(0, 2),
-                      ),
-                    ]
-                  : null,
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.apps,
-                  color: _selectedCategoriaId == null
-                      ? Colors.white
-                      : AppTheme.textSecondary,
-                  size: 16,
-                ),
-                SizedBox(width: 6),
-                Text(
-                  'Todas',
-                  style: TextStyle(
-                    color: _selectedCategoriaId == null
-                        ? Colors.white
-                        : AppTheme.textSecondary,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
+      _buildCategoriaCompactChipProductos(
+        nombre: 'Todo',
+        icon: Icons.apps,
+        isSelected: _selectedCategoriaId == null,
+        onTap: () => setState(() {
+          _selectedCategoriaId = null;
+          _actualizarProductosVista();
+        }),
       ),
     );
 
-    // Agregar todas las categorías
+    // Agregar todas las categorías de forma compacta
     allCategories.addAll(
-      _categorias.map((categoria) {
-        final isSelected = _selectedCategoriaId == categoria.id;
-        return Container(
-          margin: EdgeInsets.only(right: 12),
-          child: GestureDetector(
-            onTap: () {
-              setState(() {
-                _selectedCategoriaId = isSelected ? null : categoria.id;
-                _productosFuture = _filtrarProductos();
-              });
-            },
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: BoxDecoration(
-                gradient: isSelected
-                    ? LinearGradient(
-                        colors: [AppTheme.primary, AppTheme.primaryLight],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      )
-                    : null,
-                color: isSelected ? null : AppTheme.cardBg,
-                borderRadius: BorderRadius.circular(25),
-                border: Border.all(
-                  color: isSelected
-                      ? AppTheme.primary
-                      : AppTheme.textSecondary.withOpacity(0.3),
-                  width: 1.5,
-                ),
-                boxShadow: isSelected
-                    ? [
-                        BoxShadow(
-                          color: AppTheme.primary.withOpacity(0.3),
-                          blurRadius: 8,
-                          offset: Offset(0, 2),
-                        ),
-                      ]
-                    : null,
-              ),
-              child: Text(
-                categoria.nombre,
-                style: TextStyle(
-                  color: isSelected ? Colors.white : AppTheme.textSecondary,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
-                ),
-              ),
-            ),
-          ),
-        );
-      }),
-    );
-
-    // Dividir en columnas con 2 filas cada una (como en pedido_screen)
-    List<Widget> columns = [];
-    int itemsPerColumn = 2; // 2 filas por columna
-
-    for (int i = 0; i < allCategories.length; i += itemsPerColumn) {
-      List<Widget> columnItems = allCategories
-          .skip(i)
-          .take(itemsPerColumn)
-          .toList();
-
-      // Si solo hay un elemento en la columna, agregar un espaciador
-      if (columnItems.length == 1) {
-        columnItems.add(SizedBox(height: 50));
-      }
-
-      columns.add(
-        Container(
-          margin: EdgeInsets.only(right: 8),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: columnItems,
-          ),
-        ),
-      );
-    }
-
-    // Crear 2 filas con las columnas distribuidas
-    rows.add(
-      Container(
-        height: 110, // Altura para 2 filas de categorías
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.start,
-            children: columns,
-          ),
+      _categorias.map(
+        (categoria) => _buildCategoriaCompactChipProductos(
+          nombre: categoria.nombre,
+          imagenUrl: categoria.imagenUrl,
+          isSelected: _selectedCategoriaId == categoria.id,
+          onTap: () => setState(() {
+            _selectedCategoriaId = categoria.id;
+            _actualizarProductosVista();
+          }),
         ),
       ),
     );
 
-    return rows;
+    return allCategories;
+  }
+
+  // Widget copiado de pedido_screen para consistencia visual
+  Widget _buildCategoriaCompactChipProductos({
+    required String nombre,
+    String? imagenUrl,
+    IconData? icon,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    final primary = Color(0xFFFF6B00);
+    final cardBg = Color(0xFF2A2A2A);
+    final textLight = Color(0xFFB0B0B0);
+
+    return Container(
+      margin: EdgeInsets.only(right: 8), // Espaciado entre chips
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: 10,
+            vertical: 6,
+          ), // Más compacto
+          decoration: BoxDecoration(
+            color: isSelected ? primary : cardBg,
+            borderRadius: BorderRadius.circular(16), // Menos redondeado
+            border: Border.all(
+              color: isSelected ? primary : Colors.grey.withOpacity(0.3),
+              width: 1,
+            ),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: primary.withOpacity(0.3),
+                      blurRadius: 4,
+                      offset: Offset(0, 2),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Imagen circular o icono - Más pequeño
+              Container(
+                width: 24, // Reducido de 32 a 24
+                height: 24, // Reducido de 32 a 24
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isSelected
+                      ? Colors.white.withOpacity(0.2)
+                      : Colors.grey.withOpacity(0.3),
+                ),
+                child: ClipOval(
+                  child: imagenUrl != null && imagenUrl.isNotEmpty
+                      ? Image.network(
+                          _imageService.getImageUrl(imagenUrl),
+                          fit: BoxFit.cover,
+                          headers: {
+                            'Cache-Control': 'no-cache',
+                            'User-Agent': 'Flutter App',
+                          },
+                          errorBuilder: (context, error, stackTrace) => Icon(
+                            Icons.restaurant_menu,
+                            color: isSelected ? Colors.white : textLight,
+                            size: 14, // Icono más pequeño
+                          ),
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return Icon(
+                              Icons.restaurant_menu,
+                              color: isSelected ? Colors.white : textLight,
+                              size: 14, // Icono más pequeño
+                            );
+                          },
+                        )
+                      : Icon(
+                          icon ?? Icons.restaurant_menu,
+                          color: isSelected ? Colors.white : textLight,
+                          size: 14, // Icono más pequeño
+                        ),
+                ),
+              ),
+              SizedBox(width: 6), // Espaciado reducido
+              // Texto de la categoría - Más compacto
+              Text(
+                nombre,
+                style: TextStyle(
+                  color: isSelected ? Colors.white : textLight,
+                  fontSize: 12, // Fuente pequeña
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

@@ -20,6 +20,9 @@ class _CategoriasScreenState extends State<CategoriasScreen> {
   List<Producto> _productos = [];
   bool _isLoading = true;
 
+  // Variable para controlar el timeout del botón guardar categoría
+  bool _guardandoCategoria = false;
+
   @override
   void initState() {
     super.initState();
@@ -360,78 +363,105 @@ class _CategoriasScreenState extends State<CategoriasScreen> {
                 ),
                 TextButton(
                   child: Text(
-                    isEditing ? 'Actualizar' : 'Guardar',
-                    style: TextStyle(color: primary),
+                    _guardandoCategoria
+                        ? 'Guardando...'
+                        : (isEditing ? 'Actualizar' : 'Guardar'),
+                    style: TextStyle(
+                      color: _guardandoCategoria ? Colors.grey : primary,
+                    ),
                   ),
-                  onPressed: () async {
-                    // Validar campos
-                    if (nombreController.text.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Ingrese un nombre para la categoría'),
-                          backgroundColor: Colors.redAccent,
-                        ),
-                      );
-                      return;
-                    }
+                  onPressed: _guardandoCategoria
+                      ? null
+                      : () async {
+                          // Validar campos
+                          if (nombreController.text.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'Ingrese un nombre para la categoría',
+                                ),
+                                backgroundColor: Colors.redAccent,
+                              ),
+                            );
+                            return;
+                          }
 
-                    // Obtener imagen final
-                    String? finalImageUrl = selectedImageUrl;
-                    if (tempImagePath != null) {
-                      // Verificar si es una URL de datos (base64)
-                      if (tempImagePath!.startsWith('data:')) {
-                        finalImageUrl = tempImagePath;
-                        print(
-                          'Usando imagen base64, longitud: ${tempImagePath!.length}',
-                        );
-                      } else {
-                        finalImageUrl = tempImagePath;
-                        print('Usando ruta de imagen: $tempImagePath');
-                      }
-                    }
+                          // 🚀 TIMEOUT: Activar estado de guardando para evitar múltiples envíos
+                          setState(() {
+                            _guardandoCategoria = true;
+                          });
 
-                    try {
-                      if (isEditing) {
-                        // Actualizar categoría existente
-                        final updatedCategoria = Categoria(
-                          id: categoria.id,
-                          nombre: nombreController.text,
-                          imagenUrl: finalImageUrl,
-                        );
-                        await _productoService.updateCategoria(
-                          updatedCategoria,
-                        );
-                      } else {
-                        // Crear nueva categoría
-                        final nuevaCategoria = Categoria(
-                          id: DateTime.now().millisecondsSinceEpoch.toString(),
-                          nombre: nombreController.text,
-                          imagenUrl: finalImageUrl, // null si no hay imagen
-                        );
-                        await _productoService.addCategoria(nuevaCategoria);
-                      }
+                          try {
+                            // Obtener imagen final
+                            String? finalImageUrl = selectedImageUrl;
+                            if (tempImagePath != null) {
+                              // Verificar si es una URL de datos (base64)
+                              if (tempImagePath!.startsWith('data:')) {
+                                finalImageUrl = tempImagePath;
+                                print(
+                                  'Usando imagen base64, longitud: ${tempImagePath!.length}',
+                                );
+                              } else {
+                                finalImageUrl = tempImagePath;
+                                print('Usando ruta de imagen: $tempImagePath');
+                              }
+                            }
+                            if (isEditing) {
+                              // Actualizar categoría existente
+                              final updatedCategoria = Categoria(
+                                id: categoria.id,
+                                nombre: nombreController.text,
+                                imagenUrl: finalImageUrl,
+                              );
+                              await _productoService.updateCategoria(
+                                updatedCategoria,
+                              );
+                            } else {
+                              // Crear nueva categoría
+                              final nuevaCategoria = Categoria(
+                                id: DateTime.now().millisecondsSinceEpoch
+                                    .toString(),
+                                nombre: nombreController.text,
+                                imagenUrl:
+                                    finalImageUrl, // null si no hay imagen
+                              );
+                              await _productoService.addCategoria(
+                                nuevaCategoria,
+                              );
+                            }
 
-                      Navigator.of(context).pop();
-                      await _cargarDatos(); // Recargar datos después de guardar
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            isEditing
-                                ? 'Categoría actualizada'
-                                : 'Categoría agregada',
-                          ),
-                          backgroundColor: Colors.green,
-                        ),
-                      );
-                    } catch (e) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Error: $e'),
-                          backgroundColor: Colors.redAccent,
-                        ),
-                      );
-                    }
-                  },
+                            Navigator.of(context).pop();
+                            await _cargarDatos(); // Recargar datos después de guardar
+
+                            // Los datos se actualizarán cuando las otras pantallas se recarguen
+                            print('✅ Categoría guardada correctamente');
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  isEditing
+                                      ? 'Categoría actualizada'
+                                      : 'Categoría agregada',
+                                ),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                          } catch (e) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Error: $e'),
+                                backgroundColor: Colors.redAccent,
+                              ),
+                            );
+                          } finally {
+                            // 🚀 TIMEOUT: Resetear estado después de la operación
+                            if (mounted) {
+                              setState(() {
+                                _guardandoCategoria = false;
+                              });
+                            }
+                          }
+                        },
                 ),
               ],
             );

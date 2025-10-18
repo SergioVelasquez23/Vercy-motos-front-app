@@ -18,6 +18,9 @@ class _ProveedoresScreenState extends State<ProveedoresScreen> {
   List<Proveedor> _proveedoresFiltrados = [];
   bool _isLoading = false;
 
+  // Variable para controlar el timeout del botón guardar proveedor
+  bool _guardandoProveedor = false;
+
   @override
   void initState() {
     super.initState();
@@ -298,72 +301,125 @@ class _ProveedoresScreenState extends State<ProveedoresScreen> {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: primary),
-            child: Text(esEdicion ? 'Actualizar' : 'Crear'),
-            onPressed: () async {
-              if (nombreController.text.trim().isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('El nombre es requerido')),
-                );
-                return;
-              }
+            child: Text(
+              _guardandoProveedor
+                  ? 'Guardando...'
+                  : (esEdicion ? 'Actualizar' : 'Crear'),
+            ),
+            onPressed: _guardandoProveedor
+                ? null
+                : () async {
+                    if (nombreController.text.trim().isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('El nombre es requerido')),
+                      );
+                      return;
+                    }
 
-              try {
-                final nuevoProveedor = Proveedor(
-                  id: proveedor?.id ?? '',
-                  nombre: nombreController.text.trim(),
-                  nombreComercial: nombreComercialController.text.trim().isEmpty
-                      ? null
-                      : nombreComercialController.text.trim(),
-                  documento: documentoController.text.trim().isEmpty
-                      ? null
-                      : documentoController.text.trim(),
-                  email: emailController.text.trim().isEmpty
-                      ? null
-                      : emailController.text.trim(),
-                  telefono: telefonoController.text.trim().isEmpty
-                      ? null
-                      : telefonoController.text.trim(),
-                  direccion: direccionController.text.trim().isEmpty
-                      ? null
-                      : direccionController.text.trim(),
-                  paginaWeb: paginaWebController.text.trim().isEmpty
-                      ? null
-                      : paginaWebController.text.trim(),
-                  contacto: contactoController.text.trim().isEmpty
-                      ? null
-                      : contactoController.text.trim(),
-                  nota: notaController.text.trim().isEmpty
-                      ? null
-                      : notaController.text.trim(),
-                  fechaCreacion: proveedor?.fechaCreacion ?? DateTime.now(),
-                  fechaActualizacion: DateTime.now(),
-                );
+                    // 🚀 TIMEOUT: Activar estado de guardando para evitar múltiples envíos
+                    setState(() {
+                      _guardandoProveedor = true;
+                    });
 
-                if (esEdicion) {
-                  await _proveedorService.actualizarProveedor(nuevoProveedor);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Proveedor actualizado exitosamente'),
-                    ),
-                  );
-                } else {
-                  await _proveedorService.crearProveedor(nuevoProveedor);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Proveedor creado exitosamente')),
-                  );
-                }
+                    try {
+                      // Mostrar indicador de carga
+                      showDialog(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (context) =>
+                            Center(child: CircularProgressIndicator()),
+                      );
 
-                Navigator.of(context).pop();
-                _cargarProveedores();
-              } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Error: $e'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-              }
-            },
+                      final nuevoProveedor = Proveedor(
+                        id: proveedor?.id ?? '',
+                        nombre: nombreController.text.trim(),
+                        nombreComercial:
+                            nombreComercialController.text.trim().isEmpty
+                            ? null
+                            : nombreComercialController.text.trim(),
+                        documento: documentoController.text.trim().isEmpty
+                            ? null
+                            : documentoController.text.trim(),
+                        email: emailController.text.trim().isEmpty
+                            ? null
+                            : emailController.text.trim(),
+                        telefono: telefonoController.text.trim().isEmpty
+                            ? null
+                            : telefonoController.text.trim(),
+                        direccion: direccionController.text.trim().isEmpty
+                            ? null
+                            : direccionController.text.trim(),
+                        paginaWeb: paginaWebController.text.trim().isEmpty
+                            ? null
+                            : paginaWebController.text.trim(),
+                        contacto: contactoController.text.trim().isEmpty
+                            ? null
+                            : contactoController.text.trim(),
+                        nota: notaController.text.trim().isEmpty
+                            ? null
+                            : notaController.text.trim(),
+                        fechaCreacion:
+                            proveedor?.fechaCreacion ?? DateTime.now(),
+                        fechaActualizacion: DateTime.now(),
+                      );
+
+                      if (esEdicion) {
+                        await _proveedorService.actualizarProveedor(
+                          nuevoProveedor,
+                        );
+                        if (mounted) {
+                          // Cerrar indicador de carga
+                          Navigator.of(context).pop();
+                          // Cerrar formulario de edición
+                          Navigator.of(context).pop();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Proveedor actualizado exitosamente',
+                              ),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                          await _cargarProveedores();
+                        }
+                      } else {
+                        await _proveedorService.crearProveedor(nuevoProveedor);
+                        if (mounted) {
+                          // Cerrar indicador de carga
+                          Navigator.of(context).pop();
+                          // Cerrar formulario de creación
+                          Navigator.of(context).pop();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Proveedor creado exitosamente'),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                          await _cargarProveedores();
+                        }
+                      }
+                    } catch (e) {
+                      print('Error en operación de proveedor: $e');
+                      if (mounted) {
+                        // Cerrar indicador de carga si está abierto
+                        Navigator.of(context).pop();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Error: $e'),
+                            backgroundColor: Colors.red,
+                            duration: Duration(seconds: 5),
+                          ),
+                        );
+                      }
+                    } finally {
+                      // 🚀 TIMEOUT: Resetear estado después de la operación
+                      if (mounted) {
+                        setState(() {
+                          _guardandoProveedor = false;
+                        });
+                      }
+                    }
+                  },
           ),
         ],
       ),
@@ -403,11 +459,11 @@ class _ProveedoresScreenState extends State<ProveedoresScreen> {
       builder: (context) => AlertDialog(
         backgroundColor: Color(kCardBackgroundDark),
         title: Text(
-          'Confirmar eliminación',
+          'Confirmar desactivación',
           style: TextStyle(color: Color(kTextDark)),
         ),
         content: Text(
-          '¿Estás seguro de que deseas eliminar el proveedor "${proveedor.nombre}"?',
+          '¿Estás seguro de que deseas desactivar el proveedor "${proveedor.nombre}"?\n\nNota: El proveedor no se eliminará definitivamente, solo se desactivará.',
           style: TextStyle(color: Color(kTextLight)),
         ),
         actions: [
@@ -416,8 +472,8 @@ class _ProveedoresScreenState extends State<ProveedoresScreen> {
             onPressed: () => Navigator.of(context).pop(false),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: Text('Eliminar'),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+            child: Text('Desactivar'),
             onPressed: () => Navigator.of(context).pop(true),
           ),
         ],
@@ -426,18 +482,49 @@ class _ProveedoresScreenState extends State<ProveedoresScreen> {
 
     if (result == true) {
       try {
-        await _proveedorService.eliminarProveedor(proveedor.id);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Proveedor eliminado exitosamente')),
+        // Mostrar indicador de carga
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => Center(child: CircularProgressIndicator()),
         );
-        _cargarProveedores();
+
+        final success = await _proveedorService.eliminarProveedor(proveedor.id);
+
+        // Cerrar indicador de carga
+        if (mounted) {
+          Navigator.of(context).pop();
+
+          if (success) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Proveedor desactivado exitosamente'),
+                backgroundColor: Colors.orange,
+              ),
+            );
+            await _cargarProveedores();
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Error al desactivar proveedor'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al eliminar proveedor: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        print('Error eliminando proveedor: $e');
+        // Cerrar indicador de carga si está abierto
+        if (mounted) {
+          Navigator.of(context).pop();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error al eliminar proveedor: $e'),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 5),
+            ),
+          );
+        }
       }
     }
   }

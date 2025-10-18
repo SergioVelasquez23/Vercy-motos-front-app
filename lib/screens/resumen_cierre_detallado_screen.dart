@@ -140,29 +140,29 @@ class _ResumenCierreDetalladoScreenState
     }
 
     return SingleChildScrollView(
-      padding: EdgeInsets.all(16),
+      padding: EdgeInsets.symmetric(horizontal: 24, vertical: 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Primera fila: 2 cards por fila
           _buildGridRow([_buildCuadreInfo(), _buildResumenFinal()]),
-          SizedBox(height: 16),
+          SizedBox(height: 24),
 
           // Segunda fila: 2 cards por fila
           _buildGridRow([_buildMovimientosEfectivo(), _buildIngresosCaja()]),
-          SizedBox(height: 16),
+          SizedBox(height: 24),
 
           // Tercera fila: 2 cards por fila
           _buildGridRow([_buildResumenVentas(), _buildResumenGastos()]),
-          SizedBox(height: 16),
+          SizedBox(height: 24),
 
           // Resto de secciones que ocupan todo el ancho (detallados o más complejos)
           _buildDetallesPedidos(),
-          SizedBox(height: 16),
+          SizedBox(height: 24),
           _buildResumenCompras(),
-          SizedBox(height: 16),
+          SizedBox(height: 24),
           _buildResumenFinalConsolidado(),
-          SizedBox(height: 16),
+          SizedBox(height: 24),
         ],
       ),
     );
@@ -198,15 +198,16 @@ class _ResumenCierreDetalladoScreenState
   Widget _buildCard({required Widget child}) {
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.all(16),
+      margin: EdgeInsets.symmetric(vertical: 6, horizontal: 2),
+      padding: EdgeInsets.all(22),
       decoration: BoxDecoration(
         color: cardBg,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 4,
-            offset: Offset(0, 2),
+            color: Colors.black.withOpacity(0.13),
+            blurRadius: 8,
+            offset: Offset(0, 3),
           ),
         ],
       ),
@@ -221,7 +222,7 @@ class _ResumenCierreDetalladoScreenState
           .map(
             (child) => Expanded(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                padding: const EdgeInsets.symmetric(horizontal: 10.0),
                 child: child,
               ),
             ),
@@ -232,23 +233,17 @@ class _ResumenCierreDetalladoScreenState
 
   Widget _buildInfoRow(String label, String value, {Color? valueColor}) {
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: 2), // Reduced vertical padding
+      padding: EdgeInsets.symmetric(vertical: 6), // Increased vertical padding
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: TextStyle(
-              color: textLight,
-              fontSize: 13,
-            ), // Reduced font size
-          ),
+          Text(label, style: TextStyle(color: textLight, fontSize: 14)),
           Text(
             value,
             style: TextStyle(
               color: valueColor ?? textDark,
-              fontSize: 13, // Reduced font size
-              fontWeight: FontWeight.w500,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],
@@ -267,6 +262,7 @@ class _ResumenCierreDetalladoScreenState
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Primera columna
                   Expanded(
@@ -274,7 +270,9 @@ class _ResumenCierreDetalladoScreenState
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _buildInfoRow('Nombre', info.nombre),
+                        SizedBox(height: 10),
                         _buildInfoRow('Responsable', info.responsable),
+                        SizedBox(height: 10),
                         _buildInfoRow(
                           'Estado',
                           info.estado,
@@ -285,6 +283,7 @@ class _ResumenCierreDetalladoScreenState
                       ],
                     ),
                   ),
+                  SizedBox(width: 28),
                   // Segunda columna
                   Expanded(
                     child: Column(
@@ -294,6 +293,7 @@ class _ResumenCierreDetalladoScreenState
                           'Fecha Apertura',
                           _formatDate(info.fechaApertura),
                         ),
+                        SizedBox(height: 10),
                         if (info.fechaCierre != null)
                           _buildInfoRow(
                             'Fecha Cierre',
@@ -301,6 +301,7 @@ class _ResumenCierreDetalladoScreenState
                           )
                         else
                           _buildInfoRow('Fecha Cierre', '-'),
+                        SizedBox(height: 10),
                         _buildInfoRow(
                           'Fondo Inicial',
                           formatCurrency(info.fondoInicial),
@@ -367,14 +368,17 @@ class _ResumenCierreDetalladoScreenState
                           'Fondo Inicial',
                           formatCurrency(resumen.fondoInicial),
                         ),
+                        SizedBox(height: 10),
                         _buildInfoRow(
                           'Efectivo Esperado',
                           formatCurrency(resumen.efectivoEsperado),
                         ),
+                        SizedBox(height: 10),
                         _buildInfoRow(
                           'Total Ventas',
                           formatCurrency(resumen.totalVentas),
                         ),
+                        SizedBox(height: 10),
                         _buildInfoRow(
                           'Ventas Efectivo',
                           formatCurrency(resumen.ventasEfectivo),
@@ -382,6 +386,7 @@ class _ResumenCierreDetalladoScreenState
                       ],
                     ),
                   ),
+                  SizedBox(width: 28),
                   // Segunda columna
                   Expanded(
                     child: Column(
@@ -391,14 +396,17 @@ class _ResumenCierreDetalladoScreenState
                           'Total Gastos',
                           formatCurrency(resumen.totalGastos),
                         ),
+                        SizedBox(height: 10),
                         _buildInfoRow(
                           'Gastos Efectivo',
                           formatCurrency(resumen.gastosEfectivo),
                         ),
+                        SizedBox(height: 10),
                         _buildInfoRow(
                           'Total Compras',
                           formatCurrency(resumen.totalCompras),
                         ),
+                        SizedBox(height: 10),
                         _buildInfoRow(
                           'Compras Efectivo',
                           formatCurrency(resumen.comprasEfectivo),
@@ -420,6 +428,7 @@ class _ResumenCierreDetalladoScreenState
                       formatCurrency(resumen.gastosDirectos),
                     ),
                   ),
+                  SizedBox(width: 28),
                   Expanded(
                     child: _buildInfoRow(
                       'Fact. desde Caja',
@@ -458,6 +467,7 @@ class _ResumenCierreDetalladoScreenState
             children: [
               // Primera fila con información principal
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
                     child: Column(
@@ -467,6 +477,7 @@ class _ResumenCierreDetalladoScreenState
                           'Fondo Inicial',
                           formatCurrency(movimientos.fondoInicial),
                         ),
+                        SizedBox(height: 10),
                         _buildInfoRow(
                           'Efectivo Esperado',
                           formatCurrency(movimientos.efectivoEsperado),
@@ -474,6 +485,7 @@ class _ResumenCierreDetalladoScreenState
                       ],
                     ),
                   ),
+                  SizedBox(width: 28),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -482,6 +494,7 @@ class _ResumenCierreDetalladoScreenState
                           'Total Ingresos',
                           formatCurrency(movimientos.totalIngresosCaja),
                         ),
+                        SizedBox(height: 10),
                         _buildInfoRow(
                           'Transf. Esperada',
                           formatCurrency(movimientos.transferenciaEsperada),
@@ -515,12 +528,13 @@ class _ResumenCierreDetalladoScreenState
                           'Efectivo',
                           formatCurrency(movimientos.ingresosEfectivo),
                         ),
+                        SizedBox(height: 10),
                         _buildInfoRow(
                           'Transferencia',
                           formatCurrency(movimientos.ingresosTransferencia),
                         ),
 
-                        SizedBox(height: 8),
+                        SizedBox(height: 16),
 
                         Text(
                           'Ventas:',
@@ -530,10 +544,12 @@ class _ResumenCierreDetalladoScreenState
                             fontSize: 13,
                           ),
                         ),
+                        SizedBox(height: 4),
                         _buildInfoRow(
                           'Efectivo',
                           formatCurrency(movimientos.ventasEfectivo),
                         ),
+                        SizedBox(height: 10),
                         _buildInfoRow(
                           'Transferencia',
                           formatCurrency(movimientos.ventasTransferencia),
@@ -541,6 +557,8 @@ class _ResumenCierreDetalladoScreenState
                       ],
                     ),
                   ),
+
+                  SizedBox(width: 28),
 
                   // Segunda columna: Gastos y Compras
                   Expanded(
@@ -559,12 +577,13 @@ class _ResumenCierreDetalladoScreenState
                           'Efectivo',
                           formatCurrency(movimientos.gastosEfectivo),
                         ),
+                        SizedBox(height: 10),
                         _buildInfoRow(
                           'Transferencia',
                           formatCurrency(movimientos.gastosTransferencia),
                         ),
 
-                        SizedBox(height: 8),
+                        SizedBox(height: 16),
 
                         Text(
                           'Compras:',
@@ -574,10 +593,12 @@ class _ResumenCierreDetalladoScreenState
                             fontSize: 13,
                           ),
                         ),
+                        SizedBox(height: 4),
                         _buildInfoRow(
                           'Efectivo',
                           formatCurrency(movimientos.comprasEfectivo),
                         ),
+                        SizedBox(height: 10),
                         _buildInfoRow(
                           'Transferencia',
                           formatCurrency(movimientos.comprasTransferencia),
@@ -613,6 +634,7 @@ class _ResumenCierreDetalladoScreenState
                       ventas.totalPedidos.toString(),
                     ),
                   ),
+                  SizedBox(width: 28),
                   Expanded(
                     child: _buildInfoRow(
                       'Total Ventas',
@@ -640,15 +662,19 @@ class _ResumenCierreDetalladoScreenState
                           ),
                           SizedBox(height: 4),
                           ...ventas.ventasPorFormaPago.entries.map(
-                            (entry) => _buildInfoRow(
-                              entry.key,
-                              formatCurrency(entry.value),
+                            (entry) => Padding(
+                              padding: EdgeInsets.only(bottom: 10),
+                              child: _buildInfoRow(
+                                entry.key,
+                                formatCurrency(entry.value),
+                              ),
                             ),
                           ),
                         ],
                       ),
                     ),
-                    if (ventas.cantidadPorFormaPago.isNotEmpty)
+                    if (ventas.cantidadPorFormaPago.isNotEmpty) ...[
+                      SizedBox(width: 28),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -663,14 +689,18 @@ class _ResumenCierreDetalladoScreenState
                             ),
                             SizedBox(height: 4),
                             ...ventas.cantidadPorFormaPago.entries.map(
-                              (entry) => _buildInfoRow(
-                                entry.key,
-                                entry.value.toString(),
+                              (entry) => Padding(
+                                padding: EdgeInsets.only(bottom: 10),
+                                child: _buildInfoRow(
+                                  entry.key,
+                                  entry.value.toString(),
+                                ),
                               ),
                             ),
                           ],
                         ),
                       ),
+                    ],
                   ],
                 ),
               ],
@@ -694,38 +724,43 @@ class _ResumenCierreDetalladoScreenState
                 'Total Compras Generales',
                 formatCurrency(compras.totalComprasGenerales),
               ),
+              SizedBox(height: 10),
               _buildInfoRow(
                 'Total Facturas Generales',
                 compras.totalFacturasGenerales.toString(),
               ),
-              SizedBox(height: 8),
+              SizedBox(height: 16),
               Text(
                 'Compras desde Caja:',
                 style: TextStyle(color: textDark, fontWeight: FontWeight.w500),
               ),
+              SizedBox(height: 4),
               _buildInfoRow(
                 '  Total',
                 formatCurrency(compras.totalComprasDesdeCaja),
               ),
+              SizedBox(height: 10),
               _buildInfoRow(
                 '  Facturas',
                 compras.totalFacturasDesdeCaja.toString(),
               ),
-              SizedBox(height: 8),
+              SizedBox(height: 16),
               Text(
                 'Compras NO desde Caja:',
                 style: TextStyle(color: textDark, fontWeight: FontWeight.w500),
               ),
+              SizedBox(height: 4),
               _buildInfoRow(
                 '  Total',
                 formatCurrency(compras.totalComprasNoDesdeCaja),
               ),
+              SizedBox(height: 10),
               _buildInfoRow(
                 '  Facturas',
                 compras.totalFacturasNoDesdeCaja.toString(),
               ),
               if (compras.comprasPorFormaPago.isNotEmpty) ...[
-                SizedBox(height: 8),
+                SizedBox(height: 16),
                 Text(
                   'Compras por Forma de Pago:',
                   style: TextStyle(
@@ -733,10 +768,14 @@ class _ResumenCierreDetalladoScreenState
                     fontWeight: FontWeight.w500,
                   ),
                 ),
+                SizedBox(height: 4),
                 ...compras.comprasPorFormaPago.entries.map(
-                  (entry) => _buildInfoRow(
-                    '  ${entry.key}',
-                    formatCurrency(entry.value),
+                  (entry) => Padding(
+                    padding: EdgeInsets.only(bottom: 10),
+                    child: _buildInfoRow(
+                      '  ${entry.key}',
+                      formatCurrency(entry.value),
+                    ),
                   ),
                 ),
               ],
@@ -852,6 +891,7 @@ class _ResumenCierreDetalladoScreenState
                       formatCurrency(gastos.totalGastos),
                     ),
                   ),
+                  SizedBox(width: 28),
                   Expanded(
                     child: _buildInfoRow(
                       'Total Registros',
@@ -872,6 +912,7 @@ class _ResumenCierreDetalladoScreenState
                       formatCurrency(gastos.totalGastosDesdeCaja),
                     ),
                   ),
+                  SizedBox(width: 28),
                   Expanded(
                     child: _buildInfoRow(
                       'Fact. desde Caja',
@@ -889,7 +930,7 @@ class _ResumenCierreDetalladoScreenState
                 valueColor: Colors.red,
               ),
               if (gastos.gastosPorTipo.isNotEmpty) ...[
-                SizedBox(height: 8),
+                SizedBox(height: 16),
                 Text(
                   'Gastos por Tipo:',
                   style: TextStyle(
@@ -897,15 +938,19 @@ class _ResumenCierreDetalladoScreenState
                     fontWeight: FontWeight.w500,
                   ),
                 ),
+                SizedBox(height: 4),
                 ...gastos.gastosPorTipo.entries.map(
-                  (entry) => _buildInfoRow(
-                    '  ${entry.key}',
-                    formatCurrency(entry.value),
+                  (entry) => Padding(
+                    padding: EdgeInsets.only(bottom: 10),
+                    child: _buildInfoRow(
+                      '  ${entry.key}',
+                      formatCurrency(entry.value),
+                    ),
                   ),
                 ),
               ],
               if (gastos.gastosPorFormaPago.isNotEmpty) ...[
-                SizedBox(height: 8),
+                SizedBox(height: 16),
                 Text(
                   'Gastos por Forma de Pago:',
                   style: TextStyle(
@@ -913,15 +958,19 @@ class _ResumenCierreDetalladoScreenState
                     fontWeight: FontWeight.w500,
                   ),
                 ),
+                SizedBox(height: 4),
                 ...gastos.gastosPorFormaPago.entries.map(
-                  (entry) => _buildInfoRow(
-                    '  ${entry.key}',
-                    formatCurrency(entry.value),
+                  (entry) => Padding(
+                    padding: EdgeInsets.only(bottom: 10),
+                    child: _buildInfoRow(
+                      '  ${entry.key}',
+                      formatCurrency(entry.value),
+                    ),
                   ),
                 ),
               ],
               if (gastos.cantidadPorTipo.isNotEmpty) ...[
-                SizedBox(height: 8),
+                SizedBox(height: 16),
                 Text(
                   'Cantidad por Tipo:',
                   style: TextStyle(
@@ -929,9 +978,15 @@ class _ResumenCierreDetalladoScreenState
                     fontWeight: FontWeight.w500,
                   ),
                 ),
+                SizedBox(height: 4),
                 ...gastos.cantidadPorTipo.entries.map(
-                  (entry) =>
-                      _buildInfoRow('  ${entry.key}', entry.value.toString()),
+                  (entry) => Padding(
+                    padding: EdgeInsets.only(bottom: 10),
+                    child: _buildInfoRow(
+                      '  ${entry.key}',
+                      entry.value.toString(),
+                    ),
+                  ),
                 ),
               ],
             ],
@@ -1057,6 +1112,7 @@ class _ResumenCierreDetalladoScreenState
                       formatCurrency(movimientos.ingresosEfectivo),
                     ),
                   ),
+                  SizedBox(width: 28),
                   Expanded(
                     child: _buildInfoRow(
                       'Transferencia',
@@ -1206,7 +1262,7 @@ class _ResumenCierreDetalladoScreenState
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    SizedBox(height: 8),
+                    SizedBox(width: 28),
                     Text(
                       formatCurrency(balanceFinal),
                       style: TextStyle(

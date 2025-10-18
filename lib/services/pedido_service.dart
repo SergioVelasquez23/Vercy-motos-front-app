@@ -27,6 +27,9 @@ class PedidoService {
 
   // Mantener un caché local de pedidos para actualizaciones rápidas
   final Map<String, Pedido> _pedidosCache = {};
+  
+  // ✅ NUEVO: Cache para evitar correcciones de estado en bucle
+  final Map<String, DateTime> _estadoCorregidoCache = {};
 
   final InventarioService _inventarioService = InventarioService();
   final CuadreCajaService _cuadreCajaService = CuadreCajaService();
@@ -1031,14 +1034,23 @@ class PedidoService {
               pedido.estado = EstadoPedido.pagado;
             }
 
-            // Verificar si el tipo es cortesía pero el estado no lo refleja
+            // ✅ MEJORADO: Verificar inconsistencias sin crear bucles
             if (pedido.tipo == TipoPedido.cortesia &&
                 pedido.estado != EstadoPedido.cortesia) {
-              print(
-                '⚠️ Estado inconsistente detectado: pedido tipo CORTESÍA pero estado=${pedido.estado}',
-              );
-              print('✅ Corrigiendo estado a CORTESÍA automáticamente');
-              pedido.estado = EstadoPedido.cortesia;
+              // Solo corregir si no se ha corregido recientemente
+              final cacheKey = '${pedido.id}_estado_corregido';
+              final lastCorrection = _estadoCorregidoCache[cacheKey];
+              final now = DateTime.now();
+              
+              if (lastCorrection == null || 
+                  now.difference(lastCorrection).inSeconds > 30) {
+                print(
+                  '⚠️ Estado inconsistente detectado: pedido tipo CORTESÍA pero estado=${pedido.estado}',
+                );
+                print('✅ Corrigiendo estado a CORTESÍA automáticamente');
+                pedido.estado = EstadoPedido.cortesia;
+                _estadoCorregidoCache[cacheKey] = now;
+              }
             }
 
             // Guardar en caché para acceso rápido
@@ -1105,14 +1117,23 @@ class PedidoService {
                   pedido.estado = EstadoPedido.pagado;
                 }
 
-                // Verificar si el tipo es cortesía pero el estado no lo refleja
+                // ✅ MEJORADO: Verificar inconsistencias sin crear bucles (mesa específica)
                 if (pedido.tipo == TipoPedido.cortesia &&
                     pedido.estado != EstadoPedido.cortesia) {
-                  print(
-                    '⚠️ Estado inconsistente detectado: pedido tipo CORTESÍA pero estado=${pedido.estado}',
-                  );
-                  print('✅ Corrigiendo estado a CORTESÍA automáticamente');
-                  pedido.estado = EstadoPedido.cortesia;
+                  // Solo corregir si no se ha corregido recientemente
+                  final cacheKey = '${pedido.id}_mesa_estado_corregido';
+                  final lastCorrection = _estadoCorregidoCache[cacheKey];
+                  final now = DateTime.now();
+                  
+                  if (lastCorrection == null || 
+                      now.difference(lastCorrection).inSeconds > 30) {
+                    print(
+                      '⚠️ Estado inconsistente detectado: pedido tipo CORTESÍA pero estado=${pedido.estado}',
+                    );
+                    print('✅ Corrigiendo estado a CORTESÍA automáticamente');
+                    pedido.estado = EstadoPedido.cortesia;
+                    _estadoCorregidoCache[cacheKey] = now;
+                  }
                 }
 
                 // Si estado es "pendiente", convertirlo a activo o pagado según otros campos
@@ -1272,6 +1293,7 @@ class PedidoService {
             cantidad: item.cantidad,
             notas: item.notas,
             precioUnitario: producto.precio,
+            agregadoPor: item.agregadoPor, // ✅ CORREGIDO: Preservar agregadoPor
           );
         } else if (item.producto == null) {
           // Si no tenemos el producto, pero tenemos nombre en el JSON, creamos un producto básico
@@ -1305,6 +1327,7 @@ class PedidoService {
             cantidad: item.cantidad,
             notas: item.notas,
             precioUnitario: item.precioUnitario,
+            agregadoPor: item.agregadoPor, // ✅ CORREGIDO: Preservar agregadoPor
           );
         }
       }
@@ -1492,6 +1515,8 @@ class PedidoService {
         'tipoPago': tipoPago, // Campo requerido
         'procesadoPor': procesadoPor, // Cambio de 'pagadoPor' a 'procesadoPor'
         'notas': notas,
+        'descuento':
+            descuento, // ✅ INCLUIR DESCUENTO PARA TODOS LOS TIPOS DE PAGO
       };
 
       // Solo incluir campos específicos para pagos normales
@@ -1565,7 +1590,7 @@ class PedidoService {
         }
 
         pagarData['propina'] = propina;
-        pagarData['descuento'] = descuento; // Incluir descuento en el JSON
+        // ✅ DESCUENTO YA INCLUIDO ARRIBA: pagarData['descuento'] = descuento;
         pagarData['pagado'] = true;
         pagarData['estado'] = 'Pagado'; // Asegurar que el estado sea explícito
         pagarData['fechaPago'] = _formatearFechaParaBackend(DateTime.now());
@@ -1577,18 +1602,53 @@ class PedidoService {
         print('💵 Forma de pago configurada: $formaPago');
       }
 
-      // Solo incluir motivoCortesia para cortesías
-      if (tipoPago == 'cortesia' &&
-          motivoCortesia != null &&
-          motivoCortesia.isNotEmpty) {
-        pagarData['motivoCortesia'] = motivoCortesia;
+      // Campos específicos para cortesías - Estructura simplificada
+      if (tipoPago == 'cortesia') {
+        // Solo los campos esenciales para cortesías
+        pagarData['motivoCortesia'] =
+            motivoCortesia ?? 'Pedido procesado como cortesía';
+        pagarData['estado'] = 'Cortesia';
+        // No incluir campos de pago para cortesías, EXCEPTO descuento
+        pagarData.remove('formaPago');
+        pagarData.remove('propina');
+        // ✅ MANTENER DESCUENTO: pagarData.remove('descuento');
+        pagarData.remove('totalPagado');
+        pagarData.remove('pagado');
       }
 
-      // Solo incluir tipoConsumoInterno para consumo interno
-      if (tipoPago == 'consumo_interno' &&
-          tipoConsumoInterno != null &&
-          tipoConsumoInterno.isNotEmpty) {
-        pagarData['tipoConsumoInterno'] = tipoConsumoInterno;
+      // Campos específicos para consumo interno - Estructura simplificada
+      if (tipoPago == 'consumo_interno') {
+        // Solo los campos esenciales para consumo interno
+        pagarData['tipoConsumoInterno'] = tipoConsumoInterno ?? 'empleado';
+        pagarData['estado'] = 'Pagado';
+        // No incluir campos de pago para consumo interno, EXCEPTO descuento
+        pagarData.remove('formaPago');
+        pagarData.remove('propina');
+        // ✅ MANTENER DESCUENTO: pagarData.remove('descuento');
+        pagarData.remove('totalPagado');
+        pagarData.remove('pagado');
+      }
+
+      // Validaciones adicionales para cortesías
+      if (tipoPago == 'cortesia') {
+        // Asegurar que todos los campos requeridos estén presentes
+        if (!pagarData.containsKey('motivoCortesia')) {
+          pagarData['motivoCortesia'] = 'Pedido procesado como cortesía';
+        }
+        if (!pagarData.containsKey('estado')) {
+          pagarData['estado'] = 'Cortesia';
+        }
+      }
+
+      // Validaciones adicionales para consumo interno
+      if (tipoPago == 'consumo_interno') {
+        // Asegurar que todos los campos requeridos estén presentes
+        if (!pagarData.containsKey('tipoConsumoInterno')) {
+          pagarData['tipoConsumoInterno'] = 'empleado';
+        }
+        if (!pagarData.containsKey('estado')) {
+          pagarData['estado'] = 'Pagado';
+        }
       }
 
       print('INFO: Datos enviados al pagar pedido:');

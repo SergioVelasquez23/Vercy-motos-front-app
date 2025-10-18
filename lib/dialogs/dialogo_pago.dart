@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../theme/app_theme.dart';
@@ -44,6 +45,9 @@ class _DialogoPagoState extends State<DialogoPago> {
   bool pagoMultiple = false;
   double billetesSeleccionados = 0.0;
   List<ItemPedido> productosSeleccionados = [];
+
+  // ✅ NUEVO: Timer para debounce de actualización UI
+  Timer? _updateTimer;
 
   Map<int, int> contadorBilletes = {
     50000: 0,
@@ -93,8 +97,21 @@ class _DialogoPagoState extends State<DialogoPago> {
     }
   }
 
+  // ✅ NUEVO: Método para programar actualización con debounce
+  void _programarActualizacionUI() {
+    _updateTimer?.cancel();
+    _updateTimer = Timer(Duration(milliseconds: 500), () {
+      if (mounted) {
+        setState(() {
+          // Actualizar UI para reflejar cambios en descuentos
+        });
+      }
+    });
+  }
+
   @override
   void dispose() {
+    _updateTimer?.cancel();
     descuentoPorcentajeController.dispose();
     descuentoValorController.dispose();
     propinaController.dispose();
@@ -718,11 +735,13 @@ class _DialogoPagoState extends State<DialogoPago> {
                     ),
                   ),
                   onChanged: (value) {
-                    setState(() {
-                      if (value.isNotEmpty) {
-                        descuentoValorController.clear();
-                      }
-                    });
+                    // ✅ ARREGLADO: Limpiar el otro campo sin perder foco
+                    if (value.isNotEmpty &&
+                        descuentoValorController.text.isNotEmpty) {
+                      descuentoValorController.clear();
+                    }
+                    // Programar actualización con delay para mantener foco
+                    _programarActualizacionUI();
                   },
                 ),
               ),
@@ -759,11 +778,13 @@ class _DialogoPagoState extends State<DialogoPago> {
                     ),
                   ),
                   onChanged: (value) {
-                    setState(() {
-                      if (value.isNotEmpty) {
-                        descuentoPorcentajeController.clear();
-                      }
-                    });
+                    // ✅ ARREGLADO: Limpiar el otro campo sin perder foco
+                    if (value.isNotEmpty &&
+                        descuentoPorcentajeController.text.isNotEmpty) {
+                      descuentoPorcentajeController.clear();
+                    }
+                    // Programar actualización con delay para mantener foco
+                    _programarActualizacionUI();
                   },
                 ),
               ),

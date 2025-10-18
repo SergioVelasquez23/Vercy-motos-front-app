@@ -22,7 +22,7 @@ import '../services/notification_service.dart';
 import '../services/cuadre_caja_service.dart';
 import '../services/historial_edicion_service.dart';
 import '../providers/user_provider.dart';
-import '../providers/datos_provider.dart'; // ✅ NUEVO: Importar DatosProvider
+
 import '../utils/format_utils.dart';
 import '../utils/impresion_mixin.dart';
 import 'pedido_screen.dart';
@@ -1235,7 +1235,13 @@ class _MesasScreenState extends State<MesasScreen>
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('✅ Deuda registrada exitosamente'),
+            content: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white, size: 20),
+                SizedBox(width: 8),
+                Expanded(child: Text('Deuda registrada exitosamente')),
+              ],
+            ),
             backgroundColor: Colors.orange,
           ),
         );
@@ -1710,44 +1716,13 @@ class _MesasScreenState extends State<MesasScreen>
     _verificarMesaDeudas(); // ✅ Verificar mesa Deudas al iniciar
   }
 
-  // ✅ NUEVO: Función para precargar productos, imágenes e ingredientes
+  // Función para precarga básica (ya no necesitamos caché global)
   Future<void> _precargarDatos() async {
-    try {
-      print('🚀 MesasScreen: Iniciando precarga de datos...');
-
-      // Obtener el proveedor de datos
-      final datosProvider = Provider.of<DatosProvider>(context, listen: false);
-
-      // Verificar si los datos ya están inicializados
-      if (datosProvider.datosInicializados) {
-        print(
-          '✅ MesasScreen: Datos ya inicializados previamente, usando caché',
-        );
-        return;
-      }
-
-      // Activar indicador de carga
-      setState(() {
-        _precargandoDatos = true;
-      });
-
-      // Iniciar la carga de datos (esto los almacenará en caché)
-      await datosProvider.inicializarDatos(forzarActualizacion: false);
-
-      print('✅ MesasScreen: Precarga de datos completada exitosamente:');
-      print('  - Productos: ${datosProvider.productos.length}');
-      print('  - Ingredientes: ${datosProvider.ingredientes.length}');
-      print('  - Categorías: ${datosProvider.categorias.length}');
-    } catch (error) {
-      print('❌ MesasScreen: Error al precargar datos: $error');
-    } finally {
-      // Desactivar indicador de carga si la pantalla sigue montada
-      if (mounted) {
-        setState(() {
-          _precargandoDatos = false;
-        });
-      }
-    }
+    print(
+      '🚀 MesasScreen: Datos se cargarán bajo demanda cuando sea necesario',
+    );
+    // Los datos se cargarán directamente cuando se necesiten en cada pantalla
+    // Esto asegura que siempre estén actualizados sin problemas de sincronización
   }
 
   // void _iniciarSincronizacion() {
@@ -4160,7 +4135,7 @@ class _MesasScreenState extends State<MesasScreen>
                                                             ),
                                                           ),
                                                           child: Text(
-                                                            '👤 ${item.agregadoPor ?? 'Sergio'}',
+                                                            '👤 ${item.agregadoPor ?? 'Usuario'}',
                                                             style: TextStyle(
                                                               color: _primary,
                                                               fontSize: 10,
@@ -4928,349 +4903,7 @@ class _MesasScreenState extends State<MesasScreen>
                                 // Sección eliminada: pago múltiple ahora aparece debajo del botón "Otro medio de pago"
                                 SizedBox(height: 32),
 
-                                // Sección eliminada: resumen duplicado ahora consolidado al final
-                                SizedBox(height: 16),
-                                Container(
-                                  padding: EdgeInsets.all(20),
-                                  decoration: BoxDecoration(
-                                    color: _cardBg.withOpacity(0.3),
-                                    borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(
-                                      color: _primary.withOpacity(0.2),
-                                    ),
-                                  ),
-                                  child: Column(
-                                    children: [
-                                      // Campo de propina
-                                      TextField(
-                                        controller: propinaController,
-                                        decoration: InputDecoration(
-                                          labelText: 'Propina (%)',
-                                          labelStyle: TextStyle(
-                                            color: _textPrimary,
-                                          ),
-                                          suffixText: '%',
-                                          prefixIcon: Icon(
-                                            Icons.star,
-                                            color: _primary,
-                                          ),
-                                          enabledBorder: OutlineInputBorder(
-                                            borderSide: BorderSide(
-                                              color: _textMuted,
-                                            ),
-                                            borderRadius: BorderRadius.circular(
-                                              12,
-                                            ),
-                                          ),
-                                          focusedBorder: OutlineInputBorder(
-                                            borderSide: BorderSide(
-                                              color: _primary,
-                                              width: 2,
-                                            ),
-                                            borderRadius: BorderRadius.circular(
-                                              12,
-                                            ),
-                                          ),
-                                        ),
-                                        style: TextStyle(
-                                          color: _textPrimary,
-                                          fontSize: 16,
-                                        ),
-                                        keyboardType: TextInputType.number,
-                                        onChanged: (value) {
-                                          setState(() {
-                                            incluyePropina =
-                                                value.isNotEmpty &&
-                                                double.tryParse(value) !=
-                                                    null &&
-                                                double.parse(value) > 0;
-                                          });
-                                        },
-                                      ),
-                                      SizedBox(height: 24),
-
-                                      // Resumen de totales
-                                      Builder(
-                                        builder: (context) {
-                                          double subtotal =
-                                              calcularTotalSeleccionados();
-                                          double propinaPercent =
-                                              double.tryParse(
-                                                propinaController.text,
-                                              ) ??
-                                              0.0;
-                                          double propinaMonto =
-                                              (subtotal * propinaPercent / 100)
-                                                  .roundToDouble();
-
-                                          // ✅ Calcular descuento
-                                          double descuento = 0.0;
-                                          String descuentoPorcentajeStr =
-                                              descuentoPorcentajeController
-                                                  .text;
-                                          String descuentoValorStr =
-                                              descuentoValorController.text;
-
-                                          if (descuentoPorcentajeStr
-                                              .isNotEmpty) {
-                                            double descuentoPorcentaje =
-                                                double.tryParse(
-                                                  descuentoPorcentajeStr,
-                                                ) ??
-                                                0.0;
-                                            descuento =
-                                                (subtotal *
-                                                descuentoPorcentaje /
-                                                100);
-                                          } else if (descuentoValorStr
-                                              .isNotEmpty) {
-                                            descuento =
-                                                double.tryParse(
-                                                  descuentoValorStr,
-                                                ) ??
-                                                0.0;
-                                          }
-
-                                          // ✅ Total con descuento aplicado
-                                          double total =
-                                              subtotal -
-                                              descuento +
-                                              propinaMonto;
-
-                                          return Container(
-                                            padding: EdgeInsets.all(20),
-                                            decoration: BoxDecoration(
-                                              gradient: LinearGradient(
-                                                colors: [
-                                                  _primary.withOpacity(0.1),
-                                                  _primary.withOpacity(0.05),
-                                                ],
-                                                begin: Alignment.topLeft,
-                                                end: Alignment.bottomRight,
-                                              ),
-                                              borderRadius:
-                                                  BorderRadius.circular(16),
-                                              border: Border.all(
-                                                color: _primary.withOpacity(
-                                                  0.3,
-                                                ),
-                                              ),
-                                            ),
-                                            child: Column(
-                                              children: [
-                                                Row(
-                                                  mainAxisAlignment:
-                                                      MainAxisAlignment
-                                                          .spaceBetween,
-                                                  children: [
-                                                    Text(
-                                                      'Subtotal:',
-                                                      style: TextStyle(
-                                                        color: _textPrimary,
-                                                        fontSize: 16,
-                                                      ),
-                                                    ),
-                                                    Text(
-                                                      formatCurrency(subtotal),
-                                                      style: TextStyle(
-                                                        color: _textPrimary,
-                                                        fontSize: 16,
-                                                        fontWeight:
-                                                            FontWeight.w500,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                                // ✅ Mostrar descuento si está aplicado
-                                                if (descuento > 0) ...[
-                                                  SizedBox(height: 12),
-                                                  Row(
-                                                    mainAxisAlignment:
-                                                        MainAxisAlignment
-                                                            .spaceBetween,
-                                                    children: [
-                                                      Text(
-                                                        'Descuento:',
-                                                        style: TextStyle(
-                                                          color: Colors.green,
-                                                          fontSize: 16,
-                                                        ),
-                                                      ),
-                                                      Text(
-                                                        '-${formatCurrency(descuento)}',
-                                                        style: TextStyle(
-                                                          color: Colors.green,
-                                                          fontSize: 16,
-                                                          fontWeight:
-                                                              FontWeight.w500,
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ],
-                                                if (propinaPercent > 0) ...[
-                                                  SizedBox(height: 12),
-                                                  Row(
-                                                    mainAxisAlignment:
-                                                        MainAxisAlignment
-                                                            .spaceBetween,
-                                                    children: [
-                                                      Text(
-                                                        'Propina ($propinaPercent%):',
-                                                        style: TextStyle(
-                                                          color: _textPrimary,
-                                                          fontSize: 16,
-                                                        ),
-                                                      ),
-                                                      Text(
-                                                        formatCurrency(
-                                                          propinaMonto,
-                                                        ),
-                                                        style: TextStyle(
-                                                          color: _textPrimary,
-                                                          fontSize: 16,
-                                                          fontWeight:
-                                                              FontWeight.w500,
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ],
-                                                SizedBox(height: 16),
-                                                Divider(
-                                                  color: _primary.withOpacity(
-                                                    0.3,
-                                                  ),
-                                                  thickness: 2,
-                                                ),
-                                                SizedBox(height: 16),
-                                                Row(
-                                                  mainAxisAlignment:
-                                                      MainAxisAlignment
-                                                          .spaceBetween,
-                                                  children: [
-                                                    Text(
-                                                      'TOTAL:',
-                                                      style: TextStyle(
-                                                        color: _textPrimary,
-                                                        fontSize: 22,
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                        letterSpacing: 1.2,
-                                                      ),
-                                                    ),
-                                                    Text(
-                                                      formatCurrency(total),
-                                                      style: TextStyle(
-                                                        color: _primary,
-                                                        fontSize: 26,
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-
-                                                // Mostrar cálculo de cambio para efectivo
-                                                if (medioPago0 == 'efectivo' &&
-                                                    billetesSeleccionados >
-                                                        0) ...[
-                                                  SizedBox(height: 20),
-                                                  Container(
-                                                    padding: EdgeInsets.all(16),
-                                                    decoration: BoxDecoration(
-                                                      color: _cardBg
-                                                          .withOpacity(0.5),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            12,
-                                                          ),
-                                                    ),
-                                                    child: Column(
-                                                      children: [
-                                                        Row(
-                                                          mainAxisAlignment:
-                                                              MainAxisAlignment
-                                                                  .spaceBetween,
-                                                          children: [
-                                                            Text(
-                                                              'Recibido:',
-                                                              style: TextStyle(
-                                                                color:
-                                                                    _textPrimary,
-                                                                fontSize: 15,
-                                                              ),
-                                                            ),
-                                                            Text(
-                                                              formatCurrency(
-                                                                billetesSeleccionados,
-                                                              ),
-                                                              style: TextStyle(
-                                                                color:
-                                                                    _textPrimary,
-                                                                fontSize: 15,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .bold,
-                                                              ),
-                                                            ),
-                                                          ],
-                                                        ),
-                                                        SizedBox(height: 8),
-                                                        Row(
-                                                          mainAxisAlignment:
-                                                              MainAxisAlignment
-                                                                  .spaceBetween,
-                                                          children: [
-                                                            Text(
-                                                              'Cambio:',
-                                                              style: TextStyle(
-                                                                color:
-                                                                    _textPrimary,
-                                                                fontSize: 17,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .bold,
-                                                              ),
-                                                            ),
-                                                            Text(
-                                                              (billetesSeleccionados -
-                                                                          total) >=
-                                                                      0
-                                                                  ? formatCurrency(
-                                                                      billetesSeleccionados -
-                                                                          total,
-                                                                    )
-                                                                  : '-${formatCurrency(total - billetesSeleccionados)}',
-                                                              style: TextStyle(
-                                                                color:
-                                                                    (billetesSeleccionados -
-                                                                            total) >=
-                                                                        0
-                                                                    ? Colors
-                                                                          .green
-                                                                    : Colors
-                                                                          .red,
-                                                                fontSize: 18,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .bold,
-                                                              ),
-                                                            ),
-                                                          ],
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ),
-                                                ],
-                                              ],
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                    ],
-                                  ),
-                                ),
+                                // ✅ SECCIÓN ELIMINADA: Caja de propina duplicada removida
                                 SizedBox(height: 32),
 
                                 // Botones de pago específicos
@@ -5749,17 +5382,26 @@ class _MesasScreenState extends State<MesasScreen>
                                                 ),
                                                 SizedBox(height: 4),
                                                 Container(
-                                                  height: 40,
+                                                  constraints: BoxConstraints(
+                                                    minWidth: 80,
+                                                    maxWidth: 120,
+                                                  ),
+                                                  height: 44,
                                                   child: TextField(
                                                     controller:
                                                         descuentoPorcentajeController,
                                                     keyboardType:
-                                                        TextInputType.number,
+                                                        TextInputType.numberWithOptions(
+                                                          decimal: true,
+                                                        ),
                                                     textAlign: TextAlign.center,
+                                                    maxLength: 5,
                                                     style: TextStyle(
                                                       color: _textPrimary,
+                                                      fontSize: 16,
                                                     ),
                                                     decoration: InputDecoration(
+                                                      counterText: '',
                                                       hintText: '0',
                                                       hintStyle: TextStyle(
                                                         color: _textPrimary
@@ -5792,11 +5434,14 @@ class _MesasScreenState extends State<MesasScreen>
                                                           ),
                                                       contentPadding:
                                                           EdgeInsets.symmetric(
-                                                            horizontal: 8,
-                                                            vertical: 8,
+                                                            horizontal: 16,
+                                                            vertical: 12,
                                                           ),
                                                     ),
                                                     onChanged: (value) {
+                                                      print(
+                                                        '🔍 DESCUENTO % CHANGED: $value',
+                                                      );
                                                       setState(() {
                                                         if (value.isNotEmpty) {
                                                           descuentoValorController
@@ -5833,17 +5478,26 @@ class _MesasScreenState extends State<MesasScreen>
                                                 ),
                                                 SizedBox(height: 4),
                                                 Container(
-                                                  height: 40,
+                                                  constraints: BoxConstraints(
+                                                    minWidth: 80,
+                                                    maxWidth: 120,
+                                                  ),
+                                                  height: 44,
                                                   child: TextField(
                                                     controller:
                                                         descuentoValorController,
                                                     keyboardType:
-                                                        TextInputType.number,
+                                                        TextInputType.numberWithOptions(
+                                                          decimal: true,
+                                                        ),
                                                     textAlign: TextAlign.center,
+                                                    maxLength: 8,
                                                     style: TextStyle(
                                                       color: _textPrimary,
+                                                      fontSize: 16,
                                                     ),
                                                     decoration: InputDecoration(
+                                                      counterText: '',
                                                       hintText: '0',
                                                       hintStyle: TextStyle(
                                                         color: _textPrimary
@@ -5876,11 +5530,14 @@ class _MesasScreenState extends State<MesasScreen>
                                                           ),
                                                       contentPadding:
                                                           EdgeInsets.symmetric(
-                                                            horizontal: 8,
-                                                            vertical: 8,
+                                                            horizontal: 16,
+                                                            vertical: 12,
                                                           ),
                                                     ),
                                                     onChanged: (value) {
+                                                      print(
+                                                        '🔍 DESCUENTO VALOR CHANGED: $value',
+                                                      );
                                                       setState(() {
                                                         if (value.isNotEmpty) {
                                                           descuentoPorcentajeController
@@ -5888,7 +5545,6 @@ class _MesasScreenState extends State<MesasScreen>
                                                         }
                                                       });
                                                     },
-                                                    onEditingComplete: () {},
                                                   ),
                                                 ),
                                               ],
@@ -5935,6 +5591,7 @@ class _MesasScreenState extends State<MesasScreen>
                                         ),
                                         keyboardType: TextInputType.number,
                                         onChanged: (value) {
+                                          print('🔍 PROPINA CHANGED: $value');
                                           setState(() {
                                             incluyePropina =
                                                 value.isNotEmpty &&
@@ -5954,7 +5611,11 @@ class _MesasScreenState extends State<MesasScreen>
                                       SizedBox(height: 16),
 
                                       // Total final con cálculos consolidados
+                                      // ✅ MEJORADO: Usar ValueListenableBuilder para rebuild automático
                                       Builder(
+                                        key: ValueKey(
+                                          '${descuentoPorcentajeController.text}${descuentoValorController.text}${propinaController.text}',
+                                        ),
                                         builder: (context) {
                                           double subtotal =
                                               calcularTotalSeleccionados();
@@ -6000,6 +5661,11 @@ class _MesasScreenState extends State<MesasScreen>
                                               subtotal -
                                               descuento +
                                               propinaMonto;
+
+                                          // 🔍 DEBUG: Log del total calculado
+                                          print(
+                                            '💰 TOTAL RECALCULADO: subtotal=$subtotal, descuento=$descuento, propina=$propinaMonto, total=$total',
+                                          );
 
                                           return Column(
                                             children: [
@@ -6973,6 +6639,9 @@ class _MesasScreenState extends State<MesasScreen>
                 : null,
             tipoConsumoInterno: esConsumoInterno ? 'empleado' : null,
             descuento: descuento,
+            totalPagado:
+                totalConDescuento +
+                propina, // ✅ CORREGIDO: Usar total con descuento
             // Usar el nuevo método de pago múltiple
             pagoMultiple: true,
             montoEfectivo: montoEfectivo,
@@ -7008,6 +6677,9 @@ class _MesasScreenState extends State<MesasScreen>
                 : null,
             tipoConsumoInterno: esConsumoInterno ? 'empleado' : null,
             descuento: descuento, // ✅ NUEVO: Pasar el descuento al servicio
+            totalPagado:
+                totalConDescuento +
+                propina, // ✅ CORREGIDO: Usar total con descuento
           );
         }
 
@@ -7204,6 +6876,19 @@ class _MesasScreenState extends State<MesasScreen>
 
           await _mesaService.updateMesa(mesa);
 
+          // ✅ ACTUALIZACIÓN INMEDIATA PARA CORTESÍAS
+          if (esCortesia && mounted) {
+            print('⚡ Actualizando UI inmediatamente para cortesía...');
+            setState(() {
+              // Actualizar la mesa en la lista local inmediatamente
+              final index = mesas.indexWhere((m) => m.id == mesa.id);
+              if (index != -1) {
+                mesas[index] = mesa;
+              }
+            });
+            print('✅ Mesa actualizada inmediatamente en UI');
+          }
+
           print('✅ Mesa ${mesa.nombre} liberada después del pago');
           print(
             '  - Estado final enviado al servidor: ocupada=${mesa.ocupada}, total=${mesa.total}',
@@ -7237,7 +6922,14 @@ class _MesasScreenState extends State<MesasScreen>
         print('✅ Procesamiento completado exitosamente');
 
         // Realizar actualizaciones de UI en background (sin bloquear)
-        _actualizarUIEnBackground(mesa);
+        if (esCortesia) {
+          // Para cortesías, la actualización ya se hizo inmediatamente arriba
+          print(
+            '⚡ Saltando actualización background para cortesía (ya actualizada)',
+          );
+        } else {
+          _actualizarUIEnBackground(mesa);
+        }
 
         // ✅ MANTENER EN PANTALLA DE MESAS - No redirigir al dashboard
         print('🏠 Permaneciendo en pantalla de mesas después del pago');
@@ -7914,7 +7606,13 @@ class _MesasScreenState extends State<MesasScreen>
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('❌ $mensajeError'),
+          content: Row(
+            children: [
+              Icon(Icons.error, color: Colors.white, size: 20),
+              SizedBox(width: 8),
+              Expanded(child: Text(mensajeError)),
+            ],
+          ),
           backgroundColor: Colors.red,
           duration: Duration(seconds: 6),
         ),
@@ -8309,7 +8007,13 @@ class _MesasScreenState extends State<MesasScreen>
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('❌ $mensajeError'),
+          content: Row(
+            children: [
+              Icon(Icons.error, color: Colors.white, size: 20),
+              SizedBox(width: 8),
+              Expanded(child: Text(mensajeError)),
+            ],
+          ),
           backgroundColor: _error,
           duration: Duration(seconds: 6),
         ),
@@ -8592,7 +8296,13 @@ class _MesasScreenState extends State<MesasScreen>
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('❌ $mensajeError'),
+            content: Row(
+              children: [
+                Icon(Icons.error, color: Colors.white, size: 20),
+                SizedBox(width: 8),
+                Expanded(child: Text(mensajeError)),
+              ],
+            ),
             backgroundColor: _error,
             duration: Duration(seconds: 6),
           ),
@@ -9290,7 +9000,13 @@ class _MesasScreenState extends State<MesasScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('📋 Ruta copiada al portapapeles'),
+            content: Row(
+              children: [
+                Icon(Icons.content_copy, color: Colors.white, size: 20),
+                SizedBox(width: 8),
+                Text('Ruta copiada al portapapeles'),
+              ],
+            ),
             backgroundColor: Colors.green,
           ),
         );
@@ -9299,7 +9015,13 @@ class _MesasScreenState extends State<MesasScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('❌ Error copiando ruta: $e'),
+            content: Row(
+              children: [
+                Icon(Icons.error, color: Colors.white, size: 20),
+                SizedBox(width: 8),
+                Expanded(child: Text('Error copiando ruta: $e')),
+              ],
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -9380,7 +9102,16 @@ class _MesasScreenState extends State<MesasScreen>
       await copiarRutaAlPortapapeles(rutaArchivo);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('❌ Error: $e'), backgroundColor: Colors.red),
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.error, color: Colors.white, size: 20),
+              SizedBox(width: 8),
+              Expanded(child: Text('Error: $e')),
+            ],
+          ),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -9482,7 +9213,13 @@ class _MesasScreenState extends State<MesasScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('❌ Error generando PDF: $e'),
+            content: Row(
+              children: [
+                Icon(Icons.error, color: Colors.white, size: 20),
+                SizedBox(width: 8),
+                Expanded(child: Text('Error generando PDF: $e')),
+              ],
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -9527,7 +9264,13 @@ class _MesasScreenState extends State<MesasScreen>
       Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('❌ Error generando documento: $e'),
+          content: Row(
+            children: [
+              Icon(Icons.error, color: Colors.white, size: 20),
+              SizedBox(width: 8),
+              Expanded(child: Text('Error generando documento: $e')),
+            ],
+          ),
           backgroundColor: Colors.red,
         ),
       );

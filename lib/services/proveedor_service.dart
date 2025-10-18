@@ -173,24 +173,33 @@ class ProveedorService {
         throw Exception('Token no encontrado');
       }
 
+      print('🔄 Actualizando proveedor ID: ${proveedor.id}');
+      print('📡 URL: ${_endpoints.actualizar(proveedor.id)}');
+
+      final jsonData = proveedor.toJsonCreate();
+      print('📋 Datos a enviar: $jsonData');
+
       final response = await http.put(
         Uri.parse(_endpoints.actualizar(proveedor.id)),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
-        body: json.encode(proveedor.toJsonCreate()),
+        body: json.encode(jsonData),
       );
+
+      print('📊 Status Code: ${response.statusCode}');
+      print('📄 Response Body: ${response.body}');
 
       if (response.statusCode == 200) {
         return Proveedor.fromJson(json.decode(response.body));
       } else {
         throw Exception(
-          'Error al actualizar proveedor: ${response.statusCode}',
+          'Error al actualizar proveedor: ${response.statusCode} - ${response.body}',
         );
       }
     } catch (e) {
-      print('Error en actualizarProveedor: $e');
+      print('❌ Error en actualizarProveedor: $e');
       throw Exception('Error al actualizar proveedor: $e');
     }
   }
@@ -203,6 +212,9 @@ class ProveedorService {
         throw Exception('Token no encontrado');
       }
 
+      print('🔄 Cambiando estado del proveedor ID: $id a activo: $activo');
+      print('📡 URL: ${_endpoints.cambiarEstado(id)}');
+
       final response = await http.put(
         Uri.parse(_endpoints.cambiarEstado(id)),
         headers: {
@@ -212,9 +224,17 @@ class ProveedorService {
         body: json.encode({'activo': activo}),
       );
 
-      return response.statusCode == 200;
+      print('📊 Status Code: ${response.statusCode}');
+      print('📄 Response Body: ${response.body}');
+
+      bool success = response.statusCode == 200;
+      print(
+        success ? '✅ Estado cambiado exitosamente' : '❌ Error cambiando estado',
+      );
+
+      return success;
     } catch (e) {
-      print('Error en cambiarEstadoProveedor: $e');
+      print('❌ Error en cambiarEstadoProveedor: $e');
       throw Exception('Error al cambiar estado del proveedor: $e');
     }
   }

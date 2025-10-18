@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../services/ingrediente_service.dart';
+import '../services/producto_service.dart';
 import '../models/ingrediente.dart';
 import '../models/categoria.dart';
 import '../widgets/loading_indicator.dart';
 import '../theme/app_theme.dart';
-import '../providers/datos_provider.dart';
 
 class IngredientesScreen extends StatefulWidget {
   const IngredientesScreen({super.key});
@@ -16,6 +15,7 @@ class IngredientesScreen extends StatefulWidget {
 
 class _IngredientesScreenState extends State<IngredientesScreen> {
   final IngredienteService _ingredienteService = IngredienteService();
+  final ProductoService _productoService = ProductoService();
   List<Ingrediente> _ingredientes = [];
   List<Ingrediente> _ingredientesFiltrados = [];
   List<Categoria> _categorias = [];
@@ -29,6 +29,9 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
   int _itemsPorPagina = 10;
   List<Ingrediente> _ingredientesPaginados = [];
 
+  // Variable para controlar el timeout del botón guardar ingrediente
+  bool _guardandoIngrediente = false;
+
   @override
   void initState() {
     super.initState();
@@ -41,40 +44,50 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
     super.dispose();
   }
 
+  // Carga directa de ingredientes sin caché
   Future<void> _cargarIngredientes() async {
-    setState(() => _isLoading = true);
+    if (!mounted) return;
+
+    setState(() {
+      _isLoading = true;
+      _error = '';
+    });
 
     try {
-      // Usar el provider para acceder a los datos ya cargados
-      final datosProvider = Provider.of<DatosProvider>(context, listen: false);
+      print('📝 IngredientesScreen: Cargando datos directamente...');
 
-      // Si los datos no están inicializados, esperamos a que se carguen
-      if (!datosProvider.datosInicializados) {
+      // Cargar datos en paralelo desde servicios
+      final futures = await Future.wait([
+        _ingredienteService.getAllIngredientes(),
+        _productoService.getCategorias(),
+      ]);
+
+      final ingredientes = futures[0] as List<Ingrediente>;
+      final categorias = futures[1] as List<Categoria>;
+
+      if (mounted) {
+        setState(() {
+          _ingredientes = ingredientes;
+          _ingredientesFiltrados = ingredientes;
+          _categorias = categorias;
+          _paginaActual =
+              0; // Reiniciar a primera página al cargar nuevos datos
+          _error = '';
+          _actualizarPaginacion(); // Actualizar la lista paginada
+          _isLoading = false;
+        });
         print(
-          '📝 IngredientesScreen: Datos aún no inicializados, usando provider...',
+          '✅ IngredientesScreen: ${ingredientes.length} ingredientes y ${categorias.length} categorías cargados',
         );
-        await datosProvider.inicializarDatos();
-      } else {
-        print('📝 IngredientesScreen: Usando datos en caché del provider');
       }
-
-      // Obtener datos del provider
-      final ingredientes = datosProvider.ingredientes;
-      final categorias = datosProvider.categorias;
-
-      setState(() {
-        _ingredientes = ingredientes;
-        _ingredientesFiltrados = ingredientes;
-        _categorias = categorias;
-        _paginaActual = 0; // Reiniciar a primera página al cargar nuevos datos
-        _error = '';
-        _actualizarPaginacion(); // Actualizar la lista paginada
-      });
     } catch (e) {
-      setState(() => _error = 'Error al cargar ingredientes: $e');
+      if (mounted) {
+        setState(() {
+          _error = 'Error al cargar ingredientes: $e';
+          _isLoading = false;
+        });
+      }
       print('❌ Error al cargar ingredientes: $e');
-    } finally {
-      setState(() => _isLoading = false);
     }
   }
 
@@ -259,13 +272,6 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
       try {
         await _ingredienteService.deleteIngrediente(ingrediente.id);
 
-        // Actualizar datos en el provider
-        final datosProvider = Provider.of<DatosProvider>(
-          context,
-          listen: false,
-        );
-        await datosProvider.cargarIngredientes(forzarActualizacion: true);
-
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Ingrediente eliminado correctamente'),
@@ -273,6 +279,8 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
             duration: Duration(seconds: 3),
           ),
         );
+
+        // Recargar datos directamente
         _cargarIngredientes();
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -485,99 +493,107 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
               child: Text('Cancelar'),
             ),
             TextButton(
-              onPressed: () async {
-                if (formKey.currentState?.validate() ?? false) {
-                  try {
-                    final costo = double.parse(costoController.text);
-                    print('💰 Costo parseado del controlador: $costo');
+              onPressed: _guardandoIngrediente
+                  ? null
+                  : () async {
+                      if (formKey.currentState?.validate() ?? false) {
+                        // 🚀 TIMEOUT: Activar estado de guardando para evitar múltiples envíos
+                        setState(() {
+                          _guardandoIngrediente = true;
+                        });
 
-                    final nuevoIngrediente = Ingrediente(
-                      id: ingrediente?.id ?? '',
-                      nombre: nombreController.text,
-                      categoria: categoriaSeleccionada ?? '',
-                      unidad: unidadController.text,
-                      costo: costo,
-                      cantidad: double.parse(cantidadController.text),
-                      stockActual: double.parse(
-                        cantidadController.text,
-                      ), // Usar stockActual para el stock manual
-                      stockMinimo: ingrediente?.stockMinimo ?? 0.0,
-                      estado: ingrediente?.estado ?? 'Activo',
-                      descontable: esDescontable,
-                    );
+                        try {
+                          final costo = double.parse(costoController.text);
+                          print('💰 Costo parseado del controlador: $costo');
 
-                    print(
-                      '🏗️ Ingrediente construido - Costo: ${nuevoIngrediente.costo}',
-                    );
+                          final nuevoIngrediente = Ingrediente(
+                            id: ingrediente?.id ?? '',
+                            nombre: nombreController.text,
+                            categoria: categoriaSeleccionada ?? '',
+                            unidad: unidadController.text,
+                            costo: costo,
+                            cantidad: double.parse(cantidadController.text),
+                            stockActual: double.parse(
+                              cantidadController.text,
+                            ), // Usar stockActual para el stock manual
+                            stockMinimo: ingrediente?.stockMinimo ?? 0.0,
+                            estado: ingrediente?.estado ?? 'Activo',
+                            descontable: esDescontable,
+                          );
 
-                    print('🔎 Verificando operación:');
-                    print('   - ingrediente == null: ${ingrediente == null}');
-                    print(
-                      '   - Operación: ${ingrediente == null ? 'CREATE' : 'UPDATE'}',
-                    );
-                    print('   - ID original: ${ingrediente?.id ?? 'No ID'}');
-                    print('   - ID nuevo ingrediente: ${nuevoIngrediente.id}');
+                          print(
+                            '🏗️ Ingrediente construido - Costo: ${nuevoIngrediente.costo}',
+                          );
 
-                    // Obtener el proveedor de datos
-                    final datosProvider = Provider.of<DatosProvider>(
-                      context,
-                      listen: false,
-                    );
+                          print('🔎 Verificando operación:');
+                          print(
+                            '   - ingrediente == null: ${ingrediente == null}',
+                          );
+                          print(
+                            '   - Operación: ${ingrediente == null ? 'CREATE' : 'UPDATE'}',
+                          );
+                          print(
+                            '   - ID original: ${ingrediente?.id ?? 'No ID'}',
+                          );
+                          print(
+                            '   - ID nuevo ingrediente: ${nuevoIngrediente.id}',
+                          );
 
-                    if (ingrediente == null) {
-                      // Nuevo ingrediente
-                      await _ingredienteService.createIngrediente(
-                        nuevoIngrediente,
-                      );
-                      // Actualizar datos en el provider
-                      await datosProvider.cargarIngredientes(
-                        forzarActualizacion: true,
-                      );
+                          if (ingrediente == null) {
+                            // Nuevo ingrediente
+                            await _ingredienteService.createIngrediente(
+                              nuevoIngrediente,
+                            );
 
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Ingrediente agregado correctamente'),
-                          backgroundColor: Colors.green,
-                          duration: Duration(seconds: 3),
-                        ),
-                      );
-                    } else {
-                      // Editar ingrediente
-                      await _ingredienteService.updateIngrediente(
-                        nuevoIngrediente,
-                      );
-                      // Actualizar datos en el provider
-                      await datosProvider.cargarIngredientes(
-                        forzarActualizacion: true,
-                      );
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'Ingrediente agregado correctamente',
+                                ),
+                                backgroundColor: Colors.green,
+                                duration: Duration(seconds: 3),
+                              ),
+                            );
+                          } else {
+                            // Editar ingrediente
+                            await _ingredienteService.updateIngrediente(
+                              nuevoIngrediente,
+                            );
 
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            'Ingrediente actualizado correctamente',
-                          ),
-                          backgroundColor: Colors.green,
-                          duration: Duration(seconds: 3),
-                        ),
-                      );
-                    }
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'Ingrediente actualizado correctamente',
+                                ),
+                                backgroundColor: Colors.green,
+                                duration: Duration(seconds: 3),
+                              ),
+                            );
+                          }
 
-                    Navigator.pop(context);
-                    _cargarIngredientes();
-                  } catch (e) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Error al guardar ingrediente: $e'),
-                        backgroundColor: Colors.red,
-                        duration: Duration(seconds: 4),
-                      ),
-                    );
-                    print('❌ Error al guardar ingrediente: $e');
-                  }
-                }
-              },
+                          Navigator.pop(context);
+                          _cargarIngredientes();
+                        } catch (e) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Error al guardar ingrediente: $e'),
+                              backgroundColor: Colors.red,
+                              duration: Duration(seconds: 4),
+                            ),
+                          );
+                          print('❌ Error al guardar ingrediente: $e');
+                        } finally {
+                          // 🚀 TIMEOUT: Resetear estado después de la operación
+                          if (mounted) {
+                            setState(() {
+                              _guardandoIngrediente = false;
+                            });
+                          }
+                        }
+                      }
+                    },
               style: AppTheme.primaryButtonStyle,
-              child: Text('Guardar'),
+              child: Text(_guardandoIngrediente ? 'Guardando...' : 'Guardar'),
             ),
           ],
         ),

@@ -25,6 +25,9 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
   String? _filtroProveedor;
   String _filtroPagoCaja = 'TODOS'; // TODOS, PAGADAS_CAJA, NO_PAGADAS_CAJA
 
+  // Variable para controlar el timeout del botón guardar factura
+  bool _guardandoFactura = false;
+
   // Usando AppTheme para colores consistentes
   // Variables de compatibilidad temporal
   Color get primary => AppTheme.primary;
@@ -685,6 +688,9 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
   Proveedor? _proveedorSeleccionado;
   bool _isLoading = false;
   bool _pagadoDesdeCaja = false;
+
+  // Variable para controlar el timeout del botón guardar factura
+  bool _guardandoFactura = false;
   String? _numeroFactura;
 
   final Color primary = Color(0xFFFF6B00);
@@ -825,11 +831,11 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
         actions: [
           // Botón Debug eliminado según solicitud del usuario
           TextButton(
-            onPressed: _isLoading ? null : _guardarFactura,
+            onPressed: _guardandoFactura ? null : _guardarFactura,
             child: Text(
-              'Guardar',
+              _guardandoFactura ? 'Guardando...' : 'Guardar',
               style: TextStyle(
-                color: _isLoading ? textLight : primary,
+                color: _guardandoFactura ? textLight : primary,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -1285,11 +1291,17 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
       return;
     }
 
+    // 🚀 TIMEOUT: Verificar si ya está guardando
+    if (_guardandoFactura) return;
+
     print('🎯 Iniciando proceso de guardado de factura...');
     print('🆔 Número de factura actual: $_numeroFactura');
     print('📋 Cantidad de items: ${_items.length}');
 
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _guardandoFactura = true;
+    });
 
     try {
       // Calcular el total acumulando los subtotales de cada ítem
@@ -1433,7 +1445,10 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
         ),
       );
     } finally {
-      setState(() => _isLoading = false);
+      setState(() {
+        _isLoading = false;
+        _guardandoFactura = false;
+      });
     }
   }
 
@@ -1750,12 +1765,16 @@ class _DialogoAgregarItemState extends State<_DialogoAgregarItem> {
   Ingrediente? _ingredienteSeleccionado;
   final _cantidadController = TextEditingController();
   final _precioController = TextEditingController();
+  final _totalController = TextEditingController();
   String _searchText = '';
+  bool _usarTotal =
+      true; // ✅ CAMBIO: Modo total por defecto para ahorrar tiempo
 
   @override
   void dispose() {
     _cantidadController.dispose();
     _precioController.dispose();
+    _totalController.dispose();
     super.dispose();
   }
 
@@ -1773,8 +1792,26 @@ class _DialogoAgregarItemState extends State<_DialogoAgregarItem> {
 
   double get _subtotal {
     final cantidad = double.tryParse(_cantidadController.text) ?? 0;
-    final precio = double.tryParse(_precioController.text) ?? 0;
-    return cantidad * precio;
+
+    if (_usarTotal) {
+      // Si está usando total directo, retornar el total ingresado
+      return double.tryParse(_totalController.text) ?? 0;
+    } else {
+      // Si está usando precio unitario, calcular el subtotal normalmente
+      final precio = double.tryParse(_precioController.text) ?? 0;
+      return cantidad * precio;
+    }
+  }
+
+  double get _precioUnitarioCalculado {
+    final cantidad = double.tryParse(_cantidadController.text) ?? 0;
+    final total = double.tryParse(_totalController.text) ?? 0;
+
+    if (_usarTotal && cantidad > 0) {
+      return total / cantidad;
+    } else {
+      return double.tryParse(_precioController.text) ?? 0;
+    }
   }
 
   @override
@@ -1863,7 +1900,10 @@ class _DialogoAgregarItemState extends State<_DialogoAgregarItem> {
                       ),
                       trailing: Text(
                         '\$${ingrediente.costo.toStringAsFixed(0)}/${ingrediente.unidad}',
-                        style: TextStyle(color: widget.primary),
+                        style: TextStyle(
+                          color: widget.textLight,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                       selected: isSelected,
                       selectedTileColor: widget.primary.withOpacity(0.1),
@@ -1882,116 +1922,251 @@ class _DialogoAgregarItemState extends State<_DialogoAgregarItem> {
 
             // Detalles del item
             if (_ingredienteSeleccionado != null) ...[
-              Text(
-                'Detalles del Item:',
-                style: TextStyle(
-                  color: widget.textDark,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _cantidadController,
-                      style: TextStyle(color: widget.textDark),
-                      keyboardType: TextInputType.number,
-                      decoration: InputDecoration(
-                        labelText: 'Cantidad',
-                        suffixText: _ingredienteSeleccionado!.unidad,
-                        suffixStyle: TextStyle(color: widget.textLight),
-                        enabledBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: Colors.grey[600]!),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: widget.primary),
-                        ),
-                      ),
-                      onChanged: (_) => setState(() {}),
-                    ),
-                  ),
-                  SizedBox(width: 16),
-                  Expanded(
-                    child: TextField(
-                      controller: _precioController,
-                      style: TextStyle(color: widget.textDark),
-                      keyboardType: TextInputType.number,
-                      decoration: InputDecoration(
-                        labelText: 'Precio Unitario',
-                        labelStyle: TextStyle(color: widget.textLight),
-                        prefixText: '\$',
-                        prefixStyle: TextStyle(color: widget.textLight),
-                        enabledBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: Colors.grey[600]!),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: widget.primary),
-                        ),
-                      ),
-                      onChanged: (_) => setState(() {}),
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 16),
-
-              // Subtotal
               Container(
-                padding: EdgeInsets.all(12),
+                padding: EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: widget.primary.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: widget.primary),
+                  color: widget.cardBg,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey[600]!),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Título
                     Text(
-                      'Subtotal:',
+                      'Detalles del Item',
                       style: TextStyle(
                         color: widget.textDark,
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    Text(
-                      '\$${_subtotal.toStringAsFixed(0)}',
-                      style: TextStyle(
-                        color: widget.primary,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                    SizedBox(height: 16),
+
+                    // Switch para elegir el modo de entrada
+                    Row(
+                      children: [
+                        Icon(
+                          _usarTotal ? Icons.calculate : Icons.attach_money,
+                          color: widget.textLight,
+                          size: 20,
+                        ),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Modo de entrada de precios',
+                                style: TextStyle(
+                                  color: widget.textDark,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                _usarTotal
+                                    ? 'Total directo - el precio unitario se calculará automáticamente'
+                                    : 'Precio unitario manual - ingresa el precio por unidad',
+                                style: TextStyle(
+                                  color: widget.textLight,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Switch(
+                          value: _usarTotal,
+                          onChanged: (value) {
+                            setState(() {
+                              _usarTotal = value;
+                              // Limpiar los campos al cambiar de modo
+                              if (_usarTotal) {
+                                _precioController.clear();
+                              } else {
+                                _totalController.clear();
+                              }
+                            });
+                          },
+                          activeColor: widget.primary,
+                          activeTrackColor: widget.primary.withOpacity(0.3),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 20),
+
+                    // Campos de entrada uniformes
+                    // Cantidad (siempre visible)
+                    TextField(
+                      controller: _cantidadController,
+                      style: TextStyle(color: widget.textDark),
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: 'Cantidad',
+                        labelStyle: TextStyle(color: widget.textLight),
+                        suffixText: _ingredienteSeleccionado!.unidad,
+                        suffixStyle: TextStyle(color: widget.textLight),
+                        enabledBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: Colors.grey[600]!),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: widget.primary),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      onChanged: (_) => setState(() {}),
+                    ),
+                    SizedBox(height: 16),
+
+                    // Campo de precio/total condicional
+                    if (!_usarTotal) ...[
+                      TextField(
+                        controller: _precioController,
+                        style: TextStyle(color: widget.textDark),
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          labelText: 'Precio Unitario',
+                          labelStyle: TextStyle(color: widget.textLight),
+                          prefixText: '\$',
+                          prefixStyle: TextStyle(color: widget.textLight),
+                          helperText:
+                              'Precio por ${_ingredienteSeleccionado!.unidad}',
+                          helperStyle: TextStyle(
+                            color: widget.textLight,
+                            fontSize: 12,
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderSide: BorderSide(color: Colors.grey[600]!),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderSide: BorderSide(color: widget.primary),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        onChanged: (_) => setState(() {}),
+                      ),
+                    ] else ...[
+                      TextField(
+                        controller: _totalController,
+                        style: TextStyle(color: widget.textDark),
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          labelText: 'Total del Item',
+                          labelStyle: TextStyle(color: widget.textLight),
+                          prefixText: '\$',
+                          prefixStyle: TextStyle(color: widget.textLight),
+                          helperText:
+                              'El precio unitario se calculará automáticamente',
+                          helperStyle: TextStyle(
+                            color: widget.textLight,
+                            fontSize: 12,
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderSide: BorderSide(color: Colors.grey[600]!),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderSide: BorderSide(color: widget.primary),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        onChanged: (_) => setState(() {}),
+                      ),
+                    ],
+                    SizedBox(height: 16),
+
+                    // Información del subtotal
+                    Container(
+                      padding: EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[800],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        children: [
+                          // Mostrar precio unitario calculado si está en modo total
+                          if (_usarTotal && _subtotal > 0) ...[
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Precio Unitario Calculado:',
+                                  style: TextStyle(
+                                    color: widget.textDark,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                Text(
+                                  '\$${_precioUnitarioCalculado.toStringAsFixed(2)}',
+                                  style: TextStyle(
+                                    color: widget.textDark,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 8),
+                            Divider(color: widget.textLight.withOpacity(0.3)),
+                            SizedBox(height: 8),
+                          ],
+                          // Subtotal final
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Subtotal:',
+                                style: TextStyle(
+                                  color: widget.textDark,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                '\$${_subtotal.toStringAsFixed(0)}',
+                                style: TextStyle(
+                                  color: widget.textDark,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
               ),
-              SizedBox(height: 16),
-
-              // Botones
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: Text(
-                      'Cancelar',
-                      style: TextStyle(color: widget.textLight),
-                    ),
-                  ),
-                  SizedBox(width: 12),
-                  ElevatedButton(
-                    onPressed: _puedeAgregar() ? _agregarItem : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: widget.primary,
-                      foregroundColor: Colors.white,
-                    ),
-                    child: Text('Agregar'),
-                  ),
-                ],
-              ),
             ],
+            SizedBox(height: 16),
+
+            // Botones
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(
+                    'Cancelar',
+                    style: TextStyle(color: widget.textLight),
+                  ),
+                ),
+                SizedBox(width: 12),
+                ElevatedButton(
+                  onPressed: _puedeAgregar() ? _agregarItem : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: widget.primary,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: Text('Agregar'),
+                ),
+              ],
+            ),
           ],
         ),
       ),
@@ -1999,16 +2174,39 @@ class _DialogoAgregarItemState extends State<_DialogoAgregarItem> {
   }
 
   bool _puedeAgregar() {
-    return _ingredienteSeleccionado != null &&
+    if (_ingredienteSeleccionado == null) return false;
+
+    final cantidadValida =
         _cantidadController.text.isNotEmpty &&
-        _precioController.text.isNotEmpty &&
-        (double.tryParse(_cantidadController.text) ?? 0) > 0 &&
-        (double.tryParse(_precioController.text) ?? 0) > 0;
+        (double.tryParse(_cantidadController.text) ?? 0) > 0;
+
+    if (!cantidadValida) return false;
+
+    if (_usarTotal) {
+      // Modo total: validar que el total sea válido
+      return _totalController.text.isNotEmpty &&
+          (double.tryParse(_totalController.text) ?? 0) > 0;
+    } else {
+      // Modo precio unitario: validar que el precio sea válido
+      return _precioController.text.isNotEmpty &&
+          (double.tryParse(_precioController.text) ?? 0) > 0;
+    }
   }
 
   void _agregarItem() {
     final cantidad = double.parse(_cantidadController.text);
-    final precio = double.parse(_precioController.text);
+    double precio;
+    double subtotal;
+
+    if (_usarTotal) {
+      // Modo total directo
+      subtotal = double.parse(_totalController.text);
+      precio = subtotal / cantidad; // Calcular precio unitario
+    } else {
+      // Modo precio unitario
+      precio = double.parse(_precioController.text);
+      subtotal = cantidad * precio; // Calcular subtotal
+    }
 
     final item = ItemFacturaCompra(
       ingredienteId: _ingredienteSeleccionado!.id,
@@ -2016,7 +2214,7 @@ class _DialogoAgregarItemState extends State<_DialogoAgregarItem> {
       cantidad: cantidad,
       unidad: _ingredienteSeleccionado!.unidad,
       precioUnitario: precio,
-      subtotal: cantidad * precio,
+      subtotal: subtotal,
     );
 
     widget.onItemAgregado(item);

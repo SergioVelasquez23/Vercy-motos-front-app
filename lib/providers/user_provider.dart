@@ -7,6 +7,7 @@ import 'dart:html'
     if (dart.library.io) 'package:serch_restapp/utils/html_stub.dart'
     as html;
 import '../utils/jwt_utils.dart';
+import 'datos_cache_provider.dart';
 
 class UserProvider extends ChangeNotifier {
   String? _token;
@@ -102,6 +103,14 @@ class UserProvider extends ChangeNotifier {
       }
 
       notifyListeners();
+
+      // Inicializar cache de datos cuando se autentica
+      try {
+        final cacheProvider = DatosCacheProvider();
+        await cacheProvider.initialize();
+      } catch (e) {
+        print('⚠️ Error inicializando cache al autenticar: $e');
+      }
     } catch (e) {
       _roles = [];
     }

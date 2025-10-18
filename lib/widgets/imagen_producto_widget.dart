@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+
 import 'dart:convert';
 import '../services/image_service.dart';
 
@@ -119,28 +119,36 @@ class ImagenProductoWidget extends StatelessWidget {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(8),
-        child: CachedNetworkImage(
-          imageUrl: url,
+        child: Image.network(
+          url,
           width: width,
           height: height,
           fit: fit,
-          httpHeaders: {
+          headers: {
             'Accept': '*/*',
             'User-Agent': 'Mozilla/5.0 (Mobile; Flutter)',
             'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache',
           },
-          placeholder: (context, url) => Container(
-            width: width,
-            height: height,
-            color: Color(0xFF3A3A3A),
-            child: Center(
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFF6B00)),
+          loadingBuilder: (context, child, loadingProgress) {
+            if (loadingProgress == null) return child;
+            return Container(
+              width: width,
+              height: height,
+              color: Color(0xFF3A3A3A),
+              child: Center(
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFF6B00)),
+                  value: loadingProgress.expectedTotalBytes != null
+                      ? loadingProgress.cumulativeBytesLoaded /
+                            loadingProgress.expectedTotalBytes!
+                      : null,
+                ),
               ),
-            ),
-          ),
-          errorWidget: (context, url, error) {
+            );
+          },
+          errorBuilder: (context, error, stackTrace) {
             // Log más específico para debug
             final errorStr = error.toString();
             print('❌ Error cargando imagen: $url - $errorStr');
@@ -158,13 +166,6 @@ class ImagenProductoWidget extends StatelessWidget {
 
             return _buildIconoError();
           },
-          fadeInDuration: Duration(milliseconds: 300),
-          fadeOutDuration: Duration(milliseconds: 100),
-          // Configuración más robusta para manejar errores del servidor
-          maxHeightDiskCache: 50,
-          maxWidthDiskCache: 50,
-          // Reducir tiempo de espera para fallar más rápido si el servidor está caído
-          fadeInCurve: Curves.easeInOut,
         ),
       ),
     );

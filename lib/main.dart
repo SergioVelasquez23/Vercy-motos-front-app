@@ -14,7 +14,7 @@ import 'screens/pedidos_screen_fusion.dart';
 import 'screens/documentos_mesa_screen.dart';
 import 'models/mesa.dart';
 import 'providers/user_provider.dart';
-import 'providers/datos_provider.dart';
+import 'providers/datos_cache_provider.dart';
 
 void main() async {
   // Aseguramos que Flutter esté inicializado
@@ -22,12 +22,11 @@ void main() async {
 
   // NO inicializar Intl.defaultLocale para evitar corrupción de formateo
   // El formateo de números ahora es completamente independiente en format_utils.dart
-  // ...existing code...
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => UserProvider()),
-        ChangeNotifierProvider(create: (_) => DatosProvider()),
+        ChangeNotifierProvider(create: (_) => DatosCacheProvider()),
       ],
       child: MyApp(),
     ),
@@ -39,13 +38,20 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Initialize user from stored token
-    Future.microtask(
-      () => Provider.of<UserProvider>(
-        context,
-        listen: false,
-      ).initializeFromStorage(),
-    );
+    // Initialize user from stored token and cache data
+    Future.microtask(() async {
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      await userProvider.initializeFromStorage();
+
+      // Si el usuario está autenticado, inicializar el cache
+      if (userProvider.isAuthenticated) {
+        final cacheProvider = Provider.of<DatosCacheProvider>(
+          context,
+          listen: false,
+        );
+        await cacheProvider.initialize();
+      }
+    });
 
     return MaterialApp(
       title: 'Sopa y Carbon',

@@ -100,6 +100,13 @@ class MesaService {
 
   Future<Mesa> updateMesa(Mesa mesa) async {
     try {
+      // ✅ MEJORADO: Validar que tenemos un ID válido
+      final mesaId = mesa.mongoId;
+      if (mesaId.isEmpty) {
+        print('❌ MesaService: ID de mesa vacío - mongoId: ${mesa.mongoId}');
+        throw Exception('ID de mesa vacío para actualización');
+      }
+
       final requestData = {
         'nombre': mesa.nombre,
         'ocupada': mesa.ocupada,
@@ -107,26 +114,38 @@ class MesaService {
         'productos': mesa.productos.map((p) => p.toJson()).toList(),
       };
 
+      print('🔄 MesaService: Actualizando mesa ${mesa.nombre} (ID: $mesaId)');
+      print('   - Ocupada: ${mesa.ocupada}');
+      print('   - Total: ${mesa.total}');
+      print('   - Productos: ${mesa.productos.length}');
+
       final headers = await _getHeaders();
+      final url = '$baseUrl/api/mesas/$mesaId';
+      print('📡 MesaService: PUT request a: $url');
+
       final response = await http
-          .put(
-            Uri.parse(
-              '$baseUrl/api/mesas/${mesa.mongoId}',
-            ), // Usando el getter público
-            headers: headers,
-            body: json.encode(requestData),
-          )
+          .put(Uri.parse(url), headers: headers, body: json.encode(requestData))
           .timeout(Duration(seconds: 10));
+
+      print('📥 MesaService: Response status: ${response.statusCode}');
+      print('📥 MesaService: Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
         if (responseData['success'] == true && responseData['data'] != null) {
           final updatedMesa = Mesa.fromJson(responseData['data']);
+          print('✅ MesaService: Mesa actualizada exitosamente');
           return updatedMesa;
         } else {
+          print(
+            '❌ MesaService: Formato de respuesta inválido: ${response.body}',
+          );
           throw Exception('Formato de respuesta inválido');
         }
       } else {
+        print(
+          '❌ MesaService: Error del servidor ${response.statusCode}: ${response.body}',
+        );
         throw Exception('Error del servidor: ${response.statusCode}');
       }
     } catch (e) {

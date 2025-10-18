@@ -48,6 +48,9 @@ class _GastosScreenState extends State<GastosScreen> {
   bool _showForm = false;
   bool _pagadoDesdeCaja = false; // ✅ Campo para checkbox
 
+  // Variable para controlar el timeout del botón guardar gasto
+  bool _guardandoGasto = false;
+
   // Selecciones
   String? _selectedCuadreId;
   String? _selectedTipoGastoId;
@@ -267,7 +270,13 @@ class _GastosScreenState extends State<GastosScreen> {
   Future<void> _saveGasto() async {
     if (!_validateForm()) return;
 
-    setState(() => _isLoading = true);
+    // 🚀 TIMEOUT: Verificar si ya está guardando
+    if (_guardandoGasto) return;
+
+    setState(() {
+      _isLoading = true;
+      _guardandoGasto = true;
+    });
     try {
       final userProvider = Provider.of<UserProvider>(context, listen: false);
       final responsable = userProvider.userName ?? 'Usuario Desconocido';
@@ -342,7 +351,10 @@ class _GastosScreenState extends State<GastosScreen> {
     } catch (e) {
       _showError('Error al guardar gasto: $e');
     } finally {
-      setState(() => _isLoading = false);
+      setState(() {
+        _isLoading = false;
+        _guardandoGasto = false;
+      });
     }
   }
 
@@ -865,8 +877,10 @@ class _GastosScreenState extends State<GastosScreen> {
                             foregroundColor: Colors.white,
                             padding: EdgeInsets.symmetric(vertical: 16),
                           ),
-                          onPressed: _saveGasto,
-                          child: Text('Guardar'),
+                          onPressed: _guardandoGasto ? null : _saveGasto,
+                          child: Text(
+                            _guardandoGasto ? 'Guardando...' : 'Guardar',
+                          ),
                         ),
                       ),
                     ],

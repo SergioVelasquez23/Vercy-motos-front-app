@@ -296,15 +296,83 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
     });
 
     try {
-      // Por ahora obtenemos todos los cuadres
-      // TODO: Mejorar el servicio para aceptar filtros
+      // Obtener todos los cuadres y luego aplicar filtros en el cliente
       final cuadres = await _cuadreCajaService.getAllCuadres();
 
-      // Ordenar cuadres por fecha descendente (más recientes primero)
-      cuadres.sort((a, b) => b.fechaApertura.compareTo(a.fechaApertura));
+      // Aplicar filtros locales basados en los controles del formulario
+      DateTime? desde;
+      DateTime? hasta;
+
+      if ((_desdeController.text).trim().isNotEmpty) {
+        try {
+          final parts = _desdeController.text.split('/');
+          desde = DateTime(
+            int.parse(parts[2]),
+            int.parse(parts[1]),
+            int.parse(parts[0]),
+          );
+        } catch (e) {
+          desde = null;
+        }
+      }
+
+      if ((_hastaController.text).trim().isNotEmpty) {
+        try {
+          final parts = _hastaController.text.split('/');
+          hasta = DateTime(
+            int.parse(parts[2]),
+            int.parse(parts[1]),
+            int.parse(parts[0]),
+          );
+          // incluir todo el día
+          hasta = DateTime(hasta.year, hasta.month, hasta.day, 23, 59, 59);
+        } catch (e) {
+          hasta = null;
+        }
+      }
+
+      List<CuadreCaja> filtered = cuadres.where((c) {
+        // Filtrar por fecha de apertura si aplica
+        if (desde != null) {
+          try {
+            if (c.fechaApertura.isBefore(desde)) return false;
+          } catch (_) {}
+        }
+        if (hasta != null) {
+          try {
+            if (c.fechaApertura.isAfter(hasta)) return false;
+          } catch (_) {}
+        }
+
+        // Filtrar por nombre de caja
+        if (_selectedCaja != null && _selectedCaja!.trim().isNotEmpty) {
+          if (c.nombre.toLowerCase() != _selectedCaja!.toLowerCase())
+            return false;
+        }
+
+        // Filtrar por responsable
+        if (_selectedResponsable != null &&
+            _selectedResponsable!.trim().isNotEmpty) {
+          if (c.responsable.toLowerCase() !=
+              _selectedResponsable!.toLowerCase())
+            return false;
+        }
+
+        // Filtrar por estado (UI: 'Abierta' / 'Cerrada')
+        if (_selectedEstado != null && _selectedEstado!.trim().isNotEmpty) {
+          final s = _selectedEstado!.toLowerCase();
+          if (s == 'abierta' && (c.cerrada == true)) return false;
+          if (s == 'cerrada' && (c.cerrada == false)) return false;
+        }
+
+        return true;
+      }).toList();
+
+      // Ordenar por fecha descendente
+      filtered.sort((a, b) => b.fechaApertura.compareTo(a.fechaApertura));
 
       setState(() {
-        _cuadresCaja = cuadres;
+        _cuadresCaja = filtered;
       });
     } catch (e) {
       setState(() {

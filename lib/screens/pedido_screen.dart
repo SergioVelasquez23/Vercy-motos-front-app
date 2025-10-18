@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../models/mesa.dart';
 import '../widgets/imagen_producto_widget.dart';
 import '../config/endpoints_config.dart';
@@ -14,11 +13,13 @@ import '../services/producto_service.dart';
 import '../services/mesa_service.dart';
 import '../services/pedido_service.dart';
 import '../services/inventario_service.dart';
+// import '../services/ingrediente_service.dart'; // Ahora se usa desde cache
 import '../models/movimiento_inventario.dart';
 import '../models/inventario.dart';
+import '../models/ingrediente.dart';
 import '../models/tipo_mesa.dart';
 import '../providers/user_provider.dart';
-import '../providers/datos_provider.dart';
+import '../providers/datos_cache_provider.dart';
 import '../utils/format_utils.dart';
 
 class PedidoScreen extends StatefulWidget {
@@ -41,7 +42,13 @@ class _PedidoScreenState extends State<PedidoScreen> {
   final ProductoService _productoService = ProductoService();
   final MesaService _mesaService = MesaService();
   final InventarioService _inventarioService = InventarioService();
+  // final IngredienteService _ingredienteService = IngredienteService(); // Ahora se usa desde cache
   final ImageService _imageService = ImageService();
+
+  // Estados de carga directa sin caché (reemplazado por cache provider)
+  // bool _isLoadingProductos = false;
+  // bool _isLoadingCategorias = false;
+  // bool _isLoadingIngredientes = false;
 
   /// Helper method to convert dynamic to Producto
   /// If forceNonNull is true, returns a default Producto instead of null for invalid inputs
@@ -84,6 +91,8 @@ class _PedidoScreenState extends State<PedidoScreen> {
   // Esto permite reutilizar las selecciones previas y descontar correctamente del inventario
   Map<String, String> productosCarneMap = {};
   List<Categoria> categorias = [];
+  List<Ingrediente> ingredientes =
+      []; // Lista de ingredientes para conversión ID -> nombre
 
   // Map para controlar el estado de pago de cada producto
   Map<String, bool> productoPagado = {};
@@ -96,8 +105,14 @@ class _PedidoScreenState extends State<PedidoScreen> {
   String? clienteSeleccionado;
   TextEditingController busquedaController = TextEditingController();
   TextEditingController clienteController = TextEditingController();
+  TextEditingController observacionesPedidoController = TextEditingController();
+  TextEditingController comandoTextoController = TextEditingController();
   String filtro = '';
   String? categoriaSelecionadaId;
+
+  // ✅ NUEVAS VARIABLES: Controlar visibilidad de campos opcionales
+  bool _mostrarObservaciones = false;
+  bool _mostrarComandos = false;
 
   // Variables para el debounce en la búsqueda
   Timer? _debounceTimer;
@@ -115,6 +130,993 @@ class _PedidoScreenState extends State<PedidoScreen> {
       []; // Productos que ya estaban en el pedido
   int cantidadProductosOriginales = 0; // Cantidad de productos originales
 
+  // ========== SISTEMA DE COMANDOS DE TEXTO ==========
+
+  // Diccionario de comandos (abreviación -> nombre del producto) - EXPANDIDO CON TODAS LAS VARIACIONES
+  final Map<String, String> _comandosProductos = {
+    // Sopas (múltiples variaciones)
+    'S': 'Porción de Sopa',
+    's': 'Porción de Sopa',
+    'sopa': 'Porción de Sopa',
+    'SOPA': 'Porción de Sopa',
+    'Sopa': 'Porción de Sopa',
+    'sopita': 'Porción de Sopa',
+    'SOPITA': 'Porción de Sopa',
+    'Sopita': 'Porción de Sopa',
+    'sancocho': 'Sancocho Tri',
+    'SANCOCHO': 'Sancocho Tri',
+    'Sancocho': 'Sancocho Tri',
+    'sanc': 'Sancocho Tri',
+    'SANC': 'Sancocho Tri',
+    'ajiaco': 'Ajiaco',
+    'AJIACO': 'Ajiaco',
+    'Ajiaco': 'Ajiaco',
+    'aji': 'Ajiaco',
+    'AJI': 'Ajiaco',
+    'mondongo': 'Mondongo',
+    'MONDONGO': 'Mondongo',
+    'Mondongo': 'Mondongo',
+    'mond': 'Mondongo',
+    'MOND': 'Mondongo',
+
+    // Frijoles (múltiples variaciones)
+    'F': 'Porción de Frijol',
+    'f': 'Porción de Frijol',
+    'frijol': 'Porción de Frijol',
+    'FRIJOL': 'Porción de Frijol',
+    'Frijol': 'Porción de Frijol',
+    'frijoles': 'Porción de Frijol',
+    'FRIJOLES': 'Porción de Frijol',
+    'Frijoles': 'Porción de Frijol',
+    'frij': 'Porción de Frijol',
+    'FRIJ': 'Porción de Frijol',
+    'cazuela': 'Cazuela de Frijoles',
+    'CAZUELA': 'Cazuela de Frijoles',
+    'Cazuela': 'Cazuela de Frijoles',
+    'caz': 'Cazuela de Frijoles',
+    'CAZ': 'Cazuela de Frijoles',
+
+    // Ejecutivos (múltiples variaciones)
+    'E': 'Ejecutivo',
+    'e': 'Ejecutivo',
+    'EJ': 'Ejecutivo',
+    'ej': 'Ejecutivo',
+    'Ej': 'Ejecutivo',
+    'ejecutivo': 'Ejecutivo',
+    'EJECUTIVO': 'Ejecutivo',
+    'Ejecutivo': 'Ejecutivo',
+    'ejec': 'Ejecutivo',
+    'EJEC': 'Ejecutivo',
+    'Ejec': 'Ejecutivo',
+    'menu': 'Ejecutivo',
+    'MENU': 'Ejecutivo',
+    'Menu': 'Ejecutivo',
+    'menú': 'Ejecutivo',
+    'MENÚ': 'Ejecutivo',
+    'Menú': 'Ejecutivo',
+    'plato ejecutivo': 'Ejecutivo',
+    'PLATO EJECUTIVO': 'Ejecutivo',
+    'Plato Ejecutivo': 'Ejecutivo',
+
+    // Bandeja Paisa (múltiples variaciones)
+    'P': 'Bandeja Paisa',
+    'p': 'Bandeja Paisa',
+    'paisa': 'Bandeja Paisa',
+    'PAISA': 'Bandeja Paisa',
+    'Paisa': 'Bandeja Paisa',
+    'paisano': 'Bandeja Paisa',
+    'PAISANO': 'Bandeja Paisa',
+    'Paisano': 'Bandeja Paisa',
+    'bandeja paisa': 'Bandeja Paisa',
+    'BANDEJA PAISA': 'Bandeja Paisa',
+    'Bandeja Paisa': 'Bandeja Paisa',
+    'bandeja': 'Bandeja Paisa',
+    'BANDEJA': 'Bandeja Paisa',
+    'Bandeja': 'Bandeja Paisa',
+    'band': 'Bandeja Paisa',
+    'BAND': 'Bandeja Paisa',
+
+    // Churrasco (múltiples variaciones)
+    'C': 'Churrasco',
+    'c': 'Churrasco',
+    'churrasco': 'Churrasco',
+    'CHURRASCO': 'Churrasco',
+    'Churrasco': 'Churrasco',
+    'churrascó': 'Churrasco',
+    'CHURRASCÓ': 'Churrasco',
+    'Churrascó': 'Churrasco',
+    'churr': 'Churrasco',
+    'CHURR': 'Churrasco',
+    'chur': 'Churrasco',
+    'CHUR': 'Churrasco',
+
+    // Otros platos principales con abreviaciones
+    'anca': 'Punta de anca',
+    'ANCA': 'Punta de anca',
+    'Anca': 'Punta de anca',
+    'punta': 'Punta de anca',
+    'PUNTA': 'Punta de anca',
+    'Punta': 'Punta de anca',
+    'punta anca': 'Punta de anca',
+    'PUNTA ANCA': 'Punta de anca',
+    'sobra': 'Sobrebarriga criolla o dorada',
+    'SOBRA': 'Sobrebarriga criolla o dorada',
+    'sobrebarriga': 'Sobrebarriga criolla o dorada',
+    'SOBREBARRIGA': 'Sobrebarriga criolla o dorada',
+    'Sobrebarriga': 'Sobrebarriga criolla o dorada',
+    'sobre': 'Sobrebarriga criolla o dorada',
+    'SOBRE': 'Sobrebarriga criolla o dorada',
+
+    // Carnes con abreviaciones
+    'pollo': 'Pechuga a la plancha',
+    'POLLO': 'Pechuga a la plancha',
+    'Pollo': 'Pechuga a la plancha',
+    'poll': 'Pechuga a la plancha',
+    'POLL': 'Pechuga a la plancha',
+    'pechuga': 'Pechuga a la plancha',
+    'PECHUGA': 'Pechuga a la plancha',
+    'Pechuga': 'Pechuga a la plancha',
+    'pech': 'Pechuga a la plancha',
+    'PECH': 'Pechuga a la plancha',
+    'milanesa pollo': 'Milanesa de pollo',
+    'MILANESA POLLO': 'Milanesa de pollo',
+    'mila pollo': 'Milanesa de pollo',
+    'MILA POLLO': 'Milanesa de pollo',
+    'milanesa cerdo': 'Milanesa de cerdo',
+    'MILANESA CERDO': 'Milanesa de cerdo',
+    'mila cerdo': 'Milanesa de cerdo',
+    'MILA CERDO': 'Milanesa de cerdo',
+    'mila': 'Milanesa de pollo',
+    'MILA': 'Milanesa de pollo',
+    'higado': 'Higado encebollado o a la plancha',
+    'HIGADO': 'Higado encebollado o a la plancha',
+    'hígado': 'Higado encebollado o a la plancha',
+    'HÍGADO': 'Higado encebollado o a la plancha',
+    'Hígado': 'Higado encebollado o a la plancha',
+
+    // Pescados con abreviaciones
+    'mojarra': 'Mojarra',
+    'MOJARRA': 'Mojarra',
+    'Mojarra': 'Mojarra',
+    'moj': 'Mojarra',
+    'MOJ': 'Mojarra',
+    'salmon': 'Salmon',
+    'SALMON': 'Salmon',
+    'salmón': 'Salmon',
+    'SALMÓN': 'Salmon',
+    'Salmón': 'Salmon',
+    'sal': 'Salmon',
+    'SAL': 'Salmon',
+    'trucha': 'Trucha',
+    'TRUCHA': 'Trucha',
+    'Trucha': 'Trucha',
+    'tru': 'Trucha',
+    'TRU': 'Trucha',
+    'mariscos': 'Cazuela de Mariscos',
+    'MARISCOS': 'Cazuela de Mariscos',
+    'Mariscos': 'Cazuela de Mariscos',
+    'mari': 'Cazuela de Mariscos',
+    'MARI': 'Cazuela de Mariscos',
+
+    // Asados con abreviaciones
+    'asado res': 'Asada de res',
+    'ASADO RES': 'Asada de res',
+    'asado cerdo': 'Asada de cerdo',
+    'ASADO CERDO': 'Asada de cerdo',
+    'asado mixto': 'Asado mixto',
+    'ASADO MIXTO': 'Asado mixto',
+    'asado': 'Asado combinado (res o cerdo)',
+    'ASADO': 'Asado combinado (res o cerdo)',
+    'Asado': 'Asado combinado (res o cerdo)',
+    'asa': 'Asado combinado (res o cerdo)',
+    'ASA': 'Asado combinado (res o cerdo)',
+    'combinado': 'Asado combinado (res o cerdo)',
+    'COMBINADO': 'Asado combinado (res o cerdo)',
+    'Combinado': 'Asado combinado (res o cerdo)',
+    'comb': 'Asado combinado (res o cerdo)',
+    'COMB': 'Asado combinado (res o cerdo)',
+    'costillas': 'Costillas de cerdo en BBQ',
+    'COSTILLAS': 'Costillas de cerdo en BBQ',
+    'Costillas': 'Costillas de cerdo en BBQ',
+    'cost': 'Costillas de cerdo en BBQ',
+    'COST': 'Costillas de cerdo en BBQ',
+    'bbq': 'Costillas de cerdo en BBQ',
+    'BBQ': 'Costillas de cerdo en BBQ',
+
+    // Picadas con abreviaciones
+    'picada duo': 'Picada duo',
+    'PICADA DUO': 'Picada duo',
+    'Picada Duo': 'Picada duo',
+    'picada familiar': 'Picada familiar',
+    'PICADA FAMILIAR': 'Picada familiar',
+    'Picada Familiar': 'Picada familiar',
+    'picada': 'Picada duo',
+    'PICADA': 'Picada duo',
+    'Picada': 'Picada duo',
+    'pic': 'Picada duo',
+    'PIC': 'Picada duo',
+    'duo': 'Picada duo',
+    'DUO': 'Picada duo',
+    'Duo': 'Picada duo',
+    'familiar': 'Picada familiar',
+    'FAMILIAR': 'Picada familiar',
+    'Familiar': 'Picada familiar',
+    'fam': 'Picada familiar',
+    'FAM': 'Picada familiar',
+
+    // Chuzos con abreviaciones
+    'chuzo': 'Chuzo',
+    'CHUZO': 'Chuzo',
+    'Chuzo': 'Chuzo',
+    'chuz': 'Chuzo',
+    'CHUZ': 'Chuzo',
+    'chuzito': 'Chuzo',
+    'CHUZITO': 'Chuzo',
+    'Chuzito': 'Chuzo',
+
+    // Desayunos con abreviaciones
+    'desayuno': 'Desayuno básico',
+    'DESAYUNO': 'Desayuno básico',
+    'Desayuno': 'Desayuno básico',
+    'des': 'Desayuno básico',
+    'DES': 'Desayuno básico',
+    'desayuno proteina': 'DESAYUNO CON PROTEINA',
+    'DESAYUNO PROTEINA': 'DESAYUNO CON PROTEINA',
+    'Desayuno Proteina': 'DESAYUNO CON PROTEINA',
+    'des prot': 'DESAYUNO CON PROTEINA',
+    'DES PROT': 'DESAYUNO CON PROTEINA',
+    'infantil': 'Menú Infantil',
+    'INFANTIL': 'Menú Infantil',
+    'Infantil': 'Menú Infantil',
+    'inf': 'Menú Infantil',
+    'INF': 'Menú Infantil',
+    'niño': 'Menú Infantil',
+    'NIÑO': 'Menú Infantil',
+
+    // Bebidas frías con abreviaciones
+    'G': 'Cocacola',
+    'g': 'Cocacola',
+    'gaseosa': 'Cocacola',
+    'GASEOSA': 'Cocacola',
+    'Gaseosa': 'Cocacola',
+    'gas': 'Cocacola',
+    'GAS': 'Cocacola',
+    'coca': 'Cocacola',
+    'COCA': 'Cocacola',
+    'Coca': 'Cocacola',
+    'cocacola': 'Cocacola',
+    'COCACOLA': 'Cocacola',
+    'zero': 'Cocacola zero',
+    'ZERO': 'Cocacola zero',
+    'Zero': 'Cocacola zero',
+    'colombiana': 'Colombiana',
+    'COLOMBIANA': 'Colombiana',
+    'Colombiana': 'Colombiana',
+    'col': 'Colombiana',
+    'COL': 'Colombiana',
+    'manzana': 'Manzana postobon',
+    'MANZANA': 'Manzana postobon',
+    'Manzana': 'Manzana postobon',
+    'manz': 'Manzana postobon',
+    'MANZ': 'Manzana postobon',
+    'uva': 'Uva postobon',
+    'UVA': 'Uva postobon',
+    'Uva': 'Uva postobon',
+    'naranja': 'Naranaja postobon',
+    'NARANJA': 'Naranaja postobon',
+    'Naranja': 'Naranaja postobon',
+    'nar': 'Naranaja postobon',
+    'NAR': 'Naranaja postobon',
+    'tamarindo': 'Tamarindo',
+    'TAMARINDO': 'Tamarindo',
+    'Tamarindo': 'Tamarindo',
+    'tam': 'Tamarindo',
+    'TAM': 'Tamarindo',
+    'bretaña': 'Bretaña',
+    'BRETAÑA': 'Bretaña',
+    'Bretaña': 'Bretaña',
+    'bret': 'Bretaña',
+    'BRET': 'Bretaña',
+
+    // Jugos con abreviaciones
+    'J': 'Jugo Natural Agua',
+    'j': 'Jugo Natural Agua',
+    'jugo': 'Jugo Natural Agua',
+    'JUGO': 'Jugo Natural Agua',
+    'Jugo': 'Jugo Natural Agua',
+    'jug': 'Jugo Natural Agua',
+    'JUG': 'Jugo Natural Agua',
+    'jugo leche': 'Jugo Natural en Leche',
+    'JUGO LECHE': 'Jugo Natural en Leche',
+    'Jugo Leche': 'Jugo Natural en Leche',
+    'jugo agua': 'Jugo Natural Agua',
+    'JUGO AGUA': 'Jugo Natural Agua',
+    'Jugo Agua': 'Jugo Natural Agua',
+    'jarra jugo': 'Jarra de Jugo en Agua',
+    'JARRA JUGO': 'Jarra de Jugo en Agua',
+    'Jarra Jugo': 'Jarra de Jugo en Agua',
+    'jarra': 'Jarra de Jugo en Agua',
+    'JARRA': 'Jarra de Jugo en Agua',
+    'Jarra': 'Jarra de Jugo en Agua',
+    'jarr': 'Jarra de Jugo en Agua',
+    'JARR': 'Jarra de Jugo en Agua',
+    'limonada': 'Limonada natural',
+    'LIMONADA': 'Limonada natural',
+    'Limonada': 'Limonada natural',
+    'limo': 'Limonada natural',
+    'LIMO': 'Limonada natural',
+    'Limo': 'Limonada natural',
+    'lim': 'Limonada natural',
+    'LIM': 'Limonada natural',
+    'limonada coco': 'Limonada de Coco',
+    'LIMONADA COCO': 'Limonada de Coco',
+    'Limonada Coco': 'Limonada de Coco',
+    'limo coco': 'Limonada de Coco',
+    'LIMO COCO': 'Limonada de Coco',
+    'limonada panela': 'Limonada de Panela',
+    'LIMONADA PANELA': 'Limonada de Panela',
+    'Limonada Panela': 'Limonada de Panela',
+    'limo panela': 'Limonada de Panela',
+    'LIMO PANELA': 'Limonada de Panela',
+
+    // Agua con abreviaciones
+    'A': 'Botella de Agua',
+    'a': 'Botella de Agua',
+    'agua': 'Botella de Agua',
+    'AGUA': 'Botella de Agua',
+    'Agua': 'Botella de Agua',
+    'agua gas': 'Agua con Gas',
+    'AGUA GAS': 'Agua con Gas',
+    'Agua Gas': 'Agua con Gas',
+    'agua con gas': 'Agua con Gas',
+    'AGUA CON GAS': 'Agua con Gas',
+    'Agua Con Gas': 'Agua con Gas',
+
+    // Cervezas con abreviaciones
+    'B': 'Club Colombia Dorada',
+    'b': 'Club Colombia Dorada',
+    'cerveza': 'Club Colombia Dorada',
+    'CERVEZA': 'Club Colombia Dorada',
+    'Cerveza': 'Club Colombia Dorada',
+    'cerv': 'Club Colombia Dorada',
+    'CERV': 'Club Colombia Dorada',
+    'club': 'Club Colombia Dorada',
+    'CLUB': 'Club Colombia Dorada',
+    'Club': 'Club Colombia Dorada',
+    'club negra': 'Club negra',
+    'CLUB NEGRA': 'Club negra',
+    'Club Negra': 'Club negra',
+    'club roja': 'Club Colombia Roja',
+    'CLUB ROJA': 'Club Colombia Roja',
+    'Club Roja': 'Club Colombia Roja',
+    'poker': 'Poker',
+    'POKER': 'Poker',
+    'Poker': 'Poker',
+    'pok': 'Poker',
+    'POK': 'Poker',
+    'corona': 'Cerveza Coronita',
+    'CORONA': 'Cerveza Coronita',
+    'Corona': 'Cerveza Coronita',
+    'coronita': 'Cerveza Coronita',
+    'CORONITA': 'Cerveza Coronita',
+    'Coronita': 'Cerveza Coronita',
+    'cor': 'Cerveza Coronita',
+    'COR': 'Cerveza Coronita',
+
+    // Bebidas calientes con abreviaciones
+    'cafe': 'Cafe con Leche',
+    'CAFE': 'Cafe con Leche',
+    'Cafe': 'Cafe con Leche',
+    'café': 'Cafe con Leche',
+    'CAFÉ': 'Cafe con Leche',
+    'Café': 'Cafe con Leche',
+    'tinto': 'Tinto',
+    'TINTO': 'Tinto',
+    'Tinto': 'Tinto',
+    'tin': 'Tinto',
+    'TIN': 'Tinto',
+    'chocolate': 'Chocolate',
+    'CHOCOLATE': 'Chocolate',
+    'Chocolate': 'Chocolate',
+    'choc': 'Chocolate',
+    'CHOC': 'Chocolate',
+    'milo': 'Milo Caliente',
+    'MILO': 'Milo Caliente',
+    'Milo': 'Milo Caliente',
+    'aromatica': 'Aromática',
+    'AROMATICA': 'Aromática',
+    'aromática': 'Aromática',
+    'AROMÁTICA': 'Aromática',
+    'Aromática': 'Aromática',
+    'arom': 'Aromática',
+    'AROM': 'Aromática',
+    'chai': 'TE CHAI',
+    'CHAI': 'TE CHAI',
+    'Chai': 'TE CHAI',
+
+    // Acompañamientos con abreviaciones
+    'arepa': 'Entrada de arepas',
+    'AREPA': 'Entrada de arepas',
+    'Arepa': 'Entrada de arepas',
+    'arep': 'Entrada de arepas',
+    'AREP': 'Entrada de arepas',
+    'patacon': 'Patacón',
+    'PATACON': 'Patacón',
+    'patacón': 'Patacón',
+    'PATACÓN': 'Patacón',
+    'Patacón': 'Patacón',
+    'pat': 'Patacón',
+    'PAT': 'Patacón',
+    'patacones': 'Patacones con Hogao',
+    'PATACONES': 'Patacones con Hogao',
+    'Patacones': 'Patacones con Hogao',
+    'pats': 'Patacones con Hogao',
+    'PATS': 'Patacones con Hogao',
+    'papas': 'Papas a la Francesa',
+    'PAPAS': 'Papas a la Francesa',
+    'Papas': 'Papas a la Francesa',
+    'papa': 'Papas a la Francesa',
+    'PAPA': 'Papas a la Francesa',
+    'yuca': 'Porción de papa salada',
+    'YUCA': 'Porción de papa salada',
+    'Yuca': 'Porción de papa salada',
+    'arroz': 'Porción de arroz',
+    'ARROZ': 'Porción de arroz',
+    'Arroz': 'Porción de arroz',
+    'arr': 'Porción de arroz',
+    'ARR': 'Porción de arroz',
+    'ensalada': 'Porción Ensalada',
+    'ENSALADA': 'Porción Ensalada',
+    'Ensalada': 'Porción Ensalada',
+    'ens': 'Porción Ensalada',
+    'ENS': 'Porción Ensalada',
+    'aguacate': 'Porción de aguacate',
+    'AGUACATE': 'Porción de aguacate',
+    'Aguacate': 'Porción de aguacate',
+    'agu': 'Porción de aguacate',
+    'AGU': 'Porción de aguacate',
+    'huevo': 'Huevo',
+    'HUEVO': 'Huevo',
+    'Huevo': 'Huevo',
+    'hue': 'Huevo',
+    'HUE': 'Huevo',
+
+    // Adiciones con abreviaciones
+    'carne': 'Adicion de carne',
+    'CARNE': 'Adicion de carne',
+    'Carne': 'Adicion de carne',
+    'car': 'Adicion de carne',
+    'CAR': 'Adicion de carne',
+    'chorizo': 'Adicion de chorizo',
+    'CHORIZO': 'Adicion de chorizo',
+    'Chorizo': 'Adicion de chorizo',
+    'chor': 'Adicion de chorizo',
+    'CHOR': 'Adicion de chorizo',
+    'chicharron': 'Entrada de Chicharrón',
+    'CHICHARRON': 'Entrada de Chicharrón',
+    'chicharrón': 'Entrada de Chicharrón',
+    'CHICHARRÓN': 'Entrada de Chicharrón',
+    'Chicharrón': 'Entrada de Chicharrón',
+    'chich': 'Entrada de Chicharrón',
+    'CHICH': 'Entrada de Chicharrón',
+    'chunchulla': 'Entrada de chunchulla',
+    'CHUNCHULLA': 'Entrada de chunchulla',
+    'Chunchulla': 'Entrada de chunchulla',
+    'chun': 'Entrada de chunchulla',
+    'CHUN': 'Entrada de chunchulla',
+
+    // Postres con abreviaciones
+    'postre': 'Postre',
+    'POSTRE': 'Postre',
+    'Postre': 'Postre',
+    'post': 'Postre',
+    'POST': 'Postre',
+    'helado': 'Helado',
+    'HELADO': 'Helado',
+    'Helado': 'Helado',
+    'hel': 'Helado',
+    'HEL': 'Helado',
+    'torta': 'TORTA CASERA',
+    'TORTA': 'TORTA CASERA',
+    'Torta': 'TORTA CASERA',
+    'tort': 'TORTA CASERA',
+    'TORT': 'TORTA CASERA',
+    'mazamorra': 'Mazamorra con panela',
+    'MAZAMORRA': 'Mazamorra con panela',
+    'Mazamorra': 'Mazamorra con panela',
+    'maza': 'Mazamorra con panela',
+    'MAZA': 'Mazamorra con panela',
+
+    // Otros con abreviaciones
+    'empaque': 'EMPAQUE PEQUEÑO',
+    'EMPAQUE': 'EMPAQUE PEQUEÑO',
+    'Empaque': 'EMPAQUE PEQUEÑO',
+    'emp': 'EMPAQUE PEQUEÑO',
+    'EMP': 'EMPAQUE PEQUEÑO',
+    'domicilio': 'Domicilio',
+    'DOMICILIO': 'Domicilio',
+    'Domicilio': 'Domicilio',
+    'dom': 'Domicilio',
+    'DOM': 'Domicilio',
+    'especial': 'PLATO PADRE',
+    'ESPECIAL': 'PLATO PADRE',
+    'Especial': 'PLATO PADRE',
+    'esp': 'PLATO PADRE',
+    'ESP': 'PLATO PADRE',
+    'almuerzo': 'Almuerzo de la Casa',
+    'ALMUERZO': 'Almuerzo de la Casa',
+    'Almuerzo': 'Almuerzo de la Casa',
+    'alm': 'Almuerzo de la Casa',
+    'ALM': 'Almuerzo de la Casa',
+  };
+
+  // Diccionario de carnes para ejecutivos (expandido con todos los tipos disponibles)
+  final Map<String, String> _carnesEjecutivos = {
+    // Carnes principales
+    'cerdo': 'Cerdo Ejecutivo',
+    'res': 'Res ejecutiva',
+    'pollo': 'Pechuga a la plancha',
+    'pechuga': 'Pechuga a la plancha',
+    'chicharron': 'Chicharrón',
+    'chicharrón': 'Chicharrón',
+    'carne molida': 'Carne molida',
+    'molida': 'Carne molida',
+    'chorizo': 'Chorizos',
+    'chorizos': 'Chorizos',
+    'mojarra': 'Mojarra ejecutiva',
+    'higado': 'Hígado ejecutivo',
+    'hígado': 'Hígado ejecutivo',
+    'tilapia': 'Tilapia',
+    'trucha': 'Trucha',
+    'muslo': 'Muslo',
+
+    // Alias y variaciones
+    'pescado': 'Mojarra ejecutiva',
+    'ave': 'Pechuga a la plancha',
+    'puerco': 'Cerdo Ejecutivo',
+    'ternera': 'Res ejecutiva',
+    'carne': 'Res ejecutiva',
+    'mixto': 'cerdo y res', // Caso especial para múltiples carnes
+  };
+
+  // ✅ NUEVO: Diccionario completo de opciones para TODOS los productos con opciones
+  final Map<String, Map<String, dynamic>> _opcionesProductos = {
+    // Ejecutivos
+    'Ejecutivo': {
+      'obligatorias': <String>[],
+      'opcionales': [
+        'Res ejecutiva',
+        'Cerdo Ejecutivo',
+        'Chicharrón',
+        'Carne molida',
+        'Chorizos',
+        'Pechuga a la plancha',
+        'Mojarra ejecutiva',
+        'Hígado ejecutivo',
+        'Tilapia',
+        'Trucha',
+        'Muslo',
+      ],
+    },
+
+    // Desayuno con proteína
+    'DESAYUNO CON PROTEINA': {
+      'obligatorias': <String>[],
+      'opcionales': [
+        'Chicharrón',
+        'Chorizos',
+        'Carne molida',
+        'Res ejecutiva',
+        'Cerdo Ejecutivo',
+        'Pechuga a la plancha',
+      ],
+    },
+
+    // Bandeja Paisa
+    'Bandeja Paisa': {
+      'obligatorias': ['Chicharrón', 'Chorizos', 'Carne molida'],
+      'opcionales': <String>[],
+    },
+
+    // Cazuela de Frijoles
+    'Cazuela de Frijoles': {
+      'obligatorias': ['Chicharrón', 'Carne molida'],
+      'opcionales': <String>[],
+    },
+
+    // Asado combinado
+    'Asado combinado (res o cerdo)': {
+      'obligatorias': ['Chorizos'],
+      'opcionales': ['Res Carta', 'Cerdo Carta'],
+    },
+
+    // Chuzos
+    'Chuzo': {
+      'obligatorias': <String>[],
+      'opcionales': [
+        'Res ejecutiva',
+        'Cerdo Ejecutivo',
+        'Pechuga a la plancha',
+      ],
+    },
+
+    // Asado mixto
+    'Asado mixto': {
+      'obligatorias': ['Chorizos', 'Cerdo Ejecutivo', 'Res ejecutiva'],
+      'opcionales': <String>[],
+    },
+
+    // Picadas
+    'Picada duo': {
+      'obligatorias': [
+        'Chorizos',
+        'Cerdo Ejecutivo',
+        'Res ejecutiva',
+        'Morcilla',
+        'Chunchulla',
+        'Chicharrón',
+      ],
+      'opcionales': <String>[],
+    },
+
+    'Picada familiar': {
+      'obligatorias': [
+        'Chorizos',
+        'Morcilla',
+        'Chicharrón',
+        'Pechuga a la plancha',
+        'Res ejecutiva',
+        'Chunchulla',
+        'Cerdo Ejecutivo',
+      ],
+      'opcionales': <String>[],
+    },
+
+    // Adiciones
+    'Adicion de carne': {
+      'obligatorias': <String>[],
+      'opcionales': [
+        'Chicharrón',
+        'Res ejecutiva',
+        'Cerdo Ejecutivo',
+        'Carne molida',
+        'Pechuga a la plancha',
+        'Mojarra ejecutiva',
+      ],
+    },
+
+    // Productos con opciones únicas obligatorias
+    'Adicion de chorizo': {
+      'obligatorias': ['Chorizos'],
+      'opcionales': <String>[],
+    },
+
+    'Entrada de Chicharrón': {
+      'obligatorias': ['Chicharrón'],
+      'opcionales': <String>[],
+    },
+
+    'Entrada de chunchulla': {
+      'obligatorias': ['Chunchulla'],
+      'opcionales': <String>[],
+    },
+
+    'Menú Infantil': {
+      'obligatorias': ['Pechuga a la plancha'],
+      'opcionales': <String>[],
+    },
+
+    // Productos con bebidas específicas
+    'Agua con Gas': {
+      'obligatorias': ['Agua con gas'],
+      'opcionales': <String>[],
+    },
+
+    'Botella de Agua': {
+      'obligatorias': ['Agua en Botella'],
+      'opcionales': <String>[],
+    },
+
+    'JUGO DEL VALLE': {
+      'obligatorias': ['JUGO DEL VALLE'],
+      'opcionales': <String>[],
+    },
+
+    'Jugo cajita': {
+      'obligatorias': ['Jugo en caja'],
+      'opcionales': <String>[],
+    },
+
+    'Colombiana': {
+      'obligatorias': ['Colombiana Postobon'],
+      'opcionales': <String>[],
+    },
+
+    // Carnes específicas
+    'Churrasco': {
+      'obligatorias': ['Churrasco'],
+      'opcionales': <String>[],
+    },
+
+    'Punta de anca': {
+      'obligatorias': ['Punta de ancaa'],
+      'opcionales': <String>[],
+    },
+
+    'Milanesa de pollo': {
+      'obligatorias': ['Pechuga a la plancha'],
+      'opcionales': <String>[],
+    },
+
+    'Sobrebarriga criolla o dorada': {
+      'obligatorias': ['Sobrebarriga'],
+      'opcionales': <String>[],
+    },
+
+    'Milanesa de cerdo': {
+      'obligatorias': ['Cerdo Ejecutivo'],
+      'opcionales': <String>[],
+    },
+
+    'Higado encebollado o a la plancha': {
+      'obligatorias': ['Higado Carta'],
+      'opcionales': <String>[],
+    },
+
+    'Pechuga a la plancha': {
+      'obligatorias': ['Pechuga a la plancha'],
+      'opcionales': <String>[],
+    },
+
+    'Asada de res': {
+      'obligatorias': ['Res Carta'],
+      'opcionales': <String>[],
+    },
+
+    'Asada de cerdo': {
+      'obligatorias': ['Cerdo Carta'],
+      'opcionales': <String>[],
+    },
+
+    'Costillas de cerdo en BBQ': {
+      'obligatorias': ['Costilla Cerdo'],
+      'opcionales': <String>[],
+    },
+
+    'Plato de chorizos': {
+      'obligatorias': ['Chorizos'],
+      'opcionales': <String>[],
+    },
+
+    // Pescados
+    'Cazuela de Mariscos': {
+      'obligatorias': ['Cazuela de mariscos'],
+      'opcionales': <String>[],
+    },
+
+    'Mojarra': {
+      'obligatorias': ['Mojarra Carta'],
+      'opcionales': <String>[],
+    },
+
+    'Salmon': {
+      'obligatorias': ['Salmón'],
+      'opcionales': <String>[],
+    },
+
+    'Trucha': {
+      'obligatorias': ['Trucha'],
+      'opcionales': <String>[],
+    },
+
+    // Licores y bebidas alcohólicas
+    'Cocacola zero': {
+      'obligatorias': ['Coca Cola Zero'],
+      'opcionales': <String>[],
+    },
+
+    'Tamarindo': {
+      'obligatorias': ['Tamarindo postobon'],
+      'opcionales': <String>[],
+    },
+
+    'Manzana postobon': {
+      'obligatorias': ['Manzana Postobon'],
+      'opcionales': <String>[],
+    },
+
+    'Bretaña': {
+      'obligatorias': ['Bretaña postobon'],
+      'opcionales': <String>[],
+    },
+
+    'Naranaja postobon': {
+      'obligatorias': ['Naranja Postobon'],
+      'opcionales': <String>[],
+    },
+
+    'Uva postobon': {
+      'obligatorias': ['Uva Postobon'],
+      'opcionales': <String>[],
+    },
+
+    'Cocacola': {
+      'obligatorias': ['Coca Cola'],
+      'opcionales': <String>[],
+    },
+
+    // Cervezas y licores
+    'Club negra': {
+      'obligatorias': ['Club colombia Negra'],
+      'opcionales': <String>[],
+    },
+
+    'Cerveza Coronita': {
+      'obligatorias': ['Coronita'],
+      'opcionales': <String>[],
+    },
+
+    'Club Colombia Dorada': {
+      'obligatorias': ['Club colombia'],
+      'opcionales': <String>[],
+    },
+
+    'Club Colombia Roja': {
+      'obligatorias': ['Club roja'],
+      'opcionales': <String>[],
+    },
+
+    'Cola y Pola': {
+      'obligatorias': ['Cola y Pola'],
+      'opcionales': <String>[],
+    },
+
+    'Poker': {
+      'obligatorias': ['Poker'],
+      'opcionales': <String>[],
+    },
+  };
+
+  // ✅ NUEVA FUNCIÓN: Agregar producto con opciones automáticas
+  /// Agrega un producto con las opciones especificadas, evitando mostrar diálogo si ya se especificaron
+  Future<void> _agregarProductoConOpciones(
+    String nombreProducto,
+    int cantidad, {
+    List<String> opcionesEspecificadas = const [],
+  }) async {
+    // Buscar el producto
+    Producto? producto;
+    try {
+      producto = productosDisponibles.firstWhere(
+        (p) => p.nombre.toLowerCase() == nombreProducto.toLowerCase(),
+      );
+    } catch (e) {
+      _mostrarErrorComando('Producto "$nombreProducto" no encontrado');
+      return;
+    }
+
+    // Verificar si tiene opciones configuradas
+    final opcionesConfig = _opcionesProductos[nombreProducto];
+
+    if (opcionesConfig != null) {
+      final List<String> obligatorias = List<String>.from(
+        opcionesConfig['obligatorias'] ?? [],
+      );
+      final List<String> opcionales = List<String>.from(
+        opcionesConfig['opcionales'] ?? [],
+      );
+
+      // Si ya se especificaron opciones, usarlas directamente
+      if (opcionesEspecificadas.isNotEmpty) {
+        await _agregarProductoConOpcionesDirectas(
+          producto,
+          cantidad,
+          opcionesEspecificadas,
+        );
+        return;
+      }
+
+      // Si solo tiene opciones obligatorias, agregarlas automáticamente
+      if (obligatorias.isNotEmpty && opcionales.isEmpty) {
+        await _agregarProductoConOpcionesDirectas(
+          producto,
+          cantidad,
+          obligatorias,
+        );
+        return;
+      }
+
+      // Si tiene opciones opcionales, mostrar diálogo o usar la primera opción
+      if (opcionales.isNotEmpty) {
+        // Para comandos de texto, usar la primera opción disponible por defecto
+        final primeraOpcion = opcionales.first;
+        await _agregarProductoConOpcionesDirectas(producto, cantidad, [
+          ...obligatorias,
+          primeraOpcion,
+        ]);
+        return;
+      }
+    }
+
+    // Si no tiene opciones especiales, agregar normalmente
+    for (int i = 0; i < cantidad; i++) {
+      await _agregarProducto(producto);
+    }
+  }
+
+  /// Agrega un producto con opciones específicas directamente (SIN mostrar diálogo)
+  Future<void> _agregarProductoConOpcionesDirectas(
+    Producto producto,
+    int cantidad,
+    List<String> opciones,
+  ) async {
+    // Convertir nombres de opciones a IDs de ingredientes
+    List<String> opcionesIds = opciones.map((nombreOpcion) {
+      final ingrediente = ingredientes.firstWhere(
+        (ing) => ing.nombre.toLowerCase() == nombreOpcion.toLowerCase(),
+        orElse: () => Ingrediente(
+          id: nombreOpcion, // Usar el nombre como ID si no se encuentra
+          nombre: nombreOpcion,
+          categoria: 'Sin categoría',
+          cantidad: 0,
+          unidad: 'unidad',
+          costo: 0,
+        ),
+      );
+      return ingrediente.id;
+    }).toList();
+
+    for (int i = 0; i < cantidad; i++) {
+      // Crear producto con las opciones específicas
+      final productoConOpciones = Producto(
+        id: '${producto.id}_${DateTime.now().millisecondsSinceEpoch}_$i',
+        nombre: producto.nombre,
+        precio: producto.precio,
+        costo: producto.costo,
+        utilidad: producto.utilidad,
+        categoria: producto.categoria,
+        descripcion: producto.descripcion,
+        imagenUrl: producto.imagenUrl,
+        cantidad: 1,
+        nota: "Opciones: ${opciones.join(', ')}", // Usar nombres para la nota
+        tieneIngredientes: producto.tieneIngredientes,
+        tipoProducto: producto.tipoProducto,
+        // ✅ ASIGNAR LOS IDs DE OPCIONES ESPECÍFICAS
+        ingredientesDisponibles: opcionesIds,
+        ingredientesRequeridos: producto.ingredientesRequeridos,
+        ingredientesOpcionales: producto.ingredientesOpcionales,
+        impuestos: producto.impuestos,
+        tieneVariantes: producto.tieneVariantes,
+        estado: producto.estado,
+      );
+
+      setState(() {
+        // Agregar el producto a la lista de productos de la mesa
+        productosMesa.add(productoConOpciones);
+
+        // Marcar como pagado si es mesa especial
+        if (widget.mesa.tipo.nombre.toLowerCase() == 'cortesia' ||
+            widget.mesa.tipo.nombre.toLowerCase() == 'consumo interno') {
+          productoPagado[productoConOpciones.id] = true;
+        }
+
+        // Guardar las opciones seleccionadas para el inventario
+        if (opciones.isNotEmpty) {
+          productosCarneMap[productoConOpciones.id] = opciones.join(',');
+        }
+      });
+
+      // Agregar observaciones si existen
+      if (observacionesPedidoController.text.isNotEmpty) {
+        productoConOpciones.nota =
+            (productoConOpciones.nota ?? '') +
+            '\nObservaciones: ${observacionesPedidoController.text}';
+      }
+    }
+
+    _calcularTotal();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -122,11 +1124,39 @@ class _PedidoScreenState extends State<PedidoScreen> {
     // Establecer el estado inicial basado en si hay un pedido existente
     esPedidoExistente = widget.pedidoExistente != null;
 
-    // Cargar datos optimizado para usar el DatosProvider
+    // Cargar datos desde caché
     _cargarDatosOptimizado();
 
     // Configurar el controlador de búsqueda con debounce
     busquedaController.addListener(_onSearchChanged);
+
+    // Escuchar cambios en el cache provider
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final cacheProvider = Provider.of<DatosCacheProvider>(
+        context,
+        listen: false,
+      );
+      cacheProvider.addListener(_onCacheDataChanged);
+    });
+  }
+
+  // Callback cuando los datos del caché cambien
+  void _onCacheDataChanged() {
+    final cacheProvider = Provider.of<DatosCacheProvider>(
+      context,
+      listen: false,
+    );
+
+    if (cacheProvider.hasData && mounted) {
+      print('🔄 Datos del caché actualizados, refrescando UI...');
+      setState(() {
+        productosDisponibles = cacheProvider.productos ?? [];
+        categorias = cacheProvider.categorias ?? [];
+        ingredientes = cacheProvider.ingredientes ?? [];
+        _resetearPaginacion();
+        _actualizarProductosVista();
+      });
+    }
   }
 
   @override
@@ -136,10 +1166,24 @@ class _PedidoScreenState extends State<PedidoScreen> {
     busquedaController.removeListener(_onSearchChanged);
     busquedaController.dispose();
     clienteController.dispose();
+    observacionesPedidoController.dispose();
+    comandoTextoController.dispose();
+
+    // Remover listener del cache provider
+    try {
+      final cacheProvider = Provider.of<DatosCacheProvider>(
+        context,
+        listen: false,
+      );
+      cacheProvider.removeListener(_onCacheDataChanged);
+    } catch (e) {
+      // Ignorar errores si el provider ya no está disponible
+    }
+
     super.dispose();
   }
 
-  // Método optimizado para cargar datos utilizando el DatosProvider
+  // Método optimizado para cargar datos del caché
   Future<void> _cargarDatosOptimizado() async {
     setState(() {
       isLoading = true;
@@ -147,33 +1191,43 @@ class _PedidoScreenState extends State<PedidoScreen> {
     });
 
     try {
-      // Obtener el provider de datos
-      final datosProvider = Provider.of<DatosProvider>(context, listen: false);
+      print('📝 PedidoScreen: Cargando datos desde caché...');
 
-      // Si los datos no están inicializados, cargarlos
-      if (!datosProvider.datosInicializados) {
-        print(
-          '📝 PedidoScreen: Datos aún no inicializados, usando provider...',
-        );
-        await datosProvider.inicializarDatos();
-      } else {
-        print('📝 PedidoScreen: Usando datos en caché del provider');
+      final cacheProvider = Provider.of<DatosCacheProvider>(
+        context,
+        listen: false,
+      );
+
+      // Si no hay datos en caché, cargarlos
+      if (!cacheProvider.hasData) {
+        print('📊 Cache vacío, inicializando...');
+        await cacheProvider.initialize();
       }
 
-      // Obtener categorías y productos desde el provider (caché)
-      final productosCache = datosProvider.productos;
-      final categoriasCache = datosProvider.categorias;
+      // Obtener datos del caché
+      final productosData = cacheProvider.productos ?? [];
+      final categoriasData = cacheProvider.categorias ?? [];
+      final ingredientesData = cacheProvider.ingredientes ?? [];
+
+      // Guardar ingredientes para conversión ID -> nombre
+      ingredientes = ingredientesData;
 
       // Inicializar el pedido existente si es necesario
       if (widget.pedidoExistente != null) {
         pedidoExistente = widget.pedidoExistente;
 
+        // Cargar observaciones del pedido existente
+        if (widget.pedidoExistente!.notas != null &&
+            widget.pedidoExistente!.notas!.isNotEmpty) {
+          observacionesPedidoController.text = widget.pedidoExistente!.notas!;
+        }
+
         // Procesar productos del pedido existente
         for (var item in widget.pedidoExistente!.items) {
           final productoId = item.productoId;
 
-          // Buscar el producto en la caché
-          final producto = productosCache.firstWhere(
+          // Buscar el producto en los datos frescos
+          final producto = productosData.firstWhere(
             (p) => p.id == productoId,
             orElse: () => Producto(
               id: productoId,
@@ -184,35 +1238,92 @@ class _PedidoScreenState extends State<PedidoScreen> {
             ),
           );
 
-          // Agregar a la lista de productos de la mesa
-          productosMesa.add(producto);
-
-          // Marcar como pagado si el pedido está pagado
-          if (widget.pedidoExistente!.estado == EstadoPedido.pagado) {
-            productoPagado[productoId] = true;
+          // ✅ NUEVO: Cargar información de ingredientes/carnes seleccionadas
+          if (item.ingredientesSeleccionados.isNotEmpty) {
+            // Si hay ingredientes seleccionados, guardar el primero como carne seleccionada
+            // (asumiendo que el primer ingrediente es la carne principal)
+            productosCarneMap[productoId] =
+                item.ingredientesSeleccionados.first;
+            print(
+              '🥩 Cargada carne para ${producto.nombre}: ${item.ingredientesSeleccionados.first}',
+            );
+          } else if (item.notas != null &&
+              item.notas!.contains('Ingredientes:')) {
+            // Si la información está en las notas, extraer la primera carne
+            final notasParts = item.notas!.split('Ingredientes:');
+            if (notasParts.length > 1) {
+              final ingredientes = notasParts[1].split(',');
+              if (ingredientes.isNotEmpty) {
+                final primerIngrediente = ingredientes.first.trim();
+                productosCarneMap[productoId] = primerIngrediente;
+                print(
+                  '📝 Cargada carne desde notas para ${producto.nombre}: $primerIngrediente',
+                );
+              }
+            }
+          } else {
+            print(
+              '⚠️ No se encontró información de carne para ${producto.nombre}',
+            );
           }
+
+          // Copiar la información de notas/ingredientes al producto
+          final productoConInfo = Producto(
+            id: producto.id,
+            nombre: producto.nombre,
+            precio: producto.precio,
+            costo: producto.costo,
+            utilidad: producto.utilidad,
+            categoria: producto.categoria,
+            descripcion: producto.descripcion,
+            imagenUrl: producto.imagenUrl,
+            cantidad: item.cantidad,
+            nota: item.notas, // Preservar la nota original
+            tieneIngredientes: producto.tieneIngredientes,
+            tipoProducto: producto.tipoProducto,
+            // ✅ CORREGIDO: Usar ingredientes SELECCIONADOS del item, no los disponibles
+            ingredientesDisponibles: item.ingredientesSeleccionados.isNotEmpty
+                ? item.ingredientesSeleccionados
+                : producto.ingredientesDisponibles,
+            ingredientesRequeridos: producto.ingredientesRequeridos,
+            ingredientesOpcionales: producto.ingredientesOpcionales,
+            impuestos: producto.impuestos,
+            tieneVariantes: producto.tieneVariantes,
+            estado: producto.estado,
+            ingredientesSeleccionadosCombo:
+                producto.ingredientesSeleccionadosCombo,
+          );
+
+          // Agregar a la lista de productos de la mesa
+          productosMesa.add(productoConInfo);
+
+          // ✅ CORREGIDO: Inicializar productoPagado para TODOS los productos existentes
+          // Los productos existentes deben estar activos (true) para ser incluidos en el total
+          productoPagado[productoId] = true;
         }
 
         // Registrar cantidad original para comparación
         cantidadProductosOriginales = productosMesa.length;
         // Guardar copia para referencia
         productosOriginales = List.from(productosMesa);
-
-        // Cargar cliente si existe
-        if (widget.pedidoExistente!.cliente != null) {
-          clienteSeleccionado = widget.pedidoExistente!.cliente;
-          clienteController.text = clienteSeleccionado!;
-        }
       }
 
       // Actualizar listas
       setState(() {
-        categorias = categoriasCache;
-        productosDisponibles = productosCache;
+        categorias = categoriasData;
+        productosDisponibles = productosData;
         // Por defecto, seleccionar "Todos" y cargar todos los productos
         categoriaSelecionadaId = null; // null significa "Todos"
         _resetearPaginacion();
         _actualizarProductosVista(); // Actualizar la vista con todos los productos
+
+        // ✅ CORREGIDO: Cargar cliente si existe (dentro del setState para actualizar UI)
+        if (widget.pedidoExistente != null &&
+            widget.pedidoExistente!.cliente != null) {
+          clienteSeleccionado = widget.pedidoExistente!.cliente;
+          clienteController.text = clienteSeleccionado!;
+        }
+
         isLoading = false;
       });
     } catch (error) {
@@ -252,14 +1363,11 @@ class _PedidoScreenState extends State<PedidoScreen> {
     });
   }
 
-  // Método para realizar la búsqueda de productos usando el cache del provider
+  // Método para realizar la búsqueda de productos directo
   Future<void> _searchProductosAPI(String query) async {
     try {
-      // Usar el provider para filtrar productos localmente (más rápido)
-      final datosProvider = Provider.of<DatosProvider>(context, listen: false);
-
-      // Filtrar productos en memoria desde el caché
-      final productos = datosProvider.productos;
+      // Filtrar productos directamente desde la lista actual
+      final productos = productosDisponibles;
       final queryLower = query.toLowerCase();
 
       final results = productos.where((producto) {
@@ -293,70 +1401,830 @@ class _PedidoScreenState extends State<PedidoScreen> {
     }
   }
 
+  // ========== PARSER DE COMANDOS DE TEXTO ==========
+
+  /// Procesa comandos de texto y agrega productos automáticamente
+  /// Ejemplo de comandos:
+  /// "1 S, 2 F" = 1 sopa, 2 frijoles
+  /// "1(cerdo y res)" = 1 ejecutivo con cerdo y 1 ejecutivo con res
+  /// "1 Paisa, 1 Churrasco" = 1 bandeja paisa, 1 churrasco
+  Future<void> _procesarComandoTexto(String comando) async {
+    if (comando.trim().isEmpty) return;
+
+    try {
+      // Limpiar y normalizar el comando
+      String comandoLimpio = comando.toLowerCase().trim();
+
+      // Dividir por comas para procesar múltiples items
+      List<String> items = comandoLimpio
+          .split(',')
+          .map((e) => e.trim())
+          .toList();
+
+      List<String> resultados = [];
+
+      for (String item in items) {
+        final procesado = await _procesarItemComando(item);
+        if (procesado.isNotEmpty) {
+          resultados.addAll(procesado);
+        }
+      }
+
+      if (resultados.isNotEmpty) {
+        _mostrarResultadoComandos(resultados);
+      } else {
+        _mostrarErrorComando("No se pudo procesar el comando: $comando");
+      }
+
+      // Limpiar el campo de comando
+      comandoTextoController.clear();
+    } catch (e) {
+      _mostrarErrorComando("Error procesando comando: $e");
+    }
+  }
+
+  /// Procesa un item individual del comando
+  Future<List<String>> _procesarItemComando(String item) async {
+    List<String> resultados = [];
+
+    // ✅ NUEVA LÓGICA UNIVERSAL: Detectar productos con opciones específicas
+    // Ejemplos:
+    // "2 EJ 1 Res 1 Cerdo" = 2 ejecutivos: 1 con res, 1 con cerdo
+    // "1 Paisa Chorizo Chicharron" = 1 paisa con chorizo y chicharrón
+    // "2 Desayuno Pollo" = 2 desayunos con pollo
+    RegExp regexProductoConOpciones = RegExp(
+      r'(\d+)\s+([a-záéíóúñü\s]+?)\s+(.+)',
+      caseSensitive: false,
+    );
+    Match? matchProductoConOpciones = regexProductoConOpciones.firstMatch(item);
+
+    if (matchProductoConOpciones != null) {
+      int cantidadBase = int.parse(matchProductoConOpciones.group(1)!);
+      String productoTexto = matchProductoConOpciones.group(2)!.trim();
+      String especificacionOpciones = matchProductoConOpciones.group(3)!.trim();
+
+      // Buscar el nombre del producto en el diccionario
+      String? nombreProducto = _comandosProductos[productoTexto.toLowerCase()];
+      if (nombreProducto == null) {
+        // Intentar buscar por nombre completo
+        nombreProducto = productosDisponibles
+            .where(
+              (p) =>
+                  p.nombre.toLowerCase().contains(productoTexto.toLowerCase()),
+            )
+            .map((p) => p.nombre)
+            .firstOrNull;
+      }
+
+      if (nombreProducto != null) {
+        // Verificar si el producto tiene opciones configuradas
+        final opcionesConfig = _opcionesProductos[nombreProducto];
+
+        if (opcionesConfig != null) {
+          // Buscar patrones de "X opcion" en la especificación
+          RegExp regexCantidadOpcion = RegExp(
+            r'(\d+)\s+([a-záéíóúñü\s]+?)(?=\s+\d+|$)',
+            caseSensitive: false,
+          );
+          Iterable<Match> matches = regexCantidadOpcion.allMatches(
+            especificacionOpciones,
+          );
+
+          if (matches.isNotEmpty) {
+            // Hay especificaciones de opciones con cantidad
+            int sumaOpciones = 0;
+            List<Map<String, dynamic>> opcionesParaProcesar = [];
+            
+            // Primero, procesar todos los matches y verificar la suma
+            for (Match match in matches) {
+              int cantidadOpcion = int.parse(match.group(1)!);
+              String nombreOpcion = match.group(2)!.trim();
+              
+              // Normalizar nombre de opción
+              String opcionNormalizada = _normalizarOpcion(
+                nombreOpcion,
+                opcionesConfig,
+              );
+              
+              opcionesParaProcesar.add({
+                'cantidad': cantidadOpcion,
+                'opcion': opcionNormalizada,
+                'original': nombreOpcion,
+              });
+              
+              sumaOpciones += cantidadOpcion;
+            }
+            
+            // Verificar que la suma coincida con la cantidad base
+            if (sumaOpciones == cantidadBase) {
+              // Las cantidades coinciden, procesar cada opción
+              for (var opcionData in opcionesParaProcesar) {
+                await _agregarProductoConOpciones(
+                  nombreProducto,
+                  opcionData['cantidad'],
+                  opcionesEspecificadas: [opcionData['opcion']],
+                );
+                resultados.add(
+                  '${opcionData['cantidad']} $nombreProducto(${opcionData['opcion']})',
+                );
+              }
+            } else {
+              // Las cantidades no coinciden, mostrar error
+              resultados.add(
+                'ERROR: Total especificado ($cantidadBase) no coincide con suma de opciones ($sumaOpciones)',
+              );
+            }
+            return resultados;
+          } else {
+            // No hay cantidades específicas, interpretar como opciones separadas por espacios
+            List<String> opciones = especificacionOpciones
+                .split(RegExp(r'[y,/\s]+'))
+                .map((e) => e.trim())
+                .where((e) => e.isNotEmpty)
+                .toList();
+
+            List<String> opcionesNormalizadas = opciones
+                .map((opcion) => _normalizarOpcion(opcion, opcionesConfig))
+                .toList();
+
+            await _agregarProductoConOpciones(
+              nombreProducto,
+              cantidadBase,
+              opcionesEspecificadas: opcionesNormalizadas,
+            );
+            resultados.add(
+              '$cantidadBase $nombreProducto(${opcionesNormalizadas.join(', ')})',
+            );
+            return resultados;
+          }
+        } else {
+          // El producto no tiene opciones configuradas, agregarlo normalmente
+          await _agregarProductoConOpciones(nombreProducto, cantidadBase);
+          resultados.add('$cantidadBase $nombreProducto');
+          return resultados;
+        }
+      }
+    }
+
+    // Regex para capturar cantidad y producto en paréntesis (formato legacy)
+    // Ejemplos: "1(cerdo y res)", "2(pollo)"
+    RegExp regexParentesis = RegExp(r'(\d+)\s*\(([^)]+)\)');
+    Match? matchParentesis = regexParentesis.firstMatch(item);
+    if (matchParentesis != null) {
+      int cantidad = int.parse(matchParentesis.group(1)!);
+      String opciones = matchParentesis.group(2)!;
+
+      // Asumir que es un ejecutivo si usa paréntesis
+      List<String> listaOpciones = opciones
+          .split(RegExp(r'[y,/]'))
+          .map((e) => e.trim())
+          .toList();
+
+      for (String opcion in listaOpciones) {
+        String opcionNormalizada =
+            _carnesEjecutivos[opcion.toLowerCase()] ?? opcion;
+        await _agregarProductoConOpciones(
+          'Ejecutivo',
+          cantidad,
+          opcionesEspecificadas: [opcionNormalizada],
+        );
+        resultados.add('$cantidad Ejecutivo($opcionNormalizada)');
+      }
+      return resultados;
+    }
+
+    // Regex básico para productos simples
+    // Ejemplos: "2 S", "1 sopa", "1 paisa"
+    RegExp regexBasico = RegExp(r'(\d+)\s*(.+)');
+    Match? matchBasico = regexBasico.firstMatch(item);
+    if (matchBasico != null) {
+      int cantidad = int.parse(matchBasico.group(1)!);
+      String productoTexto = matchBasico.group(2)!.trim();
+
+      // Buscar el producto en el diccionario
+      String? nombreProducto = _comandosProductos[productoTexto];
+      if (nombreProducto != null) {
+        await _agregarProductoConOpciones(nombreProducto, cantidad);
+        resultados.add('$cantidad $nombreProducto');
+      } else {
+        // Intentar búsqueda directa por nombre
+        await _agregarProductoPorNombre(productoTexto, cantidad);
+        resultados.add('$cantidad $productoTexto');
+      }
+    }
+
+    return resultados;
+  }
+
+  /// Normaliza el nombre de una opción basándose en la configuración del producto
+  String _normalizarOpcion(String opcion, Map<String, dynamic> opcionesConfig) {
+    final List<String> todasLasOpciones = [
+      ...List<String>.from(opcionesConfig['obligatorias'] ?? []),
+      ...List<String>.from(opcionesConfig['opcionales'] ?? []),
+    ];
+
+    // Buscar coincidencia exacta primero
+    String opcionLower = opcion.toLowerCase();
+
+    // Buscar en el diccionario de carnes de ejecutivos
+    String? carneNormalizada = _carnesEjecutivos[opcionLower];
+    if (carneNormalizada != null &&
+        todasLasOpciones.contains(carneNormalizada)) {
+      return carneNormalizada;
+    }
+
+    // Buscar coincidencia parcial en las opciones disponibles
+    for (String opcionDisponible in todasLasOpciones) {
+      if (opcionDisponible.toLowerCase().contains(opcionLower) ||
+          opcionLower.contains(opcionDisponible.toLowerCase())) {
+        return opcionDisponible;
+      }
+    }
+
+    // Si no encuentra, usar la primera opción disponible o la opción original
+    return todasLasOpciones.isNotEmpty ? todasLasOpciones.first : opcion;
+  }
+  }
+
+  /// Agrega un ejecutivo con una carne específica (EVITA mostrar diálogo)
+  Future<void> _agregarEjecutivoConCarne(int cantidad, String carne) async {
+    // Buscar productos ejecutivos
+    final ejecutivos = productosDisponibles
+        .where((p) => p.nombre.toLowerCase().contains('ejecutivo'))
+        .toList();
+
+    if (ejecutivos.isEmpty) {
+      _mostrarErrorComando('No se encontró producto "Ejecutivo"');
+      return;
+    }
+
+    final ejecutivo = ejecutivos.first;
+
+    for (int i = 0; i < cantidad; i++) {
+      // ✅ CREAR Producto directamente con la carne específica
+      final productoConCarne = Producto(
+        id: '${ejecutivo.id}_${DateTime.now().millisecondsSinceEpoch}_$i',
+        nombre: ejecutivo.nombre,
+        precio: ejecutivo.precio,
+        costo: ejecutivo.costo,
+        utilidad: ejecutivo.utilidad,
+        categoria: ejecutivo.categoria,
+        descripcion: ejecutivo.descripcion,
+        imagenUrl: ejecutivo.imagenUrl,
+        cantidad: 1,
+        nota: "Carne: $carne",
+        tieneIngredientes: ejecutivo.tieneIngredientes,
+        tipoProducto: ejecutivo.tipoProducto,
+        // ✅ ASIGNAR LA CARNE ESPECÍFICA directamente
+        ingredientesDisponibles: [carne],
+        ingredientesRequeridos: ejecutivo.ingredientesRequeridos,
+        ingredientesOpcionales: ejecutivo.ingredientesOpcionales,
+        impuestos: ejecutivo.impuestos,
+        tieneVariantes: ejecutivo.tieneVariantes,
+        estado: ejecutivo.estado,
+      );
+
+      setState(() {
+        // Agregar el producto a la lista de productos de la mesa
+        productosMesa.add(productoConCarne);
+
+        // Marcar como pagado si es mesa especial
+        if (widget.mesa.tipo.nombre.toLowerCase() == 'cortesia' ||
+            widget.mesa.tipo.nombre.toLowerCase() == 'consumo interno') {
+          productoPagado[productoConCarne.id] = true;
+        }
+
+        // Guardar la relación producto-carne para el inventario
+        if (carne.isNotEmpty) {
+          productosCarneMap[productoConCarne.id] = carne;
+        }
+      });
+
+      // Agregar observaciones si existen
+      if (observacionesPedidoController.text.isNotEmpty) {
+        productoConCarne.nota =
+            (productoConCarne.nota ?? '') +
+            '\nObservaciones: ${observacionesPedidoController.text}';
+      }
+    }
+
+    _calcularTotal();
+  }
+
+  /// Agrega un producto por nombre
+  Future<void> _agregarProductoPorNombre(String nombre, int cantidad) async {
+    // Buscar producto que coincida con el nombre
+    Producto? producto;
+
+    // Primero buscar coincidencia exacta o que contenga el nombre
+    try {
+      producto = productosDisponibles.firstWhere(
+        (p) => p.nombre.toLowerCase().contains(nombre.toLowerCase()),
+      );
+    } catch (e) {
+      // Si no encuentra, buscar si el nombre está contenido en algún producto
+      try {
+        producto = productosDisponibles.firstWhere(
+          (p) => nombre.toLowerCase().contains(p.nombre.toLowerCase()),
+        );
+      } catch (e) {
+        // ✅ ARREGLADO: No crear producto falso, solo mostrar error
+        print('❌ Producto no encontrado: $nombre');
+        _mostrarErrorComando(
+          'Producto "$nombre" no encontrado. Solo se pueden agregar productos existentes.',
+        );
+        return; // No agregar nada si no existe
+      }
+    }
+
+    // ✅ Si encontró el producto, agregarlo (producto ya no puede ser null aquí)
+    for (int i = 0; i < cantidad; i++) {
+      await _agregarProducto(producto);
+    }
+  }
+
+  /// Muestra el resultado de los comandos procesados
+  void _mostrarResultadoComandos(List<String> items) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(Icons.check_circle, color: Colors.white, size: 20),
+            SizedBox(width: 8),
+            Expanded(child: Text('Agregado: ${items.join(', ')}')),
+          ],
+        ),
+        backgroundColor: Colors.green,
+        duration: Duration(seconds: 3),
+      ),
+    );
+  }
+
+  /// Muestra error en el procesamiento de comandos
+  void _mostrarErrorComando(String error) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(Icons.error, color: Colors.white, size: 20),
+            SizedBox(width: 8),
+            Expanded(child: Text(error)),
+          ],
+        ),
+        backgroundColor: Colors.red,
+        duration: Duration(seconds: 3),
+      ),
+    );
+  }
+
+  /// Muestra ayuda con ejemplos de comandos
+  void _mostrarAyudaComandos() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Color(0xFF252525),
+        title: Row(
+          children: [
+            Icon(Icons.help_outline, color: Color(0xFFFF6B00)),
+            SizedBox(width: 8),
+            Text(
+              'Comandos Rápidos',
+              style: TextStyle(color: Color(0xFFE0E0E0)),
+            ),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Usa estos comandos para agregar productos rápidamente:',
+                style: TextStyle(color: Color(0xFFE0E0E0), fontSize: 14),
+              ),
+              SizedBox(height: 16),
+              _buildEjemploComando(
+                'Productos simples:',
+                '1 S, 2 F, 1 P',
+                '1 sopa, 2 frijoles, 1 paisa',
+              ),
+              _buildEjemploComando(
+                'Ejecutivos con carnes:',
+                '2 EJ 1 Res 1 Cerdo',
+                '2 ejecutivos: 1 con res, 1 con cerdo',
+              ),
+              _buildEjemploComando(
+                'Desayunos con proteína:',
+                '1 Desayuno Pollo',
+                '1 desayuno con pechuga',
+              ),
+              _buildEjemploComando(
+                'Productos con múltiples opciones:',
+                '1 Picada Chorizo Res Cerdo',
+                '1 picada con chorizo, res y cerdo',
+              ),
+              _buildEjemploComando(
+                'Formato en paréntesis:',
+                '1(cerdo y res)',
+                '1 ejecutivo con cerdo y 1 con res',
+              ),
+              _buildEjemploComando(
+                'Bebidas automáticas:',
+                '2 G, 1 Club, 1 Corona',
+                '2 cocacolas, 1 club colombia, 1 coronita',
+              ),
+              SizedBox(height: 16),
+              Text(
+                'Abreviaciones disponibles:',
+                style: TextStyle(
+                  color: Color(0xFFFF6B00),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              SizedBox(height: 8),
+              _buildAbreviacion('S', 'Sopa'),
+              _buildAbreviacion('F', 'Frijol'),
+              _buildAbreviacion('E/EJ', 'Ejecutivo'),
+              _buildAbreviacion('P', 'Bandeja Paisa'),
+              _buildAbreviacion('C', 'Churrasco'),
+              _buildAbreviacion('G', 'Gaseosa'),
+              _buildAbreviacion('J', 'Jugo'),
+              _buildAbreviacion('B', 'Cerveza'),
+              _buildAbreviacion('A', 'Agua'),
+              SizedBox(height: 8),
+              Text(
+                'Carnes para ejecutivos:',
+                style: TextStyle(
+                  color: Color(0xFFFF6B00),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              ),
+              _buildAbreviacion('res', 'Res ejecutiva'),
+              _buildAbreviacion('cerdo', 'Cerdo Ejecutivo'),
+              _buildAbreviacion('pollo', 'Pechuga a la plancha'),
+              _buildAbreviacion('chicharron', 'Chicharrón'),
+              _buildAbreviacion('molida', 'Carne molida'),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Entendido',
+              style: TextStyle(color: Color(0xFFFF6B00)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEjemploComando(String titulo, String comando, String resultado) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            titulo,
+            style: TextStyle(
+              color: Color(0xFFFF6B00),
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
+            ),
+          ),
+          SizedBox(height: 4),
+          Container(
+            padding: EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Color(0xFF1A1A1A),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  comando,
+                  style: TextStyle(
+                    color: Color(0xFF4CAF50),
+                    fontFamily: 'monospace',
+                  ),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  '→ $resultado',
+                  style: TextStyle(color: Color(0xFFB0B0B0), fontSize: 11),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAbreviacion(String abrev, String significado) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: 4),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            child: Text(
+              abrev,
+              style: TextStyle(
+                color: Color(0xFF4CAF50),
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+              ),
+            ),
+          ),
+          Text(
+            '→ $significado',
+            style: TextStyle(color: Color(0xFFB0B0B0), fontSize: 12),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<dynamic> _mostrarDialogoOpciones(
     Producto producto,
     List<String> opciones,
   ) async {
-    TextEditingController observacionesController = TextEditingController();
-    int cantidad = 1;
-    String? opcionSeleccionada = opciones.isNotEmpty ? opciones.first : null;
+    // Lista para almacenar las selecciones múltiples
+    List<Map<String, dynamic>> selecciones = [];
 
-    final resultado = await showDialog<Map<String, dynamic>>(
+    // Variables para la selección actual
+    TextEditingController observacionesController = TextEditingController();
+    String? opcionSeleccionada = opciones.isNotEmpty ? opciones.first : null;
+    int cantidadSeleccionada = 1;
+
+    final resultado = await showDialog<List<Map<String, dynamic>>>(
       context: context,
+      barrierDismissible: false, // Evitar cerrar accidentalmente
       builder: (BuildContext context) {
         return StatefulBuilder(
-          builder: (context, setState) {
+          builder: (context, setDialogState) {
             return AlertDialog(
-              title: Text('Seleccionar opción para ${producto.nombre}'),
+              title: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Opciones para ${producto.nombre}'),
+                        if (selecciones.isNotEmpty) ...[
+                          SizedBox(height: 8),
+                          Text(
+                            'Agregados: ${selecciones.length} productos',
+                            style: TextStyle(fontSize: 12, color: Colors.green),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.help_outline, color: Colors.blue),
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: Text('¿Cómo usar?'),
+                          content: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '1. Selecciona una opción (ej: Res, Cerdo, Sin carne)',
+                              ),
+                              SizedBox(height: 8),
+                              Text(
+                                '2. Ajusta la cantidad si necesitas más de 1',
+                              ),
+                              SizedBox(height: 8),
+                              Text('3. Agrega observaciones si es necesario'),
+                              SizedBox(height: 8),
+                              Text(
+                                '4. Presiona "Agregar" para añadir a la lista',
+                              ),
+                              SizedBox(height: 8),
+                              Text('5. Repite para agregar más opciones'),
+                              SizedBox(height: 8),
+                              Text('6. Presiona "Finalizar" cuando termines'),
+                            ],
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: Text('Entendido'),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                    tooltip: 'Ayuda',
+                  ),
+                ],
+              ),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    if (opciones.isNotEmpty) ...[
-                      DropdownButton<String>(
-                        value: opcionSeleccionada,
-                        items: opciones
-                            .map(
-                              (opcion) => DropdownMenuItem(
-                                value: opcion,
-                                child: Text(opcion),
+                    // Mostrar selecciones previas
+                    if (selecciones.isNotEmpty) ...[
+                      Container(
+                        padding: EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Productos agregados:',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
                               ),
-                            )
-                            .toList(),
-                        onChanged: (value) {
-                          setState(() {
-                            opcionSeleccionada = value;
-                          });
-                        },
+                            ),
+                            SizedBox(height: 4),
+                            ...selecciones
+                                .map(
+                                  (sel) => Row(
+                                    children: [
+                                      Icon(
+                                        Icons.check_circle,
+                                        color: Colors.green,
+                                        size: 16,
+                                      ),
+                                      SizedBox(width: 4),
+                                      Expanded(
+                                        child: Text(
+                                          '${sel['cantidad']}x ${sel['nombre']}${sel['observaciones'].toString().isNotEmpty ? ' (${sel['observaciones']})' : ''}',
+                                          style: TextStyle(fontSize: 11),
+                                        ),
+                                      ),
+                                      IconButton(
+                                        icon: Icon(
+                                          Icons.delete,
+                                          color: Colors.red,
+                                          size: 16,
+                                        ),
+                                        onPressed: () {
+                                          setDialogState(() {
+                                            selecciones.remove(sel);
+                                          });
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                )
+                                .toList(),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: 16),
+                      Divider(),
+                      SizedBox(height: 16),
+                    ],
+
+                    // Selección actual
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.add_circle_outline,
+                          color: Colors.blue,
+                          size: 18,
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          'Agregar nueva opción:',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'Puedes agregar múltiples opciones (ej: 1 res, 2 cerdo, 1 sin carne)',
+                      style: TextStyle(fontSize: 11, color: Colors.grey),
+                    ),
+                    SizedBox(height: 12),
+
+                    if (opciones.isNotEmpty) ...[
+                      Container(
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: Colors.grey.withOpacity(0.3),
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 4,
+                        ),
+                        child: DropdownButton<String>(
+                          value: opcionSeleccionada,
+                          isExpanded: true,
+                          underline: SizedBox(), // Remover la línea por defecto
+                          items: opciones
+                              .map(
+                                (opcion) => DropdownMenuItem(
+                                  value: opcion,
+                                  child: Row(
+                                    children: [
+                                      if (opcion.toLowerCase().contains('sin'))
+                                        Icon(
+                                          Icons.not_interested,
+                                          color: Colors.orange,
+                                          size: 16,
+                                        )
+                                      else
+                                        Icon(
+                                          Icons.restaurant,
+                                          color: Colors.green,
+                                          size: 16,
+                                        ),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        opcion,
+                                        style: TextStyle(
+                                          color:
+                                              opcion.toLowerCase().contains(
+                                                'sin',
+                                              )
+                                              ? Colors.orange
+                                              : Colors.black,
+                                          fontWeight:
+                                              opcion.toLowerCase().contains(
+                                                'sin',
+                                              )
+                                              ? FontWeight.w500
+                                              : FontWeight.normal,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (value) {
+                            setDialogState(() {
+                              opcionSeleccionada = value;
+                            });
+                          },
+                        ),
                       ),
                       SizedBox(height: 16),
                     ],
+
+                    // Selector de cantidad
                     Row(
-                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
+                        Text('Cantidad: '),
                         IconButton(
                           icon: Icon(Icons.remove),
                           onPressed: () {
-                            if (cantidad > 1) {
-                              setState(() => cantidad--);
+                            if (cantidadSeleccionada > 1) {
+                              setDialogState(() => cantidadSeleccionada--);
                             }
                           },
                         ),
-                        Text('$cantidad'),
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            '$cantidadSeleccionada',
+                            style: TextStyle(fontSize: 16),
+                          ),
+                        ),
                         IconButton(
                           icon: Icon(Icons.add),
                           onPressed: () {
-                            setState(() => cantidad++);
+                            setDialogState(() => cantidadSeleccionada++);
                           },
                         ),
                       ],
                     ),
+
                     SizedBox(height: 16),
                     TextField(
                       controller: observacionesController,
                       decoration: InputDecoration(
-                        labelText: 'Observaciones',
+                        labelText: 'Observaciones (opcional)',
                         hintText: 'Ej: Sin sal, término medio, etc.',
+                        border: OutlineInputBorder(),
                       ),
                       maxLines: 2,
                     ),
@@ -364,21 +2232,48 @@ class _PedidoScreenState extends State<PedidoScreen> {
                 ),
               ),
               actions: [
+                // Botón para agregar la selección actual
+                TextButton.icon(
+                  onPressed: opcionSeleccionada != null
+                      ? () {
+                          setDialogState(() {
+                            selecciones.add({
+                              'nota': opcionSeleccionada!,
+                              'cantidad': cantidadSeleccionada,
+                              'observaciones': observacionesController.text,
+                              'productoId': producto.id,
+                              'nombre': opcionSeleccionada!,
+                            });
+                            // Reset para siguiente selección
+                            observacionesController.clear();
+                            cantidadSeleccionada = 1;
+                          });
+                        }
+                      : null,
+                  icon: Icon(Icons.add, size: 18),
+                  label: Text('Agregar'),
+                  style: TextButton.styleFrom(foregroundColor: Colors.blue),
+                ),
+
+                // Botón cancelar
                 TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
+                  onPressed: () => Navigator.of(context).pop(null),
                   child: Text('Cancelar'),
                 ),
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.of(context).pop({
-                      'nota': opcionSeleccionada ?? '',
-                      'cantidad': cantidad,
-                      'observaciones': observacionesController.text,
-                      'productoId': producto.id,
-                      'nombre': opcionSeleccionada ?? producto.nombre,
-                    });
-                  },
-                  child: Text('Aceptar'),
+
+                // Botón finalizar
+                ElevatedButton.icon(
+                  onPressed: selecciones.isNotEmpty
+                      ? () {
+                          Navigator.of(context).pop(selecciones);
+                        }
+                      : null,
+                  icon: Icon(Icons.check, size: 18),
+                  label: Text('Finalizar (${selecciones.length})'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                  ),
                 ),
               ],
             );
@@ -396,7 +2291,6 @@ class _PedidoScreenState extends State<PedidoScreen> {
   ) async {
     List<String> ingredientesSeleccionados = [];
     TextEditingController notasController = TextEditingController();
-    String? ingredienteOpcionalSeleccionado; // Para radio buttons de opcionales
 
     // ✅ COMENTADO: Logs de debugging detallados removidos
     // print('🔍 DEBUGING INGREDIENTES para ${producto.nombre}:');
@@ -534,12 +2428,25 @@ class _PedidoScreenState extends State<PedidoScreen> {
                                 ),
                                 SizedBox(height: 4),
                                 ...producto.ingredientesRequeridos.map(
-                                  (ing) => Text(
-                                    '✓ ${ing.ingredienteNombre}',
-                                    style: TextStyle(
-                                      color: Colors.blue,
-                                      fontSize: 11,
-                                    ),
+                                  (ing) => Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.check_circle,
+                                        color: Colors.green,
+                                        size: 12,
+                                      ),
+                                      SizedBox(width: 4),
+                                      Flexible(
+                                        child: Text(
+                                          ing.ingredienteNombre,
+                                          style: TextStyle(
+                                            color: Colors.blue,
+                                            fontSize: 11,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ],
@@ -561,6 +2468,21 @@ class _PedidoScreenState extends State<PedidoScreen> {
                             ),
                           ),
                           SizedBox(height: 8),
+                          // Opción 'Sin seleccionar' para ingredientes básicos
+                          CheckboxListTile(
+                            title: Text(
+                              'Sin seleccionar',
+                              style: TextStyle(fontStyle: FontStyle.italic),
+                            ),
+                            value: ingredientesSeleccionados.isEmpty,
+                            onChanged: (bool? value) {
+                              setState(() {
+                                ingredientesSeleccionados.clear();
+                              });
+                            },
+                            dense: true,
+                            contentPadding: EdgeInsets.zero,
+                          ),
                           ...ingredientesBasicos.map((ingrediente) {
                             final bool isSelected = ingredientesSeleccionados
                                 .contains(ingrediente);
@@ -585,64 +2507,205 @@ class _PedidoScreenState extends State<PedidoScreen> {
                           SizedBox(height: 16),
                         ],
 
-                        // Ingredientes opcionales (radio buttons - solo uno)
+                        // 🥩 NUEVO: Ingredientes opcionales (checkboxes - múltiples selecciones)
                         if (ingredientesOpcionales.isNotEmpty) ...[
-                          Text(
-                            'Selecciona UNA opción de carne:',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                              fontSize: 14,
+                          Container(
+                            padding: EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: Colors.orange.withOpacity(0.3),
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.restaurant,
+                                      color: Colors.orange,
+                                      size: 18,
+                                    ),
+                                    SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        'Selecciona múltiples carnes para ejecutivos separados',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.orange,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ),
                           ),
-                          SizedBox(height: 8),
-                          // Opción "Ninguna"
-                          RadioListTile<String>(
-                            title: Text('Ninguna selección'),
-                            value: '',
-                            groupValue: ingredienteOpcionalSeleccionado,
-                            onChanged: (String? value) {
-                              setState(() {
-                                ingredienteOpcionalSeleccionado = value;
-                                // Remover cualquier ingrediente opcional previamente seleccionado
-                                ingredientesSeleccionados.removeWhere(
-                                  (ing) => ingredientesOpcionales.contains(ing),
-                                );
-                              });
-                            },
-                            dense: true,
-                            contentPadding: EdgeInsets.zero,
-                          ),
-                          ...ingredientesOpcionales.map((ingrediente) {
-                            return RadioListTile<String>(
-                              title: Text(
-                                ingrediente,
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              value: ingrediente,
-                              groupValue: ingredienteOpcionalSeleccionado,
-                              onChanged: (String? value) {
-                                setState(() {
-                                  // Remover cualquier ingrediente opcional previamente seleccionado
-                                  ingredientesSeleccionados.removeWhere(
-                                    (ing) =>
-                                        ingredientesOpcionales.contains(ing),
-                                  );
+                          SizedBox(height: 12),
 
-                                  // Agregar el nuevo ingrediente seleccionado
-                                  ingredienteOpcionalSeleccionado = value;
-                                  if (value != null && value.isNotEmpty) {
-                                    ingredientesSeleccionados.add(value);
-                                  }
+                          // Lista de carnes con checkboxes múltiples
+                          // Opción 'Sin seleccionar' para carnes/opciones
+                          Container(
+                            margin: EdgeInsets.only(bottom: 4),
+                            decoration: BoxDecoration(
+                              color: ingredientesSeleccionados.isEmpty
+                                  ? Colors.orange.withOpacity(0.1)
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: ingredientesSeleccionados.isEmpty
+                                    ? Colors.orange.withOpacity(0.5)
+                                    : Colors.transparent,
+                              ),
+                            ),
+                            child: CheckboxListTile(
+                              title: Row(
+                                children: [
+                                  Icon(
+                                    Icons.lunch_dining,
+                                    color: ingredientesSeleccionados.isEmpty
+                                        ? Colors.orange
+                                        : Colors.grey,
+                                    size: 16,
+                                  ),
+                                  SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'Sin seleccionar',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        color: ingredientesSeleccionados.isEmpty
+                                            ? Colors.orange
+                                            : Colors.white,
+                                        fontSize: 14,
+                                        fontStyle: FontStyle.italic,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              value: ingredientesSeleccionados.isEmpty,
+                              activeColor: Colors.orange,
+                              checkColor: Colors.white,
+                              onChanged: (bool? value) {
+                                setState(() {
+                                  ingredientesSeleccionados.clear();
                                 });
                               },
                               dense: true,
-                              contentPadding: EdgeInsets.zero,
+                              contentPadding: EdgeInsets.symmetric(
+                                horizontal: 8,
+                              ),
+                            ),
+                          ),
+                          ...ingredientesOpcionales.map((ingrediente) {
+                            final bool isSelected = ingredientesSeleccionados
+                                .contains(ingrediente);
+                            return Container(
+                              margin: EdgeInsets.only(bottom: 4),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? Colors.orange.withOpacity(0.1)
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? Colors.orange.withOpacity(0.5)
+                                      : Colors.transparent,
+                                ),
+                              ),
+                              child: CheckboxListTile(
+                                title: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.lunch_dining,
+                                      color: isSelected
+                                          ? Colors.orange
+                                          : Colors.grey,
+                                      size: 16,
+                                    ),
+                                    SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        ingrediente,
+                                        style: TextStyle(
+                                          fontWeight: isSelected
+                                              ? FontWeight.w600
+                                              : FontWeight.w400,
+                                          color: isSelected
+                                              ? Colors.orange
+                                              : Colors.white,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                value: isSelected,
+                                activeColor: Colors.orange,
+                                checkColor: Colors.white,
+                                onChanged: (bool? value) {
+                                  setState(() {
+                                    if (value == true) {
+                                      ingredientesSeleccionados.add(
+                                        ingrediente,
+                                      );
+                                    } else {
+                                      ingredientesSeleccionados.remove(
+                                        ingrediente,
+                                      );
+                                    }
+                                  });
+                                },
+                                dense: true,
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                ),
+                              ),
                             );
                           }),
+
+                          // Información de cuántos ejecutivos se crearán
+                          if (ingredientesSeleccionados
+                              .where(
+                                (ing) => ingredientesOpcionales.contains(ing),
+                              )
+                              .isNotEmpty) ...[
+                            SizedBox(height: 8),
+                            Container(
+                              padding: EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.green.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: Colors.green.withOpacity(0.3),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.info,
+                                    color: Colors.green,
+                                    size: 16,
+                                  ),
+                                  SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'Se crearán ${ingredientesSeleccionados.where((ing) => ingredientesOpcionales.contains(ing)).length} ejecutivos separados',
+                                      style: TextStyle(
+                                        color: Colors.green,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                           SizedBox(height: 16),
                         ],
                       ],
@@ -697,7 +2760,11 @@ class _PedidoScreenState extends State<PedidoScreen> {
                                 : null,
                           });
                         }
-                      : ingredientesSeleccionados.isEmpty
+                      // ✅ CORREGIDO: Habilitar botón si:
+                      // - Hay ingredientes seleccionados, O
+                      // - Hay ingredientes opcionales Y se seleccionó "Ninguna selección" (ingredienteOpcionalSeleccionado != null)
+                      : ingredientesSeleccionados.isEmpty &&
+                            ingredientesOpcionales.isEmpty
                       ? null
                       : () {
                           String notasFinales = '';
@@ -806,23 +2873,35 @@ class _PedidoScreenState extends State<PedidoScreen> {
     return resultado;
   }
 
+  // 🚀 OPTIMIZACIÓN: Carga optimizada de datos para pedidos usando caché
   Future<void> _loadData() async {
     try {
-      setState(() {
-        isLoading = true;
-        errorMessage = null;
-      });
+      final cacheProvider = Provider.of<DatosCacheProvider>(
+        context,
+        listen: false,
+      );
 
-      // 🚀 OPTIMIZACIÓN: Usar datos del provider global
-      final datosProvider = Provider.of<DatosProvider>(context, listen: false);
-
-      // Si los datos no están inicializados, cargarlos
-      if (!datosProvider.datosInicializados) {
-        await datosProvider.inicializarDatos();
+      // Solo mostrar loading si es necesario
+      if (productosDisponibles.isEmpty) {
+        setState(() {
+          isLoading = true;
+          errorMessage = null;
+        });
       }
 
-      final productos = datosProvider.productos;
-      final categoriasData = datosProvider.categorias;
+      // Si no hay datos locales o en caché, cargar
+      if (productosDisponibles.isEmpty ||
+          categorias.isEmpty ||
+          !cacheProvider.hasData) {
+        print('📝 PedidoScreen: Cargando datos desde caché...');
+        await _cargarDatosOptimizado();
+      } else {
+        // Usar datos locales existentes
+        print('📝 PedidoScreen: Usando datos locales existentes');
+      }
+
+      final productos = productosDisponibles;
+      final categoriasData = categorias;
 
       // Si se pasó un pedido existente directamente, usarlo
       if (widget.pedidoExistente != null) {
@@ -1121,13 +3200,14 @@ class _PedidoScreenState extends State<PedidoScreen> {
       if (esAsadoCombinado || esEjecutivo || productoFinal.tieneVariantes) {
         List<String>? opcionesPersonalizadas;
         if (productoFinal.nombre.toLowerCase().contains('chuzo')) {
-          opcionesPersonalizadas = ['Pollo', 'Res', 'Cerdo'];
+          opcionesPersonalizadas = ['Sin carne', 'Pollo', 'Res', 'Cerdo'];
         } else if (productoFinal.nombre.toLowerCase().contains(
           'asado combinado',
         )) {
-          opcionesPersonalizadas = ['Res', 'Cerdo'];
+          opcionesPersonalizadas = ['Sin carne', 'Res', 'Cerdo'];
         } else if (productoFinal.nombre.toLowerCase().contains('ejecutivo')) {
           opcionesPersonalizadas = [
+            'Sin carne',
             'Res',
             'Cerdo',
             'Pollo',
@@ -1139,7 +3219,70 @@ class _PedidoScreenState extends State<PedidoScreen> {
           productoFinal,
           opcionesPersonalizadas ?? [],
         );
-        if (resultado is Map<String, dynamic>) {
+
+        // Manejar múltiples selecciones
+        if (resultado is List<Map<String, dynamic>>) {
+          // Procesar cada selección por separado
+          for (Map<String, dynamic> seleccion in resultado) {
+            String? notasVariantes = seleccion['nota'];
+            String notasCompletas = notasEspeciales ?? '';
+
+            if (notasCompletas.isNotEmpty && notasVariantes != null) {
+              notasCompletas = '$notasCompletas - $notasVariantes';
+            } else if (notasVariantes != null) {
+              notasCompletas = notasVariantes;
+            }
+
+            if (seleccion['observaciones'] != null &&
+                seleccion['observaciones'].toString().isNotEmpty) {
+              notasCompletas =
+                  "$notasCompletas - ${seleccion['observaciones']}";
+            }
+
+            // Agregar cada producto individual con su cantidad
+            for (int i = 0; i < (seleccion['cantidad'] as int); i++) {
+              setState(() {
+                Producto nuevoProd = Producto(
+                  id: productoFinal.id,
+                  nombre: productoFinal.nombre,
+                  precio: productoFinal.precio,
+                  costo: productoFinal.costo,
+                  utilidad: productoFinal.utilidad,
+                  categoria: productoFinal.categoria,
+                  descripcion: productoFinal.descripcion,
+                  imagenUrl: productoFinal.imagenUrl,
+                  cantidad: 1, // Siempre 1 porque iteramos por la cantidad
+                  nota: notasCompletas.isNotEmpty ? notasCompletas : null,
+                  tieneIngredientes: productoFinal.tieneIngredientes,
+                  tipoProducto: productoFinal.tipoProducto,
+                  ingredientesDisponibles: ingredientesSeleccionados.isNotEmpty
+                      ? ingredientesSeleccionados
+                      : productoFinal.ingredientesDisponibles,
+                  ingredientesRequeridos: productoFinal.ingredientesRequeridos,
+                  ingredientesOpcionales: productoFinal.ingredientesOpcionales,
+                  impuestos: productoFinal.impuestos,
+                  tieneVariantes: productoFinal.tieneVariantes,
+                  estado: productoFinal.estado,
+                  ingredientesSeleccionadosCombo:
+                      productoFinal.ingredientesSeleccionadosCombo,
+                );
+
+                productosMesa.add(nuevoProd);
+                productoPagado[nuevoProd.id] = true;
+
+                if (seleccion['productoId'] != null) {
+                  productosCarneMap[nuevoProd.id] = seleccion['productoId'];
+                }
+              });
+            }
+          }
+
+          // Calcular total una sola vez al final
+          _calcularTotal();
+          return; // Salir de la función ya que hemos procesado todo
+        }
+        // Código de compatibilidad para selección única (fallback)
+        else if (resultado is Map<String, dynamic>) {
           String? notasVariantes = resultado['nota'];
           if (notasEspeciales != null && notasVariantes != null) {
             notasEspeciales = '$notasEspeciales - $notasVariantes';
@@ -1581,8 +3724,10 @@ class _PedidoScreenState extends State<PedidoScreen> {
         items: items,
         total: total,
         estado: EstadoPedido.activo,
-        notas:
-            "", // Siempre proporcionar un valor vacío para notas para evitar el error del backend
+        notas: observacionesPedidoController.text.trim().isEmpty
+            ? ""
+            : observacionesPedidoController.text
+                  .trim(), // Usar observaciones del pedido
         cliente:
             clienteFinal ??
             pedidoExistente!
@@ -1606,8 +3751,10 @@ class _PedidoScreenState extends State<PedidoScreen> {
         items: items,
         total: total,
         estado: EstadoPedido.activo,
-        notas:
-            "", // Siempre proporcionar un valor vacío para notas para evitar el error del backend
+        notas: observacionesPedidoController.text.trim().isEmpty
+            ? ""
+            : observacionesPedidoController.text
+                  .trim(), // Usar observaciones del pedido
         cliente: clienteFinal,
       );
 
@@ -1684,8 +3831,28 @@ class _PedidoScreenState extends State<PedidoScreen> {
         backgroundColor: primary,
         elevation: 0,
         actions: [
+          // Indicador de conexión WebSocket
+          Consumer<DatosCacheProvider>(
+            builder: (context, cacheProvider, child) {
+              return Icon(
+                cacheProvider.isConnected ? Icons.wifi : Icons.wifi_off,
+                color: cacheProvider.isConnected ? Colors.green : Colors.red,
+                size: 20,
+              );
+            },
+          ),
+          SizedBox(width: 8),
           // Refresh button
-          IconButton(icon: Icon(Icons.refresh), onPressed: _loadData),
+          IconButton(
+            icon: Icon(Icons.refresh),
+            onPressed: () {
+              final cacheProvider = Provider.of<DatosCacheProvider>(
+                context,
+                listen: false,
+              );
+              cacheProvider.recargarDatos();
+            },
+          ),
           IconButton(
             icon: Icon(Icons.category),
             tooltip: 'Gestionar Categorías',
@@ -1818,42 +3985,232 @@ class _PedidoScreenState extends State<PedidoScreen> {
                     ),
                   ),
 
-                // Filtro de categorías - Scroll horizontal con 2 filas
-                Container(
-                  height: 110, // Altura para mostrar 2 filas
-                  margin: EdgeInsets.symmetric(horizontal: 16),
-                  child: Scrollbar(
-                    thumbVisibility: true,
-                    trackVisibility: true,
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(children: _buildCategoriaGridColumns()),
-                    ),
+                // ✅ NUEVO: Botones compactos para campos opcionales
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  child: Row(
+                    children: [
+                      // Botón para observaciones
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            setState(() {
+                              _mostrarObservaciones = !_mostrarObservaciones;
+                              if (!_mostrarObservaciones) {
+                                _mostrarComandos = false; // Solo uno a la vez
+                              }
+                            });
+                          },
+                          icon: Icon(
+                            _mostrarObservaciones
+                                ? Icons.keyboard_arrow_up
+                                : Icons.note_add,
+                            size: 18,
+                          ),
+                          label: Text(
+                            'Observaciones',
+                            style: TextStyle(fontSize: 12),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _mostrarObservaciones
+                                ? primary
+                                : cardBg,
+                            foregroundColor: _mostrarObservaciones
+                                ? Colors.white
+                                : textLight,
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      // Botón para comandos rápidos
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            setState(() {
+                              _mostrarComandos = !_mostrarComandos;
+                              if (!_mostrarComandos) {
+                                _mostrarObservaciones =
+                                    false; // Solo uno a la vez
+                              }
+                            });
+                          },
+                          icon: Icon(
+                            _mostrarComandos
+                                ? Icons.keyboard_arrow_up
+                                : Icons.flash_on,
+                            size: 18,
+                          ),
+                          label: Text(
+                            'Comandos',
+                            style: TextStyle(fontSize: 12),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _mostrarComandos
+                                ? primary
+                                : cardBg,
+                            foregroundColor: _mostrarComandos
+                                ? Colors.white
+                                : textLight,
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      // Botón de ayuda para comandos
+                      IconButton(
+                        onPressed: _mostrarAyudaComandos,
+                        icon: Icon(
+                          Icons.help_outline,
+                          color: primary.withOpacity(0.7),
+                        ),
+                        tooltip: 'Ver ejemplos de comandos',
+                        iconSize: 20,
+                      ),
+                    ],
                   ),
                 ),
 
-                SizedBox(height: 12),
+                // ✅ Campo de observaciones (desplegable)
+                if (_mostrarObservaciones)
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    child: TextField(
+                      controller: observacionesPedidoController,
+                      style: TextStyle(color: textLight),
+                      maxLines: 2,
+                      minLines: 1,
+                      decoration: InputDecoration(
+                        hintText:
+                            'Observaciones del pedido (ej: sopa poquita, sin arroz, etc.)...',
+                        hintStyle: TextStyle(color: textLight.withOpacity(0.5)),
+                        prefixIcon: Icon(Icons.note_add, color: primary),
+                        filled: true,
+                        fillColor: cardBg,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide.none,
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: primary),
+                        ),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                      ),
+                    ),
+                  ),
 
+                // ✅ Campo de comandos rápidos (desplegable)
+                if (_mostrarComandos)
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    child: TextField(
+                      controller: comandoTextoController,
+                      style: TextStyle(color: textLight),
+                      decoration: InputDecoration(
+                        hintText:
+                            'Comandos: "1 S, 2 F, 1(cerdo y res), 1 Paisa"...',
+                        hintStyle: TextStyle(color: textLight.withOpacity(0.5)),
+                        prefixIcon: Icon(Icons.flash_on, color: primary),
+                        suffixIcon: IconButton(
+                          icon: Icon(Icons.send, color: primary),
+                          onPressed: () {
+                            _procesarComandoTexto(comandoTextoController.text);
+                          },
+                        ),
+                        filled: true,
+                        fillColor: cardBg,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide.none,
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: primary),
+                        ),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                      ),
+                      onSubmitted: (value) {
+                        _procesarComandoTexto(value);
+                      },
+                    ),
+                  ),
+
+                // 🎨 MEJORADO: Filtro de categorías - Wrap con scroll vertical para PC
+                Container(
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.of(context).size.width < 768
+                        ? 50
+                        : 120, // Móvil: 1 fila, PC: múltiples filas
+                  ),
+                  margin: EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 4,
+                  ), // Reducido margen vertical
+                  child: MediaQuery.of(context).size.width < 768
+                      ? SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          padding: EdgeInsets.only(right: 16),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: _buildCategoriaCompactRow(),
+                          ),
+                        )
+                      : Scrollbar(
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.vertical,
+                            padding: EdgeInsets.only(bottom: 4),
+                            child: Wrap(
+                              spacing: 8.0, // Espaciado horizontal entre chips
+                              runSpacing:
+                                  6.0, // Espaciado vertical entre filas reducido
+                              children: _buildCategoriaCompactRow(),
+                            ),
+                          ),
+                        ),
+                ),
+
+                SizedBox(height: 6), // Reducido de 12 a 6
                 // Lista de productos disponibles
                 Expanded(
                   child: Column(
                     children: [
                       Expanded(
                         child: GridView.builder(
-                          padding: EdgeInsets.symmetric(horizontal: 16),
-                          // ✅ OPTIMIZACIÓN: Usar delegado con extent máximo para mejor rendimiento
-                          gridDelegate:
-                              SliverGridDelegateWithMaxCrossAxisExtent(
-                                maxCrossAxisExtent:
-                                    MediaQuery.of(context).size.width > 1200
-                                    ? 300 // Máximo 300px por tarjeta en desktop
-                                    : MediaQuery.of(context).size.width > 800
-                                    ? 250 // 250px en tablet
-                                    : 180, // 180px en móvil
-                                childAspectRatio: 1.0,
-                                crossAxisSpacing: 12,
-                                mainAxisSpacing: 12,
-                              ),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 8,
+                          ), // ✅ Reducido padding
+                          // ✅ GRILLA MÁS COMPACTA: Más productos visibles
+                          gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+                            maxCrossAxisExtent:
+                                MediaQuery.of(context).size.width > 1200
+                                ? 220 // ✅ Reducido de 300 a 220px en desktop
+                                : MediaQuery.of(context).size.width > 800
+                                ? 180 // ✅ Reducido de 250 a 180px en tablet
+                                : 140, // ✅ Reducido de 180 a 140px en móvil
+                            childAspectRatio:
+                                0.85, // ✅ Más vertical para mostrar más filas
+                            crossAxisSpacing: 8, // ✅ Reducido espaciado
+                            mainAxisSpacing: 8, // ✅ Reducido espaciado
+                          ),
                           // ✅ OPTIMIZACIÓN: Cachear lista filtrada para evitar recálculos
                           itemCount: _productosVista.length,
                           itemBuilder: (context, index) {
@@ -2227,6 +4584,80 @@ class _PedidoScreenState extends State<PedidoScreen> {
             ),
           ),
 
+        // Campo de observaciones del pedido
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: TextField(
+            controller: observacionesPedidoController,
+            style: TextStyle(color: textLight),
+            maxLines: 3,
+            minLines: 1,
+            decoration: InputDecoration(
+              hintText:
+                  'Observaciones del pedido (ej: sopa poquita, sin arroz, etc.)...',
+              hintStyle: TextStyle(color: textLight.withOpacity(0.5)),
+              prefixIcon: Icon(Icons.note_add, color: primary),
+              filled: true,
+              fillColor: cardBg,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: primary),
+              ),
+            ),
+          ),
+        ),
+
+        // Campo de comandos de texto rápido
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: TextField(
+            controller: comandoTextoController,
+            style: TextStyle(color: textLight),
+            decoration: InputDecoration(
+              hintText: 'Comandos: "1 S, 2 F, 1(cerdo y res)"...',
+              hintStyle: TextStyle(color: textLight.withOpacity(0.5)),
+              prefixIcon: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.flash_on, color: primary),
+                  IconButton(
+                    icon: Icon(
+                      Icons.help_outline,
+                      color: primary.withOpacity(0.7),
+                      size: 20,
+                    ),
+                    onPressed: _mostrarAyudaComandos,
+                    tooltip: 'Ayuda',
+                  ),
+                ],
+              ),
+              suffixIcon: IconButton(
+                icon: Icon(Icons.send, color: primary),
+                onPressed: () {
+                  _procesarComandoTexto(comandoTextoController.text);
+                },
+              ),
+              filled: true,
+              fillColor: cardBg,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: primary),
+              ),
+            ),
+            onSubmitted: (value) {
+              _procesarComandoTexto(value);
+            },
+          ),
+        ),
+
         // Lista de categorías - Scroll horizontal con 2 filas
         if (categorias.isNotEmpty)
           Container(
@@ -2431,18 +4862,17 @@ class _PedidoScreenState extends State<PedidoScreen> {
     );
   }
 
-  // Método de filtrado local optimizado usando DatosProvider (fallback para cuando la API no está disponible)
+  // Método de filtrado local directo (fallback para cuando la API no está disponible)
   List<Producto> _filtrarProductosLocal() {
-    // Obtener productos frescos del provider en lugar de usar productosDisponibles
-    final datosProvider = Provider.of<DatosProvider>(context, listen: false);
-    final productosCache = datosProvider.productos;
+    // Usar productos directos disponibles en memoria
+    final productosData = productosDisponibles;
 
-    // Si no hay filtros, devolver todos los productos (desde caché)
+    // Si no hay filtros, devolver todos los productos
     if (filtro.isEmpty && categoriaSelecionadaId == null) {
-      return productosCache;
+      return productosData;
     }
 
-    return productosCache.where((producto) {
+    return productosData.where((producto) {
       // Filtrado por nombre mejorado - busca coincidencias parciales en nombre
       // También busca coincidencias en descripción, categoría y otros campos relevantes
       bool matchesNombre = false;
@@ -2542,11 +4972,21 @@ class _PedidoScreenState extends State<PedidoScreen> {
   double _calcularTotal() {
     double total = productosMesa.fold(0, (sum, producto) {
       // Solo incluir productos activos (no tachados) en el total
-      if (productoPagado[producto.id] != false) {
-        return sum + (producto.precio * producto.cantidad);
+      bool estaActivo = productoPagado[producto.id] != false;
+      if (estaActivo) {
+        double subtotal = producto.precio * producto.cantidad;
+        print(
+          '📊 Producto ${producto.nombre}: ${producto.cantidad} x \$${producto.precio} = \$${subtotal} (Activo: $estaActivo)',
+        );
+        return sum + subtotal;
+      } else {
+        print(
+          '❌ Producto ${producto.nombre}: Excluido del total (Activo: $estaActivo)',
+        );
+        return sum;
       }
-      return sum;
     });
+    print('💰 TOTAL CALCULADO: \$${total}');
     setState(() {}); // Forzar actualización de la UI
     return total;
   }
@@ -2569,34 +5009,130 @@ class _PedidoScreenState extends State<PedidoScreen> {
             List<String> ingredientesSeleccionados =
                 resultadoIngredientes['ingredientes'] as List<String>;
             String? notasEspeciales = resultadoIngredientes['notas'] as String?;
-            Producto productoFinal = producto;
-            if (resultadoIngredientes.containsKey('producto_actualizado')) {
-              productoFinal =
-                  resultadoIngredientes['producto_actualizado'] as Producto;
+
+            // 🥩 NUEVA LÓGICA: Detectar ingredientes opcionales (carnes) seleccionados
+            List<String> ingredientesOpcionales = [];
+            List<String> ingredientesBasicos = [];
+
+            // Separar ingredientes opcionales de básicos
+            for (String ingrediente in ingredientesSeleccionados) {
+              bool esOpcional = false;
+              for (var opcionalData in producto.ingredientesOpcionales) {
+                String nombreConPrecio = opcionalData.ingredienteNombre;
+                if (opcionalData.precioAdicional > 0) {
+                  nombreConPrecio +=
+                      ' (+\$${opcionalData.precioAdicional.toStringAsFixed(0)})';
+                }
+                if (ingrediente == nombreConPrecio) {
+                  ingredientesOpcionales.add(ingrediente);
+                  esOpcional = true;
+                  break;
+                }
+              }
+              if (!esOpcional) {
+                ingredientesBasicos.add(ingrediente);
+              }
             }
+
             setState(() {
-              Producto nuevoProd = Producto(
-                id: productoFinal.id,
-                nombre: productoFinal.nombre,
-                precio: productoFinal.precio,
-                costo: productoFinal.costo,
-                impuestos: productoFinal.impuestos,
-                utilidad: productoFinal.utilidad,
-                tieneVariantes: productoFinal.tieneVariantes,
-                estado: productoFinal.estado,
-                imagenUrl: productoFinal.imagenUrl,
-                categoria: productoFinal.categoria,
-                descripcion: productoFinal.descripcion,
-                nota: notasEspeciales,
-                cantidad: 1,
-                ingredientesDisponibles: ingredientesSeleccionados,
-                ingredientesRequeridos: productoFinal.ingredientesRequeridos,
-                ingredientesOpcionales: productoFinal.ingredientesOpcionales,
-                tieneIngredientes: productoFinal.tieneIngredientes,
-                tipoProducto: productoFinal.tipoProducto,
-              );
-              productosMesa.add(nuevoProd);
-              productoPagado[nuevoProd.id] = true;
+              if (ingredientesOpcionales.isNotEmpty) {
+                // 🚀 CREAR MÚLTIPLES EJECUTIVOS: uno por cada carne seleccionada
+                int productosCreados = 0;
+
+                for (String carneSeleccionada in ingredientesOpcionales) {
+                  productosCreados++;
+
+                  // Crear nota específica para este ejecutivo
+                  String notaEjecutivo = 'Ejecutivo #$productosCreados';
+                  if (carneSeleccionada.isNotEmpty) {
+                    notaEjecutivo += ' - $carneSeleccionada';
+                  }
+                  if (ingredientesBasicos.isNotEmpty) {
+                    notaEjecutivo += ' + ${ingredientesBasicos.join(', ')}';
+                  }
+                  if (notasEspeciales != null && notasEspeciales.isNotEmpty) {
+                    notaEjecutivo += ' | $notasEspeciales';
+                  }
+
+                  // Crear el producto individual con la carne específica
+                  List<String> ingredientesParaEsteProducto = [
+                    carneSeleccionada,
+                  ];
+                  ingredientesParaEsteProducto.addAll(ingredientesBasicos);
+
+                  Producto nuevoEjecutivo = Producto(
+                    id: producto.id,
+                    nombre: '${producto.nombre} #$productosCreados',
+                    precio: producto.precio,
+                    costo: producto.costo,
+                    impuestos: producto.impuestos,
+                    utilidad: producto.utilidad,
+                    tieneVariantes: producto.tieneVariantes,
+                    estado: producto.estado,
+                    imagenUrl: producto.imagenUrl,
+                    categoria: producto.categoria,
+                    descripcion: producto.descripcion,
+                    nota: notaEjecutivo,
+                    cantidad: 1,
+                    ingredientesDisponibles: ingredientesParaEsteProducto,
+                    ingredientesRequeridos: producto.ingredientesRequeridos,
+                    ingredientesOpcionales: producto.ingredientesOpcionales,
+                    tieneIngredientes: producto.tieneIngredientes,
+                    tipoProducto: producto.tipoProducto,
+                  );
+
+                  productosMesa.add(nuevoEjecutivo);
+                  productoPagado[nuevoEjecutivo.id] = true;
+                }
+
+                // Mostrar mensaje de confirmación
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      '¡Excelente! Se crearon $productosCreados ejecutivos separados',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    backgroundColor: Colors.green,
+                    duration: Duration(seconds: 3),
+                    action: SnackBarAction(
+                      label: 'Ver',
+                      textColor: Colors.white,
+                      onPressed: () {
+                        // Scroll hacia abajo para mostrar los productos agregados
+                      },
+                    ),
+                  ),
+                );
+
+                print(
+                  '✅ Creados $productosCreados ejecutivos con carnes: ${ingredientesOpcionales.join(', ')}',
+                );
+              } else {
+                // Si no hay carnes seleccionadas, crear un solo producto normal
+                Producto nuevoProd = Producto(
+                  id: producto.id,
+                  nombre: producto.nombre,
+                  precio: producto.precio,
+                  costo: producto.costo,
+                  impuestos: producto.impuestos,
+                  utilidad: producto.utilidad,
+                  tieneVariantes: producto.tieneVariantes,
+                  estado: producto.estado,
+                  imagenUrl: producto.imagenUrl,
+                  categoria: producto.categoria,
+                  descripcion: producto.descripcion,
+                  nota: notasEspeciales,
+                  cantidad: 1,
+                  ingredientesDisponibles: ingredientesSeleccionados,
+                  ingredientesRequeridos: producto.ingredientesRequeridos,
+                  ingredientesOpcionales: producto.ingredientesOpcionales,
+                  tieneIngredientes: producto.tieneIngredientes,
+                  tipoProducto: producto.tipoProducto,
+                );
+                productosMesa.add(nuevoProd);
+                productoPagado[nuevoProd.id] = true;
+              }
+
               _calcularTotal();
             });
           }
@@ -2624,59 +5160,64 @@ class _PedidoScreenState extends State<PedidoScreen> {
           children: [
             // Imagen del producto
             Expanded(
-              flex: 5, // Mayor espacio para la imagen
+              flex: 4, // ✅ Reducido de 5 a 4 para imagen más compacta
               child: Container(
                 width: double.infinity,
-                padding: EdgeInsets.all(6),
+                padding: EdgeInsets.all(4), // ✅ Reducido de 6 a 4
                 child: _buildProductImage(producto.imagenUrl),
               ),
             ),
             // Información del producto (categoría, nombre, precio)
             Expanded(
-              flex: 2, // Menos espacio para el texto
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  // Etiqueta de categoría
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: primary.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(4),
+              flex: 3, // ✅ Aumentado de 2 a 3 para mejor balance
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    // Etiqueta de categoría
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: primary.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                      child: Text(
+                        categoriaText,
+                        style: TextStyle(
+                          color: primary,
+                          fontSize: 7, // ✅ Reducido de 8 a 7
+                          fontWeight: FontWeight.w500,
+                        ),
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                    child: Text(
-                      categoriaText,
+                    // Nombre del producto
+                    Text(
+                      producto.nombre,
+                      style: TextStyle(
+                        color: textLight,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 10, // ✅ Reducido de 11 a 10
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    // Precio
+                    Text(
+                      formatCurrency(producto.precio),
                       style: TextStyle(
                         color: primary,
-                        fontSize: 8,
-                        fontWeight: FontWeight.w500,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 11, // ✅ Reducido de 12 a 11
                       ),
                       textAlign: TextAlign.center,
                     ),
-                  ),
-                  // Nombre del producto
-                  Text(
-                    producto.nombre,
-                    style: TextStyle(
-                      color: textLight,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 11,
-                    ),
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  // Precio
-                  Text(
-                    formatCurrency(producto.precio),
-                    style: TextStyle(
-                      color: primary,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ],
@@ -2712,6 +5253,22 @@ class _PedidoScreenState extends State<PedidoScreen> {
     );
   }
 
+  // Función para convertir IDs de ingredientes a nombres
+  String _getIngredienteNombre(String ingredienteId) {
+    final ingrediente = ingredientes.firstWhere(
+      (ing) => ing.id == ingredienteId,
+      orElse: () => Ingrediente(
+        id: ingredienteId,
+        nombre: 'Ingrediente desconocido',
+        categoria: 'Sin categoría',
+        cantidad: 0,
+        unidad: 'unidad',
+        costo: 0,
+      ),
+    );
+    return ingrediente.nombre;
+  }
+
   Widget _buildProductoEnPedido(Producto producto) {
     final Color textLight = Color(0xFFE0E0E0);
     final Color primary = Color(0xFFFF6B00);
@@ -2743,6 +5300,25 @@ class _PedidoScreenState extends State<PedidoScreen> {
     // Detectar si es móvil para ajustar el layout
     final isMovil = MediaQuery.of(context).size.width < 768;
 
+    // Obtener ingredientes seleccionados (carne/opcion/ejecutivo)
+    final List<String> seleccionados = producto.ingredientesDisponibles
+        .where((ing) => ing.trim().isNotEmpty)
+        .toList();
+
+    String resumenSeleccion;
+    if (seleccionados.isNotEmpty) {
+      // Convertir IDs a nombres de ingredientes
+      final nombresIngredientes = seleccionados
+          .map((id) => _getIngredienteNombre(id))
+          .toList();
+
+      resumenSeleccion = nombresIngredientes.length == 1
+          ? 'Adición: ${nombresIngredientes.first}'
+          : 'Adiciones: ${nombresIngredientes.join(", ")}';
+    } else {
+      resumenSeleccion = 'Sin seleccionar';
+    }
+
     return Container(
       margin: EdgeInsets.symmetric(vertical: 4),
       padding: EdgeInsets.all(isMovil ? 12 : 8),
@@ -2755,22 +5331,7 @@ class _PedidoScreenState extends State<PedidoScreen> {
         children: [
           Row(
             children: [
-              // Switch para controlar estado activo/pagado (solo admins en desktop)
-              if (userProvider.isAdmin && !isMovil)
-                Switch(
-                  value: productoPagado[producto.id]!,
-                  onChanged: (bool value) {
-                    setState(() {
-                      productoPagado[producto.id] = value;
-                      _calcularTotal();
-                    });
-                  },
-                  activeThumbColor: primary,
-                )
-              else if (!isMovil)
-                SizedBox(width: 50),
-
-              // Imagen pequeña del producto
+              if (!isMovil) SizedBox(width: 50),
               Container(
                 margin: EdgeInsets.only(right: 8),
                 child: _buildProductImage(
@@ -2779,8 +5340,6 @@ class _PedidoScreenState extends State<PedidoScreen> {
                   height: isMovil ? 50 : 40,
                 ),
               ),
-
-              // Información del producto
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -2799,7 +5358,6 @@ class _PedidoScreenState extends State<PedidoScreen> {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        // Indicadores visuales (solo desktop)
                         if (!userProvider.isAdmin &&
                             esPedidoExistente &&
                             !isMovil)
@@ -2827,22 +5385,24 @@ class _PedidoScreenState extends State<PedidoScreen> {
                           ),
                       ],
                     ),
-                    if (producto.nota != null && producto.nota!.isNotEmpty)
-                      Padding(
-                        padding: EdgeInsets.only(top: 4),
-                        child: Text(
-                          producto.nota!,
-                          style: TextStyle(
-                            color: productoPagado[producto.id]!
-                                ? primary.withOpacity(0.7)
-                                : primary.withOpacity(0.3),
-                            fontSize: isMovil ? 12 : 11,
-                            fontStyle: FontStyle.italic,
-                          ),
-                          maxLines: isMovil ? 2 : 1,
-                          overflow: TextOverflow.ellipsis,
+                    // Mostrar resumen de selección de carne/opción/ingrediente
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2.0, left: 2.0),
+                      child: Text(
+                        resumenSeleccion,
+                        style: TextStyle(
+                          color: resumenSeleccion == 'Sin seleccionar'
+                              ? Colors.grey
+                              : Colors.orange,
+                          fontSize: 12,
+                          fontStyle: resumenSeleccion == 'Sin seleccionar'
+                              ? FontStyle.italic
+                              : FontStyle.normal,
                         ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
+                    ),
                   ],
                 ),
               ),
@@ -2923,30 +5483,7 @@ class _PedidoScreenState extends State<PedidoScreen> {
             ],
           ),
 
-          // Switch de admin en móvil (abajo)
-          if (userProvider.isAdmin && isMovil)
-            Padding(
-              padding: EdgeInsets.only(top: 12),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Producto activo:',
-                    style: TextStyle(color: textLight, fontSize: 14),
-                  ),
-                  Switch(
-                    value: productoPagado[producto.id]!,
-                    onChanged: (bool value) {
-                      setState(() {
-                        productoPagado[producto.id] = value;
-                        _calcularTotal();
-                      });
-                    },
-                    activeThumbColor: primary,
-                  ),
-                ],
-              ),
-            ),
+          // Botón removido según solicitud del usuario
         ],
       ),
     );
@@ -3035,14 +5572,15 @@ class _PedidoScreenState extends State<PedidoScreen> {
     );
   }
 
-  // Genera columnas con 2 filas de categorías (Desktop)
-  List<Widget> _buildCategoriaGridColumns() {
+  // 🎨 NUEVA: Barra compacta de categorías - Una sola fila horizontal
+  List<Widget> _buildCategoriaCompactRow() {
     List<Widget> allCategories = [];
 
-    // Agregar opción "Todos"
+    // Agregar opción "Todos" - más compacta
     allCategories.add(
-      _buildCategoriaChip(
-        nombre: 'Todos',
+      _buildCategoriaCompactChip(
+        nombre: 'Todo',
+        icon: Icons.apps,
         isSelected: categoriaSelecionadaId == null,
         onTap: () => setState(() {
           categoriaSelecionadaId = null;
@@ -3052,10 +5590,10 @@ class _PedidoScreenState extends State<PedidoScreen> {
       ),
     );
 
-    // Agregar todas las categorías
+    // Agregar todas las categorías de forma compacta
     allCategories.addAll(
       categorias.map(
-        (categoria) => _buildCategoriaChip(
+        (categoria) => _buildCategoriaCompactChip(
           nombre: categoria.nombre,
           imagenUrl: categoria.imagenUrl,
           isSelected: categoriaSelecionadaId == categoria.id,
@@ -3068,34 +5606,10 @@ class _PedidoScreenState extends State<PedidoScreen> {
       ),
     );
 
-    // Dividir en 2 filas y crear columnas
-    List<Widget> columns = [];
-    int itemsPerColumn = 2; // 2 filas
-
-    for (int i = 0; i < allCategories.length; i += itemsPerColumn) {
-      List<Widget> columnItems = allCategories
-          .skip(i)
-          .take(itemsPerColumn)
-          .toList();
-
-      // Si solo hay un elemento en la columna, agregar un espaciador
-      if (columnItems.length == 1) {
-        columnItems.add(SizedBox(height: 50));
-      }
-
-      columns.add(
-        Container(
-          margin: EdgeInsets.only(right: 8),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: columnItems,
-          ),
-        ),
-      );
-    }
-
-    return columns;
+    return allCategories;
   }
+
+  // Genera columnas con 2 filas de categorías (Desktop) - MANTENER PARA COMPATIBILIDAD
 
   // Genera columnas con 2 filas de categorías (Mobile)
   List<Widget> _buildCategoriaGridColumnsMobile() {
@@ -3197,9 +5711,11 @@ class _PedidoScreenState extends State<PedidoScreen> {
   }
 
   // Widget para chips de categoría con imagen circular
-  Widget _buildCategoriaChip({
+  // 🎨 NUEVO: Widget compacto para categorías - Más pequeño y eficiente
+  Widget _buildCategoriaCompactChip({
     required String nombre,
     String? imagenUrl,
+    IconData? icon,
     required bool isSelected,
     required VoidCallback onTap,
   }) {
@@ -3207,65 +5723,87 @@ class _PedidoScreenState extends State<PedidoScreen> {
     final cardBg = Color(0xFF2A2A2A);
     final textLight = Color(0xFFB0B0B0);
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? primary : cardBg,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected ? primary : Colors.grey.withOpacity(0.3),
-            width: 1,
+    return Container(
+      margin: EdgeInsets.only(right: 8), // Espaciado entre chips
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: 8, // ✅ Reducido de 10 a 8
+            vertical: 4, // ✅ Reducido de 6 a 4
           ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Imagen circular o icono
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: isSelected
-                    ? Colors.white.withOpacity(0.2)
-                    : Colors.grey.withOpacity(0.3),
-              ),
-              child: ClipOval(
-                child: imagenUrl != null && imagenUrl.isNotEmpty
-                    ? CachedNetworkImage(
-                        imageUrl: _imageService.getImageUrl(imagenUrl),
-                        fit: BoxFit.cover,
-                        errorWidget: (context, url, error) => Icon(
-                          Icons.restaurant_menu,
-                          color: isSelected ? Colors.white : textLight,
-                          size: 18,
-                        ),
-                        placeholder: (context, url) => Icon(
-                          Icons.restaurant_menu,
-                          color: isSelected ? Colors.white : textLight,
-                          size: 18,
-                        ),
-                      )
-                    : Icon(
-                        nombre == 'Todas' ? Icons.apps : Icons.restaurant_menu,
-                        color: isSelected ? Colors.white : textLight,
-                        size: 18,
-                      ),
-              ),
+          decoration: BoxDecoration(
+            color: isSelected ? primary : cardBg,
+            borderRadius: BorderRadius.circular(12), // ✅ Reducido de 16 a 12
+            border: Border.all(
+              color: isSelected ? primary : Colors.grey.withOpacity(0.3),
+              width: 1,
             ),
-            SizedBox(width: 8),
-            // Texto de la categoría
-            Text(
-              nombre,
-              style: TextStyle(
-                color: isSelected ? Colors.white : textLight,
-                fontSize: 14,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: primary.withOpacity(0.3),
+                      blurRadius: 4,
+                      offset: Offset(0, 2),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Imagen circular o icono - Más pequeño
+              Container(
+                width: 20, // ✅ Reducido de 24 a 20
+                height: 20, // ✅ Reducido de 24 a 20
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isSelected
+                      ? Colors.white.withOpacity(0.2)
+                      : Colors.grey.withOpacity(0.3),
+                ),
+                child: ClipOval(
+                  child: imagenUrl != null && imagenUrl.isNotEmpty
+                      ? Image.network(
+                          _imageService.getImageUrl(imagenUrl),
+                          fit: BoxFit.cover,
+                          headers: {
+                            'Cache-Control': 'no-cache',
+                            'User-Agent': 'Flutter App',
+                          },
+                          errorBuilder: (context, error, stackTrace) => Icon(
+                            Icons.restaurant_menu,
+                            color: isSelected ? Colors.white : textLight,
+                            size: 12, // ✅ Reducido de 14 a 12
+                          ),
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return Icon(
+                              Icons.restaurant_menu,
+                              color: isSelected ? Colors.white : textLight,
+                              size: 12, // ✅ Reducido de 14 a 12
+                            );
+                          },
+                        )
+                      : Icon(
+                          icon ?? Icons.restaurant_menu,
+                          color: isSelected ? Colors.white : textLight,
+                          size: 12, // ✅ Reducido de 14 a 12
+                        ),
+                ),
               ),
-            ),
-          ],
+              SizedBox(width: 4), // ✅ Reducido de 6 a 4
+              // Texto de la categoría - Más compacto
+              Text(
+                nombre,
+                style: TextStyle(
+                  color: isSelected ? Colors.white : textLight,
+                  fontSize: 11, // ✅ Reducido de 12 a 11
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

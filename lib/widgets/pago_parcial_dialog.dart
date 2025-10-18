@@ -717,15 +717,17 @@ class _PagoParcialDialogState extends State<PagoParcialDialog> {
                                   ),
                                   keyboardType: TextInputType.number,
                                   onChanged: (value) {
-                                    setState(() {
-                                      descuentoPorcentaje =
-                                          double.tryParse(value) ?? 0.0;
-                                      // Limpiar descuento por valor si se usa porcentaje
-                                      if (descuentoPorcentaje > 0) {
-                                        descuentoValor = 0.0;
-                                        descuentoValorController.clear();
-                                      }
-                                    });
+                                    // ✅ CORREGIDO: Evitar setState inmediato para no perder foco
+                                    descuentoPorcentaje =
+                                        double.tryParse(value) ?? 0.0;
+                                    if (descuentoPorcentaje > 0) {
+                                      Future.microtask(() {
+                                        setState(() {
+                                          descuentoValor = 0.0;
+                                          descuentoValorController.clear();
+                                        });
+                                      });
+                                    }
                                   },
                                 ),
                               ),
@@ -749,15 +751,17 @@ class _PagoParcialDialogState extends State<PagoParcialDialog> {
                                   ),
                                   keyboardType: TextInputType.number,
                                   onChanged: (value) {
-                                    setState(() {
-                                      descuentoValor =
-                                          double.tryParse(value) ?? 0.0;
-                                      // Limpiar descuento por porcentaje si se usa valor
-                                      if (descuentoValor > 0) {
-                                        descuentoPorcentaje = 0.0;
-                                        descuentoPorcentajeController.clear();
-                                      }
-                                    });
+                                    // ✅ CORREGIDO: Evitar setState inmediato para no perder foco
+                                    descuentoValor =
+                                        double.tryParse(value) ?? 0.0;
+                                    if (descuentoValor > 0) {
+                                      Future.microtask(() {
+                                        setState(() {
+                                          descuentoPorcentaje = 0.0;
+                                          descuentoPorcentajeController.clear();
+                                        });
+                                      });
+                                    }
                                   },
                                 ),
                               ),
