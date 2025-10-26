@@ -456,7 +456,9 @@ class _MesasConfigScreenState extends State<MesasConfigScreen> {
                               });
                             }
                           },
-                          items: TipoMesa.values.map((TipoMesa tipo) {
+                          items: [TipoMesa.normal, TipoMesa.especial].map((
+                            TipoMesa tipo,
+                          ) {
                             return DropdownMenuItem<TipoMesa>(
                               value: tipo,
                               child: Column(

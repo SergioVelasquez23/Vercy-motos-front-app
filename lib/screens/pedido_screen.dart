@@ -97,6 +97,7 @@ class _PedidoScreenState extends State<PedidoScreen> {
   String? clienteSeleccionado;
   TextEditingController busquedaController = TextEditingController();
   TextEditingController clienteController = TextEditingController();
+  TextEditingController observacionesController = TextEditingController();
   String filtro = '';
   String? categoriaSelecionadaId;
 
@@ -137,6 +138,7 @@ class _PedidoScreenState extends State<PedidoScreen> {
     busquedaController.removeListener(_onSearchChanged);
     busquedaController.dispose();
     clienteController.dispose();
+    observacionesController.dispose();
     super.dispose();
   }
 
@@ -238,6 +240,12 @@ class _PedidoScreenState extends State<PedidoScreen> {
         if (widget.pedidoExistente!.cliente != null) {
           clienteSeleccionado = widget.pedidoExistente!.cliente;
           clienteController.text = clienteSeleccionado!;
+        }
+
+        // Cargar observaciones si existen
+        if (widget.pedidoExistente!.notas != null &&
+            widget.pedidoExistente!.notas!.isNotEmpty) {
+          observacionesController.text = widget.pedidoExistente!.notas!;
         }
       }
 
@@ -636,24 +644,32 @@ class _PedidoScreenState extends State<PedidoScreen> {
                             ),
                           ),
                           SizedBox(height: 8),
-                          // Opción "Sin selección" - checkbox especial
+                          // Opción "Sin selección" - ahora es una opción independiente
                           CheckboxListTile(
                             title: Text(
-                              'Sin selección - No agregar ingredientes opcionales',
+                              'Sin selección - Una porción sin ingredientes opcionales',
                               style: TextStyle(
                                 fontStyle: FontStyle.italic,
                                 color: Colors.white70,
                               ),
                             ),
-                            value: ingredientesOpcionalesSeleccionados.isEmpty,
+                            value: ingredientesOpcionalesSeleccionados.contains(
+                              'SIN_SELECCION',
+                            ),
                             onChanged: (bool? value) {
                               setState(() {
                                 if (value == true) {
-                                  // Limpiar todas las selecciones opcionales
-                                  ingredientesOpcionalesSeleccionados.clear();
-                                  ingredientesSeleccionados.removeWhere(
-                                    (ing) =>
-                                        ingredientesOpcionales.contains(ing),
+                                  // Agregar "sin selección" como una opción más
+                                  if (!ingredientesOpcionalesSeleccionados
+                                      .contains('SIN_SELECCION')) {
+                                    ingredientesOpcionalesSeleccionados.add(
+                                      'SIN_SELECCION',
+                                    );
+                                  }
+                                } else {
+                                  // Remover "sin selección"
+                                  ingredientesOpcionalesSeleccionados.remove(
+                                    'SIN_SELECCION',
                                   );
                                 }
                               });
@@ -776,9 +792,8 @@ class _PedidoScreenState extends State<PedidoScreen> {
                               .toList();
 
                       if (ingredientesBasicosSeleccionados.isNotEmpty) {
-                        notasFinales = ingredientesBasicosSeleccionados.join(
-                          ', ',
-                        );
+                        notasFinales =
+                            'Ingredientes: ${ingredientesBasicosSeleccionados.join(', ')}';
                       }
                       if (notasController.text.isNotEmpty) {
                         if (notasFinales.isNotEmpty) {
@@ -816,7 +831,8 @@ class _PedidoScreenState extends State<PedidoScreen> {
 
                       String notasFinales = '';
                       if (ingredientesFinales.isNotEmpty) {
-                        notasFinales = ingredientesFinales.join(', ');
+                        notasFinales =
+                            'Ingredientes: ${ingredientesFinales.join(', ')}';
                       }
                       if (notasController.text.isNotEmpty) {
                         if (notasFinales.isNotEmpty) {
@@ -1802,8 +1818,9 @@ class _PedidoScreenState extends State<PedidoScreen> {
         items: items,
         total: total,
         estado: EstadoPedido.activo,
-        notas:
-            "", // Siempre proporcionar un valor vacío para notas para evitar el error del backend
+        notas: observacionesController.text.trim().isEmpty
+            ? ""
+            : observacionesController.text.trim(),
         cliente:
             clienteFinal ??
             pedidoExistente!
@@ -1827,8 +1844,9 @@ class _PedidoScreenState extends State<PedidoScreen> {
         items: items,
         total: total,
         estado: EstadoPedido.activo,
-        notas:
-            "", // Siempre proporcionar un valor vacío para notas para evitar el error del backend
+        notas: observacionesController.text.trim().isEmpty
+            ? ""
+            : observacionesController.text.trim(),
         cliente: clienteFinal,
       );
 
@@ -1888,8 +1906,8 @@ class _PedidoScreenState extends State<PedidoScreen> {
       print('⚠️ Error invalidando caché: $e');
     }
 
-    // Regresar a la pantalla anterior y notificar que se actualizó
-    Navigator.pop(context, true);
+    // ✅ Redirect directo a mesas después de crear pedido
+    Navigator.pushNamedAndRemoveUntil(context, '/mesas', (route) => false);
   }
 
   void _mostrarMensajeExito(String pedidoId, double total) {
@@ -2020,6 +2038,31 @@ class _PedidoScreenState extends State<PedidoScreen> {
                       ),
                     ),
                     // No necesitamos onChanged ya que usamos el listener en initState
+                  ),
+                ),
+
+                // Caja de observaciones del pedido
+                Padding(
+                  padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  child: TextField(
+                    controller: observacionesController,
+                    style: TextStyle(color: textLight),
+                    maxLines: 2,
+                    decoration: InputDecoration(
+                      hintText: 'Observaciones del pedido...',
+                      hintStyle: TextStyle(color: textLight.withOpacity(0.5)),
+                      prefixIcon: Icon(Icons.note_add, color: primary),
+                      filled: true,
+                      fillColor: cardBg,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide.none,
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(color: primary),
+                      ),
+                    ),
                   ),
                 ),
 
@@ -2964,21 +3007,6 @@ class _PedidoScreenState extends State<PedidoScreen> {
         children: [
           Row(
             children: [
-              // Switch para controlar estado activo/pagado (solo admins en desktop)
-              if (userProvider.isAdmin && !isMovil)
-                Switch(
-                  value: productoPagado[producto.id]!,
-                  onChanged: (bool value) {
-                    setState(() {
-                      productoPagado[producto.id] = value;
-                      _calcularTotal();
-                    });
-                  },
-                  activeThumbColor: primary,
-                )
-              else if (!isMovil)
-                SizedBox(width: 50),
-
               // Imagen pequeña del producto
               Container(
                 margin: EdgeInsets.only(right: 8),

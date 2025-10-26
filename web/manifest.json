@@ -1,11 +1,11 @@
 {
-    "name": "Serch Restapp",
-    "short_name": "Serch Restapp",
+    "name": "Kronos Restobar",
+    "short_name": "Kronos Restobar",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#FF6B00",
     "theme_color": "#FF6B00",
-    "description": "Sistema de gestión de restaurante Serch Restapp",
+    "description": "Sistema de gestión restaurante Kronos Restobar",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

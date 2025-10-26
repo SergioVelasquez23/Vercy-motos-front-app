@@ -2,6 +2,16 @@
   <!-- Fondo circular -->
   <circle cx="16" cy="16" r="15" fill="#FF6B00" stroke="#E64A00" stroke-width="1"/>
   
-  <!-- Letra K simple y clara -->
-  <text x="16" y="22" font-family="Arial, sans-serif" font-size="20" font-weight="bold" fill="white" text-anchor="middle">K</text>
+  <!-- Plato pequeño -->
+  <ellipse cx="16" cy="18" rx="10" ry="3" fill="white" opacity="0.9"/>
+  
+  <!-- Vapor pequeño -->
+  <g opacity="0.8">
+    <path d="M12 10 Q13 8 14 10" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+    <path d="M16 9 Q17 7 18 9" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+    <path d="M20 10 Q21 8 22 10" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+  </g>
+  
+  <!-- Iniciales S&C -->
+  <text x="16" y="26" font-family="Arial, sans-serif" font-size="8" font-weight="bold" fill="white" text-anchor="middle">S&C</text>
 </svg>

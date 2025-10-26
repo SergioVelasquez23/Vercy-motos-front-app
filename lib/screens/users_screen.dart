@@ -139,25 +139,43 @@ class _UsersScreenState extends State<UsersScreen> {
         '   • Roles actuales en memoria: ${_userRolesMap[userId]?.map((r) => r.nombre).join(", ") ?? "ninguno"}',
       );
 
-      final roles = await _userService.getRolesByUserId(userId);
-      print(
-        '   • Roles obtenidos del servidor: ${roles.map((r) => r.nombre).join(", ")}',
-      );
+      // Intentar múltiples veces con delay para asegurar sincronización
+      List<Role> roles = [];
+      int intentos = 0;
+      const maxIntentos = 3;
 
-      // Solo actualizar si hay diferencias significativas
-      final rolesActualesEnMemoria = _userRolesMap[userId] ?? [];
-      final nombresMemoria = rolesActualesEnMemoria
-          .map((r) => r.nombre)
-          .toSet();
-      final nombresServidor = roles.map((r) => r.nombre).toSet();
+      while (intentos < maxIntentos) {
+        try {
+          intentos++;
+          print('   • Intento $intentos de $maxIntentos...');
 
-      if (nombresMemoria.toString() != nombresServidor.toString()) {
-        print('   • Se detectaron diferencias, actualizando en memoria');
+          roles = await _userService.getRolesByUserId(userId);
+          print(
+            '   • Roles obtenidos del servidor: ${roles.map((r) => r.nombre).join(", ")}',
+          );
+
+          if (roles.isNotEmpty) {
+            break; // Éxito, salir del loop
+          }
+
+          if (intentos < maxIntentos) {
+            print('   • No se obtuvieron roles, esperando 2 segundos...');
+            await Future.delayed(Duration(seconds: 2));
+          }
+        } catch (e) {
+          print('   • Error en intento $intentos: $e');
+          if (intentos < maxIntentos) {
+            await Future.delayed(Duration(seconds: 2));
+          }
+        }
+      }
+
+      // Actualizar siempre con la información del servidor (incluso si está vacía)
+      print('   • Actualizando roles en memoria con información del servidor');
+      if (mounted) {
         setState(() {
           _userRolesMap[userId] = roles;
         });
-      } else {
-        print('   • No hay diferencias, manteniendo roles en memoria');
       }
 
       print(
@@ -209,7 +227,37 @@ class _UsersScreenState extends State<UsersScreen> {
                     },
                   ),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 12),
+                // Botón Refrescar
+                ElevatedButton.icon(
+                  onPressed: _isLoading
+                      ? null
+                      : () {
+                          print('INFO: BOTÓN REFRESCAR PRESIONADO!');
+                          _cargarDatos();
+                        },
+                  icon: const Icon(
+                    Icons.refresh,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                  label: const Text(
+                    'Refrescar',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue[600],
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 16,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // Botón Nuevo
                 ElevatedButton.icon(
                   onPressed: () {
                     print('INFO: BOTÓN NUEVO USUARIOS PRESIONADO!');
@@ -756,11 +804,17 @@ class _UsersScreenState extends State<UsersScreen> {
         ),
       );
 
-      // Esperar un momento antes de verificar desde el servidor
-      Future.delayed(Duration(milliseconds: 2000), () {
+      // Esperar más tiempo antes de verificar desde el servidor para mejor sincronización
+      Future.delayed(Duration(milliseconds: 5000), () {
         // Actualizar roles específico del usuario desde el servidor para confirmar
         _actualizarRolesUsuarioEspecifico(user.id!);
       });
+
+      // También hacer una verificación inmediata para debug
+      print('🔍 Rol actualizado localmente. Estado actual en _userRolesMap:');
+      print(
+        '   • Usuario ${user.email}: ${_userRolesMap[user.id!]?.map((r) => r.nombre).join(", ")}',
+      );
     } catch (e) {
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(

@@ -2283,6 +2283,44 @@ class _MesasScreenState extends State<MesasScreen>
     }
   }
 
+  /// Verifica si una mesa es considerada especial (para optimizaciones de actualización)
+  bool _esMesaEspecial(String nombreMesa) {
+    // Primero buscar la mesa por nombre para verificar su tipo
+    final mesa = mesas.firstWhere(
+      (m) => m.nombre == nombreMesa,
+      orElse: () => Mesa(
+        id: '',
+        nombre: '',
+        tipo: TipoMesa.normal,
+        ocupada: false,
+        total: 0.0,
+      ),
+    );
+
+    // Si la mesa tiene tipo especial, es especial
+    if (mesa.tipo == TipoMesa.especial) {
+      print('🌟 Mesa ${nombreMesa} detectada como ESPECIAL por su tipo');
+      return true;
+    }
+
+    // Verificar también por nombres especiales predefinidos
+    final nombreUpper = nombreMesa.toUpperCase();
+    final esEspecialPorNombre =
+        nombreUpper == 'DOMICILIO' ||
+        nombreUpper == 'CAJA' ||
+        nombreUpper == 'MESA AUXILIAR' ||
+        nombreUpper == 'DEUDAS' ||
+        _mesasEspecialesUsuario.contains(nombreMesa);
+
+    if (esEspecialPorNombre) {
+      print('🌟 Mesa ${nombreMesa} detectada como ESPECIAL por su nombre');
+      return true;
+    } else {
+      print('📋 Mesa ${nombreMesa} es NORMAL (tipo: ${mesa.tipo})');
+      return false;
+    }
+  }
+
   /// VERIFICA el estado real de una mesa en tiempo de construcción del widget
   void _verificarEstadoRealMesa(Mesa mesa) {
     // Hacer esta verificación de forma asíncrona para no bloquear el build
@@ -10611,6 +10649,22 @@ class _MesasScreenState extends State<MesasScreen>
           pedidosActivos = snapshot.data!
               .where((pedido) => pedido.estado == EstadoPedido.activo)
               .toList();
+
+          // 🔍 DEBUG: Log para verificar pedidos en mesas especiales
+          if (pedidosActivos.isNotEmpty) {
+            print(
+              '🔍 Mesa especial "$nombre" tiene ${pedidosActivos.length} pedidos activos',
+            );
+            for (var pedido in pedidosActivos) {
+              print(
+                '   - Pedido ${pedido.id}: \$${pedido.total} - Estado: ${pedido.estado}',
+              );
+            }
+          }
+        } else if (snapshot.hasError) {
+          print(
+            '❌ Error cargando pedidos para mesa especial "$nombre": ${snapshot.error}',
+          );
         }
 
         // Determinar el estado basado en pedidos activos
@@ -10627,6 +10681,11 @@ class _MesasScreenState extends State<MesasScreen>
             totalGeneral += item.cantidad * item.precioUnitario;
           }
         }
+
+        // 📊 DEBUG: Log del estado calculado
+        print(
+          '📊 Mesa especial "$nombre": ${tienePedidos ? "OCUPADA" : "DISPONIBLE"} - ${pedidosActivos.length} pedidos - Total: \$${totalGeneral.toStringAsFixed(2)}',
+        );
 
         return GestureDetector(
           onTap: onTap,
@@ -11425,7 +11484,25 @@ class _MesasScreenState extends State<MesasScreen>
 
     // Si se creó o actualizó un pedido, recargar las mesas
     if (result == true) {
+      print(
+        '🔄 Pedido creado/actualizado en mesa ${mesa.nombre} - Iniciando recarga...',
+      );
+
       await _recargarMesasConCards();
+
+      // 🔧 AÑADIDO: Forzar actualización adicional para mesas especiales
+      if (_esMesaEspecial(mesa.nombre)) {
+        print(
+          '🔄 Mesa especial detectada - Forzando actualización adicional...',
+        );
+        await Future.delayed(
+          Duration(milliseconds: 500),
+        ); // Esperar que se propague en el backend
+
+        if (mounted) {
+          setState(() => _widgetRebuildKey++); // Forzar rebuild adicional
+        }
+      }
 
       // El backend ya registra automáticamente en el historial cuando se modifican pedidos
       print(

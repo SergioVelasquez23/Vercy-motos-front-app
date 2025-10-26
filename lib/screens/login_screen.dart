@@ -486,10 +486,11 @@ class _LoginScreenState extends State<LoginScreen> {
                           borderRadius: BorderRadius.circular(
                             AppTheme.radiusLarge - 2,
                           ),
-                          child: Image.asset(
-                            'images/logo.png',
+                          child: Image.network(
+                            'https://sopa-y-carbon-app.web.app/icons/Icon-192.png',
                             fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
                               return Container(
                                 decoration: BoxDecoration(
                                   color: AppTheme.primary.withOpacity(0.1),
@@ -497,11 +498,41 @@ class _LoginScreenState extends State<LoginScreen> {
                                     AppTheme.radiusLarge - 2,
                                   ),
                                 ),
-                                child: Icon(
-                                  Icons.restaurant,
-                                  color: AppTheme.primary,
-                                  size: context.isMobile ? 60 : 70,
+                                child: Center(
+                                  child: CircularProgressIndicator(
+                                    value:
+                                        loadingProgress.expectedTotalBytes !=
+                                            null
+                                        ? loadingProgress
+                                                  .cumulativeBytesLoaded /
+                                              loadingProgress
+                                                  .expectedTotalBytes!
+                                        : null,
+                                    color: AppTheme.primary,
+                                  ),
                                 ),
+                              );
+                            },
+                            errorBuilder: (context, error, stackTrace) {
+                              // Fallback a asset local si falla la red
+                              return Image.asset(
+                                'assets/images/logo.png',
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.primary.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(
+                                        AppTheme.radiusLarge - 2,
+                                      ),
+                                    ),
+                                    child: Icon(
+                                      Icons.restaurant,
+                                      color: AppTheme.primary,
+                                      size: context.isMobile ? 60 : 70,
+                                    ),
+                                  );
+                                },
                               );
                             },
                           ),
