@@ -20,6 +20,7 @@ import '../models/tipo_mesa.dart';
 import '../providers/user_provider.dart';
 import '../providers/datos_cache_provider.dart';
 import '../utils/format_utils.dart';
+import '../utils/cache_helpers.dart';
 
 class PedidoScreen extends StatefulWidget {
   final Mesa mesa;
@@ -176,7 +177,7 @@ class _PedidoScreenState extends State<PedidoScreen> {
           final productoId = item.productoId;
 
           // Buscar el producto en la caché
-          final producto =
+          final productoBase =
               productosCache?.firstWhere(
                 (p) => p.id == productoId,
                 orElse: () => Producto(
@@ -194,6 +195,30 @@ class _PedidoScreenState extends State<PedidoScreen> {
                 costo: 0,
                 utilidad: 0,
               );
+
+          // Crear producto con la información del pedido existente preservada
+          final producto = Producto(
+            id: productoBase.id,
+            nombre: productoBase.nombre,
+            precio: productoBase.precio,
+            costo: productoBase.costo,
+            impuestos: productoBase.impuestos,
+            utilidad: productoBase.utilidad,
+            tieneVariantes: productoBase.tieneVariantes,
+            estado: productoBase.estado,
+            imagenUrl: productoBase.imagenUrl,
+            categoria: productoBase.categoria,
+            descripcion: productoBase.descripcion,
+            // ✅ PRESERVAR las notas e ingredientes del pedido existente
+            nota: item.notas, // Preservar las notas del ItemPedido
+            cantidad: item.cantidad, // Preservar la cantidad
+            ingredientesDisponibles:
+                item.ingredientesSeleccionados, // Preservar ingredientes
+            ingredientesRequeridos: productoBase.ingredientesRequeridos,
+            ingredientesOpcionales: productoBase.ingredientesOpcionales,
+            tieneIngredientes: productoBase.tieneIngredientes,
+            tipoProducto: productoBase.tipoProducto,
+          );
 
           // Agregar a la lista de productos de la mesa
           productosMesa.add(producto);
@@ -409,8 +434,9 @@ class _PedidoScreenState extends State<PedidoScreen> {
     Producto producto,
   ) async {
     List<String> ingredientesSeleccionados = [];
+    List<String> ingredientesOpcionalesSeleccionados =
+        []; // Para tracking de opcionales múltiples
     TextEditingController notasController = TextEditingController();
-    String? ingredienteOpcionalSeleccionado; // Para radio buttons de opcionales
 
     // ✅ COMENTADO: Logs de debugging detallados removidos
     // print('🔍 DEBUGING INGREDIENTES para ${producto.nombre}:');
@@ -599,10 +625,10 @@ class _PedidoScreenState extends State<PedidoScreen> {
                           SizedBox(height: 16),
                         ],
 
-                        // Ingredientes opcionales (radio buttons - solo uno)
+                        // Ingredientes opcionales (checkboxes múltiples)
                         if (ingredientesOpcionales.isNotEmpty) ...[
                           Text(
-                            'Selecciona UNA opción de carne:',
+                            'Selecciona ingredientes opcionales (puedes elegir varios):',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
@@ -610,25 +636,39 @@ class _PedidoScreenState extends State<PedidoScreen> {
                             ),
                           ),
                           SizedBox(height: 8),
-                          // Opción "Ninguna"
-                          RadioListTile<String>(
-                            title: Text('Ninguna selección'),
-                            value: '',
-                            groupValue: ingredienteOpcionalSeleccionado,
-                            onChanged: (String? value) {
+                          // Opción "Sin selección" - checkbox especial
+                          CheckboxListTile(
+                            title: Text(
+                              'Sin selección - No agregar ingredientes opcionales',
+                              style: TextStyle(
+                                fontStyle: FontStyle.italic,
+                                color: Colors.white70,
+                              ),
+                            ),
+                            value: ingredientesOpcionalesSeleccionados.isEmpty,
+                            onChanged: (bool? value) {
                               setState(() {
-                                ingredienteOpcionalSeleccionado = value;
-                                // Remover cualquier ingrediente opcional previamente seleccionado
-                                ingredientesSeleccionados.removeWhere(
-                                  (ing) => ingredientesOpcionales.contains(ing),
-                                );
+                                if (value == true) {
+                                  // Limpiar todas las selecciones opcionales
+                                  ingredientesOpcionalesSeleccionados.clear();
+                                  ingredientesSeleccionados.removeWhere(
+                                    (ing) =>
+                                        ingredientesOpcionales.contains(ing),
+                                  );
+                                }
                               });
                             },
                             dense: true,
                             contentPadding: EdgeInsets.zero,
                           ),
+                          SizedBox(height: 8),
+                          // Lista de ingredientes opcionales
                           ...ingredientesOpcionales.map((ingrediente) {
-                            return RadioListTile<String>(
+                            final bool isSelected =
+                                ingredientesOpcionalesSeleccionados.contains(
+                                  ingrediente,
+                                );
+                            return CheckboxListTile(
                               title: Text(
                                 ingrediente,
                                 style: TextStyle(
@@ -636,20 +676,30 @@ class _PedidoScreenState extends State<PedidoScreen> {
                                   color: Colors.white,
                                 ),
                               ),
-                              value: ingrediente,
-                              groupValue: ingredienteOpcionalSeleccionado,
-                              onChanged: (String? value) {
+                              value: isSelected,
+                              onChanged: (bool? value) {
                                 setState(() {
-                                  // Remover cualquier ingrediente opcional previamente seleccionado
-                                  ingredientesSeleccionados.removeWhere(
-                                    (ing) =>
-                                        ingredientesOpcionales.contains(ing),
-                                  );
-
-                                  // Agregar el nuevo ingrediente seleccionado
-                                  ingredienteOpcionalSeleccionado = value;
-                                  if (value != null && value.isNotEmpty) {
-                                    ingredientesSeleccionados.add(value);
+                                  if (value == true) {
+                                    // Agregar ingrediente a la lista de opcionales seleccionados
+                                    ingredientesOpcionalesSeleccionados.add(
+                                      ingrediente,
+                                    );
+                                    // También agregarlo a la lista general (para compatibilidad)
+                                    if (!ingredientesSeleccionados.contains(
+                                      ingrediente,
+                                    )) {
+                                      ingredientesSeleccionados.add(
+                                        ingrediente,
+                                      );
+                                    }
+                                  } else {
+                                    // Remover ingrediente de ambas listas
+                                    ingredientesOpcionalesSeleccionados.remove(
+                                      ingrediente,
+                                    );
+                                    ingredientesSeleccionados.remove(
+                                      ingrediente,
+                                    );
                                   }
                                 });
                               },
@@ -699,44 +749,101 @@ class _PedidoScreenState extends State<PedidoScreen> {
                   child: Text('Cancelar'),
                 ),
                 ElevatedButton(
-                  onPressed:
-                      (ingredientesBasicos.isEmpty &&
-                          ingredientesOpcionales.isEmpty)
-                      ? () {
-                          // Si no hay ingredientes configurados, permitir continuar sin selección
-                          Navigator.of(context).pop({
-                            'ingredientes': <String>[],
-                            'notas': notasController.text.isNotEmpty
-                                ? notasController.text
-                                : null,
-                          });
-                        }
-                      : ingredientesSeleccionados.isEmpty
-                      ? null
-                      : () {
-                          String notasFinales = '';
-                          if (ingredientesSeleccionados.isNotEmpty) {
-                            notasFinales =
-                                'Ingredientes: ${ingredientesSeleccionados.join(', ')}';
-                          }
-                          if (notasController.text.isNotEmpty) {
-                            if (notasFinales.isNotEmpty) {
-                              notasFinales += ' - ${notasController.text}';
-                            } else {
-                              notasFinales = notasController.text;
-                            }
-                          }
+                  onPressed: () {
+                    // Caso 1: No hay ingredientes configurados
+                    if (ingredientesBasicos.isEmpty &&
+                        ingredientesOpcionales.isEmpty) {
+                      Navigator.of(context).pop({
+                        'ingredientes': <String>[],
+                        'notas': notasController.text.isNotEmpty
+                            ? notasController.text
+                            : null,
+                        'multiple': false,
+                      });
+                      return;
+                    }
 
-                          Navigator.of(context).pop({
-                            'ingredientes': ingredientesSeleccionados,
-                            'notas': notasFinales,
-                          });
-                        },
+                    // Caso 2: "Sin selección" marcado o no hay opcionales seleccionados
+                    if (ingredientesOpcionalesSeleccionados.isEmpty) {
+                      String notasFinales = '';
+
+                      // Solo incluir ingredientes básicos (no opcionales)
+                      List<String> ingredientesBasicosSeleccionados =
+                          ingredientesSeleccionados
+                              .where(
+                                (ing) => !ingredientesOpcionales.contains(ing),
+                              )
+                              .toList();
+
+                      if (ingredientesBasicosSeleccionados.isNotEmpty) {
+                        notasFinales = ingredientesBasicosSeleccionados.join(
+                          ', ',
+                        );
+                      }
+                      if (notasController.text.isNotEmpty) {
+                        if (notasFinales.isNotEmpty) {
+                          notasFinales += ' - ${notasController.text}';
+                        } else {
+                          notasFinales = notasController.text;
+                        }
+                      }
+
+                      Navigator.of(context).pop({
+                        'ingredientes': ingredientesBasicosSeleccionados,
+                        'notas': notasFinales.isNotEmpty ? notasFinales : null,
+                        'multiple': false,
+                      });
+                      return;
+                    }
+
+                    // Caso 3: Múltiples ingredientes opcionales seleccionados
+                    List<Map<String, dynamic>> productosMultiples = [];
+
+                    for (String ingredienteOpcional
+                        in ingredientesOpcionalesSeleccionados) {
+                      // Incluir ingredientes básicos + este ingrediente opcional específico
+                      List<String> ingredientesBasicosSeleccionados =
+                          ingredientesSeleccionados
+                              .where(
+                                (ing) => !ingredientesOpcionales.contains(ing),
+                              )
+                              .toList();
+
+                      List<String> ingredientesFinales = [
+                        ...ingredientesBasicosSeleccionados,
+                        ingredienteOpcional,
+                      ];
+
+                      String notasFinales = '';
+                      if (ingredientesFinales.isNotEmpty) {
+                        notasFinales = ingredientesFinales.join(', ');
+                      }
+                      if (notasController.text.isNotEmpty) {
+                        if (notasFinales.isNotEmpty) {
+                          notasFinales += ' - ${notasController.text}';
+                        } else {
+                          notasFinales = notasController.text;
+                        }
+                      }
+
+                      productosMultiples.add({
+                        'ingredientes': ingredientesFinales,
+                        'notas': notasFinales.isNotEmpty ? notasFinales : null,
+                        'ingredienteOpcional': ingredienteOpcional,
+                      });
+                    }
+
+                    Navigator.of(
+                      context,
+                    ).pop({'multiple': true, 'productos': productosMultiples});
+                  },
                   child: Text(
                     (ingredientesBasicos.isEmpty &&
                             ingredientesOpcionales.isEmpty)
                         ? 'Continuar sin ingredientes'
-                        : 'Confirmar',
+                        : ingredientesOpcionalesSeleccionados.isEmpty
+                        ? 'Confirmar (sin opcionales)'
+                        : 'Confirmar (${ingredientesOpcionalesSeleccionados.length} producto${ingredientesOpcionalesSeleccionados.length > 1 ? 's' : ''})',
                   ),
                 ),
               ],
@@ -746,78 +853,109 @@ class _PedidoScreenState extends State<PedidoScreen> {
       },
     );
 
-    // ✅ ESTRATEGIA NUEVA: Convertir ingredientes opcionales seleccionados en requeridos
+    // ✅ NUEVA ESTRATEGIA: Manejar productos múltiples para ingredientes opcionales
     if (resultado != null) {
-      List<String> ingredientesFinales = List<String>.from(
-        resultado['ingredientes'],
-      );
+      // Verificar si son múltiples productos
+      if (resultado['multiple'] == true && resultado['productos'] != null) {
+        // Procesar múltiples productos
+        List<Map<String, dynamic>> productosResultado = [];
+        List<Map<String, dynamic>> productosData =
+            List<Map<String, dynamic>>.from(resultado['productos']);
 
-      // 1. Agregar automáticamente todos los ingredientes requeridos ORIGINALES
-      for (var ingrediente in producto.ingredientesRequeridos) {
-        if (!ingredientesFinales.contains(ingrediente.ingredienteId)) {
-          ingredientesFinales.add(ingrediente.ingredienteId);
-          print(
-            '✅ Requerido original agregado: ${ingrediente.ingredienteNombre}',
+        for (var productoData in productosData) {
+          var productoConvertido = _procesarIngredientesProducto(
+            producto,
+            productoData,
           );
+          productosResultado.add(productoConvertido);
         }
+
+        return {'multiple': true, 'productos': productosResultado};
+      } else {
+        // Producto único (caso tradicional)
+        return _procesarIngredientesProducto(producto, resultado);
       }
-
-      // 2. 🎯 CONVERTIR ingredientes opcionales seleccionados en REQUERIDOS
-      List<IngredienteProducto> nuevosRequeridos = List.from(
-        producto.ingredientesRequeridos,
-      );
-
-      for (var ingredienteId in ingredientesFinales) {
-        // Buscar si este ID corresponde a un ingrediente opcional
-        var ingredienteOpcional = producto.ingredientesOpcionales
-            .where(
-              (opt) =>
-                  opt.ingredienteId == ingredienteId ||
-                  opt.ingredienteNombre == ingredienteId,
-            )
-            .firstOrNull;
-
-        if (ingredienteOpcional != null) {
-          // Convertir el opcional en requerido
-          var nuevoRequerido = IngredienteProducto(
-            ingredienteId: ingredienteOpcional.ingredienteId,
-            ingredienteNombre: ingredienteOpcional.ingredienteNombre,
-            cantidadNecesaria:
-                1.0, // Cantidad estándar para ingredientes seleccionados
-            esOpcional: false, // Ya no es opcional
-            precioAdicional: ingredienteOpcional.precioAdicional,
-          );
-          nuevosRequeridos.add(nuevoRequerido);
-          print(
-            '🔄 CONVERTIDO: ${ingredienteOpcional.ingredienteNombre} (opcional → requerido)',
-          );
-        }
-      }
-
-      // 3. Crear producto actualizado con los nuevos ingredientes requeridos
-      final productoActualizado = producto.copyWith(
-        ingredientesRequeridos: nuevosRequeridos,
-        // ✅ Limpiar los opcionales que ya se convirtieron en requeridos
-        ingredientesOpcionales: producto.ingredientesOpcionales.where((opt) {
-          return !ingredientesFinales.any(
-            (id) => opt.ingredienteId == id || opt.ingredienteNombre == id,
-          );
-        }).toList(),
-      );
-
-      // Actualizar el resultado con los ingredientes completos
-      resultado['ingredientes'] = ingredientesFinales;
-      resultado['producto_actualizado'] = productoActualizado;
-
-      print('📋 RESULTADO FINAL:');
-      print(
-        '  - Ingredientes opcionales convertidos a requeridos: ${nuevosRequeridos.length - producto.ingredientesRequeridos.length}',
-      );
-      print('  - Total ingredientes requeridos: ${nuevosRequeridos.length}');
-      print('  - Total ingredientes: ${ingredientesFinales.length}');
     }
 
     return resultado;
+  }
+
+  // Método auxiliar para procesar ingredientes de un producto individual
+  Map<String, dynamic> _procesarIngredientesProducto(
+    Producto producto,
+    Map<String, dynamic> productoData,
+  ) {
+    List<String> ingredientesFinales = List<String>.from(
+      productoData['ingredientes'],
+    );
+
+    // 1. Agregar automáticamente todos los ingredientes requeridos ORIGINALES
+    for (var ingrediente in producto.ingredientesRequeridos) {
+      if (!ingredientesFinales.contains(ingrediente.ingredienteId)) {
+        ingredientesFinales.add(ingrediente.ingredienteId);
+        print(
+          '✅ Requerido original agregado: ${ingrediente.ingredienteNombre}',
+        );
+      }
+    }
+
+    // 2. 🎯 CONVERTIR ingredientes opcionales seleccionados en REQUERIDOS
+    List<IngredienteProducto> nuevosRequeridos = List.from(
+      producto.ingredientesRequeridos,
+    );
+
+    for (var ingredienteId in ingredientesFinales) {
+      // Buscar si este ID corresponde a un ingrediente opcional
+      var ingredienteOpcional = producto.ingredientesOpcionales
+          .where(
+            (opt) =>
+                opt.ingredienteId == ingredienteId ||
+                opt.ingredienteNombre == ingredienteId,
+          )
+          .firstOrNull;
+
+      if (ingredienteOpcional != null) {
+        // Convertir el opcional en requerido
+        var nuevoRequerido = IngredienteProducto(
+          ingredienteId: ingredienteOpcional.ingredienteId,
+          ingredienteNombre: ingredienteOpcional.ingredienteNombre,
+          cantidadNecesaria:
+              1.0, // Cantidad estándar para ingredientes seleccionados
+          esOpcional: false, // Ya no es opcional
+          precioAdicional: ingredienteOpcional.precioAdicional,
+        );
+        nuevosRequeridos.add(nuevoRequerido);
+        print(
+          '🔄 CONVERTIDO: ${ingredienteOpcional.ingredienteNombre} (opcional → requerido)',
+        );
+      }
+    }
+
+    // 3. Crear producto actualizado con los nuevos ingredientes requeridos
+    final productoActualizado = producto.copyWith(
+      ingredientesRequeridos: nuevosRequeridos,
+      // ✅ Limpiar los opcionales que ya se convirtieron en requeridos
+      ingredientesOpcionales: producto.ingredientesOpcionales.where((opt) {
+        return !ingredientesFinales.any(
+          (id) => opt.ingredienteId == id || opt.ingredienteNombre == id,
+        );
+      }).toList(),
+    );
+
+    print('📋 PRODUCTO PROCESADO:');
+    print(
+      '  - Ingredientes opcionales convertidos a requeridos: ${nuevosRequeridos.length - producto.ingredientesRequeridos.length}',
+    );
+    print('  - Total ingredientes requeridos: ${nuevosRequeridos.length}');
+    print('  - Total ingredientes: ${ingredientesFinales.length}');
+
+    return {
+      'ingredientes': ingredientesFinales,
+      'notas': productoData['notas'],
+      'producto_actualizado': productoActualizado,
+      'ingredienteOpcional':
+          productoData['ingredienteOpcional'], // Para identificar en múltiples
+    };
   }
 
   Future<void> _loadData() async {
@@ -1112,12 +1250,78 @@ class _PedidoScreenState extends State<PedidoScreen> {
         producto,
       );
       if (resultadoIngredientes != null) {
-        ingredientesSeleccionados =
-            resultadoIngredientes['ingredientes'] as List<String>;
-        notasEspeciales = resultadoIngredientes['notas'] as String?;
-        if (resultadoIngredientes.containsKey('producto_actualizado')) {
-          productoFinal =
-              resultadoIngredientes['producto_actualizado'] as Producto;
+        // Verificar si son múltiples productos
+        if (resultadoIngredientes['multiple'] == true &&
+            resultadoIngredientes['productos'] != null) {
+          // Procesar múltiples productos recursivamente
+          List<Map<String, dynamic>> productos =
+              List<Map<String, dynamic>>.from(
+                resultadoIngredientes['productos'],
+              );
+
+          for (var productoData in productos) {
+            // Crear un producto temporal con los ingredientes de este producto específico
+            List<String> ingredientesEsteProducto = List<String>.from(
+              productoData['ingredientes'],
+            );
+            String? notasEsteProducto = productoData['notas'];
+            Producto productoEsteItem =
+                productoData['producto_actualizado'] as Producto;
+            String? ingredienteOpcional = productoData['ingredienteOpcional'];
+
+            // Crear nota específica para este producto
+            String notaFinal = notasEsteProducto ?? '';
+            if (ingredienteOpcional != null) {
+              if (notaFinal.isNotEmpty) {
+                notaFinal = '$notaFinal - Con $ingredienteOpcional';
+              } else {
+                notaFinal = 'Con $ingredienteOpcional';
+              }
+            }
+
+            // Crear Producto para la mesa
+            final productoParaMesa = Producto(
+              id: productoEsteItem.id,
+              nombre: productoEsteItem.nombre,
+              precio: productoEsteItem.precio,
+              costo: productoEsteItem.costo,
+              impuestos: productoEsteItem.impuestos,
+              utilidad: productoEsteItem.utilidad,
+              tieneVariantes: productoEsteItem.tieneVariantes,
+              estado: productoEsteItem.estado,
+              imagenUrl: productoEsteItem.imagenUrl,
+              categoria: productoEsteItem.categoria,
+              descripcion: productoEsteItem.descripcion,
+              nota: notaFinal,
+              cantidad: 1,
+              ingredientesDisponibles: ingredientesEsteProducto,
+              ingredientesRequeridos: productoEsteItem.ingredientesRequeridos,
+              ingredientesOpcionales: productoEsteItem.ingredientesOpcionales,
+              tieneIngredientes: productoEsteItem.tieneIngredientes,
+              tipoProducto: productoEsteItem.tipoProducto,
+            );
+
+            print(
+              '🍽️ Producto múltiple agregado: ${productoEsteItem.nombre} con $ingredienteOpcional',
+            );
+
+            // Agregar a la mesa
+            setState(() {
+              productosMesa.add(productoParaMesa);
+              productoPagado[productoParaMesa.id] = true;
+              _calcularTotal();
+            });
+          }
+          return; // Terminar aquí porque ya procesamos todos los productos
+        } else {
+          // Producto único (caso tradicional)
+          ingredientesSeleccionados =
+              resultadoIngredientes['ingredientes'] as List<String>;
+          notasEspeciales = resultadoIngredientes['notas'] as String?;
+          if (resultadoIngredientes.containsKey('producto_actualizado')) {
+            productoFinal =
+                resultadoIngredientes['producto_actualizado'] as Producto;
+          }
         }
       } else {
         return;
@@ -1671,6 +1875,19 @@ class _PedidoScreenState extends State<PedidoScreen> {
       isSaving = false;
     });
 
+    // ✅ NUEVO: Invalidar caché después de operación crítica
+    final datosProvider = Provider.of<DatosCacheProvider>(
+      context,
+      listen: false,
+    );
+    try {
+      // Forzar actualización de productos por si cambió inventario
+      await datosProvider.forceRefreshProductos();
+      print('✅ Cache invalidado después de guardar pedido');
+    } catch (e) {
+      print('⚠️ Error invalidando caché: $e');
+    }
+
     // Regresar a la pantalla anterior y notificar que se actualizó
     Navigator.pop(context, true);
   }
@@ -1701,8 +1918,15 @@ class _PedidoScreenState extends State<PedidoScreen> {
         backgroundColor: primary,
         elevation: 0,
         actions: [
-          // Refresh button
-          IconButton(icon: Icon(Icons.refresh), onPressed: _loadData),
+          // Cache status indicator
+          CacheHelpers.buildCacheStatus(context),
+          // Refresh button with cache logic
+          CacheHelpers.buildRefreshButton(
+            context,
+            onPressed: () async {
+              await _loadData();
+            },
+          ),
           IconButton(
             icon: Icon(Icons.category),
             tooltip: 'Gestionar Categorías',
@@ -2581,45 +2805,10 @@ class _PedidoScreenState extends State<PedidoScreen> {
 
     return GestureDetector(
       onTap: () async {
-        // Si el producto tiene ingredientes opcionales, siempre mostrar el diálogo y agregar como nuevo
+        // Si el producto tiene ingredientes opcionales, usar la función completa que maneja múltiples
         if (producto.ingredientesOpcionales.isNotEmpty) {
-          final resultadoIngredientes =
-              await _mostrarDialogoSeleccionIngredientes(producto);
-          if (resultadoIngredientes != null) {
-            List<String> ingredientesSeleccionados =
-                resultadoIngredientes['ingredientes'] as List<String>;
-            String? notasEspeciales = resultadoIngredientes['notas'] as String?;
-            Producto productoFinal = producto;
-            if (resultadoIngredientes.containsKey('producto_actualizado')) {
-              productoFinal =
-                  resultadoIngredientes['producto_actualizado'] as Producto;
-            }
-            setState(() {
-              Producto nuevoProd = Producto(
-                id: productoFinal.id,
-                nombre: productoFinal.nombre,
-                precio: productoFinal.precio,
-                costo: productoFinal.costo,
-                impuestos: productoFinal.impuestos,
-                utilidad: productoFinal.utilidad,
-                tieneVariantes: productoFinal.tieneVariantes,
-                estado: productoFinal.estado,
-                imagenUrl: productoFinal.imagenUrl,
-                categoria: productoFinal.categoria,
-                descripcion: productoFinal.descripcion,
-                nota: notasEspeciales,
-                cantidad: 1,
-                ingredientesDisponibles: ingredientesSeleccionados,
-                ingredientesRequeridos: productoFinal.ingredientesRequeridos,
-                ingredientesOpcionales: productoFinal.ingredientesOpcionales,
-                tieneIngredientes: productoFinal.tieneIngredientes,
-                tipoProducto: productoFinal.tipoProducto,
-              );
-              productosMesa.add(nuevoProd);
-              productoPagado[nuevoProd.id] = true;
-              _calcularTotal();
-            });
-          }
+          // ✅ ARREGLADO: Usar la función _agregarProducto que maneja múltiples correctamente
+          await _agregarProducto(producto);
         } else {
           // Si no tiene ingredientes opcionales, usar la lógica normal
           await _agregarProducto(producto);

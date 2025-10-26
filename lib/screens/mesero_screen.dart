@@ -55,6 +55,12 @@ class _MeseroScreenState extends State<MeseroScreen> {
       // Obtener pedidos del mesero
       _misPedidos = await _pedidoService.obtenerPedidosPorMesero(nombreMesero);
 
+      // ✅ ORDENAR de más reciente a más antiguo
+      _misPedidos.sort((a, b) {
+        // Usar la fecha para ordenar (más reciente primero)
+        return b.fecha.compareTo(a.fecha);
+      });
+
       setState(() {
         _isLoading = false;
       });

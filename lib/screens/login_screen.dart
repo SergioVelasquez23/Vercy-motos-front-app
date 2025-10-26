@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../services/auth_service.dart';
 import '../providers/user_provider.dart';
 import '../theme/app_theme.dart';
@@ -25,10 +26,108 @@ class _LoginScreenState extends State<LoginScreen> {
   // State variables
   bool showCodeField = false;
   String? errorMessage;
+  bool rememberCredentials = false;
+  final _secureStorage = const FlutterSecureStorage();
 
   @override
   void initState() {
     super.initState();
+    _loadSavedCredentials();
+  }
+
+  Future<void> _loadSavedCredentials() async {
+    try {
+      final savedEmail = await _secureStorage.read(key: 'saved_email');
+      final savedPassword = await _secureStorage.read(key: 'saved_password');
+      final savedRemember = await _secureStorage.read(
+        key: 'remember_credentials',
+      );
+
+      if (savedEmail != null && savedPassword != null) {
+        setState(() {
+          emailController.text = savedEmail;
+          passwordController.text = savedPassword;
+          rememberCredentials = savedRemember == 'true';
+        });
+
+        // Intentar auto-login si las credenciales están guardadas
+        if (savedRemember == 'true') {
+          _attemptAutoLogin();
+        }
+      }
+    } catch (e) {
+      print('Error loading saved credentials: $e');
+    }
+  }
+
+  Future<void> _attemptAutoLogin() async {
+    try {
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+
+      // Solo hacer auto-login si no hay token válido actualmente
+      if (!userProvider.isAuthenticated) {
+        print('🔄 Intentando auto-login con credenciales guardadas...');
+
+        final response = await authService.iniciarSesionWithResponse(
+          context,
+          emailController.text,
+          passwordController.text,
+        );
+
+        if (response != null && response['token'] != null) {
+          final token = response['token'];
+          await userProvider.setToken(token);
+
+          print('✅ Auto-login exitoso');
+
+          // Navegar automáticamente
+          await Future.delayed(Duration(milliseconds: 100));
+          if (userProvider.isMesero && !userProvider.isAdmin) {
+            Navigator.pushReplacementNamed(context, '/mesas');
+          } else {
+            Navigator.pushReplacementNamed(context, '/dashboard');
+          }
+        } else if (response != null && response['requiresCode'] == true) {
+          // Si requiere código 2FA, mostrar el campo
+          setState(() {
+            showCodeField = true;
+          });
+          print('🔐 Auto-login requiere código 2FA');
+        } else {
+          print('⚠️ Auto-login falló - credenciales inválidas');
+        }
+      }
+    } catch (e) {
+      print('❌ Error en auto-login: $e');
+    }
+  }
+
+  Future<void> _saveCredentials() async {
+    try {
+      await _secureStorage.write(
+        key: 'saved_email',
+        value: emailController.text,
+      );
+      await _secureStorage.write(
+        key: 'saved_password',
+        value: passwordController.text,
+      );
+      await _secureStorage.write(key: 'remember_credentials', value: 'true');
+      print('✅ Credenciales guardadas exitosamente');
+    } catch (e) {
+      print('Error saving credentials: $e');
+    }
+  }
+
+  Future<void> _clearSavedCredentials() async {
+    try {
+      await _secureStorage.delete(key: 'saved_email');
+      await _secureStorage.delete(key: 'saved_password');
+      await _secureStorage.delete(key: 'remember_credentials');
+      print('🗑️ Credenciales eliminadas');
+    } catch (e) {
+      print('Error clearing credentials: $e');
+    }
   }
 
   @override
@@ -74,6 +173,14 @@ class _LoginScreenState extends State<LoginScreen> {
           final token = response['token'];
           try {
             await userProvider.setToken(token);
+
+            // Guardar credenciales si el usuario lo solicita
+            if (rememberCredentials) {
+              await _saveCredentials();
+            } else {
+              await _clearSavedCredentials();
+            }
+
             await Future.delayed(Duration(milliseconds: 100));
             if (userProvider.isMesero && !userProvider.isAdmin) {
               Navigator.pushReplacementNamed(context, '/mesas');
@@ -108,6 +215,13 @@ class _LoginScreenState extends State<LoginScreen> {
       final response = await authService.validarCodigo(codeController.text);
       if (response != null && response['token'] != null) {
         await userProvider.setToken(response['token']);
+
+        // Guardar credenciales si el usuario lo solicita
+        if (rememberCredentials) {
+          await _saveCredentials();
+        } else {
+          await _clearSavedCredentials();
+        }
 
         await Future.delayed(Duration(milliseconds: 100));
 
@@ -510,6 +624,69 @@ class _LoginScreenState extends State<LoginScreen> {
                                   width: 2,
                                 ),
                               ),
+                            ),
+                          ),
+
+                          SizedBox(height: AppTheme.spacingMedium),
+
+                          // Checkbox para recordar credenciales
+                          Container(
+                            padding: EdgeInsets.symmetric(horizontal: 4),
+                            child: Row(
+                              children: [
+                                Checkbox(
+                                  value: rememberCredentials,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      rememberCredentials = value ?? false;
+                                    });
+                                  },
+                                  activeColor: AppTheme.primary,
+                                  checkColor: Colors.white,
+                                  fillColor: MaterialStateProperty.resolveWith((
+                                    states,
+                                  ) {
+                                    if (states.contains(
+                                      MaterialState.selected,
+                                    )) {
+                                      return AppTheme.primary;
+                                    }
+                                    return Colors.transparent;
+                                  }),
+                                  side: BorderSide(
+                                    color: AppTheme.textMuted.withOpacity(0.5),
+                                    width: 2,
+                                  ),
+                                ),
+                                SizedBox(width: AppTheme.spacingSmall),
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        rememberCredentials =
+                                            !rememberCredentials;
+                                      });
+                                    },
+                                    child: Text(
+                                      'Recordar mis credenciales',
+                                      style: AppTheme.bodyMedium.copyWith(
+                                        color: AppTheme.textSecondary,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                // Icono de información
+                                Tooltip(
+                                  message:
+                                      'Tus credenciales se guardarán de forma segura en este dispositivo para futuros inicios de sesión',
+                                  child: Icon(
+                                    Icons.info_outline,
+                                    size: 18,
+                                    color: AppTheme.textMuted,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
 

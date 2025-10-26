@@ -1820,10 +1820,13 @@ class _DialogoAgregarItemState extends State<_DialogoAgregarItem> {
       backgroundColor: widget.cardBg,
       child: Container(
         width: MediaQuery.of(context).size.width * 0.9,
-        height: MediaQuery.of(context).size.height * 0.8,
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.85,
+        ),
         padding: EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             // Título
             Row(
@@ -1865,287 +1868,322 @@ class _DialogoAgregarItemState extends State<_DialogoAgregarItem> {
             ),
             SizedBox(height: 16),
 
-            // Lista de ingredientes
-            Text(
-              'Seleccionar Ingrediente:',
-              style: TextStyle(
-                color: widget.textDark,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            SizedBox(height: 8),
+            // Contenido principal scrollable
             Expanded(
-              flex: 2,
-              child: Container(
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey[600]!),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: ListView.builder(
-                  itemCount: _ingredientesFiltrados.length,
-                  itemBuilder: (context, index) {
-                    final ingrediente = _ingredientesFiltrados[index];
-                    final isSelected =
-                        _ingredienteSeleccionado?.id == ingrediente.id;
-
-                    return ListTile(
-                      title: Text(
-                        ingrediente.nombre,
-                        style: TextStyle(color: widget.textDark),
-                      ),
-                      subtitle: Text(
-                        '${ingrediente.categoria} - Stock: ${ingrediente.cantidad} ${ingrediente.unidad}',
-                        style: TextStyle(color: widget.textLight),
-                      ),
-                      trailing: Text(
-                        '\$${ingrediente.costo.toStringAsFixed(0)}/${ingrediente.unidad}',
-                        style: TextStyle(
-                          color: widget.textLight,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      selected: isSelected,
-                      selectedTileColor: widget.primary.withOpacity(0.1),
-                      onTap: () {
-                        setState(() {
-                          _ingredienteSeleccionado = ingrediente;
-                          _precioController.text = ingrediente.costo.toString();
-                        });
-                      },
-                    );
-                  },
-                ),
-              ),
-            ),
-            SizedBox(height: 16),
-
-            // Detalles del item
-            if (_ingredienteSeleccionado != null) ...[
-              Container(
-                padding: EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: widget.cardBg,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey[600]!),
-                ),
+              child: SingleChildScrollView(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Título
+                    // Lista de ingredientes
                     Text(
-                      'Detalles del Item',
+                      'Seleccionar Ingrediente:',
                       style: TextStyle(
                         color: widget.textDark,
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    SizedBox(height: 16),
-
-                    // Switch para elegir el modo de entrada
-                    Row(
-                      children: [
-                        Icon(
-                          _usarTotal ? Icons.calculate : Icons.attach_money,
-                          color: widget.textLight,
-                          size: 20,
-                        ),
-                        SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Modo de entrada de precios',
-                                style: TextStyle(
-                                  color: widget.textDark,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              SizedBox(height: 4),
-                              Text(
-                                _usarTotal
-                                    ? 'Total directo - el precio unitario se calculará automáticamente'
-                                    : 'Precio unitario manual - ingresa el precio por unidad',
-                                style: TextStyle(
-                                  color: widget.textLight,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Switch(
-                          value: _usarTotal,
-                          onChanged: (value) {
-                            setState(() {
-                              _usarTotal = value;
-                              // Limpiar los campos al cambiar de modo
-                              if (_usarTotal) {
-                                _precioController.clear();
-                              } else {
-                                _totalController.clear();
-                              }
-                            });
-                          },
-                          activeColor: widget.primary,
-                          activeTrackColor: widget.primary.withOpacity(0.3),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 20),
-
-                    // Campos de entrada uniformes
-                    // Cantidad (siempre visible)
-                    TextField(
-                      controller: _cantidadController,
-                      style: TextStyle(color: widget.textDark),
-                      keyboardType: TextInputType.number,
-                      decoration: InputDecoration(
-                        labelText: 'Cantidad',
-                        labelStyle: TextStyle(color: widget.textLight),
-                        suffixText: _ingredienteSeleccionado!.unidad,
-                        suffixStyle: TextStyle(color: widget.textLight),
-                        enabledBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: Colors.grey[600]!),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: widget.primary),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      onChanged: (_) => setState(() {}),
-                    ),
-                    SizedBox(height: 16),
-
-                    // Campo de precio/total condicional
-                    if (!_usarTotal) ...[
-                      TextField(
-                        controller: _precioController,
-                        style: TextStyle(color: widget.textDark),
-                        keyboardType: TextInputType.number,
-                        decoration: InputDecoration(
-                          labelText: 'Precio Unitario',
-                          labelStyle: TextStyle(color: widget.textLight),
-                          prefixText: '\$',
-                          prefixStyle: TextStyle(color: widget.textLight),
-                          helperText:
-                              'Precio por ${_ingredienteSeleccionado!.unidad}',
-                          helperStyle: TextStyle(
-                            color: widget.textLight,
-                            fontSize: 12,
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderSide: BorderSide(color: Colors.grey[600]!),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderSide: BorderSide(color: widget.primary),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        onChanged: (_) => setState(() {}),
-                      ),
-                    ] else ...[
-                      TextField(
-                        controller: _totalController,
-                        style: TextStyle(color: widget.textDark),
-                        keyboardType: TextInputType.number,
-                        decoration: InputDecoration(
-                          labelText: 'Total del Item',
-                          labelStyle: TextStyle(color: widget.textLight),
-                          prefixText: '\$',
-                          prefixStyle: TextStyle(color: widget.textLight),
-                          helperText:
-                              'El precio unitario se calculará automáticamente',
-                          helperStyle: TextStyle(
-                            color: widget.textLight,
-                            fontSize: 12,
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderSide: BorderSide(color: Colors.grey[600]!),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderSide: BorderSide(color: widget.primary),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        onChanged: (_) => setState(() {}),
-                      ),
-                    ],
-                    SizedBox(height: 16),
-
-                    // Información del subtotal
+                    SizedBox(height: 8),
                     Container(
-                      padding: EdgeInsets.all(12),
+                      height: 200, // Altura fija para la lista
                       decoration: BoxDecoration(
-                        color: Colors.grey[800],
+                        border: Border.all(color: Colors.grey[600]!),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Column(
-                        children: [
-                          // Mostrar precio unitario calculado si está en modo total
-                          if (_usarTotal && _subtotal > 0) ...[
+                      child: ListView.builder(
+                        itemCount: _ingredientesFiltrados.length,
+                        itemBuilder: (context, index) {
+                          final ingrediente = _ingredientesFiltrados[index];
+                          final isSelected =
+                              _ingredienteSeleccionado?.id == ingrediente.id;
+
+                          return ListTile(
+                            title: Text(
+                              ingrediente.nombre,
+                              style: TextStyle(color: widget.textDark),
+                            ),
+                            subtitle: Text(
+                              '${ingrediente.categoria} - Stock: ${ingrediente.cantidad} ${ingrediente.unidad}',
+                              style: TextStyle(color: widget.textLight),
+                            ),
+                            trailing: Text(
+                              '\$${ingrediente.costo.toStringAsFixed(0)}/${ingrediente.unidad}',
+                              style: TextStyle(
+                                color: widget.textLight,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            selected: isSelected,
+                            selectedTileColor: widget.primary.withOpacity(0.1),
+                            onTap: () {
+                              setState(() {
+                                _ingredienteSeleccionado = ingrediente;
+                                _precioController.text = ingrediente.costo
+                                    .toString();
+                              });
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                    SizedBox(height: 16),
+
+                    // Detalles del item
+                    if (_ingredienteSeleccionado != null) ...[
+                      Container(
+                        padding: EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: widget.cardBg,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey[600]!),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Título
+                            Text(
+                              'Detalles del Item',
+                              style: TextStyle(
+                                color: widget.textDark,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            SizedBox(height: 16),
+
+                            // Switch para elegir el modo de entrada
                             Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text(
-                                  'Precio Unitario Calculado:',
-                                  style: TextStyle(
-                                    color: widget.textDark,
-                                    fontSize: 14,
+                                Icon(
+                                  _usarTotal
+                                      ? Icons.calculate
+                                      : Icons.attach_money,
+                                  color: widget.textLight,
+                                  size: 20,
+                                ),
+                                SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Modo de entrada de precios',
+                                        style: TextStyle(
+                                          color: widget.textDark,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                      SizedBox(height: 4),
+                                      Text(
+                                        _usarTotal
+                                            ? 'Total directo - el precio unitario se calculará automáticamente'
+                                            : 'Precio unitario manual - ingresa el precio por unidad',
+                                        style: TextStyle(
+                                          color: widget.textLight,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                                Text(
-                                  '\$${_precioUnitarioCalculado.toStringAsFixed(2)}',
-                                  style: TextStyle(
-                                    color: widget.textDark,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w500,
+                                Switch(
+                                  value: _usarTotal,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _usarTotal = value;
+                                      // Limpiar los campos al cambiar de modo
+                                      if (_usarTotal) {
+                                        _precioController.clear();
+                                      } else {
+                                        _totalController.clear();
+                                      }
+                                    });
+                                  },
+                                  activeColor: widget.primary,
+                                  activeTrackColor: widget.primary.withOpacity(
+                                    0.3,
                                   ),
                                 ),
                               ],
                             ),
-                            SizedBox(height: 8),
-                            Divider(color: widget.textLight.withOpacity(0.3)),
-                            SizedBox(height: 8),
-                          ],
-                          // Subtotal final
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'Subtotal:',
-                                style: TextStyle(
-                                  color: widget.textDark,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
+                            SizedBox(height: 20),
+
+                            // Campos de entrada uniformes
+                            // Cantidad (siempre visible)
+                            TextField(
+                              controller: _cantidadController,
+                              style: TextStyle(color: widget.textDark),
+                              keyboardType: TextInputType.number,
+                              decoration: InputDecoration(
+                                labelText: 'Cantidad',
+                                labelStyle: TextStyle(color: widget.textLight),
+                                suffixText: _ingredienteSeleccionado!.unidad,
+                                suffixStyle: TextStyle(color: widget.textLight),
+                                enabledBorder: OutlineInputBorder(
+                                  borderSide: BorderSide(
+                                    color: Colors.grey[600]!,
+                                  ),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderSide: BorderSide(color: widget.primary),
+                                  borderRadius: BorderRadius.circular(8),
                                 ),
                               ),
-                              Text(
-                                '\$${_subtotal.toStringAsFixed(0)}',
-                                style: TextStyle(
-                                  color: widget.textDark,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
+                              onChanged: (_) => setState(() {}),
+                            ),
+                            SizedBox(height: 16),
+
+                            // Campo de precio/total condicional
+                            if (!_usarTotal) ...[
+                              TextField(
+                                controller: _precioController,
+                                style: TextStyle(color: widget.textDark),
+                                keyboardType: TextInputType.number,
+                                decoration: InputDecoration(
+                                  labelText: 'Precio Unitario',
+                                  labelStyle: TextStyle(
+                                    color: widget.textLight,
+                                  ),
+                                  prefixText: '\$',
+                                  prefixStyle: TextStyle(
+                                    color: widget.textLight,
+                                  ),
+                                  helperText:
+                                      'Precio por ${_ingredienteSeleccionado!.unidad}',
+                                  helperStyle: TextStyle(
+                                    color: widget.textLight,
+                                    fontSize: 12,
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderSide: BorderSide(
+                                      color: Colors.grey[600]!,
+                                    ),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderSide: BorderSide(
+                                      color: widget.primary,
+                                    ),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
                                 ),
+                                onChanged: (_) => setState(() {}),
+                              ),
+                            ] else ...[
+                              TextField(
+                                controller: _totalController,
+                                style: TextStyle(color: widget.textDark),
+                                keyboardType: TextInputType.number,
+                                decoration: InputDecoration(
+                                  labelText: 'Total del Item',
+                                  labelStyle: TextStyle(
+                                    color: widget.textLight,
+                                  ),
+                                  prefixText: '\$',
+                                  prefixStyle: TextStyle(
+                                    color: widget.textLight,
+                                  ),
+                                  helperText:
+                                      'El precio unitario se calculará automáticamente',
+                                  helperStyle: TextStyle(
+                                    color: widget.textLight,
+                                    fontSize: 12,
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderSide: BorderSide(
+                                      color: Colors.grey[600]!,
+                                    ),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderSide: BorderSide(
+                                      color: widget.primary,
+                                    ),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                                onChanged: (_) => setState(() {}),
                               ),
                             ],
-                          ),
-                        ],
+                            SizedBox(height: 16),
+
+                            // Información del subtotal
+                            Container(
+                              padding: EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[800],
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Column(
+                                children: [
+                                  // Mostrar precio unitario calculado si está en modo total
+                                  if (_usarTotal && _subtotal > 0) ...[
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          'Precio Unitario Calculado:',
+                                          style: TextStyle(
+                                            color: widget.textDark,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                        Text(
+                                          '\$${_precioUnitarioCalculado.toStringAsFixed(2)}',
+                                          style: TextStyle(
+                                            color: widget.textDark,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    SizedBox(height: 8),
+                                    Divider(
+                                      color: widget.textLight.withOpacity(0.3),
+                                    ),
+                                    SizedBox(height: 8),
+                                  ],
+                                  // Subtotal final
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        'Subtotal:',
+                                        style: TextStyle(
+                                          color: widget.textDark,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      Text(
+                                        '\$${_subtotal.toStringAsFixed(0)}',
+                                        style: TextStyle(
+                                          color: widget.textDark,
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ),
-            ],
-            SizedBox(height: 16),
+            ),
 
-            // Botones
+            // Botones siempre visibles en la parte inferior
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [

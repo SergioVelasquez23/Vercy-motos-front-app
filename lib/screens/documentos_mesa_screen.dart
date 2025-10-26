@@ -950,6 +950,71 @@ class _DocumentosMesaScreenState extends State<DocumentosMesaScreen>
               ElevatedButton.icon(
                 onPressed: () async {
                   Navigator.pop(context);
+                  // Mostrar diálogo para capturar datos del cliente
+                  final datosCliente = await _mostrarDialogoClienteFactura();
+                  if (datosCliente != null) {
+                    try {
+                      showDialog(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (context) => Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              CircularProgressIndicator(),
+                              SizedBox(height: 16),
+                              Text(
+                                'Creando factura...',
+                                style: TextStyle(color: Colors.white),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+
+                      // Crear una copia del resumen con los datos del cliente
+                      final resumenConCliente = Map<String, dynamic>.from(
+                        resumen,
+                      );
+                      resumenConCliente['clienteNombre'] =
+                          datosCliente['nombre'];
+                      resumenConCliente['clienteCorreo'] =
+                          datosCliente['correo'];
+                      resumenConCliente['clienteTelefono'] =
+                          datosCliente['telefono'];
+                      resumenConCliente['clienteDireccion'] =
+                          datosCliente['direccion'];
+                      resumenConCliente['nit'] = datosCliente['nit'];
+
+                      pdfServiceWeb.generarYDescargarPDF(
+                        resumen: resumenConCliente,
+                        esFactura: true,
+                      );
+                      Navigator.of(context).pop(); // Cerrar loading
+
+                      // Mostrar mensaje de éxito
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Factura creada con datos del cliente'),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    } catch (e) {
+                      Navigator.of(context).pop(); // Cerrar loading
+                      mostrarMensajeError('Error creando factura: $e');
+                    }
+                  }
+                },
+                icon: Icon(Icons.receipt_long),
+                label: Text('Factura'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Color(0xFF1976D2),
+                  foregroundColor: Colors.white,
+                ),
+              ),
+              ElevatedButton.icon(
+                onPressed: () async {
+                  Navigator.pop(context);
                   try {
                     showDialog(
                       context: context,
@@ -1046,6 +1111,68 @@ class _DocumentosMesaScreenState extends State<DocumentosMesaScreen>
               ElevatedButton.icon(
                 onPressed: () async {
                   Navigator.pop(context);
+                  // Mostrar diálogo para capturar datos del cliente
+                  final datosCliente = await _mostrarDialogoClienteFactura();
+                  if (datosCliente != null) {
+                    try {
+                      showDialog(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (context) => Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              CircularProgressIndicator(),
+                              SizedBox(height: 16),
+                              Text(
+                                'Creando factura...',
+                                style: TextStyle(color: Colors.white),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+
+                      // Crear una copia del resumen con los datos del cliente
+                      final resumenConCliente = Map<String, dynamic>.from(
+                        resumen,
+                      );
+                      resumenConCliente['clienteNombre'] =
+                          datosCliente['nombre'];
+                      resumenConCliente['clienteCorreo'] =
+                          datosCliente['correo'];
+                      resumenConCliente['clienteTelefono'] =
+                          datosCliente['telefono'];
+                      resumenConCliente['clienteDireccion'] =
+                          datosCliente['direccion'];
+                      resumenConCliente['nit'] = datosCliente['nit'];
+
+                      await _pdfService.mostrarVistaPrevia(
+                        resumen: resumenConCliente,
+                        esFactura: true,
+                      );
+
+                      Navigator.of(context).pop(); // Cerrar loading
+
+                      mostrarMensajeExito(
+                        'Factura creada con datos del cliente',
+                      );
+                    } catch (e) {
+                      Navigator.of(context).pop(); // Cerrar loading
+                      mostrarMensajeError('Error creando factura: $e');
+                    }
+                  }
+                },
+                icon: Icon(Icons.receipt_long),
+                label: Text('Factura'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Color(0xFF1976D2),
+                  foregroundColor: Colors.white,
+                ),
+              ),
+              ElevatedButton.icon(
+                onPressed: () async {
+                  Navigator.pop(context);
                   try {
                     showDialog(
                       context: context,
@@ -1114,5 +1241,144 @@ class _DocumentosMesaScreenState extends State<DocumentosMesaScreen>
     } catch (e) {
       mostrarMensajeError('Error preparando documento: $e');
     }
+  }
+
+  /// Muestra un diálogo para capturar los datos del cliente para la factura
+  Future<Map<String, String>?> _mostrarDialogoClienteFactura() async {
+    final nitController = TextEditingController(text: '222222222-2');
+    final nombreController = TextEditingController();
+    final correoController = TextEditingController();
+    final telefonoController = TextEditingController();
+    final direccionController = TextEditingController();
+
+    return showDialog<Map<String, String>>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: _cardBg,
+        title: Text(
+          'Datos del Cliente',
+          style: TextStyle(
+            color: _textLight,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: Container(
+          width: double.maxFinite,
+          constraints: BoxConstraints(maxHeight: 400),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Ingrese los datos del cliente para la factura (opcional)',
+                  style: TextStyle(color: Colors.grey[400], fontSize: 14),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 20),
+                TextField(
+                  controller: nitController,
+                  decoration: InputDecoration(
+                    labelText: 'NIT/Cédula',
+                    hintText: '222222222-2',
+                    prefixIcon: Icon(Icons.numbers, color: _primary),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    labelStyle: TextStyle(color: _textLight),
+                  ),
+                  style: TextStyle(color: _textLight),
+                ),
+                SizedBox(height: 15),
+                TextField(
+                  controller: nombreController,
+                  decoration: InputDecoration(
+                    labelText: 'Nombre Completo',
+                    hintText: 'Ingrese el nombre del cliente',
+                    prefixIcon: Icon(Icons.person, color: _primary),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    labelStyle: TextStyle(color: _textLight),
+                  ),
+                  style: TextStyle(color: _textLight),
+                ),
+                SizedBox(height: 15),
+                TextField(
+                  controller: correoController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: InputDecoration(
+                    labelText: 'Correo Electrónico',
+                    hintText: 'cliente@email.com',
+                    prefixIcon: Icon(Icons.email, color: _primary),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    labelStyle: TextStyle(color: _textLight),
+                  ),
+                  style: TextStyle(color: _textLight),
+                ),
+                SizedBox(height: 15),
+                TextField(
+                  controller: telefonoController,
+                  keyboardType: TextInputType.phone,
+                  decoration: InputDecoration(
+                    labelText: 'Teléfono',
+                    hintText: '3001234567',
+                    prefixIcon: Icon(Icons.phone, color: _primary),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    labelStyle: TextStyle(color: _textLight),
+                  ),
+                  style: TextStyle(color: _textLight),
+                ),
+                SizedBox(height: 15),
+                TextField(
+                  controller: direccionController,
+                  decoration: InputDecoration(
+                    labelText: 'Dirección',
+                    hintText: 'Dirección del cliente',
+                    prefixIcon: Icon(Icons.location_on, color: _primary),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    labelStyle: TextStyle(color: _textLight),
+                  ),
+                  style: TextStyle(color: _textLight),
+                  maxLines: 2,
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancelar', style: TextStyle(color: Colors.grey[400])),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context, {
+                'nit': nitController.text.trim(),
+                'nombre': nombreController.text.trim(),
+                'correo': correoController.text.trim(),
+                'telefono': telefonoController.text.trim(),
+                'direccion': direccionController.text.trim(),
+              });
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _primary,
+              foregroundColor: Colors.white,
+              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: Text('Crear Factura'),
+          ),
+        ],
+      ),
+    );
   }
 }

@@ -24,7 +24,22 @@ class DatosCacheProvider extends ChangeNotifier {
   bool _isLoadingCategorias = false;
   bool _isLoadingIngredientes = false;
 
-  // WebSocket
+  // ✅ NUEVA ESTRATEGIA: Cache con timestamp y auto-refresh
+  DateTime? _ultimaCargaProductos;
+  DateTime? _ultimaCargaCategorias;
+  DateTime? _ultimaCargaIngredientes;
+
+  // Configuración de caché (en minutos)
+  final int _duracionCacheProductos = 5; // 5 minutos para productos
+  final int _duracionCacheCategorias = 15; // 15 minutos para categorías
+  final int _duracionCacheIngredientes = 10; // 10 minutos para ingredientes
+
+  // Polling automático
+  Timer? _pollingTimer;
+  bool _enablePolling = true;
+  final int _pollingIntervalMinutes = 3; // Polling cada 3 minutos
+
+  // WebSocket (mantenido como fallback)
   WebSocketChannel? _channel;
   Timer? _reconnectTimer;
   bool _isConnected = false;
@@ -47,25 +62,54 @@ class DatosCacheProvider extends ChangeNotifier {
   bool get hasData =>
       _productos != null && _categorias != null && _ingredientes != null;
 
+  // ✅ NUEVOS GETTERS: Estado del caché
+  bool get productosExpired =>
+      _ultimaCargaProductos == null ||
+      DateTime.now().difference(_ultimaCargaProductos!).inMinutes >
+          _duracionCacheProductos;
+
+  bool get categoriasExpired =>
+      _ultimaCargaCategorias == null ||
+      DateTime.now().difference(_ultimaCargaCategorias!).inMinutes >
+          _duracionCacheCategorias;
+
+  bool get ingredientesExpired =>
+      _ultimaCargaIngredientes == null ||
+      DateTime.now().difference(_ultimaCargaIngredientes!).inMinutes >
+          _duracionCacheIngredientes;
+
+  DateTime? get ultimaActualizacion {
+    if (_ultimaCargaProductos == null) return null;
+    return _ultimaCargaProductos;
+  }
+
   // Inicializar el provider
   Future<void> initialize() async {
     print('🚀 Inicializando DatosCacheProvider...');
     await _cargarTodosLosDatos();
     _connectWebSocket();
+    _startPolling(); // ✅ NUEVO: Iniciar polling automático
   }
 
   // Cargar todos los datos en paralelo
-  Future<void> _cargarTodosLosDatos() async {
-    print('📊 Cargando datos frescos en caché...');
+  Future<void> _cargarTodosLosDatos({
+    bool force = false,
+    bool silent = false,
+  }) async {
+    print(
+      '📊 Cargando datos ${force ? 'forzados' : 'en caché'}${silent ? ' (silencioso)' : ''}...',
+    );
 
     try {
       await Future.wait([
-        _cargarProductos(),
-        _cargarCategorias(),
-        _cargarIngredientes(),
+        _cargarProductos(force: force, silent: silent),
+        _cargarCategorias(force: force, silent: silent),
+        _cargarIngredientes(force: force, silent: silent),
       ]);
 
-      print('✅ Todos los datos cargados en caché exitosamente');
+      print(
+        '✅ Todos los datos cargados exitosamente${silent ? ' (silencioso)' : ''}',
+      );
       print('   - Productos: ${_productos?.length ?? 0}');
       print('   - Categorías: ${_categorias?.length ?? 0}');
       print('   - Ingredientes: ${_ingredientes?.length ?? 0}');
@@ -74,60 +118,154 @@ class DatosCacheProvider extends ChangeNotifier {
     }
   }
 
-  // Cargar productos
-  Future<void> _cargarProductos() async {
+  // ✅ NUEVO: Polling automático para sincronización
+  void _startPolling() {
+    if (!_enablePolling) return;
+
+    _pollingTimer?.cancel();
+
+    print(
+      '🔄 Iniciando polling automático cada $_pollingIntervalMinutes minutos',
+    );
+
+    _pollingTimer = Timer.periodic(Duration(minutes: _pollingIntervalMinutes), (
+      timer,
+    ) async {
+      print('🔄 Ejecutando polling automático...');
+
+      // Solo recargar datos expirados (SILENCIOSO para no interrumpir UI)
+      if (productosExpired) {
+        await _cargarProductos(silent: true);
+      }
+      if (categoriasExpired) {
+        await _cargarCategorias(silent: true);
+      }
+      if (ingredientesExpired) {
+        await _cargarIngredientes(silent: true);
+      }
+    });
+  }
+
+  // ✅ NUEVO: Métodos públicos para control de caché
+  Future<void> forceRefresh() async {
+    print('🔄 Forzando actualización completa de datos...');
+    await _cargarTodosLosDatos(force: true);
+  }
+
+  Future<void> forceRefreshProductos() async {
+    print('🔄 Forzando actualización de productos...');
+    await _cargarProductos(force: true);
+  }
+
+  void enableAutoRefresh() {
+    _enablePolling = true;
+    _startPolling();
+    print('✅ Auto-refresh habilitado');
+  }
+
+  void disableAutoRefresh() {
+    _enablePolling = false;
+    _pollingTimer?.cancel();
+    print('⏸️ Auto-refresh deshabilitado');
+  }
+
+  // Cargar productos (con cache inteligente)
+  Future<void> _cargarProductos({
+    bool force = false,
+    bool silent = false,
+  }) async {
+    // ✅ NUEVO: Verificar si necesita actualización
+    if (!force && !productosExpired && _productos != null) {
+      print('📦 Productos en caché válidos, usando caché local');
+      return;
+    }
+
     if (_isLoadingProductos) return;
 
     _isLoadingProductos = true;
-    notifyListeners();
+    // ✅ MEJORADO: Solo notificar si no es silencioso
+    if (!silent) notifyListeners();
 
     try {
       final productos = await _productoService.getProductos();
       _productos = productos;
-      print('📦 Productos cargados: ${productos.length}');
+      _ultimaCargaProductos = DateTime.now(); // ✅ NUEVO: Actualizar timestamp
+      print(
+        '📦 Productos cargados: ${productos.length} (${force ? 'forzado' : 'caché expirado'}) ${silent ? '(silencioso)' : ''}',
+      );
     } catch (e) {
       print('❌ Error cargando productos: $e');
     } finally {
       _isLoadingProductos = false;
-      notifyListeners();
+      // ✅ MEJORADO: Solo notificar si no es silencioso
+      if (!silent) notifyListeners();
     }
   }
 
-  // Cargar categorías
-  Future<void> _cargarCategorias() async {
+  // Cargar categorías (con cache inteligente)
+  Future<void> _cargarCategorias({
+    bool force = false,
+    bool silent = false,
+  }) async {
+    // ✅ NUEVO: Verificar si necesita actualización
+    if (!force && !categoriasExpired && _categorias != null) {
+      print('🏷️ Categorías en caché válidas, usando caché local');
+      return;
+    }
+
     if (_isLoadingCategorias) return;
 
     _isLoadingCategorias = true;
-    notifyListeners();
+    // ✅ MEJORADO: Solo notificar si no es silencioso
+    if (!silent) notifyListeners();
 
     try {
       final categorias = await _productoService.getCategorias();
       _categorias = categorias;
-      print('🏷️ Categorías cargadas: ${categorias.length}');
+      _ultimaCargaCategorias = DateTime.now(); // ✅ NUEVO: Actualizar timestamp
+      print(
+        '🏷️ Categorías cargadas: ${categorias.length} (${force ? 'forzado' : 'caché expirado'}) ${silent ? '(silencioso)' : ''}',
+      );
     } catch (e) {
       print('❌ Error cargando categorías: $e');
     } finally {
       _isLoadingCategorias = false;
-      notifyListeners();
+      // ✅ MEJORADO: Solo notificar si no es silencioso
+      if (!silent) notifyListeners();
     }
   }
 
-  // Cargar ingredientes
-  Future<void> _cargarIngredientes() async {
+  // Cargar ingredientes (con cache inteligente)
+  Future<void> _cargarIngredientes({
+    bool force = false,
+    bool silent = false,
+  }) async {
+    // ✅ NUEVO: Verificar si necesita actualización
+    if (!force && !ingredientesExpired && _ingredientes != null) {
+      print('🥬 Ingredientes en caché válidos, usando caché local');
+      return;
+    }
+
     if (_isLoadingIngredientes) return;
 
     _isLoadingIngredientes = true;
-    notifyListeners();
+    // ✅ MEJORADO: Solo notificar si no es silencioso
+    if (!silent) notifyListeners();
 
     try {
       final ingredientes = await _ingredienteService.getAllIngredientes();
       _ingredientes = ingredientes;
-      print('🥬 Ingredientes cargados: ${ingredientes.length}');
+      _ultimaCargaIngredientes =
+          DateTime.now(); // ✅ NUEVO: Actualizar timestamp
+      print(
+        '🥬 Ingredientes cargados: ${ingredientes.length} (${force ? 'forzado' : 'caché expirado'}) ${silent ? '(silencioso)' : ''}',
+      );
     } catch (e) {
       print('❌ Error cargando ingredientes: $e');
     } finally {
       _isLoadingIngredientes = false;
-      notifyListeners();
+      // ✅ MEJORADO: Solo notificar si no es silencioso
+      if (!silent) notifyListeners();
     }
   }
 
@@ -196,20 +334,32 @@ class DatosCacheProvider extends ChangeNotifier {
 
       switch (type) {
         case 'productos_updated':
-          print('🔄 Recargando productos por actualización...');
-          _cargarProductos();
+          print('🔄 Recargando productos por WebSocket...');
+          _cargarProductos(
+            force: true,
+            silent: true,
+          ); // Silencioso para evitar disrupciones
           break;
         case 'categorias_updated':
-          print('🔄 Recargando categorías por actualización...');
-          _cargarCategorias();
+          print('🔄 Recargando categorías por WebSocket...');
+          _cargarCategorias(
+            force: true,
+            silent: true,
+          ); // Silencioso para evitar disrupciones
           break;
         case 'ingredientes_updated':
-          print('🔄 Recargando ingredientes por actualización...');
-          _cargarIngredientes();
+          print('🔄 Recargando ingredientes por WebSocket...');
+          _cargarIngredientes(
+            force: true,
+            silent: true,
+          ); // Silencioso para evitar disrupciones
           break;
         case 'full_reload':
-          print('🔄 Recargando todos los datos por actualización completa...');
-          _cargarTodosLosDatos();
+          print('🔄 Recargando todos los datos por WebSocket...');
+          _cargarTodosLosDatos(
+            force: true,
+            silent: true,
+          ); // Silencioso para evitar disrupciones
           break;
         default:
           print('⚠️ Tipo de mensaje desconocido: $type');
@@ -252,7 +402,9 @@ class DatosCacheProvider extends ChangeNotifier {
   // Recargar datos manualmente
   Future<void> recargarDatos() async {
     print('🔄 Recarga manual solicitada...');
-    await _cargarTodosLosDatos();
+    await _cargarTodosLosDatos(
+      force: true,
+    ); // ✅ MEJORADO: Siempre forzar en recarga manual
   }
 
   // Limpiar caché
@@ -261,12 +413,16 @@ class DatosCacheProvider extends ChangeNotifier {
     _productos = null;
     _categorias = null;
     _ingredientes = null;
+    _ultimaCargaProductos = null;
+    _ultimaCargaCategorias = null;
+    _ultimaCargaIngredientes = null;
     notifyListeners();
   }
 
   @override
   void dispose() {
     _reconnectTimer?.cancel();
+    _pollingTimer?.cancel(); // ✅ NUEVO: Limpiar polling timer
     _channel?.sink.close();
     super.dispose();
   }

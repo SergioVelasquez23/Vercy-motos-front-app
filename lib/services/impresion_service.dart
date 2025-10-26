@@ -42,6 +42,8 @@ class ImpresionService {
   Future<Map<String, dynamic>?> crearFacturaDesdepedido(
     String pedidoId, {
     String? nit,
+    String? clienteNombre,
+    String? clienteCorreo,
     String? clienteTelefono,
     String? clienteDireccion,
     String medioPago = 'Efectivo',
@@ -51,6 +53,8 @@ class ImpresionService {
 
       final Map<String, dynamic> datos = {
         'nit': nit ?? '22222222222',
+        'clienteNombre': clienteNombre ?? '',
+        'clienteCorreo': clienteCorreo ?? '',
         'clienteTelefono': clienteTelefono ?? '',
         'clienteDireccion': clienteDireccion ?? '',
         'medioPago': medioPago,
@@ -145,9 +149,19 @@ class ImpresionService {
         // Información de factura
         texto.writeln('FACTURA: ${resumen['numero'] ?? 'N/A'}');
         texto.writeln('NIT: ${resumen['nit'] ?? '22222222222'}');
+
+        // Información del cliente
+        if (resumen['clienteNombre'] != null &&
+            resumen['clienteNombre'].toString().isNotEmpty) {
+          texto.writeln('Cliente: ${resumen['clienteNombre']}');
+        }
+        if (resumen['clienteCorreo'] != null &&
+            resumen['clienteCorreo'].toString().isNotEmpty) {
+          texto.writeln('Email: ${resumen['clienteCorreo']}');
+        }
         if (resumen['clienteTelefono'] != null &&
             resumen['clienteTelefono'].toString().isNotEmpty) {
-          texto.writeln('Cliente: ${resumen['clienteTelefono']}');
+          texto.writeln('Teléfono: ${resumen['clienteTelefono']}');
         }
         if (resumen['clienteDireccion'] != null &&
             resumen['clienteDireccion'].toString().isNotEmpty) {
@@ -155,8 +169,7 @@ class ImpresionService {
         }
         texto.writeln('Atendió: ${resumen['atendidoPor'] ?? 'N/A'}');
       } else {
-        // Información de pedido
-        texto.writeln('PEDIDO: ${resumen['pedidoId'] ?? 'N/A'}');
+        // Información de pedido (SIN mostrar el ID de MongoDB)
         texto.writeln('Mesa: ${resumen['mesa'] ?? 'N/A'}');
         texto.writeln('Mesero: ${resumen['mesero'] ?? 'N/A'}');
         texto.writeln('Tipo: ${resumen['tipo'] ?? 'Normal'}');
