@@ -1,6 +1,5 @@
 import 'base_api_service.dart';
 import '../models/dashboard_data.dart';
-import '../models/pedido.dart';
 import '../services/pedido_service.dart'; // Para acceder a pedidos directamente
 import '../utils/dashboard_helper.dart'; // Utilidad para cálculos de ventas correctos
 
@@ -43,46 +42,26 @@ class ReportesService {
         }
 
         print('🔍 CORRECCIÓN DE DASHBOARD:');
-        print('  - Ventas según servidor: ${dashboardData.ventasHoy.total}');
-        print('  - Ventas corregidas: $totalVentasCorrectas');
+        print('  - Total pedidos hoy: ${pedidosHoy.length}');
+        print('  - Ventas según servidor: \$${dashboardData.ventasHoy.total}');
+        print('  - Ventas corregidas: \$${totalVentasCorrectas}');
         print(
-          '  - Diferencia: ${totalVentasCorrectas - dashboardData.ventasHoy.total}',
+          '  - Diferencia: \$${totalVentasCorrectas - dashboardData.ventasHoy.total}',
         );
         print(
           '  - Pedidos pagados según servidor: ${dashboardData.ventasHoy.pedidosPagados}',
         );
         print('  - Pedidos pagados corregidos: $pedidosRealmentePagados');
 
-        // Si hay una diferencia significativa, usar nuestros valores
-        if ((totalVentasCorrectas - dashboardData.ventasHoy.total).abs() >
-            1000) {
+        // ✅ DESACTIVADO: Ya no se corrigen los valores del servidor
+        if ((totalVentasCorrectas - dashboardData.ventasHoy.total).abs() > 0) {
           print(
-            '⚠️ Diferencia significativa detectada, usando valores corregidos',
-          );
-
-          // Crear una versión corregida de ventasHoy
-          final ventasHoyCorrected = VentasHoy(
-            objetivo: dashboardData.ventasHoy.objetivo,
-            total: totalVentasCorrectas,
-            facturas: dashboardData.ventasHoy.facturas,
-            cantidad: dashboardData.ventasHoy.cantidad,
-            porcentaje: dashboardData.ventasHoy.porcentaje,
-            pedidosPagados: pedidosRealmentePagados,
-          );
-
-          // Crear una versión corregida del dashboard
-          return DashboardData(
-            fecha: dashboardData.fecha,
-            ventas7Dias: dashboardData.ventas7Dias,
-            ventas30Dias: dashboardData.ventas30Dias,
-            facturacion: dashboardData.facturacion,
-            ventasAnio: dashboardData.ventasAnio,
-            ventasHoy: ventasHoyCorrected,
-            inventario: dashboardData.inventario,
-            pedidosHoy: dashboardData.pedidosHoy,
+            'ℹ️ Diferencia detectada, pero usando valores originales del servidor',
           );
         }
 
+        // ✅ SIEMPRE usar los datos originales del servidor
+        print('✅ Usando valores originales del servidor sin corrección');
         return dashboardData;
       } else {
         print(

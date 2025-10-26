@@ -916,165 +916,7 @@ class _DocumentosMesaScreenState extends State<DocumentosMesaScreen>
         // Para web, usar directamente PDFServiceWeb como en mesas_screen
         final pdfServiceWeb = PDFServiceWeb();
 
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            backgroundColor: Colors.white,
-            title: Text(
-              'Compartir Resumen',
-              style: TextStyle(color: Colors.black),
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Documento ${documento.numeroDocumento}',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                  ),
-                ),
-                SizedBox(height: 12),
-                Text(
-                  '¿Cómo deseas compartir este resumen?',
-                  style: TextStyle(color: Colors.black),
-                ),
-                SizedBox(height: 20),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text('Cancelar'),
-              ),
-              ElevatedButton.icon(
-                onPressed: () async {
-                  Navigator.pop(context);
-                  // Mostrar diálogo para capturar datos del cliente
-                  final datosCliente = await _mostrarDialogoClienteFactura();
-                  if (datosCliente != null) {
-                    try {
-                      showDialog(
-                        context: context,
-                        barrierDismissible: false,
-                        builder: (context) => Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              CircularProgressIndicator(),
-                              SizedBox(height: 16),
-                              Text(
-                                'Creando factura...',
-                                style: TextStyle(color: Colors.white),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-
-                      // Crear una copia del resumen con los datos del cliente
-                      final resumenConCliente = Map<String, dynamic>.from(
-                        resumen,
-                      );
-                      resumenConCliente['clienteNombre'] =
-                          datosCliente['nombre'];
-                      resumenConCliente['clienteCorreo'] =
-                          datosCliente['correo'];
-                      resumenConCliente['clienteTelefono'] =
-                          datosCliente['telefono'];
-                      resumenConCliente['clienteDireccion'] =
-                          datosCliente['direccion'];
-                      resumenConCliente['nit'] = datosCliente['nit'];
-
-                      pdfServiceWeb.generarYDescargarPDF(
-                        resumen: resumenConCliente,
-                        esFactura: true,
-                      );
-                      Navigator.of(context).pop(); // Cerrar loading
-
-                      // Mostrar mensaje de éxito
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Factura creada con datos del cliente'),
-                          backgroundColor: Colors.green,
-                        ),
-                      );
-                    } catch (e) {
-                      Navigator.of(context).pop(); // Cerrar loading
-                      mostrarMensajeError('Error creando factura: $e');
-                    }
-                  }
-                },
-                icon: Icon(Icons.receipt_long),
-                label: Text('Factura'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Color(0xFF1976D2),
-                  foregroundColor: Colors.white,
-                ),
-              ),
-              ElevatedButton.icon(
-                onPressed: () async {
-                  Navigator.pop(context);
-                  try {
-                    showDialog(
-                      context: context,
-                      barrierDismissible: false,
-                      builder: (context) => Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            CircularProgressIndicator(),
-                            SizedBox(height: 16),
-                            Text(
-                              'Generando PDF...',
-                              style: TextStyle(color: Colors.white),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-
-                    pdfServiceWeb.generarYDescargarPDF(resumen: resumen);
-                    Navigator.of(context).pop(); // Cerrar loading
-
-                    // Mostrar mensaje de éxito
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Generando PDF...'),
-                        backgroundColor: Colors.green,
-                      ),
-                    );
-                  } catch (e) {
-                    Navigator.of(context).pop(); // Cerrar loading
-                    mostrarMensajeError('Error generando PDF: $e');
-                  }
-                },
-                icon: Icon(Icons.picture_as_pdf),
-                label: Text('PDF'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Color(0xFFFF6B00),
-                  foregroundColor: Colors.white,
-                ),
-              ),
-              ElevatedButton.icon(
-                onPressed: () async {
-                  Navigator.pop(context);
-                  try {
-                    await pdfServiceWeb.compartirTexto(resumen: resumen);
-                  } catch (e) {
-                    mostrarMensajeError('Error compartiendo: $e');
-                  }
-                },
-                icon: Icon(Icons.share),
-                label: Text('Texto'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  foregroundColor: Colors.white,
-                ),
-              ),
-            ],
-          ),
-        );
+        _mostrarDialogoCompartirConCliente(documento, resumen, pdfServiceWeb);
       } else {
         // Para móvil, usar el servicio tradicional
         showDialog(
@@ -1108,68 +950,7 @@ class _DocumentosMesaScreenState extends State<DocumentosMesaScreen>
                 onPressed: () => Navigator.pop(context),
                 child: Text('Cancelar'),
               ),
-              ElevatedButton.icon(
-                onPressed: () async {
-                  Navigator.pop(context);
-                  // Mostrar diálogo para capturar datos del cliente
-                  final datosCliente = await _mostrarDialogoClienteFactura();
-                  if (datosCliente != null) {
-                    try {
-                      showDialog(
-                        context: context,
-                        barrierDismissible: false,
-                        builder: (context) => Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              CircularProgressIndicator(),
-                              SizedBox(height: 16),
-                              Text(
-                                'Creando factura...',
-                                style: TextStyle(color: Colors.white),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
 
-                      // Crear una copia del resumen con los datos del cliente
-                      final resumenConCliente = Map<String, dynamic>.from(
-                        resumen,
-                      );
-                      resumenConCliente['clienteNombre'] =
-                          datosCliente['nombre'];
-                      resumenConCliente['clienteCorreo'] =
-                          datosCliente['correo'];
-                      resumenConCliente['clienteTelefono'] =
-                          datosCliente['telefono'];
-                      resumenConCliente['clienteDireccion'] =
-                          datosCliente['direccion'];
-                      resumenConCliente['nit'] = datosCliente['nit'];
-
-                      await _pdfService.mostrarVistaPrevia(
-                        resumen: resumenConCliente,
-                        esFactura: true,
-                      );
-
-                      Navigator.of(context).pop(); // Cerrar loading
-
-                      mostrarMensajeExito(
-                        'Factura creada con datos del cliente',
-                      );
-                    } catch (e) {
-                      Navigator.of(context).pop(); // Cerrar loading
-                      mostrarMensajeError('Error creando factura: $e');
-                    }
-                  }
-                },
-                icon: Icon(Icons.receipt_long),
-                label: Text('Factura'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Color(0xFF1976D2),
-                  foregroundColor: Colors.white,
-                ),
-              ),
               ElevatedButton.icon(
                 onPressed: () async {
                   Navigator.pop(context);
@@ -1243,141 +1024,227 @@ class _DocumentosMesaScreenState extends State<DocumentosMesaScreen>
     }
   }
 
-  /// Muestra un diálogo para capturar los datos del cliente para la factura
-  Future<Map<String, String>?> _mostrarDialogoClienteFactura() async {
-    final nitController = TextEditingController(text: '222222222-2');
-    final nombreController = TextEditingController();
-    final correoController = TextEditingController();
-    final telefonoController = TextEditingController();
-    final direccionController = TextEditingController();
+  // ✅ NUEVO: Diálogo para compartir con información del cliente
+  void _mostrarDialogoCompartirConCliente(
+    DocumentoMesa documento,
+    Map<String, dynamic> resumen,
+    dynamic pdfServiceWeb,
+  ) {
+    bool incluirDatosCliente = false;
+    String clienteNombre = '';
+    String clienteNit = '';
+    String clienteCorreo = '';
+    String clienteTelefono = '';
+    String clienteDireccion = '';
 
-    return showDialog<Map<String, String>>(
+    showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: _cardBg,
-        title: Text(
-          'Datos del Cliente',
-          style: TextStyle(
-            color: _textLight,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          backgroundColor: Colors.white,
+          title: Text(
+            'Compartir Resumen',
+            style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
           ),
-        ),
-        content: Container(
-          width: double.maxFinite,
-          constraints: BoxConstraints(maxHeight: 400),
-          child: SingleChildScrollView(
+          content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Ingrese los datos del cliente para la factura (opcional)',
-                  style: TextStyle(color: Colors.grey[400], fontSize: 14),
-                  textAlign: TextAlign.center,
+                  'Documento ${documento.numeroDocumento}',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
                 ),
+                SizedBox(height: 16),
+
+                // Toggle para incluir datos del cliente
+                Row(
+                  children: [
+                    Switch(
+                      value: incluirDatosCliente,
+                      onChanged: (value) {
+                        setState(() {
+                          incluirDatosCliente = value;
+                        });
+                      },
+                      activeColor: Color(0xFFFF6B00),
+                    ),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Incluir datos del cliente en el documento',
+                        style: TextStyle(color: Colors.black),
+                      ),
+                    ),
+                  ],
+                ),
+
+                // Campos del cliente (solo si está activado)
+                if (incluirDatosCliente) ...[
+                  SizedBox(height: 16),
+                  Text(
+                    'Información del Cliente:',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
+                  ),
+                  SizedBox(height: 12),
+                  TextField(
+                    decoration: InputDecoration(
+                      labelText: 'Nombre del Cliente',
+                      border: OutlineInputBorder(),
+                      labelStyle: TextStyle(color: Colors.black54),
+                    ),
+                    style: TextStyle(color: Colors.black),
+                    onChanged: (value) => clienteNombre = value,
+                  ),
+                  SizedBox(height: 12),
+                  TextField(
+                    decoration: InputDecoration(
+                      labelText: 'NIT/CC',
+                      border: OutlineInputBorder(),
+                      labelStyle: TextStyle(color: Colors.black54),
+                    ),
+                    style: TextStyle(color: Colors.black),
+                    onChanged: (value) => clienteNit = value,
+                  ),
+                  SizedBox(height: 12),
+                  TextField(
+                    decoration: InputDecoration(
+                      labelText: 'Correo Electrónico',
+                      border: OutlineInputBorder(),
+                      labelStyle: TextStyle(color: Colors.black54),
+                    ),
+                    style: TextStyle(color: Colors.black),
+                    keyboardType: TextInputType.emailAddress,
+                    onChanged: (value) => clienteCorreo = value,
+                  ),
+                  SizedBox(height: 12),
+                  TextField(
+                    decoration: InputDecoration(
+                      labelText: 'Teléfono',
+                      border: OutlineInputBorder(),
+                      labelStyle: TextStyle(color: Colors.black54),
+                    ),
+                    style: TextStyle(color: Colors.black),
+                    keyboardType: TextInputType.phone,
+                    onChanged: (value) => clienteTelefono = value,
+                  ),
+                  SizedBox(height: 12),
+                  TextField(
+                    decoration: InputDecoration(
+                      labelText: 'Dirección',
+                      border: OutlineInputBorder(),
+                      labelStyle: TextStyle(color: Colors.black54),
+                    ),
+                    style: TextStyle(color: Colors.black),
+                    onChanged: (value) => clienteDireccion = value,
+                  ),
+                ],
+
                 SizedBox(height: 20),
-                TextField(
-                  controller: nitController,
-                  decoration: InputDecoration(
-                    labelText: 'NIT/Cédula',
-                    hintText: '222222222-2',
-                    prefixIcon: Icon(Icons.numbers, color: _primary),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    labelStyle: TextStyle(color: _textLight),
-                  ),
-                  style: TextStyle(color: _textLight),
-                ),
-                SizedBox(height: 15),
-                TextField(
-                  controller: nombreController,
-                  decoration: InputDecoration(
-                    labelText: 'Nombre Completo',
-                    hintText: 'Ingrese el nombre del cliente',
-                    prefixIcon: Icon(Icons.person, color: _primary),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    labelStyle: TextStyle(color: _textLight),
-                  ),
-                  style: TextStyle(color: _textLight),
-                ),
-                SizedBox(height: 15),
-                TextField(
-                  controller: correoController,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: InputDecoration(
-                    labelText: 'Correo Electrónico',
-                    hintText: 'cliente@email.com',
-                    prefixIcon: Icon(Icons.email, color: _primary),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    labelStyle: TextStyle(color: _textLight),
-                  ),
-                  style: TextStyle(color: _textLight),
-                ),
-                SizedBox(height: 15),
-                TextField(
-                  controller: telefonoController,
-                  keyboardType: TextInputType.phone,
-                  decoration: InputDecoration(
-                    labelText: 'Teléfono',
-                    hintText: '3001234567',
-                    prefixIcon: Icon(Icons.phone, color: _primary),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    labelStyle: TextStyle(color: _textLight),
-                  ),
-                  style: TextStyle(color: _textLight),
-                ),
-                SizedBox(height: 15),
-                TextField(
-                  controller: direccionController,
-                  decoration: InputDecoration(
-                    labelText: 'Dirección',
-                    hintText: 'Dirección del cliente',
-                    prefixIcon: Icon(Icons.location_on, color: _primary),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    labelStyle: TextStyle(color: _textLight),
-                  ),
-                  style: TextStyle(color: _textLight),
-                  maxLines: 2,
+                Text(
+                  '¿Cómo deseas compartir este resumen?',
+                  style: TextStyle(color: Colors.black),
                 ),
               ],
             ),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Cancelar', style: TextStyle(color: Colors.grey[400])),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context, {
-                'nit': nitController.text.trim(),
-                'nombre': nombreController.text.trim(),
-                'correo': correoController.text.trim(),
-                'telefono': telefonoController.text.trim(),
-                'direccion': direccionController.text.trim(),
-              });
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _primary,
-              foregroundColor: Colors.white,
-              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Cancelar'),
+            ),
+            ElevatedButton.icon(
+              onPressed: () async {
+                Navigator.pop(context);
+                try {
+                  // Preparar resumen con datos del cliente si están incluidos
+                  Map<String, dynamic> resumenFinal = Map.from(resumen);
+
+                  if (incluirDatosCliente) {
+                    resumenFinal['clienteNombre'] = clienteNombre;
+                    resumenFinal['clienteNit'] = clienteNit;
+                    resumenFinal['clienteCorreo'] = clienteCorreo;
+                    resumenFinal['clienteTelefono'] = clienteTelefono;
+                    resumenFinal['clienteDireccion'] = clienteDireccion;
+                    resumenFinal['incluirDatosCliente'] = true;
+                  }
+
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (context) => Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CircularProgressIndicator(),
+                          SizedBox(height: 16),
+                          Text(
+                            'Generando PDF...',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+
+                  pdfServiceWeb.generarYDescargarPDF(resumen: resumenFinal);
+                  Navigator.of(context).pop(); // Cerrar loading
+
+                  // Mostrar mensaje de éxito
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Generando PDF...'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                } catch (e) {
+                  Navigator.of(context).pop(); // Cerrar loading
+                  mostrarMensajeError('Error generando PDF: $e');
+                }
+              },
+              icon: Icon(Icons.picture_as_pdf),
+              label: Text('PDF'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Color(0xFFFF6B00),
+                foregroundColor: Colors.white,
               ),
             ),
-            child: Text('Crear Factura'),
-          ),
-        ],
+            ElevatedButton.icon(
+              onPressed: () async {
+                Navigator.pop(context);
+                try {
+                  // Preparar resumen con datos del cliente si están incluidos
+                  Map<String, dynamic> resumenFinal = Map.from(resumen);
+
+                  if (incluirDatosCliente) {
+                    resumenFinal['clienteNombre'] = clienteNombre;
+                    resumenFinal['clienteNit'] = clienteNit;
+                    resumenFinal['clienteCorreo'] = clienteCorreo;
+                    resumenFinal['clienteTelefono'] = clienteTelefono;
+                    resumenFinal['clienteDireccion'] = clienteDireccion;
+                    resumenFinal['incluirDatosCliente'] = true;
+                  }
+
+                  await pdfServiceWeb.compartirTexto(resumen: resumenFinal);
+                } catch (e) {
+                  mostrarMensajeError('Error compartiendo: $e');
+                }
+              },
+              icon: Icon(Icons.share),
+              label: Text('Texto'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

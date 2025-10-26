@@ -27,7 +27,7 @@ class PedidoService {
 
   // Mantener un caché local de pedidos para actualizaciones rápidas
   final Map<String, Pedido> _pedidosCache = {};
-  
+
   // ✅ NUEVO: Cache para evitar correcciones de estado en bucle
   final Map<String, DateTime> _estadoCorregidoCache = {};
 
@@ -367,6 +367,7 @@ class PedidoService {
 
       print('🔍 Obteniendo pedidos de hoy: $fechaHoy');
 
+      // Intentar primero con el endpoint específico
       final response = await http.get(
         Uri.parse('$baseUrl/api/pedidos/por-fecha?fecha=$fechaHoy'),
         headers: headers,
@@ -379,11 +380,46 @@ class PedidoService {
         return _parseListResponse(responseData);
       } else {
         print('⚠️ Error al obtener pedidos de hoy: ${response.statusCode}');
-        return [];
+
+        // FALLBACK: Obtener todos los pedidos y filtrar por fecha
+        print(
+          '🔄 Usando fallback: obteniendo todos los pedidos y filtrando...',
+        );
+
+        final todosPedidos = await getAllPedidos();
+        final inicioHoy = DateTime(hoy.year, hoy.month, hoy.day);
+        final finHoy = inicioHoy.add(Duration(days: 1));
+
+        final pedidosDeHoy = todosPedidos.where((pedido) {
+          return pedido.fecha.isAfter(inicioHoy) &&
+              pedido.fecha.isBefore(finHoy);
+        }).toList();
+
+        print('✅ Pedidos filtrados de hoy: ${pedidosDeHoy.length}');
+        return pedidosDeHoy;
       }
     } catch (e) {
       print('❌ Error obteniendo pedidos de hoy: $e');
-      return [];
+
+      // FALLBACK DE EMERGENCIA: Filtrar todos los pedidos
+      try {
+        print('🆘 Fallback de emergencia...');
+        final hoy = DateTime.now();
+        final todosPedidos = await getAllPedidos();
+        final inicioHoy = DateTime(hoy.year, hoy.month, hoy.day);
+        final finHoy = inicioHoy.add(Duration(days: 1));
+
+        final pedidosDeHoy = todosPedidos.where((pedido) {
+          return pedido.fecha.isAfter(inicioHoy) &&
+              pedido.fecha.isBefore(finHoy);
+        }).toList();
+
+        print('✅ Fallback - Pedidos de hoy: ${pedidosDeHoy.length}');
+        return pedidosDeHoy;
+      } catch (fallbackError) {
+        print('❌ Error en fallback: $fallbackError');
+        return [];
+      }
     }
   }
 
@@ -1041,8 +1077,8 @@ class PedidoService {
               final cacheKey = '${pedido.id}_estado_corregido';
               final lastCorrection = _estadoCorregidoCache[cacheKey];
               final now = DateTime.now();
-              
-              if (lastCorrection == null || 
+
+              if (lastCorrection == null ||
                   now.difference(lastCorrection).inSeconds > 30) {
                 print(
                   '⚠️ Estado inconsistente detectado: pedido tipo CORTESÍA pero estado=${pedido.estado}',
@@ -1124,8 +1160,8 @@ class PedidoService {
                   final cacheKey = '${pedido.id}_mesa_estado_corregido';
                   final lastCorrection = _estadoCorregidoCache[cacheKey];
                   final now = DateTime.now();
-                  
-                  if (lastCorrection == null || 
+
+                  if (lastCorrection == null ||
                       now.difference(lastCorrection).inSeconds > 30) {
                     print(
                       '⚠️ Estado inconsistente detectado: pedido tipo CORTESÍA pero estado=${pedido.estado}',

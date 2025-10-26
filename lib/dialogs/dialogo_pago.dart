@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../theme/app_theme.dart';
@@ -37,17 +36,23 @@ class _DialogoPagoState extends State<DialogoPago> {
   late TextEditingController montoTarjetaController;
   late TextEditingController montoTransferenciaController;
 
+  // ✅ NUEVO: Controladores para información del cliente
+  late TextEditingController clienteNombreController;
+  late TextEditingController clienteNitController;
+  late TextEditingController clienteCorreoController;
+  late TextEditingController clienteTelefonoController;
+  late TextEditingController clienteDireccionController;
+
   // Variables de estado
   String medioPago = 'efectivo';
   bool incluyePropina = false;
   bool esCortesia = false;
   bool esConsumoInterno = false;
   bool pagoMultiple = false;
+  bool incluirDatosCliente =
+      false; // ✅ NUEVO: Para mostrar/ocultar sección cliente
   double billetesSeleccionados = 0.0;
   List<ItemPedido> productosSeleccionados = [];
-
-  // ✅ NUEVO: Timer para debounce de actualización UI
-  Timer? _updateTimer;
 
   Map<int, int> contadorBilletes = {
     50000: 0,
@@ -73,6 +78,15 @@ class _DialogoPagoState extends State<DialogoPago> {
     montoEfectivoController = TextEditingController();
     montoTarjetaController = TextEditingController();
     montoTransferenciaController = TextEditingController();
+
+    // ✅ NUEVO: Inicializar controladores cliente
+    clienteNombreController = TextEditingController();
+    clienteNitController = TextEditingController(
+      text: '222222222-2',
+    ); // Valor por defecto
+    clienteCorreoController = TextEditingController();
+    clienteTelefonoController = TextEditingController();
+    clienteDireccionController = TextEditingController();
   }
 
   // ✅ OPTIMIZADO: Inicializar control de cantidades de forma más eficiente
@@ -97,21 +111,8 @@ class _DialogoPagoState extends State<DialogoPago> {
     }
   }
 
-  // ✅ NUEVO: Método para programar actualización con debounce
-  void _programarActualizacionUI() {
-    _updateTimer?.cancel();
-    _updateTimer = Timer(Duration(milliseconds: 500), () {
-      if (mounted) {
-        setState(() {
-          // Actualizar UI para reflejar cambios en descuentos
-        });
-      }
-    });
-  }
-
   @override
   void dispose() {
-    _updateTimer?.cancel();
     descuentoPorcentajeController.dispose();
     descuentoValorController.dispose();
     propinaController.dispose();
@@ -119,6 +120,13 @@ class _DialogoPagoState extends State<DialogoPago> {
     montoEfectivoController.dispose();
     montoTarjetaController.dispose();
     montoTransferenciaController.dispose();
+
+    // ✅ NUEVO: Dispose controladores cliente
+    clienteNombreController.dispose();
+    clienteNitController.dispose();
+    clienteCorreoController.dispose();
+    clienteTelefonoController.dispose();
+    clienteDireccionController.dispose();
 
     // ✅ NUEVO: Limpiar controllers de cantidades
     for (var controller in cantidadControllers.values) {
@@ -311,6 +319,8 @@ class _DialogoPagoState extends State<DialogoPago> {
               _buildOpcionesEspeciales(),
               SizedBox(height: 32),
               _buildInformacionPedido(),
+              SizedBox(height: 32),
+              _buildInformacionCliente(),
               SizedBox(height: 32),
               _buildPropinaSection(),
               SizedBox(height: 32),
@@ -735,13 +745,11 @@ class _DialogoPagoState extends State<DialogoPago> {
                     ),
                   ),
                   onChanged: (value) {
-                    // ✅ ARREGLADO: Limpiar el otro campo sin perder foco
+                    // Limpiar el otro campo solo si realmente se está escribiendo algo
                     if (value.isNotEmpty &&
                         descuentoValorController.text.isNotEmpty) {
                       descuentoValorController.clear();
                     }
-                    // Programar actualización con delay para mantener foco
-                    _programarActualizacionUI();
                   },
                 ),
               ),
@@ -778,13 +786,11 @@ class _DialogoPagoState extends State<DialogoPago> {
                     ),
                   ),
                   onChanged: (value) {
-                    // ✅ ARREGLADO: Limpiar el otro campo sin perder foco
+                    // Limpiar el otro campo solo si realmente se está escribiendo algo
                     if (value.isNotEmpty &&
                         descuentoPorcentajeController.text.isNotEmpty) {
                       descuentoPorcentajeController.clear();
                     }
-                    // Programar actualización con delay para mantener foco
-                    _programarActualizacionUI();
                   },
                 ),
               ),
@@ -986,6 +992,109 @@ class _DialogoPagoState extends State<DialogoPago> {
     );
   }
 
+  Widget _buildInformacionCliente() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SeccionTitulo(titulo: 'Información del Cliente'),
+        SizedBox(height: 16),
+        SeccionContainer(
+          child: Column(
+            children: [
+              _buildSwitchOption(
+                icon: Icons.person,
+                title: 'Incluir datos del cliente en el documento',
+                value: incluirDatosCliente,
+                onChanged: (value) {
+                  setState(() {
+                    incluirDatosCliente = value;
+                    if (!value) {
+                      // Limpiar campos si se desactiva
+                      clienteNombreController.clear();
+                      clienteCorreoController.clear();
+                      clienteTelefonoController.clear();
+                      clienteDireccionController.clear();
+                      clienteNitController.text =
+                          '222222222-2'; // Valor por defecto
+                    }
+                  });
+                },
+              ),
+              if (incluirDatosCliente) ...[
+                SizedBox(height: 16),
+                _buildCampoCliente(
+                  controller: clienteNitController,
+                  label: 'NIT/Cédula',
+                  hint: '222222222-2',
+                  icon: Icons.badge,
+                ),
+                SizedBox(height: 16),
+                _buildCampoCliente(
+                  controller: clienteNombreController,
+                  label: 'Nombre Completo',
+                  hint: 'Nombre del cliente',
+                  icon: Icons.person,
+                ),
+                SizedBox(height: 16),
+                _buildCampoCliente(
+                  controller: clienteCorreoController,
+                  label: 'Correo Electrónico',
+                  hint: 'cliente@ejemplo.com',
+                  icon: Icons.email,
+                  keyboardType: TextInputType.emailAddress,
+                ),
+                SizedBox(height: 16),
+                _buildCampoCliente(
+                  controller: clienteTelefonoController,
+                  label: 'Teléfono',
+                  hint: '300 123 4567',
+                  icon: Icons.phone,
+                  keyboardType: TextInputType.phone,
+                ),
+                SizedBox(height: 16),
+                _buildCampoCliente(
+                  controller: clienteDireccionController,
+                  label: 'Dirección',
+                  hint: 'Dirección del cliente',
+                  icon: Icons.location_on,
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCampoCliente({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    required IconData icon,
+    TextInputType keyboardType = TextInputType.text,
+  }) {
+    return TextField(
+      controller: controller,
+      keyboardType: keyboardType,
+      style: TextStyle(color: AppTheme.textPrimary, fontSize: 16),
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        labelStyle: TextStyle(color: AppTheme.textSecondary),
+        hintStyle: TextStyle(color: AppTheme.textSecondary.withOpacity(0.6)),
+        prefixIcon: Icon(icon, color: AppTheme.primary),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: AppTheme.primary.withOpacity(0.3)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: AppTheme.primary, width: 2),
+        ),
+      ),
+    );
+  }
+
   Widget _buildPropinaSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1030,7 +1139,10 @@ class _DialogoPagoState extends State<DialogoPago> {
                       borderSide: BorderSide(color: AppTheme.primary, width: 2),
                     ),
                   ),
-                  onChanged: (value) => setState(() {}),
+                  onChanged: (value) {
+                    // Actualizar total cuando cambie la propina
+                    setState(() {});
+                  },
                 ),
               ],
             ],
@@ -1448,6 +1560,13 @@ class _DialogoPagoState extends State<DialogoPago> {
           ? _calcularTotalPagosMultiples()
           : totalConPropina,
       'fechaPago': DateTime.now(),
+      // ✅ INFORMACIÓN DEL CLIENTE: Datos capturados para PDF
+      'incluirDatosCliente': incluirDatosCliente,
+      'clienteNombre': clienteNombreController.text.trim(),
+      'clienteNit': clienteNitController.text.trim(),
+      'clienteCorreo': clienteCorreoController.text.trim(),
+      'clienteTelefono': clienteTelefonoController.text.trim(),
+      'clienteDireccion': clienteDireccionController.text.trim(),
     };
 
     Navigator.pop(context, resultado);

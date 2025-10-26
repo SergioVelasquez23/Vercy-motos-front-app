@@ -6,7 +6,10 @@ library;
 
 enum TipoMesa {
   normal('Mesa Normal', 'Mesa estándar para servicio regular'),
-  especial('Mesa Especial', 'Mesa con características o precios especiales'),
+  especial(
+    'Mesa Especial',
+    'Permite manejar múltiples pedidos simultáneamente',
+  ),
   auxiliar('Mesa Auxiliar', 'Mesa auxiliar para pedidos especiales'),
   terraza('Mesa Terraza', 'Mesa ubicada en terraza o área exterior'),
   vip('Mesa VIP', 'Mesa para clientes VIP con servicio premium'),
@@ -64,11 +67,11 @@ enum TipoMesa {
   /// Indica si este tipo de mesa tiene recargo adicional
   bool get tieneRecargo {
     switch (this) {
-      case TipoMesa.especial:
       case TipoMesa.vip:
       case TipoMesa.privada:
         return true;
       case TipoMesa.normal:
+      case TipoMesa.especial: // ✅ SIN RECARGO - Solo permite múltiples pedidos
       case TipoMesa.auxiliar:
       case TipoMesa.terraza:
       case TipoMesa.deudas:
@@ -79,13 +82,12 @@ enum TipoMesa {
   /// Obtiene el porcentaje de recargo para este tipo de mesa
   double get porcentajeRecargo {
     switch (this) {
-      case TipoMesa.especial:
-        return 0.05; // 5%
       case TipoMesa.vip:
         return 0.15; // 15%
       case TipoMesa.privada:
         return 0.10; // 10%
       case TipoMesa.normal:
+      case TipoMesa.especial: // ✅ 0% - Sin recargo, solo funcionalidad especial
       case TipoMesa.auxiliar:
       case TipoMesa.terraza:
       case TipoMesa.deudas:
@@ -132,12 +134,9 @@ enum TipoMesa {
   }
 
   /// Obtiene todos los tipos de mesa disponibles para selección
+  /// ✅ SIMPLIFICADO: Solo mesa normal y especial
   static List<TipoMesa> get tiposDisponibles => [
     TipoMesa.normal,
     TipoMesa.especial,
-    TipoMesa.terraza,
-    TipoMesa.vip,
-    TipoMesa.privada,
-    TipoMesa.deudas, // ✅ Agregar tipo deudas
   ];
 }

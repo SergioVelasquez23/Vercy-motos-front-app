@@ -32,6 +32,7 @@ class _ResumenCierreDetalladoScreenState
   Color get accent => AppTheme.accent;
 
   final ResumenCierreCompletoService _service = ResumenCierreCompletoService();
+  final ScrollController _scrollController = ScrollController();
 
   ResumenCierreCompleto? _resumen;
   bool _isLoading = true;
@@ -47,6 +48,12 @@ class _ResumenCierreDetalladoScreenState
     } else {
       _loadResumenDetallado();
     }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadResumenDetallado() async {
@@ -88,6 +95,20 @@ class _ResumenCierreDetalladoScreenState
         ],
       ),
       body: _buildBody(),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _scrollToBottom,
+        backgroundColor: primary,
+        child: Icon(Icons.keyboard_arrow_down, color: Colors.white),
+        tooltip: 'Ir al balance final',
+      ),
+    );
+  }
+
+  void _scrollToBottom() {
+    _scrollController.animateTo(
+      _scrollController.position.maxScrollExtent,
+      duration: Duration(milliseconds: 500),
+      curve: Curves.easeInOut,
     );
   }
 
@@ -140,6 +161,7 @@ class _ResumenCierreDetalladoScreenState
     }
 
     return SingleChildScrollView(
+      controller: _scrollController,
       padding: EdgeInsets.symmetric(horizontal: 24, vertical: 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -347,6 +369,8 @@ class _ResumenCierreDetalladoScreenState
 
   Widget _buildResumenFinal() {
     final resumen = _resumen!.resumenFinal;
+    final movimientos =
+        _resumen!.movimientosEfectivo; // ✅ Usar movimientos para fondo inicial
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -366,7 +390,9 @@ class _ResumenCierreDetalladoScreenState
                       children: [
                         _buildInfoRow(
                           'Fondo Inicial',
-                          formatCurrency(resumen.fondoInicial),
+                          formatCurrency(
+                            movimientos.fondoInicial,
+                          ), // ✅ CORREGIDO: Usar movimientos
                         ),
                         SizedBox(height: 10),
                         _buildInfoRow(
@@ -1233,9 +1259,28 @@ class _ResumenCierreDetalladoScreenState
   Widget _buildResumenFinalConsolidado() {
     final resumen = _resumen!.resumenFinal;
     final movimientos = _resumen!.movimientosEfectivo;
+    final ventas = _resumen!.resumenVentas;
 
-    // Calcular balance final
-    final ingresosTotales = movimientos.totalIngresosCaja + resumen.totalVentas;
+    // ✅ ARREGLADO: Usar el total correcto de ventas desde resumenVentas (que se muestra correctamente arriba)
+    final totalVentasCorrectas = ventas.totalVentas;
+
+    // 🐛 DEBUG: Imprimir valores para entender las discrepancias
+    print('🔍 DEBUGGING BALANCE FINAL:');
+    print('  - resumen.totalVentas: \$${resumen.totalVentas}');
+    print('  - ventas.totalVentas (CORRECTO): \$${ventas.totalVentas}');
+    print('  - movimientos.ventasEfectivo: \$${movimientos.ventasEfectivo}');
+    print(
+      '  - movimientos.ventasTransferencia: \$${movimientos.ventasTransferencia}',
+    );
+    print(
+      '  - movimientos.totalIngresosCaja: \$${movimientos.totalIngresosCaja}',
+    );
+
+    // Calcular balance final con datos corregidos
+    final ingresosTotales =
+        movimientos.fondoInicial +
+        movimientos.totalIngresosCaja +
+        totalVentasCorrectas; // ✅ CORREGIDO: Incluir fondo inicial
     final egresosTotales = resumen.totalGastos + resumen.totalCompras;
     final balanceFinal = ingresosTotales - egresosTotales;
 
@@ -1277,7 +1322,9 @@ class _ResumenCierreDetalladoScreenState
               SizedBox(height: 16),
               _buildInfoRow(
                 'Fondo Inicial',
-                formatCurrency(resumen.fondoInicial),
+                formatCurrency(
+                  movimientos.fondoInicial,
+                ), // ✅ CORREGIDO: Usar movimientos
               ),
               Divider(color: textLight.withOpacity(0.3)),
               Text(
@@ -1289,8 +1336,30 @@ class _ResumenCierreDetalladoScreenState
               ),
               _buildInfoRow(
                 '+ Total Ventas',
-                formatCurrency(resumen.totalVentas),
+                formatCurrency(totalVentasCorrectas),
                 valueColor: Colors.green,
+              ),
+              // ✅ DESGLOSE: Mostrar desglose de ventas (usando datos correctos de resumenVentas)
+              Padding(
+                padding: EdgeInsets.only(left: 16),
+                child: Column(
+                  children: [
+                    _buildInfoRow(
+                      '  • Efectivo',
+                      formatCurrency(
+                        ventas.ventasPorFormaPago['efectivo'] ?? 0,
+                      ),
+                      valueColor: Colors.green.withOpacity(0.8),
+                    ),
+                    _buildInfoRow(
+                      '  • Transferencia',
+                      formatCurrency(
+                        ventas.ventasPorFormaPago['transferencia'] ?? 0,
+                      ),
+                      valueColor: Colors.green.withOpacity(0.8),
+                    ),
+                  ],
+                ),
               ),
               _buildInfoRow(
                 '+ Ingresos de Caja',

@@ -163,8 +163,15 @@ class _MesasScreenState extends State<MesasScreen>
   bool isLoading = true;
   String? errorMessage;
 
+  // Lista para mesas especiales creadas por el usuario
+  List<String> _mesasEspecialesUsuario = [];
+
   // Key para forzar reconstrucción de widgets después de operaciones
   int _widgetRebuildKey = 0;
+
+  // 🔧 NUEVO: Timer para sincronización periódica
+  Timer? _sincronizacionPeriodica;
+  static const Duration _intervalSincronizacion = Duration(seconds: 30);
 
   // Callback para cuando se completa un pago desde mesa especial
   VoidCallback? _onPagoCompletadoCallback;
@@ -791,6 +798,126 @@ class _MesasScreenState extends State<MesasScreen>
             onPressed: () async {
               if (mounted) {
                 Navigator.pop(context);
+                // Preguntar por datos del cliente antes de generar PDF
+                final datosCliente = await _mostrarDialogoClienteFactura();
+                if (datosCliente != null) {
+                  // Agregar datos del cliente al resumen
+                  final resumenConCliente = Map<String, dynamic>.from(resumen);
+                  resumenConCliente['clienteNombre'] = datosCliente['nombre'];
+                  resumenConCliente['clienteCorreo'] = datosCliente['correo'];
+                  resumenConCliente['clienteTelefono'] =
+                      datosCliente['telefono'];
+                  resumenConCliente['clienteDireccion'] =
+                      datosCliente['direccion'];
+                  resumenConCliente['nit'] = datosCliente['nit'];
+                  await _generarYCompartirPDF(resumenConCliente);
+                } else {
+                  // Generar PDF sin datos del cliente
+                  await _generarYCompartirPDF(resumen);
+                }
+              }
+            },
+            icon: Icon(Icons.picture_as_pdf),
+            label: Text('PDF'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _error,
+              foregroundColor: _textPrimary,
+            ),
+          ),
+          ElevatedButton.icon(
+            onPressed: () async {
+              if (mounted) {
+                Navigator.pop(context);
+                // Preguntar por datos del cliente antes de compartir texto
+                final datosCliente = await _mostrarDialogoClienteFactura();
+                if (datosCliente != null) {
+                  // Agregar datos del cliente al resumen
+                  final resumenConCliente = Map<String, dynamic>.from(resumen);
+                  resumenConCliente['clienteNombre'] = datosCliente['nombre'];
+                  resumenConCliente['clienteCorreo'] = datosCliente['correo'];
+                  resumenConCliente['clienteTelefono'] =
+                      datosCliente['telefono'];
+                  resumenConCliente['clienteDireccion'] =
+                      datosCliente['direccion'];
+                  resumenConCliente['nit'] = datosCliente['nit'];
+                  await _compartirTexto(resumenConCliente);
+                } else {
+                  // Compartir texto sin datos del cliente
+                  await _compartirTexto(resumen);
+                }
+              }
+            },
+            icon: Icon(Icons.text_fields),
+            label: Text('Texto'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+            ),
+          ),
+          ElevatedButton.icon(
+            onPressed: () async {
+              if (mounted) {
+                Navigator.pop(context);
+                // Preguntar por datos del cliente antes de imprimir
+                final datosCliente = await _mostrarDialogoClienteFactura();
+                if (datosCliente != null) {
+                  // Agregar datos del cliente al resumen
+                  final resumenConCliente = Map<String, dynamic>.from(resumen);
+                  resumenConCliente['clienteNombre'] = datosCliente['nombre'];
+                  resumenConCliente['clienteCorreo'] = datosCliente['correo'];
+                  resumenConCliente['clienteTelefono'] =
+                      datosCliente['telefono'];
+                  resumenConCliente['clienteDireccion'] =
+                      datosCliente['direccion'];
+                  resumenConCliente['nit'] = datosCliente['nit'];
+                  await imprimirDocumento(resumenConCliente);
+                } else {
+                  // Imprimir sin datos del cliente
+                  await imprimirDocumento(resumen);
+                }
+              }
+            },
+            icon: Icon(Icons.print),
+            label: Text('Imprimir'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Método para mostrar opciones de compartir sin facturación
+  Future<void> _mostrarOpcionesCompartirSinFactura(
+    Map<String, dynamic> resumen,
+  ) async {
+    return showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: _cardBg,
+        title: Text('Compartir Resumen', style: TextStyle(color: _textPrimary)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '¿Cómo deseas compartir este resumen?',
+              style: TextStyle(color: _textPrimary),
+            ),
+            SizedBox(height: 20),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancelar'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () async {
+              if (mounted) {
+                Navigator.pop(context);
+                // Generar PDF sin datos del cliente
                 await _generarYCompartirPDF(resumen);
               }
             },
@@ -805,6 +932,7 @@ class _MesasScreenState extends State<MesasScreen>
             onPressed: () async {
               if (mounted) {
                 Navigator.pop(context);
+                // Compartir texto sin datos del cliente
                 await _compartirTexto(resumen);
               }
             },
@@ -812,20 +940,6 @@ class _MesasScreenState extends State<MesasScreen>
             label: Text('Texto'),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.blue,
-              foregroundColor: Colors.white,
-            ),
-          ),
-          ElevatedButton.icon(
-            onPressed: () async {
-              if (mounted) {
-                Navigator.pop(context);
-                await imprimirDocumento(resumen);
-              }
-            },
-            icon: Icon(Icons.print),
-            label: Text('Imprimir'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green,
               foregroundColor: Colors.white,
             ),
           ),
@@ -1548,6 +1662,151 @@ class _MesasScreenState extends State<MesasScreen>
     );
   }
 
+  /// Muestra un diálogo para capturar datos del cliente para la factura
+  Future<Map<String, String>?> _mostrarDialogoClienteFactura() async {
+    final nitController = TextEditingController(text: '222222222-2');
+    final nombreController = TextEditingController();
+    final correoController = TextEditingController();
+    final telefonoController = TextEditingController();
+    final direccionController = TextEditingController();
+
+    return showDialog<Map<String, String>>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppTheme.cardBg,
+        title: Text(
+          'Datos del Cliente',
+          style: TextStyle(
+            color: AppTheme.textPrimary,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: Container(
+          width: double.maxFinite,
+          constraints: BoxConstraints(maxHeight: 400),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Ingrese los datos del cliente para la factura (opcional)',
+                  style: TextStyle(color: Colors.grey[400], fontSize: 14),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 20),
+                TextField(
+                  controller: nitController,
+                  decoration: InputDecoration(
+                    labelText: 'NIT/Cédula',
+                    hintText: '222222222-2',
+                    prefixIcon: Icon(Icons.numbers, color: AppTheme.primary),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    labelStyle: TextStyle(color: AppTheme.textPrimary),
+                  ),
+                  style: TextStyle(color: AppTheme.textPrimary),
+                ),
+                SizedBox(height: 15),
+                TextField(
+                  controller: nombreController,
+                  decoration: InputDecoration(
+                    labelText: 'Nombre Completo',
+                    hintText: 'Ingrese el nombre del cliente',
+                    prefixIcon: Icon(Icons.person, color: AppTheme.primary),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    labelStyle: TextStyle(color: AppTheme.textPrimary),
+                  ),
+                  style: TextStyle(color: AppTheme.textPrimary),
+                ),
+                SizedBox(height: 15),
+                TextField(
+                  controller: correoController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: InputDecoration(
+                    labelText: 'Correo Electrónico',
+                    hintText: 'cliente@email.com',
+                    prefixIcon: Icon(Icons.email, color: AppTheme.primary),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    labelStyle: TextStyle(color: AppTheme.textPrimary),
+                  ),
+                  style: TextStyle(color: AppTheme.textPrimary),
+                ),
+                SizedBox(height: 15),
+                TextField(
+                  controller: telefonoController,
+                  keyboardType: TextInputType.phone,
+                  decoration: InputDecoration(
+                    labelText: 'Teléfono',
+                    hintText: '3001234567',
+                    prefixIcon: Icon(Icons.phone, color: AppTheme.primary),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    labelStyle: TextStyle(color: AppTheme.textPrimary),
+                  ),
+                  style: TextStyle(color: AppTheme.textPrimary),
+                ),
+                SizedBox(height: 15),
+                TextField(
+                  controller: direccionController,
+                  decoration: InputDecoration(
+                    labelText: 'Dirección',
+                    hintText: 'Dirección del cliente',
+                    prefixIcon: Icon(
+                      Icons.location_on,
+                      color: AppTheme.primary,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    labelStyle: TextStyle(color: AppTheme.textPrimary),
+                  ),
+                  style: TextStyle(color: AppTheme.textPrimary),
+                  maxLines: 2,
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Sin Datos Cliente',
+              style: TextStyle(color: Colors.grey[400]),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context, {
+                'nit': nitController.text.trim(),
+                'nombre': nombreController.text.trim(),
+                'correo': correoController.text.trim(),
+                'telefono': telefonoController.text.trim(),
+                'direccion': direccionController.text.trim(),
+              });
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primary,
+              foregroundColor: Colors.white,
+              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: Text('Con Datos Cliente'),
+          ),
+        ],
+      ),
+    );
+  }
+
   // Método para construir item de producto con ingredientes
   Widget _buildProductoItemConIngredientes(Map<String, dynamic> producto) {
     return Container(
@@ -1701,6 +1960,7 @@ class _MesasScreenState extends State<MesasScreen>
     super.initState();
     _loadMesas();
     _precargarDatos(); // ✅ NUEVO: Precargar datos al entrar a Mesas Screen
+    _cargarMesasEspecialesUsuario(); // Cargar mesas especiales creadas por el usuario
 
     // Suscribirse a eventos de pedidos pagados para recargar las mesas
     _pedidoService.onPedidoPagado.listen((event) {
@@ -1715,6 +1975,9 @@ class _MesasScreenState extends State<MesasScreen>
     // Configurar WebSocket para actualización en tiempo real
     setupMesaWebSockets(() => _recargarMesasConCards());
     _verificarMesaDeudas(); // ✅ Verificar mesa Deudas al iniciar
+
+    // 🔧 NUEVO: Iniciar sincronización periódica para evitar desincronización
+    _iniciarSincronizacionPeriodica();
   }
 
   // Función para precarga básica (ya no necesitamos caché global)
@@ -1726,14 +1989,132 @@ class _MesasScreenState extends State<MesasScreen>
     // Esto asegura que siempre estén actualizados sin problemas de sincronización
   }
 
-  // void _iniciarSincronizacion() {
-  //   // Sincronización deshabilitada
-  // }
+  /// Carga las mesas especiales creadas por el usuario
+  Future<void> _cargarMesasEspecialesUsuario() async {
+    try {
+      // Obtener todas las mesas del sistema
+      final todasLasMesas = await _mesaService.getMesas();
+
+      // Filtrar mesas de tipo especial que no sean las predefinidas del sistema
+      final mesasEspecialesCreadas = todasLasMesas
+          .where(
+            (mesa) =>
+                mesa.tipo == TipoMesa.especial &&
+                ![
+                  'DOMICILIO',
+                  'CAJA',
+                  'MESA AUXILIAR',
+                  'DEUDAS',
+                ].contains(mesa.nombre.toUpperCase()),
+          )
+          .map((mesa) => mesa.nombre)
+          .toList();
+
+      setState(() {
+        _mesasEspecialesUsuario = mesasEspecialesCreadas;
+      });
+
+      print(
+        '✅ Cargadas ${_mesasEspecialesUsuario.length} mesas especiales de usuario: $_mesasEspecialesUsuario',
+      );
+    } catch (e) {
+      print('❌ Error cargando mesas especiales del usuario: $e');
+    }
+  }
+
+  /// 🔧 NUEVO: Iniciar sincronización periódica para evitar desincronización entre dispositivos
+  void _iniciarSincronizacionPeriodica() {
+    _sincronizacionPeriodica = Timer.periodic(_intervalSincronizacion, (timer) {
+      if (mounted && !_actualizacionEnProgreso) {
+        print('⏰ Sincronización periódica - actualizando datos...');
+        _forzarSincronizacionCompleta();
+      }
+    });
+    print(
+      '✅ Sincronización periódica iniciada (cada ${_intervalSincronizacion.inSeconds} segundos)',
+    );
+  }
+
+  /// 🔧 NUEVO: Forzar sincronización completa para eliminar datos fantasma
+  Future<void> _forzarSincronizacionCompleta() async {
+    try {
+      print('🔄 Iniciando sincronización completa...');
+
+      // 1. Limpiar estado completamente
+      setState(() {
+        mesas.clear();
+        _mesasEspecialesUsuario.clear();
+        isLoading = true;
+        errorMessage = null;
+      });
+
+      // 2. Recargar datos desde el servidor
+      await _loadMesas();
+      await _cargarMesasEspecialesUsuario();
+
+      // 3. Forzar reconstrucción completa de widgets
+      if (mounted) {
+        setState(() => _widgetRebuildKey++);
+      }
+
+      print('✅ Sincronización completa finalizada');
+    } catch (e) {
+      print('❌ Error en sincronización completa: $e');
+    }
+  }
+
+  /// 🔧 NUEVO: Validar y limpiar mesas para evitar datos fantasma
+  Future<List<Mesa>> _validarYLimpiarMesas(List<Mesa> mesasOriginales) async {
+    final mesasValidadas = <Mesa>[];
+
+    for (final mesa in mesasOriginales) {
+      try {
+        // Validar pedidos activos de la mesa desde el servidor
+        if (mesa.ocupada) {
+          final pedidosReales = await _pedidoService.getPedidosByMesa(
+            mesa.nombre,
+          );
+          final pedidosActivos = pedidosReales
+              .where((p) => p.estado != EstadoPedido.pagado)
+              .toList();
+
+          // Si no hay pedidos activos reales, marcar mesa como disponible
+          if (pedidosActivos.isEmpty) {
+            print(
+              '🧹 Mesa ${mesa.nombre} limpiada - no tiene pedidos activos reales',
+            );
+            final mesaLimpia = mesa.copyWith(
+              ocupada: false,
+              total: 0.0,
+              productos: [],
+            );
+            mesasValidadas.add(mesaLimpia);
+          } else {
+            // Mesa tiene pedidos válidos
+            mesasValidadas.add(mesa);
+          }
+        } else {
+          // Mesa no ocupada, mantener tal como está
+          mesasValidadas.add(mesa);
+        }
+      } catch (e) {
+        print('⚠️ Error validando mesa ${mesa.nombre}: $e');
+        // En caso de error, mantener la mesa original
+        mesasValidadas.add(mesa);
+      }
+    }
+
+    print('✅ Validación completada: ${mesasValidadas.length} mesas procesadas');
+    return mesasValidadas;
+  }
 
   @override
   void dispose() {
     // Limpiar timer de debounce
     _debounceTimer?.cancel();
+
+    // 🔧 NUEVO: Limpiar timer de sincronización periódica
+    _sincronizacionPeriodica?.cancel();
 
     // Liberar recursos de WebSocket
     disposeMesaWebSockets();
@@ -1777,10 +2158,16 @@ class _MesasScreenState extends State<MesasScreen>
         await Future.wait(pedidosFutures);
       }
 
+      // 🔧 MEJORADO: Validar y limpiar datos antes de establecer el estado
+      final mesasValidadas = await _validarYLimpiarMesas(loadedMesas);
+
       setState(() {
-        mesas = loadedMesas;
+        mesas = mesasValidadas;
         isLoading = false;
       });
+
+      // También recargar las mesas especiales del usuario
+      await _cargarMesasEspecialesUsuario();
 
       // Carga de mesas completada silenciosamente
     } catch (error) {
@@ -1818,7 +2205,7 @@ class _MesasScreenState extends State<MesasScreen>
     }
   }
 
-  /// Método optimizado para recarga completa de mesas
+  /// Método optimizado para recarga completa de mesas con sincronización mejorada
   Future<void> _recargarMesasConCards() async {
     if (_actualizacionEnProgreso) {
       print('⏸️ Recarga ya en progreso, evitando duplicación...');
@@ -1828,21 +2215,39 @@ class _MesasScreenState extends State<MesasScreen>
     _actualizacionEnProgreso = true;
 
     try {
-      print('🔄 Iniciando recarga optimizada de mesas...');
+      print(
+        '🔄 Iniciando recarga optimizada de mesas con sincronización mejorada...',
+      );
 
       // Cancelar cualquier actualización parcial pendiente
       _debounceTimer?.cancel();
       _mesasPendientesActualizacion.clear();
 
+      // 🔧 MEJORADO: Limpiar estado previo para evitar datos fantasma
+      setState(() {
+        isLoading = true;
+        errorMessage = null;
+      });
+
       // Una sola recarga completa eficiente
       await _loadMesas();
+
+      // 🔧 NUEVO: Recargar también mesas especiales del usuario
+      await _cargarMesasEspecialesUsuario();
+
       if (mounted) {
         setState(() => _widgetRebuildKey++);
       }
 
-      print('✅ Recarga de mesas completada');
+      print('✅ Recarga de mesas completada con sincronización mejorada');
     } catch (e) {
       print('❌ Error en recarga de mesas: $e');
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+          errorMessage = 'Error de sincronización: $e';
+        });
+      }
     } finally {
       _actualizacionEnProgreso = false;
     }
@@ -1869,6 +2274,9 @@ class _MesasScreenState extends State<MesasScreen>
       return TipoMesa.terraza;
     } else if (nombreUpper.contains('PRIVAD')) {
       return TipoMesa.privada;
+    } else if (_mesasEspecialesUsuario.contains(nombreMesa)) {
+      // Si está en la lista de mesas especiales del usuario, es especial
+      return TipoMesa.especial;
     } else {
       // Por defecto, usar el tipo especial
       return TipoMesa.especial;
@@ -4712,14 +5120,14 @@ class _MesasScreenState extends State<MesasScreen>
                                         ],
                                       ),
                                     ),
-                                    SizedBox(height: 32),
+                                    SizedBox(height: 12),
                                   ], // Cerrar if (mostrarBilletes)
                                 ], // Cerrar if (medioPago0 == 'efectivo')
                                 // 10. MONTO RECIBIDO Y CAMBIO
                                 if (medioPago0 == 'efectivo' &&
                                     billetesSeleccionados > 0) ...[
                                   _buildSeccionTitulo('Cálculo de Cambio'),
-                                  SizedBox(height: 16),
+                                  SizedBox(height: 8),
                                   Container(
                                     padding: EdgeInsets.all(20),
                                     decoration: BoxDecoration(
@@ -4831,14 +5239,262 @@ class _MesasScreenState extends State<MesasScreen>
                                       ],
                                     ),
                                   ),
-                                  SizedBox(height: 32),
+                                  SizedBox(height: 12),
                                 ],
 
-                                // Sección eliminada: pago múltiple ahora aparece debajo del botón "Otro medio de pago"
-                                SizedBox(height: 32),
+                                // Cajas de texto para pago múltiple
+                                if (pagoMultiple) ...[
+                                  Container(
+                                    padding: EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      color: _cardBg.withOpacity(0.3),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: _primary.withOpacity(0.2),
+                                      ),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Distribución de pago múltiple',
+                                          style: TextStyle(
+                                            color: _textPrimary,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        SizedBox(height: 12),
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    'Efectivo',
+                                                    style: TextStyle(
+                                                      color: _textPrimary,
+                                                      fontSize: 12,
+                                                    ),
+                                                  ),
+                                                  SizedBox(height: 4),
+                                                  Container(
+                                                    height: 40,
+                                                    child: TextField(
+                                                      controller:
+                                                          montoEfectivoController,
+                                                      keyboardType:
+                                                          TextInputType.numberWithOptions(
+                                                            decimal: true,
+                                                          ),
+                                                      textAlign:
+                                                          TextAlign.center,
+                                                      style: TextStyle(
+                                                        color: _textPrimary,
+                                                        fontSize: 14,
+                                                      ),
+                                                      decoration: InputDecoration(
+                                                        hintText: '\$0',
+                                                        hintStyle: TextStyle(
+                                                          color: _textPrimary
+                                                              .withOpacity(0.5),
+                                                        ),
+                                                        filled: true,
+                                                        fillColor: Colors.white
+                                                            .withOpacity(0.1),
+                                                        border: OutlineInputBorder(
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                8,
+                                                              ),
+                                                          borderSide: BorderSide(
+                                                            color: _textPrimary
+                                                                .withOpacity(
+                                                                  0.3,
+                                                                ),
+                                                          ),
+                                                        ),
+                                                        focusedBorder:
+                                                            OutlineInputBorder(
+                                                              borderRadius:
+                                                                  BorderRadius.circular(
+                                                                    8,
+                                                                  ),
+                                                              borderSide:
+                                                                  BorderSide(
+                                                                    color:
+                                                                        _primary,
+                                                                  ),
+                                                            ),
+                                                        contentPadding:
+                                                            EdgeInsets.symmetric(
+                                                              horizontal: 12,
+                                                              vertical: 8,
+                                                            ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            SizedBox(width: 12),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    'Tarjeta',
+                                                    style: TextStyle(
+                                                      color: _textPrimary,
+                                                      fontSize: 12,
+                                                    ),
+                                                  ),
+                                                  SizedBox(height: 4),
+                                                  Container(
+                                                    height: 40,
+                                                    child: TextField(
+                                                      controller:
+                                                          montoTarjetaController,
+                                                      keyboardType:
+                                                          TextInputType.numberWithOptions(
+                                                            decimal: true,
+                                                          ),
+                                                      textAlign:
+                                                          TextAlign.center,
+                                                      style: TextStyle(
+                                                        color: _textPrimary,
+                                                        fontSize: 14,
+                                                      ),
+                                                      decoration: InputDecoration(
+                                                        hintText: '\$0',
+                                                        hintStyle: TextStyle(
+                                                          color: _textPrimary
+                                                              .withOpacity(0.5),
+                                                        ),
+                                                        filled: true,
+                                                        fillColor: Colors.white
+                                                            .withOpacity(0.1),
+                                                        border: OutlineInputBorder(
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                8,
+                                                              ),
+                                                          borderSide: BorderSide(
+                                                            color: _textPrimary
+                                                                .withOpacity(
+                                                                  0.3,
+                                                                ),
+                                                          ),
+                                                        ),
+                                                        focusedBorder:
+                                                            OutlineInputBorder(
+                                                              borderRadius:
+                                                                  BorderRadius.circular(
+                                                                    8,
+                                                                  ),
+                                                              borderSide:
+                                                                  BorderSide(
+                                                                    color:
+                                                                        _primary,
+                                                                  ),
+                                                            ),
+                                                        contentPadding:
+                                                            EdgeInsets.symmetric(
+                                                              horizontal: 12,
+                                                              vertical: 8,
+                                                            ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            SizedBox(width: 12),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    'Transferencia',
+                                                    style: TextStyle(
+                                                      color: _textPrimary,
+                                                      fontSize: 12,
+                                                    ),
+                                                  ),
+                                                  SizedBox(height: 4),
+                                                  Container(
+                                                    height: 40,
+                                                    child: TextField(
+                                                      controller:
+                                                          montoTransferenciaController,
+                                                      keyboardType:
+                                                          TextInputType.numberWithOptions(
+                                                            decimal: true,
+                                                          ),
+                                                      textAlign:
+                                                          TextAlign.center,
+                                                      style: TextStyle(
+                                                        color: _textPrimary,
+                                                        fontSize: 14,
+                                                      ),
+                                                      decoration: InputDecoration(
+                                                        hintText: '\$0',
+                                                        hintStyle: TextStyle(
+                                                          color: _textPrimary
+                                                              .withOpacity(0.5),
+                                                        ),
+                                                        filled: true,
+                                                        fillColor: Colors.white
+                                                            .withOpacity(0.1),
+                                                        border: OutlineInputBorder(
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                8,
+                                                              ),
+                                                          borderSide: BorderSide(
+                                                            color: _textPrimary
+                                                                .withOpacity(
+                                                                  0.3,
+                                                                ),
+                                                          ),
+                                                        ),
+                                                        focusedBorder:
+                                                            OutlineInputBorder(
+                                                              borderRadius:
+                                                                  BorderRadius.circular(
+                                                                    8,
+                                                                  ),
+                                                              borderSide:
+                                                                  BorderSide(
+                                                                    color:
+                                                                        _primary,
+                                                                  ),
+                                                            ),
+                                                        contentPadding:
+                                                            EdgeInsets.symmetric(
+                                                              horizontal: 12,
+                                                              vertical: 8,
+                                                            ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  SizedBox(height: 12),
+                                ],
 
-                                // ✅ SECCIÓN ELIMINADA: Caja de propina duplicada removida
-                                SizedBox(height: 32),
+                                SizedBox(height: 12),
 
                                 // Explicación del modo seleccionado
                                 if (!pagoMultiple) ...[
@@ -5024,15 +5680,6 @@ class _MesasScreenState extends State<MesasScreen>
                                                                   vertical: 8,
                                                                 ),
                                                           ),
-                                                          onChanged: (value) {
-                                                            setState(() {
-                                                              if (value
-                                                                  .isNotEmpty) {
-                                                                descuentoValorController
-                                                                    .clear();
-                                                              }
-                                                            });
-                                                          },
                                                         ),
                                                       ),
                                                     ),
@@ -5106,15 +5753,6 @@ class _MesasScreenState extends State<MesasScreen>
                                                                   vertical: 8,
                                                                 ),
                                                           ),
-                                                          onChanged: (value) {
-                                                            setState(() {
-                                                              if (value
-                                                                  .isNotEmpty) {
-                                                                descuentoPorcentajeController
-                                                                    .clear();
-                                                              }
-                                                            });
-                                                          },
                                                         ),
                                                       ),
                                                     ),
@@ -5617,7 +6255,7 @@ class _MesasScreenState extends State<MesasScreen>
                                     ),
                                   ],
                                 ),
-                                SizedBox(height: 20),
+                                SizedBox(height: 12),
 
                                 // Opciones especiales compactas en fila
                                 Container(
@@ -5725,7 +6363,7 @@ class _MesasScreenState extends State<MesasScreen>
                                     ],
                                   ),
                                 ),
-                                SizedBox(height: 24),
+                                SizedBox(height: 16),
 
                                 // Botones principales: Resumen y Factura
                                 Row(
@@ -5773,7 +6411,7 @@ class _MesasScreenState extends State<MesasScreen>
                                                   await actualizarConInfoNegocio(
                                                     resumenNullable,
                                                   );
-                                              await _mostrarOpcionesCompartir(
+                                              await _mostrarOpcionesCompartirSinFactura(
                                                 resumen,
                                               );
                                             } else {
@@ -6678,6 +7316,46 @@ class _MesasScreenState extends State<MesasScreen>
             print(
               '✅ Documento automático generado: ${documento.numeroDocumento}',
             );
+
+            // ✅ NUEVO: Crear factura con información del cliente si está disponible
+            bool incluirDatosCliente =
+                formResult['incluirDatosCliente'] ?? false;
+            if (incluirDatosCliente) {
+              print('📄 Creando factura con información del cliente...');
+
+              try {
+                final facturaResult = await _impresionService
+                    .crearFacturaDesdepedido(
+                      pedido.id,
+                      nit: formResult['clienteNit']?.toString().trim(),
+                      clienteNombre: formResult['clienteNombre']
+                          ?.toString()
+                          .trim(),
+                      clienteCorreo: formResult['clienteCorreo']
+                          ?.toString()
+                          .trim(),
+                      clienteTelefono: formResult['clienteTelefono']
+                          ?.toString()
+                          .trim(),
+                      clienteDireccion: formResult['clienteDireccion']
+                          ?.toString()
+                          .trim(),
+                      medioPago: formaPagoDocumento,
+                    );
+
+                if (facturaResult != null) {
+                  print('✅ Factura con datos del cliente creada exitosamente');
+                  print('  - Cliente: ${formResult['clienteNombre']}');
+                  print('  - NIT: ${formResult['clienteNit']}');
+                  print('  - Correo: ${formResult['clienteCorreo']}');
+                } else {
+                  print('⚠️ No se pudo crear la factura con datos del cliente');
+                }
+              } catch (e) {
+                print('⚠️ Error creando factura con datos del cliente: $e');
+                // No interrumpir el flujo por error en factura
+              }
+            }
           }
         } catch (e) {
           print('⚠️ Error generando documento automático: $e');
@@ -9480,6 +10158,30 @@ class _MesasScreenState extends State<MesasScreen>
         elevation: 0,
         centerTitle: true,
         actions: [
+          // 🔧 NUEVO: Botón de sincronización manual
+          Container(
+            margin: EdgeInsets.only(right: AppTheme.spacingSmall),
+            child: IconButton(
+              icon: Container(
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                ),
+                child: Icon(Icons.sync, size: 20),
+              ),
+              tooltip: 'Sincronizar datos',
+              onPressed: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Sincronizando datos...'),
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+                _forzarSincronizacionCompleta();
+              },
+            ),
+          ),
           // Botón para mostrar resumen rápido de documentos del día
           Container(
             margin: EdgeInsets.only(right: AppTheme.spacingSmall),
@@ -9827,6 +10529,8 @@ class _MesasScreenState extends State<MesasScreen>
                   ),
                 ],
               ),
+              // Filas adicionales para mesas especiales creadas por el usuario
+              ..._buildMesasEspecialesUsuario(especialHeight),
             ],
           );
         } else {
@@ -9882,6 +10586,8 @@ class _MesasScreenState extends State<MesasScreen>
                   ),
                 ],
               ),
+              // Filas adicionales para mesas especiales creadas por el usuario
+              ..._buildMesasEspecialesUsuario(especialHeight),
             ],
           );
         }
@@ -10049,6 +10755,55 @@ class _MesasScreenState extends State<MesasScreen>
         );
       },
     );
+  }
+
+  /// Construye filas adicionales para las mesas especiales creadas por el usuario
+  List<Widget> _buildMesasEspecialesUsuario(double height) {
+    if (_mesasEspecialesUsuario.isEmpty) {
+      return [];
+    }
+
+    List<Widget> filas = [];
+
+    // Agrupar mesas de 2 en 2 para crear filas
+    for (int i = 0; i < _mesasEspecialesUsuario.length; i += 2) {
+      final mesa1 = _mesasEspecialesUsuario[i];
+      final mesa2 = i + 1 < _mesasEspecialesUsuario.length
+          ? _mesasEspecialesUsuario[i + 1]
+          : null;
+
+      filas.add(SizedBox(height: AppTheme.spacingMedium));
+      filas.add(
+        Row(
+          children: [
+            Expanded(
+              child: buildMesaEspecial(
+                mesa1,
+                Icons.star, // Icono especial para mesas creadas por usuario
+                'disponible',
+                () => _mostrarPedidosMesaEspecial(mesa1),
+                height: height,
+              ),
+            ),
+            SizedBox(width: AppTheme.spacingMedium),
+            Expanded(
+              child: mesa2 != null
+                  ? buildMesaEspecial(
+                      mesa2,
+                      Icons
+                          .star, // Icono especial para mesas creadas por usuario
+                      'disponible',
+                      () => _mostrarPedidosMesaEspecial(mesa2),
+                      height: height,
+                    )
+                  : Container(), // Espacio vacío si no hay segunda mesa
+            ),
+          ],
+        ),
+      );
+    }
+
+    return filas;
   }
 
   double getResponsiveEspecialHeight(double screenWidth) {

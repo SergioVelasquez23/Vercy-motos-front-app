@@ -13,8 +13,13 @@ class DashboardHelper {
     double total = 0.0;
     int contadorPagados = 0;
     int pedidosActivos = 0;
+    List<Map<String, dynamic>> detallesPagados = [];
 
     for (var pedido in pedidos) {
+      print(
+        '📋 Analizando pedido ${pedido.id}: estaPagado=${pedido.estaPagado}, estado=${pedido.estado}, total=${pedido.total}, totalPagado=${pedido.totalPagado}',
+      );
+
       if (pedido.estaPagado) {
         // Usar totalPagado si está disponible, de lo contrario usar total regular
         final montoVenta = pedido.totalPagado > 0
@@ -22,6 +27,13 @@ class DashboardHelper {
             : pedido.total;
         total += montoVenta;
         contadorPagados++;
+
+        detallesPagados.add({
+          'id': pedido.id,
+          'monto': montoVenta,
+          'totalOriginal': pedido.total,
+          'totalPagado': pedido.totalPagado,
+        });
       } else if (pedido.estado == EstadoPedido.activo) {
         pedidosActivos++;
       }
@@ -31,7 +43,8 @@ class DashboardHelper {
     print('  - Total pedidos analizados: ${pedidos.length}');
     print('  - Pedidos pagados detectados: $contadorPagados');
     print('  - Pedidos activos: $pedidosActivos');
-    print('  - Total calculado: ${total.toStringAsFixed(2)}');
+    print('  - Total calculado: \$${total.toStringAsFixed(2)}');
+    print('  - Detalles pedidos pagados: $detallesPagados');
 
     return total;
   }

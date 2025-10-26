@@ -172,6 +172,8 @@ class PDFServiceWeb implements PDFServiceInterface {
             ${esFactura ? 'FACTURA OFICIAL' : 'RESUMEN DE PEDIDO'}
         </div>
 
+        ${_generarSeccionCliente(resumen)}
+
         <div>
             <div style="display: flex; justify-content: space-between; margin: 20px 0; background: #f0f8ff; padding: 20px; border-radius: 10px; border: 2px solid #ddd; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
                 <div style="font-size: 20px; text-align: center;">
@@ -359,6 +361,8 @@ Tel: ${resumen['telefonoRestaurante'] ?? 'Teléfono'}
 ${esFactura ? 'FACTURA OFICIAL' : 'RESUMEN DE PEDIDO'}
 ==========================================
 
+${_generarSeccionClienteTexto(resumen)}
+
 Mesa: ${resumen['mesa'] ?? 'N/A'}
 Fecha: ${resumen['fecha'] ?? DateTime.now().toString().split(' ')[0]}
 Hora: ${resumen['hora'] ?? DateTime.now().toString().split(' ')[1].substring(0, 5)}
@@ -458,6 +462,118 @@ ${DateTime.now().toString().split('.')[0]}
         div.remove();
       });
     }
+  }
+
+  /// ✅ NUEVO: Generar sección con información del cliente
+  String _generarSeccionCliente(Map<String, dynamic> resumen) {
+    // Verificar si se deben incluir datos del cliente
+    if (resumen['incluirDatosCliente'] != true) {
+      return '';
+    }
+
+    final clienteNombre = resumen['clienteNombre'] ?? '';
+    final clienteNit = resumen['clienteNit'] ?? '';
+    final clienteCorreo = resumen['clienteCorreo'] ?? '';
+    final clienteTelefono = resumen['clienteTelefono'] ?? '';
+    final clienteDireccion = resumen['clienteDireccion'] ?? '';
+
+    // Si no hay ningún dato del cliente, no mostrar la sección
+    if (clienteNombre.isEmpty &&
+        clienteNit.isEmpty &&
+        clienteCorreo.isEmpty &&
+        clienteTelefono.isEmpty &&
+        clienteDireccion.isEmpty) {
+      return '';
+    }
+
+    String clienteInfo = '';
+
+    if (clienteNombre.isNotEmpty) {
+      clienteInfo +=
+          '<div style="margin-bottom: 8px;"><strong>Cliente:</strong> $clienteNombre</div>';
+    }
+
+    if (clienteNit.isNotEmpty) {
+      clienteInfo +=
+          '<div style="margin-bottom: 8px;"><strong>NIT/CC:</strong> $clienteNit</div>';
+    }
+
+    if (clienteCorreo.isNotEmpty) {
+      clienteInfo +=
+          '<div style="margin-bottom: 8px;"><strong>Correo:</strong> $clienteCorreo</div>';
+    }
+
+    if (clienteTelefono.isNotEmpty) {
+      clienteInfo +=
+          '<div style="margin-bottom: 8px;"><strong>Teléfono:</strong> $clienteTelefono</div>';
+    }
+
+    if (clienteDireccion.isNotEmpty) {
+      clienteInfo +=
+          '<div style="margin-bottom: 8px;"><strong>Dirección:</strong> $clienteDireccion</div>';
+    }
+
+    return '''
+        <div style="margin: 25px 0; padding: 20px; background: #f8f9fa; border-radius: 10px; border: 2px solid #e9ecef; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <div style="text-align: center; font-size: 18px; font-weight: bold; color: #000; margin-bottom: 15px; border-bottom: 2px solid #ddd; padding-bottom: 10px;">
+                📋 INFORMACIÓN DEL CLIENTE
+            </div>
+            <div style="font-size: 16px; color: #2c3e50; line-height: 1.6;">
+                $clienteInfo
+            </div>
+        </div>
+    ''';
+  }
+
+  /// ✅ NUEVO: Generar sección del cliente para texto plano
+  String _generarSeccionClienteTexto(Map<String, dynamic> resumen) {
+    // Verificar si se deben incluir datos del cliente
+    if (resumen['incluirDatosCliente'] != true) {
+      return '';
+    }
+
+    final clienteNombre = resumen['clienteNombre'] ?? '';
+    final clienteNit = resumen['clienteNit'] ?? '';
+    final clienteCorreo = resumen['clienteCorreo'] ?? '';
+    final clienteTelefono = resumen['clienteTelefono'] ?? '';
+    final clienteDireccion = resumen['clienteDireccion'] ?? '';
+
+    // Si no hay ningún dato del cliente, no mostrar la sección
+    if (clienteNombre.isEmpty &&
+        clienteNit.isEmpty &&
+        clienteCorreo.isEmpty &&
+        clienteTelefono.isEmpty &&
+        clienteDireccion.isEmpty) {
+      return '';
+    }
+
+    String clienteInfo = '''
+------------------------------------------
+📋 INFORMACIÓN DEL CLIENTE
+------------------------------------------
+''';
+
+    if (clienteNombre.isNotEmpty) {
+      clienteInfo += 'Cliente: $clienteNombre\n';
+    }
+
+    if (clienteNit.isNotEmpty) {
+      clienteInfo += 'NIT/CC: $clienteNit\n';
+    }
+
+    if (clienteCorreo.isNotEmpty) {
+      clienteInfo += 'Correo: $clienteCorreo\n';
+    }
+
+    if (clienteTelefono.isNotEmpty) {
+      clienteInfo += 'Teléfono: $clienteTelefono\n';
+    }
+
+    if (clienteDireccion.isNotEmpty) {
+      clienteInfo += 'Dirección: $clienteDireccion\n';
+    }
+
+    return clienteInfo;
   }
 }
 
