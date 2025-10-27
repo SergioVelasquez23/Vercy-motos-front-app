@@ -8,7 +8,8 @@ class EndpointsConfig {
   EndpointsConfig._internal();
 
   // URL base por defecto (simplificada)
-  String get baseUrl => _customBaseUrl ?? 'https://sopa-y-carbon.onrender.com';
+  String get baseUrl =>
+      _customBaseUrl ?? 'https://sopa-y-carbon-production.up.railway.app';
 
   // Variable para almacenar una URL base personalizada
   String? _customBaseUrl;

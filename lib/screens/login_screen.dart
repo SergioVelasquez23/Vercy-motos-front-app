@@ -1,9 +1,13 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../services/auth_service.dart';
 import '../providers/user_provider.dart';
 import '../theme/app_theme.dart';
+import '../services/mesa_service.dart';
+import '../services/producto_service.dart';
+import '../services/pedido_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -28,11 +32,102 @@ class _LoginScreenState extends State<LoginScreen> {
   String? errorMessage;
   bool rememberCredentials = false;
   final _secureStorage = const FlutterSecureStorage();
+  // Wake-up / retry timers
+  Timer? _loginWatchdogTimer;
+  bool _showWakeupOverlay = false;
+  int _wakeupRemainingSeconds = 300; // 5 minutos
+  Timer? _wakeupTicker;
+  Timer? _wakeupStepTimer;
+
+  final MesaService _mesaService = MesaService();
+  final ProductoService _productoService = ProductoService();
+  final PedidoService _pedidoService = PedidoService();
 
   @override
   void initState() {
     super.initState();
     _loadSavedCredentials();
+  }
+
+  // ----- Wake-up sequence -----
+  void _startWakeUpSequence() {
+    if (!mounted) return;
+    if (_showWakeupOverlay) return;
+    print('⏳ Wake-up: iniciando pantalla de espera (5 minutos)');
+    setState(() {
+      _showWakeupOverlay = true;
+      _wakeupRemainingSeconds = 300;
+    });
+
+    // Ticker cada segundo para el contador visual
+    _wakeupTicker?.cancel();
+    _wakeupTicker = Timer.periodic(Duration(seconds: 1), (t) {
+      if (!mounted) return;
+      setState(() {
+        _wakeupRemainingSeconds = (_wakeupRemainingSeconds - 1).clamp(0, 300);
+      });
+      if (_wakeupRemainingSeconds <= 0) {
+        _stopWakeUpSequence();
+      }
+    });
+
+    // Paso de wake-up: cada 20s intentar recargas completas
+    _wakeupStepTimer?.cancel();
+    _wakeupStepTimer = Timer.periodic(Duration(seconds: 20), (_) async {
+      await _performWakeupStep();
+    });
+
+    // Ejecutar inmediatamente un primer intento
+    _performWakeupStep();
+  }
+
+  void _stopWakeUpSequence() {
+    print('⏹️ Wake-up: detenido');
+    _wakeupTicker?.cancel();
+    _wakeupStepTimer?.cancel();
+    _loginWatchdogTimer?.cancel();
+    if (mounted) {
+      setState(() {
+        _showWakeupOverlay = false;
+      });
+    }
+  }
+
+  Future<void> _performWakeupStep() async {
+    print('🔁 Wake-up: intentando recarga completa (mesas/productos/pedidos)');
+
+    try {
+      // Limpiar cache de productos para forzar descarga fresca
+      try {
+        _productoService.clearCache();
+      } catch (e) {
+        print('⚠️ Error limpiando cache de productos: $e');
+      }
+
+      // Intentar recargas (ignorar errores individuales, seguir con el flujo)
+      try {
+        await _productoService.getProductos();
+        print('✅ Wake-up: productos recargados');
+      } catch (e) {
+        print('⚠️ Wake-up: fallo recargando productos: $e');
+      }
+
+      try {
+        await _mesaService.getMesas();
+        print('✅ Wake-up: mesas recargadas');
+      } catch (e) {
+        print('⚠️ Wake-up: fallo recargando mesas: $e');
+      }
+
+      try {
+        await _pedidoService.getAllPedidos();
+        print('✅ Wake-up: pedidos recargados');
+      } catch (e) {
+        print('⚠️ Wake-up: fallo recargando pedidos: $e');
+      }
+    } catch (e) {
+      print('❌ Wake-up internal error: $e');
+    }
   }
 
   Future<void> _loadSavedCredentials() async {
@@ -68,11 +163,23 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!userProvider.isAuthenticated) {
         print('🔄 Intentando auto-login con credenciales guardadas...');
 
+        // Iniciar watchdog: si el login tarda más de 15s, arrancar pantalla de wake-up
+        _loginWatchdogTimer?.cancel();
+        _loginWatchdogTimer = Timer(Duration(seconds: 15), () {
+          if (mounted) _startWakeUpSequence();
+        });
+
         final response = await authService.iniciarSesionWithResponse(
           context,
           emailController.text,
           passwordController.text,
         );
+
+        // Login completado — cancelar watchdog/wakeup si estaba activo
+        _loginWatchdogTimer?.cancel();
+        if (_showWakeupOverlay) {
+          _stopWakeUpSequence();
+        }
 
         if (response != null && response['token'] != null) {
           final token = response['token'];
@@ -143,6 +250,9 @@ class _LoginScreenState extends State<LoginScreen> {
     registerNameController.dispose();
     registerEmailController.dispose();
     registerPasswordController.dispose();
+    _loginWatchdogTimer?.cancel();
+    _wakeupTicker?.cancel();
+    _wakeupStepTimer?.cancel();
     super.dispose();
   }
 
@@ -154,11 +264,23 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final userProvider = Provider.of<UserProvider>(context, listen: false);
 
+      // Iniciar watchdog: si el login tarda más de 15s, arrancar pantalla de wake-up
+      _loginWatchdogTimer?.cancel();
+      _loginWatchdogTimer = Timer(Duration(seconds: 15), () {
+        if (mounted) _startWakeUpSequence();
+      });
+
       final response = await authService.iniciarSesionWithResponse(
         context,
         emailController.text,
         passwordController.text,
       );
+
+      // Login completado — cancelar watchdog/wakeup si estaba activo
+      _loginWatchdogTimer?.cancel();
+      if (_showWakeupOverlay) {
+        _stopWakeUpSequence();
+      }
 
       if (response != null) {
         if (response['error'] != null) {
@@ -448,467 +570,557 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.backgroundDark,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Container(
-            width: double.infinity,
-            constraints: BoxConstraints(
-              minHeight:
-                  MediaQuery.of(context).size.height -
-                  MediaQuery.of(context).padding.top,
-            ),
-            child: Center(
+      body: Stack(
+        children: [
+          SafeArea(
+            child: SingleChildScrollView(
               child: Container(
-                padding: EdgeInsets.all(context.responsivePadding),
+                width: double.infinity,
                 constraints: BoxConstraints(
-                  maxWidth: context.isMobile ? double.infinity : 400,
+                  minHeight:
+                      MediaQuery.of(context).size.height -
+                      MediaQuery.of(context).padding.top,
                 ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // Logo elegante con sombra
-                    Container(
-                      padding: EdgeInsets.all(AppTheme.spacingLarge),
-                      decoration: AppTheme.elevatedCardDecoration,
-                      child: Container(
-                        width: context.isMobile ? 120 : 140,
-                        height: context.isMobile ? 120 : 140,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(
-                            AppTheme.radiusLarge,
-                          ),
-                          border: Border.all(
-                            color: AppTheme.primary.withOpacity(0.2),
-                            width: 2,
-                          ),
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(
-                            AppTheme.radiusLarge - 2,
-                          ),
-                          child: Image.network(
-                            'https://sopa-y-carbon-app.web.app/icons/Icon-192.png',
-                            fit: BoxFit.cover,
-                            loadingBuilder: (context, child, loadingProgress) {
-                              if (loadingProgress == null) return child;
-                              return Container(
-                                decoration: BoxDecoration(
-                                  color: AppTheme.primary.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(
-                                    AppTheme.radiusLarge - 2,
-                                  ),
-                                ),
-                                child: Center(
-                                  child: CircularProgressIndicator(
-                                    value:
-                                        loadingProgress.expectedTotalBytes !=
-                                            null
-                                        ? loadingProgress
-                                                  .cumulativeBytesLoaded /
-                                              loadingProgress
-                                                  .expectedTotalBytes!
-                                        : null,
-                                    color: AppTheme.primary,
-                                  ),
-                                ),
-                              );
-                            },
-                            errorBuilder: (context, error, stackTrace) {
-                              // Fallback a asset local si falla la red
-                              return Image.asset(
-                                'assets/images/logo.png',
+                child: Center(
+                  child: Container(
+                    padding: EdgeInsets.all(context.responsivePadding),
+                    constraints: BoxConstraints(
+                      maxWidth: context.isMobile ? double.infinity : 400,
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // Logo elegante con sombra
+                        Container(
+                          padding: EdgeInsets.all(AppTheme.spacingLarge),
+                          decoration: AppTheme.elevatedCardDecoration,
+                          child: Container(
+                            width: context.isMobile ? 120 : 140,
+                            height: context.isMobile ? 120 : 140,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(
+                                AppTheme.radiusLarge,
+                              ),
+                              border: Border.all(
+                                color: AppTheme.primary.withOpacity(0.2),
+                                width: 2,
+                              ),
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(
+                                AppTheme.radiusLarge - 2,
+                              ),
+                              child: Image.network(
+                                'https://sopa-y-carbon-app.web.app/icons/Icon-192.png',
                                 fit: BoxFit.cover,
+                                loadingBuilder:
+                                    (context, child, loadingProgress) {
+                                      if (loadingProgress == null) return child;
+                                      return Container(
+                                        decoration: BoxDecoration(
+                                          color: AppTheme.primary.withOpacity(
+                                            0.1,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            AppTheme.radiusLarge - 2,
+                                          ),
+                                        ),
+                                        child: Center(
+                                          child: CircularProgressIndicator(
+                                            value:
+                                                loadingProgress
+                                                        .expectedTotalBytes !=
+                                                    null
+                                                ? loadingProgress
+                                                          .cumulativeBytesLoaded /
+                                                      loadingProgress
+                                                          .expectedTotalBytes!
+                                                : null,
+                                            color: AppTheme.primary,
+                                          ),
+                                        ),
+                                      );
+                                    },
                                 errorBuilder: (context, error, stackTrace) {
-                                  return Container(
-                                    decoration: BoxDecoration(
-                                      color: AppTheme.primary.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(
-                                        AppTheme.radiusLarge - 2,
-                                      ),
-                                    ),
-                                    child: Icon(
-                                      Icons.restaurant,
-                                      color: AppTheme.primary,
-                                      size: context.isMobile ? 60 : 70,
-                                    ),
+                                  // Fallback a asset local si falla la red
+                                  return Image.asset(
+                                    'assets/images/logo.png',
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Container(
+                                        decoration: BoxDecoration(
+                                          color: AppTheme.primary.withOpacity(
+                                            0.1,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            AppTheme.radiusLarge - 2,
+                                          ),
+                                        ),
+                                        child: Icon(
+                                          Icons.restaurant,
+                                          color: AppTheme.primary,
+                                          size: context.isMobile ? 60 : 70,
+                                        ),
+                                      );
+                                    },
                                   );
                                 },
-                              );
-                            },
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                    ),
 
-                    SizedBox(height: AppTheme.spacingXLarge),
+                        SizedBox(height: AppTheme.spacingXLarge),
 
-                    // Tarjeta principal de login
-                    Container(
-                      padding: EdgeInsets.all(
-                        context.isMobile
-                            ? AppTheme.spacingLarge
-                            : AppTheme.spacingXLarge,
-                      ),
-                      decoration: AppTheme.elevatedCardDecoration,
-                      child: Column(
-                        children: [
-                          // Título elegante
-                          Text(
-                            'Bienvenido',
-                            style: AppTheme.headlineLarge.copyWith(
-                              fontSize: context.isMobile ? 24 : 28,
-                            ),
+                        // Tarjeta principal de login
+                        Container(
+                          padding: EdgeInsets.all(
+                            context.isMobile
+                                ? AppTheme.spacingLarge
+                                : AppTheme.spacingXLarge,
                           ),
-                          SizedBox(height: AppTheme.spacingSmall),
-                          Text(
-                            'Ingresa a tu cuenta',
-                            style: AppTheme.bodyLarge.copyWith(
-                              color: AppTheme.textSecondary,
-                            ),
-                          ),
-                          SizedBox(height: AppTheme.spacingXLarge),
-
-                          // Campo de email
-                          TextFormField(
-                            controller: emailController,
-                            keyboardType: TextInputType.emailAddress,
-                            style: AppTheme.bodyMedium,
-                            decoration: InputDecoration(
-                              labelText: 'Correo electrónico',
-                              labelStyle: AppTheme.labelMedium.copyWith(
-                                color: AppTheme.textSecondary,
-                              ),
-                              prefixIcon: Icon(
-                                Icons.email_outlined,
-                                color: AppTheme.primary,
-                              ),
-                              filled: true,
-                              fillColor: AppTheme.surfaceDark,
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(
-                                  AppTheme.radiusMedium,
-                                ),
-                                borderSide: BorderSide(
-                                  color: AppTheme.textMuted.withOpacity(0.3),
+                          decoration: AppTheme.elevatedCardDecoration,
+                          child: Column(
+                            children: [
+                              // Título elegante
+                              Text(
+                                'Bienvenido',
+                                style: AppTheme.headlineLarge.copyWith(
+                                  fontSize: context.isMobile ? 24 : 28,
                                 ),
                               ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(
-                                  AppTheme.radiusMedium,
-                                ),
-                                borderSide: BorderSide(
-                                  color: AppTheme.textMuted.withOpacity(0.3),
-                                ),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(
-                                  AppTheme.radiusMedium,
-                                ),
-                                borderSide: BorderSide(
-                                  color: AppTheme.primary,
-                                  width: 2,
-                                ),
-                              ),
-                            ),
-                          ),
-
-                          SizedBox(height: AppTheme.spacingMedium),
-
-                          // Campo de contraseña
-                          TextFormField(
-                            controller: passwordController,
-                            obscureText: true,
-                            style: AppTheme.bodyMedium,
-                            decoration: InputDecoration(
-                              labelText: 'Contraseña',
-                              labelStyle: AppTheme.labelMedium.copyWith(
-                                color: AppTheme.textSecondary,
-                              ),
-                              prefixIcon: Icon(
-                                Icons.lock_outline,
-                                color: AppTheme.primary,
-                              ),
-                              filled: true,
-                              fillColor: AppTheme.surfaceDark,
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(
-                                  AppTheme.radiusMedium,
-                                ),
-                                borderSide: BorderSide(
-                                  color: AppTheme.textMuted.withOpacity(0.3),
-                                ),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(
-                                  AppTheme.radiusMedium,
-                                ),
-                                borderSide: BorderSide(
-                                  color: AppTheme.textMuted.withOpacity(0.3),
-                                ),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(
-                                  AppTheme.radiusMedium,
-                                ),
-                                borderSide: BorderSide(
-                                  color: AppTheme.primary,
-                                  width: 2,
-                                ),
-                              ),
-                            ),
-                          ),
-
-                          SizedBox(height: AppTheme.spacingMedium),
-
-                          // Checkbox para recordar credenciales
-                          Container(
-                            padding: EdgeInsets.symmetric(horizontal: 4),
-                            child: Row(
-                              children: [
-                                Checkbox(
-                                  value: rememberCredentials,
-                                  onChanged: (value) {
-                                    setState(() {
-                                      rememberCredentials = value ?? false;
-                                    });
-                                  },
-                                  activeColor: AppTheme.primary,
-                                  checkColor: Colors.white,
-                                  fillColor: MaterialStateProperty.resolveWith((
-                                    states,
-                                  ) {
-                                    if (states.contains(
-                                      MaterialState.selected,
-                                    )) {
-                                      return AppTheme.primary;
-                                    }
-                                    return Colors.transparent;
-                                  }),
-                                  side: BorderSide(
-                                    color: AppTheme.textMuted.withOpacity(0.5),
-                                    width: 2,
-                                  ),
-                                ),
-                                SizedBox(width: AppTheme.spacingSmall),
-                                Expanded(
-                                  child: GestureDetector(
-                                    onTap: () {
-                                      setState(() {
-                                        rememberCredentials =
-                                            !rememberCredentials;
-                                      });
-                                    },
-                                    child: Text(
-                                      'Recordar mis credenciales',
-                                      style: AppTheme.bodyMedium.copyWith(
-                                        color: AppTheme.textSecondary,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                // Icono de información
-                                Tooltip(
-                                  message:
-                                      'Tus credenciales se guardarán de forma segura en este dispositivo para futuros inicios de sesión',
-                                  child: Icon(
-                                    Icons.info_outline,
-                                    size: 18,
-                                    color: AppTheme.textMuted,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          SizedBox(height: AppTheme.spacingLarge),
-
-                          // Botón de login elegante con mejor responsividad
-                          Container(
-                            width: double.infinity,
-                            margin: EdgeInsets.symmetric(
-                              horizontal: 4,
-                            ), // Margen para evitar cortes
-                            child: SizedBox(
-                              height: context.isMobile
-                                  ? 56
-                                  : 60, // Altura más generosa
-                              child: ElevatedButton(
-                                onPressed: _login,
-                                style: AppTheme.primaryButtonStyle.copyWith(
-                                  elevation: MaterialStateProperty.all(4),
-                                  shape: MaterialStateProperty.all(
-                                    RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(
-                                        AppTheme.radiusMedium,
-                                      ),
-                                    ),
-                                  ),
-                                  padding: MaterialStateProperty.all(
-                                    EdgeInsets.symmetric(
-                                      horizontal: context.isMobile ? 24 : 28,
-                                      vertical: context.isMobile ? 16 : 18,
-                                    ),
-                                  ),
-                                ),
-                                child: FittedBox(
-                                  fit: BoxFit
-                                      .scaleDown, // Escala el texto si es necesario
-                                  child: Text(
-                                    'Iniciar Sesión',
-                                    style: AppTheme.labelLarge.copyWith(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: context.isMobile ? 18 : 20,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-
-                          SizedBox(height: AppTheme.spacingMedium),
-
-                          // Enlace de registro
-                          TextButton(
-                            onPressed: _showRegisterDialog,
-                            style: AppTheme.secondaryButtonStyle,
-                            child: RichText(
-                              text: TextSpan(
-                                text: '¿No tienes cuenta? ',
-                                style: AppTheme.bodyMedium.copyWith(
+                              SizedBox(height: AppTheme.spacingSmall),
+                              Text(
+                                'Ingresa a tu cuenta',
+                                style: AppTheme.bodyLarge.copyWith(
                                   color: AppTheme.textSecondary,
                                 ),
-                                children: [
-                                  TextSpan(
-                                    text: 'Regístrate',
-                                    style: AppTheme.bodyMedium.copyWith(
-                                      color: AppTheme.primary,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
                               ),
-                            ),
-                          ),
+                              SizedBox(height: AppTheme.spacingXLarge),
 
-                          // Campo de código de verificación (si es necesario)
-                          if (showCodeField) ...[
-                            SizedBox(height: AppTheme.spacingLarge),
-                            TextFormField(
-                              controller: codeController,
-                              keyboardType: TextInputType.number,
-                              style: AppTheme.bodyMedium,
-                              decoration: InputDecoration(
-                                labelText: 'Código de verificación',
-                                labelStyle: AppTheme.labelMedium.copyWith(
-                                  color: AppTheme.textSecondary,
-                                ),
-                                prefixIcon: Icon(
-                                  Icons.security,
-                                  color: AppTheme.warning,
-                                ),
-                                filled: true,
-                                fillColor: AppTheme.surfaceDark,
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(
-                                    AppTheme.radiusMedium,
+                              // Campo de email
+                              TextFormField(
+                                controller: emailController,
+                                keyboardType: TextInputType.emailAddress,
+                                style: AppTheme.bodyMedium,
+                                decoration: InputDecoration(
+                                  labelText: 'Correo electrónico',
+                                  labelStyle: AppTheme.labelMedium.copyWith(
+                                    color: AppTheme.textSecondary,
                                   ),
-                                  borderSide: BorderSide(
-                                    color: AppTheme.warning.withOpacity(0.3),
+                                  prefixIcon: Icon(
+                                    Icons.email_outlined,
+                                    color: AppTheme.primary,
                                   ),
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(
-                                    AppTheme.radiusMedium,
-                                  ),
-                                  borderSide: BorderSide(
-                                    color: AppTheme.warning.withOpacity(0.3),
-                                  ),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(
-                                    AppTheme.radiusMedium,
-                                  ),
-                                  borderSide: BorderSide(
-                                    color: AppTheme.warning,
-                                    width: 2,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            SizedBox(height: AppTheme.spacingMedium),
-                            SizedBox(
-                              width: double.infinity,
-                              height: 45,
-                              child: ElevatedButton(
-                                onPressed: _validateCode,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppTheme.warning,
-                                  foregroundColor: Colors.black,
-                                  shape: RoundedRectangleBorder(
+                                  filled: true,
+                                  fillColor: AppTheme.surfaceDark,
+                                  border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(
                                       AppTheme.radiusMedium,
                                     ),
-                                  ),
-                                  elevation: 2,
-                                ),
-                                child: Text(
-                                  'Validar Código',
-                                  style: AppTheme.labelMedium.copyWith(
-                                    color: Colors.black,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-
-                          // Mensaje de error elegante
-                          if (errorMessage != null) ...[
-                            SizedBox(height: AppTheme.spacingLarge),
-                            Container(
-                              width: double.infinity,
-                              padding: EdgeInsets.all(AppTheme.spacingMedium),
-                              decoration: BoxDecoration(
-                                color: AppTheme.error.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(
-                                  AppTheme.radiusMedium,
-                                ),
-                                border: Border.all(
-                                  color: AppTheme.error.withOpacity(0.3),
-                                  width: 1,
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.error_outline,
-                                    color: AppTheme.error,
-                                    size: 20,
-                                  ),
-                                  SizedBox(width: AppTheme.spacingSmall),
-                                  Expanded(
-                                    child: Text(
-                                      errorMessage!,
-                                      style: AppTheme.bodySmall.copyWith(
-                                        color: AppTheme.error,
+                                    borderSide: BorderSide(
+                                      color: AppTheme.textMuted.withOpacity(
+                                        0.3,
                                       ),
                                     ),
                                   ),
-                                ],
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(
+                                      AppTheme.radiusMedium,
+                                    ),
+                                    borderSide: BorderSide(
+                                      color: AppTheme.textMuted.withOpacity(
+                                        0.3,
+                                      ),
+                                    ),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(
+                                      AppTheme.radiusMedium,
+                                    ),
+                                    borderSide: BorderSide(
+                                      color: AppTheme.primary,
+                                      width: 2,
+                                    ),
+                                  ),
+                                ),
                               ),
-                            ),
-                          ],
-                        ],
-                      ),
+
+                              SizedBox(height: AppTheme.spacingMedium),
+
+                              // Campo de contraseña
+                              TextFormField(
+                                controller: passwordController,
+                                obscureText: true,
+                                style: AppTheme.bodyMedium,
+                                decoration: InputDecoration(
+                                  labelText: 'Contraseña',
+                                  labelStyle: AppTheme.labelMedium.copyWith(
+                                    color: AppTheme.textSecondary,
+                                  ),
+                                  prefixIcon: Icon(
+                                    Icons.lock_outline,
+                                    color: AppTheme.primary,
+                                  ),
+                                  filled: true,
+                                  fillColor: AppTheme.surfaceDark,
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(
+                                      AppTheme.radiusMedium,
+                                    ),
+                                    borderSide: BorderSide(
+                                      color: AppTheme.textMuted.withOpacity(
+                                        0.3,
+                                      ),
+                                    ),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(
+                                      AppTheme.radiusMedium,
+                                    ),
+                                    borderSide: BorderSide(
+                                      color: AppTheme.textMuted.withOpacity(
+                                        0.3,
+                                      ),
+                                    ),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(
+                                      AppTheme.radiusMedium,
+                                    ),
+                                    borderSide: BorderSide(
+                                      color: AppTheme.primary,
+                                      width: 2,
+                                    ),
+                                  ),
+                                ),
+                              ),
+
+                              SizedBox(height: AppTheme.spacingMedium),
+
+                              // Checkbox para recordar credenciales
+                              Container(
+                                padding: EdgeInsets.symmetric(horizontal: 4),
+                                child: Row(
+                                  children: [
+                                    Checkbox(
+                                      value: rememberCredentials,
+                                      onChanged: (value) {
+                                        setState(() {
+                                          rememberCredentials = value ?? false;
+                                        });
+                                      },
+                                      activeColor: AppTheme.primary,
+                                      checkColor: Colors.white,
+                                      fillColor:
+                                          MaterialStateProperty.resolveWith((
+                                            states,
+                                          ) {
+                                            if (states.contains(
+                                              MaterialState.selected,
+                                            )) {
+                                              return AppTheme.primary;
+                                            }
+                                            return Colors.transparent;
+                                          }),
+                                      side: BorderSide(
+                                        color: AppTheme.textMuted.withOpacity(
+                                          0.5,
+                                        ),
+                                        width: 2,
+                                      ),
+                                    ),
+                                    SizedBox(width: AppTheme.spacingSmall),
+                                    Expanded(
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          setState(() {
+                                            rememberCredentials =
+                                                !rememberCredentials;
+                                          });
+                                        },
+                                        child: Text(
+                                          'Recordar mis credenciales',
+                                          style: AppTheme.bodyMedium.copyWith(
+                                            color: AppTheme.textSecondary,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    // Icono de información
+                                    Tooltip(
+                                      message:
+                                          'Tus credenciales se guardarán de forma segura en este dispositivo para futuros inicios de sesión',
+                                      child: Icon(
+                                        Icons.info_outline,
+                                        size: 18,
+                                        color: AppTheme.textMuted,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                              SizedBox(height: AppTheme.spacingLarge),
+
+                              // Botón de login elegante con mejor responsividad
+                              Container(
+                                width: double.infinity,
+                                margin: EdgeInsets.symmetric(
+                                  horizontal: 4,
+                                ), // Margen para evitar cortes
+                                child: SizedBox(
+                                  height: context.isMobile
+                                      ? 56
+                                      : 60, // Altura más generosa
+                                  child: ElevatedButton(
+                                    onPressed: _login,
+                                    style: AppTheme.primaryButtonStyle.copyWith(
+                                      elevation: MaterialStateProperty.all(4),
+                                      shape: MaterialStateProperty.all(
+                                        RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            AppTheme.radiusMedium,
+                                          ),
+                                        ),
+                                      ),
+                                      padding: MaterialStateProperty.all(
+                                        EdgeInsets.symmetric(
+                                          horizontal: context.isMobile
+                                              ? 24
+                                              : 28,
+                                          vertical: context.isMobile ? 16 : 18,
+                                        ),
+                                      ),
+                                    ),
+                                    child: FittedBox(
+                                      fit: BoxFit
+                                          .scaleDown, // Escala el texto si es necesario
+                                      child: Text(
+                                        'Iniciar Sesión',
+                                        style: AppTheme.labelLarge.copyWith(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: context.isMobile ? 18 : 20,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+
+                              SizedBox(height: AppTheme.spacingMedium),
+
+                              // Enlace de registro
+                              TextButton(
+                                onPressed: _showRegisterDialog,
+                                style: AppTheme.secondaryButtonStyle,
+                                child: RichText(
+                                  text: TextSpan(
+                                    text: '¿No tienes cuenta? ',
+                                    style: AppTheme.bodyMedium.copyWith(
+                                      color: AppTheme.textSecondary,
+                                    ),
+                                    children: [
+                                      TextSpan(
+                                        text: 'Regístrate',
+                                        style: AppTheme.bodyMedium.copyWith(
+                                          color: AppTheme.primary,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+
+                              // Campo de código de verificación (si es necesario)
+                              if (showCodeField) ...[
+                                SizedBox(height: AppTheme.spacingLarge),
+                                TextFormField(
+                                  controller: codeController,
+                                  keyboardType: TextInputType.number,
+                                  style: AppTheme.bodyMedium,
+                                  decoration: InputDecoration(
+                                    labelText: 'Código de verificación',
+                                    labelStyle: AppTheme.labelMedium.copyWith(
+                                      color: AppTheme.textSecondary,
+                                    ),
+                                    prefixIcon: Icon(
+                                      Icons.security,
+                                      color: AppTheme.warning,
+                                    ),
+                                    filled: true,
+                                    fillColor: AppTheme.surfaceDark,
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(
+                                        AppTheme.radiusMedium,
+                                      ),
+                                      borderSide: BorderSide(
+                                        color: AppTheme.warning.withOpacity(
+                                          0.3,
+                                        ),
+                                      ),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(
+                                        AppTheme.radiusMedium,
+                                      ),
+                                      borderSide: BorderSide(
+                                        color: AppTheme.warning.withOpacity(
+                                          0.3,
+                                        ),
+                                      ),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(
+                                        AppTheme.radiusMedium,
+                                      ),
+                                      borderSide: BorderSide(
+                                        color: AppTheme.warning,
+                                        width: 2,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(height: AppTheme.spacingMedium),
+                                SizedBox(
+                                  width: double.infinity,
+                                  height: 45,
+                                  child: ElevatedButton(
+                                    onPressed: _validateCode,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppTheme.warning,
+                                      foregroundColor: Colors.black,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(
+                                          AppTheme.radiusMedium,
+                                        ),
+                                      ),
+                                      elevation: 2,
+                                    ),
+                                    child: Text(
+                                      'Validar Código',
+                                      style: AppTheme.labelMedium.copyWith(
+                                        color: Colors.black,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+
+                              // Mensaje de error elegante
+                              if (errorMessage != null) ...[
+                                SizedBox(height: AppTheme.spacingLarge),
+                                Container(
+                                  width: double.infinity,
+                                  padding: EdgeInsets.all(
+                                    AppTheme.spacingMedium,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.error.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(
+                                      AppTheme.radiusMedium,
+                                    ),
+                                    border: Border.all(
+                                      color: AppTheme.error.withOpacity(0.3),
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.error_outline,
+                                        color: AppTheme.error,
+                                        size: 20,
+                                      ),
+                                      SizedBox(width: AppTheme.spacingSmall),
+                                      Expanded(
+                                        child: Text(
+                                          errorMessage!,
+                                          style: AppTheme.bodySmall.copyWith(
+                                            color: AppTheme.error,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
           ),
-        ),
+          if (_showWakeupOverlay)
+            Positioned.fill(
+              child: Container(
+                color: Colors.black.withOpacity(0.6),
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CircularProgressIndicator(color: AppTheme.primary),
+                      SizedBox(height: AppTheme.spacingLarge),
+                      Text(
+                        'Despertando backend...',
+                        style: AppTheme.headlineSmall.copyWith(
+                          color: Colors.white,
+                        ),
+                      ),
+                      SizedBox(height: AppTheme.spacingSmall),
+                      Text(
+                        '${(_wakeupRemainingSeconds ~/ 60).toString().padLeft(2, '0')}:${(_wakeupRemainingSeconds % 60).toString().padLeft(2, '0')}',
+                        style: AppTheme.bodyLarge.copyWith(color: Colors.white),
+                      ),
+                      SizedBox(height: AppTheme.spacingMedium),
+                      Text(
+                        'Se intentará recargar Mesas, Productos y Pedidos periódicamente.',
+                        textAlign: TextAlign.center,
+                        style: AppTheme.bodySmall.copyWith(
+                          color: Colors.white70,
+                        ),
+                      ),
+                      SizedBox(height: AppTheme.spacingLarge),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          ElevatedButton(
+                            onPressed: () async {
+                              // Permitir al usuario cancelar la pantalla de wake-up
+                              _stopWakeUpSequence();
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.error,
+                            ),
+                            child: Text('Cancelar'),
+                          ),
+                          SizedBox(width: AppTheme.spacingMedium),
+                          ElevatedButton(
+                            onPressed: () async {
+                              // Forzar un intento inmediato
+                              await _performWakeupStep();
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.primary,
+                            ),
+                            child: Text('Intentar ahora'),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

@@ -139,7 +139,7 @@ class ApiConfig {
     final fallbackUrls = {
       'development': 'http://localhost:${environment.defaultPort}',
       'staging': 'http://192.168.1.100:${environment.defaultPort}',
-      'production': 'https://sopa-y-carbon.onrender.com',
+      'production': 'https://sopa-y-carbon-production.up.railway.app',
     };
 
     return fallbackUrls[environmentName] ??

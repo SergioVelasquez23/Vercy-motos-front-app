@@ -10,7 +10,7 @@ import 'dart:html'
     as html;
 
 class UserRoleService {
-  static const String baseUrl = kApiUrl;
+  static const String baseUrl = kBackendUrl;
   final storage = FlutterSecureStorage();
 
   // Obtener token del storage

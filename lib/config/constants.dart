@@ -1,8 +1,8 @@
 // Constantes generales para la aplicación
 
 // Configuración de API
-const String kApiUrl =
-    'https://sopa-y-carbon.onrender.com'; // URL del backend en producción
+const String kBackendUrl =
+    'https://sopa-y-carbon-production.up.railway.app'; // URL del backend en producción
 
 // Colores principales de la aplicación
 const kPrimaryColor = 0xFFFF6B00;

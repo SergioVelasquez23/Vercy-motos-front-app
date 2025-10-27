@@ -614,6 +614,14 @@ class PedidoService {
             }
           }
 
+          // Notificar a la aplicación que se creó un pedido (listeners pueden recargar UI)
+          try {
+            _pedidoCompletadoController.add(true);
+            print('🔔 Evento: pedido creado -> notificados listeners');
+          } catch (e) {
+            print('⚠️ Error notificando pedido creado: $e');
+          }
+
           return pedidoCreado;
         } else {
           throw Exception('Formato de respuesta inválido');
@@ -687,6 +695,14 @@ class PedidoService {
           } catch (e) {
             print('⚠️ Error al actualizar inventario: $e');
             // No fallar la actualización del pedido, solo loggear el error
+          }
+
+          // Notificar a la aplicación que se actualizó un pedido
+          try {
+            _pedidoCompletadoController.add(true);
+            print('🔔 Evento: pedido actualizado -> notificados listeners');
+          } catch (e) {
+            print('⚠️ Error notificando pedido actualizado: $e');
           }
 
           return pedidoActualizado;
@@ -1533,11 +1549,12 @@ class PedidoService {
     double montoTarjeta = 0.0,
     double montoTransferencia = 0.0,
   }) async {
+    // Declarar tipoPago aquí para que sea accesible tanto en el try como en el catch
+    String tipoPago = 'pagado';
+
     try {
       final headers = await _getHeaders();
-
       // Determinar el tipoPago según las opciones
-      String tipoPago;
       if (esCortesia) {
         tipoPago = 'cortesia';
       } else if (esConsumoInterno) {
@@ -1767,6 +1784,40 @@ class PedidoService {
       }
     } catch (e) {
       print('❌ Error pagando pedido: $e');
+
+      // Intento de reconciliación: tal vez el backend procesó el pago pero devolvió 500
+      try {
+        print('🔎 Intentando reconciliar estado del pedido desde servidor...');
+        final pedidoVerificado = await getPedidoById(pedidoId);
+        if (pedidoVerificado != null) {
+          print('🔎 Estado del pedido verificado: ${pedidoVerificado.estado}');
+
+          // Considerar éxito si el estado coincide con lo esperado
+          final bool esExitoPorEstado =
+              (tipoPago == 'cortesia' &&
+                  pedidoVerificado.estado == EstadoPedido.cortesia) ||
+              (tipoPago == 'consumo_interno' &&
+                  pedidoVerificado.estado == EstadoPedido.pagado) ||
+              (pedidoVerificado.estado == EstadoPedido.pagado);
+
+          if (esExitoPorEstado) {
+            print(
+              '⚠️ Pago posiblemente procesado a pesar del error HTTP. Usando estado del servidor como éxito.',
+            );
+
+            // Actualizar caché y notificar listeners
+            _pedidosCache[pedidoId] = pedidoVerificado;
+            try {
+              _pedidoPagadoController.add(true);
+            } catch (_) {}
+
+            return pedidoVerificado;
+          }
+        }
+      } catch (verifyErr) {
+        print('⚠️ Error durante reconciliación de pedido: $verifyErr');
+      }
+
       throw Exception('Error de conexión: $e');
     }
   }

@@ -7,6 +7,7 @@ import 'dart:io';
 import 'dart:convert';
 import '../theme/app_theme.dart';
 import '../models/mesa.dart';
+import '../services/producto_service.dart';
 import '../models/pedido.dart';
 import '../models/item_pedido.dart';
 import '../models/tipo_mesa.dart';
@@ -57,7 +58,7 @@ class MesasScreen extends StatefulWidget {
 }
 
 class _MesasScreenState extends State<MesasScreen>
-    with ImpresionMixin, MesaWebSocketMixin {
+    with ImpresionMixin, MesaWebSocketMixin, WidgetsBindingObserver {
   // ✅ NUEVO: Variables para controlar la precarga de datos
   bool _precargandoDatos = false;
 
@@ -173,8 +174,21 @@ class _MesasScreenState extends State<MesasScreen>
   Timer? _sincronizacionPeriodica;
   static const Duration _intervalSincronizacion = Duration(seconds: 30);
 
+  // ===== Backend wakeup / retry sequence =====
+  bool _isWakeupActive = false;
+  int _wakeupRemainingSeconds = 0; // countdown in seconds
+  int _wakeupAttempts = 0; // how many 1-minute attempts performed
+  Timer? _wakeUpSecondTimer; // updates countdown every second
+  Timer? _wakeUpMinuteTimer; // triggers reload each minute
+  static const int _wakeupTotalSeconds = 60 * 5; // 5 minutes
+
+  final ProductoService _productoService = ProductoService();
+
   // Callback para cuando se completa un pago desde mesa especial
   VoidCallback? _onPagoCompletadoCallback;
+
+  // Subscripción a eventos de pedido creado/actualizado
+  StreamSubscription<bool>? _pedidoCompletadoSubscription;
 
   // La subscripción WebSocket ahora se maneja en el mixin MesaWebSocketMixin
 
@@ -1958,6 +1972,9 @@ class _MesasScreenState extends State<MesasScreen>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(
+      this,
+    ); // Agregar observer para lifecycle
     _loadMesas();
     _precargarDatos(); // ✅ NUEVO: Precargar datos al entrar a Mesas Screen
     _cargarMesasEspecialesUsuario(); // Cargar mesas especiales creadas por el usuario
@@ -1967,6 +1984,18 @@ class _MesasScreenState extends State<MesasScreen>
       if (mounted) {
         print(
           '🔔 MesasScreen: Recibida notificación de pago - recargando mesas...',
+        );
+        _recargarMesasConCards();
+      }
+    });
+
+    // Suscribirse a eventos de pedido creado/actualizado para recargar mesas
+    _pedidoCompletadoSubscription = _pedidoService.onPedidoCompletado.listen((
+      _,
+    ) {
+      if (mounted) {
+        print(
+          '🔔 MesasScreen: Evento pedido creado/actualizado - recargando mesas...',
         );
         _recargarMesasConCards();
       }
@@ -2110,6 +2139,8 @@ class _MesasScreenState extends State<MesasScreen>
 
   @override
   void dispose() {
+    // Remover observer de lifecycle
+    WidgetsBinding.instance.removeObserver(this);
     // Limpiar timer de debounce
     _debounceTimer?.cancel();
 
@@ -2123,7 +2154,26 @@ class _MesasScreenState extends State<MesasScreen>
     final ws = WebSocketService();
     ws.setKeepAlive(false);
 
+    // Cancelar subscripción de pedidos completados
+    try {
+      _pedidoCompletadoSubscription?.cancel();
+      _pedidoCompletadoSubscription = null;
+    } catch (e) {
+      print('⚠️ Error cancelando subscripción de pedidos: $e');
+    }
+
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    // Recargar mesas especiales cuando la app vuelve al foreground
+    if (state == AppLifecycleState.resumed && mounted) {
+      print('📱 App resumed - recargando mesas especiales...');
+      _cargarMesasEspecialesUsuario();
+      _loadMesas(); // También recargar todas las mesas por si acaso
+    }
   }
 
   // Este método ha sido reemplazado por el mixin MesaWebSocketMixin
@@ -2189,7 +2239,115 @@ class _MesasScreenState extends State<MesasScreen>
         errorMessage = mensajeAmigable;
         isLoading = false;
       });
+
+      // Si el error parece indicar que el backend está dormido o caído,
+      // iniciar la secuencia de wakeup que intentará recargar toda la app
+      if (!_isWakeupActive &&
+          (mensajeAmigable.toLowerCase().contains('sin conexión') ||
+              mensajeAmigable.toLowerCase().contains('servidor') ||
+              mensajeAmigable.toLowerCase().contains('error del sistema'))) {
+        print(
+          '⚠️ Iniciando secuencia de wakeup del backend (5 minutos, reintentos cada 1 minuto)',
+        );
+        _startBackendWakeupSequence();
+      }
     }
+  }
+
+  // Inicia la secuencia de reintentos para "despertar" el backend.
+  void _startBackendWakeupSequence() {
+    if (_isWakeupActive) return;
+    _isWakeupActive = true;
+    _wakeupRemainingSeconds = _wakeupTotalSeconds;
+    _wakeupAttempts = 0;
+
+    // Actualizar UI inmediato
+    if (mounted) setState(() {});
+
+    // Intento inicial inmediato
+    _attemptFullReload();
+
+    // Timer de segundos para el countdown en pantalla
+    _wakeUpSecondTimer = Timer.periodic(Duration(seconds: 1), (t) {
+      if (_wakeupRemainingSeconds > 0) {
+        _wakeupRemainingSeconds--;
+        if (mounted) setState(() {});
+      } else {
+        // tiempo agotado
+        _stopBackendWakeupSequence();
+      }
+    });
+
+    // Timer que dispara un reintento cada minuto
+    _wakeUpMinuteTimer = Timer.periodic(Duration(minutes: 1), (t) async {
+      _wakeupAttempts++;
+      if (mounted) setState(() {});
+      print(
+        '🔁 Wakeup attempt #${_wakeupAttempts} - reintentando recarga completa',
+      );
+      await _attemptFullReload();
+      // Si ya superamos 5 intentos, detener
+      if (_wakeupAttempts >= 5) {
+        print('⏱️ Secuencia de wakeup completada (máximo intentos alcanzado)');
+        _stopBackendWakeupSequence();
+      }
+    });
+  }
+
+  // Intenta recargar los recursos principales de la app. Retorna true si tuvo éxito.
+  Future<bool> _attemptFullReload() async {
+    try {
+      print('🔄 Intentando recarga completa: mesas, pedidos y productos...');
+
+      // Forzar recarga de mesas
+      await _loadMesas();
+
+      // Forzar recarga de productos (cache global/provider)
+      try {
+        await _productoService.getProductos();
+        print('✅ Productos recargados');
+      } catch (pe) {
+        print('⚠️ Error recargando productos: $pe');
+      }
+
+      // Forzar recarga global de pedidos (opcional)
+      try {
+        await PedidoService.getPedidos();
+        print('✅ Pedidos recargados');
+      } catch (pde) {
+        print('⚠️ Error recargando pedidos globales: $pde');
+      }
+
+      // Si llegamos aquí sin excepciones fatales consideramos éxito
+      print('✅ Recarga completa exitosa durante wakeup');
+      _stopBackendWakeupSequence();
+      return true;
+    } catch (e) {
+      print('❌ Recarga completa fallida durante wakeup: $e');
+      return false;
+    }
+  }
+
+  // Detiene la secuencia de wakeup y limpia timers/estado
+  void _stopBackendWakeupSequence() {
+    try {
+      _wakeUpSecondTimer?.cancel();
+      _wakeUpMinuteTimer?.cancel();
+    } catch (e) {
+      print('⚠️ Error cancelando timers de wakeup: $e');
+    }
+    _wakeUpSecondTimer = null;
+    _wakeUpMinuteTimer = null;
+    _isWakeupActive = false;
+    _wakeupRemainingSeconds = 0;
+    _wakeupAttempts = 0;
+    if (mounted) setState(() {});
+  }
+
+  String _formatDuration(int seconds) {
+    final min = (seconds ~/ 60).toString().padLeft(2, '0');
+    final sec = (seconds % 60).toString().padLeft(2, '0');
+    return '$min:$sec';
   }
 
   // Método auxiliar para cargar pedidos de una mesa específica
@@ -2231,6 +2389,7 @@ class _MesasScreenState extends State<MesasScreen>
 
       // Una sola recarga completa eficiente
       await _loadMesas();
+      await _cargarMesasEspecialesUsuario(); // Recargar mesas especiales de usuario
 
       // 🔧 NUEVO: Recargar también mesas especiales del usuario
       await _cargarMesasEspecialesUsuario();
@@ -7016,10 +7175,14 @@ class _MesasScreenState extends State<MesasScreen>
     if (formResult != null) {
       print('🔒 Iniciando procesamiento de pago...');
 
+      // Declarar estas variables fuera del try para que estén visibles en el catch
+      bool esCortesia = false;
+      bool esConsumoInterno = false;
+
       try {
         // Manejar las opciones especiales
-        bool esCortesia = formResult['esCortesia'] ?? false;
-        bool esConsumoInterno = formResult['esConsumoInterno'] ?? false;
+        esCortesia = formResult['esCortesia'] ?? false;
+        esConsumoInterno = formResult['esConsumoInterno'] ?? false;
         String? mesaDestinoId = formResult['mesaDestinoId'];
 
         // Preparar datos de pago
@@ -7491,7 +7654,7 @@ class _MesasScreenState extends State<MesasScreen>
           await _mesaService.updateMesa(mesa);
 
           // ✅ ACTUALIZACIÓN INMEDIATA PARA CORTESÍAS
-          if (esCortesia && mounted) {
+          if ((esCortesia || esConsumoInterno) && mounted) {
             print('⚡ Actualizando UI inmediatamente para cortesía...');
             setState(() {
               // Actualizar la mesa en la lista local inmediatamente
@@ -7522,7 +7685,8 @@ class _MesasScreenState extends State<MesasScreen>
         if (esConsumoInterno) tipoTexto = ' (Consumo Interno)';
 
         // Mostrar mensaje de éxito inmediatamente
-        if (mounted) {
+        // Nota: suprimir el anuncio visual para cortesía y consumo interno
+        if (mounted && !esCortesia && !esConsumoInterno) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
@@ -7531,15 +7695,20 @@ class _MesasScreenState extends State<MesasScreen>
               backgroundColor: Colors.green,
             ),
           );
+        } else {
+          // Para cortesía/consumo interno solo loguear (evitar ruido en la UI)
+          print(
+            '🔕 Notificación de pago suprimida para cortesía/consumo interno',
+          );
         }
 
         print('✅ Procesamiento completado exitosamente');
 
         // Realizar actualizaciones de UI en background (sin bloquear)
-        if (esCortesia) {
-          // Para cortesías, la actualización ya se hizo inmediatamente arriba
+        if (esCortesia || esConsumoInterno) {
+          // Para cortesías y consumo interno, la actualización ya se hizo inmediatamente arriba
           print(
-            '⚡ Saltando actualización background para cortesía (ya actualizada)',
+            '⚡ Saltando actualización background para cortesía/consumo interno (ya actualizada)',
           );
         } else {
           _actualizarUIEnBackground(mesa);
@@ -7560,13 +7729,49 @@ class _MesasScreenState extends State<MesasScreen>
       } catch (e) {
         print('❌ Error en procesamiento: $e');
 
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Error al procesar el pago: $e'),
-              backgroundColor: Colors.red,
-            ),
-          );
+        // Intentar reconciliación: tal vez el backend procesó el pago pero devolvió un error
+        bool pagoReconciliado = false;
+        try {
+          print('🔎 Intentando reconciliar pago desde servidor...');
+          final pedidoVer = await _pedidoService.getPedidoById(pedido.id);
+          if (pedidoVer != null) {
+            print('🔎 Estado pedido desde servidor: ${pedidoVer.estado}');
+
+            final bool estadoCoincide =
+                (esCortesia && pedidoVer.estado == EstadoPedido.cortesia) ||
+                (esConsumoInterno && pedidoVer.estado == EstadoPedido.pagado) ||
+                (pedidoVer.estado == EstadoPedido.pagado);
+
+            if (estadoCoincide) {
+              pagoReconciliado = true;
+              print(
+                '⚠️ Pago reconciliado: el servidor muestra el pedido como pagado/cortesía. Actualizando UI...',
+              );
+
+              // Actualizar estado local y forzar recarga de las mesas/cards
+              await _pedidoService.updateEstadoPedidoLocal(
+                pedido.id,
+                pedidoVer.estado,
+              );
+              await _recargarMesasConCards();
+            }
+          }
+        } catch (re) {
+          print('⚠️ Error durante reconciliación: $re');
+        }
+
+        if (!pagoReconciliado) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Error al procesar el pago: $e'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        } else {
+          // Ya actualizamos UI; suprimir la notificación de error
+          print('🔕 Error suprimido porque la reconciliación confirmó el pago');
         }
       } finally {
         // Asegurar que el diálogo de carga siempre se cierre
@@ -10164,7 +10369,7 @@ class _MesasScreenState extends State<MesasScreen>
               ),
               const SizedBox(height: 24),
               ElevatedButton.icon(
-                onPressed: _loadMesas,
+                onPressed: _recargarMesasConCards,
                 icon: const Icon(Icons.refresh),
                 label: const Text('Reintentar'),
                 style: ElevatedButton.styleFrom(
@@ -10196,31 +10401,7 @@ class _MesasScreenState extends State<MesasScreen>
         elevation: 0,
         centerTitle: true,
         actions: [
-          // 🔧 NUEVO: Botón de sincronización manual
-          Container(
-            margin: EdgeInsets.only(right: AppTheme.spacingSmall),
-            child: IconButton(
-              icon: Container(
-                padding: EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-                ),
-                child: Icon(Icons.sync, size: 20),
-              ),
-              tooltip: 'Sincronizar datos',
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Sincronizando datos...'),
-                    duration: Duration(seconds: 2),
-                  ),
-                );
-                _forzarSincronizacionCompleta();
-              },
-            ),
-          ),
-          // Botón para mostrar resumen rápido de documentos del día
+          // Botón para mostrar resumen rápido de documentos del día (se mantiene)
           Container(
             margin: EdgeInsets.only(right: AppTheme.spacingSmall),
             child: IconButton(
@@ -10277,6 +10458,8 @@ class _MesasScreenState extends State<MesasScreen>
               onPressed: () => navegarADocumentos(),
             ),
           ),
+
+          // ÚNICO BOTÓN DE RECARGA: reconstruye todo
           Container(
             margin: EdgeInsets.only(right: AppTheme.spacingSmall),
             child: IconButton(
@@ -10288,8 +10471,17 @@ class _MesasScreenState extends State<MesasScreen>
                 ),
                 child: Icon(Icons.refresh, size: 20),
               ),
-              onPressed: _loadMesas,
-              tooltip: 'Actualizar mesas',
+              onPressed: () async {
+                // Llamada centralizada para reconstruir todo
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Reconstruyendo mesas...'),
+                    duration: Duration(seconds: 1),
+                  ),
+                );
+                await _recargarMesasConCards();
+              },
+              tooltip: 'Reconstruir todas las mesas',
             ),
           ),
         ],
@@ -10339,22 +10531,65 @@ class _MesasScreenState extends State<MesasScreen>
                 ),
               ),
             ),
+
+          // Overlay de wakeup cuando el backend está dormido
+          if (_isWakeupActive)
+            Positioned.fill(
+              child: Container(
+                color: Colors.black.withOpacity(0.6),
+                child: Center(
+                  child: Card(
+                    color: Colors.white,
+                    margin: EdgeInsets.symmetric(horizontal: 24),
+                    child: Padding(
+                      padding: const EdgeInsets.all(20.0),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CircularProgressIndicator(),
+                          SizedBox(height: 16),
+                          Text(
+                            'El servidor está inactivo o durmiendo',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            'Reintentando recarga cada 1 minuto durante 5 minutos.',
+                            textAlign: TextAlign.center,
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            'Intentos: $_wakeupAttempts / 5',
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            'Tiempo restante: ${_formatDuration(_wakeupRemainingSeconds)}',
+                            style: TextStyle(fontSize: 14),
+                          ),
+                          SizedBox(height: 12),
+                          ElevatedButton.icon(
+                            onPressed: _stopBackendWakeupSequence,
+                            icon: Icon(Icons.cancel),
+                            label: Text('Cancelar y volver'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          print(
-            '🚨 BOTÓN DEBUG PRESIONADO - RECONSTRUCCIÓN TOTAL DE TODAS LAS MESAS',
-          );
-
-          // ✅ RECARGA OPTIMIZADA - Una sola llamada para todas las mesas
-          print('🔄 Recargando todas las mesas de forma optimizada...');
-          await _recargarMesasConCards();
-        },
-        backgroundColor: Colors.red,
-        child: Icon(Icons.refresh, color: Colors.white),
-        tooltip: 'DEBUG: Reconstruir todas las mesas desde cero',
-      ),
+      // Se elimina el FAB de depuración; ahora hay un único botón de recarga en el AppBar
     );
   }
 
@@ -10475,7 +10710,7 @@ class _MesasScreenState extends State<MesasScreen>
                             child: MesaCard(
                               mesa: mesa,
                               widgetRebuildKey: _widgetRebuildKey,
-                              onRecargarMesas: _loadMesas,
+                              onRecargarMesas: _recargarMesasConCards,
                               onMostrarMenuMesa: _mostrarMenuMesa,
                               onMostrarDialogoPago: _mostrarDialogoPago,
                               onObtenerPedidoActivo: _obtenerPedidoActivoDeMesa,
@@ -10982,7 +11217,7 @@ class _MesasScreenState extends State<MesasScreen>
                                 child: MesaCard(
                                   mesa: mesa,
                                   widgetRebuildKey: _widgetRebuildKey,
-                                  onRecargarMesas: _loadMesas,
+                                  onRecargarMesas: _recargarMesasConCards,
                                   onMostrarMenuMesa: _mostrarMenuMesa,
                                   onMostrarDialogoPago: _mostrarDialogoPago,
                                   onObtenerPedidoActivo:
@@ -11039,9 +11274,11 @@ class _MesasScreenState extends State<MesasScreen>
           pedidoExistente: pedido, // Pasamos el pedido existente para editarlo
         ),
       ),
-    ).then((_) {
-      // Recargar las mesas cuando regrese de la pantalla de pedido
-      _loadMesas();
+    ).then((result) {
+      // Si la pantalla de pedido indica que se creó/actualizó algo, recargamos de forma optimizada
+      if (result == true) {
+        _recargarMesasConCards();
+      }
     });
   }
 

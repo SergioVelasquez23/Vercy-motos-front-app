@@ -750,6 +750,8 @@ class _DialogoPagoState extends State<DialogoPago> {
                         descuentoValorController.text.isNotEmpty) {
                       descuentoValorController.clear();
                     }
+                    // Forzar rebuild para que el total se recalcule inmediatamente
+                    setState(() {});
                   },
                 ),
               ),
@@ -791,6 +793,8 @@ class _DialogoPagoState extends State<DialogoPago> {
                         descuentoPorcentajeController.text.isNotEmpty) {
                       descuentoPorcentajeController.clear();
                     }
+                    // Forzar rebuild para que el total se recalcule inmediatamente
+                    setState(() {});
                   },
                 ),
               ),

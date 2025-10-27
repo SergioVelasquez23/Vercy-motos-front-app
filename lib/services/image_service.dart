@@ -298,21 +298,21 @@ class ImageService {
       return cleanFilename;
     }
 
-    // VERIFICACIÓN: Si el baseUrl contiene el servidor problemático, retornar vacío
-    if (_apiConfig.baseUrl.contains('sopa-y-carbon.onrender.com')) {
-      // ✅ COMENTADO: Log de servidor problemático removido
-      // print('⚠️ Servidor problemático detectado en configuración, omitiendo construcción de URL');
-      return '';
-    }
+    // VERIFICACIÓN: Lógica de servidor problemático removida (ahora usando Railway)
+    // if (_apiConfig.baseUrl.contains('sopa-y-carbon.onrender.com')) {
+    //   return '';
+    // }
 
     // Si ya es una URL completa, validarla
     if (cleanFilename.startsWith('http')) {
-      // Verificar si contiene el servidor problemático
+      // Migrar URLs del servidor anterior si las encuentra
       if (cleanFilename.contains('sopa-y-carbon.onrender.com')) {
-        print(
-          '⚠️ URL contiene servidor problemático, omitiendo: $cleanFilename',
+        final migratedUrl = cleanFilename.replaceAll(
+          'sopa-y-carbon.onrender.com',
+          'sopa-y-carbon-production.up.railway.app',
         );
-        return '';
+        print('🔄 URL migrada a Railway: $migratedUrl');
+        return migratedUrl;
       }
 
       // Validar que no termine en rutas incompletas
@@ -359,11 +359,7 @@ class ImageService {
         return '';
       }
 
-      // NO construir URL si es el servidor problemático
-      if (_apiConfig.baseUrl.contains('sopa-y-carbon.onrender.com')) {
-        print('⚠️ Evitando construcción de URL para servidor problemático');
-        return '';
-      }
+      // Ahora usando Railway directamente, no necesitamos verificaciones especiales
 
       return '${_apiConfig.baseUrl}$cleanFilename';
     }
@@ -374,11 +370,7 @@ class ImageService {
       return '';
     }
 
-    // NO construir URL si es el servidor problemático
-    if (_apiConfig.baseUrl.contains('sopa-y-carbon.onrender.com')) {
-      print('⚠️ Evitando construcción de URL para servidor problemático');
-      return '';
-    }
+    // Ahora usando Railway directamente
 
     // Construir la URL completa
     final fullUrl = '${_apiConfig.baseUrl}/images/platos/$cleanFilename';

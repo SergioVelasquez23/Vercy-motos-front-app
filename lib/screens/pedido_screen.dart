@@ -1287,13 +1287,14 @@ class _PedidoScreenState extends State<PedidoScreen> {
 
             // Crear nota específica para este producto
             String notaFinal = notasEsteProducto ?? '';
-            if (ingredienteOpcional != null) {
-              if (notaFinal.isNotEmpty) {
-                notaFinal = '$notaFinal - Con $ingredienteOpcional';
-              } else {
-                notaFinal = 'Con $ingredienteOpcional';
-              }
-            }
+            // Comentado: No mostrar ingredientes opcionales en las notas
+            // if (ingredienteOpcional != null) {
+            //   if (notaFinal.isNotEmpty) {
+            //     notaFinal = '$notaFinal - Con $ingredienteOpcional';
+            //   } else {
+            //     notaFinal = 'Con $ingredienteOpcional';
+            //   }
+            // }
 
             // Crear Producto para la mesa
             final productoParaMesa = Producto(
@@ -1906,8 +1907,10 @@ class _PedidoScreenState extends State<PedidoScreen> {
       print('⚠️ Error invalidando caché: $e');
     }
 
-    // ✅ Redirect directo a mesas después de crear pedido
-    Navigator.pushNamedAndRemoveUntil(context, '/mesas', (route) => false);
+    // ✅ Regresar a la pantalla anterior (Mesas) indicando que hubo cambios
+    // Usamos pop con resultado true para que quien abrió PedidoScreen pueda
+    // actualizar de forma optimizada sin forzar reconstrucción completa.
+    Navigator.of(context).pop(true);
   }
 
   void _mostrarMensajeExito(String pedidoId, double total) {

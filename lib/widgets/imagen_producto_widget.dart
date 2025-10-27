@@ -48,11 +48,14 @@ class ImagenProductoWidget extends StatelessWidget {
       return _buildImagenBase64(imagenUrl);
     }
 
-    // VERIFICACIÓN ESPECIAL: Si la URL contiene el servidor problemático, mostrar ícono por defecto
+    // MIGRACIÓN: Si la URL contiene el servidor anterior, migrar a Railway
     if (imagenUrl.contains('sopa-y-carbon.onrender.com')) {
-      // ✅ COMENTADO: Log de servidor problemático removido
-      // print('⚠️ Servidor problemático detectado, mostrando ícono por defecto: $imagenUrl');
-      return _buildIconoDefault();
+      final migratedUrl = imagenUrl.replaceAll(
+        'sopa-y-carbon.onrender.com',
+        'sopa-y-carbon-production.up.railway.app',
+      );
+      print('🔄 URL migrada a Railway: $migratedUrl');
+      return _buildImagenNetwork(migratedUrl);
     }
 
     // PRIORIDAD 2: Si es una URL HTTP válida, intentar cargarla
@@ -65,12 +68,14 @@ class ImagenProductoWidget extends StatelessWidget {
     final imageService = ImageService();
     final validatedUrl = imageService.getImageUrl(imagenUrl);
 
-    // Verificar si la URL validada también contiene el servidor problemático
+    // Verificar si la URL validada contiene el servidor anterior y migrarla
     if (validatedUrl.contains('sopa-y-carbon.onrender.com')) {
-      print(
-        '⚠️ URL validada contiene servidor problemático, mostrando ícono por defecto: $validatedUrl',
+      final migratedUrl = validatedUrl.replaceAll(
+        'sopa-y-carbon.onrender.com',
+        'sopa-y-carbon-production.up.railway.app',
       );
-      return _buildIconoDefault();
+      print('🔄 URL validada migrada a Railway: $migratedUrl');
+      return _buildImagenNetwork(migratedUrl);
     }
 
     if (validatedUrl.isNotEmpty) {
@@ -158,8 +163,7 @@ class ImagenProductoWidget extends StatelessWidget {
                 errorStr.contains('404') ||
                 errorStr.contains('EncodingError') ||
                 errorStr.contains('cannot be decoded') ||
-                errorStr.contains('HttpException') ||
-                url.contains('sopa-y-carbon.onrender.com')) {
+                errorStr.contains('HttpException')) {
               print('🔄 Servidor con problemas, mostrando ícono por defecto');
               return _buildIconoDefault();
             }

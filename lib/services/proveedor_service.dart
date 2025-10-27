@@ -11,7 +11,7 @@ import 'dart:html'
     as html;
 
 class ProveedorService {
-  static const String baseUrl = kApiUrl;
+  static const String baseUrl = kBackendUrl;
   final storage = FlutterSecureStorage();
   final _endpoints = EndpointsConfig().proveedores;
 

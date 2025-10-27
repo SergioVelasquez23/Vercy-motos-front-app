@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import '../models/producto.dart';
 import '../models/categoria.dart';
 import '../config/api_config.dart';
+import '../config/debug_config.dart';
 
 class ProductoService {
   static final ProductoService _instance = ProductoService._internal();
@@ -15,6 +16,13 @@ class ProductoService {
   String get baseUrl => ApiConfig.instance.baseUrl;
   final storage = FlutterSecureStorage();
   final ImagePicker _picker = ImagePicker();
+
+  // Evitar peticiones duplicadas simultáneas para getProductos
+  Future<List<Producto>>? _inFlightGetProductos;
+
+  // Cache y peticiones in-flight para getProducto(id)
+  final Map<String, Future<Producto?>> _inFlightGetProductoById = {};
+  final Map<String, Producto?> _productoByIdCache = {};
 
   // Caché de productos para evitar cargar todos los productos repetidamente
   // y para proporcionar una alternativa cuando ocurre OutOfMemoryError
@@ -30,6 +38,21 @@ class ProductoService {
 
   // Obtener todos los productos con nombres de ingredientes resueltos (NUEVO ENDPOINT OPTIMIZADO)
   Future<List<Producto>> getProductos() async {
+    // Si ya hay una petición en curso, volver la misma Future
+    if (_inFlightGetProductos != null) return _inFlightGetProductos!;
+
+    _inFlightGetProductos = _doGetProductos();
+    try {
+      final res = await _inFlightGetProductos!;
+      return res;
+    } finally {
+      // Liberar el marcador para futuras llamadas
+      _inFlightGetProductos = null;
+    }
+  }
+
+  // Implementación real de la obtención de productos (separada para memoización in-flight)
+  Future<List<Producto>> _doGetProductos() async {
     try {
       final headers = await _getHeaders();
 
@@ -46,11 +69,18 @@ class ProductoService {
         print(
           '⚠️ Error con paginación: $paginationError, intentando endpoint optimizado...',
         );
+        if (DebugConfig.enableStackTraceInstrumentation) {
+          // Instrumentación: imprimir StackTrace para ayudar a localizar el orígen
+          try {
+            final st = StackTrace.current;
+            print('🧭 StackTrace (paginación error): ${st.toString()}');
+          } catch (_) {}
+        }
 
         // 2. Si falla la paginación, intentar con el endpoint optimizado
         final response = await http
             .get(Uri.parse(url), headers: headers)
-            .timeout(Duration(seconds: 15)); // Aumentado el timeout
+            .timeout(Duration(seconds: 45)); // Timeout aumentado para Railway
 
         if (response.statusCode == 200) {
           final responseData = json.decode(response.body);
@@ -65,6 +95,12 @@ class ProductoService {
       }
     } catch (e) {
       print('❌ Error con endpoint optimizado: $e');
+      if (DebugConfig.enableStackTraceInstrumentation) {
+        try {
+          final st = StackTrace.current;
+          print('🧭 StackTrace (doGetProductos error): ${st.toString()}');
+        } catch (_) {}
+      }
 
       // Verificar si es un error de memoria
       if (e.toString().contains('OutOfMemoryError') ||
@@ -107,7 +143,7 @@ class ProductoService {
 
       final response = await http
           .get(Uri.parse(url), headers: headers)
-          .timeout(Duration(seconds: 10));
+          .timeout(Duration(seconds: 45));
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
@@ -170,7 +206,7 @@ class ProductoService {
       final headers = await _getHeaders();
       final response = await http
           .get(Uri.parse('$baseUrl/api/productos'), headers: headers)
-          .timeout(Duration(seconds: 15)); // Aumentado el timeout
+          .timeout(Duration(seconds: 45)); // Timeout aumentado para Railway
 
       print('📦 Response status (básico): ${response.statusCode}');
 
@@ -219,7 +255,7 @@ class ProductoService {
       final headers = await _getHeaders();
       final response = await http
           .get(Uri.parse('$baseUrl/api/categorias'), headers: headers)
-          .timeout(Duration(seconds: 10));
+          .timeout(Duration(seconds: 30)); // Timeout aumentado para Railway
 
       // Response status: ${response.statusCode}
       // Response body: ${response.body}
@@ -248,7 +284,7 @@ class ProductoService {
             headers: headers,
             body: json.encode(producto.toJson()),
           )
-          .timeout(Duration(seconds: 10));
+          .timeout(Duration(seconds: 30)); // Timeout aumentado para Railway
 
       if (response.statusCode == 201) {
         print('✅ Producto creado exitosamente');
@@ -289,7 +325,7 @@ class ProductoService {
             headers: headers,
             body: json.encode(productoData),
           )
-          .timeout(Duration(seconds: 10));
+          .timeout(Duration(seconds: 30)); // Timeout aumentado para Railway
 
       print(
         '📦 Crear producto con ingredientes response: ${response.statusCode}',
@@ -332,7 +368,7 @@ class ProductoService {
             headers: headers,
             body: json.encode(productoJson),
           )
-          .timeout(Duration(seconds: 10));
+          .timeout(Duration(seconds: 30)); // Timeout aumentado para Railway
 
       if (response.statusCode == 200) {
         print('✅ Producto actualizado exitosamente');
@@ -352,7 +388,7 @@ class ProductoService {
       final headers = await _getHeaders();
       final response = await http
           .delete(Uri.parse('$baseUrl/api/productos/$id'), headers: headers)
-          .timeout(Duration(seconds: 10));
+          .timeout(Duration(seconds: 30)); // Timeout aumentado para Railway
 
       if (response.statusCode == 200 || response.statusCode == 204) {
         print('✅ Producto eliminado exitosamente');
@@ -386,7 +422,7 @@ class ProductoService {
             headers: headers,
             body: json.encode(categoria.toJson()),
           )
-          .timeout(Duration(seconds: 10));
+          .timeout(Duration(seconds: 30)); // Timeout aumentado para Railway
 
       if (response.statusCode == 201) {
         print('✅ Categoría creada exitosamente');
@@ -425,7 +461,7 @@ class ProductoService {
             headers: headers,
             body: json.encode(categoria.toJson()),
           )
-          .timeout(Duration(seconds: 10));
+          .timeout(Duration(seconds: 30)); // Timeout aumentado para Railway
 
       if (response.statusCode == 200) {
         print('✅ Categoría actualizada exitosamente');
@@ -447,7 +483,7 @@ class ProductoService {
       final headers = await _getHeaders();
       final response = await http
           .delete(Uri.parse('$baseUrl/api/categorias/$id'), headers: headers)
-          .timeout(Duration(seconds: 10));
+          .timeout(Duration(seconds: 30)); // Timeout aumentado para Railway
 
       if (response.statusCode == 200) {
         print('✅ Categoría eliminada exitosamente');
@@ -477,7 +513,7 @@ class ProductoService {
       ).replace(queryParameters: queryParams);
       final response = await http
           .get(uri, headers: headers)
-          .timeout(Duration(seconds: 10));
+          .timeout(Duration(seconds: 30)); // Timeout aumentado para Railway
 
       if (response.statusCode == 200) {
         // Extraer los datos del campo 'data' de la respuesta ApiResponse
@@ -512,7 +548,7 @@ class ProductoService {
             ),
             headers: headers,
           )
-          .timeout(Duration(seconds: 10));
+          .timeout(Duration(seconds: 30)); // Timeout aumentado para Railway
 
       if (response.statusCode == 200) {
         // Extraer los datos del campo 'data' de la respuesta ApiResponse
@@ -693,7 +729,7 @@ class ProductoService {
       final headers = await _getHeaders();
       final response = await http
           .get(Uri.parse('$baseUrl/api/productos/$id/nombre'), headers: headers)
-          .timeout(Duration(seconds: 5));
+          .timeout(Duration(seconds: 20)); // Timeout aumentado para Railway
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
@@ -726,6 +762,28 @@ class ProductoService {
       return null;
     }
 
+    // Devolver desde cache si ya existe (incluye cache negativo: null)
+    if (_productoByIdCache.containsKey(id)) return _productoByIdCache[id];
+
+    // Si ya hay una petición en curso para este id, reutilizarla
+    if (_inFlightGetProductoById.containsKey(id)) {
+      return await _inFlightGetProductoById[id];
+    }
+
+    final future = _doGetProducto(id);
+    _inFlightGetProductoById[id] = future;
+    try {
+      final res = await future;
+      // Cachear el resultado (puede ser null si 404)
+      _productoByIdCache[id] = res;
+      return res;
+    } finally {
+      _inFlightGetProductoById.remove(id);
+    }
+  }
+
+  // Implementación real de la carga de producto por id
+  Future<Producto?> _doGetProducto(String id) async {
     try {
       final headers = await _getHeaders();
       final response = await http
@@ -733,7 +791,7 @@ class ProductoService {
             Uri.parse('$baseUrl/api/productos/$id/con-nombres-ingredientes'),
             headers: headers,
           )
-          .timeout(Duration(seconds: 10));
+          .timeout(Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
@@ -747,9 +805,45 @@ class ProductoService {
         }
       } else if (response.statusCode == 404) {
         print(
-          '❌ Endpoint optimizado no encontrado para producto $id, usando básico...',
+          '❌ Endpoint optimizado no encontrado para producto $id, intentando fallback por id base...',
         );
-        // Fallback al endpoint original
+        if (DebugConfig.enableStackTraceInstrumentation) {
+          try {
+            final st = StackTrace.current;
+            print('🧭 StackTrace (getProducto 404 para $id): ${st.toString()}');
+          } catch (_) {}
+        }
+        // Si el id contiene un sufijo (por ejemplo: originalid_timestamp_idx), intentar la parte antes del primer '_'
+        if (id.contains('_')) {
+          final baseId = id.split('_').first;
+          if (baseId != id) {
+            try {
+              print('🔁 Intentando cargar producto con baseId: $baseId');
+              final fallbackResp = await http
+                  .get(
+                    Uri.parse(
+                      '$baseUrl/api/productos/$baseId/con-nombres-ingredientes',
+                    ),
+                    headers: headers,
+                  )
+                  .timeout(Duration(seconds: 30));
+
+              if (fallbackResp.statusCode == 200) {
+                final responseData = json.decode(fallbackResp.body);
+                if (responseData is Map<String, dynamic>) {
+                  if (responseData.containsKey('data')) {
+                    return Producto.fromJson(responseData['data']);
+                  }
+                  return Producto.fromJson(responseData);
+                }
+              }
+            } catch (e) {
+              print('⚠️ Fallback por baseId falló para $baseId: $e');
+            }
+          }
+        }
+        // Fallback al endpoint original usando el id recibido
+        print('🔁 Fallback final: usando endpoint básico para $id');
         return await _getProductoBasico(id);
       }
       throw Exception('Error del servidor: ${response.statusCode}');
@@ -774,7 +868,7 @@ class ProductoService {
       final headers = await _getHeaders();
       final response = await http
           .get(Uri.parse('$baseUrl/api/productos/$id'), headers: headers)
-          .timeout(Duration(seconds: 10));
+          .timeout(Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
@@ -822,6 +916,12 @@ class ProductoService {
     throw Exception('Formato de respuesta no válido');
   }
 
+  // Eliminar caché (útil para wake-up / recarga completa)
+  void clearCache() {
+    _productosCache.clear();
+    print('🧹 ProductoService: Caché de productos limpiada');
+  }
+
   // ========== MÉTODOS PARA PRODUCTOS COMBO ==========
 
   /// Obtiene los ingredientes requeridos disponibles para un producto combo
@@ -838,7 +938,7 @@ class ProductoService {
             ),
             headers: headers,
           )
-          .timeout(Duration(seconds: 10));
+          .timeout(Duration(seconds: 30)); // Timeout aumentado para Railway
 
       print(
         '🥘 Obteniendo producto completo CON NOMBRES para ingredientes requeridos: $productoId',
@@ -920,7 +1020,7 @@ class ProductoService {
             Uri.parse('$baseUrl/api/productos/$productoId'),
             headers: headers,
           )
-          .timeout(Duration(seconds: 10));
+          .timeout(Duration(seconds: 30)); // Timeout aumentado para Railway
 
       print(
         '🥘 Obteniendo producto completo para ingredientes requeridos (BÁSICO): $productoId',
@@ -992,7 +1092,7 @@ class ProductoService {
             ),
             headers: headers,
           )
-          .timeout(Duration(seconds: 10));
+          .timeout(Duration(seconds: 30)); // Timeout aumentado para Railway
 
       print(
         '🥘 Obteniendo producto completo CON NOMBRES para ingredientes opcionales: $productoId',
@@ -1074,7 +1174,7 @@ class ProductoService {
             Uri.parse('$baseUrl/api/productos/$productoId'),
             headers: headers,
           )
-          .timeout(Duration(seconds: 10));
+          .timeout(Duration(seconds: 30)); // Timeout aumentado para Railway
 
       print(
         '🥘 Obteniendo producto completo para ingredientes opcionales (BÁSICO): $productoId',
@@ -1141,7 +1241,7 @@ class ProductoService {
             Uri.parse('$baseUrl/api/productos/$productoId/es-combo'),
             headers: headers,
           )
-          .timeout(Duration(seconds: 10));
+          .timeout(Duration(seconds: 30)); // Timeout aumentado para Railway
 
       print('🔍 Verificando si producto $productoId es combo');
       print('🔍 Response status: ${response.statusCode}');
@@ -1257,7 +1357,7 @@ class ProductoService {
                 ),
                 headers: headers,
               )
-              .timeout(Duration(seconds: 5));
+              .timeout(Duration(seconds: 20)); // Timeout aumentado para Railway
 
           if (response.statusCode == 200) {
             final responseData = json.decode(response.body);

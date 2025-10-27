@@ -22,7 +22,8 @@ class ProductosScreen extends StatefulWidget {
 }
 
 class _ProductosScreenState extends State<ProductosScreen> {
-  static const String _backendBaseUrl = "https://sopa-y-carbon.onrender.com";
+  static const String _backendBaseUrl =
+      "https://sopa-y-carbon-production.up.railway.app";
   final ImageService _imageService = ImageService();
   final TextEditingController _searchController = TextEditingController();
   String? _selectedCategoriaId;

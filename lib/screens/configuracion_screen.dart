@@ -394,12 +394,14 @@ class _MesasConfigScreenState extends State<MesasConfigScreen> {
   void _mostrarDialogoMesa({Mesa? mesa}) {
     final isEditing = mesa != null;
     final nombreController = TextEditingController(text: mesa?.nombre ?? '');
-    TipoMesa tipoSeleccionado = mesa?.tipo ?? TipoMesa.normal;
-
+    
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
+      builder: (context) {
+        TipoMesa tipoSeleccionado = mesa?.tipo ?? TipoMesa.normal;
+        
+        return StatefulBuilder(
+          builder: (context, setStateDlg) => AlertDialog(
           backgroundColor: AppTheme.cardBg,
           title: Text(
             isEditing ? 'Editar Mesa' : 'Nueva Mesa',
@@ -451,7 +453,7 @@ class _MesasConfigScreenState extends State<MesasConfigScreen> {
                           dropdownColor: AppTheme.cardBg,
                           onChanged: (TipoMesa? newValue) {
                             if (newValue != null) {
-                              setState(() {
+                              setStateDlg(() {
                                 tipoSeleccionado = newValue;
                               });
                             }
@@ -550,7 +552,8 @@ class _MesasConfigScreenState extends State<MesasConfigScreen> {
             ),
           ],
         ),
-      ),
+        );
+      },
     );
   }
 

@@ -12,12 +12,16 @@ class DebugConfig {
   /// En DESARROLLO: mantener en `true` para ver logs
   static const bool enableDebugPrints = kDebugMode;
 
-  /// Niveles especÃ­ficos de logging (opcional - para control granular)
+  /// Niveles específicos de logging (opcional - para control granular)
   static const bool enableApiLogs = kDebugMode;
   static const bool enableImageLogs = kDebugMode;
   static const bool enablePedidoLogs = kDebugMode;
   static const bool enableMesaLogs = kDebugMode;
   static const bool enablePagoLogs = kDebugMode;
+
+  /// FLAG TEMPORAL: Instrumentación de StackTrace para diagnosticar IDs compuestos
+  /// ⚠️ Cambiar a false en producción para reducir ruido en logs
+  static const bool enableStackTraceInstrumentation = true;
 
   /// FunciÃ³n helper para prints condicionales
   static void debugPrint(String message) {

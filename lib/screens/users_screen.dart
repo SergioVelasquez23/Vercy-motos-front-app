@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/user.dart';
 import '../models/role.dart';
@@ -24,6 +25,9 @@ class _UsersScreenState extends State<UsersScreen> {
   bool _isLoading = true;
   String _searchText = '';
   final TextEditingController _searchController = TextEditingController();
+
+  // Control para evitar sobrescribir roles recién modificados
+  Set<String> _usuariosConRolRecienCambiado = {};
 
   @override
   void initState() {
@@ -103,14 +107,21 @@ class _UsersScreenState extends State<UsersScreen> {
 
       // Construir el mapa con los resultados
       for (final entry in results) {
-        userRolesMap[entry.key] = entry.value;
-        // Log detallado de los roles cargados
-        if (entry.value.isNotEmpty) {
-          print(
-            '📋 Usuario ${entry.key}: roles = ${entry.value.map((r) => r.nombre).join(", ")}',
-          );
+        // No sobrescribir si el usuario tuvo un cambio de rol reciente
+        if (!_usuariosConRolRecienCambiado.contains(entry.key)) {
+          userRolesMap[entry.key] = entry.value;
+          // Log detallado de los roles cargados
+          if (entry.value.isNotEmpty) {
+            print(
+              '📋 Usuario ${entry.key}: roles = ${entry.value.map((r) => r.nombre).join(", ")}',
+            );
+          } else {
+            print('📋 Usuario ${entry.key}: sin roles asignados');
+          }
         } else {
-          print('📋 Usuario ${entry.key}: sin roles asignados');
+          print(
+            '🔒 Usuario ${entry.key}: protegido de sobrescritura (cambio reciente)',
+          );
         }
       }
 
@@ -790,6 +801,20 @@ class _UsersScreenState extends State<UsersScreen> {
 
       setState(() {
         _userRolesMap[user.id!] = [nuevoRol];
+        // Proteger al usuario de sobrescritura por 30 segundos
+        _usuariosConRolRecienCambiado.add(user.id!);
+      });
+
+      // Remover protección después de 30 segundos
+      Timer(Duration(seconds: 30), () {
+        if (mounted) {
+          setState(() {
+            _usuariosConRolRecienCambiado.remove(user.id!);
+          });
+          print(
+            '🔓 Protección de sobrescritura removida para usuario ${user.email}',
+          );
+        }
       });
 
       print(

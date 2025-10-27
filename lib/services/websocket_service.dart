@@ -87,8 +87,13 @@ class WebSocketService {
 
   /// Stream público para escuchar eventos
   Stream<WebSocketEventData> get events {
-    _eventController ??= StreamController<WebSocketEventData>.broadcast();
-    return _eventController!.stream;
+    try {
+      _eventController ??= StreamController<WebSocketEventData>.broadcast();
+      return _eventController?.stream ?? const Stream.empty();
+    } catch (e) {
+      print('❌ [WebSocket] Error creando stream: $e');
+      return const Stream.empty();
+    }
   }
 
   /// Estado de la conexión
