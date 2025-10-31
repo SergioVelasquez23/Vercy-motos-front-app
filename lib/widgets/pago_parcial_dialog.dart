@@ -717,17 +717,18 @@ class _PagoParcialDialogState extends State<PagoParcialDialog> {
                                   ),
                                   keyboardType: TextInputType.number,
                                   onChanged: (value) {
-                                    // ✅ CORREGIDO: Evitar setState inmediato para no perder foco
+                                    // Actualizar valor y reconstruir para aplicar el descuento
                                     descuentoPorcentaje =
                                         double.tryParse(value) ?? 0.0;
+                                    // Si se ingresó porcentaje, limpiar el descuento fijo
                                     if (descuentoPorcentaje > 0) {
                                       Future.microtask(() {
-                                        setState(() {
-                                          descuentoValor = 0.0;
-                                          descuentoValorController.clear();
-                                        });
+                                        descuentoValor = 0.0;
+                                        descuentoValorController.clear();
                                       });
                                     }
+                                    // Forzar rebuild para recalcular totales inmediatamente
+                                    setState(() {});
                                   },
                                 ),
                               ),
@@ -751,17 +752,18 @@ class _PagoParcialDialogState extends State<PagoParcialDialog> {
                                   ),
                                   keyboardType: TextInputType.number,
                                   onChanged: (value) {
-                                    // ✅ CORREGIDO: Evitar setState inmediato para no perder foco
+                                    // Actualizar valor y reconstruir para aplicar el descuento
                                     descuentoValor =
                                         double.tryParse(value) ?? 0.0;
+                                    // Si se ingresó descuento fijo, limpiar porcentaje
                                     if (descuentoValor > 0) {
                                       Future.microtask(() {
-                                        setState(() {
-                                          descuentoPorcentaje = 0.0;
-                                          descuentoPorcentajeController.clear();
-                                        });
+                                        descuentoPorcentaje = 0.0;
+                                        descuentoPorcentajeController.clear();
                                       });
                                     }
+                                    // Forzar rebuild para recalcular totales inmediatamente
+                                    setState(() {});
                                   },
                                 ),
                               ),
@@ -799,7 +801,7 @@ class _PagoParcialDialogState extends State<PagoParcialDialog> {
                                   ),
                                 ),
                                 Text(
-                                  'Total: ${formatCurrency(totalConPropina)}',
+                                  'Total (sin propina): ${formatCurrency(totalConDescuentos)}',
                                   style: TextStyle(
                                     color: AppTheme.primary,
                                     fontSize: 14,

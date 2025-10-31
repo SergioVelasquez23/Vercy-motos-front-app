@@ -23,6 +23,7 @@ import '../services/notification_service.dart';
 import '../services/cuadre_caja_service.dart';
 import '../services/historial_edicion_service.dart';
 import '../providers/user_provider.dart';
+import '../providers/datos_cache_provider.dart';
 
 import '../utils/format_utils.dart';
 import '../utils/impresion_mixin.dart';
@@ -8710,6 +8711,8 @@ class _MesasScreenState extends State<MesasScreen>
               mesas[mesaIndex].productos = [];
               mesas[mesaIndex].total = 0.0;
             }
+            // Forzar rebuild para asegurar que la tarjeta se actualice
+            _widgetRebuildKey++;
           });
         }
 
@@ -8772,6 +8775,8 @@ class _MesasScreenState extends State<MesasScreen>
             if (mesaIndex != -1) {
               mesas[mesaIndex].total = pedidoRespuesta.total;
             }
+            // Forzar rebuild para asegurar que la tarjeta se actualice
+            _widgetRebuildKey++;
           });
         }
 
@@ -8809,8 +8814,105 @@ class _MesasScreenState extends State<MesasScreen>
         ),
       );
 
-      // ✅ RECARGA DE MESAS: Actualizar la interfaz para reflejar cambios
-      await _recargarMesasConCards();
+      // ✅ RECARGA OBJETIVO: Actualizar únicamente la mesa afectada para
+      // evitar un fan-out de peticiones y asegurar que la card muestre
+      // el total actualizado inmediatamente.
+      try {
+        // Intentar obtener la mesa actualizada desde el servicio (más fiable)
+        try {
+          final mesaActualizada = await _mesaService.getMesaById(mesa.id);
+          print(
+            '🔁 Mesa actualizada desde servicio: ${mesa.nombre} - total: ${mesaActualizada.total}',
+          );
+          if (mounted) {
+            setState(() {
+              final mesaIndex = mesas.indexWhere((m) => m.id == mesa.id);
+              if (mesaIndex != -1) {
+                mesas[mesaIndex] = mesaActualizada;
+              }
+              _widgetRebuildKey++;
+            });
+          }
+
+          // Programar verificación optimizada (debounce) para consistencia
+          _actualizarMesasOptimizado([mesa.nombre]);
+          // Emular comportamiento de PedidoScreen: invalidar cache y
+          // disparar la recarga principal para que la UI se comporte
+          // exactamente igual que al presionar 'Guardar/Actualizar'.
+          try {
+            final datosProvider = Provider.of<DatosCacheProvider>(
+              context,
+              listen: false,
+            );
+            await datosProvider.forceRefreshProductos();
+            print('✅ Cache de productos invalidada tras cancelación');
+          } catch (e) {
+            print('⚠️ Error invalidando cache tras cancelación: $e');
+          }
+
+          // Llamar a la recarga principal (equivalente a onRecargarMesas)
+          // para garantizar que se ejecuten los mismos efectos secundarios
+          // que el botón de Guardar en PedidoScreen.
+          await _recargarMesasConCards();
+        } catch (fetchError) {
+          // Si por alguna razón no podemos obtener la mesa por ID, caer
+          // a calcularla desde los pedidos (fallback)
+          print(
+            '⚠️ No se pudo obtener mesa por ID, usando fallback: $fetchError',
+          );
+          final pedidos = await _pedidoService.getPedidosByMesa(mesa.nombre);
+          final pedidosActivos = pedidos.where((p) {
+            final pagado = p.estaPagado;
+            final cancelado =
+                p.estado == EstadoPedido.cancelado ||
+                p.estado.toString().toLowerCase() == 'cancelado';
+            return !pagado && !cancelado;
+          }).toList();
+
+          final double totalReal = pedidosActivos.fold<double>(
+            0.0,
+            (sum, p) => sum + p.total,
+          );
+          print(
+            '🔁 Mesa fallback calculada desde pedidos: ${mesa.nombre} - totalReal: $totalReal',
+          );
+          final bool ocupadaReal = pedidosActivos.isNotEmpty;
+
+          if (mounted) {
+            setState(() {
+              final mesaIndex = mesas.indexWhere((m) => m.id == mesa.id);
+              if (mesaIndex != -1) {
+                mesas[mesaIndex].total = totalReal;
+                mesas[mesaIndex].ocupada = ocupadaReal;
+              }
+              _widgetRebuildKey++;
+            });
+          }
+
+          _actualizarMesasOptimizado([mesa.nombre]);
+          // Igual que en la rama de servicio, invalidar cache y forzar
+          // recarga principal para reproducir exactamente el flujo
+          // que ejecuta el botón de guardar en PedidoScreen.
+          try {
+            final datosProvider = Provider.of<DatosCacheProvider>(
+              context,
+              listen: false,
+            );
+            await datosProvider.forceRefreshProductos();
+            print(
+              '✅ Cache de productos invalidada (fallback) tras cancelación',
+            );
+          } catch (e) {
+            print('⚠️ Error invalidando cache (fallback) tras cancelación: $e');
+          }
+
+          await _recargarMesasConCards();
+        }
+      } catch (e) {
+        print('❌ Error actualizando mesa tras cancelación: $e');
+        // Fallback: si algo falla, intentar recarga completa (ocasional)
+        await _recargarMesasConCards();
+      }
 
       print(
         '🎉 =========================== CANCELACIÓN COMPLETADA ===========================',
@@ -8902,6 +9004,18 @@ class _MesasScreenState extends State<MesasScreen>
           print('❌ Error actualizando mesa destino: $e');
         }
 
+        // Actualizar inmediatamente la lista local de mesas para reflejar cambios en UI
+        if (mounted) {
+          setState(() {
+            final idxDest = mesas.indexWhere((m) => m.id == mesaDestino.id);
+            if (idxDest != -1) {
+              mesas[idxDest] = mesaDestino;
+            }
+            // Forzar rebuild de tarjetas para asegurar que el total se refresque
+            _widgetRebuildKey++;
+          });
+        }
+
         // --- NUEVO: Actualizar mesa origen restando productos movidos ---
         try {
           mesaOrigen.total = mesaOrigen.total - totalMovido;
@@ -8914,6 +9028,18 @@ class _MesasScreenState extends State<MesasScreen>
           print('✅ Mesa origen actualizada con el total restado.');
         } catch (e) {
           print('❌ Error actualizando mesa origen: $e');
+        }
+
+        // Actualizar inmediatamente la lista local de mesas para reflejar cambios en UI
+        if (mounted) {
+          setState(() {
+            final idxOrig = mesas.indexWhere((m) => m.id == mesaOrigen.id);
+            if (idxOrig != -1) {
+              mesas[idxOrig] = mesaOrigen;
+            }
+            // Forzar rebuild adicional
+            _widgetRebuildKey++;
+          });
         }
 
         // --- Mensaje de confirmación simple ---
