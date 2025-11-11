@@ -12,6 +12,7 @@ import '../models/ingrediente.dart';
 import 'package:provider/provider.dart';
 import '../providers/datos_cache_provider.dart';
 import '../services/image_service.dart';
+import '../services/producto_service.dart';
 import '../utils/format_utils.dart';
 
 class ProductosScreen extends StatefulWidget {
@@ -24,6 +25,7 @@ class ProductosScreen extends StatefulWidget {
 class _ProductosScreenState extends State<ProductosScreen> {
   static const String _backendBaseUrl = "https://sopa-y-carbon.onrender.com";
   final ImageService _imageService = ImageService();
+  final ProductoService _productoService = ProductoService();
   final TextEditingController _searchController = TextEditingController();
   String? _selectedCategoriaId;
   int _paginaActual = 0;
@@ -1612,14 +1614,60 @@ class _ProductosScreenState extends State<ProductosScreen> {
                                 '🔍 Categoria ID: ${updatedProducto.categoria?.id}',
                               );
 
-                              // Aquí deberías implementar la lógica de actualización usando el provider o tu backend
-
-                              // Los datos se actualizarán automáticamente al recargar la pantalla
+                              // Llamar al servicio para actualizar el producto
+                              await _productoService.updateProducto(
+                                updatedProducto,
+                              );
+                              print('✅ Producto actualizado en el backend');
                             } else {
-                              // Crear nuevo producto con el sistema actualizado
-                              // Aquí deberías implementar la lógica de creación usando el provider o tu backend
+                              // Crear nuevo producto
+                              if (selectedCategoriaId == null) {
+                                throw Exception(
+                                  'Debe seleccionar una categoría',
+                                );
+                              }
 
-                              // Los datos se actualizarán automáticamente al recargar
+                              // Crear objeto producto completo para enviar al backend
+                              final nuevoProducto = Producto(
+                                id: '', // El backend asignará el ID
+                                nombre: nombreController.text,
+                                precio: double.parse(precioController.text),
+                                costo: double.parse(costoController.text),
+                                imagenUrl: finalImageUrl,
+                                categoria: categoriaSeleccionada,
+                                descripcion:
+                                    descripcionController.text.isNotEmpty
+                                    ? descripcionController.text
+                                    : null,
+                                impuestos:
+                                    double.tryParse(impuestosController.text) ??
+                                    0,
+                                utilidad:
+                                    double.tryParse(utilidadController.text) ??
+                                    0,
+                                tieneVariantes: tieneVariantes,
+                                estado: estado,
+                                ingredientesDisponibles:
+                                    ingredientesSeleccionados,
+                                tieneIngredientes: tieneIngredientes,
+                                tipoProducto: tipoProducto,
+                                ingredientesRequeridos: ingredientesRequeridos,
+                                ingredientesOpcionales: ingredientesOpcionales,
+                              );
+
+                              // Enviar usando el método básico por ahora
+                              // TODO: Crear método en el servicio que acepte producto completo
+                              await _productoService
+                                  .crearProductoConIngredientes(
+                                    nombre: nuevoProducto.nombre,
+                                    precio: nuevoProducto.precio,
+                                    costo: nuevoProducto.costo,
+                                    categoriaId: selectedCategoriaId!,
+                                    ingredientesDisponibles:
+                                        nuevoProducto.ingredientesDisponibles,
+                                    descripcion: nuevoProducto.descripcion,
+                                  );
+                              print('✅ Producto creado en el backend');
                             }
 
                             Navigator.of(context).pop();
