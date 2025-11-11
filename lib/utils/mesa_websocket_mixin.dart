@@ -10,12 +10,12 @@ mixin MesaWebSocketMixin {
   static const Duration _reconnectDelay = Duration(seconds: 5);
 
   void setupMesaWebSockets(Function refreshCallback) {
-    // ⚠️ TEMPORAL: WebSockets deshabilitados debido a problemas de compatibilidad con Railway
+    // ⚠️ TEMPORAL: WebSockets deshabilitados debido a problemas de compatibilidad con Render
     print(
       '⚠️ [WebSocket] Temporalmente deshabilitado debido a problemas de infraestructura',
     );
 
-    // TODO: Rehabilitar cuando Railway soporte WebSockets correctamente
+    // TODO: Rehabilitar cuando Render soporte WebSockets correctamente
     // En su lugar, la sincronización se manejará por polling automático
     return;
 

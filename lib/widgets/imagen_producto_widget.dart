@@ -48,13 +48,13 @@ class ImagenProductoWidget extends StatelessWidget {
       return _buildImagenBase64(imagenUrl);
     }
 
-    // MIGRACIÓN: Si la URL contiene el servidor anterior, migrar a Railway
+    // MIGRACIÓN: Si la URL contiene la antigua URL (Railway), migrar a Render
     if (imagenUrl.contains('sopa-y-carbon.onrender.com')) {
       final migratedUrl = imagenUrl.replaceAll(
         'sopa-y-carbon.onrender.com',
-        'sopa-y-carbon-production.up.railway.app',
+        'sopa-y-carbon.onrender.com',
       );
-      print('🔄 URL migrada a Railway: $migratedUrl');
+      print('🔄 URL migrada a Render: $migratedUrl');
       return _buildImagenNetwork(migratedUrl);
     }
 
@@ -68,13 +68,13 @@ class ImagenProductoWidget extends StatelessWidget {
     final imageService = ImageService();
     final validatedUrl = imageService.getImageUrl(imagenUrl);
 
-    // Verificar si la URL validada contiene el servidor anterior y migrarla
+    // Verificar si la URL validada contiene la antigua URL (Railway) y migrarla
     if (validatedUrl.contains('sopa-y-carbon.onrender.com')) {
       final migratedUrl = validatedUrl.replaceAll(
         'sopa-y-carbon.onrender.com',
-        'sopa-y-carbon-production.up.railway.app',
+        'sopa-y-carbon.onrender.com',
       );
-      print('🔄 URL validada migrada a Railway: $migratedUrl');
+      print('🔄 URL validada migrada a Render: $migratedUrl');
       return _buildImagenNetwork(migratedUrl);
     }
 

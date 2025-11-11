@@ -79,11 +79,11 @@ class WebSocketService {
   bool _isConnected = false;
   bool _isReconnecting = false;
   int _reconnectAttempts = 0;
-  static const int _maxReconnectAttempts = 5;
+  static const int _maxReconnectAttempts = 3;
   static const Duration _heartbeatInterval = Duration(
-    seconds: 60,
-  ); // Reducido para menos tráfico
-  static const Duration _reconnectDelay = Duration(seconds: 5);
+    seconds: 120,
+  ); // Aumentado para reducir tráfico
+  static const Duration _reconnectDelay = Duration(seconds: 15);
 
   /// Stream público para escuchar eventos
   Stream<WebSocketEventData> get events {
@@ -227,14 +227,14 @@ class WebSocketService {
 
   /// Manejar errores de conexión
   void _onError(error) {
-    print('❌ WebSocket: Error: $error');
+    print('❌ WebSocket error: $error');
     _isConnected = false;
     _scheduleReconnect();
   }
 
   /// Manejar desconexión
   void _onDisconnected() {
-    print('INFO: WebSocket: Conexión cerrada');
+    print('🔌 WebSocket desconectado');
     _isConnected = false;
     _heartbeatTimer?.cancel();
 
@@ -272,7 +272,7 @@ class WebSocketService {
     _reconnectAttempts++;
 
     print(
-      '🔄 WebSocket: Programando reconexión (intento $_reconnectAttempts/$_maxReconnectAttempts)',
+      '🔄 Programando reconexión WebSocket (intento $_reconnectAttempts) en ${_reconnectDelay.inSeconds} segundos...',
     );
 
     _reconnectTimer = Timer(_reconnectDelay, () {

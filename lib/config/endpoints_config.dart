@@ -1,15 +1,17 @@
 /// Configuración de endpoints de la API
 ///
 /// Organiza los endpoints de autenticación de manera estructurada.
+import 'constants.dart';
+
 class EndpointsConfig {
   // Singleton
   static final EndpointsConfig _instance = EndpointsConfig._internal();
   factory EndpointsConfig() => _instance;
   EndpointsConfig._internal();
 
-  // URL base por defecto (simplificada)
-  String get baseUrl =>
-      _customBaseUrl ?? 'https://sopa-y-carbon-production.up.railway.app';
+  // URL base por defecto (usa configuración dinámica)
+  static String get baseUrl =>
+      _instance._customBaseUrl ?? kDynamicBackendUrl;
 
   // Variable para almacenar una URL base personalizada
   String? _customBaseUrl;
@@ -32,7 +34,7 @@ class EndpointsConfig {
   bool get isUsingCustomUrl => _customBaseUrl != null;
 
   /// Devuelve la URL base actual (personalizada o predeterminada)
-  String get currentBaseUrl => _customBaseUrl ?? baseUrl;
+  String get currentBaseUrl => _customBaseUrl ?? EndpointsConfig.baseUrl;
 
   /// Endpoints de autenticación y usuarios (único endpoints usado)
   AuthEndpoints get auth => AuthEndpoints(currentBaseUrl);

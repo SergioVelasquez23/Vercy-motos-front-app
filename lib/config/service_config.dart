@@ -15,7 +15,7 @@ class ServiceConfig {
   static const bool useV2Services = true;
 
   /// Obtiene la URL base del backend desde EndpointsConfig
-  String get baseUrl => '${EndpointsConfig().currentBaseUrl}/api';
+  String get baseUrl => '${EndpointsConfig.baseUrl}/api';
 
   /// Timeout por defecto para peticiones HTTP
   static const Duration defaultTimeout = Duration(seconds: 10);

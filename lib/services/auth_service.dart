@@ -71,6 +71,7 @@ class AuthService {
       // Mostrar información de red para depuración (solo en depuración)
       List<String> localIps = await ConnectivityUtils.getLocalIpAddresses();
       print('📡 Direcciones IP locales: $localIps');
+      print('🌐 URL de login que se usará: $baseUrl');
 
       final response = await http.post(
         Uri.parse(baseUrl),

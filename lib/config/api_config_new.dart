@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'endpoints_config_new.dart';
 import '../services/network_discovery_service.dart';
+import 'constants.dart';
 
 /// Configuración centralizada mejorada para la API
 ///
@@ -132,18 +133,15 @@ class ApiConfig {
   }
 
   /// Obtiene URL fallback basada en ambiente
-  String _getFallbackUrl() {
-    final environment = currentEnvironment;
-
-    // URLs fallback por ambiente
+  String _getFallbackUrl([String? environmentName]) {
+    // URLs fallback por ambiente - localhost en desarrollo
     final fallbackUrls = {
-      'development': 'http://localhost:${environment.defaultPort}',
-      'staging': 'http://192.168.1.100:${environment.defaultPort}',
-      'production': 'https://sopa-y-carbon-production.up.railway.app',
+      'development': 'http://localhost:8080',
+      'staging': 'https://sopa-y-carbon.onrender.com',
+      'production': 'https://sopa-y-carbon.onrender.com',
     };
 
-    return fallbackUrls[environmentName] ??
-        'http://localhost:${environment.defaultPort}';
+    return fallbackUrls[environmentName] ?? kDynamicBackendUrl;
   }
 
   /// Valida si una URL está accesible

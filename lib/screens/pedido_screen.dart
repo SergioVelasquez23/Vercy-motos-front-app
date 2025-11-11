@@ -2961,7 +2961,7 @@ class _PedidoScreenState extends State<PedidoScreen> {
           width: width ?? double.infinity,
           height: height ?? double.infinity,
           fit: BoxFit.cover,
-          backendBaseUrl: EndpointsConfig().baseUrl,
+          backendBaseUrl: EndpointsConfig.baseUrl,
         ),
       ),
     );

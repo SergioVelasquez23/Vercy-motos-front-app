@@ -1,8 +1,33 @@
 // Constantes generales para la aplicación
+import 'package:flutter/foundation.dart';
 
 // Configuración de API
 const String kBackendUrl =
-    'https://sopa-y-carbon-production.up.railway.app'; // URL del backend en producción
+    'https://sopa-y-carbon.onrender.com'; // URL del backend en producción (Render)
+
+// URL de desarrollo local
+const String kLocalBackendUrl = 'http://localhost:8080';
+
+// URL dinámica que considera el entorno de desarrollo
+String get kDynamicBackendUrl {
+  // En flutter web, siempre usar el backend de producción para evitar problemas de CORS
+  if (kIsWeb) {
+    print(
+      '🌐 Flutter Web detectado - usando backend de producción: $kBackendUrl',
+    );
+    return kBackendUrl;
+  }
+
+  if (kDebugMode) {
+    print(
+      '🔧 Modo desarrollo detectado - usando backend local: $kLocalBackendUrl',
+    );
+    return kLocalBackendUrl;
+  }
+
+  print('🚀 Modo producción - usando backend: $kBackendUrl');
+  return kBackendUrl;
+}
 
 // Colores principales de la aplicación
 const kPrimaryColor = 0xFFFF6B00;

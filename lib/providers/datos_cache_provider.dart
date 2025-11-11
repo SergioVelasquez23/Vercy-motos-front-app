@@ -189,12 +189,22 @@ class DatosCacheProvider extends ChangeNotifier {
     try {
       final productos = await _productoService.getProductos();
       _productos = productos;
-      _ultimaCargaProductos = DateTime.now(); // ✅ NUEVO: Actualizar timestamp
-      print(
-        '📦 Productos cargados: ${productos.length} (${force ? 'forzado' : 'caché expirado'}) ${silent ? '(silencioso)' : ''}',
-      );
+      _ultimaCargaProductos = DateTime.now();
+
+      if (productos.isEmpty) {
+        print('⚠️ ALERTA: Se cargaron 0 productos desde el servidor');
+        print('🔍 Verificar conectividad y endpoints del backend');
+      } else {
+        print(
+          '📦 Productos cargados: ${productos.length} (${force ? 'forzado' : 'caché expirado'}) ${silent ? '(silencioso)' : ''}',
+        );
+      }
     } catch (e) {
       print('❌ Error cargando productos: $e');
+      // Mantener productos existentes en caso de error
+      print(
+        '🔄 Manteniendo productos existentes en caché: ${_productos?.length ?? 0}',
+      );
     } finally {
       _isLoadingProductos = false;
       // ✅ MEJORADO: Solo notificar si no es silencioso

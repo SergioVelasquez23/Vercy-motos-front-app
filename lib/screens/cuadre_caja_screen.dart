@@ -64,7 +64,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
 
   // Services
   final CuadreCajaService _cuadreCajaService = CuadreCajaService();
-  final String baseUrl = 'https://sopa-y-carbon-production.up.railway.app';
+  final String baseUrl = 'https://sopa-y-carbon.onrender.com';
 
   // Filtros
   String? _selectedCaja;

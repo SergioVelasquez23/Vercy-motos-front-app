@@ -53,7 +53,7 @@ class KeepAliveService {
   /// Envía un ping al backend para mantenerlo activo
   Future<void> _sendPing() async {
     try {
-      final url = '${_endpointsConfig.baseUrl}/api/health';
+      final url = '${EndpointsConfig.baseUrl}/api/health';
 
       print('📡 Enviando ping keep-alive a: $url');
 

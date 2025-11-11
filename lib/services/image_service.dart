@@ -298,20 +298,18 @@ class ImageService {
       return cleanFilename;
     }
 
-    // VERIFICACIÓN: Lógica de servidor problemático removida (ahora usando Railway)
-    // if (_apiConfig.baseUrl.contains('sopa-y-carbon.onrender.com')) {
-    //   return '';
-    // }
+    // VERIFICACIÓN: Lógica de migración de URLs antiguas (Railway -> Render)
+    // Si la URL contiene la antigua URL de Railway, migrarla a Render
 
     // Si ya es una URL completa, validarla
     if (cleanFilename.startsWith('http')) {
-      // Migrar URLs del servidor anterior si las encuentra
+      // Asegurar URLs ya en Render o migrar cualquier referencia antigua
       if (cleanFilename.contains('sopa-y-carbon.onrender.com')) {
         final migratedUrl = cleanFilename.replaceAll(
           'sopa-y-carbon.onrender.com',
-          'sopa-y-carbon-production.up.railway.app',
+          'sopa-y-carbon.onrender.com',
         );
-        print('🔄 URL migrada a Railway: $migratedUrl');
+        print('🔄 URL migrada a Render: $migratedUrl');
         return migratedUrl;
       }
 

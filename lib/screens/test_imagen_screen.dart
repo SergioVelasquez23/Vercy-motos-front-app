@@ -59,13 +59,15 @@ class _TestImagenScreenState extends State<TestImagenScreen> {
                     ),
                   ),
                   SizedBox(height: 8),
+                  Text('🌐 Configuración de Red'),
+                  Divider(),
                   Text(
-                    'Base URL: ${_config.baseUrl}',
-                    style: TextStyle(color: Color(0xFFCCCCCC), fontSize: 14),
+                    'Base URL: ${EndpointsConfig.baseUrl}',
+                    style: TextStyle(fontFamily: 'monospace'),
                   ),
                   Text(
-                    'Endpoint imágenes: ${_config.baseUrl}/images/platos/',
-                    style: TextStyle(color: Color(0xFFCCCCCC), fontSize: 14),
+                    'Endpoint imágenes: ${EndpointsConfig.baseUrl}/images/platos/',
+                    style: TextStyle(fontFamily: 'monospace'),
                   ),
                 ],
               ),
@@ -110,7 +112,7 @@ class _TestImagenScreenState extends State<TestImagenScreen> {
                             urlRemota: url,
                             width: double.infinity,
                             height: double.infinity,
-                            backendBaseUrl: _config.baseUrl,
+                            backendBaseUrl: EndpointsConfig.baseUrl,
                             fit: BoxFit.cover,
                           ),
                         ),
@@ -167,7 +169,9 @@ class _TestImagenScreenState extends State<TestImagenScreen> {
   void _testConnectivity() async {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Probando conectividad con ${_config.baseUrl}...'),
+        content: Text(
+          'Probando conectividad con ${EndpointsConfig.baseUrl}...',
+        ),
         backgroundColor: Color(0xFFFF6B00),
       ),
     );
@@ -175,8 +179,10 @@ class _TestImagenScreenState extends State<TestImagenScreen> {
     try {
       // Esta es una prueba básica de conectividad
       // En un escenario real, harías una llamada HTTP real
-      print('🔍 Probando conectividad con: ${_config.baseUrl}');
-      print('🔍 Endpoint de imágenes: ${_config.baseUrl}/images/platos/');
+      print('🔍 Probando conectividad con: ${EndpointsConfig.baseUrl}');
+      print(
+        '🔍 Endpoint de imágenes: ${EndpointsConfig.baseUrl}/images/platos/',
+      );
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
