@@ -18,7 +18,6 @@ import 'ingresos_caja_screen.dart';
 import 'tipos_gasto_screen.dart';
 import '../services/reportes_service.dart';
 import '../services/pedido_service.dart';
-import '../services/websocket_service.dart';
 import '../models/dashboard_data.dart';
 import '../providers/user_provider.dart';
 import '../widgets/admin_key_detector.dart';
@@ -42,7 +41,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
     with WidgetsBindingObserver {
   late StreamSubscription<bool> _pedidoCompletadoSubscription;
   late StreamSubscription<bool> _pedidoPagadoSubscription;
-  late StreamSubscription<WebSocketEventData> _webSocketSubscription;
   late Timer _autoRefreshTimer;
   int _selectedIndex = 0;
   bool _isLoading = true;
@@ -50,7 +48,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
   // Servicios
   final ReportesService _reportesService = ReportesService();
   final PedidoService _pedidoService = PedidoService();
-  final WebSocketService _webSocketService = WebSocketService();
 
   // Datos del dashboard
   DashboardData? _dashboardData;
@@ -120,7 +117,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
       // Solo cargar datos si el usuario es admin
       if (userProvider.isAdmin) {
         _cargarDatos();
-        _setupWebSocket();
 
         // Precargar productos, imágenes e ingredientes
         _precargarDatos();
@@ -134,14 +130,11 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
           (_) {},
         );
 
-        // Timer de respaldo (cada 5 minutos) en caso de que WebSocket falle
+        // Timer de auto-refresco (cada 5 minutos)
         _autoRefreshTimer = Timer.periodic(Duration(minutes: 5), (timer) {
-          if (!_webSocketService.isConnected) {
-            _cargarDatos();
-            // Actualizar UI para mostrar estado desconectado
-            if (mounted) {
-              setState(() {});
-            }
+          _cargarDatos();
+          if (mounted) {
+            setState(() {});
           }
         });
       }
@@ -166,14 +159,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-
-    // Solo reconectar WebSocket cuando la app vuelve a estar activa
-    if (state == AppLifecycleState.resumed && mounted) {
-      final userProvider = Provider.of<UserProvider>(context, listen: false);
-      if (userProvider.isAdmin && !_webSocketService.isConnected) {
-        _webSocketService.reconnect();
-      }
-    }
+    // Lifecycle handling - no action needed currently
   }
 
   @override
@@ -183,11 +169,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
 
     _pedidoCompletadoSubscription.cancel();
     _pedidoPagadoSubscription.cancel();
-    _webSocketSubscription.cancel();
     _autoRefreshTimer.cancel();
-
-    // Desconectar WebSocket si estamos saliendo del dashboard
-    _webSocketService.disconnect();
 
     super.dispose();
   }
@@ -259,57 +241,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
       if (mounted) {
         setState(() => _isLoading = false);
       }
-    }
-  }
-
-  /// Configurar conexión WebSocket y suscribirse a eventos
-  Future<void> _setupWebSocket() async {
-    try {
-      // Conectar al WebSocket
-      await _webSocketService.connect();
-
-      // Actualizar UI para mostrar estado conectado
-      if (mounted) {
-        setState(() {});
-      }
-
-      // Suscribirse a eventos del dashboard
-      _webSocketSubscription = _webSocketService.dashboardEvents.listen(
-        (WebSocketEventData eventData) {
-          // Recargar datos según el tipo de evento
-          switch (eventData.event) {
-            case WebSocketEvent.dashboardUpdate:
-              _cargarDatos();
-              break;
-
-            case WebSocketEvent.pedidoCreado:
-            case WebSocketEvent.pedidoPagado:
-            case WebSocketEvent.pedidoCancelado:
-              // Actualizar solo partes específicas para mejor rendimiento
-              _cargarEstadisticas();
-              _cargarUltimosPedidos();
-              _cargarPedidosPorHora();
-              break;
-
-            case WebSocketEvent.inventarioActualizado:
-              _cargarTopProductos();
-              break;
-
-            default:
-              // Evento no manejado
-              break;
-          }
-        },
-        onError: (error) {
-          // Actualizar UI para mostrar estado desconectado
-          if (mounted) {
-            setState(() {});
-          }
-          // El WebSocket service maneja la reconexión automáticamente
-        },
-      );
-    } catch (e) {
-      // Continuar con el timer de respaldo si falla WebSocket
     }
   }
 
@@ -952,7 +883,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
             ),
           ),
           Spacer(),
-          // Indicador de estado WebSocket
+          // Indicador de estado de conexión
           Container(
             padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
@@ -979,7 +910,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                 SizedBox(width: 6),
                 Text(
                   // Mostrar "En vivo" si no está cargando (indica conectividad API)
-                  // WebSocket está deshabilitado temporalmente, usando polling
                   !_isLoading ? 'En vivo' : 'Conectando...',
                   style: TextStyle(
                     color: Colors.white,

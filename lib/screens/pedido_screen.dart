@@ -1012,23 +1012,33 @@ class _PedidoScreenState extends State<PedidoScreen> {
         );
 
         for (var item in pedidoExistente!.items) {
-          // ✅ CORREGIDO: Buscar el producto completo en la lista de productos disponibles
+          // ✅ CORREGIDO: Limpiar ID malformado antes de buscar
+          String cleanProductoId = item.productoId;
+          if (cleanProductoId.contains('_')) {
+            // ID malformado con timestamp, extraer ID original (primeros 24 caracteres)
+            cleanProductoId = cleanProductoId.substring(0, 24);
+            print(
+              '🔧 ID malformado detectado: ${item.productoId} → limpiado a: $cleanProductoId',
+            );
+          }
+
+          // Buscar el producto completo en la lista de productos disponibles
           Producto? productoObj = productos.firstWhere(
-            (p) => p.id == item.productoId,
+            (p) => p.id == cleanProductoId,
             orElse: () => _getProductoFromItem(
               item.producto,
-              productoId: item.productoId,
+              productoId: cleanProductoId,
               forceNonNull: true,
             )!,
           );
 
           print(
-            '📦 Cargando producto: ${productoObj.nombre} (ID: ${item.productoId}) - Imagen: ${productoObj.imagenUrl ?? "Sin imagen"}',
+            '📦 Cargando producto: ${productoObj.nombre} (ID limpio: $cleanProductoId) - Imagen: ${productoObj.imagenUrl ?? "Sin imagen"}',
           );
 
           // Crear una copia del producto con la cantidad y notas del item
           final productoParaMesa = Producto(
-            id: item.productoId,
+            id: cleanProductoId, // ✅ Usar ID limpio en lugar del malformado
             nombre: productoObj.nombre,
             precio: item.precio,
             costo: productoObj.costo,
@@ -1036,8 +1046,7 @@ class _PedidoScreenState extends State<PedidoScreen> {
             descripcion: productoObj.descripcion,
             categoria: productoObj.categoria,
             tieneVariantes: productoObj.tieneVariantes,
-            imagenUrl: productoObj
-                .imagenUrl, // ✅ CORREGIDO: Ahora preserva la imagen correctamente
+            imagenUrl: productoObj.imagenUrl,
             ingredientesDisponibles: item.ingredientesSeleccionados,
             cantidad: item.cantidad,
             nota: item.notas,
@@ -1045,7 +1054,7 @@ class _PedidoScreenState extends State<PedidoScreen> {
           productosMesa.add(productoParaMesa);
 
           // Inicializar el mapa de pagados como activos (true) ya que son productos existentes
-          productoPagado[productoParaMesa.id] = true;
+          productoPagado[cleanProductoId] = true; // ✅ Usar ID limpio
         }
 
         // Si el pedido existente tiene cliente, cargarlo
@@ -1086,35 +1095,48 @@ class _PedidoScreenState extends State<PedidoScreen> {
             // Cargar productos del pedido existente en la lista local
             productosMesa = [];
             for (var item in pedidoExistente!.items) {
-              if (item.producto != null) {
-                // Crear una copia del producto con la cantidad y notas del item
-                final productoOriginal = _getProductoFromItem(
-                  item.producto,
-                  forceNonNull: true,
-                )!;
+              // ✅ CORREGIDO: Limpiar ID malformado antes de buscar
+              String cleanProductoId = item.productoId;
+              if (cleanProductoId.contains('_')) {
+                // ID malformado con timestamp, extraer ID original (primeros 24 caracteres)
+                cleanProductoId = cleanProductoId.substring(0, 24);
                 print(
-                  '📦 Cargando producto de mesa ocupada: ${productoOriginal.nombre} (ID: ${productoOriginal.id}) - Imagen: ${productoOriginal.imagenUrl ?? "Sin imagen"}',
+                  '🔧 ID malformado detectado en mesa ocupada: ${item.productoId} → limpiado a: $cleanProductoId',
                 );
-                final productoParaMesa = Producto(
-                  id: productoOriginal.id,
-                  nombre: productoOriginal.nombre,
-                  precio: item.precio,
-                  costo: productoOriginal.costo,
-                  utilidad: productoOriginal.utilidad,
-                  descripcion: productoOriginal.descripcion,
-                  categoria: productoOriginal.categoria,
-                  tieneVariantes: productoOriginal.tieneVariantes,
-                  imagenUrl: productoOriginal
-                      .imagenUrl, // ✅ AGREGADO: Conservar la URL de la imagen
-                  ingredientesDisponibles: item.ingredientesSeleccionados,
-                  cantidad: item.cantidad,
-                  nota: item.notas,
-                );
-                productosMesa.add(productoParaMesa);
-
-                // Inicializar el mapa de pagados como activos (true) para productos existentes
-                productoPagado[productoParaMesa.id] = true;
               }
+
+              // Buscar el producto completo en la lista de productos disponibles
+              Producto? productoObj = productos.firstWhere(
+                (p) => p.id == cleanProductoId,
+                orElse: () => _getProductoFromItem(
+                  item.producto,
+                  productoId: cleanProductoId,
+                  forceNonNull: true,
+                )!,
+              );
+
+              print(
+                '📦 Cargando producto de mesa ocupada: ${productoObj.nombre} (ID limpio: $cleanProductoId) - Imagen: ${productoObj.imagenUrl ?? "Sin imagen"}',
+              );
+
+              final productoParaMesa = Producto(
+                id: cleanProductoId, // ✅ Usar ID limpio
+                nombre: productoObj.nombre,
+                precio: item.precio,
+                costo: productoObj.costo,
+                utilidad: productoObj.utilidad,
+                descripcion: productoObj.descripcion,
+                categoria: productoObj.categoria,
+                tieneVariantes: productoObj.tieneVariantes,
+                imagenUrl: productoObj.imagenUrl,
+                ingredientesDisponibles: item.ingredientesSeleccionados,
+                cantidad: item.cantidad,
+                nota: item.notas,
+              );
+              productosMesa.add(productoParaMesa);
+
+              // Inicializar el mapa de pagados como activos (true) para productos existentes
+              productoPagado[cleanProductoId] = true; // ✅ Usar ID limpio
             }
 
             // Si el pedido existente tiene cliente, cargarlo

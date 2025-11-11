@@ -356,16 +356,6 @@ class _ProductosScreenState extends State<ProductosScreen> {
         elevation: 0,
         centerTitle: true,
         actions: [
-          Consumer<DatosCacheProvider>(
-            builder: (context, cacheProvider, child) {
-              return Icon(
-                cacheProvider.isConnected ? Icons.wifi : Icons.wifi_off,
-                color: cacheProvider.isConnected ? Colors.green : Colors.red,
-                size: 20,
-              );
-            },
-          ),
-          SizedBox(width: 8),
           IconButton(
             icon: Icon(Icons.refresh),
             onPressed: () {

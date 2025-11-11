@@ -1,13 +1,10 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:web_socket_channel/web_socket_channel.dart';
 import '../models/producto.dart';
 import '../models/categoria.dart';
 import '../models/ingrediente.dart';
 import '../services/producto_service.dart';
 import '../services/ingrediente_service.dart';
-import '../config/api_config.dart';
 
 class DatosCacheProvider extends ChangeNotifier {
   static final DatosCacheProvider _instance = DatosCacheProvider._internal();
@@ -39,12 +36,6 @@ class DatosCacheProvider extends ChangeNotifier {
   bool _enablePolling = true;
   final int _pollingIntervalMinutes = 3; // Polling cada 3 minutos
 
-  // WebSocket (mantenido como fallback)
-  WebSocketChannel? _channel;
-  Timer? _reconnectTimer;
-  bool _isConnected = false;
-  int _reconnectAttempts = 0;
-
   // Servicios
   final ProductoService _productoService = ProductoService();
   final IngredienteService _ingredienteService = IngredienteService();
@@ -57,7 +48,6 @@ class DatosCacheProvider extends ChangeNotifier {
   bool get isLoadingProductos => _isLoadingProductos;
   bool get isLoadingCategorias => _isLoadingCategorias;
   bool get isLoadingIngredientes => _isLoadingIngredientes;
-  bool get isConnected => _isConnected;
 
   bool get hasData =>
       _productos != null && _categorias != null && _ingredientes != null;
@@ -87,8 +77,7 @@ class DatosCacheProvider extends ChangeNotifier {
   Future<void> initialize() async {
     print('🚀 Inicializando DatosCacheProvider...');
     await _cargarTodosLosDatos();
-    _connectWebSocket();
-    _startPolling(); // ✅ NUEVO: Iniciar polling automático
+    _startPolling(); // ✅ Iniciar polling automático
   }
 
   // Cargar todos los datos en paralelo
@@ -279,136 +268,6 @@ class DatosCacheProvider extends ChangeNotifier {
     }
   }
 
-  // Conectar WebSocket
-  void _connectWebSocket() {
-    try {
-      final baseUrl = ApiConfig.instance.baseUrl;
-      final wsUrl = baseUrl.replaceFirst('http', 'ws') + '/ws/updates';
-
-      print('🔌 Conectando WebSocket: $wsUrl');
-
-      _channel = WebSocketChannel.connect(Uri.parse(wsUrl));
-      _isConnected = true;
-      notifyListeners();
-
-      _channel!.stream.listen(
-        (message) {
-          print('📡 WebSocket mensaje recibido: $message');
-          _handleWebSocketMessage(message);
-        },
-        onDone: () {
-          print('🔌 WebSocket desconectado');
-          _isConnected = false;
-          notifyListeners();
-          _scheduleReconnect();
-        },
-        onError: (error) {
-          print('❌ WebSocket error: $error');
-          _isConnected = false;
-
-          // ✅ MEJORADO: Manejo más robusto de errores
-          try {
-            notifyListeners();
-          } catch (e) {
-            print('⚠️ Error notificando listeners: $e');
-          }
-
-          // No reconectar inmediatamente si hay muchos errores
-          if (_reconnectAttempts < 10) {
-            _scheduleReconnect();
-          } else {
-            print('🛑 Demasiados intentos de reconexión, pausando...');
-            Future.delayed(Duration(minutes: 1), () {
-              _reconnectAttempts = 0;
-              _scheduleReconnect();
-            });
-          }
-        },
-      );
-
-      print('✅ WebSocket conectado exitosamente');
-      _reconnectAttempts = 0; // ✅ Resetear contador al conectar exitosamente
-    } catch (e) {
-      print('❌ Error conectando WebSocket: $e');
-      _scheduleReconnect();
-    }
-  }
-
-  // Manejar mensajes del WebSocket
-  void _handleWebSocketMessage(dynamic message) {
-    try {
-      final data = json.decode(message);
-      final type = data['type'];
-
-      print('📨 Procesando actualización: $type');
-
-      switch (type) {
-        case 'productos_updated':
-          print('🔄 Recargando productos por WebSocket...');
-          _cargarProductos(
-            force: true,
-            silent: true,
-          ); // Silencioso para evitar disrupciones
-          break;
-        case 'categorias_updated':
-          print('🔄 Recargando categorías por WebSocket...');
-          _cargarCategorias(
-            force: true,
-            silent: true,
-          ); // Silencioso para evitar disrupciones
-          break;
-        case 'ingredientes_updated':
-          print('🔄 Recargando ingredientes por WebSocket...');
-          _cargarIngredientes(
-            force: true,
-            silent: true,
-          ); // Silencioso para evitar disrupciones
-          break;
-        case 'full_reload':
-          print('🔄 Recargando todos los datos por WebSocket...');
-          _cargarTodosLosDatos(
-            force: true,
-            silent: true,
-          ); // Silencioso para evitar disrupciones
-          break;
-        default:
-          print('⚠️ Tipo de mensaje desconocido: $type');
-      }
-    } catch (e) {
-      print('❌ Error procesando mensaje WebSocket: $e');
-    }
-  }
-
-  // Programar reconexión
-  void _scheduleReconnect() {
-    _reconnectTimer?.cancel();
-
-    _reconnectAttempts++;
-
-    if (_reconnectAttempts > 10) {
-      print(
-        '⚠️ Máximo número de intentos de reconexión alcanzado. Pausando por 1 minuto...',
-      );
-      _reconnectTimer = Timer(Duration(minutes: 1), () {
-        _reconnectAttempts = 0;
-        _scheduleReconnect();
-      });
-      return;
-    }
-
-    final delay = Duration(seconds: 5 * _reconnectAttempts);
-    print(
-      '🔄 Programando reconexión WebSocket (intento $_reconnectAttempts) en ${delay.inSeconds} segundos...',
-    );
-
-    _reconnectTimer = Timer(delay, () {
-      print(
-        '🔄 Intentando reconectar WebSocket (intento $_reconnectAttempts)...',
-      );
-      _connectWebSocket();
-    });
-  }
-
   // Recargar datos manualmente
   Future<void> recargarDatos() async {
     print('🔄 Recarga manual solicitada...');
@@ -431,9 +290,7 @@ class DatosCacheProvider extends ChangeNotifier {
 
   @override
   void dispose() {
-    _reconnectTimer?.cancel();
-    _pollingTimer?.cancel(); // ✅ NUEVO: Limpiar polling timer
-    _channel?.sink.close();
+    _pollingTimer?.cancel();
     super.dispose();
   }
 }

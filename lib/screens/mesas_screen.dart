@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../utils/mesa_websocket_mixin.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'dart:async';
@@ -39,8 +38,6 @@ import 'dart:html' as html;
 // Importes de los nuevos módulos
 import '../widgets/mesa/mesa_card.dart';
 
-import '../services/websocket_service.dart';
-
 extension FirstWhereOrNullExtension<E> on List<E> {
   E? firstWhereOrNull(bool Function(E) test) {
     for (var element in this) {
@@ -58,7 +55,7 @@ class MesasScreen extends StatefulWidget {
 }
 
 class _MesasScreenState extends State<MesasScreen>
-    with ImpresionMixin, MesaWebSocketMixin, WidgetsBindingObserver {
+    with ImpresionMixin, WidgetsBindingObserver {
   // ✅ NUEVO: Variables para controlar la precarga de datos
   bool _precargandoDatos = false;
 
@@ -189,8 +186,6 @@ class _MesasScreenState extends State<MesasScreen>
 
   // Subscripción a eventos de pedido creado/actualizado
   StreamSubscription<bool>? _pedidoCompletadoSubscription;
-
-  // La subscripción WebSocket ahora se maneja en el mixin MesaWebSocketMixin
 
   // ========== SISTEMA DE OPTIMIZACIÓN DE RECARGA ==========
   // Control de debounce para evitar múltiples llamadas
@@ -2001,8 +1996,6 @@ class _MesasScreenState extends State<MesasScreen>
       }
     });
 
-    // Configurar WebSocket para actualización en tiempo real
-    setupMesaWebSockets(() => _recargarMesasConCards());
     _verificarMesaDeudas(); // ✅ Verificar mesa Deudas al iniciar
 
     // 🔧 NUEVO: Iniciar sincronización periódica para evitar desincronización
@@ -2147,13 +2140,6 @@ class _MesasScreenState extends State<MesasScreen>
     // 🔧 NUEVO: Limpiar timer de sincronización periódica
     _sincronizacionPeriodica?.cancel();
 
-    // Liberar recursos de WebSocket
-    disposeMesaWebSockets();
-
-    // Desactivar el modo keep-alive cuando se salga de la pantalla
-    final ws = WebSocketService();
-    ws.setKeepAlive(false);
-
     // Cancelar subscripción de pedidos completados
     try {
       _pedidoCompletadoSubscription?.cancel();
@@ -2175,9 +2161,6 @@ class _MesasScreenState extends State<MesasScreen>
       _loadMesas(); // También recargar todas las mesas por si acaso
     }
   }
-
-  // Este método ha sido reemplazado por el mixin MesaWebSocketMixin
-  // WebSocket configuration is now handled by MesaWebSocketMixin
 
   Future<void> _loadMesas() async {
     try {

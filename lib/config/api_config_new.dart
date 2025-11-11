@@ -56,8 +56,6 @@ class ApiConfig {
   Future<void> initialize() async {
     if (_initialized) return;
 
-    print('🔧 Inicializando ApiConfig...');
-
     try {
       // Determinar URL base usando múltiples estrategias
       _cachedBaseUrl = await _determineBaseUrl();
@@ -66,15 +64,11 @@ class ApiConfig {
       _endpointsConfig = EndpointsConfig(_cachedBaseUrl!);
 
       _initialized = true;
-      print('✅ ApiConfig inicializado correctamente');
-      print('📡 URL base: $_cachedBaseUrl');
     } catch (e) {
-      print('❌ Error inicializando ApiConfig: $e');
       // Usar URL fallback para no bloquear la aplicación
       _cachedBaseUrl = _getFallbackUrl();
       _endpointsConfig = EndpointsConfig(_cachedBaseUrl!);
       _initialized = true;
-      print('⚠️ Usando URL fallback: $_cachedBaseUrl');
     }
   }
 
@@ -82,32 +76,24 @@ class ApiConfig {
   Future<String> _determineBaseUrl() async {
     final environment = currentEnvironment;
 
-    print('🌍 Ambiente actual: ${environment.name}');
-
     // Estrategia 1: Variable de entorno explícita
     final envUrl = _getEnvironmentUrl();
     if (envUrl != null) {
-      print('✅ URL desde variable de entorno: $envUrl');
       if (await _validateUrl(envUrl)) {
         return envUrl;
       }
-      print('⚠️ URL de variable de entorno no válida, continuando...');
     }
 
     // Estrategia 2: Detección automática (si está habilitada)
     if (environment.enableAutoDiscovery) {
-      print('🔍 Intentando detección automática...');
       final autoUrl = await _networkDiscovery.getServerBaseUrl();
       if (autoUrl != null) {
-        print('✅ URL detectada automáticamente: $autoUrl');
         return autoUrl;
       }
-      print('⚠️ Detección automática falló, usando fallback...');
     }
 
     // Estrategia 3: URL fallback
     final fallbackUrl = _getFallbackUrl();
-    print('🔄 Usando URL fallback: $fallbackUrl');
     return fallbackUrl;
   }
 
@@ -199,12 +185,10 @@ class ApiConfig {
   void setCustomBaseUrl(String url) {
     _cachedBaseUrl = url;
     _endpointsConfig = EndpointsConfig(url);
-    print('📡 URL base personalizada establecida: $url');
   }
 
   /// Restablece la configuración y re-detecta el servidor
   Future<void> refresh() async {
-    print('🔄 Refrescando configuración...');
     _initialized = false;
     _cachedBaseUrl = null;
     _networkDiscovery.clearCache();
@@ -213,7 +197,6 @@ class ApiConfig {
 
   /// Fuerza nueva detección de servidor
   Future<void> forceRediscover() async {
-    print('🔍 Forzando nueva detección de servidor...');
     final newUrl = await _networkDiscovery.forceRediscover();
     if (newUrl != null) {
       final fullUrl = 'http://$newUrl:${currentEnvironment.defaultPort}';
