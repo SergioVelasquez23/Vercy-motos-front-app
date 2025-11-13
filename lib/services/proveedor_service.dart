@@ -173,14 +173,21 @@ class ProveedorService {
         throw Exception('Token no encontrado');
       }
 
-      print('🔄 Actualizando proveedor ID: ${proveedor.id}');
-      print('📡 URL: ${_endpoints.actualizar(proveedor.id)}');
+      // ✅ VALIDAR: Eliminar slashes al inicio/final del ID
+      final cleanId = proveedor.id.trim().replaceAll(RegExp(r'^/+|/+$'), '');
+
+      if (cleanId.isEmpty) {
+        throw Exception('ID de proveedor inválido o vacío');
+      }
+
+      print('🔄 Actualizando proveedor ID: "$cleanId"');
+      print('📡 URL: ${_endpoints.actualizar(cleanId)}');
 
       final jsonData = proveedor.toJsonCreate();
       print('📋 Datos a enviar: $jsonData');
 
       final response = await http.put(
-        Uri.parse(_endpoints.actualizar(proveedor.id)),
+        Uri.parse(_endpoints.actualizar(cleanId)),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -212,11 +219,20 @@ class ProveedorService {
         throw Exception('Token no encontrado');
       }
 
-      print('🔄 Cambiando estado del proveedor ID: $id a activo: $activo');
-      print('📡 URL: ${_endpoints.cambiarEstado(id)}');
+      // ✅ VALIDAR: Eliminar slashes al inicio/final del ID
+      final cleanId = id.trim().replaceAll(RegExp(r'^/+|/+$'), '');
+
+      if (cleanId.isEmpty) {
+        throw Exception('ID de proveedor inválido o vacío');
+      }
+
+      print(
+        '🔄 Cambiando estado del proveedor ID: "$cleanId" a activo: $activo',
+      );
+      print('📡 URL: ${_endpoints.cambiarEstado(cleanId)}');
 
       final response = await http.put(
-        Uri.parse(_endpoints.cambiarEstado(id)),
+        Uri.parse(_endpoints.cambiarEstado(cleanId)),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',

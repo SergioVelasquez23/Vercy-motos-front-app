@@ -471,18 +471,34 @@ class _PedidoScreenState extends State<PedidoScreen> {
 
     // Agregar ingredientes opcionales con precios SOLO para selección
     for (var ingrediente in producto.ingredientesOpcionales) {
-      // ✅ COMENTADO: Log de procesamiento detallado removido
-      // print('🔍 Procesando ingrediente opcional: ID="${ingrediente.ingredienteId}", Nombre="${ingrediente.ingredienteNombre}"');
+      print(
+        '🔍 Procesando ingrediente opcional: ID="${ingrediente.ingredienteId}", Nombre="${ingrediente.ingredienteNombre}", Precio Adicional: \$${ingrediente.precioAdicional}',
+      );
 
       String nombreConPrecio = ingrediente.ingredienteNombre;
       if (ingrediente.precioAdicional > 0) {
         nombreConPrecio +=
             ' (+\$${ingrediente.precioAdicional.toStringAsFixed(0)})';
+        print('✅ Ingrediente con precio adicional: "$nombreConPrecio"');
+      } else {
+        print(
+          '⚠️ Ingrediente SIN precio adicional (será gratis): "$nombreConPrecio"',
+        );
       }
 
-      // ✅ COMENTADO: Log de nombre con precio removido
-      // print('🔍 Nombre con precio generado: "$nombreConPrecio"');
       ingredientesOpcionales.add(nombreConPrecio);
+    }
+
+    print(
+      '📋 TOTAL Ingredientes opcionales cargados: ${ingredientesOpcionales.length}',
+    );
+    if (ingredientesOpcionales.isNotEmpty) {
+      print('📝 Lista completa de opcionales:');
+      for (var i = 0; i < ingredientesOpcionales.length; i++) {
+        print('   ${i + 1}. ${ingredientesOpcionales[i]}');
+      }
+    } else {
+      print('⚠️ NO HAY ingredientes opcionales para mostrar');
     }
 
     // Los requeridos se agregan automáticamente al resultado final, NO para selección
@@ -1916,23 +1932,25 @@ class _PedidoScreenState extends State<PedidoScreen> {
       isSaving = false;
     });
 
-    // ✅ NUEVO: Invalidar caché después de operación crítica
-    final datosProvider = Provider.of<DatosCacheProvider>(
-      context,
-      listen: false,
-    );
-    try {
-      // Forzar actualización de productos por si cambió inventario
-      await datosProvider.forceRefreshProductos();
-      print('✅ Cache invalidado después de guardar pedido');
-    } catch (e) {
-      print('⚠️ Error invalidando caché: $e');
-    }
-
-    // ✅ Regresar a la pantalla anterior (Mesas) indicando que hubo cambios
-    // Usamos pop con resultado true para que quien abrió PedidoScreen pueda
-    // actualizar de forma optimizada sin forzar reconstrucción completa.
+    // ✅ Regresar INMEDIATAMENTE a la pantalla anterior (Mesas) para mejor UX
+    // No esperar a que se recargue el caché
     Navigator.of(context).pop(true);
+
+    // ✅ OPTIMIZACIÓN: Invalidar caché EN SEGUNDO PLANO después de navegar
+    // Esto evita el delay de 10 segundos al guardar el pedido
+    Future.delayed(Duration.zero, () async {
+      try {
+        final datosProvider = Provider.of<DatosCacheProvider>(
+          context,
+          listen: false,
+        );
+        // Forzar actualización de productos por si cambió inventario
+        await datosProvider.forceRefreshProductos();
+        print('✅ Cache invalidado en segundo plano después de guardar pedido');
+      } catch (e) {
+        print('⚠️ Error invalidando caché en segundo plano: $e');
+      }
+    });
   }
 
   void _mostrarMensajeExito(String pedidoId, double total) {

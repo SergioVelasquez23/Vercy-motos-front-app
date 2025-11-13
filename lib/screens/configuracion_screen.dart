@@ -96,6 +96,8 @@ class _MesasConfigScreenState extends State<MesasConfigScreen> {
   final MesaService _mesaService = MesaService();
   List<Mesa> _mesas = [];
   bool _isLoading = true;
+  bool _isSaving = false;
+  bool _isDeleting = false;
   String _searchText = '';
   final TextEditingController _searchController = TextEditingController();
 
@@ -378,10 +380,31 @@ class _MesasConfigScreenState extends State<MesasConfigScreen> {
                   icon: Icon(Icons.edit, color: AppTheme.primary),
                   tooltip: 'Editar Mesa',
                 ),
+                // Botón limpiar - solo visible si mesa tiene datos inconsistentes
+                if (mesa.ocupada || mesa.total > 0) ...[
+                  IconButton(
+                    onPressed: () => _confirmarLimpiarMesa(mesa),
+                    icon: const Icon(
+                      Icons.cleaning_services,
+                      color: Colors.orange,
+                    ),
+                    tooltip: 'Limpiar Mesa (resetear estado)',
+                  ),
+                ],
+                // Botón eliminar - deshabilitado si mesa está ocupada o tiene saldo
                 IconButton(
-                  onPressed: () => _confirmarEliminar(mesa),
-                  icon: const Icon(Icons.delete, color: Colors.red),
-                  tooltip: 'Eliminar Mesa',
+                  onPressed: (mesa.ocupada || mesa.total > 0)
+                      ? null
+                      : () => _confirmarEliminar(mesa),
+                  icon: Icon(
+                    Icons.delete,
+                    color: (mesa.ocupada || mesa.total > 0)
+                        ? Colors.grey
+                        : Colors.red,
+                  ),
+                  tooltip: (mesa.ocupada || mesa.total > 0)
+                      ? 'No se puede eliminar - Mesa ocupada o con saldo pendiente'
+                      : 'Eliminar Mesa',
                 ),
               ],
             ),
@@ -394,164 +417,182 @@ class _MesasConfigScreenState extends State<MesasConfigScreen> {
   void _mostrarDialogoMesa({Mesa? mesa}) {
     final isEditing = mesa != null;
     final nombreController = TextEditingController(text: mesa?.nombre ?? '');
-    
+
     showDialog(
       context: context,
       builder: (context) {
         TipoMesa tipoSeleccionado = mesa?.tipo ?? TipoMesa.normal;
-        
+
         return StatefulBuilder(
           builder: (context, setStateDlg) => AlertDialog(
-          backgroundColor: AppTheme.cardBg,
-          title: Text(
-            isEditing ? 'Editar Mesa' : 'Nueva Mesa',
-            style: AppTheme.headlineMedium,
-          ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: nombreController,
-                  style: AppTheme.bodyMedium,
-                  decoration: InputDecoration(
-                    labelText: 'Nombre de la Mesa *',
-                    labelStyle: AppTheme.bodySmall,
-                    hintText: 'Ej: Mesa 1, Mesa VIP, Terraza A...',
-                    hintStyle: AppTheme.bodySmall,
-                    enabledBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: AppTheme.textLight),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: AppTheme.primary),
+            backgroundColor: AppTheme.cardBg,
+            title: Text(
+              isEditing ? 'Editar Mesa' : 'Nueva Mesa',
+              style: AppTheme.headlineMedium,
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: nombreController,
+                    style: AppTheme.bodyMedium,
+                    decoration: InputDecoration(
+                      labelText: 'Nombre de la Mesa *',
+                      labelStyle: AppTheme.bodySmall,
+                      hintText: 'Ej: Mesa 1, Mesa VIP, Terraza A...',
+                      hintStyle: AppTheme.bodySmall,
+                      enabledBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: AppTheme.textLight),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: AppTheme.primary),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Tipo de Mesa *',
-                      style: AppTheme.bodySmall.copyWith(
-                        color: AppTheme.textLight,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: AppTheme.textLight),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<TipoMesa>(
-                          value: tipoSeleccionado,
-                          isExpanded: true,
-                          style: AppTheme.bodyMedium,
-                          dropdownColor: AppTheme.cardBg,
-                          onChanged: (TipoMesa? newValue) {
-                            if (newValue != null) {
-                              setStateDlg(() {
-                                tipoSeleccionado = newValue;
-                              });
-                            }
-                          },
-                          items: [TipoMesa.normal, TipoMesa.especial].map((
-                            TipoMesa tipo,
-                          ) {
-                            return DropdownMenuItem<TipoMesa>(
-                              value: tipo,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    tipo.nombre,
-                                    style: AppTheme.bodyMedium.copyWith(
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  Text(
-                                    tipo.descripcion,
-                                    style: AppTheme.bodySmall.copyWith(
-                                      color: AppTheme.textLight,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }).toList(),
+                  const SizedBox(height: 16),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Tipo de Mesa *',
+                        style: AppTheme.bodySmall.copyWith(
+                          color: AppTheme.textLight,
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: tipoSeleccionado == TipoMesa.especial
-                            ? AppTheme.primary.withOpacity(0.1)
-                            : AppTheme.surfaceDark.withOpacity(0.3),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: tipoSeleccionado == TipoMesa.especial
-                              ? AppTheme.primary.withOpacity(0.3)
-                              : AppTheme.textLight.withOpacity(0.3),
+                      const SizedBox(height: 8),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: AppTheme.textLight),
+                          borderRadius: BorderRadius.circular(4),
                         ),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            tipoSeleccionado == TipoMesa.especial
-                                ? Icons.star
-                                : Icons.table_restaurant,
-                            color: tipoSeleccionado == TipoMesa.especial
-                                ? AppTheme.primary
-                                : AppTheme.textLight,
-                            size: 20,
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<TipoMesa>(
+                            value: tipoSeleccionado,
+                            isExpanded: true,
+                            style: AppTheme.bodyMedium,
+                            dropdownColor: AppTheme.cardBg,
+                            onChanged: (TipoMesa? newValue) {
+                              if (newValue != null) {
+                                setStateDlg(() {
+                                  tipoSeleccionado = newValue;
+                                });
+                              }
+                            },
+                            items: [TipoMesa.normal, TipoMesa.especial].map((
+                              TipoMesa tipo,
+                            ) {
+                              return DropdownMenuItem<TipoMesa>(
+                                value: tipo,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      tipo.nombre,
+                                      style: AppTheme.bodyMedium.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    Text(
+                                      tipo.descripcion,
+                                      style: AppTheme.bodySmall.copyWith(
+                                        color: AppTheme.textLight,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }).toList(),
                           ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: tipoSeleccionado == TipoMesa.especial
+                              ? AppTheme.primary.withOpacity(0.1)
+                              : AppTheme.surfaceDark.withOpacity(0.3),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: tipoSeleccionado == TipoMesa.especial
+                                ? AppTheme.primary.withOpacity(0.3)
+                                : AppTheme.textLight.withOpacity(0.3),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
                               tipoSeleccionado == TipoMesa.especial
-                                  ? 'Esta mesa tendrá características especiales'
-                                  : 'Mesa estándar para servicio regular',
-                              style: AppTheme.bodySmall.copyWith(
-                                color: tipoSeleccionado == TipoMesa.especial
-                                    ? AppTheme.primary
-                                    : AppTheme.textLight,
+                                  ? Icons.star
+                                  : Icons.table_restaurant,
+                              color: tipoSeleccionado == TipoMesa.especial
+                                  ? AppTheme.primary
+                                  : AppTheme.textLight,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                tipoSeleccionado == TipoMesa.especial
+                                    ? 'Esta mesa tendrá características especiales'
+                                    : 'Mesa estándar para servicio regular',
+                                style: AppTheme.bodySmall.copyWith(
+                                  color: tipoSeleccionado == TipoMesa.especial
+                                      ? AppTheme.primary
+                                      : AppTheme.textLight,
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: _isSaving ? null : () => Navigator.pop(context),
+                style: AppTheme.secondaryButtonStyle,
+                child: Text('Cancelar'),
+              ),
+              ElevatedButton(
+                onPressed: _isSaving
+                    ? null
+                    : () async {
+                        setState(() {
+                          _isSaving = true;
+                        });
+
+                        try {
+                          await _guardarMesa(
+                            isEditing: isEditing,
+                            mesa: mesa,
+                            nombre: nombreController.text.trim(),
+                            tipo: tipoSeleccionado,
+                          );
+                        } finally {
+                          if (mounted) {
+                            setState(() {
+                              _isSaving = false;
+                            });
+                          }
+                        }
+                      },
+                style: AppTheme.primaryButtonStyle,
+                child: Text(
+                  _isSaving
+                      ? 'Guardando...'
+                      : (isEditing ? 'Actualizar' : 'Crear'),
+                  style: AppTheme.bodyMedium,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              style: AppTheme.secondaryButtonStyle,
-              child: Text('Cancelar'),
-            ),
-            ElevatedButton(
-              onPressed: () => _guardarMesa(
-                isEditing: isEditing,
-                mesa: mesa,
-                nombre: nombreController.text.trim(),
-                tipo: tipoSeleccionado,
-              ),
-              style: AppTheme.primaryButtonStyle,
-              child: Text(
-                isEditing ? 'Actualizar' : 'Crear',
-                style: AppTheme.bodyMedium,
-              ),
-            ),
-          ],
-        ),
         );
       },
     );
@@ -622,30 +663,173 @@ class _MesasConfigScreenState extends State<MesasConfigScreen> {
     }
   }
 
-  void _confirmarEliminar(Mesa mesa) {
+  void _confirmarLimpiarMesa(Mesa mesa) {
+    bool _isClearing = false;
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.cardBg,
-        title: Text('Confirmar eliminación', style: AppTheme.headlineMedium),
-        content: Text(
-          '¿Está seguro de que desea eliminar la mesa "${mesa.nombre}"?',
-          style: AppTheme.bodyMedium,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          backgroundColor: AppTheme.cardBg,
+          title: Text('Limpiar Mesa', style: AppTheme.headlineMedium),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '¿Desea limpiar la mesa "${mesa.nombre}"?',
+                style: AppTheme.bodyMedium.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Esta acción hará:',
+                style: AppTheme.bodySmall.copyWith(color: Colors.orange),
+              ),
+              const SizedBox(height: 8),
+              Text('• Marcará la mesa como LIBRE', style: AppTheme.bodySmall),
+              Text('• Reseteará el total a \$0', style: AppTheme.bodySmall),
+              Text(
+                '• Eliminará los productos de la mesa',
+                style: AppTheme.bodySmall,
+              ),
+              const SizedBox(height: 12),
+              if (mesa.total > 0)
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.red.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.warning, color: Colors.red, size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          '⚠️ ADVERTENCIA: La mesa tiene un saldo de \$${mesa.total.toStringAsFixed(2)}',
+                          style: AppTheme.bodySmall.copyWith(color: Colors.red),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: _isClearing ? null : () => Navigator.pop(context),
+              style: AppTheme.secondaryButtonStyle,
+              child: Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: _isClearing
+                  ? null
+                  : () async {
+                      setState(() {
+                        _isClearing = true;
+                      });
+
+                      await _limpiarMesa(mesa);
+
+                      if (mounted) {
+                        Navigator.pop(context);
+                      }
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _isClearing ? Colors.grey : Colors.orange,
+              ),
+              child: Text(_isClearing ? 'Limpiando...' : 'Limpiar Mesa'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            style: AppTheme.secondaryButtonStyle,
-            child: Text('Cancelar'),
-          ),
-          ElevatedButton(
-            onPressed: () => _eliminarMesa(mesa),
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.error),
-            child: Text('Eliminar', style: AppTheme.bodyMedium),
-          ),
-        ],
       ),
     );
+  }
+
+  void _confirmarEliminar(Mesa mesa) {
+    bool _isDeleting = false;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          backgroundColor: AppTheme.cardBg,
+          title: Text('Confirmar eliminación', style: AppTheme.headlineMedium),
+          content: Text(
+            '¿Está seguro de que desea eliminar la mesa "${mesa.nombre}"?',
+            style: AppTheme.bodyMedium,
+          ),
+          actions: [
+            TextButton(
+              onPressed: _isDeleting ? null : () => Navigator.pop(context),
+              style: AppTheme.secondaryButtonStyle,
+              child: Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: _isDeleting
+                  ? null
+                  : () async {
+                      setState(() {
+                        _isDeleting = true;
+                      });
+
+                      await _eliminarMesa(mesa);
+
+                      if (mounted) {
+                        Navigator.pop(context);
+                      }
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _isDeleting ? Colors.grey : AppTheme.error,
+              ),
+              child: Text(
+                _isDeleting ? 'Eliminando...' : 'Eliminar',
+                style: AppTheme.bodyMedium,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _limpiarMesa(Mesa mesa) async {
+    try {
+      // Crear una copia de la mesa con estado limpio
+      final mesaLimpia = Mesa(
+        id: mesa.id,
+        nombre: mesa.nombre,
+        tipo: mesa.tipo,
+        ocupada: false, // Marcar como libre
+        total: 0.0, // Resetear total
+        productos: [], // Eliminar productos
+        pedidoActual: null, // Sin pedido actual
+      );
+
+      await _mesaService.updateMesa(mesaLimpia);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Mesa limpiada correctamente'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+      _cargarMesas();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al limpiar mesa: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _eliminarMesa(Mesa mesa) async {

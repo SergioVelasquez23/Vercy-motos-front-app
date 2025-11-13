@@ -64,6 +64,11 @@ class MesaService {
 
       final requestData = {
         'nombre': mesa.nombre,
+        'tipo': mesa.tipo
+            .toString()
+            .split('.')
+            .last
+            .toUpperCase(), // NORMAL o ESPECIAL
         'ocupada': mesa.ocupada,
         'total': mesa.total,
         'productos': mesa.productos.map((p) => p.toJson()).toList(),
@@ -109,6 +114,11 @@ class MesaService {
 
       final requestData = {
         'nombre': mesa.nombre,
+        'tipo': mesa.tipo
+            .toString()
+            .split('.')
+            .last
+            .toUpperCase(), // NORMAL o ESPECIAL
         'ocupada': mesa.ocupada,
         'total': mesa.total,
         'productos': mesa.productos.map((p) => p.toJson()).toList(),

@@ -34,6 +34,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
   bool _isLoading = true;
   String? _error;
   bool _guardandoProducto = false;
+  bool _isRefreshing = false;
   List<Producto> _productosVista = [];
   List<Categoria> _categorias = [];
   List<Ingrediente> _ingredientesCarnes = [];
@@ -359,14 +360,37 @@ class _ProductosScreenState extends State<ProductosScreen> {
         centerTitle: true,
         actions: [
           IconButton(
-            icon: Icon(Icons.refresh),
-            onPressed: () {
-              final cacheProvider = Provider.of<DatosCacheProvider>(
-                context,
-                listen: false,
-              );
-              cacheProvider.recargarDatos();
-            },
+            icon: _isRefreshing
+                ? SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  )
+                : Icon(Icons.refresh),
+            onPressed: _isRefreshing
+                ? null
+                : () async {
+                    setState(() {
+                      _isRefreshing = true;
+                    });
+
+                    try {
+                      final cacheProvider = Provider.of<DatosCacheProvider>(
+                        context,
+                        listen: false,
+                      );
+                      await cacheProvider.recargarDatos();
+                    } finally {
+                      if (mounted) {
+                        setState(() {
+                          _isRefreshing = false;
+                        });
+                      }
+                    }
+                  },
           ),
           IconButton(
             icon: Icon(Icons.category),
@@ -655,64 +679,97 @@ class _ProductosScreenState extends State<ProductosScreen> {
   }
 
   void _showDeleteConfirmationDialog(Producto producto) {
+    bool _isDeleting = false;
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.cardBg,
-        title: Text(
-          '¿Eliminar producto?',
-          style: TextStyle(color: AppTheme.textPrimary),
-        ),
-        content: Text(
-          '¿Está seguro que desea eliminar ${producto.nombre}?',
-          style: TextStyle(color: AppTheme.textPrimary.withOpacity(0.8)),
-        ),
-        actions: [
-          TextButton(
-            child: Text(
-              'Cancelar',
-              style: TextStyle(color: AppTheme.textPrimary),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          backgroundColor: AppTheme.cardBg,
+          title: Text(
+            '¿Eliminar producto?',
+            style: TextStyle(color: AppTheme.textPrimary),
+          ),
+          content: Text(
+            '¿Está seguro que desea eliminar ${producto.nombre}?',
+            style: TextStyle(color: AppTheme.textPrimary.withOpacity(0.8)),
+          ),
+          actions: [
+            TextButton(
+              child: Text(
+                'Cancelar',
+                style: TextStyle(color: AppTheme.textPrimary),
+              ),
+              onPressed: _isDeleting
+                  ? null
+                  : () {
+                      Navigator.of(context).pop();
+                    },
             ),
-            onPressed: () {
-              Navigator.of(context).pop();
-            },
-          ),
-          TextButton(
-            child: Text('Eliminar', style: TextStyle(color: Colors.redAccent)),
-            onPressed: () async {
-              try {
-                // Aquí deberías implementar la lógica de borrado usando el provider o tu backend
-                Navigator.of(context).pop();
-                final cacheProvider = Provider.of<DatosCacheProvider>(
-                  context,
-                  listen: false,
-                );
-                await cacheProvider.recargarDatos();
+            TextButton(
+              child: Text(
+                _isDeleting ? 'Eliminando...' : 'Eliminar',
+                style: TextStyle(
+                  color: _isDeleting ? Colors.grey : Colors.redAccent,
+                ),
+              ),
+              onPressed: _isDeleting
+                  ? null
+                  : () async {
+                      setState(() {
+                        _isDeleting = true;
+                      });
 
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Producto eliminado'),
-                      backgroundColor: Colors.redAccent,
-                    ),
-                  );
-                }
-              } catch (e) {
-                Navigator.of(context).pop();
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'Error al eliminar producto: ${e.toString()}',
-                      ),
-                      backgroundColor: Colors.redAccent,
-                    ),
-                  );
-                }
-              }
-            },
-          ),
-        ],
+                      try {
+                        // Llamar al servicio para eliminar el producto
+                        await _productoService.deleteProducto(producto.id);
+                        print('✅ Producto eliminado del backend');
+
+                        // ✅ PRIMERO: Cerrar el diálogo
+                        if (mounted) {
+                          Navigator.of(context).pop();
+                        }
+
+                        // ✅ SEGUNDO: Mostrar mensaje de éxito
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('✅ Producto eliminado con éxito'),
+                              backgroundColor: Colors.green,
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                        }
+
+                        // ✅ TERCERO: Recargar datos
+                        final cacheProvider = Provider.of<DatosCacheProvider>(
+                          context,
+                          listen: false,
+                        );
+                        await cacheProvider.recargarDatos();
+                      } catch (e) {
+                        print('❌ Error al eliminar producto: $e');
+
+                        // Cerrar diálogo en caso de error
+                        if (mounted) {
+                          Navigator.of(context).pop();
+                        }
+
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Error al eliminar producto: ${e.toString()}',
+                              ),
+                              backgroundColor: Colors.redAccent,
+                            ),
+                          );
+                        }
+                      }
+                    },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -720,10 +777,42 @@ class _ProductosScreenState extends State<ProductosScreen> {
   void _showProductoDialog({Producto? producto}) {
     final bool isEditing = producto != null;
 
+    // ✅ LOGS DE DEPURACIÓN
+    if (isEditing) {
+      print('🔍 === EDITANDO PRODUCTO ===');
+      print('   ID: ${producto.id}');
+      print('   Nombre: "${producto.nombre}"');
+      print('   Precio: \$${producto.precio}');
+      print('   Costo: \$${producto.costo}');
+      print('   Categoría ID: ${producto.categoria?.id ?? "NULL"}');
+      print('   Categoría Nombre: ${producto.categoria?.nombre ?? "NULL"}');
+      print(
+        '   Ingredientes Disponibles: ${producto.ingredientesDisponibles.length}',
+      );
+      print(
+        '   Ingredientes Requeridos: ${producto.ingredientesRequeridos.length}',
+      );
+      print(
+        '   Ingredientes Opcionales: ${producto.ingredientesOpcionales.length}',
+      );
+      print('   TipoProducto: ${producto.tipoProducto}');
+      print('   TieneIngredientes: ${producto.tieneIngredientes}');
+      print('   Estado: ${producto.estado}');
+      print('   Descripción: "${producto.descripcion ?? ""}"');
+      print('   ImagenUrl: ${producto.imagenUrl ?? "NULL"}');
+
+      print('\n📋 Categorías disponibles: ${_categorias.length}');
+      for (var cat in _categorias) {
+        print('   - ${cat.id}: ${cat.nombre}');
+      }
+    }
+
     // Controladores para el formulario
     final nombreController = TextEditingController(
       text: isEditing ? producto.nombre : '',
     );
+
+    print('✅ NombreController inicializado con: "${nombreController.text}"');
     final precioController = TextEditingController(
       text: isEditing ? producto.precio.toString() : '',
     );
@@ -779,16 +868,22 @@ class _ProductosScreenState extends State<ProductosScreen> {
         if (exists) {
           selectedCategoriaId = producto.categoria!.id;
           print(
-            '✅ Categoría seleccionada del objeto categoria: $selectedCategoriaId',
+            '✅ Categoría seleccionada del objeto categoria: "$selectedCategoriaId"',
           );
         } else {
           selectedCategoriaId = null;
           print(
-            '⚠️ La categoría del producto no existe en la lista, se asigna null',
+            '⚠️ La categoría "${producto.categoria!.nombre}" (ID: ${producto.categoria!.id}) NO existe en la lista de ${_categorias.length} categorías disponibles',
           );
         }
+      } else {
+        print(
+          '⚠️ El producto NO tiene categoría asignada (producto.categoria es NULL)',
+        );
       }
     }
+
+    print('📌 selectedCategoriaId final: ${selectedCategoriaId ?? "NULL"}');
     String? selectedImageUrl = isEditing ? producto.imagenUrl : null;
     // String? tempImagePath; // Ya no se usa
     List<String> ingredientesSeleccionados = isEditing
@@ -804,6 +899,26 @@ class _ProductosScreenState extends State<ProductosScreen> {
     List<IngredienteProducto> ingredientesOpcionales = isEditing
         ? List<IngredienteProducto>.from(producto.ingredientesOpcionales)
         : [];
+
+    if (isEditing) {
+      print('📋 === INGREDIENTES INICIALES ===');
+      print('   Tiene ingredientes: $tieneIngredientes');
+      print('   Tipo producto: $tipoProducto');
+      print('   Ingredientes requeridos: ${ingredientesRequeridos.length}');
+      for (var i = 0; i < ingredientesRequeridos.length; i++) {
+        final ing = ingredientesRequeridos[i];
+        print(
+          '      [$i] ID: "${ing.ingredienteId}", Nombre: "${ing.ingredienteNombre}", Cantidad necesaria: ${ing.cantidadNecesaria}',
+        );
+      }
+      print('   Ingredientes opcionales: ${ingredientesOpcionales.length}');
+      for (var i = 0; i < ingredientesOpcionales.length; i++) {
+        final ing = ingredientesOpcionales[i];
+        print(
+          '      [$i] ID: "${ing.ingredienteId}", Nombre: "${ing.ingredienteNombre}", Precio adicional: \$${ing.precioAdicional}',
+        );
+      }
+    }
 
     showDialog(
       context: context,
@@ -2047,22 +2162,11 @@ class _ProductosScreenState extends State<ProductosScreen> {
                           ingrediente.ingredienteNombre,
                           style: TextStyle(color: AppTheme.textPrimary),
                         ),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              'Cantidad: ${ingrediente.cantidadNecesaria}',
-                              style: TextStyle(
-                                color: AppTheme.textPrimary.withOpacity(0.7),
-                              ),
-                            ),
-                            if (ingrediente.precioAdicional > 0)
-                              Text(
-                                'Precio adicional: \$${ingrediente.precioAdicional}',
-                                style: TextStyle(color: AppTheme.primary),
-                              ),
-                          ],
+                        subtitle: Text(
+                          'Cantidad: ${ingrediente.cantidadNecesaria}',
+                          style: TextStyle(
+                            color: AppTheme.textPrimary.withOpacity(0.7),
+                          ),
                         ),
                         trailing: IconButton(
                           icon: Icon(Icons.delete, color: Colors.red),
@@ -2086,7 +2190,6 @@ class _ProductosScreenState extends State<ProductosScreen> {
   ) {
     Ingrediente? selectedIngrediente;
     final cantidadController = TextEditingController();
-    final precioController = TextEditingController();
     final searchController = TextEditingController();
     List<Ingrediente> ingredientesFiltrados = List.from(
       ingredientesDisponibles,
@@ -2302,32 +2405,6 @@ class _ProductosScreenState extends State<ProductosScreen> {
                             },
                           ),
                         ),
-                        SizedBox(width: 16),
-                        Expanded(
-                          child: TextField(
-                            controller: precioController,
-                            style: TextStyle(color: AppTheme.textPrimary),
-                            decoration: InputDecoration(
-                              labelText: 'Precio adicional',
-                              labelStyle: TextStyle(
-                                color: AppTheme.textPrimary.withOpacity(0.7),
-                              ),
-                              prefixText: '\$ ',
-                              filled: true,
-                              fillColor: AppTheme.cardBg.withOpacity(0.3),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                            ),
-                            keyboardType: TextInputType.number,
-                            onChanged: (value) {
-                              print('🔍 PRECIO INGREDIENTE CHANGED: $value');
-                              dialogSetState(
-                                () {},
-                              ); // ✅ FIX: Usar dialogSetState para actualizar el botón
-                            },
-                          ),
-                        ),
                       ],
                     ),
                     SizedBox(height: 20),
@@ -2362,10 +2439,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                                         1.0,
                                     esOpcional: esOpcional,
                                     precioAdicional:
-                                        double.tryParse(
-                                          precioController.text,
-                                        ) ??
-                                        0.0,
+                                        0.0, // ✅ SIEMPRE 0 - No hay precio adicional
                                   );
 
                                   parentSetState(() {
