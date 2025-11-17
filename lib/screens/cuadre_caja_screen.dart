@@ -945,6 +945,26 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                     style: TextStyle(color: Colors.red),
                   ),
                 )
+              // ✅ CORRECCIÓN: Mostrar mensaje cuando no hay cuadres
+              : _cuadresCaja.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.receipt_long, size: 64, color: Colors.grey),
+                      SizedBox(height: 16),
+                      Text(
+                        'No hay cuadres de caja registrados',
+                        style: TextStyle(color: textLight, fontSize: 18),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'Presiona "Abrir Caja" para crear uno nuevo',
+                        style: TextStyle(color: Colors.grey, fontSize: 14),
+                      ),
+                    ],
+                  ),
+                )
               : SizedBox(
                   width: double.infinity,
                   child: SingleChildScrollView(

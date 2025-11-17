@@ -75,6 +75,14 @@ class PedidoService {
           .replaceAll(RegExp(r'\\s+'), ' ')
           .trim();
 
+      // 🔧 VALIDACIÓN: Verificar que el nombre no esté vacío
+      if (nombreLimpio.isEmpty) {
+        print('❌ Error: Nombre de mesa vacío en getPedidosByMesa()');
+        throw Exception('El nombre de la mesa no puede estar vacío');
+      }
+      
+      print('🔍 Obteniendo pedidos para mesa: "$nombreLimpio"');
+
       final data = await _apiService.get<dynamic>(
         '/api/pedidos/mesa/$nombreLimpio',
       );

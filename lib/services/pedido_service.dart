@@ -1133,8 +1133,17 @@ class PedidoService {
           .replaceAll('\n', ' ')
           .replaceAll(RegExp(r'\s+'), ' ')
           .trim();
+      
+      // 🔧 VALIDACIÓN: Verificar que el nombre no esté vacío
+      if (nombreLimpio.isEmpty) {
+        print('❌ Error: Nombre de mesa vacío en getPedidosByMesa()');
+        throw Exception('El nombre de la mesa no puede estar vacío');
+      }
+      
       // Usar Uri.encodeComponent para manejar correctamente los espacios y caracteres especiales
       final encodedNombreMesa = Uri.encodeComponent(nombreLimpio);
+      print('🔍 Obteniendo pedidos para mesa: "$nombreLimpio" (encoded: "$encodedNombreMesa")');
+      
       final response = await http.get(
         Uri.parse('$baseUrl/api/pedidos/mesa/$encodedNombreMesa'),
         headers: headers,
@@ -1839,15 +1848,15 @@ class PedidoService {
     try {
       final headers = await _getHeaders();
 
-      // Calcular el total de los items seleccionados
+      // ✅ CORRECCIÓN: Calcular desde item.subtotal que incluye descuentos
       double totalSeleccionado = itemsSeleccionados.fold<double>(
         0.0,
-        (sum, item) => sum + (item.precio * item.cantidad),
+        (sum, item) => sum + item.subtotal,
       );
 
-      // Crear lista de IDs de items para el backend
+      // ✅ CORRECCIÓN: Usar item.id en lugar de productoId para identificar items específicos
       List<String> itemIds = itemsSeleccionados
-          .map((item) => item.productoId)
+          .map((item) => item.id ?? '')
           .where((id) => id.isNotEmpty)
           .toList();
 

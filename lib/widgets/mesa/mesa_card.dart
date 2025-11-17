@@ -31,18 +31,10 @@ class MesaCard extends StatelessWidget {
   Widget build(BuildContext context) {
     bool isOcupada = mesa.ocupada || mesa.total > 0;
 
-    // ✅ OPTIMIZACIÓN: Logs de debug comentados para mejorar rendimiento
-    // final timestamp = DateFormat('HH:mm:ss').format(DateTime.now());
-    // print('🏗️ [$timestamp] ===== CONSTRUYENDO CARD ${mesa.nombre} =====');
-    // print('🔍 Mesa ID: ${mesa.id}');
-    // print('🔍 Mesa.ocupada: ${mesa.ocupada}');
-    // print('🔍 Mesa.total: ${mesa.total}');
-    // print('🔍 isOcupada calculado: $isOcupada');
-    // print('🔍 Widget key: mesa_card_${mesa.id}_$widgetRebuildKey');
-    // print('🔍 Rebuild key actual: $widgetRebuildKey');
-
-    // VERIFICACIÓN ADICIONAL: obtener pedidos en tiempo real para comparar
-    onVerificarEstadoReal(mesa);
+    // ✅ OPTIMIZACIÓN: Verificación en tiempo real deshabilitada
+    // Esta llamada hacía una petición a la API por cada mesa en cada build
+    // causando lentitud extrema. Ahora se confía en los datos del modelo Mesa
+    // que se actualizan vía WebSocket y recargas después de operaciones.
 
     Color statusColor = isOcupada ? AppTheme.error : AppTheme.success;
     final userProvider = Provider.of<UserProvider>(context, listen: false);
@@ -333,23 +325,35 @@ class MesaCard extends StatelessWidget {
   }
 
   Widget _buildTotalText(BoxConstraints constraints, Color color) {
-    return Builder(
-      builder: (context) {
-        final valorOriginal = mesa.total;
-        final valorFormateado = formatCurrency(valorOriginal);
+    return FutureBuilder<Pedido?>(
+      future: onObtenerPedidoActivo(mesa),
+      builder: (context, snapshot) {
+        // ✅ CORRECCIÓN: Calcular total desde items del pedido en tiempo real
+        double totalReal = mesa.total;
+
+        if (snapshot.hasData && snapshot.data != null) {
+          final pedido = snapshot.data!;
+          // Calcular desde item.subtotal que incluye descuentos
+          totalReal = pedido.items.fold<double>(
+            0,
+            (sum, item) => sum + item.subtotal,
+          );
+        }
+
+        final valorFormateado = formatCurrency(totalReal);
 
         // Detectar si hay caracteres raros
         if (valorFormateado.contains(RegExp(r'[^\d\.\$\-]'))) {
           print('🔴 CORRUPCIÓN DETECTADA EN MESA ${mesa.nombre}:');
           print(
-            '  - Valor original: $valorOriginal (${valorOriginal.runtimeType})',
+            '  - Valor original: $totalReal (${totalReal.runtimeType})',
           );
           print('  - Valor formateado: "$valorFormateado"');
           print(
             '  - Caracteres: ${valorFormateado.runes.map((c) => '${String.fromCharCode(c)} ($c)').join(', ')}',
           );
 
-          final fallback = formatCurrency(valorOriginal);
+          final fallback = formatCurrency(totalReal);
           print('  - Usando fallback: "$fallback"');
 
           return Text(

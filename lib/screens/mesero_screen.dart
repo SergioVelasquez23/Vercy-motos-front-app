@@ -224,8 +224,14 @@ class _MeseroScreenState extends State<MeseroScreen> {
                     ],
                   ),
                 ),
+                // ✅ CORRECCIÓN: Calcular total desde item.subtotal para reflejar cambios actuales
                 Text(
-                  formatCurrency(pedido.total),
+                  formatCurrency(
+                    pedido.items.fold<double>(
+                      0,
+                      (sum, item) => sum + item.subtotal,
+                    ),
+                  ),
                   style: AppTheme.headlineSmall.copyWith(
                     fontWeight: FontWeight.bold,
                     color: estadoColor,

@@ -1979,32 +1979,27 @@ class _MesasScreenState extends State<MesasScreen>
     _precargarDatos(); // ✅ NUEVO: Precargar datos al entrar a Mesas Screen
     _cargarMesasEspecialesUsuario(); // Cargar mesas especiales creadas por el usuario
 
-    // Suscribirse a eventos de pedidos pagados para recargar las mesas
+    // 🔧 OPTIMIZACIÓN: Los eventos de pedidos no recargan automáticamente las mesas
+    // Las mesas se actualizan solo cuando es necesario mediante navegación manual
     _pedidoService.onPedidoPagado.listen((event) {
       if (mounted) {
-        print(
-          '🔔 MesasScreen: Recibida notificación de pago - recargando mesas...',
-        );
-        _recargarMesasConCards();
+        print('🔔 MesasScreen: Pago registrado (sin recarga automática)');
+        // Sin recarga automática para mejor rendimiento
       }
     });
 
-    // Suscribirse a eventos de pedido creado/actualizado para recargar mesas
     _pedidoCompletadoSubscription = _pedidoService.onPedidoCompletado.listen((
       _,
     ) {
       if (mounted) {
-        print(
-          '🔔 MesasScreen: Evento pedido creado/actualizado - recargando mesas...',
-        );
-        _recargarMesasConCards();
+        print('🔔 MesasScreen: Pedido completado (sin recarga automática)');
+        // Sin recarga automática para mejor rendimiento
       }
     });
 
     _verificarMesaDeudas(); // ✅ Verificar mesa Deudas al iniciar
 
-    // 🔧 NUEVO: Iniciar sincronización periódica para evitar desincronización
-    _iniciarSincronizacionPeriodica();
+    // 🔧 OPTIMIZACIÓN: Sin sincronización periódica para mejor rendimiento
   }
 
   // Función para precarga básica (ya no necesitamos caché global)
@@ -2035,6 +2030,9 @@ class _MesasScreenState extends State<MesasScreen>
                 ].contains(mesa.nombre.toUpperCase()),
           )
           .map((mesa) => mesa.nombre)
+          .where(
+            (nombre) => nombre.isNotEmpty && nombre.trim().isNotEmpty,
+          ) // 🔧 FILTRAR nombres vacíos
           .toList();
 
       setState(() {
@@ -2051,15 +2049,16 @@ class _MesasScreenState extends State<MesasScreen>
 
   /// 🔧 NUEVO: Iniciar sincronización periódica para evitar desincronización entre dispositivos
   void _iniciarSincronizacionPeriodica() {
-    _sincronizacionPeriodica = Timer.periodic(_intervalSincronizacion, (timer) {
-      if (mounted && !_actualizacionEnProgreso) {
-        print('⏰ Sincronización periódica - actualizando datos...');
-        _forzarSincronizacionCompleta();
-      }
-    });
+    // 🔧 OPTIMIZACIÓN: Sincronización periódica deshabilitada para mejor rendimiento
     print(
-      '✅ Sincronización periódica iniciada (cada ${_intervalSincronizacion.inSeconds} segundos)',
+      '🔧 Sincronización periódica deshabilitada (optimización de rendimiento)',
     );
+    // _sincronizacionPeriodica = Timer.periodic(_intervalSincronizacion, (timer) {
+    //   if (mounted && !_actualizacionEnProgreso) {
+    //     print('⏰ Sincronización periódica - actualizando datos...');
+    //     _forzarSincronizacionCompleta();
+    //   }
+    // });
   }
 
   /// 🔧 NUEVO: Forzar sincronización completa para eliminar datos fantasma
@@ -2090,38 +2089,42 @@ class _MesasScreenState extends State<MesasScreen>
     }
   }
 
-  /// 🔧 NUEVO: Validar y limpiar mesas para evitar datos fantasma
+  /// 🔧 MEJORADO: Validar y sincronizar estado de TODAS las mesas
   Future<List<Mesa>> _validarYLimpiarMesas(List<Mesa> mesasOriginales) async {
     final mesasValidadas = <Mesa>[];
 
     for (final mesa in mesasOriginales) {
       try {
-        // Validar pedidos activos de la mesa desde el servidor
-        if (mesa.ocupada) {
-          final pedidosReales = await _pedidoService.getPedidosByMesa(
-            mesa.nombre,
-          );
-          final pedidosActivos = pedidosReales
-              .where((p) => p.estado != EstadoPedido.pagado)
-              .toList();
+        // ✅ VALIDAR TODAS LAS MESAS: ocupadas Y aparentemente libres
+        final pedidosReales = await _pedidoService.getPedidosByMesa(
+          mesa.nombre,
+        );
+        final pedidosActivos = pedidosReales
+            .where((p) => !p.estaPagado && p.estado == EstadoPedido.activo)
+            .toList();
 
-          // Si no hay pedidos activos reales, marcar mesa como disponible
-          if (pedidosActivos.isEmpty) {
-            print(
-              '🧹 Mesa ${mesa.nombre} limpiada - no tiene pedidos activos reales',
-            );
-            final mesaLimpia = mesa.copyWith(
-              ocupada: false,
-              total: 0.0,
-              productos: [],
-            );
-            mesasValidadas.add(mesaLimpia);
-          } else {
-            // Mesa tiene pedidos válidos
-            mesasValidadas.add(mesa);
-          }
+        // Calcular estado real basado en pedidos activos
+        final deberiaEstarOcupada = pedidosActivos.isNotEmpty;
+        final totalReal = pedidosActivos.fold<double>(
+          0.0,
+          (sum, p) => sum + p.total,
+        );
+
+        if (deberiaEstarOcupada != mesa.ocupada) {
+          print(
+            '🔄 SINCRONIZANDO mesa ${mesa.nombre}: ocupada=${mesa.ocupada} -> $deberiaEstarOcupada',
+          );
+          print('   • Pedidos activos: ${pedidosActivos.length}');
+          print('   • Total real: \$${totalReal.toStringAsFixed(2)}');
+
+          final mesaSincronizada = mesa.copyWith(
+            ocupada: deberiaEstarOcupada,
+            total: totalReal,
+            productos: deberiaEstarOcupada ? mesa.productos : [],
+          );
+          mesasValidadas.add(mesaSincronizada);
         } else {
-          // Mesa no ocupada, mantener tal como está
+          // Estado correcto, mantener mesa original
           mesasValidadas.add(mesa);
         }
       } catch (e) {
@@ -2133,6 +2136,289 @@ class _MesasScreenState extends State<MesasScreen>
 
     print('✅ Validación completada: ${mesasValidadas.length} mesas procesadas');
     return mesasValidadas;
+  }
+
+  /// 🔍 NUEVO: Ejecuta un diagnóstico completo del estado de las mesas
+  Future<void> _ejecutarDiagnosticoCompleto() async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: _cardBg,
+        title: Row(
+          children: [
+            CircularProgressIndicator(color: _primary, strokeWidth: 2),
+            SizedBox(width: 16),
+            Text(
+              'Ejecutando Diagnóstico...',
+              style: TextStyle(color: _textPrimary),
+            ),
+          ],
+        ),
+        content: Text(
+          'Analizando estado de todas las mesas',
+          style: TextStyle(color: _textSecondary),
+        ),
+      ),
+    );
+
+    try {
+      List<String> problemas = [];
+      List<String> resumen = [];
+      int mesasOcupadasReal = 0;
+      int mesasLibresReal = 0;
+      int inconsistenciasDetectadas = 0;
+
+      print('🔍 EJECUTANDO DIAGNÓSTICO COMPLETO DE MESAS...');
+
+      for (final mesa in mesas) {
+        try {
+          final pedidosReales = await _pedidoService.getPedidosByMesa(
+            mesa.nombre,
+          );
+          final pedidosActivos = pedidosReales
+              .where((p) => !p.estaPagado && p.estado == EstadoPedido.activo)
+              .toList();
+
+          final deberiaEstarOcupada = pedidosActivos.isNotEmpty;
+          final totalReal = pedidosActivos.fold<double>(
+            0.0,
+            (sum, p) => sum + p.total,
+          );
+
+          if (deberiaEstarOcupada) {
+            mesasOcupadasReal++;
+          } else {
+            mesasLibresReal++;
+          }
+
+          // Detectar inconsistencias
+          if (mesa.ocupada != deberiaEstarOcupada) {
+            inconsistenciasDetectadas++;
+            final problema =
+                'Mesa ${mesa.nombre}: Estado=${mesa.ocupada ? "ocupada" : "libre"}, '
+                'Real=${deberiaEstarOcupada ? "ocupada" : "libre"} '
+                '(${pedidosActivos.length} pedidos activos, \$${totalReal.toStringAsFixed(2)})';
+            problemas.add(problema);
+            print('❌ INCONSISTENCIA: $problema');
+          }
+        } catch (e) {
+          problemas.add('Error en mesa ${mesa.nombre}: $e');
+        }
+      }
+
+      resumen.add('Total mesas: ${mesas.length}');
+      resumen.add('Mesas realmente ocupadas: $mesasOcupadasReal');
+      resumen.add('Mesas realmente libres: $mesasLibresReal');
+      resumen.add('Inconsistencias detectadas: $inconsistenciasDetectadas');
+
+      Navigator.of(context).pop(); // Cerrar diálogo de progreso
+
+      // Mostrar resultados
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: _cardBg,
+          title: Row(
+            children: [
+              Icon(
+                inconsistenciasDetectadas == 0
+                    ? Icons.check_circle
+                    : Icons.warning,
+                color: inconsistenciasDetectadas == 0
+                    ? Colors.green
+                    : Colors.orange,
+              ),
+              SizedBox(width: 8),
+              Text(
+                'Diagnóstico Completo',
+                style: TextStyle(color: _textPrimary),
+              ),
+            ],
+          ),
+          content: Container(
+            width: double.maxFinite,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '📊 Resumen:',
+                  style: TextStyle(
+                    color: _textPrimary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                ...resumen.map(
+                  (item) =>
+                      Text('• $item', style: TextStyle(color: _textSecondary)),
+                ),
+                if (problemas.isNotEmpty) ...[
+                  SizedBox(height: 16),
+                  Text(
+                    '⚠️ Problemas encontrados:',
+                    style: TextStyle(
+                      color: Colors.orange,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Container(
+                    height: 200,
+                    child: Scrollbar(
+                      child: ListView(
+                        children: problemas
+                            .map(
+                              (problema) => Text(
+                                '• $problema',
+                                style: TextStyle(
+                                  color: _textSecondary,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            )
+                            .toList(),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            if (inconsistenciasDetectadas > 0)
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  _forzarSincronizacionCompleta();
+                },
+                child: Text(
+                  'Sincronizar Ahora',
+                  style: TextStyle(color: _primary),
+                ),
+              ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('Cerrar', style: TextStyle(color: _textSecondary)),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      Navigator.of(context).pop(); // Cerrar diálogo de progreso
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error en diagnóstico: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  /// 🔧 NUEVO: Verifica el estado real de todas las mesas sin modificar nada
+  Future<void> _verificarEstadoTodasMesas() async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: _cardBg,
+        title: Row(
+          children: [
+            CircularProgressIndicator(color: _primary, strokeWidth: 2),
+            SizedBox(width: 16),
+            Text(
+              'Verificando Estado...',
+              style: TextStyle(color: _textPrimary),
+            ),
+          ],
+        ),
+        content: Text(
+          'Verificando estado real de todas las mesas',
+          style: TextStyle(color: _textSecondary),
+        ),
+      ),
+    );
+
+    try {
+      List<String> reportes = [];
+
+      for (final mesa in mesas) {
+        try {
+          final pedidosReales = await _pedidoService.getPedidosByMesa(
+            mesa.nombre,
+          );
+          final pedidosActivos = pedidosReales
+              .where((p) => !p.estaPagado && p.estado == EstadoPedido.activo)
+              .toList();
+
+          final estado = pedidosActivos.isEmpty ? "LIBRE" : "OCUPADA";
+          final total = pedidosActivos.fold<double>(
+            0.0,
+            (sum, p) => sum + p.total,
+          );
+
+          reportes.add(
+            'Mesa ${mesa.nombre}: $estado (${pedidosActivos.length} pedidos, \$${total.toStringAsFixed(2)})',
+          );
+
+          if (pedidosActivos.isNotEmpty) {
+            for (var pedido in pedidosActivos) {
+              reportes.add(
+                '  - Pedido ${pedido.id}: ${pedido.items.length} items, \$${pedido.total}',
+              );
+            }
+          }
+        } catch (e) {
+          reportes.add('Mesa ${mesa.nombre}: ERROR - $e');
+        }
+      }
+
+      Navigator.of(context).pop(); // Cerrar diálogo de progreso
+
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: _cardBg,
+          title: Text(
+            'Estado Real de las Mesas',
+            style: TextStyle(color: _textPrimary),
+          ),
+          content: Container(
+            width: double.maxFinite,
+            height: 400,
+            child: Scrollbar(
+              child: ListView(
+                children: reportes
+                    .map(
+                      (reporte) => Text(
+                        reporte,
+                        style: TextStyle(
+                          color: _textSecondary,
+                          fontSize: 12,
+                          fontFamily: 'Courier',
+                        ),
+                      ),
+                    )
+                    .toList(),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('Cerrar', style: TextStyle(color: _textSecondary)),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error verificando estado: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   @override
@@ -2159,11 +2445,10 @@ class _MesasScreenState extends State<MesasScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-    // Recargar mesas especiales cuando la app vuelve al foreground
+    // 🔧 OPTIMIZACIÓN: Sin recarga automática al volver del foreground
     if (state == AppLifecycleState.resumed && mounted) {
-      print('📱 App resumed - recargando mesas especiales...');
-      _cargarMesasEspecialesUsuario();
-      _loadMesas(); // También recargar todas las mesas por si acaso
+      print('📱 App resumed (sin recarga automática para mejor rendimiento)');
+      // Las mesas se actualizarán en la próxima navegación manual
     }
   }
 
@@ -2688,24 +2973,24 @@ class _MesasScreenState extends State<MesasScreen>
         '🔍 [CONCURRENCIA] Obteniendo pedido activo para mesa ${mesa.nombre}',
       );
 
-      // Verificar si la mesa está siendo editada por otro usuario
-      if (_verificarSiMesaEstaEnEdicion(mesa.nombre)) {
-        print('   ⚠️ Mesa ${mesa.nombre} está siendo editada por otro usuario');
-        // Mostrar mensaje al usuario sobre el bloqueo temporal
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Mesa ${mesa.nombre} está siendo editada por otro usuario. Inténtalo en unos segundos.',
-            ),
-            backgroundColor: Colors.orange,
-            duration: Duration(seconds: 3),
-          ),
-        );
-        throw Exception('Mesa bloqueada temporalmente');
-      }
+      // 🔧 OPTIMIZACIÓN: No verificar bloqueo durante navegación normal
+      // Solo verificar bloqueo si se va a hacer una operación crítica
+      // if (_verificarSiMesaEstaEnEdicion(mesa.nombre)) {
+      //   print('   ⚠️ Mesa ${mesa.nombre} está siendo editada por otro usuario');
+      //   ScaffoldMessenger.of(context).showSnackBar(
+      //     SnackBar(
+      //       content: Text(
+      //         'Mesa ${mesa.nombre} está siendo editada por otro usuario. Inténtalo en unos segundos.',
+      //       ),
+      //       backgroundColor: Colors.orange,
+      //       duration: Duration(seconds: 3),
+      //     ),
+      //   );
+      //   throw Exception('Mesa bloqueada temporalmente');
+      // }
 
-      // Bloquear la mesa mientras se obtiene el pedido
-      _bloquearMesaTemporalmente(mesa.nombre);
+      // 🔧 OPTIMIZACIÓN: Sin bloqueo para consultas de solo lectura
+      // _bloquearMesaTemporalmente(mesa.nombre);
 
       // Siempre buscar en el servidor para obtener el ID más actualizado
       final pedidos = await _pedidoService.getPedidosByMesa(mesa.nombre);
@@ -2747,8 +3032,8 @@ class _MesasScreenState extends State<MesasScreen>
       print('   • Total items: ${pedidoActivo.items.length}');
       print('   • Total pedido: ${pedidoActivo.total}');
 
-      // Liberar bloqueo antes del retorno exitoso
-      _liberarBloqueoMesa(mesa.nombre);
+      // 🔧 Sin bloqueo no necesitamos liberar
+      // _liberarBloqueoMesa(mesa.nombre);
 
       return pedidoActivo;
     } catch (e) {
@@ -2756,8 +3041,8 @@ class _MesasScreenState extends State<MesasScreen>
         '❌ [CONCURRENCIA] Error al obtener pedido activo para ${mesa.nombre}: $e',
       );
 
-      // Liberar bloqueo en caso de error
-      _liberarBloqueoMesa(mesa.nombre);
+      // 🔧 Sin bloqueo no necesitamos liberar
+      // _liberarBloqueoMesa(mesa.nombre);
 
       // Si no hay pedido activo pero la mesa aparece ocupada, corregir automáticamente
       if (mesa.ocupada || mesa.total > 0) {
@@ -2771,14 +3056,58 @@ class _MesasScreenState extends State<MesasScreen>
           await _mesaService.updateMesa(mesa);
           print('   ✅ Estado de mesa corregido');
 
-          // Recargar las mesas para reflejar el cambio en la UI
-          _recargarMesasConCards();
+          // 🔧 OPTIMIZACIÓN: Sin recarga automática
+          // _recargarMesasConCards();
         } catch (updateError) {
           print('   ❌ Error al corregir mesa ${mesa.nombre}: $updateError');
         }
       }
 
       return null;
+    }
+  }
+
+  /// Función para operaciones críticas que sí requieren bloqueo de concurrencia
+  Future<Pedido?> _obtenerPedidoActivoConBloqueo(Mesa mesa) async {
+    try {
+      print(
+        '🔒 [CONCURRENCIA] Obteniendo pedido con bloqueo para mesa ${mesa.nombre}',
+      );
+
+      // Verificar si la mesa está siendo editada por otro usuario
+      if (_verificarSiMesaEstaEnEdicion(mesa.nombre)) {
+        print('   ⚠️ Mesa ${mesa.nombre} está siendo editada por otro usuario');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Mesa ${mesa.nombre} está siendo editada por otro usuario. Inténtalo en unos segundos.',
+            ),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 3),
+          ),
+        );
+        throw Exception('Mesa bloqueada temporalmente');
+      }
+
+      // Bloquear la mesa durante operación crítica
+      _bloquearMesaTemporalmente(mesa.nombre);
+
+      final pedidos = await _pedidoService.getPedidosByMesa(mesa.nombre);
+      final pedidosActivos = pedidos
+          .where((pedido) => pedido.estado == EstadoPedido.activo)
+          .toList();
+
+      if (pedidosActivos.isEmpty) {
+        _liberarBloqueoMesa(mesa.nombre);
+        return null;
+      }
+
+      final pedidoActivo = pedidosActivos.first;
+      _liberarBloqueoMesa(mesa.nombre);
+      return pedidoActivo;
+    } catch (e) {
+      _liberarBloqueoMesa(mesa.nombre);
+      throw e;
     }
   }
 
@@ -10611,16 +10940,77 @@ class _MesasScreenState extends State<MesasScreen>
                 child: Icon(Icons.refresh, size: 20),
               ),
               onPressed: () async {
-                // Llamada centralizada para reconstruir todo
+                // Llamada manual para reconstruir todo
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('Reconstruyendo mesas...'),
+                    content: Text('Actualizando mesas...'),
                     duration: Duration(seconds: 1),
                   ),
                 );
                 await _recargarMesasConCards();
               },
               tooltip: 'Reconstruir todas las mesas',
+            ),
+          ),
+
+          // ✅ NUEVO: Botón de diagnóstico y sincronización forzada
+          Container(
+            margin: EdgeInsets.only(right: AppTheme.spacingSmall),
+            child: PopupMenuButton<String>(
+              icon: Container(
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                ),
+                child: Icon(Icons.build, color: Colors.orange, size: 20),
+              ),
+              tooltip: 'Herramientas de diagnóstico',
+              onSelected: (value) async {
+                switch (value) {
+                  case 'diagnostico':
+                    await _ejecutarDiagnosticoCompleto();
+                    break;
+                  case 'sincronizar':
+                    await _forzarSincronizacionCompleta();
+                    break;
+                  case 'verificar_estado':
+                    await _verificarEstadoTodasMesas();
+                    break;
+                }
+              },
+              itemBuilder: (context) => [
+                PopupMenuItem(
+                  value: 'diagnostico',
+                  child: Row(
+                    children: [
+                      Icon(Icons.search, color: Colors.blue),
+                      SizedBox(width: 8),
+                      Text('Diagnóstico Completo'),
+                    ],
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'sincronizar',
+                  child: Row(
+                    children: [
+                      Icon(Icons.sync, color: Colors.green),
+                      SizedBox(width: 8),
+                      Text('Sincronizar Estado'),
+                    ],
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'verificar_estado',
+                  child: Row(
+                    children: [
+                      Icon(Icons.checklist, color: Colors.purple),
+                      SizedBox(width: 8),
+                      Text('Verificar Mesas'),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -10849,11 +11239,19 @@ class _MesasScreenState extends State<MesasScreen>
                             child: MesaCard(
                               mesa: mesa,
                               widgetRebuildKey: _widgetRebuildKey,
-                              onRecargarMesas: _recargarMesasConCards,
+                              onRecargarMesas: () {
+                                // 🔧 OPTIMIZACIÓN: Sin recarga automática en interacciones de mesa
+                                print(
+                                  '🔧 Interacción con mesa ${mesa.nombre} (sin recarga automática)',
+                                );
+                              },
                               onMostrarMenuMesa: _mostrarMenuMesa,
                               onMostrarDialogoPago: _mostrarDialogoPago,
                               onObtenerPedidoActivo: _obtenerPedidoActivoDeMesa,
-                              onVerificarEstadoReal: _verificarEstadoRealMesa,
+                              onVerificarEstadoReal: (Mesa mesa) {
+                                // 🔧 OPTIMIZACIÓN: Verificación de estado deshabilitada para mejor rendimiento
+                                // print('🔧 Verificación de estado deshabilitada para ${mesa.nombre}');
+                              },
                             ),
                           ),
                         )
@@ -11014,6 +11412,20 @@ class _MesasScreenState extends State<MesasScreen>
     VoidCallback onTap, {
     required double height,
   }) {
+    // 🔧 VALIDACIÓN: Verificar que el nombre no esté vacío
+    if (nombre.trim().isEmpty) {
+      print('❌ Error: Intentando crear mesa especial con nombre vacío');
+      return Container(
+        height: height,
+        child: Center(
+          child: Text(
+            'Mesa con nombre inválido',
+            style: TextStyle(color: Colors.red),
+          ),
+        ),
+      );
+    }
+    
     return FutureBuilder<List<Pedido>>(
       key: ValueKey('mesa_especial_${nombre}_$_widgetRebuildKey'),
       future: _pedidoService.getPedidosByMesa(nombre),
@@ -11356,13 +11768,20 @@ class _MesasScreenState extends State<MesasScreen>
                                 child: MesaCard(
                                   mesa: mesa,
                                   widgetRebuildKey: _widgetRebuildKey,
-                                  onRecargarMesas: _recargarMesasConCards,
+                                  onRecargarMesas: () {
+                                    // 🔧 OPTIMIZACIÓN: Sin recarga automática en interacciones de mesa
+                                    print(
+                                      '🔧 Interacción con mesa ${mesa.nombre} (sin recarga automática)',
+                                    );
+                                  },
                                   onMostrarMenuMesa: _mostrarMenuMesa,
                                   onMostrarDialogoPago: _mostrarDialogoPago,
                                   onObtenerPedidoActivo:
                                       _obtenerPedidoActivoDeMesa,
-                                  onVerificarEstadoReal:
-                                      _verificarEstadoRealMesa,
+                                  onVerificarEstadoReal: (Mesa mesa) {
+                                    // 🔧 OPTIMIZACIÓN: Verificación de estado deshabilitada para mejor rendimiento
+                                    // print('🔧 Verificación de estado deshabilitada para ${mesa.nombre}');
+                                  },
                                 ),
                               ),
                             )
@@ -11858,27 +12277,12 @@ class _MesasScreenState extends State<MesasScreen>
       MaterialPageRoute(builder: (context) => PedidoScreen(mesa: mesa)),
     );
 
-    // Si se creó o actualizó un pedido, recargar las mesas
+    // 🔧 OPTIMIZACIÓN: Sin recarga automática después de crear/actualizar pedido
     if (result == true) {
       print(
-        '🔄 Pedido creado/actualizado en mesa ${mesa.nombre} - Iniciando recarga...',
+        '✅ Pedido creado/actualizado en mesa ${mesa.nombre} (sin recarga automática)',
       );
-
-      await _recargarMesasConCards();
-
-      // 🔧 AÑADIDO: Forzar actualización adicional para mesas especiales
-      if (_esMesaEspecial(mesa.nombre)) {
-        print(
-          '🔄 Mesa especial detectada - Forzando actualización adicional...',
-        );
-        await Future.delayed(
-          Duration(milliseconds: 500),
-        ); // Esperar que se propague en el backend
-
-        if (mounted) {
-          setState(() => _widgetRebuildKey++); // Forzar rebuild adicional
-        }
-      }
+      // Las mesas se actualizarán en la próxima navegación manual
 
       // El backend ya registra automáticamente en el historial cuando se modifican pedidos
       print(

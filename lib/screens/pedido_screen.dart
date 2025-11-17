@@ -1830,10 +1830,8 @@ class _PedidoScreenState extends State<PedidoScreen> {
       );
     }).toList();
 
-    // Calcular total
-    double total = productosMesa.fold(
-      0,
-      (sum, producto) => sum + (producto.precio * producto.cantidad),
+    // ✅ CORREGIDO: Calcular total usando ItemPedido.subtotal según la guía
+    double total = items.fold(0.0, (sum, item) => sum + item.subtotal,
     );
 
     // Determinar el tipo de pedido basado en la mesa
@@ -2870,10 +2868,22 @@ class _PedidoScreenState extends State<PedidoScreen> {
   }
 
   double _calcularTotal() {
-    double total = productosMesa.fold(0, (sum, producto) {
+    // ✅ CORREGIDO: Crear ItemPedido temporales para cálculo correcto usando subtotal
+    final itemsTemporales = productosMesa
+        .map(
+          (producto) => ItemPedido(
+            productoId: producto.id,
+            cantidad: producto.cantidad,
+            precioUnitario: producto.precio,
+            productoNombre: producto.nombre,
+          ),
+        )
+        .toList();
+
+    double total = itemsTemporales.fold(0.0, (sum, item) {
       // Solo incluir productos activos (no tachados) en el total
-      if (productoPagado[producto.id] != false) {
-        return sum + (producto.precio * producto.cantidad);
+      if (productoPagado[item.productoId] != false) {
+        return sum + item.subtotal; // ✅ Usar subtotal según la guía
       }
       return sum;
     });
@@ -3189,16 +3199,28 @@ class _PedidoScreenState extends State<PedidoScreen> {
                 ],
               ),
 
-              // Precio
-              Text(
-                formatCurrency(producto.precio * producto.cantidad),
-                style: TextStyle(
-                  color: productoPagado[producto.id]!
-                      ? primary
-                      : primary.withOpacity(0.5),
-                  fontWeight: FontWeight.bold,
-                  fontSize: isMovil ? 18 : 13,
-                ),
+              // Precio - ✅ CORREGIDO: Crear ItemPedido temporal para subtotal correcto
+              Builder(
+                builder: (context) {
+                  final itemTemporal = ItemPedido(
+                    productoId: producto.id,
+                    cantidad: producto.cantidad,
+                    precioUnitario: producto.precio,
+                    productoNombre: producto.nombre,
+                  );
+                  return Text(
+                    formatCurrency(
+                      itemTemporal.subtotal,
+                    ), // ✅ Usar subtotal según la guía
+                    style: TextStyle(
+                      color: productoPagado[producto.id]!
+                          ? primary
+                          : primary.withOpacity(0.5),
+                      fontWeight: FontWeight.bold,
+                      fontSize: isMovil ? 18 : 13,
+                    ),
+                  );
+                },
               ),
             ],
           ),
