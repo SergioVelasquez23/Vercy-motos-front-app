@@ -80,6 +80,12 @@ class _AbrirCajaScreenState extends State<AbrirCajaScreen> {
       return;
     }
 
+    // 🔍 LOGGING: Debug para valor introducido por usuario
+    print('💰 Usuario abriendo caja:');
+    print('  - Caja seleccionada: ${_selectedCaja}');
+    print('  - Texto introducido: "${_montoInicialController.text}"');
+    print('  - Monto parseado: \$${montoInicial.toStringAsFixed(0)}');
+
     setState(() {
       _isLoading = true;
     });
@@ -87,6 +93,10 @@ class _AbrirCajaScreenState extends State<AbrirCajaScreen> {
     try {
       final userProvider = Provider.of<UserProvider>(context, listen: false);
       final responsable = userProvider.userName ?? 'Usuario Desconocido';
+
+      print(
+        '🔄 Llamando createCuadre con fondoInicial: \$${montoInicial.toStringAsFixed(0)}',
+      );
 
       final cuadre = await _cuadreCajaService.createCuadre(
         nombre: _selectedCaja ?? 'Caja Principal',
@@ -97,6 +107,10 @@ class _AbrirCajaScreenState extends State<AbrirCajaScreen> {
         tolerancia: 5.0,
         observaciones:
             'Caja abierta - ${_observacionesController.text}. ID Máquina: ${_idMaquinaController.text}',
+      );
+
+      print(
+        '✅ Cuadre recibido - fondoInicial: \$${cuadre.fondoInicial.toStringAsFixed(0)}',
       );
 
       if (cuadre.id != null) {

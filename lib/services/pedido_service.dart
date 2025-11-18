@@ -1738,6 +1738,15 @@ class PedidoService {
       }
 
       print('  - Datos completos: ${json.encode(pagarData)}');
+      
+      // 🔍 DEBUGGING ESPECÍFICO PARA DESCUENTO
+      print('🔍 DESCUENTO DEBUG:');
+      print('  - Parámetro descuento recibido: $descuento');
+      print('  - Descuento en pagarData: ${pagarData['descuento']}');
+      print('  - totalPagado parámetro: $totalPagado');
+      print('  - propina parámetro: $propina');
+      print('  - JSON del descuento: ${json.encode({'descuento': descuento})}');
+      print('  - JSON completo pagarData: ${json.encode(pagarData)}');
 
       final response = await http.put(
         Uri.parse('$baseUrl/api/pedidos/$pedidoId/pagar'),
@@ -1747,6 +1756,26 @@ class PedidoService {
 
       print('Pagar pedido response: ${response.statusCode}');
       print('Pagar pedido body: ${response.body}');
+      
+      // 🔍 BACKEND RESPONSE DEBUG
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        if (responseData['data'] != null) {
+          print('🔍 BACKEND RESPONSE DESCUENTO DEBUG:');
+          print(
+            '  - Descuento en response: ${responseData['data']['descuento']}',
+          );
+          print('  - Total en response: ${responseData['data']['total']}');
+          print('  - Propina en response: ${responseData['data']['propina']}');
+          print(
+            '  - totalPagado en response: ${responseData['data']['totalPagado']}',
+          );
+          print(
+            '  - formaPago en response: ${responseData['data']['formaPago']}',
+          );
+          print('🔍 RESPONSE COMPLETO: ${responseData['data']}');
+        }
+      }
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
@@ -1854,9 +1883,10 @@ class PedidoService {
         (sum, item) => sum + item.subtotal,
       );
 
-      // ✅ CORRECCIÓN: Usar item.id en lugar de productoId para identificar items específicos
+      // ✅ CORRECCIÓN: Para pagos parciales de productos recién agregados, usar productoId
+      // porque los items aún no tienen ID asignado por el backend
       List<String> itemIds = itemsSeleccionados
-          .map((item) => item.id ?? '')
+          .map((item) => item.productoId) // Usar productoId en lugar de item.id
           .where((id) => id.isNotEmpty)
           .toList();
 

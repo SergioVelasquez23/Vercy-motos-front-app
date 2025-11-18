@@ -592,6 +592,8 @@ class DetallePedidoCompleto {
   final String formaPago;
   final String fecha;
   final String tipo;
+  final double propina;
+  final double descuento;
 
   DetallePedidoCompleto({
     required this.id,
@@ -600,6 +602,8 @@ class DetallePedidoCompleto {
     required this.formaPago,
     required this.fecha,
     required this.tipo,
+    this.propina = 0.0,
+    this.descuento = 0.0,
   });
 
   factory DetallePedidoCompleto.fromJson(Map<String, dynamic> json) {
@@ -618,6 +622,8 @@ class DetallePedidoCompleto {
       formaPago: json['formaPago']?.toString() ?? '',
       fecha: json['fecha']?.toString() ?? '',
       tipo: json['tipo']?.toString() ?? '',
+      propina: safeToDouble(json['propina']),
+      descuento: safeToDouble(json['descuento']),
     );
   }
 }

@@ -21,6 +21,7 @@ import '../services/pedido_service.dart';
 import '../models/dashboard_data.dart';
 import '../providers/user_provider.dart';
 import '../widgets/admin_key_detector.dart';
+import '../utils/payment_calculator.dart';
 
 class InfoCardItem {
   final String label;
@@ -68,6 +69,10 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
   // Variables para el estado de precarga
   bool _productosPrecargados = false;
   bool _ingredientesPrecargados = false;
+  
+  // Variables para cálculos corregidos de dashboard
+  bool _calculosCorregidos = false;
+  Map<String, double> _totalesCorregidos = {};
 
   /// Construye un indicador visual para mostrar el progreso de la precarga de datos
   Widget _buildPrecargaIndicator() {
@@ -261,6 +266,9 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
             _dashboardData = dashboardData;
           });
         }
+        
+        // Calcular totales corregidos después de cargar dashboard data
+        await _calcularTotalesCorregidos();
       } else if (mounted) {
         // Mantener los datos existentes o usar null
       }
@@ -578,6 +586,59 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
     }
   }
 
+  /// Obtiene el total corregido considerando problemas de descuentos/propinas del backend
+  /// Si no hay corrección disponible, retorna el valor original del backend
+  double _obtenerTotalCorregido(String periodo, double totalBackend) {
+    // Si tenemos correcciones calculadas, usar esas
+    if (_calculosCorregidos && _totalesCorregidos.containsKey(periodo)) {
+      final totalCorregido = _totalesCorregidos[periodo]!;
+
+      // Solo usar corrección si hay diferencia significativa (más de $100)
+      if ((totalCorregido - totalBackend).abs() > 100) {
+        print('💰 Dashboard usando total corregido para $periodo:');
+        print('   Backend: ${_formatNumber(totalBackend)}');
+        print('   Corregido: ${_formatNumber(totalCorregido)}');
+        print('   Diferencia: ${_formatNumber(totalCorregido - totalBackend)}');
+        return totalCorregido;
+      }
+    }
+
+    return totalBackend;
+  }
+
+  /// Calcula los totales corregidos consultando pedidos reales
+  Future<void> _calcularTotalesCorregidos() async {
+    try {
+      print('🔧 Iniciando cálculo de totales corregidos...');
+
+      // Por ahora, mantener los valores del backend
+      // En el futuro implementar lógica completa para obtener pedidos y recalcular
+      // TODO: Obtener pedidos de hoy, 7 días, 30 días y año usando PedidoService
+      // TODO: Aplicar PaymentCalculator.calcularTotalReal a cada pedido
+      // TODO: Sumar totales corregidos por período
+
+      setState(() {
+        _totalesCorregidos = {
+          'hoy': _dashboardData?.ventasHoy.total ?? 0.0,
+          'semana': _dashboardData?.ventas7Dias.total ?? 0.0,
+          'mes': _dashboardData?.ventas30Dias.total ?? 0.0,
+          'año': _dashboardData?.ventasAnio.total ?? 0.0,
+        };
+        _calculosCorregidos = true;
+      });
+
+      print(
+        '✅ Totales corregidos calculados (usando valores backend por ahora)',
+      );
+    } catch (e) {
+      print('❌ Error calculando totales corregidos: $e');
+      setState(() {
+        _calculosCorregidos = false;
+        _totalesCorregidos.clear();
+      });
+    }
+  }
+
   double _obtenerObjetivoActual(String periodo) {
     // Primero verificar si hay un objetivo temporal
     if (_objetivosTemporales.containsKey(periodo)) {
@@ -628,6 +689,9 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
 
         // IMPORTANTE: Recargar datos del dashboard para obtener los objetivos actualizados
         await _cargarDatos();
+        
+        // Calcular totales corregidos después de cargar datos
+        await _calcularTotalesCorregidos();
       } else {
         // Si falla, remover el objetivo temporal
         setState(() {
@@ -1372,11 +1436,15 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
           _buildStatCard(
             context,
             title: 'Facturado Hoy',
-            value: '\$${_formatNumber(_dashboardData!.ventasHoy.total)}',
+            value:
+                '\$${_formatNumber(_obtenerTotalCorregido('hoy', _dashboardData!.ventasHoy.total))}',
             objective:
                 'Objetivo: \$${_formatNumber(_obtenerObjetivoActual('hoy'))}',
             percentage:
-                (_dashboardData!.ventasHoy.total /
+                (_obtenerTotalCorregido(
+                          'hoy',
+                          _dashboardData!.ventasHoy.total,
+                        ) /
                         _obtenerObjetivoActual('hoy') *
                         100)
                     .round(),
@@ -1387,11 +1455,15 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
           _buildStatCard(
             context,
             title: 'Últimos 7 días',
-            value: '\$${_formatNumber(_dashboardData!.ventas7Dias.total)}',
+            value:
+                '\$${_formatNumber(_obtenerTotalCorregido('semana', _dashboardData!.ventas7Dias.total))}',
             objective:
                 'Objetivo: \$${_formatNumber(_obtenerObjetivoActual('semana'))}',
             percentage:
-                (_dashboardData!.ventas7Dias.total /
+                (_obtenerTotalCorregido(
+                          'semana',
+                          _dashboardData!.ventas7Dias.total,
+                        ) /
                         _obtenerObjetivoActual('semana') *
                         100)
                     .round(),
@@ -1402,11 +1474,15 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
           _buildStatCard(
             context,
             title: 'Últimos 30 días',
-            value: '\$${_formatNumber(_dashboardData!.ventas30Dias.total)}',
+            value:
+                '\$${_formatNumber(_obtenerTotalCorregido('mes', _dashboardData!.ventas30Dias.total))}',
             objective:
                 'Objetivo: \$${_formatNumber(_obtenerObjetivoActual('mes'))}',
             percentage:
-                (_dashboardData!.ventas30Dias.total /
+                (_obtenerTotalCorregido(
+                          'mes',
+                          _dashboardData!.ventas30Dias.total,
+                        ) /
                         _obtenerObjetivoActual('mes') *
                         100)
                     .round(),
@@ -1417,11 +1493,15 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
           _buildStatCard(
             context,
             title: 'Año actual',
-            value: '\$${_formatNumber(_dashboardData!.ventasAnio.total)}',
+            value:
+                '\$${_formatNumber(_obtenerTotalCorregido('año', _dashboardData!.ventasAnio.total))}',
             objective:
                 'Objetivo: \$${_formatNumber(_obtenerObjetivoActual('año'))}',
             percentage:
-                (_dashboardData!.ventasAnio.total /
+                (_obtenerTotalCorregido(
+                          'año',
+                          _dashboardData!.ventasAnio.total,
+                        ) /
                         _obtenerObjetivoActual('año') *
                         100)
                     .round(),
@@ -1441,11 +1521,15 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
               child: _buildStatCard(
                 context,
                 title: 'Facturado Hoy',
-                value: '\$${_formatNumber(_dashboardData!.ventasHoy.total)}',
+                value:
+                    '\$${_formatNumber(_obtenerTotalCorregido('hoy', _dashboardData!.ventasHoy.total))}',
                 objective:
                     'Objetivo: \$${_formatNumber(_obtenerObjetivoActual('hoy'))}',
                 percentage:
-                    (_dashboardData!.ventasHoy.total /
+                    (_obtenerTotalCorregido(
+                              'hoy',
+                              _dashboardData!.ventasHoy.total,
+                            ) /
                             _obtenerObjetivoActual('hoy') *
                             100)
                         .round(),
@@ -1462,11 +1546,15 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
               child: _buildStatCard(
                 context,
                 title: 'Últimos 7 días',
-                value: '\$${_formatNumber(_dashboardData!.ventas7Dias.total)}',
+                value:
+                    '\$${_formatNumber(_obtenerTotalCorregido('semana', _dashboardData!.ventas7Dias.total))}',
                 objective:
                     'Objetivo: \$${_formatNumber(_obtenerObjetivoActual('semana'))}',
                 percentage:
-                    (_dashboardData!.ventas7Dias.total /
+                    (_obtenerTotalCorregido(
+                              'semana',
+                              _dashboardData!.ventas7Dias.total,
+                            ) /
                             _obtenerObjetivoActual('semana') *
                             100)
                         .round(),
@@ -1483,11 +1571,15 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
               child: _buildStatCard(
                 context,
                 title: 'Últimos 30 días',
-                value: '\$${_formatNumber(_dashboardData!.ventas30Dias.total)}',
+                value:
+                    '\$${_formatNumber(_obtenerTotalCorregido('mes', _dashboardData!.ventas30Dias.total))}',
                 objective:
                     'Objetivo: \$${_formatNumber(_obtenerObjetivoActual('mes'))}',
                 percentage:
-                    (_dashboardData!.ventas30Dias.total /
+                    (_obtenerTotalCorregido(
+                              'mes',
+                              _dashboardData!.ventas30Dias.total,
+                            ) /
                             _obtenerObjetivoActual('mes') *
                             100)
                         .round(),
@@ -1504,11 +1596,15 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
               child: _buildStatCard(
                 context,
                 title: 'Año actual',
-                value: '\$${_formatNumber(_dashboardData!.ventasAnio.total)}',
+                value:
+                    '\$${_formatNumber(_obtenerTotalCorregido('año', _dashboardData!.ventasAnio.total))}',
                 objective:
                     'Objetivo: \$${_formatNumber(_obtenerObjetivoActual('año'))}',
                 percentage:
-                    (_dashboardData!.ventasAnio.total /
+                    (_obtenerTotalCorregido(
+                              'año',
+                              _dashboardData!.ventasAnio.total,
+                            ) /
                             _obtenerObjetivoActual('año') *
                             100)
                         .round(),

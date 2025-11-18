@@ -7,6 +7,7 @@ import '../services/pedido_service.dart';
 import '../services/cuadre_caja_service.dart';
 import '../providers/user_provider.dart';
 import '../utils/format_utils.dart';
+import '../utils/payment_calculator.dart';
 import '../theme/app_theme.dart';
 
 class PedidosScreenFusion extends StatefulWidget {
@@ -25,6 +26,20 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
       return Producto.fromJson(producto).nombre;
     }
     return "Producto desconocido";
+  }
+
+  /// Calcula el total correcto del pedido considerando descuentos aplicados
+  double _getTotalCorrecto(Pedido pedido) {
+    // Si el pedido está pagado y tiene descuento, usar cálculo correcto
+    if (pedido.estado == EstadoPedido.pagado && pedido.descuento > 0) {
+      return PaymentCalculator.calcularTotalReal(
+        pedido.total,
+        pedido.descuento,
+        pedido.propina,
+      );
+    }
+    // Para pedidos activos o sin descuento, usar total original
+    return pedido.total;
   }
 
   // Colores del tema ahora se usan desde AppTheme
@@ -410,6 +425,28 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
     // Mostrar lista de pedidos para seleccionar cuáles eliminar
     List<String> pedidosActivosSeleccionados = [];
     List<String> pedidosPagadosSeleccionados = [];
+    
+    // Variables para el buscador
+    String busquedaEliminar = '';
+    TextEditingController busquedaEliminarController = TextEditingController();
+
+    // Función para filtrar pedidos según búsqueda
+    List<Pedido> filtrarPedidos(List<Pedido> pedidos, String busqueda) {
+      if (busqueda.isEmpty) return pedidos;
+
+      return pedidos.where((pedido) {
+        final mesa = pedido.mesa.toLowerCase();
+        final cliente = (pedido.cliente ?? '').toLowerCase();
+        final id = pedido.id.toLowerCase();
+        final total = formatCurrency(pedido.total).toLowerCase();
+        final busquedaLower = busqueda.toLowerCase();
+
+        return mesa.contains(busquedaLower) ||
+            cliente.contains(busquedaLower) ||
+            id.contains(busquedaLower) ||
+            total.contains(busquedaLower);
+      }).toList();
+    }
 
     await showDialog(
       context: context,
@@ -438,142 +475,260 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                       'Selecciona los pedidos que deseas eliminar:',
                       style: AppTheme.bodyMedium,
                     ),
+                    SizedBox(height: 12),
+
+                    // Campo de búsqueda
+                    Container(
+                      decoration: BoxDecoration(
+                        color: AppTheme.backgroundDark,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: AppTheme.primary.withOpacity(0.3),
+                        ),
+                      ),
+                      child: TextField(
+                        controller: busquedaEliminarController,
+                        style: TextStyle(color: AppTheme.textPrimary),
+                        decoration: InputDecoration(
+                          hintText: 'Buscar por mesa, cliente, ID o total...',
+                          hintStyle: TextStyle(color: AppTheme.textSecondary),
+                          prefixIcon: Icon(
+                            Icons.search,
+                            color: AppTheme.primary,
+                          ),
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          suffixIcon: busquedaEliminar.isNotEmpty
+                              ? IconButton(
+                                  icon: Icon(
+                                    Icons.clear,
+                                    color: AppTheme.textSecondary,
+                                  ),
+                                  onPressed: () {
+                                    setState(() {
+                                      busquedaEliminar = '';
+                                      busquedaEliminarController.clear();
+                                    });
+                                  },
+                                )
+                              : null,
+                        ),
+                        onChanged: (value) {
+                          setState(() {
+                            busquedaEliminar = value;
+                          });
+                        },
+                      ),
+                    ),
                     SizedBox(height: 16),
 
                     // Sección de pedidos activos
-                    if (pedidosActivos.isNotEmpty) ...[
-                      Text(
-                        'Pedidos Activos (${pedidosActivos.length})',
-                        style: AppTheme.bodyMedium.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.orange,
-                        ),
-                      ),
-                      SizedBox(height: 8),
-                      Container(
-                        height: 120,
-                        child: ListView.builder(
-                          itemCount: pedidosActivos.length,
-                          itemBuilder: (context, index) {
-                            final pedido = pedidosActivos[index];
-                            final isSelected = pedidosActivosSeleccionados
-                                .contains(pedido.id);
-
-                            return CheckboxListTile(
-                              value: isSelected,
-                              onChanged: (bool? value) {
-                                setState(() {
-                                  if (value == true) {
-                                    pedidosActivosSeleccionados.add(pedido.id);
-                                  } else {
-                                    pedidosActivosSeleccionados.remove(
-                                      pedido.id,
-                                    );
-                                  }
-                                });
-                              },
-                              title: Text(
-                                'Mesa ${pedido.mesa} - ${pedido.cliente ?? "Sin cliente"}',
-                                style: TextStyle(
-                                  color: AppTheme.textPrimary,
-                                  fontSize: 14,
-                                ),
-                              ),
-                              subtitle: Text(
-                                'Total: ${formatCurrency(pedido.total)}',
-                                style: TextStyle(
-                                  color: AppTheme.textSecondary,
-                                  fontSize: 12,
-                                ),
-                              ),
-                              activeColor: Colors.orange,
-                            );
-                          },
-                        ),
-                      ),
-                      SizedBox(height: 16),
-                    ],
-
-                    // Sección de pedidos pagados
-                    if (pedidosPagados.isNotEmpty) ...[
-                      Container(
-                        padding: EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.red.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: Colors.red.withOpacity(0.3),
-                          ),
-                        ),
-                        child: Column(
+                    () {
+                      final pedidosActivosFiltrados = filtrarPedidos(
+                        pedidosActivos,
+                        busquedaEliminar,
+                      );
+                      if (pedidosActivosFiltrados.isNotEmpty) {
+                        return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Pedidos Pagados (${pedidosPagados.length})',
+                              'Pedidos Activos (${pedidosActivosFiltrados.length}${busquedaEliminar.isNotEmpty ? ' de ${pedidosActivos.length}' : ''})',
                               style: AppTheme.bodyMedium.copyWith(
                                 fontWeight: FontWeight.bold,
-                                color: Colors.red,
+                                color: Colors.orange,
                               ),
                             ),
-                            SizedBox(height: 4),
+                            SizedBox(height: 8),
+                            Container(
+                              height: 120,
+                              child: ListView.builder(
+                                itemCount: pedidosActivosFiltrados.length,
+                                itemBuilder: (context, index) {
+                                  final pedido = pedidosActivosFiltrados[index];
+                                  final isSelected = pedidosActivosSeleccionados
+                                      .contains(pedido.id);
+
+                                  return CheckboxListTile(
+                                    value: isSelected,
+                                    onChanged: (bool? value) {
+                                      setState(() {
+                                        if (value == true) {
+                                          pedidosActivosSeleccionados.add(
+                                            pedido.id,
+                                          );
+                                        } else {
+                                          pedidosActivosSeleccionados.remove(
+                                            pedido.id,
+                                          );
+                                        }
+                                      });
+                                    },
+                                    title: Text(
+                                      'Mesa ${pedido.mesa} - ${pedido.cliente ?? "Sin cliente"}',
+                                      style: TextStyle(
+                                        color: AppTheme.textPrimary,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    subtitle: Text(
+                                      'Total: ${formatCurrency(_getTotalCorrecto(pedido))}',
+                                      style: TextStyle(
+                                        color: AppTheme.textSecondary,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                    activeColor: Colors.orange,
+                                  );
+                                },
+                              ),
+                            ),
+                            SizedBox(height: 16),
+                          ],
+                        );
+                      } else {
+                        return SizedBox.shrink();
+                      }
+                    }(),
+
+                    // Mensaje cuando no hay resultados de búsqueda
+                    if (busquedaEliminar.isNotEmpty &&
+                        filtrarPedidos(
+                          pedidosActivos,
+                          busquedaEliminar,
+                        ).isEmpty &&
+                        filtrarPedidos(
+                          pedidosPagados,
+                          busquedaEliminar,
+                        ).isEmpty) ...[
+                      SizedBox(height: 20),
+                      Center(
+                        child: Column(
+                          children: [
+                            Icon(
+                              Icons.search_off,
+                              color: AppTheme.textSecondary,
+                              size: 48,
+                            ),
+                            SizedBox(height: 8),
                             Text(
-                              'IMPORTANTE: Al eliminar pedidos pagados se reversará automáticamente el dinero de las ventas y se descontará de la caja.',
+                              'No se encontraron pedidos',
+                              style: AppTheme.bodyMedium.copyWith(
+                                color: AppTheme.textSecondary,
+                              ),
+                            ),
+                            Text(
+                              'que coincidan con "$busquedaEliminar"',
                               style: AppTheme.bodySmall.copyWith(
-                                color: Colors.red[700],
-                                fontStyle: FontStyle.italic,
+                                color: AppTheme.textSecondary,
                               ),
                             ),
                           ],
                         ),
                       ),
-                      SizedBox(height: 8),
-                      Expanded(
-                        child: ListView.builder(
-                          itemCount: pedidosPagados.length,
-                          itemBuilder: (context, index) {
-                            final pedido = pedidosPagados[index];
-                            final isSelected = pedidosPagadosSeleccionados
-                                .contains(pedido.id);
-
-                            return CheckboxListTile(
-                              value: isSelected,
-                              onChanged: (bool? value) {
-                                setState(() {
-                                  if (value == true) {
-                                    pedidosPagadosSeleccionados.add(pedido.id);
-                                  } else {
-                                    pedidosPagadosSeleccionados.remove(
-                                      pedido.id,
-                                    );
-                                  }
-                                });
-                              },
-                              title: Text(
-                                'Mesa ${pedido.mesa} - ${pedido.cliente ?? "Sin cliente"}',
-                                style: TextStyle(
-                                  color: AppTheme.textPrimary,
-                                  fontSize: 14,
-                                ),
-                              ),
-                              subtitle: Text(
-                                'Total: ${formatCurrency(pedido.total)} - ${pedido.formaPago ?? "N/A"}',
-                                style: TextStyle(
-                                  color: AppTheme.textSecondary,
-                                  fontSize: 12,
-                                ),
-                              ),
-                              activeColor: Colors.red,
-                            );
-                          },
-                        ),
-                      ),
                     ],
+
+                    // Sección de pedidos pagados
+                    () {
+                      final pedidosPagadosFiltrados = filtrarPedidos(
+                        pedidosPagados,
+                        busquedaEliminar,
+                      );
+                      if (pedidosPagadosFiltrados.isNotEmpty) {
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              padding: EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.red.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: Colors.red.withOpacity(0.3),
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Pedidos Pagados (${pedidosPagadosFiltrados.length}${busquedaEliminar.isNotEmpty ? ' de ${pedidosPagados.length}' : ''})',
+                                    style: AppTheme.bodyMedium.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.red,
+                                    ),
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    'IMPORTANTE: Al eliminar pedidos pagados se reversará automáticamente el dinero de las ventas y se descontará de la caja.',
+                                    style: AppTheme.bodySmall.copyWith(
+                                      color: Colors.red[700],
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            SizedBox(height: 8),
+                            Expanded(
+                              child: ListView.builder(
+                                itemCount: pedidosPagadosFiltrados.length,
+                                itemBuilder: (context, index) {
+                                  final pedido = pedidosPagadosFiltrados[index];
+                                  final isSelected = pedidosPagadosSeleccionados
+                                      .contains(pedido.id);
+
+                                  return CheckboxListTile(
+                                    value: isSelected,
+                                    onChanged: (bool? value) {
+                                      setState(() {
+                                        if (value == true) {
+                                          pedidosPagadosSeleccionados.add(
+                                            pedido.id,
+                                          );
+                                        } else {
+                                          pedidosPagadosSeleccionados.remove(
+                                            pedido.id,
+                                          );
+                                        }
+                                      });
+                                    },
+                                    title: Text(
+                                      'Mesa ${pedido.mesa} - ${pedido.cliente ?? "Sin cliente"}',
+                                      style: TextStyle(
+                                        color: AppTheme.textPrimary,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    subtitle: Text(
+                                      'Total: ${formatCurrency(_getTotalCorrecto(pedido))} - ${pedido.formaPago ?? "N/A"}',
+                                      style: TextStyle(
+                                        color: AppTheme.textSecondary,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                    activeColor: Colors.red,
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
+                        );
+                      } else {
+                        return SizedBox.shrink();
+                      }
+                    }(),
                   ],
                 ),
               ),
               actions: [
                 TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
+                  onPressed: () {
+                    busquedaEliminarController.dispose();
+                    Navigator.of(context).pop();
+                  },
                   child: Text(
                     'Cancelar',
                     style: TextStyle(color: AppTheme.textSecondary),
@@ -585,6 +740,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                           pedidosPagadosSeleccionados.isEmpty)
                       ? null
                       : () async {
+                          busquedaEliminarController.dispose();
                           Navigator.of(context).pop();
 
                           // Eliminar pedidos activos primero
@@ -1154,7 +1310,8 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                                 formatCurrency(
                                   _pedidosPorPeriodoCaja.fold<double>(
                                     0,
-                                    (sum, pedido) => sum + pedido.total,
+                                    (sum, pedido) =>
+                                        sum + _getTotalCorrecto(pedido),
                                   ),
                                 ),
                                 Icons.attach_money,
@@ -1288,7 +1445,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                     ),
                     SizedBox(height: 4),
                     Text(
-                      formatCurrency(pedido.total),
+                      formatCurrency(_getTotalCorrecto(pedido)),
                       style: TextStyle(
                         color: primary,
                         fontSize: 18,

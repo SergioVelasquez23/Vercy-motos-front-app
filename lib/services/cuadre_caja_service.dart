@@ -463,6 +463,13 @@ class CuadreCajaService {
         'observaciones': observaciones ?? '',
       };
 
+      // 🔍 LOGGING: Debug para fondo inicial
+      print('🏦 Creando cuadre de caja:');
+      print('  - Nombre: $nombre');
+      print('  - Responsable: $responsable');
+      print('  - Fondo Inicial ENVIADO: \$${fondoInicial.toStringAsFixed(0)}');
+      print('  - Body enviado al backend: ${json.encode(body)}');
+
       final response = await http.post(
         Uri.parse('$baseUrl/api/cuadres-caja'),
         headers: headers,
@@ -471,12 +478,32 @@ class CuadreCajaService {
 
       if (response.statusCode == 201) {
         final responseData = json.decode(response.body);
-        return CuadreCaja.fromJson(responseData['data']);
+        final cuadreCreado = CuadreCaja.fromJson(responseData['data']);
+
+        // 🔍 LOGGING: Debug para respuesta del backend
+        print('✅ Cuadre creado exitosamente:');
+        print('  - ID: ${cuadreCreado.id}');
+        print(
+          '  - Fondo Inicial RECIBIDO: \$${cuadreCreado.fondoInicial.toStringAsFixed(0)}',
+        );
+        print('  - Respuesta completa: ${response.body}');
+
+        if (cuadreCreado.fondoInicial != fondoInicial) {
+          print('❌ ERROR: El backend modificó el fondo inicial!');
+          print('   Enviado: \$${fondoInicial.toStringAsFixed(0)}');
+          print(
+            '   Recibido: \$${cuadreCreado.fondoInicial.toStringAsFixed(0)}',
+          );
+        }
+
+        return cuadreCreado;
       } else {
         final errorData = json.decode(response.body);
+        print('❌ Error del backend (${response.statusCode}): ${response.body}');
         throw Exception(errorData['message'] ?? 'Error al crear cuadre');
       }
     } catch (e) {
+      print('❌ Error en createCuadre: $e');
       throw Exception('Error de conexión: $e');
     }
   }

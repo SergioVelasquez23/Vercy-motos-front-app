@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/resumen_cierre_completo.dart';
 import '../services/resumen_cierre_completo_service.dart';
 import '../utils/format_utils.dart';
+import '../utils/payment_calculator.dart';
 import '../theme/app_theme.dart';
 
 class ResumenCierreDetalladoScreen extends StatefulWidget {
@@ -1212,42 +1213,134 @@ class _ResumenCierreDetalladoScreenState
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Header con mesa y total
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      'Mesa: ${pedido.mesa}',
-                      style: TextStyle(
-                        color: textDark,
-                        fontWeight: FontWeight.w500,
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.table_restaurant,
+                          color: Colors.blue,
+                          size: 16,
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          'Mesa: ${pedido.mesa}',
+                          style: TextStyle(
+                            color: textDark,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        if (pedido.descuento > 0 || pedido.propina > 0) ...[
+                          Text(
+                            'Total items: ${formatCurrency(pedido.total)}',
+                            style: TextStyle(color: Colors.grey, fontSize: 12),
+                          ),
+                          if (pedido.descuento > 0)
+                            Text(
+                              'Descuento: -${formatCurrency(pedido.descuento)}',
+                              style: TextStyle(
+                                color: Colors.orange,
+                                fontSize: 12,
+                              ),
+                            ),
+                          if (pedido.propina > 0)
+                            Text(
+                              'Propina: +${formatCurrency(pedido.propina)}',
+                              style: TextStyle(
+                                color: Colors.amber,
+                                fontSize: 12,
+                              ),
+                            ),
+                          Divider(height: 8),
+                        ],
+                        Text(
+                          'PAGADO: ${formatCurrency(PaymentCalculator.calcularTotalRealDetalle(pedido.total, pedido.descuento, pedido.propina))}',
+                          style: TextStyle(
+                            color: Colors.green,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                SizedBox(height: 8),
+
+                // Información básica en 2 columnas
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Tipo: ${pedido.tipo}',
+                            style: TextStyle(color: textLight, fontSize: 12),
+                          ),
+                          Text(
+                            'Forma de Pago: ${pedido.formaPago}',
+                            style: TextStyle(color: textLight, fontSize: 12),
+                          ),
+                        ],
                       ),
                     ),
-                    Text(
-                      formatCurrency(pedido.total),
-                      style: TextStyle(
-                        color: Colors.green,
-                        fontWeight: FontWeight.bold,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Fecha: ${_formatDate(pedido.fecha)}',
+                            style: TextStyle(color: textLight, fontSize: 12),
+                          ),
+                          Text(
+                            'ID: ${pedido.id.length > 8 ? pedido.id.substring(pedido.id.length - 8) : pedido.id}',
+                            style: TextStyle(color: textLight, fontSize: 10),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
-                SizedBox(height: 4),
-                Text(
-                  'Tipo: ${pedido.tipo}',
-                  style: TextStyle(color: textLight, fontSize: 12),
-                ),
-                Text(
-                  'Forma de Pago: ${pedido.formaPago}',
-                  style: TextStyle(color: textLight, fontSize: 12),
-                ),
-                Text(
-                  'Fecha: ${_formatDate(pedido.fecha)}',
-                  style: TextStyle(color: textLight, fontSize: 12),
-                ),
-                Text(
-                  'ID: ${pedido.id}',
-                  style: TextStyle(color: textLight, fontSize: 10),
-                ),
+
+                // Alerta para pagos mixtos que no muestran desglose
+                if (pedido.formaPago.toLowerCase().contains('mixto') ||
+                    pedido.formaPago.toLowerCase().contains('multiple'))
+                  Container(
+                    margin: EdgeInsets.only(top: 8),
+                    padding: EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.purple.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: Colors.purple.withOpacity(0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.info_outline,
+                          color: Colors.purple,
+                          size: 16,
+                        ),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Pago mixto - Desglose por forma de pago no disponible en el resumen',
+                            style: TextStyle(
+                              color: Colors.purple,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
               ],
             ),
           ),
