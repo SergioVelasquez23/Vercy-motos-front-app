@@ -2134,16 +2134,16 @@ class _MesasScreenState extends State<MesasScreen>
     WidgetsBinding.instance.addObserver(
       this,
     ); // Agregar observer para lifecycle
-    _loadMesas();
-    _precargarDatos(); // ✅ NUEVO: Precargar datos al entrar a Mesas Screen
-    _cargarMesasEspecialesUsuario(); // Cargar mesas especiales creadas por el usuario
+    
+    // 🚀 OPTIMIZACIÓN: Carga inmediata sin bloqueos
+    _inicializarPantallaRapido();
 
-    // 🚀 NUEVO: Actualización selectiva inteligente basada en eventos
+    // 🚀 OPTIMIZACIÓN: Actualización selectiva inteligente basada en eventos
     _pedidoService.onPedidoPagado.listen((event) {
       if (mounted) {
-        print('🔔 MesasScreen: Pago registrado - Recargando todas las mesas');
-        // Para eventos sin información específica de mesa, recarga mínima
-        _recargarMesasConCards();
+        print('🔔 MesasScreen: Pago registrado - Recargando mesas específicas');
+        // Solo actualizar las mesas que cambiaron
+        _actualizacionSelectivaRapida();
       }
     });
 
@@ -2151,15 +2151,99 @@ class _MesasScreenState extends State<MesasScreen>
       event,
     ) {
       if (mounted) {
-        print('🔔 MesasScreen: Pedido completado - Recargando todas las mesas');
-        // Para eventos sin información específica de mesa, recarga mínima
-        _recargarMesasConCards();
+        print('🔔 MesasScreen: Pedido completado - Actualización selectiva');
+        _actualizacionSelectivaRapida();
       }
     });
 
     _verificarMesaDeudas(); // ✅ Verificar mesa Deudas al iniciar
+  }
 
-    // 🔧 OPTIMIZACIÓN: Sin sincronización periódica para mejor rendimiento
+  /// 🚀 OPTIMIZACIÓN: Inicialización ultra-rápida de la pantalla
+  Future<void> _inicializarPantallaRapido() async {
+    // Mostrar UI inmediatamente con datos mínimos
+    setState(() {
+      isLoading = true;
+      errorMessage = null;
+    });
+
+    try {
+      // Carga asíncrona en paralelo sin bloquear UI
+      final futures = [
+        _cargarMesasOptimizado(),
+        _cargarMesasEspecialesUsuarioRapido(),
+      ];
+
+      await Future.wait(futures);
+    } catch (e) {
+      print('❌ Error en inicialización rápida: $e');
+      // Fallback a carga normal
+      await _loadMesas();
+    }
+  }
+
+  /// 🚀 OPTIMIZACIÓN: Carga de mesas ultra-optimizada
+  Future<void> _cargarMesasOptimizado() async {
+    try {
+      // Solo obtener datos básicos de mesas, sin validaciones costosas
+      final loadedMesas = await _mesaService.getMesas();
+      
+      setState(() {
+        mesas = loadedMesas;
+        isLoading = false;
+      });
+
+      print('⚡ Mesas cargadas ultra-rápido: ${loadedMesas.length}');
+    } catch (e) {
+      print('❌ Error en carga optimizada: $e');
+      throw e;
+    }
+  }
+
+  /// 🚀 OPTIMIZACIÓN: Carga rápida de mesas especiales sin validaciones pesadas
+  Future<void> _cargarMesasEspecialesUsuarioRapido() async {
+    try {
+      // Usar cache si está disponible
+      if (_cacheMesas.isNotEmpty) {
+        final mesasEspeciales = _cacheMesas.values
+            .where((mesa) => mesa.tipo == TipoMesa.especial &&
+                !['DOMICILIO', 'CAJA', 'MESA AUXILIAR', 'DEUDAS']
+                    .contains(mesa.nombre.toUpperCase()))
+            .map((mesa) => mesa.nombre)
+            .toList();
+        
+        setState(() {
+          _mesasEspecialesUsuario = mesasEspeciales;
+        });
+        return;
+      }
+
+      // Si no hay cache, hacer carga mínima
+      await _cargarMesasEspecialesUsuario();
+    } catch (e) {
+      print('⚠️ Error en carga rápida de mesas especiales: $e');
+    }
+  }
+
+  /// 🚀 OPTIMIZACIÓN: Actualización selectiva ultra-rápida
+  Future<void> _actualizacionSelectivaRapida() async {
+    if (_actualizacionEnProgreso) return;
+    
+    _actualizacionEnProgreso = true;
+    
+    try {
+      // Solo actualizar datos mínimos necesarios
+      final mesasActualizadas = await _mesaService.getMesas();
+      
+      setState(() {
+        mesas = mesasActualizadas;
+        _widgetRebuildKey++;
+      });
+    } catch (e) {
+      print('⚠️ Error en actualización selectiva: $e');
+    } finally {
+      _actualizacionEnProgreso = false;
+    }
   }
 
   // Función para precarga básica (ya no necesitamos caché global)
@@ -2744,35 +2828,39 @@ class _MesasScreenState extends State<MesasScreen>
     }
   }
 
-  Future<void> _loadMesas() async {
+  Future<void> _loadMesas({bool validacionCompleta = false}) async {
     try {
-      // Cargando todas las mesas...
-      setState(() {
-        isLoading = true;
-        errorMessage = null;
-      });
+      // 🚀 OPTIMIZACIÓN: Mostrar loading mínimo
+      if (mounted) {
+        setState(() {
+          isLoading = true;
+          errorMessage = null;
+        });
+      }
 
-      // Obtener todas las mesas en una sola llamada
+      // Obtener mesas directamente sin validaciones costosas por defecto
       final loadedMesas = await _mesaService.getMesas();
 
-      // 🚀 OPTIMIZACIÓN AGRESIVA: Solo cargar mesas sin pre-cargar pedidos
-      // Los pedidos se cargan completamente bajo demanda cuando se necesiten
-      print(
-        '🔥 Carga ultra-rápida: ${loadedMesas.length} mesas (pedidos bajo demanda)',
-      );
+      // 🚀 OPTIMIZACIÓN: Solo validar si se solicita explícitamente
+      final mesasFinales = validacionCompleta 
+          ? await _validarYLimpiarMesas(loadedMesas)
+          : loadedMesas;
 
-      // ✅ OPTIMIZACIÓN: Validación opcional y rápida
-      final mesasValidadas = await _validarYLimpiarMesas(loadedMesas);
+      if (mounted) {
+        setState(() {
+          mesas = mesasFinales;
+          isLoading = false;
+        });
+      }
 
-      setState(() {
-        mesas = mesasValidadas;
-        isLoading = false;
-      });
+      // Cargar mesas especiales en paralelo sin bloquear
+      if (!validacionCompleta) {
+        _cargarMesasEspecialesUsuarioRapido();
+      } else {
+        await _cargarMesasEspecialesUsuario();
+      }
 
-      // También recargar las mesas especiales del usuario
-      await _cargarMesasEspecialesUsuario();
-
-      // Carga de mesas completada silenciosamente
+      print('⚡ Carga rápida completada: ${mesasFinales.length} mesas');
     } catch (error) {
       // Error al cargar mesas - mostrar mensaje amigable
       String mensajeAmigable;
@@ -2903,27 +2991,25 @@ class _MesasScreenState extends State<MesasScreen>
     return '$min:$sec';
   }
 
-  // 🚀 MÉTODO OPTIMIZADO: Carga inteligente de pedidos con cache
+  // 🚀 MÉTODO ULTRA-OPTIMIZADO: Carga inteligente de pedidos con cache y lazy loading
   Future<List<Pedido>> _obtenerPedidosMesaConCache(String nombreMesa) async {
-    if (!_cacheHabilitado) {
-      return await _pedidoService.getPedidosByMesa(nombreMesa);
-    }
-
     final ahora = DateTime.now();
-    final tiempoCache = _tiemposCachePedidos[nombreMesa];
-
-    // Verificar si el cache es válido
-    if (_cachePedidosPorMesa.containsKey(nombreMesa) &&
-        tiempoCache != null &&
-        ahora.difference(tiempoCache) < _duracionCachePedidos) {
-      print('📦 Cache hit para mesa $nombreMesa');
-      return _cachePedidosPorMesa[nombreMesa]!;
+    
+    // 🚀 Cache hit ultra-rápido
+    if (_cachePedidosPorMesa.containsKey(nombreMesa)) {
+      final tiempoCache = _tiemposCachePedidos[nombreMesa];
+      if (tiempoCache != null && 
+          ahora.difference(tiempoCache) < _duracionCachePedidos) {
+        return _cachePedidosPorMesa[nombreMesa]!;
+      }
     }
 
     try {
-      // Cache expirado o no existe, cargar datos frescos
-      print('🔄 Cargando pedidos frescos para mesa $nombreMesa');
-      final pedidos = await _pedidoService.getPedidosByMesa(nombreMesa);
+      // 🚀 Carga con timeout para evitar bloqueos
+      final pedidos = await Future.any([
+        _pedidoService.getPedidosByMesa(nombreMesa),
+        Future.delayed(Duration(seconds: 3), () => <Pedido>[]), // Timeout de 3s
+      ]);
 
       // Actualizar cache
       _cachePedidosPorMesa[nombreMesa] = pedidos;
@@ -2932,13 +3018,13 @@ class _MesasScreenState extends State<MesasScreen>
       return pedidos;
     } catch (e) {
       print('⚠️ Error cargando pedidos para $nombreMesa: $e');
-      // Devolver cache antiguo si existe, o lista vacía
+      // Devolver cache antiguo o lista vacía
       return _cachePedidosPorMesa[nombreMesa] ?? [];
     }
   }
 
-  /// Método optimizado para recarga completa de mesas con sincronización mejorada
-  Future<void> _recargarMesasConCards() async {
+  /// 🚀 MÉTODO ULTRA-OPTIMIZADO: Recarga rápida sin validaciones pesadas por defecto
+  Future<void> _recargarMesasConCards({bool forzarValidacion = false}) async {
     if (_actualizacionEnProgreso) {
       print('⏸️ Recarga ya en progreso, evitando duplicación...');
       return;
@@ -2947,37 +3033,27 @@ class _MesasScreenState extends State<MesasScreen>
     _actualizacionEnProgreso = true;
 
     try {
-      print(
-        '🔄 Iniciando recarga optimizada de mesas con sincronización mejorada...',
-      );
+      print('🔄 Recarga ultra-rápida de mesas...');
 
-      // Cancelar cualquier actualización parcial pendiente
+      // Cancelar actualizaciones parciales pendientes
       _debounceTimer?.cancel();
       _mesasPendientesActualizacion.clear();
       
-      // 🔥 NUEVO: Limpiar cache de pedidos al recargar
-      _limpiarCachePedidos();
+      // 🚀 OPTIMIZACIÓN: No limpiar cache a menos que sea necesario
+      if (forzarValidacion) {
+        _limpiarCachePedidos();
+      }
 
-      // 🔧 MEJORADO: Limpiar estado previo para evitar datos fantasma
-      setState(() {
-        isLoading = true;
-        errorMessage = null;
-      });
-
-      // Una sola recarga completa eficiente
-      await _loadMesas();
-      await _cargarMesasEspecialesUsuario(); // Recargar mesas especiales de usuario
-
-      // 🔧 NUEVO: Recargar también mesas especiales del usuario
-      await _cargarMesasEspecialesUsuario();
+      // Carga rápida sin validaciones pesadas
+      await _loadMesas(validacionCompleta: forzarValidacion);
 
       if (mounted) {
         setState(() => _widgetRebuildKey++);
       }
 
-      print('✅ Recarga de mesas completada con sincronización mejorada');
+      print('✅ Recarga ultra-rápida completada');
     } catch (e) {
-      print('❌ Error en recarga de mesas: $e');
+      print('❌ Error en recarga rápida: $e');
       if (mounted) {
         setState(() {
           isLoading = false;
@@ -3297,12 +3373,11 @@ class _MesasScreenState extends State<MesasScreen>
       // 🔧 OPTIMIZACIÓN: Sin bloqueo para consultas de solo lectura
       // _bloquearMesaTemporalmente(mesa.nombre);
 
-      // Siempre buscar en el servidor para obtener el ID más actualizado
-      final pedidos = await _pedidoService.getPedidosByMesa(mesa.nombre);
-      print('   • Pedidos encontrados: ${pedidos.length}');
-
-      // Filtrar solo pedidos activos
-      final pedidosActivos = pedidos
+      // 🚀 OPTIMIZACIÓN: Usar cache si está disponible
+      final pedidosCache = await _obtenerPedidosMesaConCache(mesa.nombre);
+      
+      // Filtrar pedidos activos del cache
+      final pedidosActivos = pedidosCache
           .where((pedido) => pedido.estado == EstadoPedido.activo)
           .toList();
       print('   • Pedidos activos: ${pedidosActivos.length}');
@@ -11568,12 +11643,14 @@ class _MesasScreenState extends State<MesasScreen>
       if (mesa.nombre.isNotEmpty) {
         String letra = mesa.nombre[0].toUpperCase();
         // Filtrar solo las mesas regulares (no especiales)
+        // Excluir mesas predefinidas especiales Y mesas creadas con tipo especial
         if (![
           'DOMICILIO',
           'CAJA',
           'MESA AUXILIAR',
           'DEUDAS', // ✅ Mesa Deudas como mesa especial
-        ].contains(mesa.nombre.toUpperCase())) {
+            ].contains(mesa.nombre.toUpperCase()) &&
+            mesa.tipo != TipoMesa.especial) {
           if (mesasPorLetra[letra] == null) {
             mesasPorLetra[letra] = [];
           }
@@ -12086,12 +12163,14 @@ class _MesasScreenState extends State<MesasScreen>
       if (mesa.nombre.isNotEmpty) {
         String letra = mesa.nombre[0].toUpperCase();
         // Filtrar solo las mesas regulares (no especiales)
+        // Excluir mesas predefinidas especiales Y mesas creadas con tipo especial
         if (![
           'DOMICILIO',
           'CAJA',
           'MESA AUXILIAR',
           'DEUDAS', // ✅ Mesa Deudas como mesa especial
-        ].contains(mesa.nombre.toUpperCase())) {
+            ].contains(mesa.nombre.toUpperCase()) &&
+            mesa.tipo != TipoMesa.especial) {
           if (mesasPorLetra[letra] == null) {
             mesasPorLetra[letra] = [];
           }
