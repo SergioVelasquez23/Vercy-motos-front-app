@@ -62,8 +62,14 @@ class _MesasScreenState extends State<MesasScreen>
   // 🚀 NUEVO: Sistema de actualización selectiva en tiempo real
   final Set<String> _mesasEnActualizacion = {};
   final Map<String, Mesa> _cacheMesas = {};
+  final Map<String, List<Pedido>> _cachePedidosPorMesa = {};
+  final Map<String, DateTime> _tiemposCachePedidos = {};
   Timer? _timerActualizacionTiempoReal;
   StreamController<List<String>>? _controladorActualizacionMesas;
+  
+  // 🔥 NUEVO: Cache para diálogos de pago frecuentes
+  static const Duration _duracionCachePedidos = Duration(minutes: 2);
+  bool _cacheHabilitado = true;
 
   // Recarga toda la pestaña de mesas y navega al mismo módulo/tab
   void _recargarPestanaActual() {
@@ -194,11 +200,11 @@ class _MesasScreenState extends State<MesasScreen>
   StreamSubscription<bool>? _pedidoCompletadoSubscription;
 
   // ========== SISTEMA DE OPTIMIZACIÓN DE RECARGA ==========
-  // Control de debounce para evitar múltiples llamadas
+  // 🔥 Control de debounce ultra-optimizado
   Timer? _debounceTimer;
   static const Duration _debounceDuration = Duration(
-    milliseconds: 200,
-  ); // ✅ Optimizado para mayor velocidad
+    milliseconds: 100,
+  ); // 🚀 Reducido para máxima velocidad
 
   // Set para trackear mesas que necesitan actualización
   final Set<String> _mesasPendientesActualizacion = <String>{};
@@ -206,10 +212,12 @@ class _MesasScreenState extends State<MesasScreen>
   // Flag para prevenir actualizaciones múltiples simultáneas
   bool _actualizacionEnProgreso = false;
 
-  // ✅ NUEVO: Control de timeout para diálogo de pago (evitar doble clic)
+  // 🚀 OPTIMIZADO: Timeout reducido para diálogo de pago
   bool _dialogoPagoEnProceso = false;
   DateTime? _ultimoClickPago;
-  static const Duration _timeoutDialogoPago = Duration(seconds: 2);
+  static const Duration _timeoutDialogoPago = Duration(
+    milliseconds: 800,
+  ); // Reducido drásticamente
 
   // Paleta de colores mejorada
   static const _backgroundDark = Color(0xFF1A1A1A);
@@ -2002,6 +2010,8 @@ class _MesasScreenState extends State<MesasScreen>
               ocupada: deberiaEstarOcupada,
               total: totalReal,
               productos: deberiaEstarOcupada ? mesaActual.productos : [],
+              // ✅ CRÍTICO: Preservar el tipo de mesa para evitar que se vuelva NORMAL
+              tipo: mesaActual.tipo,
             );
 
             // Actualizar cache
@@ -2087,6 +2097,35 @@ class _MesasScreenState extends State<MesasScreen>
     print('🔄 Actualizando mesas tras movimiento: $mesaOrigen -> $mesaDestino');
     await Future.delayed(const Duration(milliseconds: 400));
     await actualizarMesasEspecificas([mesaOrigen, mesaDestino]);
+  }
+
+  /// 🔥 MÉTODOS DE CACHE OPTIMIZADOS
+
+  /// 🚀 NUEVO: Invalidar cache de una mesa específica
+  void _invalidarCacheMesa(String nombreMesa) {
+    _cachePedidosPorMesa.remove(nombreMesa);
+    _tiemposCachePedidos.remove(nombreMesa);
+    print('🗑️ Cache invalidado para mesa $nombreMesa');
+  }
+
+  /// 🚀 NUEVO: Limpiar todo el cache de pedidos
+  void _limpiarCachePedidos() {
+    _cachePedidosPorMesa.clear();
+    _tiemposCachePedidos.clear();
+    print('🗑️ Cache completo de pedidos limpiado');
+  }
+
+  /// 🚀 NUEVO: Verificar si el cache de una mesa es válido
+  bool _esCacheValido(String nombreMesa) {
+    if (!_cacheHabilitado || !_cachePedidosPorMesa.containsKey(nombreMesa)) {
+      return false;
+    }
+
+    final tiempoCache = _tiemposCachePedidos[nombreMesa];
+    if (tiempoCache == null) return false;
+
+    final ahora = DateTime.now();
+    return ahora.difference(tiempoCache) < _duracionCachePedidos;
   }
 
   @override
@@ -2252,6 +2291,8 @@ class _MesasScreenState extends State<MesasScreen>
             ocupada: deberiaEstarOcupada,
             total: totalReal,
             productos: deberiaEstarOcupada ? mesa.productos : [],
+            // ✅ PRESERVAR TIPO: Evita que mesas especiales se vuelvan normales
+            tipo: mesa.tipo,
           );
         }
         return mesa; // Sin cambios
@@ -2315,6 +2356,8 @@ class _MesasScreenState extends State<MesasScreen>
               ocupada: deberiaEstarOcupada,
               total: totalReal,
               productos: deberiaEstarOcupada ? mesa.productos : [],
+              // ✅ PRESERVAR TIPO: Evita que mesas especiales se vuelvan normales
+              tipo: mesa.tipo,
             );
           }
           return mesa;
@@ -2712,23 +2755,11 @@ class _MesasScreenState extends State<MesasScreen>
       // Obtener todas las mesas en una sola llamada
       final loadedMesas = await _mesaService.getMesas();
 
-      // ✅ OPTIMIZACIÓN: Cargar pedidos solo para primeras mesas ocupadas
-      // para acelerar carga inicial, el resto se carga bajo demanda
-      final List<Future<void>> pedidosFutures = [];
-      int mesasOcupadasProcesadas = 0;
-      const int maxMesasIniciales = 8; // Reducido para carga más rápida
-
-      for (final mesa in loadedMesas) {
-        if (mesa.ocupada && mesasOcupadasProcesadas < maxMesasIniciales) {
-          pedidosFutures.add(_cargarPedidosParaMesa(mesa));
-          mesasOcupadasProcesadas++;
-        }
-      }
-
-      // Esperar a que todas las cargas de pedidos terminen (en paralelo)
-      if (pedidosFutures.isNotEmpty) {
-        await Future.wait(pedidosFutures);
-      }
+      // 🚀 OPTIMIZACIÓN AGRESIVA: Solo cargar mesas sin pre-cargar pedidos
+      // Los pedidos se cargan completamente bajo demanda cuando se necesiten
+      print(
+        '🔥 Carga ultra-rápida: ${loadedMesas.length} mesas (pedidos bajo demanda)',
+      );
 
       // ✅ OPTIMIZACIÓN: Validación opcional y rápida
       final mesasValidadas = await _validarYLimpiarMesas(loadedMesas);
@@ -2872,16 +2903,37 @@ class _MesasScreenState extends State<MesasScreen>
     return '$min:$sec';
   }
 
-  // Método auxiliar para cargar pedidos de una mesa específica
-  Future<void> _cargarPedidosParaMesa(Mesa mesa) async {
+  // 🚀 MÉTODO OPTIMIZADO: Carga inteligente de pedidos con cache
+  Future<List<Pedido>> _obtenerPedidosMesaConCache(String nombreMesa) async {
+    if (!_cacheHabilitado) {
+      return await _pedidoService.getPedidosByMesa(nombreMesa);
+    }
+
+    final ahora = DateTime.now();
+    final tiempoCache = _tiemposCachePedidos[nombreMesa];
+
+    // Verificar si el cache es válido
+    if (_cachePedidosPorMesa.containsKey(nombreMesa) &&
+        tiempoCache != null &&
+        ahora.difference(tiempoCache) < _duracionCachePedidos) {
+      print('📦 Cache hit para mesa $nombreMesa');
+      return _cachePedidosPorMesa[nombreMesa]!;
+    }
+
     try {
-      // Obtener los pedidos de la mesa
-      await _pedidoService.getPedidosByMesa(mesa.nombre);
-      // No necesitamos guardar la variable ya que solo queremos pre-cargar los datos
-      // para que estén en caché cuando los necesitemos
+      // Cache expirado o no existe, cargar datos frescos
+      print('🔄 Cargando pedidos frescos para mesa $nombreMesa');
+      final pedidos = await _pedidoService.getPedidosByMesa(nombreMesa);
+
+      // Actualizar cache
+      _cachePedidosPorMesa[nombreMesa] = pedidos;
+      _tiemposCachePedidos[nombreMesa] = ahora;
+
+      return pedidos;
     } catch (e) {
-      print('⚠️ Error al cargar pedidos para mesa ${mesa.nombre}: $e');
-      // No lanzamos excepción para que la carga de otras mesas pueda continuar
+      print('⚠️ Error cargando pedidos para $nombreMesa: $e');
+      // Devolver cache antiguo si existe, o lista vacía
+      return _cachePedidosPorMesa[nombreMesa] ?? [];
     }
   }
 
@@ -2902,6 +2954,9 @@ class _MesasScreenState extends State<MesasScreen>
       // Cancelar cualquier actualización parcial pendiente
       _debounceTimer?.cancel();
       _mesasPendientesActualizacion.clear();
+      
+      // 🔥 NUEVO: Limpiar cache de pedidos al recargar
+      _limpiarCachePedidos();
 
       // 🔧 MEJORADO: Limpiar estado previo para evitar datos fantasma
       setState(() {
@@ -2966,6 +3021,9 @@ class _MesasScreenState extends State<MesasScreen>
 
   /// Verifica si una mesa es considerada especial (para optimizaciones de actualización)
   bool _esMesaEspecial(String nombreMesa) {
+    // Obtener nombre en mayúsculas para comparación
+    final nombreUpper = nombreMesa.toUpperCase();
+    
     // Primero buscar la mesa por nombre para verificar su tipo
     final mesa = mesas.firstWhere(
       (m) => m.nombre == nombreMesa,
@@ -2984,10 +3042,8 @@ class _MesasScreenState extends State<MesasScreen>
       return true;
     }
 
-    // Verificar también por nombres especiales predefinidos
-    final nombreUpper = nombreMesa.toUpperCase();
-    final esEspecialPorNombre =
-        nombreUpper == 'DOMICILIO' ||
+    // Verificar también por nombres especiales hardcodeados
+    final esEspecialPorNombre = nombreUpper == 'DOMICILIO' ||
         nombreUpper == 'CAJA' ||
         nombreUpper == 'MESA AUXILIAR' ||
         nombreUpper == 'DEUDAS' ||
@@ -3849,7 +3905,7 @@ class _MesasScreenState extends State<MesasScreen>
     Pedido pedido, {
     VoidCallback? onPagoCompletado,
   }) async {
-    // ✅ PROTECCIÓN: Evitar múltiples clics en el botón de pago
+    // 🚀 PROTECCIÓN OPTIMIZADA: Evitar múltiples clics con timeout reducido
     final ahora = DateTime.now();
     if (_dialogoPagoEnProceso) {
       print('⏸️ Diálogo de pago ya está en proceso, ignorando clic');
@@ -3859,7 +3915,7 @@ class _MesasScreenState extends State<MesasScreen>
     if (_ultimoClickPago != null &&
         ahora.difference(_ultimoClickPago!) < _timeoutDialogoPago) {
       print(
-        '⏸️ Click muy rápido en pago, esperando ${_timeoutDialogoPago.inSeconds}s',
+        '⏸️ Click muy rápido en pago, esperando ${_timeoutDialogoPago.inMilliseconds}ms',
       );
       return;
     }
@@ -3867,7 +3923,19 @@ class _MesasScreenState extends State<MesasScreen>
     // Marcar que el diálogo está en proceso
     _dialogoPagoEnProceso = true;
     _ultimoClickPago = ahora;
-    print('🔒 Diálogo de pago bloqueado temporalmente');
+    print('🚀 Diálogo de pago iniciado (optimizado)');
+
+    // 🚀 OPTIMIZACIÓN: Pre-cargar pedidos de la mesa en cache si no existen
+    if (!_cachePedidosPorMesa.containsKey(mesa.nombre)) {
+      print('📦 Pre-cargando pedidos para diálogo de pago...');
+      _obtenerPedidosMesaConCache(mesa.nombre)
+          .then((_) {
+            print('✅ Pedidos pre-cargados para diálogo');
+          })
+          .catchError((e) {
+            print('⚠️ Error pre-cargando pedidos: $e');
+          });
+    }
 
     // ✅ CRÍTICO: Bloquear la mesa mientras se procesa el pago
     _bloquearMesaTemporalmente(mesa.nombre);
@@ -8475,18 +8543,22 @@ class _MesasScreenState extends State<MesasScreen>
           try {
             print('🔓 Liberando mesa ${mesa.nombre}...');
             print(
-              '  - Estado actual: ocupada=${mesa.ocupada}, total=${mesa.total}',
+              '  - Estado actual: ocupada=${mesa.ocupada}, total=${mesa.total}, tipo=${mesa.tipo}',
             );
 
-            mesa.ocupada = false;
-            mesa.productos = [];
-            mesa.total = 0.0;
+            // ✅ PRESERVAR EL TIPO AL LIBERAR LA MESA
+            final mesaLiberada = mesa.copyWith(
+              ocupada: false,
+              productos: [],
+              total: 0.0,
+              tipo: mesa.tipo, // PRESERVAR EL TIPO ESPECIAL
+            );
 
             print(
-              '  - Estado después del cambio: ocupada=${mesa.ocupada}, total=${mesa.total}',
+              '  - Estado después del cambio: ocupada=${mesaLiberada.ocupada}, total=${mesaLiberada.total}, tipo=${mesaLiberada.tipo}',
             );
 
-            await _mesaService.updateMesa(mesa);
+            await _mesaService.updateMesa(mesaLiberada);
 
             // ✅ ACTUALIZACIÓN INMEDIATA PARA CORTESÍAS
             if ((esCortesia || esConsumoInterno) && mounted) {
@@ -8495,15 +8567,16 @@ class _MesasScreenState extends State<MesasScreen>
                 // Actualizar la mesa en la lista local inmediatamente
                 final index = mesas.indexWhere((m) => m.id == mesa.id);
                 if (index != -1) {
-                  mesas[index] = mesa;
+                  mesas[index] =
+                      mesaLiberada; // USAR MESA LIBERADA CON TIPO PRESERVADO
                 }
               });
               print('✅ Mesa actualizada inmediatamente en UI');
             }
 
-            print('✅ Mesa ${mesa.nombre} liberada después del pago');
+            print('✅ Mesa ${mesaLiberada.nombre} liberada después del pago');
             print(
-              '  - Estado final enviado al servidor: ocupada=${mesa.ocupada}, total=${mesa.total}',
+              '  - Estado final enviado al servidor: ocupada=${mesaLiberada.ocupada}, total=${mesaLiberada.total}, tipo=${mesaLiberada.tipo}',
             );
           } catch (e) {
             print('❌ Error al liberar mesa después del pago: $e');
@@ -9240,12 +9313,19 @@ class _MesasScreenState extends State<MesasScreen>
       } else {
         // Si no quedan productos, liberar la mesa
         print('   • Liberando mesa ${mesa.nombre} (sin productos restantes)');
-        mesa.ocupada = false;
-        mesa.total = 0.0;
+        
+        // ✅ PRESERVAR EL TIPO AL LIBERAR LA MESA
+        final mesaLiberada = mesa.copyWith(
+          ocupada: false,
+          total: 0.0,
+          tipo: mesa.tipo, // PRESERVAR EL TIPO ESPECIAL
+        );
 
         try {
-          await _mesaService.updateMesa(mesa);
-          print('✅ Mesa liberada exitosamente');
+          await _mesaService.updateMesa(mesaLiberada);
+          print(
+            '✅ Mesa liberada exitosamente preservando tipo ${mesaLiberada.tipo}',
+          );
         } catch (e) {
           print('❌ Error al liberar mesa: $e');
         }
@@ -9544,13 +9624,21 @@ class _MesasScreenState extends State<MesasScreen>
         mesa.ocupada = false;
         mesa.productos = [];
         mesa.total = 0.0;
-        await _mesaService.updateMesa(mesa);
+        // Buscar y actualizar la mesa real del sistema
+        final mesaReal = mesas.firstWhere(
+          (m) => m.nombre == mesa.nombre,
+          orElse: () => mesa, // Fallback a la mesa actual
+        );
+        mesaReal.ocupada = false;
+        mesaReal.productos = [];
+        mesaReal.total = 0.0;
+        await _mesaService.updateMesa(mesaReal);
 
         // ✅ Forzar actualización inmediata de la UI
         if (mounted) {
           setState(() {
-            // Actualizar la mesa en la lista local
-            final mesaIndex = mesas.indexWhere((m) => m.id == mesa.id);
+            // Actualizar la mesa en la lista local usando el ID real
+            final mesaIndex = mesas.indexWhere((m) => m.nombre == mesa.nombre);
             if (mesaIndex != -1) {
               mesas[mesaIndex].ocupada = false;
               mesas[mesaIndex].productos = [];
@@ -9606,9 +9694,13 @@ class _MesasScreenState extends State<MesasScreen>
           pedidoActualizado,
         );
 
-        // Actualizar total de la mesa
-        mesa.total = pedidoRespuesta.total;
-        await _mesaService.updateMesa(mesa);
+        // Actualizar total de la mesa usando la mesa real del sistema
+        final mesaReal = mesas.firstWhere(
+          (m) => m.nombre == mesa.nombre,
+          orElse: () => mesa, // Fallback a la mesa actual si no se encuentra
+        );
+        mesaReal.total = pedidoRespuesta.total;
+        await _mesaService.updateMesa(mesaReal);
 
         // ✅ Forzar actualización inmediata de la UI
         if (mounted) {
@@ -11562,10 +11654,11 @@ class _MesasScreenState extends State<MesasScreen>
                               mesa: mesa,
                               widgetRebuildKey: _widgetRebuildKey,
                               onRecargarMesas: () {
-                                // 🔧 OPTIMIZACIÓN: Sin recarga automática en interacciones de mesa
+                                // 🚀 OPTIMIZACIÓN: Usar actualización específica en lugar de recarga completa
                                 print(
-                                  '🔧 Interacción con mesa ${mesa.nombre} (sin recarga automática)',
+                                  '🔧 Interacción con mesa ${mesa.nombre} - Actualizando solo esta mesa',
                                 );
+                                actualizarMesaEspecifica(mesa.nombre);
                               },
                               onMostrarMenuMesa: _mostrarMenuMesa,
                               onMostrarDialogoPago: _mostrarDialogoPago,
@@ -12091,10 +12184,11 @@ class _MesasScreenState extends State<MesasScreen>
                                   mesa: mesa,
                                   widgetRebuildKey: _widgetRebuildKey,
                                   onRecargarMesas: () {
-                                    // 🔧 OPTIMIZACIÓN: Sin recarga automática en interacciones de mesa
+                                    // 🚀 OPTIMIZACIÓN: Usar actualización específica en lugar de recarga completa
                                     print(
-                                      '🔧 Interacción con mesa ${mesa.nombre} (sin recarga automática)',
+                                      '🔧 Interacción con mesa ${mesa.nombre} - Actualizando solo esta mesa',
                                     );
+                                    actualizarMesaEspecifica(mesa.nombre);
                                   },
                                   onMostrarMenuMesa: _mostrarMenuMesa,
                                   onMostrarDialogoPago: _mostrarDialogoPago,
@@ -12923,10 +13017,43 @@ class _MesasScreenState extends State<MesasScreen>
   void _editarPedidoExistente(Pedido pedido) {
     print('🔧 Editando pedido existente: ${pedido.id} - Mesa: ${pedido.mesa}');
 
-    // Crear mesa temporal para navegar al pedido
+    // ✅ CORREGIDO: Buscar la mesa real en todas las listas (normales y especiales)
+    Mesa? mesaReal;
+
+    // 1. Buscar primero en mesas normales
+    try {
+      mesaReal = mesas.firstWhere((m) => m.nombre == pedido.mesa);
+      print('   ✅ Mesa encontrada en mesas normales: ${mesaReal.tipo}');
+    } catch (e) {
+      // 2. Si no está en mesas normales, buscar en mesas especiales
+      print(
+        '   🔍 Mesa no encontrada en mesas normales, buscando en especiales...',
+      );
+      mesaReal = null;
+    }
+
+    // 3. Si no se encontró, detectar el tipo basado en el nombre
+    if (mesaReal == null) {
+      final tipoDetectado = _detectarTipoMesa(pedido.mesa);
+      print(
+        '   🔍 Mesa no encontrada, creando temporal con tipo detectado: $tipoDetectado',
+      );
+
+      mesaReal = Mesa(
+        id: '', // ID vacío si no se encuentra
+        nombre: pedido.mesa,
+        tipo: tipoDetectado, // ✅ CRÍTICO: Preservar el tipo detectado
+        ocupada: true,
+        total: pedido.total,
+        productos: [],
+      );
+    }
+
+    // Crear mesa temporal con todos los datos correctos
     final mesaTemporal = Mesa(
-      id: pedido.id, // Usar ID del pedido
+      id: mesaReal.id,
       nombre: pedido.mesa,
+      tipo: mesaReal.tipo, // ✅ CRÍTICO: Preservar el tipo original
       ocupada: true,
       total: pedido.total,
       productos: [],
@@ -12940,7 +13067,15 @@ class _MesasScreenState extends State<MesasScreen>
           pedidoExistente: pedido, // ✅ CORREGIDO: Pasar el pedido existente
         ),
       ),
-    );
+    ).then((result) {
+      // 🚀 OPTIMIZADO: Actualizar solo la mesa específica tras edición de pedido
+      if (result == true) {
+        print(
+          '✅ Pedido editado en mesa ${pedido.mesa} - Actualizando mesa específica',
+        );
+        actualizarMesaTrasPedido(pedido.mesa);
+      }
+    });
   }
 
   // Métodos de utilidad para mostrar mensajes
@@ -13065,7 +13200,20 @@ class _MesasScreenState extends State<MesasScreen>
               ),
             ),
           ),
-        );
+        ).then((result) {
+          // 🚀 NUEVO: Si se creó un pedido desde documentos, actualizar la mesa específica
+          if (result != null &&
+              result is Map &&
+              result['pedidoCreado'] == true) {
+            final nombreMesa = result['mesaNombre'] as String?;
+            if (nombreMesa != null) {
+              print(
+                '✅ Pedido creado desde documentos para mesa $nombreMesa - Actualizando mesa específica',
+              );
+              actualizarMesaTrasPedido(nombreMesa);
+            }
+          }
+        });
       } else {
         // Error al crear documento
         ScaffoldMessenger.of(context).showSnackBar(

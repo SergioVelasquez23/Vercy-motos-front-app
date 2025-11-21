@@ -7,7 +7,7 @@ import '../../providers/user_provider.dart';
 import '../../utils/format_utils.dart';
 import '../../screens/pedido_screen.dart';
 
-class MesaCard extends StatelessWidget {
+class MesaCard extends StatefulWidget {
   final Mesa mesa;
   final int widgetRebuildKey;
   final VoidCallback onRecargarMesas;
@@ -28,8 +28,15 @@ class MesaCard extends StatelessWidget {
   });
 
   @override
+  State<MesaCard> createState() => _MesaCardState();
+}
+
+class _MesaCardState extends State<MesaCard> {
+  bool _isProcessing = false; // ✅ SOLUCIÓN: Flag para prevenir doble click
+
+  @override
   Widget build(BuildContext context) {
-    bool isOcupada = mesa.ocupada || mesa.total > 0;
+    bool isOcupada = widget.mesa.ocupada || widget.mesa.total > 0;
 
     // ✅ OPTIMIZACIÓN: Verificación en tiempo real deshabilitada
     // Esta llamada hacía una petición a la API por cada mesa en cada build
@@ -39,63 +46,97 @@ class MesaCard extends StatelessWidget {
     Color statusColor = isOcupada ? AppTheme.error : AppTheme.success;
     final userProvider = Provider.of<UserProvider>(context, listen: false);
     bool canProcessPayment =
-        userProvider.isAdmin && isOcupada && mesa.total > 0;
+        userProvider.isAdmin && isOcupada && widget.mesa.total > 0;
 
     return LayoutBuilder(
-      key: ValueKey('mesa_card_${mesa.id}_$widgetRebuildKey'),
+      key: ValueKey('mesa_card_${widget.mesa.id}_${widget.widgetRebuildKey}'),
       builder: (context, constraints) {
         return GestureDetector(
           onTap: () async {
-            // ✅ SOLUCIÓN: Verificar si existe un pedido activo antes de navegar
-            print('🔍 [CONCURRENCIA] Click en mesa ${mesa.nombre}');
-            print('   • Estado ocupada: ${mesa.ocupada}');
-            print('   • Total: ${mesa.total}');
-
-            Pedido? pedidoExistente;
-
-            // Solo buscar pedido existente si la mesa parece ocupada
-            if (mesa.ocupada || mesa.total > 0) {
-              print('   • Buscando pedido activo existente...');
-              try {
-                pedidoExistente = await onObtenerPedidoActivo(mesa);
-                if (pedidoExistente != null) {
-                  print(
-                    '   ✅ Pedido existente encontrado: ${pedidoExistente.id}',
-                  );
-                  print(
-                    '   • Items en pedido: ${pedidoExistente.items.length}',
-                  );
-                  print('   • Total del pedido: ${pedidoExistente.total}');
-                } else {
-                  print(
-                    '   ⚠️ No se encontró pedido activo (posible inconsistencia)',
-                  );
-                }
-              } catch (e) {
-                print('   ❌ Error al obtener pedido activo: $e');
-              }
-            } else {
-              print('   • Mesa libre, creando nuevo pedido');
+            // ✅ SOLUCIÓN MEJORADA: Prevenir doble click con timeout corto
+            if (_isProcessing) {
+              print(
+                '⚠️ [DOBLE_CLICK] Mesa ${widget.mesa.nombre} ya está siendo procesada',
+              );
+              return;
             }
 
-            final result = await Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => PedidoScreen(
-                  mesa: mesa,
-                  pedidoExistente:
-                      pedidoExistente, // ✅ Pasar el pedido existente si lo hay
-                ),
-              ),
-            );
+            // Activar flag por un tiempo muy corto para prevenir doble click
+            setState(() {
+              _isProcessing = true;
+            });
 
-            // Si se creó o actualizó un pedido, recargar las mesas
-            if (result == true) {
-              onRecargarMesas();
+            // Liberar el flag después de un breve delay para evitar interferencia
+            Future.delayed(Duration(milliseconds: 500), () {
+              if (mounted) {
+                setState(() {
+                  _isProcessing = false;
+                });
+              }
+            });
+
+            try {
+              // ✅ SOLUCIÓN: Verificar si existe un pedido activo antes de navegar
+              print('🔍 [CONCURRENCIA] Click en mesa ${widget.mesa.nombre}');
+              print('   • Estado ocupada: ${widget.mesa.ocupada}');
+              print('   • Total: ${widget.mesa.total}');
+
+              Pedido? pedidoExistente;
+
+              // Solo buscar pedido existente si la mesa parece ocupada
+              if (widget.mesa.ocupada || widget.mesa.total > 0) {
+                print('   • Buscando pedido activo existente...');
+                try {
+                  pedidoExistente = await widget.onObtenerPedidoActivo(
+                    widget.mesa,
+                  );
+                  if (pedidoExistente != null) {
+                    print(
+                      '   ✅ Pedido existente encontrado: ${pedidoExistente.id}',
+                    );
+                    print(
+                      '   • Items en pedido: ${pedidoExistente.items.length}',
+                    );
+                    print('   • Total del pedido: ${pedidoExistente.total}');
+                  } else {
+                    print(
+                      '   ⚠️ No se encontró pedido activo (posible inconsistencia)',
+                    );
+                  }
+                } catch (e) {
+                  print('   ❌ Error al obtener pedido activo: $e');
+                }
+              } else {
+                print('   • Mesa libre, creando nuevo pedido');
+              }
+
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => PedidoScreen(
+                    mesa: widget.mesa,
+                    pedidoExistente:
+                        pedidoExistente, // ✅ Pasar el pedido existente si lo hay
+                  ),
+                ),
+              );
+
+              // Si se creó o actualizó un pedido, recargar las mesas
+              if (result == true) {
+                widget.onRecargarMesas();
+              }
+            } catch (e) {
+              print('❌ Error al navegar a pedido: $e');
+              // Asegurar que el flag se libere en caso de error
+              if (mounted) {
+                setState(() {
+                  _isProcessing = false;
+                });
+              }
             }
           },
           onLongPress: userProvider.isAdmin
-              ? () => onMostrarMenuMesa(mesa)
+              ? () => widget.onMostrarMenuMesa(widget.mesa)
               : null,
           child: Container(
             decoration: BoxDecoration(
@@ -103,32 +144,43 @@ class MesaCard extends StatelessWidget {
               color: isOcupada ? null : AppTheme.cardBg,
               borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
               border: Border.all(
-                color: isOcupada
+                color: _isProcessing
+                    ? Colors
+                          .orange // Color especial cuando está procesando
+                    : isOcupada
                     ? AppTheme.primary.withOpacity(0.6)
                     : statusColor.withOpacity(0.3),
-                width: 2,
+                width: _isProcessing ? 3 : 2, // Borde más grueso cuando procesa
               ),
               boxShadow: [
                 ...AppTheme.cardShadow,
                 if (isOcupada) ...AppTheme.primaryShadow,
+                if (_isProcessing)
+                  BoxShadow(
+                    color: Colors.orange.withOpacity(0.5),
+                    blurRadius: 8,
+                    spreadRadius: 2,
+                  ),
               ],
             ),
-            child: Padding(
-              padding: EdgeInsets.all(constraints.maxWidth * 0.08),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  // Indicador de estado superior
-                  Container(
-                    width: double.infinity,
-                    height: 3,
-                    decoration: BoxDecoration(
-                      color: statusColor,
-                      borderRadius: BorderRadius.circular(
-                        AppTheme.radiusSmall / 2,
+            child: Stack(
+              children: [
+                Padding(
+                  padding: EdgeInsets.all(constraints.maxWidth * 0.08),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      // Indicador de estado superior
+                      Container(
+                        width: double.infinity,
+                        height: 3,
+                        decoration: BoxDecoration(
+                          color: _isProcessing ? Colors.orange : statusColor,
+                          borderRadius: BorderRadius.circular(
+                            AppTheme.radiusSmall / 2,
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
 
                   // Icono de mesa
                   Flexible(
@@ -170,7 +222,7 @@ class MesaCard extends StatelessWidget {
                             ),
                           ),
                           child: Text(
-                            mesa.nombre,
+                                widget.mesa.nombre,
                             style: AppTheme.bodyMedium.copyWith(
                               fontWeight: FontWeight.w700,
                               fontSize: constraints.maxWidth * 0.13,
@@ -182,8 +234,11 @@ class MesaCard extends StatelessWidget {
                         ),
                         // Espacio extra si está disponible y es mesa especial
                         if (!isOcupada &&
-                            mesa.tipo != null &&
-                            mesa.tipo != 'NORMAL')
+                                [
+                                  'CAJA',
+                                  'DOMICILIO',
+                                  'MESA AUXILIAR',
+                                ].contains(widget.mesa.nombre.toUpperCase()))
                           SizedBox(height: constraints.maxHeight * 0.03),
                       ],
                     ),
@@ -236,10 +291,42 @@ class MesaCard extends StatelessWidget {
                   ),
 
                   // Total si existe
-                  if (mesa.total > 0)
+                      if (widget.mesa.total > 0)
                     _buildTotalSection(context, constraints, canProcessPayment),
-                ],
-              ),
+                    ],
+                  ),
+                ),
+
+                // Indicador de procesamiento
+                if (_isProcessing)
+                  Positioned.fill(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(
+                          AppTheme.radiusLarge,
+                        ),
+                      ),
+                      child: Center(
+                        child: Container(
+                          padding: EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.orange,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            'Procesando...',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
         );
@@ -256,18 +343,49 @@ class MesaCard extends StatelessWidget {
       child: canProcessPayment
           ? GestureDetector(
               onTap: () async {
-                final pedido = await onObtenerPedidoActivo(mesa);
-                if (pedido != null) {
-                  onMostrarDialogoPago(mesa, pedido);
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'No se encontró un pedido activo para esta mesa',
-                      ),
-                      backgroundColor: AppTheme.error,
-                    ),
-                  );
+                // ✅ SOLUCIÓN MEJORADA: Prevenir doble click con timeout corto
+                if (_isProcessing) {
+                  print('⚠️ [DOBLE_CLICK] Botón de pago ya procesándose');
+                  return;
+                }
+
+                setState(() {
+                  _isProcessing = true;
+                });
+
+                // Liberar el flag después de un breve delay
+                Future.delayed(Duration(milliseconds: 300), () {
+                  if (mounted) {
+                    setState(() {
+                      _isProcessing = false;
+                    });
+                  }
+                });
+
+                try {
+                  // Solo mostrar menú de pago si hay pedido activo
+                  if (widget.mesa.ocupada && widget.mesa.total > 0) {
+                    print(
+                      '💳 [PAGO] Iniciando proceso de pago para mesa ${widget.mesa.nombre}',
+                    );
+                    final pedido = await widget.onObtenerPedidoActivo(
+                      widget.mesa,
+                    );
+                    if (pedido != null) {
+                      print('💳 [PAGO] Pedido activo encontrado: ${pedido.id}');
+                      widget.onMostrarDialogoPago(widget.mesa, pedido);
+                    } else {
+                      print('❌ [PAGO] No se encontró pedido activo para pagar');
+                    }
+                  }
+                } catch (e) {
+                  print('❌ [PAGO] Error al procesar pago: $e');
+                  // Asegurar que el flag se libere en caso de error
+                  if (mounted) {
+                    setState(() {
+                      _isProcessing = false;
+                    });
+                  }
                 }
               },
               child: Container(
@@ -326,10 +444,10 @@ class MesaCard extends StatelessWidget {
 
   Widget _buildTotalText(BoxConstraints constraints, Color color) {
     return FutureBuilder<Pedido?>(
-      future: onObtenerPedidoActivo(mesa),
+      future: widget.onObtenerPedidoActivo(widget.mesa),
       builder: (context, snapshot) {
         // ✅ CORRECCIÓN: Calcular total desde items del pedido en tiempo real
-        double totalReal = mesa.total;
+        double totalReal = widget.mesa.total;
 
         if (snapshot.hasData && snapshot.data != null) {
           final pedido = snapshot.data!;
@@ -344,7 +462,7 @@ class MesaCard extends StatelessWidget {
 
         // Detectar si hay caracteres raros
         if (valorFormateado.contains(RegExp(r'[^\d\.\$\-]'))) {
-          print('🔴 CORRUPCIÓN DETECTADA EN MESA ${mesa.nombre}:');
+          print('🔴 CORRUPCIÓN DETECTADA EN MESA ${widget.mesa.nombre}:');
           print(
             '  - Valor original: $totalReal (${totalReal.runtimeType})',
           );

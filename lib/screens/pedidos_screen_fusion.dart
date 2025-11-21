@@ -7,7 +7,6 @@ import '../services/pedido_service.dart';
 import '../services/cuadre_caja_service.dart';
 import '../providers/user_provider.dart';
 import '../utils/format_utils.dart';
-import '../utils/payment_calculator.dart';
 import '../theme/app_theme.dart';
 
 class PedidosScreenFusion extends StatefulWidget {
@@ -30,16 +29,65 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
 
   /// Calcula el total correcto del pedido considerando descuentos aplicados
   double _getTotalCorrecto(Pedido pedido) {
-    // Si el pedido está pagado y tiene descuento, usar cálculo correcto
-    if (pedido.estado == EstadoPedido.pagado && pedido.descuento > 0) {
-      return PaymentCalculator.calcularTotalReal(
-        pedido.total,
-        pedido.descuento,
-        pedido.propina,
-      );
+    // Si el pedido tiene descuento, usar cálculo correcto (sin importar el estado)
+    if (pedido.descuento > 0) {
+      // Calcular total con descuento: total original - descuento
+      return pedido.total - pedido.descuento;
     }
-    // Para pedidos activos o sin descuento, usar total original
+    // Para pedidos sin descuento, usar total original
     return pedido.total;
+  }
+
+  /// Obtiene el texto del total considerando si incluir propina o no
+  String _getTotalConPropinaTexto(Pedido pedido) {
+    double totalBase = _getTotalCorrecto(pedido);
+
+    // Si el pedido está pagado y tiene propina, agregar propina al total
+    if (pedido.estado == EstadoPedido.pagado && pedido.propina > 0) {
+      double totalConPropina = totalBase + pedido.propina;
+      return formatCurrency(totalConPropina);
+    }
+
+    // Para pedidos activos o sin propina, mostrar solo el total base (que ya incluye descuento si aplica)
+    return formatCurrency(totalBase);
+  }
+
+  /// 💰 NUEVO: Detecta si el pedido tiene pago mixto
+  bool _esPagoMixto(Pedido pedido) {
+    return pedido.pagosParciales.length > 1;
+  }
+
+  /// 💰 NUEVO: Obtiene el desglose de pagos mixtos
+  Map<String, double> _obtenerDesglosePagos(Pedido pedido) {
+    Map<String, double> desglose = {};
+
+    if (pedido.pagosParciales.isEmpty) {
+      // Si no hay pagos parciales, usar la forma de pago principal
+      if (pedido.formaPago != null) {
+        desglose[pedido.formaPago!] = _getTotalCorrecto(pedido);
+      }
+    } else {
+      // Agrupar pagos por forma de pago
+      for (final pago in pedido.pagosParciales) {
+        desglose[pago.formaPago] = (desglose[pago.formaPago] ?? 0) + pago.monto;
+      }
+    }
+
+    return desglose;
+  }
+
+  /// 💰 NUEVO: Genera el texto descriptivo para pagos mixtos
+  String _generarTextoPagoMixto(Pedido pedido) {
+    if (!_esPagoMixto(pedido)) {
+      return pedido.formaPago ?? "N/A";
+    }
+
+    final desglose = _obtenerDesglosePagos(pedido);
+    final partes = desglose.entries
+        .map((entry) => "${entry.key}: ${formatCurrency(entry.value)}")
+        .toList();
+
+    return "Mixto (${partes.join(", ")})";
   }
 
   // Colores del tema ahora se usan desde AppTheme
@@ -703,7 +751,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                                       ),
                                     ),
                                     subtitle: Text(
-                                      'Total: ${formatCurrency(_getTotalCorrecto(pedido))} - ${pedido.formaPago ?? "N/A"}',
+                                      'Total: ${formatCurrency(_getTotalCorrecto(pedido))} - ${_generarTextoPagoMixto(pedido)}',
                                       style: TextStyle(
                                         color: AppTheme.textSecondary,
                                         fontSize: 12,
@@ -1424,28 +1472,74 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Container(
-                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: _getEstadoColor(pedido.estado).withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: _getEstadoColor(pedido.estado),
-                          width: 1,
+                    Row(
+                      children: [
+                        // 💰 INDICADOR DE PAGO MIXTO
+                        if (_esPagoMixto(pedido)) ...[
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            margin: EdgeInsets.only(right: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(
+                                color: Colors.orange,
+                                width: 1,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.splitscreen,
+                                  color: Colors.orange,
+                                  size: 12,
+                                ),
+                                SizedBox(width: 2),
+                                Text(
+                                  'MIXTO',
+                                  style: TextStyle(
+                                    color: Colors.orange,
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _getEstadoColor(
+                              pedido.estado,
+                            ).withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: _getEstadoColor(pedido.estado),
+                              width: 1,
+                            ),
+                          ),
+                          child: Text(
+                            _getEstadoTexto(pedido.estado),
+                            style: TextStyle(
+                              color: _getEstadoColor(pedido.estado),
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
-                      ),
-                      child: Text(
-                        _getEstadoTexto(pedido.estado),
-                        style: TextStyle(
-                          color: _getEstadoColor(pedido.estado),
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                      ],
                     ),
                     SizedBox(height: 4),
                     Text(
-                      formatCurrency(_getTotalCorrecto(pedido)),
+                      _getTotalConPropinaTexto(pedido),
                       style: TextStyle(
                         color: primary,
                         fontSize: 18,
@@ -1636,34 +1730,118 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            'Información de pago:',
-                            style: TextStyle(
-                              color: Colors.green,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                            ),
+                          // 💰 TÍTULO CON INDICADOR DE PAGO MIXTO
+                          Row(
+                            children: [
+                              Text(
+                                'Información de pago:',
+                                style: TextStyle(
+                                  color: Colors.green,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              if (_esPagoMixto(pedido)) ...[
+                                SizedBox(width: 8),
+                                Container(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.orange.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: Border.all(
+                                      color: Colors.orange,
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    'MIXTO',
+                                    style: TextStyle(
+                                      color: Colors.orange,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
                           SizedBox(height: 4),
                           if (pedido.formaPago != null &&
                               pedido.formaPago!.isNotEmpty) ...[
-                            Row(
-                              children: [
-                                Icon(
-                                  Icons.credit_card,
-                                  color: textLight,
-                                  size: 12,
-                                ),
-                                SizedBox(width: 4),
-                                Text(
-                                  'Método: ${pedido.formaPago}',
-                                  style: TextStyle(
-                                    color: textLight,
-                                    fontSize: 11,
+                            if (_esPagoMixto(pedido)) ...[
+                              // 💰 MOSTRAR DESGLOSE DE PAGO MIXTO
+                              ..._obtenerDesglosePagos(pedido).entries
+                                  .map(
+                                    (entry) => Padding(
+                                      padding: EdgeInsets.only(bottom: 2),
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            entry.key.toLowerCase() ==
+                                                    'efectivo'
+                                                ? Icons.money
+                                                : Icons.credit_card,
+                                            color: textLight,
+                                            size: 12,
+                                          ),
+                                          SizedBox(width: 4),
+                                          Text(
+                                            '${entry.key}: ${formatCurrency(entry.value)}',
+                                            style: TextStyle(
+                                              color: textLight,
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.splitscreen,
+                                    color: Colors.orange,
+                                    size: 12,
                                   ),
-                                ),
-                              ],
-                            ),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    'Pago mixto (${pedido.pagosParciales.length} métodos)',
+                                    style: TextStyle(
+                                      color: Colors.orange,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ] else ...[
+                              // 💰 MOSTRAR MÉTODO ÚNICO
+                              Row(
+                                children: [
+                                  Icon(
+                                    pedido.formaPago?.toLowerCase() ==
+                                            'efectivo'
+                                        ? Icons.money
+                                        : Icons.credit_card,
+                                    color: textLight,
+                                    size: 12,
+                                  ),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    'Método: ${pedido.formaPago}',
+                                    style: TextStyle(
+                                      color: textLight,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ],
                           if (pedido.fechaPago != null) ...[
                             SizedBox(height: 2),
@@ -1697,6 +1875,27 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                                   style: TextStyle(
                                     color: textLight,
                                     fontSize: 11,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                          if (pedido.descuento > 0) ...[
+                            SizedBox(height: 2),
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.local_offer,
+                                  color: Colors.green,
+                                  size: 12,
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Descuento: ${formatCurrency(pedido.descuento)}',
+                                  style: TextStyle(
+                                    color: Colors.green,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
                               ],

@@ -8,7 +8,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:serch_restapp/main.dart';
+import 'package:serch_restapp/main.dart'; // TODO: Actualizar package name a kronnos_restapp
 
 void main() {
   testWidgets('Counter increments smoke test', (WidgetTester tester) async {

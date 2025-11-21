@@ -544,7 +544,8 @@ class _IngresoCajaFormState extends State<_IngresoCajaForm> {
                     Expanded(
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: primary,
+                          backgroundColor: Colors
+                              .green, // ✅ CORREGIDO: Cambio de naranja a verde
                           padding: EdgeInsets.symmetric(vertical: 16),
                         ),
                         onPressed: () {

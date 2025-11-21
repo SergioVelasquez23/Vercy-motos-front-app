@@ -70,4 +70,5 @@ const kTiposMovimiento = [
 ];
 
 // Nombre de la aplicación
-const kNombreApp = 'Sopa y Carbon';
+const kNombreApp =
+    'Kronnos'; // ✅ CORREGIDO: Actualizado de 'Sopa y Carbon' a 'Kronnos'

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../models/mesa.dart';
+import '../models/tipo_mesa.dart';
 
 class MesaService {
   static final MesaService _instance = MesaService._internal();
@@ -75,8 +76,21 @@ class MesaService {
       };
 
       print(
-        '🎯 MesaService: Creating mesa - Request data: ${json.encode(requestData)}',
+        '🎯 MesaService: Creating mesa "${mesa.nombre}" - Request data: ${json.encode(requestData)}',
       );
+      print(
+        '🔍 MesaService: Tipo enviado: ${requestData['tipo']} (original: ${mesa.tipo})',
+      );
+      
+      // ✅ ADICIONAL: Debug específico para mesas especiales
+      if (mesa.tipo == TipoMesa.especial) {
+        print(
+          '🌟 MesaService: ¡CREANDO MESA ESPECIAL! Verificando que se envíe correctamente',
+        );
+        print('   • Nombre: "${mesa.nombre}"');
+        print('   • Tipo enum: ${mesa.tipo}');
+        print('   • Tipo string enviado: "${requestData['tipo']}"');
+      }
 
       final response = await http
           .post(
@@ -112,6 +126,17 @@ class MesaService {
         throw Exception('ID de mesa vacío para actualización');
       }
 
+      // 🔍 VALIDACIÓN ADICIONAL: Detectar si se está usando ID de pedido en lugar de mesa
+      if (mesaId.length == 24 && !mesaId.startsWith('mesa_')) {
+        print(
+          '⚠️ MesaService: ADVERTENCIA - ID parece ser de pedido, no de mesa: $mesaId',
+        );
+        print('   Mesa nombre: ${mesa.nombre}');
+        print(
+          '   Si este es un error, busque la mesa por nombre en lugar de usar este ID',
+        );
+      }
+
       final requestData = {
         'nombre': mesa.nombre,
         'tipo': mesa.tipo
@@ -125,9 +150,23 @@ class MesaService {
       };
 
       print('🔄 MesaService: Actualizando mesa ${mesa.nombre} (ID: $mesaId)');
+      print(
+        '🔍 MesaService: Enviando tipo: ${requestData['tipo']} (original: ${mesa.tipo})',
+      );
       print('   - Ocupada: ${mesa.ocupada}');
       print('   - Total: ${mesa.total}');
       print('   - Productos: ${mesa.productos.length}');
+      
+      // ✅ ADICIONAL: Debug específico para mesas especiales
+      if (mesa.tipo == TipoMesa.especial) {
+        print(
+          '🌟 MesaService: ¡ACTUALIZANDO MESA ESPECIAL! Verificando preservación del tipo',
+        );
+        print('   • Nombre: "${mesa.nombre}"');
+        print('   • Tipo enum: ${mesa.tipo}');
+        print('   • Tipo string enviado: "${requestData['tipo']}"');
+        print('   • ID usado: $mesaId');
+      }
 
       final headers = await _getHeaders();
       final url = '$baseUrl/api/mesas/$mesaId';

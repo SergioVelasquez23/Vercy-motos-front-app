@@ -641,6 +641,7 @@ class _MesasConfigScreenState extends State<MesasConfigScreen> {
           total: 0.0,
         );
         await _mesaService.createMesa(newMesa);
+        
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(

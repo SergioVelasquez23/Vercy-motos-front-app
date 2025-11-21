@@ -39,7 +39,11 @@ class MesaController {
       }
 
       // Crear una nueva instancia de Mesa con el nombre actualizado
-      final mesaActualizar = mesa.copyWith(nombre: nuevoNombre);
+      final mesaActualizar = mesa.copyWith(
+        nombre: nuevoNombre,
+        // ✅ PRESERVAR TIPO: Evita que mesas especiales se vuelvan normales
+        tipo: mesa.tipo,
+      );
       final mesaActualizada = await _service.updateMesa(mesaActualizar);
       return mesaActualizada;
     } catch (e) {
@@ -66,6 +70,8 @@ class MesaController {
         productos: [],
         total: 0.0,
         ocupada: false,
+        // ✅ PRESERVAR TIPO: Evita que mesas especiales se vuelvan normales
+        tipo: mesa.tipo,
       );
       await _service.updateMesa(mesaVacia);
     } catch (e) {

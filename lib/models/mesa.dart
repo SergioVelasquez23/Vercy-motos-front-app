@@ -75,9 +75,14 @@ class Mesa {
   };
 
   factory Mesa.fromJson(Map<String, dynamic> json) {
-    // Mapeo mejorado para tipos de mesa del backend
+    // Mapeo mejorado para tipos de mesa del backend - Soporta mayúsculas y minúsculas
     TipoMesa tipoMesa = TipoMesa.normal;
     final tipoString = (json['tipo'] as String?)?.toLowerCase();
+    final mesaNombre = json['nombre'] ?? '';
+
+    print(
+      '🔍 Mesa.fromJson: Mesa "$mesaNombre" - Parseando tipo "${json['tipo']}" -> "$tipoString"',
+    );
 
     switch (tipoString) {
       case 'normal':
@@ -102,9 +107,16 @@ class Mesa {
         tipoMesa = TipoMesa.deudas;
         break;
       default:
+        print(
+          '⚠️ Mesa.fromJson: Tipo desconocido "$tipoString", usando normal por defecto',
+        );
         tipoMesa = TipoMesa.normal;
         break;
     }
+
+    print(
+      '✅ Mesa.fromJson: Mesa "$mesaNombre" - Tipo final asignado: $tipoMesa',
+    );
 
     return Mesa(
       id: json['_id'] ?? '',

@@ -32,6 +32,9 @@ class _DocumentosMesaScreenState extends State<DocumentosMesaScreen>
   DateTime? _fechaInicio;
   DateTime? _fechaFin;
   final TextEditingController _searchController = TextEditingController();
+  
+  // 🚀 NUEVO: Flag para rastrear si se creó un pedido
+  bool _pedidoCreado = false;
 
   // Getters para compatibilidad con AppTheme
   Color get _primary => AppTheme.primary;
@@ -126,7 +129,19 @@ class _DocumentosMesaScreenState extends State<DocumentosMesaScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return WillPopScope(
+      onWillPop: () async {
+        // 🚀 Al cerrar la pantalla, devolver información si se creó un pedido
+        if (_pedidoCreado && widget.mesa != null) {
+          Navigator.of(context).pop({
+            'pedidoCreado': true,
+            'mesaNombre': widget.mesa!.nombre,
+          });
+          return false; // No cerrar automáticamente, ya manejamos el pop
+        }
+        return true; // Cerrar normalmente
+      },
+      child: Scaffold(
       backgroundColor: _bgDark,
       appBar: AppBar(
         title: Text(
@@ -185,7 +200,8 @@ class _DocumentosMesaScreenState extends State<DocumentosMesaScreen>
               tooltip: 'Crear Nuevo Documento',
             )
           : null,
-    );
+      ), // child: Scaffold
+    ); // WillPopScope
   }
 
   Widget _buildResumenCard() {
@@ -878,6 +894,13 @@ class _DocumentosMesaScreenState extends State<DocumentosMesaScreen>
 
     if (resultado == true) {
       _cargarDocumentos();
+      // 🚀 NUEVO: Marcar que se creó un pedido para notificarlo cuando se cierre esta pantalla
+      // No cerramos inmediatamente, solo marcamos el flag
+      setState(() {
+        _pedidoCreado = true;
+      });
+      
+      print('✅ Pedido creado desde documentos para mesa ${widget.mesa!.nombre}');
     }
   }
 

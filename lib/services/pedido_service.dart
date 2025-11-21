@@ -1711,6 +1711,32 @@ class PedidoService {
         if (!pagarData.containsKey('estado')) {
           pagarData['estado'] = 'Pagado';
         }
+        
+        // 🔧 VALIDACIÓN CRÍTICA: Verificar estructura del payload
+        print('🔍 VALIDACIÓN CRÍTICA CONSUMO INTERNO:');
+        print('  - tipoConsumoInterno: ${pagarData['tipoConsumoInterno']}');
+        print('  - estado: ${pagarData['estado']}');
+        print('  - tipoPago: ${pagarData['tipoPago']}');
+        print('  - procesadoPor: ${pagarData['procesadoPor']}');
+        print('  - descuento: ${pagarData['descuento']}');
+
+        // Verificar que no hay campos nulos críticos
+        final camposCriticos = [
+          'tipoConsumoInterno',
+          'estado',
+          'tipoPago',
+          'procesadoPor',
+        ];
+        for (String campo in camposCriticos) {
+          if (!pagarData.containsKey(campo) || pagarData[campo] == null) {
+            print('❌ CAMPO CRÍTICO FALTANTE: $campo');
+            throw Exception(
+              'Datos de consumo interno incompletos: falta $campo',
+            );
+          }
+        }
+
+        print('✅ Validación de consumo interno completada');
       }
 
       print('INFO: Datos enviados al pagar pedido:');
@@ -1747,6 +1773,10 @@ class PedidoService {
       print('  - propina parámetro: $propina');
       print('  - JSON del descuento: ${json.encode({'descuento': descuento})}');
       print('  - JSON completo pagarData: ${json.encode(pagarData)}');
+      
+      print(
+        '🌐 ${kIsWeb ? "Flutter Web detectado" : "Flutter móvil detectado"} - usando backend de producción: $baseUrl',
+      );
 
       final response = await http.put(
         Uri.parse('$baseUrl/api/pedidos/$pedidoId/pagar'),
@@ -1814,8 +1844,32 @@ class PedidoService {
         print(
           '❌ PedidoService: Error HTTP ${response.statusCode}: ${response.body}',
         );
-        final errorData = json.decode(response.body);
+        
+        // Decodificar respuesta de error
+        Map<String, dynamic> errorData;
+        try {
+          errorData = json.decode(response.body);
+        } catch (e) {
+          errorData = {'message': 'Error de servidor sin mensaje válido'};
+        }
+        
         String errorMessage = errorData['message'] ?? 'Error desconocido';
+        
+        // 🔧 MEJORADO: Manejo específico de errores del backend
+        if (errorMessage.contains('ListableBeanFactory must not be null')) {
+          errorMessage =
+              'Error interno del servidor (configuración Spring). Este es un problema del backend que debe ser corregido por el desarrollador del servidor.';
+          print(
+            '🔥 BACKEND ERROR: ListableBeanFactory issue detected - Server misconfiguration',
+          );
+        } else if (response.statusCode == 500) {
+          errorMessage = 'Error interno del servidor. $errorMessage';
+        } else if (response.statusCode == 400) {
+          errorMessage = 'Datos de pago inválidos. $errorMessage';
+        } else if (response.statusCode == 404) {
+          errorMessage = 'Pedido no encontrado. $errorMessage';
+        }
+        
         throw Exception(
           'Error al pagar pedido (${response.statusCode}): $errorMessage',
         );

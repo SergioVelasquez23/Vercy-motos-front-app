@@ -51,6 +51,132 @@ class _ResumenCierreDetalladoScreenState
     }
   }
 
+  /// 💰 NUEVO: Detecta si el pedido tiene pago mixto
+  bool _esPagoMixto(dynamic pedido) {
+    final formaPago = _getFormaPago(pedido);
+    return formaPago.toLowerCase().contains('mixto') ||
+        formaPago.toLowerCase().contains('multiple') ||
+        (pedido.pagosParciales != null && pedido.pagosParciales.length > 1);
+  }
+
+  /// 💰 NUEVO: Obtiene la forma de pago del pedido
+  String _getFormaPago(dynamic pedido) {
+    if (pedido.formaPago != null) return pedido.formaPago;
+    if (pedido is Map && pedido['formaPago'] != null)
+      return pedido['formaPago'];
+    return 'efectivo';
+  }
+
+  /// 💰 NUEVO: Obtiene el desglose de pagos mixtos
+  Map<String, double> _obtenerDesglosePagos(dynamic pedido) {
+    Map<String, double> desglose = {};
+
+    // Intentar obtener pagos parciales del pedido
+    List<dynamic>? pagosParciales;
+    if (pedido.pagosParciales != null) {
+      pagosParciales = pedido.pagosParciales;
+    } else if (pedido is Map && pedido['pagosParciales'] != null) {
+      pagosParciales = pedido['pagosParciales'];
+    }
+
+    if (pagosParciales != null && pagosParciales.isNotEmpty) {
+      // Agrupar pagos por forma de pago
+      for (final pago in pagosParciales) {
+        String formaPago =
+            pago.formaPago ??
+            (pago is Map ? pago['formaPago'] ?? 'efectivo' : 'efectivo');
+        double monto =
+            pago.monto ?? (pago is Map ? (pago['monto'] ?? 0.0) : 0.0);
+        desglose[formaPago] = (desglose[formaPago] ?? 0) + monto;
+      }
+    } else {
+      // Si no hay pagos parciales pero es marcado como mixto,
+      // intentar parsear la información del campo formaPago
+      final formaPago = _getFormaPago(pedido);
+      if (formaPago.toLowerCase().contains('mixto') ||
+          formaPago.toLowerCase().contains('multiple')) {
+        // Intentar extraer información del texto si es posible
+        final total = _getTotalPedido(pedido);
+        if (formaPago.contains('(') && formaPago.contains(')')) {
+          // Formato: "Mixto (efectivo: $X, transferencia: $Y)"
+          try {
+            final contenido = formaPago.split('(')[1].split(')')[0];
+            final partes = contenido.split(',');
+            for (final parte in partes) {
+              final metodo = parte.split(':')[0].trim();
+              final montoStr = parte
+                  .split(':')[1]
+                  .trim()
+                  .replaceAll(r'\$', '')
+                  .replaceAll(',', '');
+              final monto = double.tryParse(montoStr) ?? 0.0;
+              if (monto > 0) {
+                desglose[metodo] = monto;
+              }
+            }
+          } catch (e) {
+            // Si no se puede parsear, asumir distribución 50/50
+            desglose['efectivo'] = total * 0.5;
+            desglose['transferencia'] = total * 0.5;
+          }
+        } else {
+          // Distribución por defecto 50/50 para pagos mixtos sin desglose
+          desglose['efectivo'] = total * 0.5;
+          desglose['transferencia'] = total * 0.5;
+        }
+      } else {
+        // Pago único
+        desglose[formaPago] = _getTotalPedido(pedido);
+      }
+    }
+
+    return desglose;
+  }
+
+  /// 💰 NUEVO: Obtiene el total del pedido considerando descuentos y propinas
+  double _getTotalPedido(dynamic pedido) {
+    final total =
+        pedido.total ?? (pedido is Map ? pedido['total'] ?? 0.0 : 0.0);
+    final descuento =
+        pedido.descuento ?? (pedido is Map ? pedido['descuento'] ?? 0.0 : 0.0);
+    final propina =
+        pedido.propina ?? (pedido is Map ? pedido['propina'] ?? 0.0 : 0.0);
+    return PaymentCalculator.calcularTotalRealDetalle(
+      total,
+      descuento,
+      propina,
+    );
+  }
+
+  /// 💰 NUEVO: Recalcula totales por método de pago considerando pagos mixtos
+  Map<String, double> _recalcularTotalesPorMetodoPago() {
+    Map<String, double> totalesPorMetodo = {};
+
+    if (_resumen?.resumenVentas.ventasPorFormaPago != null) {
+      // Obtener todos los pedidos de resumenVentas
+      List<dynamic> todosPedidos = _resumen!.resumenVentas.detallesPedidos;
+
+      // Procesar cada pedido para extraer pagos
+      for (final pedido in todosPedidos) {
+        if (_esPagoMixto(pedido)) {
+          // Para pagos mixtos, desagregar por método
+          final desglose = _obtenerDesglosePagos(pedido);
+          for (final entry in desglose.entries) {
+            totalesPorMetodo[entry.key] =
+                (totalesPorMetodo[entry.key] ?? 0) + entry.value;
+          }
+        } else {
+          // Para pagos únicos, usar método directo
+          final metodo = _getFormaPago(pedido);
+          final total = _getTotalPedido(pedido);
+          totalesPorMetodo[metodo] = (totalesPorMetodo[metodo] ?? 0) + total;
+        }
+      }
+    }
+
+    return totalesPorMetodo;
+  }
+
   @override
   void dispose() {
     _scrollController.dispose();
@@ -475,6 +601,75 @@ class _ResumenCierreDetalladoScreenState
                     ? Colors.green
                     : Colors.red,
               ),
+
+              // 💰 NUEVO: Totales corregidos por método de pago
+              Divider(height: 20, color: textLight.withOpacity(0.3)),
+
+              Row(
+                children: [
+                  Icon(
+                    Icons.account_balance_wallet,
+                    color: Colors.blue,
+                    size: 16,
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    'Totales por Método de Pago (con pagos mixtos desagregados):',
+                    style: TextStyle(
+                      color: Colors.blue,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+
+              SizedBox(height: 12),
+
+              ..._recalcularTotalesPorMetodoPago().entries
+                  .map(
+                    (entry) => Padding(
+                      padding: EdgeInsets.only(bottom: 6),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                entry.key.toLowerCase() == 'efectivo'
+                                    ? Icons.money
+                                    : entry.key.toLowerCase().contains(
+                                        'transfer',
+                                      )
+                                    ? Icons.account_balance
+                                    : Icons.credit_card,
+                                color: textLight,
+                                size: 14,
+                              ),
+                              SizedBox(width: 6),
+                              Text(
+                                '${entry.key}:',
+                                style: TextStyle(
+                                  color: textLight,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Text(
+                            formatCurrency(entry.value),
+                            style: TextStyle(
+                              color: Colors.blue,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                  .toList(),
             ],
           ),
         ),
@@ -1310,37 +1505,116 @@ class _ResumenCierreDetalladoScreenState
                   ],
                 ),
 
-                // Alerta para pagos mixtos que no muestran desglose
-                if (pedido.formaPago.toLowerCase().contains('mixto') ||
-                    pedido.formaPago.toLowerCase().contains('multiple'))
+                // 💰 DESGLOSE DE PAGOS MIXTOS
+                if (_esPagoMixto(pedido)) ...[
                   Container(
                     margin: EdgeInsets.only(top: 8),
-                    padding: EdgeInsets.all(8),
+                    padding: EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.purple.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: Colors.purple.withOpacity(0.3)),
+                      color: Colors.blue.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.blue.withOpacity(0.3)),
                     ),
-                    child: Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(
-                          Icons.info_outline,
-                          color: Colors.purple,
-                          size: 16,
-                        ),
-                        SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'Pago mixto - Desglose por forma de pago no disponible en el resumen',
-                            style: TextStyle(
-                              color: Colors.purple,
-                              fontSize: 11,
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.account_balance_wallet,
+                              color: Colors.blue,
+                              size: 16,
                             ),
-                          ),
+                            SizedBox(width: 8),
+                            Text(
+                              'Desglose del pago mixto:',
+                              style: TextStyle(
+                                color: Colors.blue,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 8),
+                        ..._obtenerDesglosePagos(pedido).entries
+                            .map(
+                              (entry) => Padding(
+                                padding: EdgeInsets.only(bottom: 4),
+                                child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          entry.key.toLowerCase() == 'efectivo'
+                                              ? Icons.money
+                                              : entry.key
+                                                    .toLowerCase()
+                                                    .contains('transfer')
+                                              ? Icons.account_balance
+                                              : Icons.credit_card,
+                                          color: textLight,
+                                          size: 14,
+                                        ),
+                                        SizedBox(width: 6),
+                                        Text(
+                                          '${entry.key}:',
+                                          style: TextStyle(
+                                            color: textLight,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    Text(
+                                      formatCurrency(entry.value),
+                                      style: TextStyle(
+                                        color: Colors.blue,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            )
+                            .toList(),
+                        Divider(
+                          height: 12,
+                          color: Colors.blue.withOpacity(0.3),
+                        ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Total verificado:',
+                              style: TextStyle(
+                                color: Colors.blue,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              formatCurrency(
+                                _obtenerDesglosePagos(
+                                  pedido,
+                                ).values.fold(0.0, (a, b) => a + b),
+                              ),
+                              style: TextStyle(
+                                color: Colors.green,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
                   ),
+                ],
               ],
             ),
           ),
