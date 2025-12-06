@@ -1,4 +1,5 @@
 import '../widgets/imagen_producto_widget.dart';
+import '../widgets/lazy_product_image_widget.dart';
 import '../widgets/optimized_loading_widget.dart';
 import '../config/performance_config.dart';
 
@@ -13,6 +14,7 @@ import 'package:provider/provider.dart';
 import '../providers/datos_cache_provider.dart';
 import '../services/image_service.dart';
 import '../services/producto_service.dart';
+import '../services/image_loader_service.dart';
 import '../utils/format_utils.dart';
 
 class ProductosScreen extends StatefulWidget {
@@ -26,6 +28,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
   static const String _backendBaseUrl = "https://sopa-y-carbon.onrender.com";
   final ImageService _imageService = ImageService();
   final ProductoService _productoService = ProductoService();
+  final ImageLoaderService _imageLoader = ImageLoaderService();
   final TextEditingController _searchController = TextEditingController();
   String? _selectedCategoriaId;
   int _paginaActual = 0;
@@ -98,7 +101,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
       );
       if (!cacheProvider.hasData) {
         await cacheProvider.initialize();
-        // 🔥 WARMUP: Iniciar carga progresiva de productos
+        // 🔥 WARMUP: Iniciar carga RÁPIDA de productos
         cacheProvider.warmupProductos();
       }
       setState(() {
@@ -106,11 +109,11 @@ class _ProductosScreenState extends State<ProductosScreen> {
         _ingredientesCarnes = cacheProvider.ingredientes ?? [];
         _productosCache = cacheProvider.productos ?? [];
         print(
-          '✅ Productos cargados instantáneamente: ${_productosCache.length}',
+          '✅ Productos cargados: ${_productosCache.length}',
         );
         if (_productosCache.isEmpty) {
-          print('⏳ Los productos se están cargando en segundo plano...');
-          print('⏳ Esto puede tardar hasta 5 minutos en servidores gratuitos');
+          print('⚡ Los productos se están cargando con endpoint LIGERO...');
+          print('⏳ Tiempo estimado: 15-30 segundos');
         }
         _aplicarFiltrosYPaginacion();
         _isLoading = false;
@@ -163,6 +166,19 @@ class _ProductosScreenState extends State<ProductosScreen> {
     print(
       '📊 Paginación: Página ${_paginaActual + 1}/$totalPaginas - Mostrando ${_productosPaginados.length} de $totalElementos productos',
     );
+    
+    // 🖼️ NUEVO: Cargar imágenes de los productos visibles
+    if (_productosPaginados.isNotEmpty) {
+      _cargarImagenesVisibles();
+    }
+  }
+
+  // 🖼️ NUEVO: Cargar imágenes solo de productos visibles
+  Future<void> _cargarImagenesVisibles() async {
+    print(
+      '🖼️ Cargando imágenes de ${_productosPaginados.length} productos visibles...',
+    );
+    await _imageLoader.cargarImagenesLote(_productosPaginados);
   }
 
   void _onSearchChanged() {
@@ -715,7 +731,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: Colors.grey.withOpacity(0.3)),
           ),
-          child: _buildProductImage(producto.imagenUrl),
+          child: _buildProductImage(producto),
         ),
         title: Text(
           producto.nombre,
@@ -800,12 +816,10 @@ class _ProductosScreenState extends State<ProductosScreen> {
     );
   }
 
-  Widget _buildProductImage(String? imagenUrl) {
-    return ImagenProductoWidget(
-      urlRemota: imagenUrl != null
-          ? _imageService.getImageUrl(imagenUrl)
-          : null,
-      nombreProducto: null,
+  // 🖼️ OPTIMIZADO: Usar lazy loading para imágenes
+  Widget _buildProductImage(Producto producto) {
+    return LazyProductImageWidget(
+      producto: producto,
       width: 50,
       height: 50,
       fit: BoxFit.cover,

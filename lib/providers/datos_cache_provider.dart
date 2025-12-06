@@ -27,9 +27,12 @@ class DatosCacheProvider extends ChangeNotifier {
   DateTime? _ultimaCargaIngredientes;
 
   // Configuración de caché (en minutos)
-  final int _duracionCacheProductos = 5; // 5 minutos para productos
-  final int _duracionCacheCategorias = 15; // 15 minutos para categorías
-  final int _duracionCacheIngredientes = 10; // 10 minutos para ingredientes
+  final int _duracionCacheProductos =
+      10; // ⚡ OPTIMIZADO: Aumentado a 10 min (menos recargas)
+  final int _duracionCacheCategorias =
+      30; // ⚡ OPTIMIZADO: Aumentado a 30 min (rara vez cambian)
+  final int _duracionCacheIngredientes =
+      20; // ⚡ OPTIMIZADO: Aumentado a 20 min (menos recargas)
 
   // Polling automático
   Timer? _pollingTimer;
@@ -87,13 +90,16 @@ class DatosCacheProvider extends ChangeNotifier {
 
   // 🔥 WARMUP: Precargar productos en background
   void warmupProductos() {
-    print('🔥 WARMUP: Iniciando carga progresiva de productos...');
-    print(
-      '⏳ NOTA: La primera carga puede tardar hasta 5 minutos debido al servidor gratuito de Render.com',
+    print('🔥 WARMUP: Iniciando carga RÁPIDA de productos...');
+    print('⚡ OPTIMIZADO: Usando endpoint ligero para máxima velocidad');
+    print('⏳ Tiempo estimado: 15-30 segundos en Render.com');
+    // Cargar productos en background sin esperar - USAR ENDPOINT LIGERO
+    _cargarProductos(
+      force: true,
+      silent: false,
+      useProgressive: false,
+      useLigero: true,
     );
-    print('⏳ Por favor espera, los productos se están cargando...');
-    // Cargar productos en background sin esperar
-    _cargarProductos(force: true, silent: false, useProgressive: true);
   }
 
   // Cargar todos los datos en paralelo
@@ -178,7 +184,10 @@ class DatosCacheProvider extends ChangeNotifier {
   Future<void> _cargarProductos({
     bool force = false,
     bool silent = false,
-    bool useProgressive = true, // Por defecto usar carga progresiva
+    bool useProgressive =
+        false, // ⚡ OPTIMIZADO: Por defecto NO usar progresiva (más lento)
+    bool useLigero =
+        true, // ⚡ NUEVO: Por defecto usar endpoint ligero (más rápido)
   }) async {
     // ✅ NUEVO: Verificar si necesita actualización
     if (!force && !productosExpired && _productos != null) {
@@ -193,9 +202,15 @@ class DatosCacheProvider extends ChangeNotifier {
     if (!silent) notifyListeners();
 
     try {
-      print('🚀 Usando carga progresiva de productos...');
+      if (useProgressive) {
+        print('🚀 Usando carga progresiva de productos...');
+      } else {
+        print('⚡ Usando endpoint LIGERO para carga rápida...');
+      }
+      
       final productos = await _productoService.getProductos(
         useProgressive: useProgressive,
+        useLigero: useLigero,
       );
       _productos = productos;
       _ultimaCargaProductos = DateTime.now();

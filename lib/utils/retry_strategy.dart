@@ -11,10 +11,15 @@ class RetryStrategy {
   final double jitter;
 
   const RetryStrategy({
-    this.maxRetries = 3,
-    this.initialDelay = const Duration(seconds: 1),
-    this.maxDelay = const Duration(seconds: 30),
-    this.exponentialBase = 2.0,
+    this.maxRetries = 2, // ⚡ OPTIMIZADO: Reducido de 3 a 2 reintentos
+    this.initialDelay = const Duration(
+      milliseconds: 500,
+    ), // ⚡ OPTIMIZADO: Reducido de 1s a 500ms
+    this.maxDelay = const Duration(
+      seconds: 15,
+    ), // ⚡ OPTIMIZADO: Reducido de 30s a 15s
+    this.exponentialBase =
+        1.5, // ⚡ OPTIMIZADO: Reducido de 2.0 a 1.5 para delays menores
     this.jitter = 0.1,
   });
 
@@ -38,21 +43,21 @@ class RetryStrategy {
 
       try {
         if (timeoutPerAttempt != null) {
-          // Aumentar timeout con cada intento
-          // Para el primer intento, usar un timeout más generoso
+          // ⚡ OPTIMIZADO: Timeouts más cortos para evitar esperas largas
           if (attempt == 1) {
-            currentTimeout = Duration(
-              seconds: 300,
-            ); // 5 minutos para primer intento
+            currentTimeout =
+                timeoutPerAttempt; // Usar timeout base para primer intento
           } else {
+            // Aumentar timeout moderadamente con cada intento
             currentTimeout = Duration(
               milliseconds:
                   (timeoutPerAttempt.inMilliseconds *
                           pow(exponentialBase, attempt - 1))
                       .toInt(),
             );
-            if (currentTimeout > maxDelay * 10) {
-              currentTimeout = maxDelay * 10; // Máximo 10 minutos
+            // ⚡ OPTIMIZADO: Máximo de 60 segundos por intento
+            if (currentTimeout > Duration(seconds: 60)) {
+              currentTimeout = Duration(seconds: 60);
             }
           }
           print('⏱️ Timeout para este intento: ${currentTimeout.inSeconds}s');
@@ -110,13 +115,13 @@ class RetryStrategy {
 
 /// Estrategias predefinidas para diferentes escenarios
 
-/// Para Render.com (muy lento, requiere paciencia)
+/// Para Render.com (⚡ OPTIMIZADO para velocidad)
 class RenderRetryStrategy extends RetryStrategy {
   RenderRetryStrategy()
     : super(
-        maxRetries: 4, // 5 intentos totales
-        initialDelay: const Duration(seconds: 5),
-        maxDelay: const Duration(seconds: 60),
+        maxRetries: 2, // ⚡ OPTIMIZADO: Reducido de 4 a 2 intentos
+        initialDelay: const Duration(seconds: 2), // ⚡ OPTIMIZADO: Reducido de 5s a 2s
+        maxDelay: const Duration(seconds: 20), // ⚡ OPTIMIZADO: Reducido de 60s a 20s
         exponentialBase: 1.5,
         jitter: 0.2,
       );
@@ -126,10 +131,14 @@ class RenderRetryStrategy extends RetryStrategy {
 class ProductionRetryStrategy extends RetryStrategy {
   ProductionRetryStrategy()
     : super(
-        maxRetries: 3, // 4 intentos totales
-        initialDelay: const Duration(seconds: 2),
-        maxDelay: const Duration(seconds: 30),
-        exponentialBase: 2.0,
+        maxRetries: 2, // ⚡ OPTIMIZADO: Reducido de 3 a 2 intentos
+        initialDelay: const Duration(
+          seconds: 1,
+        ), // ⚡ OPTIMIZADO: Reducido de 2s a 1s
+        maxDelay: const Duration(
+          seconds: 15,
+        ), // ⚡ OPTIMIZADO: Reducido de 30s a 15s
+        exponentialBase: 1.5, // ⚡ OPTIMIZADO: Reducido de 2.0 a 1.5
         jitter: 0.15,
       );
 }
@@ -138,10 +147,14 @@ class ProductionRetryStrategy extends RetryStrategy {
 class LocalRetryStrategy extends RetryStrategy {
   LocalRetryStrategy()
     : super(
-        maxRetries: 2, // 3 intentos totales
-        initialDelay: const Duration(milliseconds: 500),
-        maxDelay: const Duration(seconds: 5),
-        exponentialBase: 2.0,
+        maxRetries: 1, // ⚡ OPTIMIZADO: Reducido de 2 a 1 intento
+        initialDelay: const Duration(
+          milliseconds: 300,
+        ), // ⚡ OPTIMIZADO: Reducido de 500ms a 300ms
+        maxDelay: const Duration(
+          seconds: 3,
+        ), // ⚡ OPTIMIZADO: Reducido de 5s a 3s
+        exponentialBase: 1.5, // ⚡ OPTIMIZADO: Reducido de 2.0 a 1.5
         jitter: 0.1,
       );
 }

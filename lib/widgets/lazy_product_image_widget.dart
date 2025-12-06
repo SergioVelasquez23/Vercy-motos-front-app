@@ -1,0 +1,145 @@
+import 'package:flutter/material.dart';
+import '../models/producto.dart';
+import '../services/image_loader_service.dart';
+import 'imagen_producto_widget.dart';
+
+/// Widget que carga imágenes de productos de forma lazy (bajo demanda)
+///
+/// Características:
+/// - Muestra placeholder mientras carga
+/// - Carga la imagen solo cuando es visible
+/// - Usa cache para evitar recargas
+/// - Se integra con ImageLoaderService para carga en lotes
+class LazyProductImageWidget extends StatefulWidget {
+  final Producto producto;
+  final double width;
+  final double height;
+  final BoxFit fit;
+  final String backendBaseUrl;
+
+  const LazyProductImageWidget({
+    Key? key,
+    required this.producto,
+    this.width = 50,
+    this.height = 50,
+    this.fit = BoxFit.cover,
+    required this.backendBaseUrl,
+  }) : super(key: key);
+
+  @override
+  State<LazyProductImageWidget> createState() => _LazyProductImageWidgetState();
+}
+
+class _LazyProductImageWidgetState extends State<LazyProductImageWidget> {
+  final ImageLoaderService _imageLoader = ImageLoaderService();
+  String? _imagenUrl;
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarImagen();
+  }
+
+  void _cargarImagen() async {
+    // Si el producto ya tiene imagen, usarla
+    if (widget.producto.imagenUrl != null &&
+        widget.producto.imagenUrl!.isNotEmpty) {
+      if (mounted) {
+        setState(() {
+          _imagenUrl = widget.producto.imagenUrl;
+        });
+      }
+      return;
+    }
+
+    // Verificar cache
+    final imagenCache = _imageLoader.getImagenFromCache(widget.producto.id);
+    if (imagenCache != null) {
+      if (mounted) {
+        setState(() {
+          _imagenUrl = imagenCache;
+        });
+      }
+      return;
+    }
+
+    // Registrar listener para cuando se cargue la imagen
+    _imageLoader.addImageListener(widget.producto.id, _onImagenCargada);
+
+    // Si no está cargando, iniciar carga individual
+    if (!_imageLoader.hasImageInCache(widget.producto.id) && !_isLoading) {
+      setState(() {
+        _isLoading = true;
+      });
+
+      // Cargar imagen individual (esto también se puede hacer en lotes desde la pantalla padre)
+      final url = await _imageLoader.cargarImagenProducto(widget.producto.id);
+
+      if (mounted && url != null) {
+        setState(() {
+          _imagenUrl = url;
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  void _onImagenCargada(String imagenUrl) {
+    if (mounted) {
+      setState(() {
+        _imagenUrl = imagenUrl;
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _imageLoader.removeImageListener(widget.producto.id, _onImagenCargada);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Si tenemos la imagen, mostrarla
+    if (_imagenUrl != null && _imagenUrl!.isNotEmpty) {
+      return ImagenProductoWidget(
+        urlRemota: _imagenUrl!.startsWith('http')
+            ? _imagenUrl
+            : '${widget.backendBaseUrl}$_imagenUrl',
+        nombreProducto: widget.producto.nombre,
+        width: widget.width,
+        height: widget.height,
+        fit: widget.fit,
+        backendBaseUrl: widget.backendBaseUrl,
+      );
+    }
+
+    // Placeholder mientras carga
+    return Container(
+      width: widget.width,
+      height: widget.height,
+      decoration: BoxDecoration(
+        color: Colors.grey[800],
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: _isLoading
+          ? Center(
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white54),
+                ),
+              ),
+            )
+          : Icon(
+              Icons.fastfood,
+              color: Colors.white38,
+              size: widget.width * 0.5,
+            ),
+    );
+  }
+}

@@ -84,35 +84,41 @@ class ProductoService {
   /// Obtiene el timeout apropiado basado en el entorno (Render es más lento)
   Duration _getTimeoutForEnvironment() {
     if (baseUrl.contains('render.com')) {
-      // Render puede ser muy lento, especialmente en el plan gratuito
-      return Duration(seconds: 300); // 5 minutos
+      // ⚡ OPTIMIZADO: Reducido de 5 min a 45 seg para evitar esperas largas
+      return Duration(seconds: 45);
     } else if (baseUrl.contains('localhost') || baseUrl.contains('127.0.0.1')) {
       // Desarrollo local debería ser rápido
-      return Duration(seconds: 60);
+      return Duration(seconds: 20);
     } else {
       // Otros servidores en producción
-      return Duration(seconds: 240); // 4 minutos
+      return Duration(seconds: 40);
     }
   }
 
   /// Timeout más corto para intentos iniciales rápidos
   Duration _getFastTimeoutForEnvironment() {
     if (baseUrl.contains('render.com')) {
-      // Timeout más corto para el primer intento en Render
-      return Duration(seconds: 90);
+      // ⚡ OPTIMIZADO: Reducido de 90 seg a 15 seg para intentos rápidos
+      return Duration(seconds: 15);
     } else if (baseUrl.contains('localhost') || baseUrl.contains('127.0.0.1')) {
-      return Duration(seconds: 30);
+      return Duration(seconds: 10);
     } else {
-      return Duration(seconds: 60);
+      return Duration(seconds: 20);
     }
   }
 
   // Obtener todos los productos - Método principal optimizado
-  Future<List<Producto>> getProductos({bool useProgressive = true}) async {
+  Future<List<Producto>> getProductos({
+    bool useProgressive = true,
+    bool useLigero = true,
+  }) async {
     // Si ya hay una petición en curso, volver la misma Future
     if (_inFlightGetProductos != null) return _inFlightGetProductos!;
 
-    if (useProgressive) {
+    // ⚡ NUEVA OPTIMIZACIÓN: Usar endpoint ligero si está disponible
+    if (useLigero && !useProgressive) {
+      _inFlightGetProductos = _getProductosLigero();
+    } else if (useProgressive) {
       // Si ya tenemos productos cargados progresivamente, devolverlos
       if (_paginationState.productos.isNotEmpty) {
         print(
@@ -277,9 +283,10 @@ class ProductoService {
 
   // NUEVO: Método optimizado para carga progresiva usando api/productos directamente
   /// Inicia la carga progresiva de productos desde el principio
-  /// [pageSize] determina cuántos productos cargar por página (15-20 recomendado)
+  /// [pageSize] determina cuántos productos cargar por página (10-15 recomendado para velocidad)
   Future<Map<String, dynamic>> iniciarCargaProgresiva({
-    int pageSize = 15,
+    int pageSize =
+        10, // ⚡ OPTIMIZADO: Reducido de 15 a 10 para cargas más rápidas
   }) async {
     print('🚀 Iniciando carga progresiva con tamaño de página: $pageSize');
 
@@ -423,10 +430,13 @@ class ProductoService {
   /// Carga automática de todos los productos de forma progresiva
   /// Útil para cargar todos los productos en segundo plano
   Future<List<Producto>> cargarTodosLosProductosProgresivamente({
-    int pageSize = 15,
-    Duration delayBetweenPages = const Duration(milliseconds: 800),
+    int pageSize =
+        20, // ⚡ OPTIMIZADO: Aumentado de 15 a 20 para menos peticiones
+    Duration delayBetweenPages = const Duration(
+      milliseconds: 300,
+    ), // ⚡ OPTIMIZADO: Reducido de 800ms a 300ms
     Function(Map<String, dynamic>)? onProgressUpdate,
-    int maxRetries = 3,
+    int maxRetries = 2, // ⚡ OPTIMIZADO: Reducido de 3 a 2 reintentos
   }) async {
     print('🔄 Iniciando carga automática completa de productos...');
 
@@ -674,13 +684,57 @@ class ProductoService {
     }
   }
 
+  // ⚡ NUEVO: Endpoint ligero optimizado como primera opción
+  Future<List<Producto>> _getProductosLigero() async {
+    final headers = await _getHeaders();
+    // ⚡ OPTIMIZADO: Cargar TODOS los productos de una vez (sin paginación)
+    final url = '$baseUrl/api/productos/ligero?page=0&size=10000';
+
+    print('⚡ Usando endpoint LIGERO ultra-optimizado (TODOS): $url');
+
+    try {
+      final response = await _retryStrategy.execute(
+        operation: () => http.get(Uri.parse(url), headers: headers),
+        timeoutPerAttempt: _getFastTimeoutForEnvironment(),
+        shouldRetry: (error) {
+          print('⚠️ Intento fallido con endpoint ligero: $error');
+          return true;
+        },
+      );
+
+      print('📦 Response status (ligero): ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        // ⚡ Usar fromJsonLigero para NO cargar imágenes
+        final productos = _parseListResponseLigero(responseData);
+        print(
+          '✅ Productos ligeros cargados (SIN IMÁGENES): ${productos.length}',
+        );
+
+        // Actualizar cache
+        for (var producto in productos) {
+          _productosCache[producto.id] = producto;
+        }
+
+        return productos;
+      } else {
+        throw Exception('Error ${response.statusCode} en endpoint ligero');
+      }
+    } catch (e) {
+      print('❌ Error con endpoint ligero: $e');
+      print('🔄 Fallback a método básico...');
+      return await _getProductosBasico();
+    }
+  }
+
   // Endpoint básico como fallback - ULTRA LIGERO (solo campos esenciales)
   Future<List<Producto>> _getProductosBasico() async {
     final headers = await _getHeaders();
-    // Usar endpoint ligero sin ingredientes ni relaciones pesadas
-    final url = '$baseUrl/api/productos/ligero';
+    // ⚡ OPTIMIZADO: Cargar TODOS los productos sin paginación
+    final url = '$baseUrl/api/productos/ligero?page=0&size=10000';
 
-    print('📦 Intentando endpoint /ligero ultra-optimizado: $url');
+    print('📦 Intentando endpoint /ligero ultra-optimizado (TODOS): $url');
 
     final response = await http
         .get(Uri.parse(url), headers: headers)
@@ -692,7 +746,8 @@ class ProductoService {
       final responseData = json.decode(response.body);
       print('📦 Response data type: ${responseData.runtimeType}');
 
-      final productos = _parseListResponse(responseData);
+      // ⚡ Usar fromJsonLigero para NO cargar imágenes
+      final productos = _parseListResponseLigero(responseData);
 
       // Guardar en caché
       for (var producto in productos) {
@@ -1436,6 +1491,40 @@ class ProductoService {
         if (data is List) {
           return data.map<Producto>((json) => Producto.fromJson(json)).toList();
         }
+        
+        // ⚡ NUEVO: Si data es un Map, buscar lista dentro (paginación)
+        if (data is Map<String, dynamic>) {
+          // Buscar en "content" (formato paginado)
+          if (data.containsKey('content') && data['content'] is List) {
+            print(
+              '📦 Encontrada lista en data.content: ${(data['content'] as List).length} productos',
+            );
+            return (data['content'] as List)
+                .map<Producto>((json) => Producto.fromJson(json))
+                .toList();
+          }
+          // Buscar en "productos"
+          if (data.containsKey('productos') && data['productos'] is List) {
+            print(
+              '📦 Encontrada lista en data.productos: ${(data['productos'] as List).length} productos',
+            );
+            return (data['productos'] as List)
+                .map<Producto>((json) => Producto.fromJson(json))
+                .toList();
+          }
+          // Buscar en "items"
+          if (data.containsKey('items') && data['items'] is List) {
+            print(
+              '📦 Encontrada lista en data.items: ${(data['items'] as List).length} productos',
+            );
+            return (data['items'] as List)
+                .map<Producto>((json) => Producto.fromJson(json))
+                .toList();
+          }
+          print(
+            '⚠️ data es Map pero no contiene lista reconocible. Keys: ${data.keys.toList()}',
+          );
+        }
       }
 
       if (responseData.containsKey('results')) {
@@ -1466,6 +1555,197 @@ class ProductoService {
     throw Exception(
       'Formato de respuesta no válido: esperado Map o List, recibido ${responseData.runtimeType}',
     );
+  }
+
+  // ⚡ NUEVO: Método auxiliar para parsear productos LIGEROS (sin imágenes)
+  List<Producto> _parseListResponseLigero(dynamic responseData) {
+    print('📦 Parseando respuesta LIGERA - Tipo: ${responseData.runtimeType}');
+
+    if (responseData is Map<String, dynamic>) {
+      print('📦 Respuesta es Map - Keys: ${responseData.keys.toList()}');
+
+      // Buscar posibles propiedades que contengan la lista de productos
+      if (responseData.containsKey('productos')) {
+        final productos = responseData['productos'];
+        if (productos is List) {
+          print(
+            '📦 Encontrados ${productos.length} productos en key "productos" (SIN IMÁGENES)',
+          );
+          return productos
+              .map<Producto>((json) => Producto.fromJsonLigero(json))
+              .toList();
+        }
+      }
+
+      if (responseData.containsKey('data')) {
+        final data = responseData['data'];
+        if (data is List) {
+          print(
+            '📦 Encontrados ${data.length} productos en data (SIN IMÁGENES)',
+          );
+          return data
+              .map<Producto>((json) => Producto.fromJsonLigero(json))
+              .toList();
+        }
+
+        // Si data es un Map, buscar lista dentro (paginación)
+        if (data is Map<String, dynamic>) {
+          // Buscar en "content" (formato paginado)
+          if (data.containsKey('content') && data['content'] is List) {
+            final content = data['content'] as List;
+            print(
+              '📦 Encontrados ${content.length} productos en data.content (SIN IMÁGENES)',
+            );
+            return content
+                .map<Producto>((json) => Producto.fromJsonLigero(json))
+                .toList();
+          }
+          // Buscar en "productos"
+          if (data.containsKey('productos') && data['productos'] is List) {
+            final productos = data['productos'] as List;
+            print(
+              '📦 Encontrados ${productos.length} productos en data.productos (SIN IMÁGENES)',
+            );
+            return productos
+                .map<Producto>((json) => Producto.fromJsonLigero(json))
+                .toList();
+          }
+          // Buscar en "items"
+          if (data.containsKey('items') && data['items'] is List) {
+            final items = data['items'] as List;
+            print(
+              '📦 Encontrados ${items.length} productos en data.items (SIN IMÁGENES)',
+            );
+            return items
+                .map<Producto>((json) => Producto.fromJsonLigero(json))
+                .toList();
+          }
+        }
+      }
+
+      if (responseData.containsKey('results')) {
+        final results = responseData['results'];
+        if (results is List) {
+          print(
+            '📦 Encontrados ${results.length} productos en results (SIN IMÁGENES)',
+          );
+          return results
+              .map<Producto>((json) => Producto.fromJsonLigero(json))
+              .toList();
+        }
+      }
+
+      print('❌ No se encontró una lista de productos en la respuesta');
+      throw Exception('No se encontró una lista de productos en la respuesta');
+    } else if (responseData is List) {
+      print(
+        '📦 Respuesta es List con ${responseData.length} productos (SIN IMÁGENES)',
+      );
+      return responseData
+          .map<Producto>((json) => Producto.fromJsonLigero(json))
+          .toList();
+    }
+
+    throw Exception('Formato de respuesta no válido');
+  }
+
+  // 🖼️ NUEVO: Cargar imágenes de productos específicos (lazy loading)
+  /// Carga las imágenes de un lote de productos (máximo 20 por request)
+  /// Retorna un Map con productoId -> imagenUrl
+  Future<Map<String, String>> cargarImagenesProductos(
+    List<String> productosIds,
+  ) async {
+    if (productosIds.isEmpty) {
+      print('⚠️ Lista de IDs vacía, no se cargan imágenes');
+      return {};
+    }
+
+    // Limitar a 20 productos por request (como el backend)
+    final idsLimitados = productosIds.take(20).toList();
+
+    print('🖼️ Cargando imágenes de ${idsLimitados.length} productos...');
+
+    try {
+      final headers = await _getHeaders();
+      final url = '$baseUrl/api/productos/imagenes';
+
+      final response = await http
+          .post(
+            Uri.parse(url),
+            headers: headers,
+            body: json.encode(idsLimitados),
+          )
+          .timeout(Duration(seconds: 20));
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+
+        if (responseData['success'] == true && responseData['data'] != null) {
+          final Map<String, String> imagenes = Map<String, String>.from(
+            responseData['data'] as Map,
+          );
+
+          print('✅ ${imagenes.length} imágenes cargadas exitosamente');
+
+          // Actualizar cache de productos con las imágenes
+          imagenes.forEach((id, imagenUrl) {
+            if (_productosCache.containsKey(id)) {
+              _productosCache[id] = _productosCache[id]!.copyWith(
+                imagenUrl: imagenUrl,
+              );
+            }
+          });
+
+          return imagenes;
+        }
+      }
+
+      print('❌ Error ${response.statusCode} cargando imágenes');
+      return {};
+    } catch (e) {
+      print('❌ Error cargando imágenes: $e');
+      return {};
+    }
+  }
+
+  // 🖼️ NUEVO: Cargar imagen de un solo producto
+  Future<String?> cargarImagenProducto(String productoId) async {
+    print('🖼️ Cargando imagen del producto: $productoId');
+
+    try {
+      final headers = await _getHeaders();
+      final url = '$baseUrl/api/productos/$productoId/imagen';
+
+      final response = await http
+          .get(Uri.parse(url), headers: headers)
+          .timeout(Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+
+        if (responseData['success'] == true && responseData['data'] != null) {
+          final imagenUrl = responseData['data']['imagenUrl'] as String?;
+
+          if (imagenUrl != null) {
+            print('✅ Imagen cargada: $imagenUrl');
+
+            // Actualizar cache
+            if (_productosCache.containsKey(productoId)) {
+              _productosCache[productoId] = _productosCache[productoId]!
+                  .copyWith(imagenUrl: imagenUrl);
+            }
+
+            return imagenUrl;
+          }
+        }
+      }
+
+      print('❌ Error ${response.statusCode} cargando imagen');
+      return null;
+    } catch (e) {
+      print('❌ Error cargando imagen: $e');
+      return null;
+    }
   }
 
   // Eliminar caché (útil para wake-up / recarga completa)
