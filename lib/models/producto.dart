@@ -207,6 +207,38 @@ class Producto {
     );
   }
 
+  // Método ligero para cargas rápidas - solo campos esenciales del endpoint paginado
+  factory Producto.fromJsonLigero(Map<String, dynamic> json) {
+    return Producto(
+      id: json['_id']?.toString() ?? json['id']?.toString() ?? '',
+      nombre: json['nombre']?.toString() ?? '',
+      precio: (json['precio'] as num?)?.toDouble() ?? 0.0,
+      costo: 0.0, // No viene en el endpoint ligero
+      impuestos: 0.0, // No viene en el endpoint ligero
+      utilidad: 0.0, // No viene en el endpoint ligero
+      tieneVariantes: false, // No viene en el endpoint ligero
+      estado: json['estado']?.toString() ?? 'Activo',
+      imagenUrl: null, // ⚡ NO CARGAR IMAGEN para máxima velocidad
+      categoria: json['categoriaId'] != null
+          ? Categoria(
+              id: json['categoriaId'].toString(),
+              nombre: json['categoriaNombre']?.toString() ?? 'Categoría',
+            )
+          : json['categoria'] != null
+          ? Categoria.fromJson(json['categoria'])
+          : null,
+      descripcion: null, // No viene en el endpoint ligero
+      cantidad: 1, // Default
+      nota: null, // No viene en el endpoint ligero
+      ingredientesDisponibles: [], // No viene en el endpoint ligero
+      tieneIngredientes: json['tieneIngredientes'] ?? false,
+      tipoProducto: json['tipoProducto']?.toString() ?? 'individual',
+      ingredientesRequeridos: [], // No vienen en el endpoint ligero
+      ingredientesOpcionales: [], // No vienen en el endpoint ligero
+      ingredientesSeleccionadosCombo: [],
+    );
+  }
+
   // Método para crear una copia con nuevos valores (útil para edición)
   Producto copyWith({
     String? id,

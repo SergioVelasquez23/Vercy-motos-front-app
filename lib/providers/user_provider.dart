@@ -108,6 +108,8 @@ class UserProvider extends ChangeNotifier {
       try {
         final cacheProvider = DatosCacheProvider();
         await cacheProvider.initialize();
+        // 🔥 WARMUP: Precargar productos en background
+        cacheProvider.warmupProductos();
       } catch (e) {
         print('⚠️ Error inicializando cache al autenticar: $e');
       }

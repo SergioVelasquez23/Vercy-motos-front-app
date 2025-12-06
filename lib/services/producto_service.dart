@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
@@ -6,6 +7,35 @@ import 'package:image_picker/image_picker.dart';
 import '../models/producto.dart';
 import '../models/categoria.dart';
 import '../config/api_config.dart';
+import '../utils/retry_strategy.dart';
+
+/// Clase para manejar el estado de paginación de productos
+class ProductosPaginationState {
+  int currentPage = 0;
+  int pageSize =
+      15; // Tamaño por defecto de 15 productos por página (ultra optimizado)
+  int totalElements = 0;
+  int totalPages = 0;
+  bool hasMore = true;
+  bool isLoading = false;
+  List<Producto> productos = [];
+
+  void reset() {
+    currentPage = 0;
+    totalElements = 0;
+    totalPages = 0;
+    hasMore = true;
+    isLoading = false;
+    productos.clear();
+  }
+
+  void updateFromResponse(Map<String, dynamic> data) {
+    currentPage = data['page'] ?? currentPage;
+    totalElements = data['totalElements'] ?? totalElements;
+    totalPages = data['totalPages'] ?? totalPages;
+    hasMore = (currentPage + 1) < totalPages;
+  }
+}
 
 class ProductoService {
   static final ProductoService _instance = ProductoService._internal();
@@ -15,7 +45,15 @@ class ProductoService {
   String get baseUrl => ApiConfig.instance.baseUrl;
   final storage = FlutterSecureStorage();
   final ImagePicker _picker = ImagePicker();
+  
+  // 🔄 Estrategia de reintentos inteligente
+  late final RetryStrategy _retryStrategy = RetryStrategyFactory.forEnvironment(
+    baseUrl,
+  );
 
+  // Estado de paginación para carga progresiva
+  final ProductosPaginationState _paginationState = ProductosPaginationState();
+  
   // Evitar peticiones duplicadas simultáneas para getProductos
   Future<List<Producto>>? _inFlightGetProductos;
 
@@ -29,18 +67,69 @@ class ProductoService {
 
   Future<Map<String, String>> _getHeaders() async {
     final token = await storage.read(key: 'jwt_token');
-    return {
+    // Headers simplificados para Flutter Web - evitar User-Agent unsafe headers
+    final headers = <String, String>{
       'Content-Type': 'application/json',
-      if (token != null) 'Authorization': 'Bearer $token',
+      'Accept': 'application/json',
     };
+    
+    if (token != null) {
+      headers['Authorization'] = 'Bearer $token';
+    }
+
+    print('🔧 Headers para request: $headers');
+    return headers;
+  }
+
+  /// Obtiene el timeout apropiado basado en el entorno (Render es más lento)
+  Duration _getTimeoutForEnvironment() {
+    if (baseUrl.contains('render.com')) {
+      // Render puede ser muy lento, especialmente en el plan gratuito
+      return Duration(seconds: 300); // 5 minutos
+    } else if (baseUrl.contains('localhost') || baseUrl.contains('127.0.0.1')) {
+      // Desarrollo local debería ser rápido
+      return Duration(seconds: 60);
+    } else {
+      // Otros servidores en producción
+      return Duration(seconds: 240); // 4 minutos
+    }
+  }
+
+  /// Timeout más corto para intentos iniciales rápidos
+  Duration _getFastTimeoutForEnvironment() {
+    if (baseUrl.contains('render.com')) {
+      // Timeout más corto para el primer intento en Render
+      return Duration(seconds: 90);
+    } else if (baseUrl.contains('localhost') || baseUrl.contains('127.0.0.1')) {
+      return Duration(seconds: 30);
+    } else {
+      return Duration(seconds: 60);
+    }
   }
 
   // Obtener todos los productos - Método principal optimizado
-  Future<List<Producto>> getProductos() async {
+  Future<List<Producto>> getProductos({bool useProgressive = true}) async {
     // Si ya hay una petición en curso, volver la misma Future
     if (_inFlightGetProductos != null) return _inFlightGetProductos!;
 
-    _inFlightGetProductos = _doGetProductos();
+    if (useProgressive) {
+      // Si ya tenemos productos cargados progresivamente, devolverlos
+      if (_paginationState.productos.isNotEmpty) {
+        print(
+          '✅ Devolviendo ${_paginationState.productos.length} productos ya cargados progresivamente',
+        );
+        return productosActualmenteCargados;
+      }
+
+      // Cargar de forma progresiva automática
+      _inFlightGetProductos = cargarTodosLosProductosProgresivamente(
+        pageSize: 40,
+      );
+    } else {
+      // Método tradicional (carga todo de una vez)
+      _inFlightGetProductos = _doGetProductos();
+    }
+    
     try {
       final res = await _inFlightGetProductos!;
       return res;
@@ -50,64 +139,554 @@ class ProductoService {
     }
   }
 
-  // Implementación principal - usar endpoint optimizado con fallback
+  // Implementación simple y directa: usar /api/productos (findAll)
   Future<List<Producto>> _doGetProductos() async {
     final headers = await _getHeaders();
+    final url = '$baseUrl/api/productos';
 
-    print('🔍 DIAGNÓSTICO: Cargando productos desde el backend');
-    print('   - Base URL: $baseUrl');
-    print('   - Headers: ${headers.keys.toList()}');
+    print('🔍 Cargando TODOS los productos desde /api/productos (findAll)');
+    print('🔄 Usando estrategia de reintentos inteligente...');
 
-    // Intentar primero el endpoint optimizado que existe en el backend
     try {
-      print('🚀 Intentando endpoint optimizado: /con-nombres-ingredientes');
-      return await _getProductosConNombresIngredientes();
-    } catch (optimizedError) {
-      print('⚠️ Endpoint optimizado falló: $optimizedError');
+      // 🔄 Usar estrategia de reintentos con timeout adaptativo
+      final response = await _retryStrategy.execute(
+        operation: () => http.get(Uri.parse(url), headers: headers),
+        timeoutPerAttempt: _getFastTimeoutForEnvironment(),
+        shouldRetry: (error) {
+          // Reintentar en timeouts y errores de red
+          return error is TimeoutException ||
+              error.toString().contains('SocketException') ||
+              error.toString().contains('Connection');
+        },
+        onRetry: (attempt, delay) {
+          print('🔄 Reintentando carga de productos (intento $attempt)...');
+          print('⏳ Esperando ${delay.inSeconds}s antes del siguiente intento');
+        },
+      );
 
-      // Fallback al endpoint básico
+      print('📦 Response status: ${response.statusCode}');
+      print('📏 Response body length: ${response.body.length}');
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        print('🔍 Response structure keys: ${responseData.keys.toList()}');
+        print('🔍 Success field: ${responseData['success']}');
+
+        if (responseData['success'] == true) {
+          final data = responseData['data'];
+          print('📊 Data type: ${data.runtimeType}');
+          print('📊 Data is List: ${data is List}');
+
+          if (data is List) {
+            print('📊 Data length: ${data.length}');
+            final productos = data
+                .map((json) => Producto.fromJson(json))
+                .toList();
+
+            // Actualizar caché
+            for (var producto in productos) {
+              _productosCache[producto.id] = producto;
+            }
+
+            print('✅ Productos cargados exitosamente: ${productos.length}');
+            return productos;
+          } else {
+            print('❌ Data no es una lista, es: ${data.runtimeType}');
+            print('📊 Data content: $data');
+            return [];
+          }
+        } else {
+          print(
+            '❌ Respuesta del servidor con success=false: ${responseData['message']}',
+          );
+          print('🔄 Intentando con endpoint de paginación como respaldo...');
+
+          // Respaldo: intentar con endpoint paginado
+          return await _getProductosConPaginacionRespaldo();
+        }
+      } else {
+        print('❌ Error HTTP ${response.statusCode}: ${response.reasonPhrase}');
+        print('🔄 Intentando con endpoint de paginación como respaldo...');
+
+        // Respaldo: intentar con endpoint paginado
+        return await _getProductosConPaginacionRespaldo();
+      }
+    } catch (e) {
+      print('❌ Error cargando productos: $e');
+      print('🔄 Intentando con endpoint de paginación como respaldo...');
+
       try {
-        print('🔄 Fallback: usando endpoint básico');
-        return await _getProductosBasico();
-      } catch (basicError) {
-        print('💥 Error fatal en ambos endpoints: $basicError');
-
-        // Si es timeout y hay caché, usarlo
-        if (basicError.toString().contains('TimeoutException') &&
-            _productosCache.isNotEmpty) {
-          print(
-            '⚠️ Timeout detectado, usando caché local: ${_productosCache.length} productos',
-          );
-          return _productosCache.values.toList();
-        }
-
-        // Si hay productos en caché, usarlos como último recurso
-        if (_productosCache.isNotEmpty) {
-          print(
-            '📦 Último recurso - usando caché: ${_productosCache.length} productos',
-          );
-          return _productosCache.values.toList();
-        }
-
-        // Como último recurso, devolver lista vacía para no bloquear la UI
-        print('⚠️ Sin caché disponible, devolviendo lista vacía');
-        return [];
+        return await _getProductosConPaginacionRespaldo();
+      } catch (backupError) {
+        print('❌ Error también en endpoint de respaldo: $backupError');
+        rethrow;
       }
     }
   }
 
-  // Endpoint básico como fallback
+  // Método de respaldo usando endpoint paginado
+  Future<List<Producto>> _getProductosConPaginacionRespaldo() async {
+    print('🔄 MÉTODO DE RESPALDO: Usando endpoint paginado');
+
+    final headers = await _getHeaders();
+    final url =
+        '$baseUrl/api/productos?page=0&size=1000'; // Cargar muchos de una vez
+
+    print('🔗 URL de respaldo: $url');
+
+    // 🔄 También usar reintentos en el método de respaldo
+    final response = await _retryStrategy.execute(
+      operation: () => http.get(Uri.parse(url), headers: headers),
+      timeoutPerAttempt: _getFastTimeoutForEnvironment(),
+      shouldRetry: (error) {
+        return error is TimeoutException ||
+            error.toString().contains('SocketException') ||
+            error.toString().contains('Connection');
+      },
+    );
+
+    print('📦 Respaldo - Response status: ${response.statusCode}');
+
+    if (response.statusCode == 200) {
+      final responseData = json.decode(response.body);
+
+      if (responseData['success'] == true) {
+        final data = responseData['data'];
+        final List<Producto> productos = (data['content'] as List)
+            .map((json) => Producto.fromJsonLigero(json))
+            .toList();
+
+        // Actualizar caché
+        for (var producto in productos) {
+          _productosCache[producto.id] = producto;
+        }
+
+        print('✅ RESPALDO exitoso: ${productos.length} productos cargados');
+        return productos;
+      } else {
+        throw Exception(
+          'Error en endpoint de respaldo: ${responseData['message']}',
+        );
+      }
+    } else {
+      throw Exception(
+        'Error HTTP en respaldo ${response.statusCode}: ${response.reasonPhrase}',
+      );
+    }
+  }
+
+  // NUEVO: Método optimizado para carga progresiva usando api/productos directamente
+  /// Inicia la carga progresiva de productos desde el principio
+  /// [pageSize] determina cuántos productos cargar por página (15-20 recomendado)
+  Future<Map<String, dynamic>> iniciarCargaProgresiva({
+    int pageSize = 15,
+  }) async {
+    print('🚀 Iniciando carga progresiva con tamaño de página: $pageSize');
+
+    // Resetear estado de paginación
+    _paginationState.reset();
+    _paginationState.pageSize = pageSize;
+
+    return await cargarSiguientePaginaProductos();
+  }
+
+  /// Carga la siguiente página de productos
+  Future<Map<String, dynamic>> cargarSiguientePaginaProductos() async {
+    if (_paginationState.isLoading) {
+      print('⏳ Ya hay una carga en proceso, esperando...');
+      return {
+        'productos': <Producto>[],
+        'hasMore': _paginationState.hasMore,
+        'totalCargados': _paginationState.productos.length,
+        'totalElementos': _paginationState.totalElements,
+        'paginaActual': _paginationState.currentPage,
+        'isLoading': true,
+      };
+    }
+
+    if (!_paginationState.hasMore) {
+      print('✋ No hay más productos para cargar');
+      return {
+        'productos': <Producto>[],
+        'hasMore': false,
+        'totalCargados': _paginationState.productos.length,
+        'totalElementos': _paginationState.totalElements,
+        'paginaActual': _paginationState.currentPage,
+        'isLoading': false,
+      };
+    }
+
+    _paginationState.isLoading = true;
+
+    try {
+      final headers = await _getHeaders();
+      // Usar endpoint LIGERO para evitar cargar imágenes y datos pesados
+      final url =
+          '$baseUrl/api/productos/ligero?page=${_paginationState.currentPage}&size=${_paginationState.pageSize}';
+
+      print(
+        '📄 Cargando página ${_paginationState.currentPage + 1} (${_paginationState.pageSize} productos) [LIGERO]',
+      );
+      print('🔗 URL: $url');
+
+      // 🔄 Usar estrategia de reintentos para carga paginada
+      final response = await _retryStrategy.execute(
+        operation: () => http.get(Uri.parse(url), headers: headers),
+        timeoutPerAttempt: _getFastTimeoutForEnvironment(),
+        shouldRetry: (error) {
+          return error is TimeoutException ||
+              error.toString().contains('SocketException') ||
+              error.toString().contains('Connection');
+        },
+        onRetry: (attempt, delay) {
+          print(
+            '🔄 Reintentando carga de página ${_paginationState.currentPage + 1}',
+          );
+        },
+      );
+
+      print('📦 Paginación - Response status: ${response.statusCode}');
+      print('📏 Paginación - Response body length: ${response.body.length}');
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        print(
+          '🔍 Paginación - Response structure: ${responseData.keys.toList()}',
+        );
+
+        if (responseData['success'] == true) {
+          final data = responseData['data'];
+          print('📊 Paginación - Data structure: ${data.keys.toList()}');
+          print(
+            '📊 Paginación - Content length: ${(data['content'] as List).length}',
+          );
+
+          // Usar fromJsonLigero para mejor rendimiento
+          final List<Producto> nuevosProductos = (data['content'] as List)
+              .map((json) => Producto.fromJsonLigero(json))
+              .toList();
+
+          // Actualizar estado
+          _paginationState.updateFromResponse(data);
+          _paginationState.productos.addAll(nuevosProductos);
+          _paginationState.currentPage++;
+
+          // Actualizar caché
+          for (var producto in nuevosProductos) {
+            _productosCache[producto.id] = producto;
+          }
+
+          final progreso =
+              '${_paginationState.productos.length}/${_paginationState.totalElements}';
+          print('✅ Página cargada exitosamente. Progreso: $progreso');
+
+          return {
+            'productos': nuevosProductos,
+            'hasMore': _paginationState.hasMore,
+            'totalCargados': _paginationState.productos.length,
+            'totalElementos': _paginationState.totalElements,
+            'paginaActual': _paginationState.currentPage - 1,
+            'isLoading': false,
+          };
+        } else {
+          throw Exception('Error del servidor: ${responseData['message']}');
+        }
+      } else {
+        throw Exception(
+          'Error HTTP ${response.statusCode}: ${response.reasonPhrase}',
+        );
+      }
+    } catch (e) {
+      print('❌ Error cargando página ${_paginationState.currentPage}: $e');
+      _paginationState.isLoading = false;
+      rethrow;
+    } finally {
+      _paginationState.isLoading = false;
+    }
+  }
+
+  /// Obtiene todos los productos cargados hasta el momento
+  List<Producto> get productosActualmenteCargados =>
+      List.from(_paginationState.productos);
+
+  /// Obtiene información del estado actual de paginación
+  Map<String, dynamic> get estadoPaginacion => {
+    'totalCargados': _paginationState.productos.length,
+    'totalElementos': _paginationState.totalElements,
+    'paginaActual': _paginationState.currentPage,
+    'totalPaginas': _paginationState.totalPages,
+    'hasMore': _paginationState.hasMore,
+    'isLoading': _paginationState.isLoading,
+    'pageSize': _paginationState.pageSize,
+  };
+
+  /// Carga automática de todos los productos de forma progresiva
+  /// Útil para cargar todos los productos en segundo plano
+  Future<List<Producto>> cargarTodosLosProductosProgresivamente({
+    int pageSize = 15,
+    Duration delayBetweenPages = const Duration(milliseconds: 800),
+    Function(Map<String, dynamic>)? onProgressUpdate,
+    int maxRetries = 3,
+  }) async {
+    print('🔄 Iniciando carga automática completa de productos...');
+
+    // Intentar iniciar la carga progresiva con reintentos
+    int retries = 0;
+    while (retries < maxRetries) {
+      try {
+        await iniciarCargaProgresiva(pageSize: pageSize);
+        break;
+      } catch (e) {
+        retries++;
+        print(
+          '❌ Error iniciando carga progresiva (intento $retries/$maxRetries): $e',
+        );
+        if (retries >= maxRetries) {
+          print('💥 Falló inicialización después de $maxRetries intentos');
+          rethrow;
+        }
+        // Esperar antes del siguiente intento
+        await Future.delayed(Duration(seconds: retries * 2));
+      }
+    }
+
+    while (_paginationState.hasMore) {
+      retries = 0;
+      Map<String, dynamic>? result;
+
+      // Intentar cargar la siguiente página con reintentos
+      while (retries < maxRetries) {
+        try {
+          result = await cargarSiguientePaginaProductos();
+          break;
+        } catch (e) {
+          retries++;
+          print(
+            '❌ Error cargando página ${_paginationState.currentPage + 1} (intento $retries/$maxRetries): $e',
+          );
+          if (retries >= maxRetries) {
+            print(
+              '💥 Falló página después de $maxRetries intentos, continuando con siguientes páginas...',
+            );
+            // No hacer rethrow para continuar con otras páginas
+            break;
+          }
+          // Esperar antes del siguiente intento, tiempo creciente
+          await Future.delayed(Duration(seconds: retries * 3));
+        }
+      }
+
+      // Si se obtuvo resultado, notificar progreso
+      if (result != null && onProgressUpdate != null) {
+        onProgressUpdate({
+          ...result,
+          'porcentaje':
+              (_paginationState.productos.length /
+                      _paginationState.totalElements *
+                      100)
+                  .round(),
+        });
+      }
+
+      // Delay entre páginas para no sobrecargar el servidor
+      if (_paginationState.hasMore && delayBetweenPages.inMilliseconds > 0) {
+        await Future.delayed(delayBetweenPages);
+      }
+
+      // Si falló completamente esta página, salir del bucle
+      if (result == null && retries >= maxRetries) {
+        print('⚠️ Terminando carga progresiva por errores repetidos');
+        break;
+      }
+    }
+
+    print(
+      '✅ Carga automática completa: ${_paginationState.productos.length} productos cargados',
+    );
+    return productosActualmenteCargados;
+  }
+
+  /// Reinicia la carga progresiva (útil para refrescar datos)
+  void reiniciarCargaProgresiva() {
+    _paginationState.reset();
+    _productosCache.clear();
+    print('🔄 Estado de carga progresiva reiniciado');
+  }
+
+  /// Busca un producto en los datos ya cargados (cache local)
+  Producto? buscarProductoEnCache(String productoId) {
+    // Primero buscar en productos cargados progresivamente
+    try {
+      return _paginationState.productos.firstWhere((p) => p.id == productoId);
+    } catch (e) {
+      // Si no está en productos cargados, buscar en cache general
+      return _productosCache[productoId];
+    }
+  }
+
+  /// Filtra productos ya cargados localmente
+  List<Producto> filtrarProductosCargados({
+    String? searchQuery,
+    String? categoriaId,
+    bool? disponible,
+  }) {
+    var productos = _paginationState.productos;
+
+    if (searchQuery != null && searchQuery.isNotEmpty) {
+      final query = searchQuery.toLowerCase();
+      productos = productos
+          .where(
+            (p) =>
+                p.nombre.toLowerCase().contains(query) ||
+                (p.descripcion?.toLowerCase().contains(query) ?? false),
+          )
+          .toList();
+    }
+
+    if (categoriaId != null && categoriaId.isNotEmpty) {
+      productos = productos
+          .where((p) => p.categoria?.id == categoriaId)
+          .toList();
+    }
+
+    if (disponible != null) {
+      // Usar 'estado' para determinar disponibilidad
+      final estadoRequerido = disponible ? 'Activo' : 'Inactivo';
+      productos = productos.where((p) => p.estado == estadoRequerido).toList();
+    }
+
+    return productos;
+  }
+
+  // LEGACY: Método público para cargar productos con paginación flexible (mantenido por compatibilidad)
+  Future<Map<String, dynamic>> getProductosPaginados({
+    int page = 0,
+    int size = 20,
+  }) async {
+    final headers = await _getHeaders();
+    final url = '$baseUrl/api/productos?page=$page&size=$size';
+
+    print('🚀 Cargando página $page con tamaño $size');
+
+    try {
+      final response = await http
+          .get(Uri.parse(url), headers: headers)
+          .timeout(Duration(seconds: 300));
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+
+        if (responseData['success'] == true) {
+          final data = responseData['data'];
+          final List<Producto> productos = (data['content'] as List)
+              .map((json) => Producto.fromJsonLigero(json))
+              .toList();
+
+          // Actualizar caché
+          for (var producto in productos) {
+            _productosCache[producto.id] = producto;
+          }
+
+          print('✅ Página ${data['page'] + 1}/${data['totalPages']} cargada');
+          print(
+            '📦 Productos: ${productos.length} de ${data['totalElements']} totales',
+          );
+
+          return {
+            'productos': productos,
+            'page': data['page'],
+            'totalPages': data['totalPages'],
+            'totalElements': data['totalElements'],
+            'hasMore': (data['page'] + 1) < data['totalPages'],
+          };
+        } else {
+          throw Exception('Error del servidor: ${responseData['message']}');
+        }
+      } else {
+        throw Exception('Error HTTP ${response.statusCode}');
+      }
+    } catch (e) {
+      print('💥 Error en paginación: $e');
+      rethrow;
+    }
+  }
+
+  // NUEVO: Endpoint paginado ultra-optimizado con cache del backend
+  Future<List<Producto>> _getProductosPaginados() async {
+    final headers = await _getHeaders();
+    final url = '$baseUrl/api/productos/paginados?page=0&size=1000';
+
+    print('🚀 ENDPOINT PAGINADO ULTRA-OPTIMIZADO');
+    print('🔗 URL: $url');
+    print('🔧 Headers: $headers');
+    int startTime = DateTime.now().millisecondsSinceEpoch;
+
+    try {
+      final response = await http
+          .get(Uri.parse(url), headers: headers)
+          .timeout(
+            Duration(seconds: 300),
+          ); // Timeout generoso para carga inicial
+
+      print('📊 Response status: ${response.statusCode}');
+      print('📏 Response body length: ${response.body.length}');
+
+      if (response.statusCode == 200) {
+        print('✅ Response exitoso, parseando JSON...');
+        final responseData = json.decode(response.body);
+
+        print('🔍 Response structure: ${responseData.keys.toList()}');
+
+        if (responseData['success'] == true) {
+          final data = responseData['data'];
+          print('📦 Data structure: ${data.keys.toList()}');
+          print('📊 Content length: ${(data['content'] as List).length}');
+
+          final productos = (data['content'] as List)
+              .map((json) => Producto.fromJsonLigero(json))
+              .toList();
+
+          int endTime = DateTime.now().millisecondsSinceEpoch;
+          print('⚡ Endpoint paginado completado en: ${endTime - startTime}ms');
+          print('📦 Productos ligeros cargados: ${productos.length}');
+
+          // Actualizar caché
+          for (var producto in productos) {
+            _productosCache[producto.id] = producto;
+          }
+
+          return productos;
+        } else {
+          print('❌ Response success = false: ${responseData['message']}');
+          throw Exception(
+            'Error en respuesta del servidor: ${responseData['message']}',
+          );
+        }
+      } else {
+        print('❌ HTTP Error ${response.statusCode}: ${response.body}');
+        throw Exception(
+          'Error HTTP ${response.statusCode}: ${response.reasonPhrase}',
+        );
+      }
+    } catch (e) {
+      print('💥 Excepción en _getProductosPaginados: $e');
+      rethrow;
+    }
+  }
+
+  // Endpoint básico como fallback - ULTRA LIGERO (solo campos esenciales)
   Future<List<Producto>> _getProductosBasico() async {
     final headers = await _getHeaders();
-    final url = '$baseUrl/api/productos';
+    // Usar endpoint ligero sin ingredientes ni relaciones pesadas
+    final url = '$baseUrl/api/productos/ligero';
 
-    print('📦 Intentando endpoint básico: $url');
+    print('📦 Intentando endpoint /ligero ultra-optimizado: $url');
 
     final response = await http
         .get(Uri.parse(url), headers: headers)
-        .timeout(Duration(seconds: 90));
+        .timeout(Duration(seconds: 30)); // Endpoint ligero debería ser rápido
 
-    print('📦 Response status (básico): ${response.statusCode}');
+    print('📦 Response status (/search): ${response.statusCode}');
 
     if (response.statusCode == 200) {
       final responseData = json.decode(response.body);
@@ -148,7 +727,7 @@ class ProductoService {
 
     final response = await http
         .get(Uri.parse(url), headers: headers)
-        .timeout(Duration(seconds: 90));
+        .timeout(Duration(seconds: 300));
 
     print('🚀 Response status (optimizado): ${response.statusCode}');
 
@@ -190,7 +769,7 @@ class ProductoService {
       final headers = await _getHeaders();
       final response = await http
           .get(Uri.parse('$baseUrl/api/categorias'), headers: headers)
-          .timeout(Duration(seconds: 90)); // Timeout aumentado para Render
+          .timeout(Duration(seconds: 300)); // Timeout aumentado para Render
 
       // Response status: ${response.statusCode}
       // Response body: ${response.body}
@@ -219,7 +798,7 @@ class ProductoService {
             headers: headers,
             body: json.encode(producto.toJson()),
           )
-          .timeout(Duration(seconds: 90)); // Timeout aumentado para Render
+          .timeout(Duration(seconds: 300)); // Timeout aumentado para Render
 
       if (response.statusCode == 201) {
         print('✅ Producto creado exitosamente');
@@ -260,7 +839,7 @@ class ProductoService {
             headers: headers,
             body: json.encode(productoData),
           )
-          .timeout(Duration(seconds: 90)); // Timeout aumentado para Render
+          .timeout(Duration(seconds: 300)); // Timeout aumentado para Render
 
       print(
         '📦 Crear producto con ingredientes response: ${response.statusCode}',
@@ -303,7 +882,7 @@ class ProductoService {
             headers: headers,
             body: json.encode(productoJson),
           )
-          .timeout(Duration(seconds: 90)); // Timeout aumentado para Render
+          .timeout(Duration(seconds: 300)); // Timeout aumentado para Render
 
       if (response.statusCode == 200) {
         print('✅ Producto actualizado exitosamente');
@@ -323,7 +902,7 @@ class ProductoService {
       final headers = await _getHeaders();
       final response = await http
           .delete(Uri.parse('$baseUrl/api/productos/$id'), headers: headers)
-          .timeout(Duration(seconds: 90)); // Timeout aumentado para Render
+          .timeout(Duration(seconds: 300)); // Timeout aumentado para Render
 
       if (response.statusCode == 200 || response.statusCode == 204) {
         print('✅ Producto eliminado exitosamente');
@@ -357,7 +936,7 @@ class ProductoService {
             headers: headers,
             body: json.encode(categoria.toJson()),
           )
-          .timeout(Duration(seconds: 90)); // Timeout aumentado para Render
+          .timeout(Duration(seconds: 300)); // Timeout aumentado para Render
 
       if (response.statusCode == 201) {
         print('✅ Categoría creada exitosamente');
@@ -396,7 +975,7 @@ class ProductoService {
             headers: headers,
             body: json.encode(categoria.toJson()),
           )
-          .timeout(Duration(seconds: 90)); // Timeout aumentado para Render
+          .timeout(Duration(seconds: 300)); // Timeout aumentado para Render
 
       if (response.statusCode == 200) {
         print('✅ Categoría actualizada exitosamente');
@@ -418,7 +997,7 @@ class ProductoService {
       final headers = await _getHeaders();
       final response = await http
           .delete(Uri.parse('$baseUrl/api/categorias/$id'), headers: headers)
-          .timeout(Duration(seconds: 30)); // Timeout aumentado para Railway
+          .timeout(Duration(seconds: 300)); // Timeout aumentado para Railway
 
       if (response.statusCode == 200) {
         print('✅ Categoría eliminada exitosamente');
@@ -448,7 +1027,7 @@ class ProductoService {
       ).replace(queryParameters: queryParams);
       final response = await http
           .get(uri, headers: headers)
-          .timeout(Duration(seconds: 30)); // Timeout aumentado para Railway
+          .timeout(Duration(seconds: 300)); // Timeout aumentado para Railway
 
       if (response.statusCode == 200) {
         // Extraer los datos del campo 'data' de la respuesta ApiResponse
@@ -483,7 +1062,7 @@ class ProductoService {
             ),
             headers: headers,
           )
-          .timeout(Duration(seconds: 30)); // Timeout aumentado para Railway
+          .timeout(Duration(seconds: 300)); // Timeout aumentado para Railway
 
       if (response.statusCode == 200) {
         // Extraer los datos del campo 'data' de la respuesta ApiResponse
@@ -545,7 +1124,7 @@ class ProductoService {
               'storage': 'database', // Especificar que se guarde en BD
             }),
           )
-          .timeout(Duration(seconds: 30));
+          .timeout(Duration(seconds: 300));
 
       if (response.statusCode == 200) {
         // Parsear la respuesta para verificar que se guardó correctamente
@@ -670,7 +1249,7 @@ class ProductoService {
       final headers = await _getHeaders();
       final response = await http
           .get(Uri.parse('$baseUrl/api/productos/$id/nombre'), headers: headers)
-          .timeout(Duration(seconds: 20));
+          .timeout(Duration(seconds: 300));
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
@@ -755,7 +1334,7 @@ class ProductoService {
 
       final response = await http
           .get(Uri.parse(url), headers: headers)
-          .timeout(Duration(seconds: 30));
+          .timeout(Duration(seconds: 300));
 
       print('📡 [HTTP] Status: ${response.statusCode}');
       if (response.statusCode == 200) {
@@ -801,7 +1380,7 @@ class ProductoService {
 
       final response = await http
           .get(Uri.parse(url), headers: headers)
-          .timeout(Duration(seconds: 30));
+          .timeout(Duration(seconds: 300));
 
       print('📡 [HTTP-BASIC] Status: ${response.statusCode}');
       if (response.statusCode == 200) {
@@ -926,7 +1505,7 @@ class ProductoService {
             ),
             headers: headers,
           )
-          .timeout(Duration(seconds: 30)); // Timeout aumentado para Railway
+          .timeout(Duration(seconds: 300)); // Timeout aumentado para Railway
 
       print(
         '🥘 Obteniendo producto completo CON NOMBRES para ingredientes requeridos: $productoId',
@@ -1008,7 +1587,7 @@ class ProductoService {
             Uri.parse('$baseUrl/api/productos/$productoId'),
             headers: headers,
           )
-          .timeout(Duration(seconds: 30)); // Timeout aumentado para Railway
+          .timeout(Duration(seconds: 300)); // Timeout aumentado para Railway
 
       print(
         '🥘 Obteniendo producto completo para ingredientes requeridos (BÁSICO): $productoId',
@@ -1080,7 +1659,7 @@ class ProductoService {
             ),
             headers: headers,
           )
-          .timeout(Duration(seconds: 30)); // Timeout aumentado para Railway
+          .timeout(Duration(seconds: 300)); // Timeout aumentado para Railway
 
       print(
         '🥘 Obteniendo producto completo CON NOMBRES para ingredientes opcionales: $productoId',
@@ -1162,7 +1741,7 @@ class ProductoService {
             Uri.parse('$baseUrl/api/productos/$productoId'),
             headers: headers,
           )
-          .timeout(Duration(seconds: 30)); // Timeout aumentado para Railway
+          .timeout(Duration(seconds: 300)); // Timeout aumentado para Railway
 
       print(
         '🥘 Obteniendo producto completo para ingredientes opcionales (BÁSICO): $productoId',
@@ -1229,7 +1808,7 @@ class ProductoService {
             Uri.parse('$baseUrl/api/productos/$productoId/es-combo'),
             headers: headers,
           )
-          .timeout(Duration(seconds: 30)); // Timeout aumentado para Railway
+          .timeout(Duration(seconds: 300)); // Timeout aumentado para Railway
 
       print('🔍 Verificando si producto $productoId es combo');
       print('🔍 Response status: ${response.statusCode}');
@@ -1345,7 +1924,9 @@ class ProductoService {
                 ),
                 headers: headers,
               )
-              .timeout(Duration(seconds: 20)); // Timeout aumentado para Railway
+              .timeout(
+                Duration(seconds: 300),
+              ); // Timeout aumentado para Railway
 
           if (response.statusCode == 200) {
             final responseData = json.decode(response.body);

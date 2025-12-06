@@ -29,13 +29,14 @@ class _ProductosScreenState extends State<ProductosScreen> {
   final TextEditingController _searchController = TextEditingController();
   String? _selectedCategoriaId;
   int _paginaActual = 0;
-  int _itemsPorPagina = 10;
-  List<Producto> _productosPaginados = [];
+  int _itemsPorPagina = 20; // Paginación en memoria (frontend)
   bool _isLoading = true;
   String? _error;
   bool _guardandoProducto = false;
   bool _isRefreshing = false;
-  List<Producto> _productosVista = [];
+  List<Producto> _productosCache = []; // Todos los productos desde cache
+  List<Producto> _productosFiltrados = []; // Productos después de filtros
+  List<Producto> _productosPaginados = []; // Productos de la página actual
   List<Categoria> _categorias = [];
   List<Ingrediente> _ingredientesCarnes = [];
 
@@ -77,7 +78,9 @@ class _ProductosScreenState extends State<ProductosScreen> {
       setState(() {
         _categorias = cacheProvider.categorias ?? [];
         _ingredientesCarnes = cacheProvider.ingredientes ?? [];
-        _actualizarProductosVista();
+        _productosCache = cacheProvider.productos ?? [];
+        print('✅ Productos cargados desde cache: ${_productosCache.length}');
+        _aplicarFiltrosYPaginacion();
         _isLoading = false;
       });
     }
@@ -95,11 +98,21 @@ class _ProductosScreenState extends State<ProductosScreen> {
       );
       if (!cacheProvider.hasData) {
         await cacheProvider.initialize();
+        // 🔥 WARMUP: Iniciar carga progresiva de productos
+        cacheProvider.warmupProductos();
       }
       setState(() {
         _categorias = cacheProvider.categorias ?? [];
         _ingredientesCarnes = cacheProvider.ingredientes ?? [];
-        _actualizarProductosVista();
+        _productosCache = cacheProvider.productos ?? [];
+        print(
+          '✅ Productos cargados instantáneamente: ${_productosCache.length}',
+        );
+        if (_productosCache.isEmpty) {
+          print('⏳ Los productos se están cargando en segundo plano...');
+          print('⏳ Esto puede tardar hasta 5 minutos en servidores gratuitos');
+        }
+        _aplicarFiltrosYPaginacion();
         _isLoading = false;
       });
     } catch (e) {
@@ -110,43 +123,62 @@ class _ProductosScreenState extends State<ProductosScreen> {
     }
   }
 
+  // ✅ OPTIMIZADO: Filtros y paginación en memoria (sin backend)
+  void _aplicarFiltrosYPaginacion() {
+    final query = _searchController.text.toLowerCase();
+    
+    // Paso 1: Aplicar filtros
+    List<Producto> productosFiltrados = _productosCache.where((producto) {
+      final matchesQuery =
+          query.isEmpty || producto.nombre.toLowerCase().contains(query);
+      final matchesCategory =
+          _selectedCategoriaId == null ||
+          producto.categoria?.id == _selectedCategoriaId;
+      return matchesQuery && matchesCategory;
+    }).toList();
+
+    _productosFiltrados = productosFiltrados;
+
+    // Paso 2: Calcular paginación en memoria
+    final totalElementos = _productosFiltrados.length;
+    final totalPaginas = (totalElementos / _itemsPorPagina).ceil();
+
+    // Ajustar página actual si está fuera de rango
+    if (_paginaActual >= totalPaginas && totalPaginas > 0) {
+      _paginaActual = totalPaginas - 1;
+    } else if (_paginaActual < 0) {
+      _paginaActual = 0;
+    }
+
+    // Paso 3: Obtener productos de la página actual
+    final start = _paginaActual * _itemsPorPagina;
+    final end = (start + _itemsPorPagina).clamp(0, totalElementos);
+
+    if (start < totalElementos) {
+      _productosPaginados = _productosFiltrados.sublist(start, end);
+    } else {
+      _productosPaginados = [];
+    }
+
+    print(
+      '📊 Paginación: Página ${_paginaActual + 1}/$totalPaginas - Mostrando ${_productosPaginados.length} de $totalElementos productos',
+    );
+  }
+
   void _onSearchChanged() {
     setState(() {
-      _actualizarProductosVista();
+      _paginaActual = 0; // Resetear a primera página al buscar
+      _aplicarFiltrosYPaginacion();
     });
   }
 
-  void _actualizarProductosVista() {
-    final cacheProvider = Provider.of<DatosCacheProvider>(
-      context,
-      listen: false,
-    );
-    List<Producto> productos = cacheProvider.productos ?? [];
-    final query = _searchController.text.toLowerCase();
-    if (query.isNotEmpty || _selectedCategoriaId != null) {
-      productos = productos.where((producto) {
-        final matchesQuery =
-            query.isEmpty || producto.nombre.toLowerCase().contains(query);
-        final matchesCategory =
-            _selectedCategoriaId == null ||
-            producto.categoria?.id == _selectedCategoriaId;
-        return matchesQuery && matchesCategory;
-      }).toList();
-    }
-    int startIndex = _paginaActual * _itemsPorPagina;
-    int endIndex = (startIndex + _itemsPorPagina).clamp(0, productos.length);
-    _productosPaginados = productos.sublist(startIndex, endIndex);
-    _productosVista = productos;
-  }
-
-  // 🚀 OPTIMIZACIÓN: Carga de datos mejorada con mejor UX
-
+  // ✅ OPTIMIZADO: Navegación de páginas en memoria (instantánea)
   void _siguientePagina() {
-    int startIndex = (_paginaActual + 1) * _itemsPorPagina;
-    if (startIndex < _productosVista.length) {
+    final totalPaginas = (_productosFiltrados.length / _itemsPorPagina).ceil();
+    if (_paginaActual < totalPaginas - 1) {
       setState(() {
         _paginaActual++;
-        _actualizarProductosVista();
+        _aplicarFiltrosYPaginacion();
       });
     }
   }
@@ -155,17 +187,20 @@ class _ProductosScreenState extends State<ProductosScreen> {
     if (_paginaActual > 0) {
       setState(() {
         _paginaActual--;
-        _actualizarProductosVista();
+        _aplicarFiltrosYPaginacion();
       });
     }
   }
 
-  /// Construye los controles de paginación
+  /// Construye los controles de paginación (100% en memoria)
   Widget _buildPaginationControls() {
-    int totalPaginas = (_productosVista.length / _itemsPorPagina).ceil();
+    final totalElementos = _productosFiltrados.length;
+    final totalPaginas = (totalElementos / _itemsPorPagina).ceil();
+    
     if (totalPaginas <= 1) {
       return SizedBox.shrink();
     }
+    
     return Container(
       padding: EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
@@ -196,6 +231,22 @@ class _ProductosScreenState extends State<ProductosScreen> {
               ),
             ),
           ),
+          SizedBox(width: 8),
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppTheme.primary.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              '$totalElementos productos',
+              style: TextStyle(
+                color: AppTheme.primary,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
           IconButton(
             icon: Icon(Icons.arrow_forward_ios, size: 18),
             color: _paginaActual < totalPaginas - 1
@@ -218,7 +269,9 @@ class _ProductosScreenState extends State<ProductosScreen> {
                 dropdownColor: AppTheme.cardBg,
                 icon: Icon(Icons.arrow_drop_down, color: AppTheme.primary),
                 style: TextStyle(color: AppTheme.textPrimary),
-                items: [5, 10, 20, 50].map<DropdownMenuItem<int>>((int value) {
+                items: [5, 10, 20, 50, 100].map<DropdownMenuItem<int>>((
+                  int value,
+                ) {
                   return DropdownMenuItem<int>(
                     value: value,
                     child: Text('$value por página'),
@@ -228,7 +281,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                   setState(() {
                     _itemsPorPagina = newValue!;
                     _paginaActual = 0;
-                    _actualizarProductosVista();
+                    _aplicarFiltrosYPaginacion();
                   });
                 },
               ),
@@ -237,6 +290,90 @@ class _ProductosScreenState extends State<ProductosScreen> {
         ],
       ),
     );
+  }
+
+  // Método para construir filtros de categorías
+  List<Widget> _buildCategoriaCompactRowProductos() {
+    List<Widget> widgets = [];
+
+    // Botón "Todas"
+    widgets.add(
+      GestureDetector(
+        onTap: () {
+          setState(() {
+            _selectedCategoriaId = null;
+            _paginaActual = 0;
+            _aplicarFiltrosYPaginacion();
+          });
+        },
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: _selectedCategoriaId == null
+                ? AppTheme.primary
+                : AppTheme.cardBg,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: _selectedCategoriaId == null
+                  ? AppTheme.primary
+                  : AppTheme.textMuted.withOpacity(0.3),
+            ),
+          ),
+          child: Text(
+            'Todas',
+            style: TextStyle(
+              color: _selectedCategoriaId == null
+                  ? Colors.white
+                  : AppTheme.textPrimary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    widgets.add(SizedBox(width: 8));
+
+    // Botones de categorías
+    for (var categoria in _categorias) {
+      widgets.add(
+        GestureDetector(
+          onTap: () {
+            setState(() {
+              _selectedCategoriaId = categoria.id;
+              _paginaActual = 0;
+              _aplicarFiltrosYPaginacion();
+            });
+          },
+          child: Container(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: _selectedCategoriaId == categoria.id
+                  ? AppTheme.primary
+                  : AppTheme.cardBg,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: _selectedCategoriaId == categoria.id
+                    ? AppTheme.primary
+                    : AppTheme.textMuted.withOpacity(0.3),
+              ),
+            ),
+            child: Text(
+              categoria.nombre,
+              style: TextStyle(
+                color: _selectedCategoriaId == categoria.id
+                    ? Colors.white
+                    : AppTheme.textPrimary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+      );
+      widgets.add(SizedBox(width: 8));
+    }
+
+    return widgets;
   }
 
   @override
@@ -460,9 +597,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                         vertical: 16,
                       ),
                     ),
-                    onChanged: (value) {
-                      setState(() {}); // Actualizar lista al buscar
-                    },
+                    // onChanged ya está manejado por _searchController.addListener
                   ),
                 ),
                 SizedBox(height: 12), // Reducido de 20 a 12
@@ -520,7 +655,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                     ),
                   );
                 }
-                if (_productosVista.isEmpty) {
+                if (_productosFiltrados.isEmpty) {
                   return Center(
                     child: Text(
                       'No se encontraron productos',
@@ -2481,138 +2616,4 @@ class _ProductosScreenState extends State<ProductosScreen> {
     return true;
   }
 
-  // ✅ MÉTODO ELIMINADO: _buildCategoriaGridRowsProductos no se usaba
-
-  // 🎨 NUEVA: Barra compacta de categorías (copiada de pedido_screen)
-  List<Widget> _buildCategoriaCompactRowProductos() {
-    List<Widget> allCategories = [];
-
-    // Agregar opción "Todo" - más compacta
-    allCategories.add(
-      _buildCategoriaCompactChipProductos(
-        nombre: 'Todo',
-        icon: Icons.apps,
-        isSelected: _selectedCategoriaId == null,
-        onTap: () => setState(() {
-          _selectedCategoriaId = null;
-          _actualizarProductosVista();
-        }),
-      ),
-    );
-
-    // Agregar todas las categorías de forma compacta
-    allCategories.addAll(
-      _categorias.map(
-        (categoria) => _buildCategoriaCompactChipProductos(
-          nombre: categoria.nombre,
-          imagenUrl: categoria.imagenUrl,
-          isSelected: _selectedCategoriaId == categoria.id,
-          onTap: () => setState(() {
-            _selectedCategoriaId = categoria.id;
-            _actualizarProductosVista();
-          }),
-        ),
-      ),
-    );
-
-    return allCategories;
-  }
-
-  // Widget copiado de pedido_screen para consistencia visual
-  Widget _buildCategoriaCompactChipProductos({
-    required String nombre,
-    String? imagenUrl,
-    IconData? icon,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
-    final primary = Color(0xFFFF6B00);
-    final cardBg = Color(0xFF2A2A2A);
-    final textLight = Color(0xFFB0B0B0);
-
-    return Container(
-      margin: EdgeInsets.only(right: 8), // Espaciado entre chips
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: EdgeInsets.symmetric(
-            horizontal: 10,
-            vertical: 6,
-          ), // Más compacto
-          decoration: BoxDecoration(
-            color: isSelected ? primary : cardBg,
-            borderRadius: BorderRadius.circular(16), // Menos redondeado
-            border: Border.all(
-              color: isSelected ? primary : Colors.grey.withOpacity(0.3),
-              width: 1,
-            ),
-            boxShadow: isSelected
-                ? [
-                    BoxShadow(
-                      color: primary.withOpacity(0.3),
-                      blurRadius: 4,
-                      offset: Offset(0, 2),
-                    ),
-                  ]
-                : null,
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Imagen circular o icono - Más pequeño
-              Container(
-                width: 24, // Reducido de 32 a 24
-                height: 24, // Reducido de 32 a 24
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: isSelected
-                      ? Colors.white.withOpacity(0.2)
-                      : Colors.grey.withOpacity(0.3),
-                ),
-                child: ClipOval(
-                  child: imagenUrl != null && imagenUrl.isNotEmpty
-                      ? Image.network(
-                          _imageService.getImageUrl(imagenUrl),
-                          fit: BoxFit.cover,
-                          headers: {
-                            'Cache-Control': 'no-cache',
-                            'User-Agent': 'Flutter App',
-                          },
-                          errorBuilder: (context, error, stackTrace) => Icon(
-                            Icons.restaurant_menu,
-                            color: isSelected ? Colors.white : textLight,
-                            size: 14, // Icono más pequeño
-                          ),
-                          loadingBuilder: (context, child, loadingProgress) {
-                            if (loadingProgress == null) return child;
-                            return Icon(
-                              Icons.restaurant_menu,
-                              color: isSelected ? Colors.white : textLight,
-                              size: 14, // Icono más pequeño
-                            );
-                          },
-                        )
-                      : Icon(
-                          icon ?? Icons.restaurant_menu,
-                          color: isSelected ? Colors.white : textLight,
-                          size: 14, // Icono más pequeño
-                        ),
-                ),
-              ),
-              SizedBox(width: 6), // Espaciado reducido
-              // Texto de la categoría - Más compacto
-              Text(
-                nombre,
-                style: TextStyle(
-                  color: isSelected ? Colors.white : textLight,
-                  fontSize: 12, // Fuente pequeña
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 }

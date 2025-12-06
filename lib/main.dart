@@ -43,13 +43,17 @@ class MyApp extends StatelessWidget {
       final userProvider = Provider.of<UserProvider>(context, listen: false);
       await userProvider.initializeFromStorage();
 
-      // Si el usuario está autenticado, inicializar el cache
+      // Si el usuario está autenticado, inicializar el cache Y PRECARGAR PRODUCTOS
       if (userProvider.isAuthenticated) {
         final cacheProvider = Provider.of<DatosCacheProvider>(
           context,
           listen: false,
         );
+        // 🔥 WARMUP: Inicializar cache y precargar productos en background
+        print('🔥 WARMUP: Iniciando precarga de datos...');
         await cacheProvider.initialize();
+        // Precargar productos en background sin bloquear la UI
+        cacheProvider.warmupProductos();
       }
     });
 

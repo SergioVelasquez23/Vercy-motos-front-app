@@ -36,7 +36,9 @@ class _CategoriasScreenState extends State<CategoriasScreen> {
 
     try {
       final categorias = await _productoService.getCategorias();
-      final productos = await _productoService.getProductos();
+      final productos = await _productoService.getProductos(
+        useProgressive: true,
+      );
 
       setState(() {
         _categorias = categorias;

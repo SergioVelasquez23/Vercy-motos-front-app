@@ -2945,8 +2945,8 @@ class _MesasScreenState extends State<MesasScreen>
 
       // Forzar recarga de productos (cache global/provider)
       try {
-        await _productoService.getProductos();
-        print('✅ Productos recargados');
+        await _productoService.getProductos(useProgressive: true);
+        print('✅ Productos recargados con carga progresiva');
       } catch (pe) {
         print('⚠️ Error recargando productos: $pe');
       }

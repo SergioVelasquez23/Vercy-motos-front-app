@@ -76,8 +76,24 @@ class DatosCacheProvider extends ChangeNotifier {
   // Inicializar el provider
   Future<void> initialize() async {
     print('🚀 Inicializando DatosCacheProvider...');
-    await _cargarTodosLosDatos();
+    // Solo cargar categorías e ingredientes al inicio (son rápidos)
+    // Los productos se cargarán progresivamente con warmupProductos()
+    await Future.wait([
+      _cargarCategorias(force: false, silent: false),
+      _cargarIngredientes(force: false, silent: false),
+    ]);
     _startPolling(); // ✅ Iniciar polling automático
+  }
+
+  // 🔥 WARMUP: Precargar productos en background
+  void warmupProductos() {
+    print('🔥 WARMUP: Iniciando carga progresiva de productos...');
+    print(
+      '⏳ NOTA: La primera carga puede tardar hasta 5 minutos debido al servidor gratuito de Render.com',
+    );
+    print('⏳ Por favor espera, los productos se están cargando...');
+    // Cargar productos en background sin esperar
+    _cargarProductos(force: true, silent: false, useProgressive: true);
   }
 
   // Cargar todos los datos en paralelo
@@ -162,6 +178,7 @@ class DatosCacheProvider extends ChangeNotifier {
   Future<void> _cargarProductos({
     bool force = false,
     bool silent = false,
+    bool useProgressive = true, // Por defecto usar carga progresiva
   }) async {
     // ✅ NUEVO: Verificar si necesita actualización
     if (!force && !productosExpired && _productos != null) {
@@ -176,7 +193,10 @@ class DatosCacheProvider extends ChangeNotifier {
     if (!silent) notifyListeners();
 
     try {
-      final productos = await _productoService.getProductos();
+      print('🚀 Usando carga progresiva de productos...');
+      final productos = await _productoService.getProductos(
+        useProgressive: useProgressive,
+      );
       _productos = productos;
       _ultimaCargaProductos = DateTime.now();
 
@@ -189,11 +209,27 @@ class DatosCacheProvider extends ChangeNotifier {
         );
       }
     } catch (e) {
-      print('❌ Error cargando productos: $e');
-      // Mantener productos existentes en caso de error
-      print(
-        '🔄 Manteniendo productos existentes en caché: ${_productos?.length ?? 0}',
-      );
+      print('❌ Error cargando productos con método progresivo: $e');
+      print('🔄 Intentando método tradicional como respaldo...');
+
+      try {
+        // Respaldo: intentar método tradicional
+        final productos = await _productoService.getProductos(
+          useProgressive: false,
+        );
+        _productos = productos;
+        _ultimaCargaProductos = DateTime.now();
+
+        print(
+          '✅ Productos cargados con método tradicional: ${productos.length}',
+        );
+      } catch (backupError) {
+        print('❌ Error también en método tradicional: $backupError');
+        // Mantener productos existentes en caso de error total
+        print(
+          '🔄 Manteniendo productos existentes en caché: ${_productos?.length ?? 0}',
+        );
+      }
     } finally {
       _isLoadingProductos = false;
       // ✅ MEJORADO: Solo notificar si no es silencioso

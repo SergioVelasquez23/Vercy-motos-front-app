@@ -106,8 +106,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
       // Intentar recargas (ignorar errores individuales, seguir con el flujo)
       try {
-        await _productoService.getProductos();
-        print('✅ Wake-up: productos recargados');
+        await _productoService.getProductos(useProgressive: true);
+        print('✅ Wake-up: productos recargados con carga progresiva');
       } catch (e) {
         print('⚠️ Wake-up: fallo recargando productos: $e');
       }
