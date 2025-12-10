@@ -167,18 +167,35 @@ class _ProductosScreenState extends State<ProductosScreen> {
       '📊 Paginación: Página ${_paginaActual + 1}/$totalPaginas - Mostrando ${_productosPaginados.length} de $totalElementos productos',
     );
     
-    // 🖼️ NUEVO: Cargar imágenes de los productos visibles
+    // 🖼️ NUEVO: Cargar imágenes de los productos visibles (en background, no bloquea)
     if (_productosPaginados.isNotEmpty) {
       _cargarImagenesVisibles();
     }
   }
 
-  // 🖼️ NUEVO: Cargar imágenes solo de productos visibles
-  Future<void> _cargarImagenesVisibles() async {
+  // 🖼️ NUEVO: Cargar imágenes solo de productos visibles (sin await para no bloquear)
+  void _cargarImagenesVisibles() {
+    if (_productosPaginados.isEmpty) return;
+    
     print(
-      '🖼️ Cargando imágenes de ${_productosPaginados.length} productos visibles...',
+      '🖼️ Productos visibles: ${_productosPaginados.length}',
     );
-    await _imageLoader.cargarImagenesLote(_productosPaginados);
+    print('⚡ Las imágenes se cargarán individualmente (lazy loading)');
+
+    // ⚠️ DESHABILITADO: Endpoint batch tiene problemas
+    // Las imágenes se cargan individualmente con LazyImagenProducto
+
+    // _imageLoader
+    //     .cargarImagenesLote(_productosPaginados)
+    //     .then((_) {
+    //       print('✅ Imágenes cargadas exitosamente');
+    //       if (mounted) {
+    //         setState(() {});
+    //       }
+    //     })
+    //     .catchError((error) {
+    //       print('⚠️ Error cargando imágenes (no crítico): $error');
+    //     });
   }
 
   void _onSearchChanged() {
@@ -1146,7 +1163,16 @@ class _ProductosScreenState extends State<ProductosScreen> {
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: selectedImageUrl != null
-                            ? _buildProductImage(selectedImageUrl)
+                            ? ImagenProductoWidget(
+                                urlRemota: _imageService.getImageUrl(
+                                  selectedImageUrl!,
+                                ),
+                                nombreProducto: null,
+                                width: double.infinity,
+                                height: double.infinity,
+                                fit: BoxFit.cover,
+                                backendBaseUrl: _backendBaseUrl,
+                              )
                             : Icon(
                                 Icons.add_a_photo,
                                 color: AppTheme.primary,

@@ -1652,66 +1652,68 @@ class ProductoService {
   // 🖼️ NUEVO: Cargar imágenes de productos específicos (lazy loading)
   /// Carga las imágenes de un lote de productos (máximo 20 por request)
   /// Retorna un Map con productoId -> imagenUrl
+  // ⚠️ DEPRECADO: Este endpoint batch tiene problemas de tipos
+  // Usar cargarImagenProducto() individual en su lugar
+  @Deprecated('Usar cargarImagenProducto() para cada producto individualmente')
   Future<Map<String, String>> cargarImagenesProductos(
     List<String> productosIds,
   ) async {
-    if (productosIds.isEmpty) {
-      print('⚠️ Lista de IDs vacía, no se cargan imágenes');
-      return {};
-    }
-
-    // Limitar a 20 productos por request (como el backend)
-    final idsLimitados = productosIds.take(20).toList();
-
-    print('🖼️ Cargando imágenes de ${idsLimitados.length} productos...');
-
-    try {
-      final headers = await _getHeaders();
-      final url = '$baseUrl/api/productos/imagenes';
-
-      final response = await http
-          .post(
-            Uri.parse(url),
-            headers: headers,
-            body: json.encode(idsLimitados),
-          )
-          .timeout(Duration(seconds: 20));
-
-      if (response.statusCode == 200) {
-        final responseData = json.decode(response.body);
-
-        if (responseData['success'] == true && responseData['data'] != null) {
-          final Map<String, String> imagenes = Map<String, String>.from(
-            responseData['data'] as Map,
-          );
-
-          print('✅ ${imagenes.length} imágenes cargadas exitosamente');
-
-          // Actualizar cache de productos con las imágenes
-          imagenes.forEach((id, imagenUrl) {
-            if (_productosCache.containsKey(id)) {
-              _productosCache[id] = _productosCache[id]!.copyWith(
-                imagenUrl: imagenUrl,
-              );
-            }
-          });
-
-          return imagenes;
-        }
-      }
-
-      print('❌ Error ${response.statusCode} cargando imágenes');
-      return {};
-    } catch (e) {
-      print('❌ Error cargando imágenes: $e');
-      return {};
-    }
+    print('⚠️ Endpoint batch deprecado - usar lazy loading individual');
+    return {};
+    
+    // CÓDIGO COMENTADO: Endpoint POST /api/productos/imagenes tiene problemas
+    // if (productosIds.isEmpty) {
+    //   print('⚠️ Lista de IDs vacía, no se cargan imágenes');
+    //   return {};
+    // }
+    //
+    // final idsLimitados = productosIds.take(20).toList();
+    // print('🖼️ Cargando imágenes de ${idsLimitados.length} productos...');
+    //
+    // try {
+    //   final headers = await _getHeaders();
+    //   final url = '$baseUrl/api/productos/imagenes';
+    //
+    //   final response = await http
+    //       .post(
+    //         Uri.parse(url),
+    //         headers: headers,
+    //         body: json.encode(idsLimitados),
+    //       )
+    //       .timeout(Duration(seconds: 20));
+    //
+    //   if (response.statusCode == 200) {
+    //     final responseData = json.decode(response.body);
+    //
+    //     if (responseData['success'] == true && responseData['data'] != null) {
+    //       final Map<String, String> imagenes = Map<String, String>.from(
+    //         responseData['data'] as Map,
+    //       );
+    //
+    //       print('✅ ${imagenes.length} imágenes cargadas exitosamente');
+    //
+    //       imagenes.forEach((id, imagenUrl) {
+    //         if (_productosCache.containsKey(id)) {
+    //           _productosCache[id] = _productosCache[id]!.copyWith(
+    //             imagenUrl: imagenUrl,
+    //           );
+    //         }
+    //       });
+    //
+    //       return imagenes;
+    //     }
+    //   }
+    //
+    //   print('❌ Error ${response.statusCode} cargando imágenes');
+    //   return {};
+    // } catch (e) {
+    //   print('❌ Error cargando imágenes: $e');
+    //   return {};
+    // }
   }
 
-  // 🖼️ NUEVO: Cargar imagen de un solo producto
+  // 🖼️ NUEVO: Cargar imagen de un solo producto (lazy loading individual)
   Future<String?> cargarImagenProducto(String productoId) async {
-    print('🖼️ Cargando imagen del producto: $productoId');
-
     try {
       final headers = await _getHeaders();
       final url = '$baseUrl/api/productos/$productoId/imagen';
@@ -1724,23 +1726,23 @@ class ProductoService {
         final responseData = json.decode(response.body);
 
         if (responseData['success'] == true && responseData['data'] != null) {
-          final imagenUrl = responseData['data']['imagenUrl'] as String?;
-
-          if (imagenUrl != null) {
-            print('✅ Imagen cargada: $imagenUrl');
+          final data = responseData['data'];
+          final tieneImagen = data['tieneImagen'] == true;
+          
+          if (tieneImagen && data['imagenUrl'] != null) {
+            final imagenBase64 = data['imagenUrl'] as String;
 
             // Actualizar cache
             if (_productosCache.containsKey(productoId)) {
               _productosCache[productoId] = _productosCache[productoId]!
-                  .copyWith(imagenUrl: imagenUrl);
+                  .copyWith(imagenUrl: imagenBase64);
             }
 
-            return imagenUrl;
+            return imagenBase64;
           }
         }
       }
 
-      print('❌ Error ${response.statusCode} cargando imagen');
       return null;
     } catch (e) {
       print('❌ Error cargando imagen: $e');

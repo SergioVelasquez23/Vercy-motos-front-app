@@ -104,10 +104,21 @@ class _LazyProductImageWidgetState extends State<LazyProductImageWidget> {
   Widget build(BuildContext context) {
     // Si tenemos la imagen, mostrarla
     if (_imagenUrl != null && _imagenUrl!.isNotEmpty) {
+      // Determinar si es data URI o URL relativa
+      String urlFinal;
+      if (_imagenUrl!.startsWith('data:')) {
+        // Es un data URI completo, usarlo directamente
+        urlFinal = _imagenUrl!;
+      } else if (_imagenUrl!.startsWith('http')) {
+        // Es una URL completa
+        urlFinal = _imagenUrl!;
+      } else {
+        // Es una ruta relativa, concatenar con baseUrl
+        urlFinal = '${widget.backendBaseUrl}$_imagenUrl';
+      }
+      
       return ImagenProductoWidget(
-        urlRemota: _imagenUrl!.startsWith('http')
-            ? _imagenUrl
-            : '${widget.backendBaseUrl}$_imagenUrl',
+        urlRemota: urlFinal,
         nombreProducto: widget.producto.nombre,
         width: widget.width,
         height: widget.height,

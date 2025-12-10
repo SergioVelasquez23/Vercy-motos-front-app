@@ -303,14 +303,9 @@ class ImageService {
 
     // Si ya es una URL completa, validarla
     if (cleanFilename.startsWith('http')) {
-      // Asegurar URLs ya en Render o migrar cualquier referencia antigua
+      // Las URLs ya están en Render, solo validarlas
       if (cleanFilename.contains('sopa-y-carbon.onrender.com')) {
-        final migratedUrl = cleanFilename.replaceAll(
-          'sopa-y-carbon.onrender.com',
-          'sopa-y-carbon.onrender.com',
-        );
-        print('🔄 URL migrada a Render: $migratedUrl');
-        return migratedUrl;
+        return cleanFilename;
       }
 
       // Validar que no termine en rutas incompletas

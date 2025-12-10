@@ -4,8 +4,10 @@ import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../models/mesa.dart';
 import '../widgets/imagen_producto_widget.dart';
+import '../widgets/lazy_product_image_widget.dart';
 import '../config/endpoints_config.dart';
 import '../services/image_service.dart';
+import '../services/image_loader_service.dart';
 import '../models/producto.dart';
 import '../models/categoria.dart';
 import '../models/pedido.dart';
@@ -2933,7 +2935,10 @@ class _PedidoScreenState extends State<PedidoScreen> {
               child: Container(
                 width: double.infinity,
                 padding: EdgeInsets.all(6),
-                child: _buildProductImage(producto.imagenUrl),
+                child: _buildProductImage(
+                  producto.imagenUrl,
+                  producto: producto,
+                ),
               ),
             ),
             // Información del producto (categoría, nombre, precio)
@@ -2992,6 +2997,7 @@ class _PedidoScreenState extends State<PedidoScreen> {
 
   Widget _buildProductImage(
     String? imagenUrl, {
+    Producto? producto,
     double? width,
     double? height,
   }) {
@@ -3004,15 +3010,24 @@ class _PedidoScreenState extends State<PedidoScreen> {
           border: Border.all(color: Colors.grey.withOpacity(0.2)),
           borderRadius: BorderRadius.circular(8),
         ),
-        child: ImagenProductoWidget(
-          urlRemota: imagenUrl != null
-              ? _imageService.getImageUrl(imagenUrl)
-              : null,
-          width: width ?? double.infinity,
-          height: height ?? double.infinity,
-          fit: BoxFit.cover,
-          backendBaseUrl: EndpointsConfig.baseUrl,
-        ),
+        // 🖼️ Usar imagen simple si producto es null o tiene URL
+        child: producto != null
+            ? LazyProductImageWidget(
+                producto: producto,
+                width: width ?? 60,
+                height: height ?? 60,
+                fit: BoxFit.cover,
+                backendBaseUrl: EndpointsConfig.baseUrl,
+              )
+            : ImagenProductoWidget(
+                urlRemota: imagenUrl != null
+                    ? _imageService.getImageUrl(imagenUrl)
+                    : null,
+                width: width ?? double.infinity,
+                height: height ?? double.infinity,
+                fit: BoxFit.cover,
+                backendBaseUrl: EndpointsConfig.baseUrl,
+              ),
       ),
     );
   }
@@ -3065,6 +3080,7 @@ class _PedidoScreenState extends State<PedidoScreen> {
                 margin: EdgeInsets.only(right: 8),
                 child: _buildProductImage(
                   producto.imagenUrl,
+                  producto: producto,
                   width: isMovil ? 50 : 40,
                   height: isMovil ? 50 : 40,
                 ),

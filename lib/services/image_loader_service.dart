@@ -58,6 +58,7 @@ class ImageLoaderService {
   }
 
   /// Carga las imágenes de un lote de productos (máximo 20)
+  /// NOTA: Usa endpoint individual GET /api/productos/{id}/imagen
   Future<void> cargarImagenesLote(List<Producto> productos) async {
     // Filtrar productos que no tienen imagen cargada y no están en proceso
     final productosNecesitanImagen = productos
@@ -75,35 +76,42 @@ class ImageLoaderService {
 
     // Limitar a 20 productos
     final productosLimitados = productosNecesitanImagen.take(20).toList();
-    final ids = productosLimitados.map((p) => p.id).toList();
 
-    print('🖼️ Cargando lote de ${ids.length} imágenes...');
+    print(
+      '🖼️ Cargando ${productosLimitados.length} imágenes individualmente...',
+    );
 
-    // Marcar como en progreso
-    ids.forEach((id) => _cargandoImagenes.add(id));
+    // ⚡ CAMBIO: Cargar cada imagen individualmente usando el endpoint correcto
+    for (var producto in productosLimitados) {
+      // Marcar como en progreso
+      _cargandoImagenes.add(producto.id);
 
-    try {
-      final imagenesMap = await _productoService.cargarImagenesProductos(ids);
+      try {
+        // Usar endpoint individual: GET /api/productos/{id}/imagen
+        final imagenUrl = await _productoService.cargarImagenProducto(
+          producto.id,
+        );
+        
+        if (imagenUrl != null && imagenUrl.isNotEmpty) {
+          // Guardar en cache
+          _imagenesCache[producto.id] = imagenUrl;
 
-      // Guardar en cache y notificar listeners
-      imagenesMap.forEach((productoId, imagenUrl) {
-        _imagenesCache[productoId] = imagenUrl;
-
-        // Notificar a todos los listeners de este producto
-        if (_listeners.containsKey(productoId)) {
-          for (var callback in _listeners[productoId]!) {
-            callback(imagenUrl);
+          // Notificar a todos los listeners de este producto
+          if (_listeners.containsKey(producto.id)) {
+            for (var callback in _listeners[producto.id]!) {
+              callback(imagenUrl);
+            }
           }
         }
-      });
-
-      print('✅ Lote cargado: ${imagenesMap.length} imágenes en cache');
-    } catch (e) {
-      print('❌ Error cargando lote de imágenes: $e');
-    } finally {
-      // Remover de "en progreso"
-      ids.forEach((id) => _cargandoImagenes.remove(id));
+      } catch (e) {
+        print('❌ Error cargando imagen de ${producto.id}: $e');
+      } finally {
+        // Remover de lista de carga
+        _cargandoImagenes.remove(producto.id);
+      }
     }
+
+    print('✅ Lote completado: ${_imagenesCache.length} imágenes en cache');
   }
 
   /// Carga la imagen de un solo producto

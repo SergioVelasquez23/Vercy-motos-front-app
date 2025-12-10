@@ -88,11 +88,14 @@ class DatosCacheProvider extends ChangeNotifier {
     _startPolling(); // ✅ Iniciar polling automático
   }
 
-  // 🔥 WARMUP: Precargar productos en background
+  // 🔥 WARMUP: Precargar productos en background SIN IMÁGENES
   void warmupProductos() {
-    print('🔥 WARMUP: Iniciando carga RÁPIDA de productos...');
-    print('⚡ OPTIMIZADO: Usando endpoint ligero para máxima velocidad');
-    print('⏳ Tiempo estimado: 15-30 segundos en Render.com');
+    print('🔥 WARMUP: Carga ULTRA RÁPIDA de productos (SIN imágenes)...');
+    print('⚡ Endpoint: GET /api/productos/ligero?page=0&size=40');
+    print('⏳ Tiempo estimado: 5-15 segundos');
+    print(
+      '📝 Las imágenes se cargarán individualmente al mostrarse (lazy loading)',
+    );
     // Cargar productos en background sin esperar - USAR ENDPOINT LIGERO
     _cargarProductos(
       force: true,
