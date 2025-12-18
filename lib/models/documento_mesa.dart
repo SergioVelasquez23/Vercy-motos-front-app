@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'pedido.dart';
+import 'factura_electronica_dian.dart';
 
 /// Modelo para representar un documento individual en cualquier mesa
 /// Permite múltiples pedidos independientes por mesa
@@ -22,6 +23,25 @@ class DocumentoMesa {
   final double? propina;
   final Color? colorIdentificacion;
   final String estado; // Campo explícito para estado
+  
+  // ===== FACTURACIÓN ELECTRÓNICA DIAN =====
+  final bool
+  requiereFacturaElectronica; // Si requiere generar factura electrónica
+  final String? facturaElectronicaId; // ID de la factura electrónica generada
+  final FacturaElectronicaDian?
+  facturaElectronica; // Factura electrónica asociada
+  final String?
+  estadoFacturaElectronica; // PENDIENTE, EMITIDA, ENVIADA_DIAN, ACEPTADA, RECHAZADA
+  final DateTime?
+  fechaEmisionFactura; // Fecha de emisión de la factura electrónica
+  final String? cufeFactura; // CUFE de la factura electrónica
+  final String? clienteNombre; // Nombre del cliente para la factura
+  final String? clienteIdentificacion; // CC o NIT del cliente
+  final String?
+  clienteTipoDocumento; // Tipo de documento del cliente (13: CC, 31: NIT)
+  final String? clienteEmail; // Email del cliente para envío de factura
+  final String? clienteTelefono; // Teléfono del cliente
+  final String? clienteDireccion; // Dirección del cliente
 
   DocumentoMesa({
     this.id,
@@ -42,6 +62,18 @@ class DocumentoMesa {
     this.propina,
     this.colorIdentificacion,
     this.estado = 'Pendiente', // Valor por defecto para estado
+    this.requiereFacturaElectronica = false,
+    this.facturaElectronicaId,
+    this.facturaElectronica,
+    this.estadoFacturaElectronica,
+    this.fechaEmisionFactura,
+    this.cufeFactura,
+    this.clienteNombre,
+    this.clienteIdentificacion,
+    this.clienteTipoDocumento,
+    this.clienteEmail,
+    this.clienteTelefono,
+    this.clienteDireccion,
   });
 
   // Propiedades calculadas para la UI
@@ -86,6 +118,18 @@ class DocumentoMesa {
     double? propina,
     Color? colorIdentificacion,
     String? estado,
+    bool? requiereFacturaElectronica,
+    String? facturaElectronicaId,
+    FacturaElectronicaDian? facturaElectronica,
+    String? estadoFacturaElectronica,
+    DateTime? fechaEmisionFactura,
+    String? cufeFactura,
+    String? clienteNombre,
+    String? clienteIdentificacion,
+    String? clienteTipoDocumento,
+    String? clienteEmail,
+    String? clienteTelefono,
+    String? clienteDireccion,
   }) {
     return DocumentoMesa(
       id: id ?? this.id,
@@ -106,6 +150,21 @@ class DocumentoMesa {
       propina: propina ?? this.propina,
       colorIdentificacion: colorIdentificacion ?? this.colorIdentificacion,
       estado: estado ?? this.estado,
+      requiereFacturaElectronica:
+          requiereFacturaElectronica ?? this.requiereFacturaElectronica,
+      facturaElectronicaId: facturaElectronicaId ?? this.facturaElectronicaId,
+      facturaElectronica: facturaElectronica ?? this.facturaElectronica,
+      estadoFacturaElectronica:
+          estadoFacturaElectronica ?? this.estadoFacturaElectronica,
+      fechaEmisionFactura: fechaEmisionFactura ?? this.fechaEmisionFactura,
+      cufeFactura: cufeFactura ?? this.cufeFactura,
+      clienteNombre: clienteNombre ?? this.clienteNombre,
+      clienteIdentificacion:
+          clienteIdentificacion ?? this.clienteIdentificacion,
+      clienteTipoDocumento: clienteTipoDocumento ?? this.clienteTipoDocumento,
+      clienteEmail: clienteEmail ?? this.clienteEmail,
+      clienteTelefono: clienteTelefono ?? this.clienteTelefono,
+      clienteDireccion: clienteDireccion ?? this.clienteDireccion,
     );
   }
 
@@ -134,6 +193,24 @@ class DocumentoMesa {
       if (formaPago != null) 'formaPago': formaPago,
       if (pagadoPor != null) 'pagadoPor': pagadoPor,
       if (propina != null) 'propina': propina,
+      'requiereFacturaElectronica': requiereFacturaElectronica,
+      if (facturaElectronicaId != null)
+        'facturaElectronicaId': facturaElectronicaId,
+      if (facturaElectronica != null)
+        'facturaElectronica': facturaElectronica!.toJson(),
+      if (estadoFacturaElectronica != null)
+        'estadoFacturaElectronica': estadoFacturaElectronica,
+      if (fechaEmisionFactura != null)
+        'fechaEmisionFactura': fechaEmisionFactura!.toIso8601String(),
+      if (cufeFactura != null) 'cufeFactura': cufeFactura,
+      if (clienteNombre != null) 'clienteNombre': clienteNombre,
+      if (clienteIdentificacion != null)
+        'clienteIdentificacion': clienteIdentificacion,
+      if (clienteTipoDocumento != null)
+        'clienteTipoDocumento': clienteTipoDocumento,
+      if (clienteEmail != null) 'clienteEmail': clienteEmail,
+      if (clienteTelefono != null) 'clienteTelefono': clienteTelefono,
+      if (clienteDireccion != null) 'clienteDireccion': clienteDireccion,
     };
   }
 
@@ -228,6 +305,20 @@ class DocumentoMesa {
           ? (json['propina'] as num).toDouble()
           : null,
       estado: estadoFinal, // ✅ Usar el estado determinado correctamente
+      requiereFacturaElectronica: json['requiereFacturaElectronica'] ?? false,
+      facturaElectronicaId: json['facturaElectronicaId'],
+      facturaElectronica: json['facturaElectronica'] != null
+          ? FacturaElectronicaDian.fromJson(json['facturaElectronica'])
+          : null,
+      estadoFacturaElectronica: json['estadoFacturaElectronica'],
+      fechaEmisionFactura: parseDateTime(json['fechaEmisionFactura']),
+      cufeFactura: json['cufeFactura'],
+      clienteNombre: json['clienteNombre'],
+      clienteIdentificacion: json['clienteIdentificacion'],
+      clienteTipoDocumento: json['clienteTipoDocumento'],
+      clienteEmail: json['clienteEmail'],
+      clienteTelefono: json['clienteTelefono'],
+      clienteDireccion: json['clienteDireccion'],
     );
   }
 

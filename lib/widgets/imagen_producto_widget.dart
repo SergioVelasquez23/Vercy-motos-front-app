@@ -7,6 +7,7 @@ import '../services/image_service.dart';
 class ImagenProductoWidget extends StatelessWidget {
   final String? urlRemota;
   final String? nombreProducto;
+  final String? productoId;
   final double? width;
   final double? height;
   final BoxFit fit;
@@ -16,6 +17,7 @@ class ImagenProductoWidget extends StatelessWidget {
     super.key,
     this.urlRemota,
     this.nombreProducto,
+    this.productoId,
     this.width = 50,
     this.height = 50,
     this.fit = BoxFit.cover,
@@ -80,6 +82,11 @@ class ImagenProductoWidget extends StatelessWidget {
     try {
       final base64Str = imagenUrl.split(',').last;
       final bytes = base64Decode(base64Str);
+      // ✅ Key única usando hash del contenido para evitar reutilización
+      final contentHash = base64Str.length > 50 
+        ? base64Str.substring(0, 50).hashCode 
+        : base64Str.hashCode;
+      
       return Container(
         width: width,
         height: height,
@@ -91,9 +98,11 @@ class ImagenProductoWidget extends StatelessWidget {
           borderRadius: BorderRadius.circular(8),
           child: Image.memory(
             bytes,
+            key: ValueKey('img-mem-${productoId ?? nombreProducto ?? ""}-$contentHash'),
             width: width,
             height: height,
             fit: fit,
+            gaplessPlayback: false,
             errorBuilder: (context, error, stackTrace) => _buildIconoError(),
           ),
         ),
@@ -104,6 +113,11 @@ class ImagenProductoWidget extends StatelessWidget {
   }
 
   Widget _buildImagenNetwork(String url) {
+    // ✅ SOLUCIÓN DEFINITIVA: Incluir ID del producto en URL para vincular imagen
+    final separator = url.contains('?') ? '&' : '?';
+    final productIdentifier = productoId ?? nombreProducto ?? 'unknown';
+    final uniqueUrl = '$url${separator}pid=$productIdentifier&_t=${DateTime.now().microsecondsSinceEpoch}';
+    
     return Container(
       width: width,
       height: height,
@@ -114,15 +128,18 @@ class ImagenProductoWidget extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(8),
         child: Image.network(
-          url,
+          uniqueUrl,
+          key: ValueKey('img-net-$productIdentifier-${url.hashCode}'), // Key con ID de producto
           width: width,
           height: height,
           fit: fit,
+          gaplessPlayback: false, // Deshabilitar transición suave
           headers: {
             'Accept': '*/*',
             'User-Agent': 'Mozilla/5.0 (Mobile; Flutter)',
-            'Cache-Control': 'no-cache',
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
             'Pragma': 'no-cache',
+            'Expires': '0',
           },
           loadingBuilder: (context, child, loadingProgress) {
             if (loadingProgress == null) return child;

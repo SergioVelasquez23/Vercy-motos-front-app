@@ -54,9 +54,36 @@ class _ResumenCierreDetalladoScreenState
   /// 💰 NUEVO: Detecta si el pedido tiene pago mixto
   bool _esPagoMixto(dynamic pedido) {
     final formaPago = _getFormaPago(pedido);
-    return formaPago.toLowerCase().contains('mixto') ||
-        formaPago.toLowerCase().contains('multiple') ||
-        (pedido.pagosParciales != null && pedido.pagosParciales.length > 1);
+    
+    // Verificar por forma de pago
+    if (formaPago.toLowerCase().contains('mixto') ||
+        formaPago.toLowerCase().contains('multiple')) {
+      return true;
+    }
+    
+    // Verificar pagosParciales de forma segura
+    try {
+      if (pedido is Map) {
+        final pagosParciales = pedido['pagosParciales'];
+        if (pagosParciales != null && pagosParciales is List && pagosParciales.length > 1) {
+          return true;
+        }
+      } else {
+        // Acceso seguro usando reflection
+        try {
+          final pagosParciales = (pedido as dynamic).pagosParciales;
+          if (pagosParciales != null && pagosParciales is List && pagosParciales.length > 1) {
+            return true;
+          }
+        } catch (_) {
+          // Si no tiene la propiedad, continuar
+        }
+      }
+    } catch (_) {
+      // Ignorar errores de acceso
+    }
+    
+    return false;
   }
 
   /// 💰 NUEVO: Obtiene la forma de pago del pedido
@@ -71,12 +98,25 @@ class _ResumenCierreDetalladoScreenState
   Map<String, double> _obtenerDesglosePagos(dynamic pedido) {
     Map<String, double> desglose = {};
 
-    // Intentar obtener pagos parciales del pedido
+    // Intentar obtener pagos parciales del pedido de forma segura
     List<dynamic>? pagosParciales;
-    if (pedido.pagosParciales != null) {
-      pagosParciales = pedido.pagosParciales;
-    } else if (pedido is Map && pedido['pagosParciales'] != null) {
-      pagosParciales = pedido['pagosParciales'];
+    
+    try {
+      if (pedido is Map && pedido['pagosParciales'] != null) {
+        pagosParciales = pedido['pagosParciales'];
+      } else {
+        // Acceso seguro usando dynamic
+        try {
+          final pagos = (pedido as dynamic).pagosParciales;
+          if (pagos != null && pagos is List) {
+            pagosParciales = pagos;
+          }
+        } catch (_) {
+          // Si no tiene la propiedad, pagosParciales quedará como null
+        }
+      }
+    } catch (_) {
+      // Ignorar errores de acceso
     }
 
     if (pagosParciales != null && pagosParciales.isNotEmpty) {

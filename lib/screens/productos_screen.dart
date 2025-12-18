@@ -836,6 +836,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
   // 🖼️ OPTIMIZADO: Usar lazy loading para imágenes
   Widget _buildProductImage(Producto producto) {
     return LazyProductImageWidget(
+      key: ValueKey('lazy-img-${producto.id}'), // Key única por producto
       producto: producto,
       width: 50,
       height: 50,
@@ -1164,10 +1165,12 @@ class _ProductosScreenState extends State<ProductosScreen> {
                         ),
                         child: selectedImageUrl != null
                             ? ImagenProductoWidget(
+                                key: ValueKey('dialog-img-${isEditing ? producto.id : "new"}-${selectedImageUrl.hashCode}'),
                                 urlRemota: _imageService.getImageUrl(
                                   selectedImageUrl!,
                                 ),
                                 nombreProducto: null,
+                                productoId: isEditing ? producto.id : null,
                                 width: double.infinity,
                                 height: double.infinity,
                                 fit: BoxFit.cover,

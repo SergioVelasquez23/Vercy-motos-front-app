@@ -2085,7 +2085,8 @@ class _MesasScreenState extends State<MesasScreen>
   /// 🚀 NUEVO: Actualizar mesa tras pago
   Future<void> actualizarMesaTrasPago(String nombreMesa) async {
     print('💰 Actualizando mesa $nombreMesa tras pago');
-    await Future.delayed(const Duration(milliseconds: 500)); // Delay para pago
+    // 🚀 OPTIMIZADO: Reducir delay de 500ms a 100ms para respuesta más rápida
+    await Future.delayed(const Duration(milliseconds: 100));
     await actualizarMesaEspecifica(nombreMesa);
   }
 
@@ -2188,12 +2189,40 @@ class _MesasScreenState extends State<MesasScreen>
       // Solo obtener datos básicos de mesas, sin validaciones costosas
       final loadedMesas = await _mesaService.getMesas();
       
+      // ✅ NUEVO: Filtrar mesas fantasmas (vacías o con nombres inválidos)
+      final mesasValidas = loadedMesas.where((mesa) {
+        // Filtrar mesas con nombres vacíos o solo espacios
+        if (mesa.nombre.trim().isEmpty) {
+          print('🚫 Filtrando mesa fantasma con nombre vacío: ${mesa.id}');
+          return false;
+        }
+        // Filtrar mesas con IDs duplicados o inválidos
+        if (mesa.id.trim().isEmpty) {
+          print('🚫 Filtrando mesa fantasma con ID vacío: ${mesa.nombre}');
+          return false;
+        }
+        return true;
+      }).toList();
+      
+      // ✅ NUEVO: Detectar y reportar mesas duplicadas
+      final nombresVistos = <String>{};
+      final mesasSinDuplicados = <Mesa>[];
+      for (var mesa in mesasValidas) {
+        final nombreNormalizado = mesa.nombre.trim().toUpperCase();
+        if (!nombresVistos.contains(nombreNormalizado)) {
+          nombresVistos.add(nombreNormalizado);
+          mesasSinDuplicados.add(mesa);
+        } else {
+          print('🚫 Filtrando mesa duplicada: ${mesa.nombre} (ID: ${mesa.id})');
+        }
+      }
+      
       setState(() {
-        mesas = loadedMesas;
+        mesas = mesasSinDuplicados;
         isLoading = false;
       });
 
-      print('⚡ Mesas cargadas ultra-rápido: ${loadedMesas.length}');
+      print('⚡ Mesas cargadas ultra-rápido: ${mesasSinDuplicados.length} (${loadedMesas.length - mesasSinDuplicados.length} fantasmas filtradas)');
     } catch (e) {
       print('❌ Error en carga optimizada: $e');
       throw e;
@@ -2277,6 +2306,7 @@ class _MesasScreenState extends State<MesasScreen>
           .where(
             (nombre) => nombre.isNotEmpty && nombre.trim().isNotEmpty,
           ) // 🔧 FILTRAR nombres vacíos
+          .toSet() // ✅ NUEVO: Convertir a Set para eliminar duplicados
           .toList();
 
       setState(() {
@@ -3999,18 +4029,6 @@ class _MesasScreenState extends State<MesasScreen>
     _dialogoPagoEnProceso = true;
     _ultimoClickPago = ahora;
     print('🚀 Diálogo de pago iniciado (optimizado)');
-
-    // 🚀 OPTIMIZACIÓN: Pre-cargar pedidos de la mesa en cache si no existen
-    if (!_cachePedidosPorMesa.containsKey(mesa.nombre)) {
-      print('📦 Pre-cargando pedidos para diálogo de pago...');
-      _obtenerPedidosMesaConCache(mesa.nombre)
-          .then((_) {
-            print('✅ Pedidos pre-cargados para diálogo');
-          })
-          .catchError((e) {
-            print('⚠️ Error pre-cargando pedidos: $e');
-          });
-    }
 
     // ✅ CRÍTICO: Bloquear la mesa mientras se procesa el pago
     _bloquearMesaTemporalmente(mesa.nombre);

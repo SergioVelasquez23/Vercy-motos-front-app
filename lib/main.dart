@@ -12,6 +12,8 @@ import 'screens/cerrar_caja_screen.dart';
 import 'screens/reportes_screen.dart';
 import 'screens/pedidos_screen_fusion.dart';
 import 'screens/documentos_mesa_screen.dart';
+import 'screens/configuracion_facturacion_screen.dart';
+import 'screens/prueba_facturacion_screen.dart';
 import 'models/mesa.dart';
 import 'providers/user_provider.dart';
 import 'providers/datos_cache_provider.dart';
@@ -97,6 +99,9 @@ class MyApp extends StatelessWidget {
         '/pedidos_cortesia': (context) => PedidosScreenFusion(),
         '/pedidos_internos': (context) =>
             PedidosScreenFusion(), // Cambiado aquí
+        '/facturacion/config': (context) =>
+            const ConfiguracionFacturacionScreen(),
+        '/facturacion/pruebas': (context) => const PruebaFacturacionScreen(),
         // Ruta para detalle de pedido (requiere pasar una mesa como parámetro)
         // Nota: Esta ruta normalmente se usaría con argumentos: Navigator.pushNamed(context, '/pedido', arguments: mesa)
 

@@ -42,6 +42,10 @@ class ResumenCierreCompletoService {
           // Debug the sales data from API response
           var data = jsonData['data'];
           if (data != null && data is Map) {
+            // 🔍 Debug: Verificar estructura de cuadre
+            print('🔍 Estado del cuadre: ${data['cuadreInfo']?['estado']}');
+            print('🔍 Cerrada: ${data['cuadreInfo']?['cerrada']}');
+            
             var movimientos = data['movimientosEfectivo'];
             if (movimientos != null && movimientos is Map) {
               print('💰 Datos de ventas en API response:');
@@ -54,9 +58,34 @@ class ResumenCierreCompletoService {
                 '  - transferencia (alternativo): ${movimientos['transferencia']}',
               );
             }
+            
+            // 🔍 Debug: Verificar estructura de gastos
+            if (data['resumenGastos'] != null) {
+              print(
+                '💰 Estructura resumenGastos: ${data['resumenGastos'].keys}',
+              );
+              if (data['resumenGastos']['detallesGastos'] != null) {
+                final detalles = data['resumenGastos']['detallesGastos'];
+                print('📋 Tipo detallesGastos: ${detalles.runtimeType}');
+                if (detalles is List && detalles.isNotEmpty) {
+                  print('🧾 Primer elemento: ${detalles.first}');
+                  print(
+                    '🧾 Tipo primer elemento: ${detalles.first.runtimeType}',
+                  );
+                }
+              }
+            }
           }
 
-          final resumen = ResumenCierreCompleto.fromJson(jsonData['data']);
+          ResumenCierreCompleto resumen;
+          try {
+            resumen = ResumenCierreCompleto.fromJson(jsonData['data']);
+            print('✅ Resumen parseado correctamente');
+          } catch (parseError) {
+            print('❌ Error parseando resumen: $parseError');
+            print('📊 Datos que causaron el error: ${jsonData['data']}');
+            rethrow;
+          }
 
           // Obtener datos complementarios del cuadre completo
           print('🔍 Obteniendo información completa del cuadre...');
@@ -85,8 +114,9 @@ class ResumenCierreCompletoService {
               }
               return _integrarDatosCuadreCompleto(resumen, cuadreCompleto);
             }
-          } catch (e) {
+          } catch (e, stackTrace) {
             print('⚠️ Error obteniendo cuadre completo: $e');
+            print('📚 Stack trace: $stackTrace');
           }
 
           print(
@@ -115,10 +145,12 @@ class ResumenCierreCompletoService {
   /// Obtiene el cuadre completo con datos complementarios
   Future<Map<String, dynamic>?> _obtenerCuadreCompleto(String cuadreId) async {
     try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/api/cuadres-caja/$cuadreId/resumen-cierre'),
-        headers: await _getHeaders(),
-      );
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl/api/cuadres-caja/$cuadreId/resumen-cierre'),
+            headers: await _getHeaders(),
+          )
+          .timeout(Duration(seconds: 30));
 
       print('📡 Respuesta cuadre completo - Status: ${response.statusCode}');
 

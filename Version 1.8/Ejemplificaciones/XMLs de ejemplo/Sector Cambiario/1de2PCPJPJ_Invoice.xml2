@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2" xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2" xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2" xmlns:ext="urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2" xmlns:sts="dian:gov:co:facturaelectronica:Structures-2-1" xmlns:cam="dian:gov:co:regimencambiario:Structures-2-1" xmlns:xades="http://uri.etsi.org/01903/v1.3.2#" xmlns:xades141="http://uri.etsi.org/01903/v1.4.1#" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2 http://docs.oasis-open.org/ubl/os-UBL-2.1/xsd/maindoc/UBL-Invoice-2.1.xsd" xmlns:ipt="ipt:ccce:org:co:facturaelectronica:Structures-2-1">
+	<ext:UBLExtensions>
+		<ext:UBLExtension>
+			<ext:ExtensionContent>
+				<cam:CompraVentaDeDivisas xmlns:cam="http://www.w3.org/" customizationID="1de2PCPJPJ">
+					<cam:MandatoPJMPJ tipo="PJMPJ" descripcion="Mandato" MandanteBeneficiario="Persona Natural" Mandatario="Persona Jurídica" xmlns:cam="http://www.w3.org/">
+						<cam:DatosMandantePJ>
+							<cam:DebidaDiligenciaPJ_RP1de7 tipo="PJ-DDC_RP1de7" regla1="venta de divisas por cualquier monto inferior a usd$10,000" regla2="venta de cheque banco extranjero; cualquier monto" tipo2="DDC-PJ_RP1de7" xmlns:cam="http://www.w3.org/" razonSocial="Kansas Money Exchange" constitucionNombreCamaraDeComercio="CC de Bogotá" numeroMatriculaMercantil="12345678" fechaInscripcion="2001-03-18" codigoCIIU="6614" NIT="990508908" NIT-DV="3" representanteLegalNombres="Primer" representanteLegalApellidos="RL" representanteLegalIdentificacion="1234567890" representanteLegalIdentificacionTipoDIAN="13" correoElectrónicoCorporativo="PrimerRL@kansasME.com.co">
+								<cam:ParticipacionesAccionarias25plus>
+									<cam:TipoDeOrganizacion descripcionRUES="…" tabla="url rues.org.co" codigoRUES="n.a. || 03 || 04 || 05 || 07 || 11 || 12 || 16; elija uno">16</cam:TipoDeOrganizacion>
+									<cam:Accionista25plus1 porcentaje="29%" nombres="Accionista" apellidos="Uno" tipoIdentificacionDIAN="13" numeroIdentificacionDIAN="234567890123" esUnPEP="no"/>
+									<cam:Accionista25plus2 porcentaje="31%" nombres="Accionista" apellidos="Dos" tipoIdentificacionDIAN="13" numeroIdentificacionDIAN="345678901234" esUnPEP="no"/>
+									<!-- dueño de 25%+ o más-->
+									<cam:Accionista25plus3 porcentaje="40%" nombres="Accionistas" apellidos="Varios" tipoIdentificacionDIAN="n.a." numeroIdentificacionDIAN="n.a." esUnPEP="no"/>
+								</cam:ParticipacionesAccionarias25plus>
+								<cam:sobreLosFondosDelBeneficiario origen="Fondos propios, capital de la empresa" destino="consignar en la cuanta en USD$ de la compañía en Davivienda, para cubrir un pedido de mercancías que se está negociando en Panamá"/>
+								<cam:ModosDeVerificacionDeInformacion modo1="Certificado bancario de cuenta en usd$ presentado por el interesado" modo2="llamada telefónica a la entidad bancaria, quien confirmó que la empresa es cuenta-habiente de la cuenta amparada por el certificado"/>
+							</cam:DebidaDiligenciaPJ_RP1de7>
+							<ArchivoAdjuntoIdentificacionMandante>
+								<ObjetoBinarioDocumentoEmbebido format="PDF 2.0" mimeCode="application/pdf" encodingCode="base64, UTF-8" characterSetCode="UTF-8" filename="identificacionPJ.pdf">_resultado_conversion_de_pdf_a_base64_</ObjetoBinarioDocumentoEmbebido>
+							</ArchivoAdjuntoIdentificacionMandante>
+						</cam:DatosMandantePJ>
+						<cam:DatosMandatarioPJ razonSocial="Tramites y Cambio de Moneda SAS" constitucionNombreCamaraDeComercio="Cáma de Comercio de Riohacha" numeroMatriculaMercantil="RG987654321" fechaInscripcion="1999-01-02" codigoCIIU="6615" NIT="99123456" NIT-DV="3" representanteLegalNombres="Representante" representanteLegalApellidos="Legal" representanteLegalIdentificacion="1234123456" representanteLegalIdentificacionTipoDIAN="13" correoElectrónicoCorporativo="www.TramitesExMoney.com.co"/>
+						<ArchivoAdjuntoMandato>
+							<ObjetoBinarioDocumentoEmbebido format="PDF 2.0" mimeCode="application/pdf" encodingCode="base64, UTF-8" characterSetCode="UTF-8" filename="PJDaMandatoAPJ.pdf">_resultado_conversion_de_pdf_a_base64_</ObjetoBinarioDocumentoEmbebido>
+						</ArchivoAdjuntoMandato>
+					</cam:MandatoPJMPJ>
+					<cam:DetallesDeCompra tipo="detalle-compra" xmlns:cam="http://www.w3.org/" descripcionOperacion="Cliente/Beneficiario compra divisas">
+						<cam:Operaciones>
+							<cam:Operacion divisaCodigo="USD" divisaNombre="Dólar estadounidense" divisaU="1.00" tasaDeCambioU_COP="3700.00" divisaEfectivo="1.00" divisaTotalVenta="1.00" pagoEfectivoCOP="3700.00" pagoOtroMedioCOP="0.00" pagoTotalCOP="3700.00" trmUSD1IgualCOP="3700.00" trmUSD1IgualCOPFecha="aaaa-mm-dd" totalCOPEnUSD="1.00"/>
+						</cam:Operaciones>
+						<cam:Manifiesto>Para los fines previstos en el artículo 83 de la Constitución Política de Colombia, declaro bajo la gravedad de juramento, que los conceptos, cantidades y demás datosconsignados en el presente formulario son correctos y fiel expresión de la verdad.</cam:Manifiesto>
+						<cam:Indicaciones>Cuando la operación se realice entre dos (2) Profesionales del Cambio se elaborará una sola Declaración de Cambio. La Declaración la debe diligenciar el "Beneficiario o Cliente" en la papelería suministrada por el Profesional que recibe y acepta la oferta del beneficiario.</cam:Indicaciones>
+					</cam:DetallesDeCompra>
+				</cam:CompraVentaDeDivisas>
+			</ext:ExtensionContent>
+		</ext:UBLExtension>
+		<ext:UBLExtension>
+			<!--DianExtensions-->
+			<ext:ExtensionContent>
+				<sts:DianExtensions>
+					<sts:InvoiceControl>
+						<sts:InvoiceAuthorization>9000000500023099</sts:InvoiceAuthorization>
+						<sts:AuthorizationPeriod>
+							<cbc:StartDate>2019-03-10</cbc:StartDate>
+							<cbc:EndDate>2021-03-10</cbc:EndDate>
+						</sts:AuthorizationPeriod>
+						<sts:AuthorizedInvoices>
+							<sts:Prefix>EXC</sts:Prefix>
+							<sts:From>100001</sts:From>
+							<sts:To>130000</sts:To>
+						</sts:AuthorizedInvoices>
+					</sts:InvoiceControl>
+					<sts:InvoiceSource>
+						<cbc:IdentificationCode listAgencyID="6" listAgencyName="United Nations Economic Commission for Europe" listSchemeURI="urn:oasis:names:specification:ubl:codelist:gc:CountryIdentificationCode-2.1">CO</cbc:IdentificationCode>
+					</sts:InvoiceSource>
+					<sts:SoftwareProvider>
+						<sts:ProviderID schemeAgencyID="195" schemeAgencyName="CO, DIAN (Direccion de Impuestos y Aduanas Nacionales)" schemeID="9 'DV'" schemeName="31">
+							<!--NIT del profesional cambiario-->0</sts:ProviderID>
+						<sts:SoftwareID schemeAgencyID="195" schemeAgencyName="CO, DIAN (Direccion de Impuestos y Aduanas Nacionales)">
+							<!--código de registro del software del profesional cambiario-->0</sts:SoftwareID>
+					</sts:SoftwareProvider>
+					<sts:SoftwareSecurityCode schemeAgencyID="195" schemeAgencyName="CO, DIAN (Direccion de Impuestos y Aduanas Nacionales)">
+						<!--código de seguirdad del software del profesional cambiario-->0</sts:SoftwareSecurityCode>
+					<sts:AuthorizationProvider>
+						<sts:AuthorizationProviderID schemeAgencyID="195" schemeAgencyName="CO, DIAN (Direccion de Impuestos y Aduanas Nacionales)" schemeID="4" schemeName="31">800197268</sts:AuthorizationProviderID>
+					</sts:AuthorizationProvider>
+					<sts:QRCode>https://muisca.dian.gov.co/WebFacturaelectronica/paginas/VerificarFacturaElectronicaExterno.faces?TipoDocumento=1NroDocumento=PRUE980078932NITFacturador=890101815NumIdentAdquiriente=900108281Cufe=bf8b43bc09bdf01204dd2f1dcae2b51ea02e849f29257140fc00dc9b65aa953e</sts:QRCode>
+				</sts:DianExtensions>
+			</ext:ExtensionContent>
+		</ext:UBLExtension>
+		<!--Signature-->
+	</ext:UBLExtensions>
+	<cbc:UBLVersionID>UBL 2.1</cbc:UBLVersionID>
+	<cbc:CustomizationID>1de2PCPJPJ</cbc:CustomizationID>
+	<cbc:ProfileID>DIAN 2.0</cbc:ProfileID>
+	<cbc:ProfileExecutionID>1</cbc:ProfileExecutionID>
+	<cbc:ID>BC100221</cbc:ID>
+	<cbc:UUID schemeID="1" schemeName="CUFE-SHA384">892b6d</cbc:UUID>
+	<cbc:IssueDate>2019-03-10</cbc:IssueDate>
+	<cbc:IssueTime>12:53:36-05:00	</cbc:IssueTime>
+	<cbc:InvoiceTypeCode>01</cbc:InvoiceTypeCode>
+	<cbc:Note/>
+	<cbc:DocumentCurrencyCode>COP</cbc:DocumentCurrencyCode>
+	<cbc:LineCountNumeric>1</cbc:LineCountNumeric>
+	<!--Facturador Electrónico, "FE": Profesional Cambiario -->
+	<cac:AccountingSupplierParty xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2" xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2">
+		<cbc:AdditionalAccountID>1</cbc:AdditionalAccountID>
+		<cac:Party>
+			<cbc:IndustryClassificationCode>6615</cbc:IndustryClassificationCode>
+			<cac:PartyTaxScheme>
+				<cbc:RegistrationName>Money Exchange FACTURA ELECTRONICA USUARIO PRUEBAS MIGRACION 1</cbc:RegistrationName>
+				<cbc:CompanyID schemeID="5" schemeName="31" schemeAgencyID="195" schemeAgencyName="CO, DIAN (Dirección de Impuestos y Aduanas Nacionales)">990373981</cbc:CompanyID>
+				<cbc:TaxLevelCode listName="05">A-01;A-07;A-13</cbc:TaxLevelCode>
+				<cac:RegistrationAddress>
+					<cbc:ID>11001</cbc:ID>
+					<cbc:CityName>Bogotá, D.c. </cbc:CityName>
+					<cbc:CountrySubentity>Bogotá</cbc:CountrySubentity>
+					<cbc:CountrySubentityCode>11</cbc:CountrySubentityCode>
+					<cac:AddressLine>
+						<cbc:Line>CRA 7 7 777</cbc:Line>
+					</cac:AddressLine>
+					<cac:Country>
+						<cbc:IdentificationCode>CO</cbc:IdentificationCode>
+						<cbc:Name>Colombia</cbc:Name>
+					</cac:Country>
+				</cac:RegistrationAddress>
+				<cac:TaxScheme>
+					<cbc:ID>01</cbc:ID>
+					<cbc:Name>IVA</cbc:Name>
+				</cac:TaxScheme>
+			</cac:PartyTaxScheme>
+			<cac:PartyLegalEntity>
+				<cbc:CompanyID schemeAgencyName="Cámara de Comercio" schemeName="Matrícula Mercantil">901208</cbc:CompanyID>
+			</cac:PartyLegalEntity>
+			<cac:Contact>
+				<cbc:ElectronicMail>contacto@facturaUPruebas.co</cbc:ElectronicMail>
+			</cac:Contact>
+		</cac:Party>
+	</cac:AccountingSupplierParty>
+	<cac:AccountingCustomerParty xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2" xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2">
+		<cbc:AdditionalAccountID schemeAgencyID="195">1</cbc:AdditionalAccountID>
+		<cac:Party>
+			<cbc:IndustryClassificationCode>6615</cbc:IndustryClassificationCode>
+			<cac:PartyTaxScheme>
+				<cbc:RegistrationName>Money Exchange FACTURADOR DE EJEMPLO</cbc:RegistrationName>
+				<cbc:CompanyID schemeAgencyID="195" schemeAgencyName="CO, DIAN (Dirección de Impuestos y Aduanas Nacionales)" schemeID="9" schemeName="31">990508908</cbc:CompanyID>
+				<cbc:TaxLevelCode listName="05">O-99</cbc:TaxLevelCode>
+				<cac:RegistrationAddress>
+					<cbc:ID>11001</cbc:ID>
+					<cbc:CityName>Bogotá</cbc:CityName>
+					<cbc:CountrySubentity>Districto Capital</cbc:CountrySubentity>
+					<cbc:CountrySubentityCode>11</cbc:CountrySubentityCode>
+					<cac:AddressLine>
+						<cbc:Line>CR 9 A N0 99 - 07 OF 802</cbc:Line>
+					</cac:AddressLine>
+					<cac:Country>
+						<cbc:IdentificationCode>CO</cbc:IdentificationCode>
+						<cbc:Name languageID="es">Colombia</cbc:Name>
+					</cac:Country>
+				</cac:RegistrationAddress>
+				<cac:TaxScheme>
+					<cbc:ID>01</cbc:ID>
+					<cbc:Name>IVA</cbc:Name>
+				</cac:TaxScheme>
+			</cac:PartyTaxScheme>
+			<cac:PartyLegalEntity>
+				<cbc:CompanyID schemeAgencyName="Cámara de Comercio" schemeName="Matrícula Mercantil">900508</cbc:CompanyID>
+			</cac:PartyLegalEntity>
+			<cac:Contact>
+				<cbc:Name>Nombre contacto</cbc:Name>
+				<cbc:Telephone>9712311</cbc:Telephone>
+				<cbc:Telefax>9712312</cbc:Telefax>
+				<cbc:ElectronicMail>contacto@fEjemplo.com.co</cbc:ElectronicMail>
+				<cbc:Note>Horas oficina</cbc:Note>
+			</cac:Contact>
+			<cac:PowerOfAttorney>
+				<cac:AgentParty>
+					<cac:PartyIdentification>
+						<cbc:ID schemeID="6" schemeName="13">99123456</cbc:ID>
+					</cac:PartyIdentification>
+				</cac:AgentParty>
+				<cac:MandateDocumentReference>
+					<cbc:ID>veaExtensiones</cbc:ID>
+					<cbc:DocumentDescription>el Mandato ha sido adjuntado digitalmente a la Extensión ../DIANExtension</cbc:DocumentDescription>
+					<cbc:DocumentDescription>como este documento no cumple el ciclo de Mandatos del RADIAN, entonces no se usa el CUDE mediante el cual la DIAN inscribe esta concesión a un tercero para que lo represente</cbc:DocumentDescription>
+				</cac:MandateDocumentReference>
+			</cac:PowerOfAttorney>
+		</cac:Party>
+	</cac:AccountingCustomerParty>
+	<cac:PaymentExchangeRate>
+		<!--liquidación a otra moneda de esta factura; TRM-->
+		<cbc:SourceCurrencyCode/>
+		<cbc:TargetCurrencyCode/>
+	</cac:PaymentExchangeRate>
+	<cac:LegalMonetaryTotal>
+		<!--Totales de la factura-->
+		<!--reglas definidas en el AnxTec-->
+		<cbc:LineExtensionAmount currencyID="COP">3700.00</cbc:LineExtensionAmount>
+		<cbc:TaxExclusiveAmount currencyID="COP">3700.00</cbc:TaxExclusiveAmount>
+		<cbc:TaxInclusiveAmount currencyID="COP">3700.00</cbc:TaxInclusiveAmount>
+		<cbc:AllowanceTotalAmount currencyID="COP">0.00</cbc:AllowanceTotalAmount>
+		<cbc:ChargeTotalAmount currencyID="COP">0.00</cbc:ChargeTotalAmount>
+		<cbc:PrepaidAmount currencyID="COP">0.00</cbc:PrepaidAmount>
+		<cbc:PayableAmount currencyID="COP">3700.00</cbc:PayableAmount>
+	</cac:LegalMonetaryTotal>
+	<cac:InvoiceLine>
+		<!--items de la factura-->
+		<cbc:ID>1</cbc:ID>
+		<cbc:InvoicedQuantity unitCode="EA">1</cbc:InvoicedQuantity>
+		<cbc:LineExtensionAmount currencyID="COP">3700.00</cbc:LineExtensionAmount>
+		<cac:Item>
+			<cbc:Description>Dólar de USA</cbc:Description>
+			<cac:StandardItemIdentification>
+				<cbc:ID schemeAgencyName="195">USD$</cbc:ID>
+			</cac:StandardItemIdentification>
+		</cac:Item>
+		<cac:Price>
+			<cbc:PriceAmount currencyID="COP">3700.00</cbc:PriceAmount>
+			<cbc:BaseQuantity unitCode="EA">1.000000</cbc:BaseQuantity>
+			<cbc:PriceType>TRM</cbc:PriceType>
+		</cac:Price>
+	</cac:InvoiceLine>
+</Invoice>

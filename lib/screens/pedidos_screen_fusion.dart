@@ -342,9 +342,18 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
               pedido.tipo == TipoPedido.cortesia;
         }
 
-        // Para pedidos activos, asegurarse de que no estén realmente pagados
+        // ✅ MEJORADO: Para pedidos activos, verificar múltiples condiciones
         if (_estadoFiltro == EstadoPedido.activo) {
-          return !pedido.estaPagado && pedido.estado != EstadoPedido.cancelado;
+          // Un pedido es activo solo si:
+          // 1. No está pagado (verificar propiedad estaPagado)
+          // 2. Su estado NO es cancelado
+          // 3. Su estado NO es pagado
+          // 4. No tiene pagadoPor (verificación adicional)
+          final esRealmenteActivo = !pedido.estaPagado && 
+                                    pedido.estado != EstadoPedido.cancelado &&
+                                    pedido.estado != EstadoPedido.pagado &&
+                                    (pedido.pagadoPor == null || pedido.pagadoPor!.isEmpty);
+          return esRealmenteActivo;
         }
 
         return pedido.estado == _estadoFiltro;
@@ -357,12 +366,16 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
     // Filtrar por búsqueda
     if (_busquedaController.text.isNotEmpty) {
       final antes = pedidosFiltrados.length;
-      final query = _busquedaController.text.toLowerCase();
+      final query = _busquedaController.text.trim().toLowerCase();
       pedidosFiltrados = pedidosFiltrados.where((pedido) {
-        return pedido.id.toLowerCase().contains(query) ||
-            (pedido.cliente?.toLowerCase().contains(query) ?? false) ||
-            pedido.mesa.toLowerCase().contains(query) ||
-            pedido.mesero.toLowerCase().contains(query);
+        // ✅ MEJORADO: Buscar también por total y mejorar búsqueda por ID/mesa
+        final idMatch = pedido.id.toLowerCase().contains(query);
+        final clienteMatch = (pedido.cliente?.toLowerCase().contains(query) ?? false);
+        final mesaMatch = pedido.mesa.trim().toLowerCase().contains(query);
+        final meseroMatch = pedido.mesero.toLowerCase().contains(query);
+        final totalMatch = formatCurrency(pedido.total).toLowerCase().contains(query);
+        
+        return idMatch || clienteMatch || mesaMatch || meseroMatch || totalMatch;
       }).toList();
       print(
         'DEBUG: Después del filtro de búsqueda: ${pedidosFiltrados.length} (antes: $antes)',

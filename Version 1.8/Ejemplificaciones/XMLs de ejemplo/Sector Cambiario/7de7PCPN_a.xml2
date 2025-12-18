@@ -1,0 +1,90 @@
+<cam:CompraVentaDeDivisas xmlns:cam="http://www.w3.org/" custimizationID="7de7PCPN">
+	<cam:DebidaDiligenciaPN_RP7de7 tipo="PN-DDC_restoPais7de7"
+                             		regla1="venta de divisas por cualquier monto superior o igual a usd$10,000"
+                             		regla2="venta de cheque banco extranjero; cualquier monto"
+                             		regla3="país de comprador aparece en lista GAFI"
+                             		regla4="DDC Reforzada"
+                             		regla5="DDC Intensificada"
+                             		ventaCiudadNombre="Cali"
+                             		ventaCiudadCodigoDIAN="76001"
+                             		ventaDepartamentoEstadoNombre="Valle del Cauca"
+                             		ventaDepartamentoEstadoCodigoDIAN="76"
+                             		xmlns:cam="http://www.w3.org/"
+                             		nacimientoCiudadNombre="California"
+                             		nacimientoCiudadCodigoDIAN="68132"
+                             		nacimientoDepartamentoEstadoNombre="Santander"
+                             		nacimientoDepartamentoEstadoCodigoDIAN="68"
+                             		nacimientoPaisNombre="Colombia"
+                             		nacimientoPaisCodigoDIAN="CO"
+                             		nacimientoFecha="1989-11-23"
+                             		localizadoCiudadNombre="San Gil"
+                             		localizadoCiudadCodigoDIAN="68679"
+                             		localizadoDepartamentoEstadoNombre="Santander"
+                             		localizadoDepartamentoEstadoCodigoDIAN="68"
+                             		localizadoPaisNombre="Colombia"
+                             		localizadoPaisCodigoDIAN="CO"
+                             		localizadoFechaArribo="n.a."
+                             		clienteNombres="Cristobal"
+                             		clienteApellidos="Colón"
+                             		clienteIdentificacion="1001987432"
+                             		clienteIdentificacionTipoDIAN="13"
+                             		ciiu="0081"
+                             		correoElectrónico="cc@gmail.com"
+                             		origenDeLosFondos="Herencia familiar"
+                             		destinoDeLosFondos="Abono a cuenta por la compra de una planta de transformación de derivados del petroleo en bienes de consumo industrial"
+                             		elBeneficiarioEsUnPEP="no"
+                             		elBeneficiarioEsFamiliarDeUnPEP="no"
+                             		verificacionDeInformacionModo1="Revisión de carta con la oferta del bien que será adquirido; confirmación de autenticidad"
+                             		verificacionDeInformacionModo2="Revisión de informe de pre factibilidad sobre el negocio de producir y vender los bienes de consumo industrial fabricados a partir de derivados del petroleo"
+                             		>
+		<ArchivoAdjuntoIdentificacionPN>
+			<ObjetoBinarioDocumentoEmbebido format="PDF 2.0"
+                              				mimeCode="application/pdf"
+                              				encodingCode="base64, UTF-8"
+                              				characterSetCode="UTF-8"
+                              				filename="identificacionPN.pdf">_resultado_conversion_de_pdf_a_base64_</ObjetoBinarioDocumentoEmbebido>
+		</ArchivoAdjuntoIdentificacionPN>
+	</cam:DebidaDiligenciaPN_RP7de7>
+	<cam:DebidaDiligenciaIntensificada tipo="DDC-I"
+                                 		xmlns:cam="http://www.w3.org/"
+                                 		PCRecibidoInfo23aEconomicaRecibidoSN="si"
+                                 		PCRecibidoInfo23aEconomicaDescripcion1="Estado de Resultados - NIIF"
+                                 		AdquirienteActualizo23bIdentificacionSN="si"
+                                 		AdquirienteActualizo23bIdentificacionDescripcn1="Copia autenticada en notaría en papel del documento de identidad del Mandante usado para digitalizar la imagen que se adjunta a esta factura de venta, con destino al sistema de gestión documental del PC"
+                                 		AdquirienteActualizo23bIdentificacionDescripcn2="Copia autenticada en notaría en papel del documento de identidad del Mandatario, con destino al sistema de gestión documental del PC"
+                                 		PCRecibidoInfo23cFuenteRiquezaRecibidoSN="si"
+                                 		PCRecibidoInfo23cFuenteRiquezaDescripcn1="Documentos de sucesión"
+                                 		PCRecibidoInfo23cFuenteRiquezaDescripcn2="Registro en cámara de comercio como Comerciante"
+                                 		PCRecibidoInfo23dRazonTransaccionRecibidoSN="si"
+                                 		PCRecibidoInfo23dRazonTransaccionDescripcn1="Informe de pre factibilidad sobre el negocio de producir y vender los bienes de consumo industrial fabricados a partir de derivados del petroleo"
+                                 		>
+	</cam:DebidaDiligenciaIntensificada>
+	<cam:PCParaReforzarHizo repLegalAutorizoOperacion23eSN="si"
+                      		nombreAutorizador23e="Propietario Representante Legal"
+                      		ocRealizoMonitoreoDeOperaciones23fSN="si"
+                      		nombreOficialDeCumplimientoPC="Por inconvenientes laborales la empresa carecía de OC; el monitoreo lo realizó el Representante Legal"
+                      		/>
+	<cam:DetallesDeCompra tipo="detalle-compra"
+                    		xmlns:cam="http://www.w3.org/"
+                    		descripcionOperacion="Cliente/Beneficiario compra divisas"
+                    		>
+		<cam:Operaciones>
+			<cam:Operacion divisaCodigo="EUR"
+             				divisaNombre="Euro; 6.3.3.	Moneda (ISO 4217)"
+             				divisaU="1.00"
+             				tasaDeCambioU_COP="4321.22"
+             				divisaEfectivo="0.00"
+             				divisaChequeViajero="1000000.00"
+             				divisaTotalVenta="1000000.00"
+             				pagoEfectivoCOP="_eeeeeeeee.dd_enteros_punto_2+decimales_COP$efectivo"
+             				pagoOtroMedioCOP="4321220000.00"
+             				pagoTotalCOP="4321220000.00"
+             				trmUSD1IgualCOP="3785.89"
+             				trmUSD1IgualCOPFecha="2019-03-10"
+             				totalCOPEnUSD="1141401.36"
+             				/>
+		</cam:Operaciones>
+		<cam:Manifiesto>Para los fines previstos en el artículo 83 de la Constitución Política de Colombia, declaro bajo la gravedad de juramento, que los conceptos, cantidades y demás datosconsignados en el presente formulario son correctos y fiel expresión de la verdad.</cam:Manifiesto>
+		<cam:Indicaciones>Cuando la operación se realice entre dos (2) Profesionales del Cambio se elaborará una sola Declaración de Cambio. La Declaración la debe diligenciar el "Beneficiario o Cliente" en la papelería suministrada por el Profesional que recibe y acepta la oferta del beneficiario.</cam:Indicaciones>
+	</cam:DetallesDeCompra>
+</cam:CompraVentaDeDivisas>

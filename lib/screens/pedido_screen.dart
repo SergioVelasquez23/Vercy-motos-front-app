@@ -90,6 +90,9 @@ class _PedidoScreenState extends State<PedidoScreen> {
 
   // Map para controlar el estado de pago de cada producto
   Map<String, bool> productoPagado = {};
+  
+  // ✅ NUEVO: Contador para forzar reconstrucción total al cambiar categoría
+  int _contadorReconstruccionCategoria = 0;
 
   bool isLoading = true;
   bool isSaving = false; // Nueva variable para controlar el estado de guardado
@@ -3013,6 +3016,7 @@ class _PedidoScreenState extends State<PedidoScreen> {
         // 🖼️ Usar imagen simple si producto es null o tiene URL
         child: producto != null
             ? LazyProductImageWidget(
+                key: ValueKey('${producto.id}-${categoriaSelecionadaId ?? "todos"}-$_contadorReconstruccionCategoria'), // ✅ Key con contador
                 producto: producto,
                 width: width ?? 60,
                 height: height ?? 60,
@@ -3023,6 +3027,7 @@ class _PedidoScreenState extends State<PedidoScreen> {
                 urlRemota: imagenUrl != null
                     ? _imageService.getImageUrl(imagenUrl)
                     : null,
+                productoId: null, // No hay producto específico en este caso
                 width: width ?? double.infinity,
                 height: height ?? double.infinity,
                 fit: BoxFit.cover,
@@ -3364,6 +3369,7 @@ class _PedidoScreenState extends State<PedidoScreen> {
         isSelected: categoriaSelecionadaId == null,
         onTap: () => setState(() {
           categoriaSelecionadaId = null;
+          _contadorReconstruccionCategoria++; // ✅ Forzar reconstrucción
           _resetearPaginacion();
           _actualizarProductosVista();
         }),
@@ -3379,6 +3385,7 @@ class _PedidoScreenState extends State<PedidoScreen> {
           isSelected: categoriaSelecionadaId == categoria.id,
           onTap: () => setState(() {
             categoriaSelecionadaId = categoria.id;
+            _contadorReconstruccionCategoria++; // ✅ Forzar reconstrucción
             _resetearPaginacion();
             _actualizarProductosVista();
           }),
@@ -3426,6 +3433,7 @@ class _PedidoScreenState extends State<PedidoScreen> {
         isSelected: categoriaSelecionadaId == null,
         onTap: () => setState(() {
           categoriaSelecionadaId = null;
+          _contadorReconstruccionCategoria++; // ✅ Forzar reconstrucción
           _resetearPaginacion();
           _actualizarProductosVista();
         }),
@@ -3441,6 +3449,7 @@ class _PedidoScreenState extends State<PedidoScreen> {
           isSelected: categoriaSelecionadaId == categoria.id,
           onTap: () => setState(() {
             categoriaSelecionadaId = categoria.id;
+            _contadorReconstruccionCategoria++; // ✅ Forzar reconstrucción
             _resetearPaginacion();
             _actualizarProductosVista();
           }),
@@ -3491,7 +3500,13 @@ class _PedidoScreenState extends State<PedidoScreen> {
     return Container(
       margin: EdgeInsets.only(bottom: 4, right: 4),
       child: GestureDetector(
-        onTap: onTap,
+        onTap: () {
+          // ✅ NUEVO: Limpiar TODOS los cachés de imágenes al cambiar categoría
+          print('🧹 Limpiando cachés de imágenes al cambiar a categoría: $nombre');
+          PaintingBinding.instance.imageCache.clear();
+          PaintingBinding.instance.imageCache.clearLiveImages();
+          onTap();
+        },
         child: Container(
           padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
@@ -3526,7 +3541,13 @@ class _PedidoScreenState extends State<PedidoScreen> {
     final textLight = Color(0xFFB0B0B0);
 
     return GestureDetector(
-      onTap: onTap,
+      onTap: () {
+        // ✅ NUEVO: Limpiar TODOS los cachés de imágenes al cambiar categoría
+        print('🧹 Limpiando cachés de imágenes al cambiar a categoría: $nombre');
+        PaintingBinding.instance.imageCache.clear();
+        PaintingBinding.instance.imageCache.clearLiveImages();
+        onTap();
+      },
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(

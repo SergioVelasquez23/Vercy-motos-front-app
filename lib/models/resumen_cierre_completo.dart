@@ -417,13 +417,13 @@ class CuadreInfoCompleto {
         json['fondoInicialDesglosado']?.cast<String, dynamic>(),
       ),
       fechaCierre: json['fechaCierre'],
-      estado: json['estado']?.toString() ?? '',
+      estado: json['estado']?.toString() ?? 'pendiente',
       cerrada: json['cerrada'] ?? false,
       responsable: json['responsable']?.toString() ?? '',
       fechaApertura: json['fechaApertura']?.toString() ?? '',
       fondoInicial: safeToDouble(json['fondoInicial']),
       id: json['id']?.toString() ?? '',
-      nombre: json['nombre']?.toString() ?? '',
+      nombre: json['nombre']?.toString() ?? 'Caja sin nombre',
     );
   }
 }
@@ -530,12 +530,21 @@ class DetalleGasto {
       return 0.0;
     }
 
+    // ✅ FLEXIBILIDAD: Manejar múltiples formatos del backend
+    // El backend puede enviar 'concepto' o 'descripcion'
+    String conceptoValue =
+        json['concepto']?.toString() ?? json['descripcion']?.toString() ?? '';
+
+    // El backend puede enviar 'proveedor' o 'autorizado'
+    String? proveedorValue =
+        json['proveedor']?.toString() ?? json['autorizado']?.toString();
+
     return DetalleGasto(
       id: json['id']?.toString() ?? '',
-      concepto: json['concepto']?.toString() ?? '',
+      concepto: conceptoValue,
       monto: safeToDouble(json['monto']),
       fecha: json['fecha']?.toString() ?? '',
-      proveedor: json['proveedor']?.toString(),
+      proveedor: proveedorValue,
       formaPago: json['formaPago']?.toString() ?? '',
       pagadoDesdeCaja: json['pagadoDesdeCaja'] ?? false,
     );

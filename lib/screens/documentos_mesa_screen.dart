@@ -9,6 +9,7 @@ import '../services/pdf_service_web.dart';
 import '../utils/negocio_info_cache.dart';
 import '../utils/format_utils.dart';
 import '../utils/impresion_mixin.dart';
+import '../widgets/factura_electronica_widgets.dart';
 import 'pedido_screen.dart';
 import '../theme/app_theme.dart';
 
@@ -623,6 +624,40 @@ class _DocumentosMesaScreenState extends State<DocumentosMesaScreen>
                                         iconSize: 28,
                                         splashRadius: 26,
                                       ),
+                                      IconButton(
+                                        icon: Icon(
+                                          Icons.receipt_long,
+                                          color: Colors.green,
+                                        ),
+                                        onPressed: () async {
+                                          final resultado =
+                                              await showDialog<
+                                                Map<String, dynamic>
+                                              >(
+                                                context: context,
+                                                builder: (context) =>
+                                                    DatosFacturaElectronicaDialog(
+                                                      documentoMesa: documento,
+                                                    ),
+                                              );
+                                          if (resultado != null) {
+                                            // Aquí se procesará la factura
+                                            ScaffoldMessenger.of(
+                                              context,
+                                            ).showSnackBar(
+                                              SnackBar(
+                                                content: Text(
+                                                  'Procesando factura...',
+                                                ),
+                                                backgroundColor: Colors.blue,
+                                              ),
+                                            );
+                                          }
+                                        },
+                                        tooltip: 'Generar Factura Electrónica',
+                                        iconSize: 28,
+                                        splashRadius: 26,
+                                      ),
                                     ],
                                   ),
                                 ),
@@ -767,6 +802,25 @@ class _DocumentosMesaScreenState extends State<DocumentosMesaScreen>
                           ),
                         ),
                       ),
+                      SizedBox(width: 8),
+                      // Botón Factura Electrónica
+                      Expanded(
+                        child: BotonSolicitarFacturaElectronica(
+                          documentoMesa: documento,
+                          onFacturaGenerada: (doc, factura) async {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'Factura ${factura.numeroFactura} generada',
+                                ),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                            await _cargarDocumentos();
+                          },
+                          compact: true,
+                        ),
+                      ),
                     ],
                   ),
                 ],
@@ -831,6 +885,28 @@ class _DocumentosMesaScreenState extends State<DocumentosMesaScreen>
           ),
         ),
         actions: [
+          if (documento.facturaElectronica == null)
+            BotonSolicitarFacturaElectronica(
+              documentoMesa: documento,
+              onFacturaGenerada: (doc, factura) async {
+                Navigator.of(context).pop();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      '✅ Factura ${factura.numeroFactura} generada',
+                    ),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+                await _cargarDocumentos();
+              },
+              compact: true,
+            ),
+          if (documento.facturaElectronica != null)
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: EstadoFacturaElectronicaWidget(documentoMesa: documento),
+            ),
           TextButton.icon(
             onPressed: () {
               Navigator.of(context).pop();

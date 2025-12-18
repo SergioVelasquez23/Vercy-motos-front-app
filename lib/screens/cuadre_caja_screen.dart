@@ -469,6 +469,18 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
       return;
     }
 
+    // Mostrar indicador de carga mientras navega
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Center(
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(primary),
+        ),
+      ),
+    );
+
+    // Navegar y cerrar el diálogo de carga cuando la pantalla esté lista
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -477,7 +489,23 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
           nombreCuadre: cuadre.nombre,
         ),
       ),
-    );
+    ).then((value) {
+      // Cerrar el diálogo de carga cuando se retorne de la pantalla
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
+    }).catchError((error) {
+      // Manejar error y cerrar diálogo de carga
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al cargar el resumen: $error'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    });
   }
 
   @override

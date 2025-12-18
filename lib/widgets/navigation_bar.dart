@@ -75,6 +75,12 @@ class AppNavigationBar extends StatelessWidget {
               ),
               _buildNavItem(
                 context,
+                icon: Icons.receipt_long,
+                label: 'Fact. Electrónica',
+                route: '/facturacion/config',
+              ),
+              _buildNavItem(
+                context,
                 icon: Icons.settings,
                 label: 'Configuración',
                 route: '/configuracion',

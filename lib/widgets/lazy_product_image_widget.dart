@@ -41,19 +41,23 @@ class _LazyProductImageWidgetState extends State<LazyProductImageWidget> {
     _cargarImagen();
   }
 
-  void _cargarImagen() async {
-    // Si el producto ya tiene imagen, usarla
-    if (widget.producto.imagenUrl != null &&
-        widget.producto.imagenUrl!.isNotEmpty) {
-      if (mounted) {
-        setState(() {
-          _imagenUrl = widget.producto.imagenUrl;
-        });
-      }
-      return;
+  @override
+  void didUpdateWidget(LazyProductImageWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Si cambió el producto, recargar la imagen
+    if (oldWidget.producto.id != widget.producto.id) {
+      _imageLoader.removeImageListener(oldWidget.producto.id, _onImagenCargada);
+      _imagenUrl = null;
+      _isLoading = false;
+      _cargarImagen();
     }
+  }
 
-    // Verificar cache
+  void _cargarImagen() async {
+    // ✅ CORREGIDO: NUNCA usar imagenUrl del producto, siempre cargar desde servicio
+    // Esto evita que imágenes cacheadas incorrectas se muestren al cambiar categorías
+    
+    // Verificar cache del servicio PRIMERO (más fresco que el del producto)
     final imagenCache = _imageLoader.getImagenFromCache(widget.producto.id);
     if (imagenCache != null) {
       if (mounted) {
@@ -73,7 +77,7 @@ class _LazyProductImageWidgetState extends State<LazyProductImageWidget> {
         _isLoading = true;
       });
 
-      // Cargar imagen individual (esto también se puede hacer en lotes desde la pantalla padre)
+      // Cargar imagen individual desde el servidor
       final url = await _imageLoader.cargarImagenProducto(widget.producto.id);
 
       if (mounted && url != null) {
@@ -118,8 +122,10 @@ class _LazyProductImageWidgetState extends State<LazyProductImageWidget> {
       }
       
       return ImagenProductoWidget(
+        key: ValueKey('img-${widget.producto.id}-${urlFinal.hashCode}'), // ✅ Key única por producto
         urlRemota: urlFinal,
         nombreProducto: widget.producto.nombre,
+        productoId: widget.producto.id, // ✅ NUEVO: Pasar ID del producto
         width: widget.width,
         height: widget.height,
         fit: widget.fit,

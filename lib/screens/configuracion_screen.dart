@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'users_screen.dart';
 import 'negocio_info_screen.dart';
 import 'exportar_mensual_screen.dart';
+import 'configuracion_facturacion_screen.dart';
 import '../models/mesa.dart';
 import '../models/tipo_mesa.dart';
 import '../services/mesa_service.dart';
@@ -21,7 +22,7 @@ class _ConfiguracionScreenState extends State<ConfiguracionScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
   }
 
   @override
@@ -61,10 +62,12 @@ class _ConfiguracionScreenState extends State<ConfiguracionScreen>
               indicatorColor: AppTheme.primary,
               labelColor: AppTheme.textDark,
               unselectedLabelColor: AppTheme.textLight,
+              isScrollable: true,
               tabs: const [
                 Tab(icon: Icon(Icons.people), text: 'Usuarios'),
                 Tab(icon: Icon(Icons.table_restaurant), text: 'Mesas'),
                 Tab(icon: Icon(Icons.business), text: 'Negocio'),
+                Tab(icon: Icon(Icons.receipt_long), text: 'Facturación DIAN'),
               ],
             ),
           ),
@@ -75,6 +78,7 @@ class _ConfiguracionScreenState extends State<ConfiguracionScreen>
                 UsersScreen(),
                 MesasConfigScreen(),
                 NegocioInfoScreen(),
+                const ConfiguracionFacturacionScreen(),
               ],
             ),
           ),

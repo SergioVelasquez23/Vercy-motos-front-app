@@ -1316,7 +1316,6 @@ class _DialogoPagoState extends State<DialogoPago> {
           child: Column(
             children: [
               _buildMetodoPagoOption('efectivo', 'Efectivo', Icons.money),
-              _buildMetodoPagoOption('tarjeta', 'Tarjeta', Icons.credit_card),
               _buildMetodoPagoOption(
                 'transferencia',
                 'Transferencia',
@@ -1384,50 +1383,48 @@ class _DialogoPagoState extends State<DialogoPago> {
               ),
               if (pagoMultiple) ...[
                 SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: montoEfectivoController,
-                        keyboardType: TextInputType.number,
-                        decoration: InputDecoration(
-                          labelText: 'Efectivo',
-                          prefixIcon: Icon(
-                            Icons.money,
-                            color: AppTheme.primary,
-                          ),
-                          border: OutlineInputBorder(),
-                        ),
+                TextField(
+                  controller: montoEfectivoController,
+                  keyboardType: TextInputType.number,
+                  style: TextStyle(color: AppTheme.textPrimary, fontSize: 16),
+                  decoration: InputDecoration(
+                    labelText: 'Efectivo',
+                    labelStyle: TextStyle(color: AppTheme.textSecondary),
+                    prefixIcon: Icon(Icons.money, color: AppTheme.primary),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: AppTheme.primary.withOpacity(0.3),
                       ),
                     ),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: TextField(
-                        controller: montoTarjetaController,
-                        keyboardType: TextInputType.number,
-                        decoration: InputDecoration(
-                          labelText: 'Tarjeta',
-                          prefixIcon: Icon(
-                            Icons.credit_card,
-                            color: AppTheme.primary,
-                          ),
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: AppTheme.primary, width: 2),
                     ),
-                  ],
+                  ),
                 ),
                 SizedBox(height: 12),
                 TextField(
                   controller: montoTransferenciaController,
                   keyboardType: TextInputType.number,
+                  style: TextStyle(color: AppTheme.textPrimary, fontSize: 16),
                   decoration: InputDecoration(
                     labelText: 'Transferencia',
+                    labelStyle: TextStyle(color: AppTheme.textSecondary),
                     prefixIcon: Icon(
                       Icons.account_balance,
                       color: AppTheme.primary,
                     ),
-                    border: OutlineInputBorder(),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: AppTheme.primary.withOpacity(0.3),
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: AppTheme.primary, width: 2),
+                    ),
                   ),
                 ),
               ],

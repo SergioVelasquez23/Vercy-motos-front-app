@@ -1,0 +1,181 @@
+<cam:CompraVentaDeDivisas xmlns:cam="http://www.w3.org/">
+	<cam:MandatoPNMPN tipo="PNMPN"
+                		descripcion="Mandato"
+                		MandanteBeneficiario="Persona Natural"
+                		Mandatario="Persona Natural"
+                		xmlns:cam="http://www.w3.org/"
+                		>
+		<cam:DatosMandantePN>
+			<cam:DebidaDiligenciaPN_RP5de7 tipo="PN-DDC_restoPais2de7"
+                             				regla1="venta de divisas por cualquier monto igual o superior a usd$10,000"
+                             				regla2="venta de cheque banco extranjero; cualquier monto"
+                             				regla3="país de comprador aparece en lista GAFI"
+                             				regla4="DDC Reforzada"
+                             				regla5="DDC Intensificada"
+                             				ventaCiudadNombre="…"
+                             				ventaCiudadCodigoDIAN="…"
+                             				ventaDepartamentoEstadoNombre="…"
+                             				ventaDepartamentoEstadoCodigoDIAN="…"
+                             				xmlns:cam="http://www.w3.org/"
+                             				nacimientoCiudadNombre="…"
+                             				nacimientoCiudadCodigoDIAN="…"
+                             				nacimientoDepartamentoEstadoNombre="…"
+                             				nacimientoDepartamentoEstadoCodigoDIAN="…"
+                             				nacimientoPaisNombre="…"
+                             				nacimientoPaisCodigoDIAN="…"
+                             				nacimientoFecha="aaaa-mm-dd"
+                             				localizadoCiudadNombre="…"
+                             				localizadoCiudadCodigoDIAN="…"
+                             				localizadoDepartamentoEstadoNombre="…"
+                             				localizadoDepartamentoEstadoCodigoDIAN="…"
+                             				localizadoPaisNombre="…"
+                             				localizadoPaisCodigoDIAN="…"
+                             				localizadoFechaArribo="aaaa-mm-dd"
+                             				clienteNombres="…"
+                             				clienteApellidos="…"
+                             				clienteIdentificacion="…"
+                             				clienteIdentificacionTipoDIAN="…"
+                             				ciiu="…"
+                             				correoElectrónico="…"
+                             				origenDeLosFondos="…"
+                             				destinoDeLosFondos="…"
+                             				elBeneficiarioEsUnPEP="si || no"
+                             				elBeneficiarioEsFamiliarDeUnPEP="si || no"
+                             				verificacionDeInformacionModo1="…"
+                             				verificacionDeInformacionModo2="…"
+                             				>
+				<!-- 3.1 Debida Diligencia del cliente – DDC; R-061:2017 DIAN-->
+				<!-- Sistema de Administración del Riesgo de Lavado de Activos, Financiación del Terrorismo y de la Financiación de la Proliferación de Armas de Destrucción Masiva - LA/FT-FPADM -->
+				<!-- Se recomienda consultar el más reciente documento 'Anexo Técnico de la Factura Electrónica' para que utilice las tablas de valores vigentes al diligenciar este documento: www.dian.gov.co Anexo Técnico -->
+				<!-- si el adquirente o el vendedor de divisas es un contribuyente en Colombia, debe escribir el código de su actividad económica -->
+				<!-- si el adquirente o el vendedor de divisas no es contribuyente en Colombia, use el código '0081' -->
+				<!-- PEP: persona expuesta políticamente; 2.1 Personas Expuestas Políticamente – PEP; R-061:2017 DIAN -->
+				<!-- si la respuesta a ../EsUnPEP es 'si' debe cambiar de fragmento al PEP-->
+				<!-- PC: Profesional Cambio -->
+				<!-- modos de verificación de información utilizados por el PC -->
+				<!-- nombre de servicios de información para Oficiales de Cumplimiento -->
+				<ArchivoAdjuntoIdentificacionMandante>
+					<ObjetoBinarioDocumentoEmbebido format="PDF 2.0"
+                              						mimeCode="application/pdf"
+                              						encodingCode="base64, UTF-8"
+                              						characterSetCode="UTF-8"
+                              						filename="identificacionPN.pdf">_resultado_conversion_de_pdf_a_base64_</ObjetoBinarioDocumentoEmbebido>
+				</ArchivoAdjuntoIdentificacionMandante>
+				<!-- archivo mediante el cual la Persona Natural adquirente de moneda extranjera a un Profesional del Cambio exhibe su documento de identificación, y deja la evidencia de su registro en la documentación que acompaña a la Factura Electrónica de Venta. Así lo dispone 3.1 Debida Diligencia del Cliente – DDC; R-061:2017 DIAN. - El archivo PDF lo genera el PC a partir de versión en papel. - El PC almacena las diferentes versiones de acuerdo con su sistema de gestión documental. -->
+				<!-- vea detalles en archivo fileAttachementElement.xml. - Cualquier lector incidental podrá validar el documento adjunto exportándolo al sistema de archivos de su sistema operativo, en esta reseña explicativa lo llamaremos mandato.b64, y este artefacto será procesado por un programa convertidor de archivos de base64 a UTF-8, y el producto de la conversión la denominaremos mandato.pdf. El producto será procesado por cualquier programa lector de archivos tipo PDF, y se verá la imagen digital del ejemplar original que suscribieron el Mandante y el Mandatario, con las formalidades que hayan incluido en el original como 'firmas autógrafas', 'huellas digitales', 'anotaciones, sellos y firmas autógrafas' de Notario, etcétera.  -->
+				<!-- confirmar texto con la abogada de la Factura Electrónica + RADIAN -->
+			</cam:DebidaDiligenciaPN_RP5de7>
+		</cam:DatosMandantePN>
+		<cam:DatosMandatarioPN nacimientoCiudadNombre="…"
+                     			nacimientoCodigoDIAN="…"
+                     			nacimientoDepartamentoEstadoNombre="…"
+                     			nacimientoDepartamentoEstadoCodigoDIAN="…"
+                     			nacimientoPaisNombre="…"
+                     			nacimientoPaisCodigoDIAN="…"
+                     			nacimientoFecha="aaa-mm-dd"
+                     			identificacionTipoDIAN="…"
+                     			identificacion="…"
+                     			ciiu="…"
+                     			correoElectrónico="…"
+                     			verificacionDeInformacionModo1="…"
+                     			verificacionDeInformacionModo2="…"
+                     			/>
+		<ArchivoAdjuntoMandato>
+			<ObjetoBinarioDocumentoEmbebido format="PDF 2.0"
+                              				mimeCode="application/pdf"
+                              				encodingCode="base64, UTF-8"
+                              				characterSetCode="UTF-8"
+                              				filename="PNDaMandatoAPN.pdf">_resultado_conversion_de_pdf_a_base64_</ObjetoBinarioDocumentoEmbebido>
+		</ArchivoAdjuntoMandato>
+		<!-- archivo mediante el cual el Mandatario declara que acepta los mandatos y facultades del Mandante sobre esta diligencia de compra y adquisición de divisas para el Mandante, suscrito por las partes con firmas autógrafas. - El archivo PDF lo genera el PC a partir de versión en papel. - El PC almacena las diferentes versiones de acuerdo con su sistema de gestión documental. -->
+		<!-- vea detalles en archivo fileAttachementElement.xml. - Cualquier lector incidental podrá validar el documento adjunto exportándolo al sistema de archivos de su sistema operativo, en esta reseña explicativa lo llamaremos mandato.b64, y este artefacto será procesado por un programa convertidor de archivos de base64 a UTF-8, y el producto de la conversión la denominaremos mandato.pdf. El producto será procesado por cualquier programa lector de archivos tipo PDF, y se verá la imagen digital del ejemplar original que suscribieron el Mandante y el Mandatario, con las formalidades que hayan incluido en el original como 'firmas autógrafas', 'huellas digitales', 'anotaciones, sellos y firmas autógrafas' de Notario, etcétera.  -->
+		<!-- confirmar texto con la abogada de la Factura Electrónica + RADIAN -->
+	</cam:MandatoPNMPN>
+	<cam:DebidaDiligenciaIntensificada tipo="DDC-I"
+                                 		xmlns:cam="http://www.w3.org/"
+                                 		PCRecibidoInfo23aEconomicaRecibidoSN="si || no"
+                                 		PCRecibidoInfo23aEconomicaDescripcion1="_nombre_documento_Económico_1_"
+                                 		PCRecibidoInfo23aEconomicaDescripcion2="_nombre_documento_Económico_2_"
+                                 		PCRecibidoInfo23aEconomicaDescripcion3="_nombre_documento_Económico_n_"
+                                 		AdquirienteActualizo23bIdentificacionSN="si || no"
+                                 		AdquirienteActualizo23bIdentificacionDescripcn1="_nombre_docIdentificacion_1_"
+                                 		AdquirienteActualizo23bIdentificacionDescripcn2="_nombre_docIdentificacion_2_"
+                                 		AdquirienteActualizo23bIdentificacionDescripcn3="_nombre_docIdentificacion_n_"
+                                 		PCRecibidoInfo23cFuenteRiquezaRecibidoSN="si || no"
+                                 		PCRecibidoInfo23cFuenteRiquezaDescripcn1="_nombre_docRiqueza_1_"
+                                 		PCRecibidoInfo23cFuenteRiquezaDescripcn2="_nombre_docRiqueza_2_"
+                                 		PCRecibidoInfo23cFuenteRiquezaDescripcn3="_nombre_docRiqueza_n_"
+                                 		PCRecibidoInfo23dRazonTransaccionRecibidoSN="si || no"
+                                 		PCRecibidoInfo23dRazonTransaccionDescripcn1="_nombre_docTransaccion_1_"
+                                 		PCRecibidoInfo23dRazonTransaccionDescripcn2="_nombre_docTransaccion_2_"
+                                 		PCRecibidoInfo23dRazonTransaccionDescripcn3="_nombre_docTransaccion_n_"
+                                 		>
+		<!-- 3.5	Debida diligencia intensificada por razón de la cuantía de las operaciones – DDC intensificada ; R-061:2017 DIAN -->
+		<!-- Sistema de Administración del Riesgo de Lavado de Activos, Financiación del Terrorismo y de la Financiación de la Proliferación de Armas de Destrucción Masiva - LA/FT-FPADM -->
+		<!-- Se recomienda consultar el más reciente documento 'Anexo Técnico de la Factura Electrónica' para que utilice las tablas de valores vigentes al diligenciar este documento: www.dian.gov.co Anexo Técnico -->
+		<!-- si la respuesta a ../@RecibidoSN es 'no' entonces no incluya elementos ../Descripcn -->
+		<!-- e.g. 'Estados de Situación Financiera', 'Certificación' verificable, ...-->
+		<!-- si la respuesta a ../ActualizadoSN es 'no' entonces no incluya elementos ../Descripcn -->
+		<!-- e.g. 'NIT', 'Certificación Cámara de Comercio' verificable, 'Certificado de Revisor Fiscal' verificable, 'Cédula de Ciudadanía', 'Pasaporte', 'otro documento de identificación', '…',…-->
+	</cam:DebidaDiligenciaIntensificada>
+	<cam:PCParaReforzarHizo repLegalAutorizoOperacion23eSN="si || no"
+                      		nombreAutorizador23e="_nombre_RepresentanteLegalPC_1_"
+                      		ocRealizoMonitoreoDeOperaciones23fSN="si || no"
+                      		nombreOficialDeCumplimientoPC="_nombre_operadorMonitoreo_1_"
+                      		/>
+	<!-- PC: Profesional Cambio -->
+	<!-- Nombre del Representante Legal del PC que autorizó la operación, prevista en el Art. 2.3.e de la R-061:2017 de la DIAN -->
+	<!-- si la respuesta a ../RecibidoSN es 'no' entonces no incluya elementos ../Descripcn -->
+	<!-- PC: Profesional Cambio -->
+	<!-- OC: Oficial Cumplimiento -->
+	<!-- Nombre del Oficial de Cumplimiento que realizó el monitoreo del Adquirente o del Vendedor de las divisas negociadas, prevista en el Art. 2.3.f de la R-061:2017 de la DIAN -->
+	<!-- si la respuesta a ../RecibidoSN es 'no' entonces no incluya elementos ../Descripcn -->
+	<cam:DetallesDeCompra tipo="detalle-compra"
+                    		xmlns:cam="http://www.w3.org/"
+                    		descripcionOperacion="Cliente/Beneficiario compra divisas"
+                    		>
+		<cam:Operaciones>
+			<cam:Operacion divisaCodigo="_lista_divisas_DIAN_"
+             				divisaNombre="_descripcion_divisas_DIAN_"
+             				divisaU="1.00"
+             				tasaDeCambioU_COP="_eeee.dd_"
+             				divisaEfectivo="_eeeeeeeee.dd_enteros_punto_2+decimales_divisaBilletesMonedas"
+             				divisaChequeViajero="_eeeeeeeee.dd_enteros_punto_2+decimales_divisaTitulo"
+             				divisaTotalVenta="_eeeeeeeee.dd_enteros_punto_2+decimales_divisaTotal"
+             				pagoEfectivoCOP="_eeeeeeeee.dd_enteros_punto_2+decimales_COP$efectivo"
+             				pagoOtroMedioCOP="_eeeeeeeee.dd_enteros_punto_2+decimales_COP$otrosMediosPago"
+             				pagoTotalCOP="_eeeeeeeee.dd_enteros_punto_2+decimales_COP$total"
+             				trmUSD1IgualCOP="_eeee.dd_"
+             				trmUSD1IgualCOPFecha="aaaa-mm-dd"
+             				totalCOPEnUSD="_eeeeeeee.dd_enteros_punto_2+decimales_USD$total"
+             				/>
+			<cam:Operacion divisaCodigo="_lista_divisas_DIAN_"
+             				divisaNombre="_descripcion_divisas_DIAN_"
+             				divisaU="1.00"
+             				tasaDeCambioU_COP="_eeee.dd_"
+             				divisaEfectivo="_eeeeeeeee.dd_enteros_punto_2+decimales_divisaBilletesMonedas"
+             				divisaChequeViajero="_eeeeeeeee.dd_enteros_punto_2+decimales_divisaTitulo"
+             				divisaTotalVenta="_eeeeeeeee.dd_enteros_punto_2+decimales_divisaTotal"
+             				pagoEfectivoCOP="_eeeeeeeee.dd_enteros_punto_2+decimales_COP$efectivo"
+             				pagoOtroMedioCOP="_eeeeeeeee.dd_enteros_punto_2+decimales_COP$otrosMediosPago"
+             				pagoTotalCOP="_eeeeeeeee.dd_enteros_punto_2+decimales_COP$total"
+             				/>
+		</cam:Operaciones>
+		<cam:Manifiesto>Para los fines previstos en el artículo 83 de la Constitución Política de Colombia, declaro bajo la gravedad de juramento, que los conceptos, cantidades y demás datosconsignados en el presente formulario son correctos y fiel expresión de la verdad.</cam:Manifiesto>
+		<cam:Indicaciones>Cuando la operación se realice entre dos (2) Profesionales del Cambio se elaborará una sola Declaración de Cambio. La Declaración la debe diligenciar el "Beneficiario o Cliente" en la papelería suministrada por el Profesional que recibe y acepta la oferta del beneficiario.</cam:Indicaciones>
+		<!--	<cam:Equivalencias>								
+		<cam:FirmaAutografa/>							
+		<cam:HuellaIndiceDerecho/>							
+		<cam:ImageAttachement></cam:ImageAttachement>							
+	</cam:Equivalencias>-->
+	</cam:DetallesDeCompra>
+</cam:CompraVentaDeDivisas>
+<!-- Decreto 4048 de 2008: Artículo 3: FUNCIONES GENERALES. Corresponde a la DIAN ejercer las siguientes funciones: ...6. Vigilar y controlar las actividades de las personas que ejerzan de manera profesional la compra y venta de divisas; -->
+<!-- DIAN.R-061:2017.Art.17 ...Sistema de Administración del Riesgo de LA/FT- FPADM -->
+<!-- La "debida diligencia" que está en este documento corresponde al Registro previsto en compromisos internacionales de Colombia, sobre cómo deben los Profesionales del Cambio "conocer al cliente." -->
+<!-- Habrá otras secciones de "debida diligencia" para otros clientes de compra-venta de divisas y cheques de viajero. -->
+<!-- El Profesional cambiario es quien emite la documentación oficial de las operaciones de compra-venta; la venta de divisas y de cheques de viajero se registrará mediante facturas electrónicas de venta de servicios, según lo previsto en el E.T. Art. 616-1; la compra de divisas y de cheques de viajero se registrará mediante facturas electrónicas de compra, según lo previsto en el Parágrafo 6 del Art. 616-1 del E.T.: "...y los pagos a favor de no responsables del impuesto sobre las ventas -!VA." -->
+<!-- Se trata de dos formatos XML, vocabulario UBL, mediante los documentos ubl-Invoice y ubl-SelfBilledInvoice; los contenidos son idénticos, pero el procedimiento de expedición es diferente, porque quien realizará el cumplimiento del deber tributario es el Adquirente del bien o servicio. -->
+<!-- La factura electrónica de venta es emitida por el adquirente del servicio, con sus recursos informáticos, y la suscribe digitalmente con su certificado ONAC. La presenta para la validación previa a la DIAN. Paga el IVA retenido, en nombre del proveedor. Así, la adquisición podrá ser, si es procedente, registrada como operación deducible al calcular la base de otros tributos. Así mismo, la DIAN conocerá operaciones que realizan los "...no responsables..." del IVA. -->
+<!-- Las Extensión del "control DIAN" de las facturas electrónicas de venta o de compra incluirá el fragmento ../CompraVentaDeDivisas, con dos de las siguientes secciones: [1.] ../RegimenCambiario/DebidaDiligencia con diferentes contenidos sobre la aplicación de los procedimientos previstos en la Resolución 061:2017; [2.] ../RegimenCambiario/DeclaracionCompra || ../RegimenCambiario/DeclaracionVenta que permite el cumplimiento de la reglamentación del Banco de la República sobre esta forma de circulación de moneda extranjera en el país. -->
+<!-- En operaciones mayores o iguales a usd$1,000, los fragmento ../DeclaracionCompra o la ../DeclaracionVenta incluyen una imagen del documento de identidad nacional o extranjero del cliente del Profesional cambiario, capturada en cualquier formato digital convertido a Base64. La imagen deberá corresponder con el nombre completo y la fotografía del cliente en dicho documento. - Esta imagen será el equivalente a la suscripción y a la huella digital que debe realizar el cliente en el formato físico de la "declaración de cambio." -->
