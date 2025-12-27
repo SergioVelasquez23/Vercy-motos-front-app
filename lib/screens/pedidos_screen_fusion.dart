@@ -3,8 +3,12 @@ import 'package:provider/provider.dart';
 import '../models/pedido.dart';
 import '../models/producto.dart';
 import '../models/cuadre_caja.dart';
+import '../models/inventario.dart';
+import '../models/movimiento_inventario.dart';
 import '../services/pedido_service.dart';
 import '../services/cuadre_caja_service.dart';
+import '../services/inventario_service.dart';
+import '../services/notification_service.dart';
 import '../providers/user_provider.dart';
 import '../utils/format_utils.dart';
 import '../theme/app_theme.dart';
@@ -105,6 +109,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
 
   final PedidoService _pedidoService = PedidoService();
   final CuadreCajaService _cuadreCajaService = CuadreCajaService();
+  final InventarioService _inventarioService = InventarioService();
   List<Pedido> _pedidos = [];
   List<Pedido> _pedidosFiltrados = [];
   List<Pedido> _pedidosPorPeriodoCaja =
@@ -128,11 +133,15 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
   void initState() {
     super.initState();
     _tabController = TabController(
-      length: 5, // Activo, Pagado, Cancelado, Cortesía, Consumo Interno
+      length: 6, // Todos, Activo, Pagado, Cancelado, Cortesía, Consumo Interno
       vsync: this,
     );
     _scrollController = ScrollController();
     _tabController.addListener(_onTabChanged);
+    
+    // ✅ CORREGIDO: No establecer filtro inicial para mostrar TODOS los pedidos al entrar
+    // _estadoFiltro y _tipoFiltro quedan null = mostrar todos
+    
     _cargarPedidos();
     _busquedaController.addListener(_aplicarFiltros);
   }
@@ -155,13 +164,16 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
       _tipoFiltro = null;
 
       // Configurar filtros según el tab seleccionado
-      if (_tabController.index <= 2) {
+      if (_tabController.index == 0) {
+        // Tab "Todos" - No aplicar ningún filtro
+        // _estadoFiltro y _tipoFiltro quedan null
+      } else if (_tabController.index >= 1 && _tabController.index <= 3) {
         // Tabs de estados (Activo, Pagado, Cancelado)
-        _estadoFiltro = _estados[_tabController.index];
-      } else if (_tabController.index == 3) {
+        _estadoFiltro = _estados[_tabController.index - 1];
+      } else if (_tabController.index == 4) {
         // Tab de Cortesía
         _tipoFiltro = TipoPedido.cortesia;
-      } else if (_tabController.index == 4) {
+      } else if (_tabController.index == 5) {
         // Tab de Consumo Interno
         _tipoFiltro = TipoPedido.interno;
       }
@@ -227,6 +239,99 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
         _error = 'Error al cargar pedidos: $e';
         _isLoading = false;
       });
+    }
+  }
+
+  /// 📦 NUEVO: Reversa el inventario de un pedido eliminado (operación inversa a descontar)
+  /// Este método agrega de vuelta al inventario los ingredientes que se descontaron cuando se pagó el pedido
+  Future<void> _reversarInventarioDelPedido(Pedido pedido) async {
+    print('📦 Iniciando reversión de inventario del pedido: ${pedido.id}');
+
+    try {
+      // Obtener todos los items del inventario
+      final inventario = await _inventarioService.getInventario();
+      print('   - Items en inventario disponible: ${inventario.length}');
+
+      int itemsRestaurados = 0;
+
+      // Iterar sobre todos los items del pedido
+      for (var itemPedido in pedido.items) {
+        print(
+          '   🍽️ Item: ${itemPedido.productoNombre} x${itemPedido.cantidad}',
+        );
+
+        // Verificar que el item tenga ingredientes usados
+        if (itemPedido.ingredientesUsados.isEmpty) {
+          print(
+            '      ℹ️ No tiene ingredientes para restaurar',
+          );
+          continue;
+        }
+
+        print('      - Ingredientes usados: ${itemPedido.ingredientesUsados.length}');
+
+        // Restaurar cada ingrediente al inventario
+        for (var ingredienteId in itemPedido.ingredientesUsados) {
+          // Buscar el ingrediente en el inventario
+          final itemInventario = inventario.firstWhere(
+            (item) => item.id == ingredienteId,
+            orElse: () => Inventario(
+              id: '',
+              categoria: '',
+              codigo: '',
+              nombre: 'No encontrado',
+              unidad: '',
+              precioCompra: 0,
+              stockActual: 0,
+              stockMinimo: 0,
+              estado: 'INACTIVO',
+            ),
+          );
+
+          if (itemInventario.id.isEmpty) {
+            print('      ⚠️ Ingrediente no encontrado en inventario: $ingredienteId');
+            continue;
+          }
+
+          // Crear movimiento de ENTRADA por cada unidad del item pedido
+          // (la cantidad a restaurar es la misma que se descontó)
+          final cantidadARestaurar = itemPedido.cantidad.toDouble();
+
+          final movimiento = MovimientoInventario(
+            inventarioId: itemInventario.id,
+            productoId: itemPedido.productoId,
+            productoNombre: itemPedido.productoNombre ?? 'Producto',
+            tipoMovimiento: 'Entrada - Reversión',
+            motivo: 'Reversión por eliminación de pedido pagado',
+            cantidadAnterior: itemInventario.stockActual,
+            cantidadMovimiento: cantidadARestaurar, // POSITIVO para restaurar
+            cantidadNueva: itemInventario.stockActual + cantidadARestaurar,
+            responsable: 'Sistema',
+            referencia: 'Pedido ${pedido.id} - Mesa ${pedido.mesa}',
+            observaciones: 'Restauración automática al eliminar pedido pagado',
+            fecha: DateTime.now(),
+          );
+
+          try {
+            await _inventarioService.crearMovimientoInventario(movimiento);
+            itemsRestaurados++;
+            print(
+              '      ✅ Restaurado: ${itemInventario.nombre} x $cantidadARestaurar',
+            );
+          } catch (e) {
+            print(
+              '      ❌ ERROR restaurando ${itemInventario.nombre}: $e',
+            );
+          }
+        }
+      }
+
+      print('✅ Reversión de inventario completada');
+      print('   - Items procesados: ${pedido.items.length}');
+      print('   - Ingredientes restaurados: $itemsRestaurados');
+    } catch (e) {
+      print('📦 ❌ ERROR GENERAL reversando inventario del pedido ${pedido.id}: $e');
+      // No lanzar el error para que no bloquee la eliminación del pedido
     }
   }
 
@@ -298,6 +403,15 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
     print('INFO: Tipo filtro: $_tipoFiltro');
     print('📈 Estado filtro: $_estadoFiltro');
     print('🔎 Búsqueda: "${_busquedaController.text}"');
+    
+    // 🔍 DEBUG: Analizar estados de los pedidos
+    final analisisEstados = <String, int>{};
+    for (var p in _pedidos) {
+      final key = 'Estado:${p.estado} | Pagado:${p.estaPagado} | PagadoPor:${p.pagadoPor != null && p.pagadoPor!.isNotEmpty}';
+      analisisEstados[key] = (analisisEstados[key] ?? 0) + 1;
+    }
+    print('🔍 ANÁLISIS DE ESTADOS:');
+    analisisEstados.forEach((k, v) => print('   $k => $v pedidos'));
 
     List<Pedido> pedidosFiltrados = List.from(_pedidos);
 
@@ -327,14 +441,8 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
     else if (_estadoFiltro != null) {
       final antes = pedidosFiltrados.length;
       pedidosFiltrados = pedidosFiltrados.where((pedido) {
-        // Para el tab "Pagados", excluir cortesía y consumo interno
-        // porque tienen sus propios tabs
-        if (_estadoFiltro == EstadoPedido.pagado) {
-          // Usar el método estaPagado para una detección robusta
-          return pedido.estaPagado &&
-              pedido.tipo != TipoPedido.cortesia &&
-              pedido.tipo != TipoPedido.interno;
-        }
+        // ✅ ELIMINADO: Esta verificación duplicada está causando conflictos
+        // La verificación de estado se hace más abajo de forma unificada
 
         // Para cortesía, verificar tanto el estado como el tipo
         if (_estadoFiltro == EstadoPedido.cortesia) {
@@ -342,25 +450,43 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
               pedido.tipo == TipoPedido.cortesia;
         }
 
-        // ✅ MEJORADO: Para pedidos activos, verificar múltiples condiciones
+        // ✅ CORREGIDO: Para pedidos activos, verificar de forma estricta
         if (_estadoFiltro == EstadoPedido.activo) {
-          // Un pedido es activo solo si:
-          // 1. No está pagado (verificar propiedad estaPagado)
-          // 2. Su estado NO es cancelado
-          // 3. Su estado NO es pagado
-          // 4. No tiene pagadoPor (verificación adicional)
-          final esRealmenteActivo = !pedido.estaPagado && 
-                                    pedido.estado != EstadoPedido.cancelado &&
-                                    pedido.estado != EstadoPedido.pagado &&
-                                    (pedido.pagadoPor == null || pedido.pagadoPor!.isEmpty);
-          return esRealmenteActivo;
+          // Un pedido es ACTIVO solo si cumple TODAS estas condiciones:
+          // 1. Su estado es explícitamente "activo"
+          // 2. NO está pagado (propiedad estaPagado = false)
+          // 3. NO tiene pagadoPor asignado
+          final esActivo = pedido.estado == EstadoPedido.activo &&
+                          !pedido.estaPagado &&
+                          (pedido.pagadoPor == null || pedido.pagadoPor!.isEmpty);
+          return esActivo;
+        }
+        
+        // ✅ CORREGIDO: Para pedidos pagados, verificar de forma estricta
+        if (_estadoFiltro == EstadoPedido.pagado) {
+          // Un pedido es PAGADO solo si cumple TODAS estas condiciones:
+          // 1. Su estado es explícitamente "pagado" O estaPagado = true
+          // 2. Tiene pagadoPor asignado
+          final esPagado = (pedido.estado == EstadoPedido.pagado || pedido.estaPagado) &&
+                          pedido.pagadoPor != null && 
+                          pedido.pagadoPor!.isNotEmpty;
+          return esPagado;
         }
 
+        // Para otros estados, verificar directamente
         return pedido.estado == _estadoFiltro;
       }).toList();
       print(
         'DEBUG: Después del filtro de estado: ${pedidosFiltrados.length} (antes: $antes)',
       );
+      
+      // 🔍 DEBUG: Mostrar qué pedidos pasaron el filtro
+      if (pedidosFiltrados.length <= 15) {
+        print('🔍 Pedidos que pasaron el filtro:');
+        for (var p in pedidosFiltrados) {
+          print('   - Mesa:${p.mesa} | Estado:${p.estado} | Pagado:${p.estaPagado} | PagadoPor:${p.pagadoPor ?? "null"}');
+        }
+      }
     }
 
     // Filtrar por búsqueda
@@ -368,14 +494,22 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
       final antes = pedidosFiltrados.length;
       final query = _busquedaController.text.trim().toLowerCase();
       pedidosFiltrados = pedidosFiltrados.where((pedido) {
-        // ✅ MEJORADO: Buscar también por total y mejorar búsqueda por ID/mesa
+        // Para mesas: búsqueda MUY estricta - solo coincidencia exacta o inicio
+        final mesaNormalizada = pedido.mesa.trim().toLowerCase();
+        final mesaMatch = mesaNormalizada == query || // "c1" == "c1"
+                         mesaNormalizada.startsWith(query + ' ') || // "c1 " al inicio
+                         mesaNormalizada.endsWith(' ' + query) || // " c1" al final
+                         mesaNormalizada.contains(' ' + query + ' '); // " c1 " en medio
+        
+        // Para otros campos: búsqueda normal (solo si no coincide con mesa)
+        if (mesaMatch) return true;
+        
         final idMatch = pedido.id.toLowerCase().contains(query);
         final clienteMatch = (pedido.cliente?.toLowerCase().contains(query) ?? false);
-        final mesaMatch = pedido.mesa.trim().toLowerCase().contains(query);
         final meseroMatch = pedido.mesero.toLowerCase().contains(query);
         final totalMatch = formatCurrency(pedido.total).toLowerCase().contains(query);
         
-        return idMatch || clienteMatch || mesaMatch || meseroMatch || totalMatch;
+        return idMatch || clienteMatch || meseroMatch || totalMatch;
       }).toList();
       print(
         'DEBUG: Después del filtro de búsqueda: ${pedidosFiltrados.length} (antes: $antes)',
@@ -464,12 +598,13 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
   }
 
   Future<void> _mostrarDialogoEliminarPedidos() async {
-    // Obtener pedidos activos y pagados que pueden ser eliminados
-    final pedidosActivos = _pedidosFiltrados
+    // ✅ CORREGIDO: Obtener pedidos de _pedidos (lista completa) en lugar de _pedidosFiltrados
+    // para que siempre se muestren tanto activos como pagados, independientemente del filtro actual
+    final pedidosActivos = _pedidos
         .where((pedido) => pedido.estado == EstadoPedido.activo)
         .toList();
 
-    final pedidosPagados = _pedidosFiltrados
+    final pedidosPagados = _pedidos
         .where((pedido) => pedido.estado == EstadoPedido.pagado)
         .toList();
 
@@ -496,14 +631,23 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
       if (busqueda.isEmpty) return pedidos;
 
       return pedidos.where((pedido) {
-        final mesa = pedido.mesa.toLowerCase();
+        final mesaNormalizada = pedido.mesa.trim().toLowerCase();
         final cliente = (pedido.cliente ?? '').toLowerCase();
         final id = pedido.id.toLowerCase();
         final total = formatCurrency(pedido.total).toLowerCase();
-        final busquedaLower = busqueda.toLowerCase();
+        final busquedaLower = busqueda.trim().toLowerCase();
 
-        return mesa.contains(busquedaLower) ||
-            cliente.contains(busquedaLower) ||
+        // Búsqueda MUY estricta para mesas - solo coincidencia exacta o como palabra separada
+        final mesaMatch = mesaNormalizada == busquedaLower || // "c1" == "c1"
+                         mesaNormalizada.startsWith(busquedaLower + ' ') || // "c1 " al inicio
+                         mesaNormalizada.endsWith(' ' + busquedaLower) || // " c1" al final
+                         mesaNormalizada.contains(' ' + busquedaLower + ' '); // " c1 " en medio
+
+        // Si coincide con mesa, retornar inmediatamente
+        if (mesaMatch) return true;
+
+        // Si no coincide con mesa, buscar en otros campos
+        return cliente.contains(busquedaLower) ||
             id.contains(busquedaLower) ||
             total.contains(busquedaLower);
       }).toList();
@@ -586,201 +730,157 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                     ),
                     SizedBox(height: 16),
 
-                    // Sección de pedidos activos
-                    () {
-                      final pedidosActivosFiltrados = filtrarPedidos(
-                        pedidosActivos,
-                        busquedaEliminar,
-                      );
-                      if (pedidosActivosFiltrados.isNotEmpty) {
-                        return Column(
+                    // Contenedor expandible para las listas de pedidos
+                    Expanded(
+                      child: SingleChildScrollView(
+                        child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              'Pedidos Activos (${pedidosActivosFiltrados.length}${busquedaEliminar.isNotEmpty ? ' de ${pedidosActivos.length}' : ''})',
-                              style: AppTheme.bodyMedium.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.orange,
+                            // Sección de pedidos activos
+                            if (filtrarPedidos(pedidosActivos, busquedaEliminar).isNotEmpty) ...[
+                              Text(
+                                'Pedidos Activos (${filtrarPedidos(pedidosActivos, busquedaEliminar).length}${busquedaEliminar.isNotEmpty ? ' de ${pedidosActivos.length}' : ''})',
+                                style: AppTheme.bodyMedium.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.orange,
+                                ),
                               ),
-                            ),
-                            SizedBox(height: 8),
-                            Container(
-                              height: 120,
-                              child: ListView.builder(
-                                itemCount: pedidosActivosFiltrados.length,
-                                itemBuilder: (context, index) {
-                                  final pedido = pedidosActivosFiltrados[index];
-                                  final isSelected = pedidosActivosSeleccionados
-                                      .contains(pedido.id);
+                              SizedBox(height: 8),
+                              ...filtrarPedidos(pedidosActivos, busquedaEliminar).map((pedido) {
+                                final isSelected = pedidosActivosSeleccionados.contains(pedido.id);
 
-                                  return CheckboxListTile(
-                                    value: isSelected,
-                                    onChanged: (bool? value) {
-                                      setState(() {
-                                        if (value == true) {
-                                          pedidosActivosSeleccionados.add(
-                                            pedido.id,
-                                          );
-                                        } else {
-                                          pedidosActivosSeleccionados.remove(
-                                            pedido.id,
-                                          );
-                                        }
-                                      });
-                                    },
-                                    title: Text(
-                                      'Mesa ${pedido.mesa} - ${pedido.cliente ?? "Sin cliente"}',
-                                      style: TextStyle(
-                                        color: AppTheme.textPrimary,
-                                        fontSize: 14,
-                                      ),
+                                return CheckboxListTile(
+                                  value: isSelected,
+                                  onChanged: (bool? value) {
+                                    setState(() {
+                                      if (value == true) {
+                                        pedidosActivosSeleccionados.add(pedido.id);
+                                      } else {
+                                        pedidosActivosSeleccionados.remove(pedido.id);
+                                      }
+                                    });
+                                  },
+                                  title: Text(
+                                    'Mesa ${pedido.mesa} - ${pedido.cliente ?? "Sin cliente"}',
+                                    style: TextStyle(
+                                      color: AppTheme.textPrimary,
+                                      fontSize: 14,
                                     ),
-                                    subtitle: Text(
-                                      'Total: ${formatCurrency(_getTotalCorrecto(pedido))}',
-                                      style: TextStyle(
+                                  ),
+                                  subtitle: Text(
+                                    'Total: ${formatCurrency(_getTotalCorrecto(pedido))}',
+                                    style: TextStyle(
+                                      color: AppTheme.textSecondary,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  activeColor: Colors.orange,
+                                );
+                              }).toList(),
+                              SizedBox(height: 16),
+                            ],
+
+                            // Mensaje cuando no hay resultados de búsqueda
+                            if (busquedaEliminar.isNotEmpty &&
+                                filtrarPedidos(pedidosActivos, busquedaEliminar).isEmpty &&
+                                filtrarPedidos(pedidosPagados, busquedaEliminar).isEmpty) ...[
+                              SizedBox(height: 20),
+                              Center(
+                                child: Column(
+                                  children: [
+                                    Icon(
+                                      Icons.search_off,
+                                      color: AppTheme.textSecondary,
+                                      size: 48,
+                                    ),
+                                    SizedBox(height: 8),
+                                    Text(
+                                      'No se encontraron pedidos',
+                                      style: AppTheme.bodyMedium.copyWith(
                                         color: AppTheme.textSecondary,
-                                        fontSize: 12,
                                       ),
                                     ),
-                                    activeColor: Colors.orange,
-                                  );
-                                },
+                                    Text(
+                                      'que coincidan con "$busquedaEliminar"',
+                                      style: AppTheme.bodySmall.copyWith(
+                                        color: AppTheme.textSecondary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                            SizedBox(height: 16),
-                          ],
-                        );
-                      } else {
-                        return SizedBox.shrink();
-                      }
-                    }(),
+                              SizedBox(height: 16),
+                            ],
 
-                    // Mensaje cuando no hay resultados de búsqueda
-                    if (busquedaEliminar.isNotEmpty &&
-                        filtrarPedidos(
-                          pedidosActivos,
-                          busquedaEliminar,
-                        ).isEmpty &&
-                        filtrarPedidos(
-                          pedidosPagados,
-                          busquedaEliminar,
-                        ).isEmpty) ...[
-                      SizedBox(height: 20),
-                      Center(
-                        child: Column(
-                          children: [
-                            Icon(
-                              Icons.search_off,
-                              color: AppTheme.textSecondary,
-                              size: 48,
-                            ),
-                            SizedBox(height: 8),
-                            Text(
-                              'No se encontraron pedidos',
-                              style: AppTheme.bodyMedium.copyWith(
-                                color: AppTheme.textSecondary,
+                            // Sección de pedidos pagados
+                            if (filtrarPedidos(pedidosPagados, busquedaEliminar).isNotEmpty) ...[
+                              Container(
+                                padding: EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: Colors.red.withOpacity(0.3),
+                                  ),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Pedidos Pagados (${filtrarPedidos(pedidosPagados, busquedaEliminar).length}${busquedaEliminar.isNotEmpty ? ' de ${pedidosPagados.length}' : ''})',
+                                      style: AppTheme.bodyMedium.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.red,
+                                      ),
+                                    ),
+                                    SizedBox(height: 4),
+                                    Text(
+                                      'IMPORTANTE: Al eliminar pedidos pagados se reversará automáticamente el dinero de las ventas y se descontará de la caja.',
+                                      style: AppTheme.bodySmall.copyWith(
+                                        color: Colors.red[700],
+                                        fontStyle: FontStyle.italic,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                            Text(
-                              'que coincidan con "$busquedaEliminar"',
-                              style: AppTheme.bodySmall.copyWith(
-                                color: AppTheme.textSecondary,
-                              ),
-                            ),
+                              SizedBox(height: 8),
+                              ...filtrarPedidos(pedidosPagados, busquedaEliminar).map((pedido) {
+                                final isSelected = pedidosPagadosSeleccionados.contains(pedido.id);
+
+                                return CheckboxListTile(
+                                  value: isSelected,
+                                  onChanged: (bool? value) {
+                                    setState(() {
+                                      if (value == true) {
+                                        pedidosPagadosSeleccionados.add(pedido.id);
+                                      } else {
+                                        pedidosPagadosSeleccionados.remove(pedido.id);
+                                      }
+                                    });
+                                  },
+                                  title: Text(
+                                    'Mesa ${pedido.mesa} - ${pedido.cliente ?? "Sin cliente"}',
+                                    style: TextStyle(
+                                      color: AppTheme.textPrimary,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  subtitle: Text(
+                                    'Total: ${formatCurrency(_getTotalCorrecto(pedido))} - ${_generarTextoPagoMixto(pedido)}',
+                                    style: TextStyle(
+                                      color: AppTheme.textSecondary,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  activeColor: Colors.red,
+                                );
+                              }).toList(),
+                            ],
                           ],
                         ),
                       ),
-                    ],
-
-                    // Sección de pedidos pagados
-                    () {
-                      final pedidosPagadosFiltrados = filtrarPedidos(
-                        pedidosPagados,
-                        busquedaEliminar,
-                      );
-                      if (pedidosPagadosFiltrados.isNotEmpty) {
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              padding: EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: Colors.red.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(
-                                  color: Colors.red.withOpacity(0.3),
-                                ),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Pedidos Pagados (${pedidosPagadosFiltrados.length}${busquedaEliminar.isNotEmpty ? ' de ${pedidosPagados.length}' : ''})',
-                                    style: AppTheme.bodyMedium.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.red,
-                                    ),
-                                  ),
-                                  SizedBox(height: 4),
-                                  Text(
-                                    'IMPORTANTE: Al eliminar pedidos pagados se reversará automáticamente el dinero de las ventas y se descontará de la caja.',
-                                    style: AppTheme.bodySmall.copyWith(
-                                      color: Colors.red[700],
-                                      fontStyle: FontStyle.italic,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            SizedBox(height: 8),
-                            Expanded(
-                              child: ListView.builder(
-                                itemCount: pedidosPagadosFiltrados.length,
-                                itemBuilder: (context, index) {
-                                  final pedido = pedidosPagadosFiltrados[index];
-                                  final isSelected = pedidosPagadosSeleccionados
-                                      .contains(pedido.id);
-
-                                  return CheckboxListTile(
-                                    value: isSelected,
-                                    onChanged: (bool? value) {
-                                      setState(() {
-                                        if (value == true) {
-                                          pedidosPagadosSeleccionados.add(
-                                            pedido.id,
-                                          );
-                                        } else {
-                                          pedidosPagadosSeleccionados.remove(
-                                            pedido.id,
-                                          );
-                                        }
-                                      });
-                                    },
-                                    title: Text(
-                                      'Mesa ${pedido.mesa} - ${pedido.cliente ?? "Sin cliente"}',
-                                      style: TextStyle(
-                                        color: AppTheme.textPrimary,
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                    subtitle: Text(
-                                      'Total: ${formatCurrency(_getTotalCorrecto(pedido))} - ${_generarTextoPagoMixto(pedido)}',
-                                      style: TextStyle(
-                                        color: AppTheme.textSecondary,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                    activeColor: Colors.red,
-                                  );
-                                },
-                              ),
-                            ),
-                          ],
-                        );
-                      } else {
-                        return SizedBox.shrink();
-                      }
-                    }(),
+                    ),
                   ],
                 ),
               ),
@@ -846,11 +946,20 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
 
       for (String pedidoId in pedidosIds) {
         try {
+          // Obtener el pedido antes de eliminarlo para notificar
+          final pedido = _pedidos.firstWhere(
+            (p) => p.id == pedidoId,
+            orElse: () => throw Exception('Pedido no encontrado'),
+          );
+          
           await _pedidoService.eliminarPedido(pedidoId);
           exitosos++;
           print(
             'EXITO: Pedido $pedidoId eliminado exitosamente por $usuarioEliminacion',
           );
+          
+          // Notificar el cambio para que mesas_screen se actualice
+          NotificationService().notificarCambioPedido(pedido);
         } catch (e) {
           fallidos++;
           print('ERROR: Error eliminando pedido $pedidoId: $e');
@@ -913,11 +1022,26 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
 
       for (String pedidoId in pedidosIds) {
         try {
+          // ✅ NUEVO: Obtener el pedido completo antes de eliminarlo
+          // para poder reversar el inventario
+          final pedido = _pedidos.firstWhere(
+            (p) => p.id == pedidoId,
+            orElse: () => throw Exception('Pedido no encontrado: $pedidoId'),
+          );
+
+          // ✅ NUEVO: Reversar el inventario ANTES de eliminar el pedido
+          print('📦 Reversando inventario del pedido $pedidoId antes de eliminar...');
+          await _reversarInventarioDelPedido(pedido);
+
+          // Eliminar el pedido (esto revierte el dinero automáticamente)
           await _pedidoService.eliminarPedidoPagado(pedidoId);
           exitosos++;
           print(
-            'EXITO: Pedido pagado $pedidoId eliminado exitosamente (con reversión de dinero) por $usuarioEliminacion',
+            'EXITO: Pedido pagado $pedidoId eliminado exitosamente (con reversión de dinero e inventario) por $usuarioEliminacion',
           );
+          
+          // Notificar el cambio para que mesas_screen se actualice
+          NotificationService().notificarCambioPedido(pedido);
         } catch (e) {
           fallidos++;
           print('ERROR: Error eliminando pedido pagado $pedidoId: $e');
@@ -1206,6 +1330,16 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
+                          Icon(Icons.list_alt, size: 16),
+                          SizedBox(width: 4),
+                          Text('Todos'),
+                        ],
+                      ),
+                    ),
+                    Tab(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
                           Icon(Icons.access_time, size: 16),
                           SizedBox(width: 4),
                           Text('Activos'),
@@ -1257,6 +1391,35 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
               ),
             ),
           ),
+
+          // Nota informativa cuando hay filtro de estado activo
+          if (_estadoFiltro == EstadoPedido.activo && !_isLoading && _error == null)
+            SliverToBoxAdapter(
+              child: Container(
+                margin: EdgeInsets.fromLTRB(16, 12, 16, 0),
+                padding: EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppTheme.info.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppTheme.info.withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline, color: AppTheme.info, size: 16),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Incluye todas las mesas: físicas (A1, B2...) + especiales (DOMICILIO, CAJA, etc.)',
+                        style: TextStyle(
+                          color: AppTheme.textSecondary,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
 
           // Contenido principal
           SliverToBoxAdapter(

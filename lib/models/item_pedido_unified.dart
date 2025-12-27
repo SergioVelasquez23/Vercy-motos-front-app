@@ -33,6 +33,7 @@ class ItemPedidoUnified {
   // 📝 INFORMACIÓN ADICIONAL
   final String? notas; // Notas especiales (opcional)
   final List<String> ingredientesSeleccionados; // Ingredientes customizados
+  final List<String> ingredientesUsados; // IDs de ingredientes usados en este producto (para inventario)
 
   // 👤 INFORMACIÓN DE USUARIO (Para rastreo de quien agregó el producto)
   final String? agregadoPor; // Usuario que agregó el producto
@@ -47,6 +48,7 @@ class ItemPedidoUnified {
     required this.precioUnitario,
     this.notas,
     this.ingredientesSeleccionados = const [],
+    this.ingredientesUsados = const [],
     this.agregadoPor,
     this.fechaAgregado,
   });
@@ -59,6 +61,7 @@ class ItemPedidoUnified {
     required double precioUnitario,
     String? notas,
     List<String> ingredientesSeleccionados = const [],
+    List<String> ingredientesUsados = const [],
     String? agregadoPor,
     DateTime? fechaAgregado,
   }) : this(
@@ -68,6 +71,7 @@ class ItemPedidoUnified {
          precioUnitario: precioUnitario,
          notas: notas,
          ingredientesSeleccionados: ingredientesSeleccionados,
+         ingredientesUsados: ingredientesUsados,
          agregadoPor: agregadoPor,
          fechaAgregado: fechaAgregado,
        );
@@ -86,6 +90,7 @@ class ItemPedidoUnified {
     double? precioUnitario,
     String? notas,
     List<String>? ingredientesSeleccionados,
+    List<String>? ingredientesUsados,
     String? agregadoPor,
     DateTime? fechaAgregado,
   }) {
@@ -98,6 +103,8 @@ class ItemPedidoUnified {
       notas: notas ?? this.notas,
       ingredientesSeleccionados:
           ingredientesSeleccionados ?? this.ingredientesSeleccionados,
+      ingredientesUsados:
+          ingredientesUsados ?? this.ingredientesUsados,
       agregadoPor: agregadoPor ?? this.agregadoPor,
       fechaAgregado: fechaAgregado ?? this.fechaAgregado,
     );
@@ -115,6 +122,7 @@ class ItemPedidoUnified {
       'subtotal': subtotal,
       if (notas != null && notas!.isNotEmpty) 'notas': notas,
       'ingredientesSeleccionados': ingredientesSeleccionados,
+      'ingredientesUsados': ingredientesUsados,
       if (agregadoPor != null) 'agregadoPor': agregadoPor,
       if (fechaAgregado != null)
         'fechaAgregado': fechaAgregado!.toIso8601String(),
@@ -159,6 +167,9 @@ class ItemPedidoUnified {
       notas: json['notas']?.toString(),
       ingredientesSeleccionados: json['ingredientesSeleccionados'] != null
           ? List<String>.from(json['ingredientesSeleccionados'])
+          : const [],
+      ingredientesUsados: json['ingredientesUsados'] != null
+          ? List<String>.from(json['ingredientesUsados'])
           : const [],
       agregadoPor: json['agregadoPor']?.toString(),
       fechaAgregado: fechaAgregado,

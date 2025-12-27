@@ -1877,6 +1877,67 @@ class _PedidoScreenState extends State<PedidoScreen> {
       // CREAR NUEVO PEDIDO
       print('🆕 Creando nuevo pedido para mesa: ${widget.mesa.nombre}');
 
+      // ✅ NUEVA VALIDACIÓN: Verificar que no exista ya un pedido activo en esta mesa
+      print('🔍 Verificando si ya existe un pedido activo en la mesa...');
+      try {
+        final pedidosExistentes = await PedidoService().getPedidosByMesa(widget.mesa.nombre);
+        final pedidosActivos = pedidosExistentes
+            .where((p) => p.estado == EstadoPedido.activo && !p.estaPagado)
+            .toList();
+        
+        if (pedidosActivos.isNotEmpty) {
+          print('⚠️ Ya existe un pedido activo en esta mesa: ${pedidosActivos.first.id}');
+          print('   - Total del pedido existente: ${pedidosActivos.first.total}');
+          print('   - Items en el pedido: ${pedidosActivos.first.items.length}');
+          
+          // ✅ CRÍTICO: Asegurar que la mesa esté marcada como ocupada en el backend
+          if (!widget.mesa.ocupada || widget.mesa.total == 0) {
+            print('⚠️ La mesa no estaba marcada como ocupada, corrigiendo...');
+            widget.mesa.ocupada = true;
+            widget.mesa.total = pedidosActivos.first.total;
+            await _mesaService.updateMesa(widget.mesa);
+            print('✅ Estado de la mesa corregido en el backend');
+          }
+          
+          // Lanzar excepción con información del pedido existente
+          final mensajeError = 
+            'Ya existe un pedido activo en la mesa ${widget.mesa.nombre}.\n\n'
+            'ID del pedido: ${pedidosActivos.first.id}\n'
+            'Total: ${formatCurrency(pedidosActivos.first.total)}\n'
+            'Items: ${pedidosActivos.first.items.length}\n\n'
+            'Por favor, edita el pedido existente en lugar de crear uno nuevo.';
+          
+          throw Exception(mensajeError);
+        }
+        print('✅ No hay pedidos activos, se puede crear nuevo pedido');
+      } catch (e) {
+        if (e.toString().contains('Ya existe un pedido activo')) {
+          // Detener completamente el proceso y regresar a la pantalla anterior
+          setState(() {
+            isLoading = false;
+            isSaving = false;
+          });
+          
+          // Mostrar el error al usuario
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(e.toString().replaceAll('Exception: ', '')),
+                backgroundColor: Colors.orange,
+                duration: Duration(seconds: 5),
+              ),
+            );
+          }
+          
+          // Regresar a la pantalla anterior indicando que hubo cambios
+          // (para forzar recarga de las mesas)
+          Navigator.of(context).pop(true);
+          return; // ✅ CRÍTICO: Salir completamente del método
+        }
+        // Si hay otro error al verificar, continuar (posible error de red)
+        print('⚠️ Error al verificar pedidos existentes: $e - Continuando...');
+      }
+
       final nuevoPedido = Pedido(
         id: '',
         fecha: DateTime.now(),
@@ -1901,8 +1962,10 @@ class _PedidoScreenState extends State<PedidoScreen> {
       );
     }
 
-    // Descontar productos de carne del inventario si existen
-    await _descontarCarnesDelInventario();
+    // ✅ CAMBIO: El inventario ahora se descuenta al PAGAR el pedido, no al crearlo
+    // Esto evita descontar inventario de pedidos que luego se cancelan
+    // await _descontarCarnesDelInventario();
+    print('ℹ️ El inventario se descontará cuando se pague este pedido');
 
     // Verificar si es una mesa especial
     final mesasEspeciales = ['DOMICILIO', 'CAJA', 'MESA AUXILIAR'];

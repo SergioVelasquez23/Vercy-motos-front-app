@@ -21,6 +21,9 @@ import '../services/impresion_service.dart';
 import '../services/notification_service.dart';
 import '../services/cuadre_caja_service.dart';
 import '../services/historial_edicion_service.dart';
+import '../services/inventario_service.dart';
+import '../models/inventario.dart';
+import '../models/movimiento_inventario.dart';
 import '../providers/user_provider.dart';
 
 import '../utils/format_utils.dart';
@@ -2100,7 +2103,64 @@ class _MesasScreenState extends State<MesasScreen>
     await actualizarMesasEspecificas([mesaOrigen, mesaDestino]);
   }
 
-  /// 🔥 MÉTODOS DE CACHE OPTIMIZADOS
+  /// � NUEVO: Validar estado real de mesas contra pedidos activos
+  Future<List<Mesa>> _validarEstadoMesas(List<Mesa> mesas) async {
+    try {
+      print('🔍 Iniciando validación de estado de ${mesas.length} mesas...');
+      
+      // Obtener TODOS los pedidos activos de una sola vez
+      final todosPedidos = await _pedidoService.getAllPedidos();
+      final pedidosActivos = todosPedidos
+          .where((p) => p.estado == EstadoPedido.activo && !p.estaPagado)
+          .toList();
+      
+      print('📋 Pedidos activos encontrados: ${pedidosActivos.length}');
+      
+      // Agrupar pedidos por mesa
+      final pedidosPorMesa = <String, List<Pedido>>{};
+      for (var pedido in pedidosActivos) {
+        if (pedido.mesa != null && pedido.mesa!.isNotEmpty) {
+          pedidosPorMesa.putIfAbsent(pedido.mesa!, () => []).add(pedido);
+        }
+      }
+      
+      // Validar y corregir cada mesa
+      final mesasValidadas = <Mesa>[];
+      int mesasCorregidas = 0;
+      
+      for (var mesa in mesas) {
+        final pedidosDeLaMesa = pedidosPorMesa[mesa.nombre] ?? [];
+        final deberiaEstarOcupada = pedidosDeLaMesa.isNotEmpty;
+        final totalReal = pedidosDeLaMesa.fold<double>(0.0, (sum, p) => sum + p.total);
+        
+        // Si el estado no coincide, corregir
+        if (mesa.ocupada != deberiaEstarOcupada || (deberiaEstarOcupada && mesa.total != totalReal)) {
+          print('⚠️ Mesa ${mesa.nombre}: Estado incorrecto');
+          print('   - Backend dice: ocupada=${mesa.ocupada}, total=${mesa.total}');
+          print('   - Real: ocupada=$deberiaEstarOcupada, total=$totalReal, pedidos=${pedidosDeLaMesa.length}');
+          
+          mesasValidadas.add(mesa.copyWith(
+            ocupada: deberiaEstarOcupada,
+            total: totalReal,
+            productos: deberiaEstarOcupada ? mesa.productos : [],
+            tipo: mesa.tipo, // Preservar tipo
+          ));
+          mesasCorregidas++;
+        } else {
+          mesasValidadas.add(mesa);
+        }
+      }
+      
+      print('✅ Validación completada: ${mesasCorregidas} mesas corregidas de ${mesas.length}');
+      return mesasValidadas;
+    } catch (e) {
+      print('❌ Error validando estado de mesas: $e');
+      // En caso de error, devolver mesas originales
+      return mesas;
+    }
+  }
+
+  /// �🔥 MÉTODOS DE CACHE OPTIMIZADOS
 
   /// 🚀 NUEVO: Invalidar cache de una mesa específica
   void _invalidarCacheMesa(String nombreMesa) {
@@ -2154,6 +2214,17 @@ class _MesasScreenState extends State<MesasScreen>
       if (mounted) {
         print('🔔 MesasScreen: Pedido completado - Actualización selectiva');
         _actualizacionSelectivaRapida();
+      }
+    });
+    
+    // 🔔 NUEVO: Escuchar cambios de pedidos desde otras pantallas
+    NotificationService().pedidoStream.listen((pedido) {
+      if (mounted) {
+        print('🔔 MesasScreen: Notificación de cambio en pedido ${pedido.id} - Actualizando mesa ${pedido.mesa}');
+        // Actualizar la mesa específica del pedido
+        if (pedido.mesa != null && pedido.mesa!.isNotEmpty) {
+          actualizarMesaEspecifica(pedido.mesa!);
+        }
       }
     });
 
@@ -2217,12 +2288,16 @@ class _MesasScreenState extends State<MesasScreen>
         }
       }
       
+      // ✅ CRÍTICO: Validar estado real de ocupación con pedidos activos
+      print('🔍 Validando estado de ocupación de ${mesasSinDuplicados.length} mesas...');
+      final mesasValidadas = await _validarEstadoMesas(mesasSinDuplicados);
+      
       setState(() {
-        mesas = mesasSinDuplicados;
+        mesas = mesasValidadas;
         isLoading = false;
       });
 
-      print('⚡ Mesas cargadas ultra-rápido: ${mesasSinDuplicados.length} (${loadedMesas.length - mesasSinDuplicados.length} fantasmas filtradas)');
+      print('⚡ Mesas cargadas ultra-rápido: ${mesasValidadas.length} (${loadedMesas.length - mesasValidadas.length} fantasmas filtradas)');
     } catch (e) {
       print('❌ Error en carga optimizada: $e');
       throw e;
@@ -8120,6 +8195,9 @@ class _MesasScreenState extends State<MesasScreen>
       if (formResult != null) {
         print('🔒 Iniciando procesamiento de pago...');
 
+        // ✅ Variable para controlar si se abrió un diálogo de carga
+        bool dialogoCargaAbierto = false;
+
         // Declarar estas variables fuera del try para que estén visibles en el catch
         bool esCortesia = false;
         bool esConsumoInterno = false;
@@ -8342,6 +8420,10 @@ class _MesasScreenState extends State<MesasScreen>
               // También mantener compatibilidad con el método anterior
               pagosParciales: pagosParciales,
             );
+            
+            // ✅ NUEVO: Descontar inventario DESPUÉS de pagar exitosamente (pago múltiple)
+            print('📦 Descontando inventario tras pago múltiple exitoso...');
+            await _descontarInventarioDelPedido(pedido);
 
             print(
               '✅ Pago múltiple procesado - ambos métodos enviados al backend como pagosParciales',
@@ -8380,6 +8462,10 @@ class _MesasScreenState extends State<MesasScreen>
                   totalConDescuento +
                   propina, // ✅ CORREGIDO: Usar total con descuento
             );
+            
+            // ✅ NUEVO: Descontar inventario DESPUÉS de pagar exitosamente
+            print('📦 Descontando inventario tras pago exitoso...');
+            await _descontarInventarioDelPedido(pedido);
             
             // ✅ VALIDAR DISCREPANCIA DE DESCUENTO
             if (descuento > 0 && pedidoPagado.descuento == 0) {
@@ -8653,15 +8739,14 @@ class _MesasScreenState extends State<MesasScreen>
 
             await _mesaService.updateMesa(mesaLiberada);
 
-            // ✅ ACTUALIZACIÓN INMEDIATA PARA CORTESÍAS
-            if ((esCortesia || esConsumoInterno) && mounted) {
-              print('⚡ Actualizando UI inmediatamente para cortesía...');
+            // ✅ ACTUALIZACIÓN INMEDIATA DE LA UI - Para todos los tipos de pago
+            if (mounted) {
+              print('⚡ Actualizando UI inmediatamente después de liberar mesa...');
               setState(() {
                 // Actualizar la mesa en la lista local inmediatamente
                 final index = mesas.indexWhere((m) => m.id == mesa.id);
                 if (index != -1) {
-                  mesas[index] =
-                      mesaLiberada; // USAR MESA LIBERADA CON TIPO PRESERVADO
+                  mesas[index] = mesaLiberada; // USAR MESA LIBERADA CON TIPO PRESERVADO
                 }
               });
               print('✅ Mesa actualizada inmediatamente en UI');
@@ -8705,28 +8790,11 @@ class _MesasScreenState extends State<MesasScreen>
 
           print('✅ Procesamiento completado exitosamente');
 
-          // Realizar actualizaciones de UI en background (sin bloquear)
-          if (esCortesia || esConsumoInterno) {
-            // Para cortesías y consumo interno, la actualización ya se hizo inmediatamente arriba
-            print(
-              '⚡ Saltando actualización background para cortesía/consumo interno (ya actualizada)',
-            );
-          } else {
-            _actualizarUIEnBackground(mesa);
-          }
+          // Realizar actualización adicional en background como refuerzo
+          _actualizarUIEnBackground(mesa);
 
           // ✅ MANTENER EN PANTALLA DE MESAS - No redirigir al dashboard
-          print('🏠 Permaneciendo en pantalla de mesas después del pago');
-
-          // Verificar que estamos en la ruta correcta
-          final currentRoute = ModalRoute.of(context)?.settings.name;
-          print('📍 Ruta actual después del pago: $currentRoute');
-
-          // Si por alguna razón nos salimos de la pantalla de mesas, volver a ella
-          if (mounted && currentRoute != '/mesas') {
-            print('🔄 Regresando a la pantalla de mesas...');
-            Navigator.of(context).pushReplacementNamed('/mesas');
-          }
+          print('🏠 Pago completado exitosamente, permaneciendo en pantalla de mesas');
         } catch (e) {
           print('❌ Error en procesamiento: $e');
 
@@ -8778,10 +8846,15 @@ class _MesasScreenState extends State<MesasScreen>
             );
           }
         } finally {
-          // Asegurar que el diálogo de carga siempre se cierre
-          // SOLO cerrar el diálogo de carga, no navegar hacia atrás más allá
-          if (mounted && Navigator.canPop(context)) {
-            Navigator.of(context).pop();
+          // Asegurar que el diálogo de carga siempre se cierre SI SE ABRIÓ
+          // ✅ CRÍTICO: Solo cerrar si realmente abrimos un diálogo de carga
+          if (dialogoCargaAbierto && mounted && Navigator.canPop(context)) {
+            // Verificar que NO estamos en la raíz de la navegación de mesas
+            final modalRoute = ModalRoute.of(context);
+            if (modalRoute?.settings.name != '/mesas') {
+              print('🔒 Cerrando diálogo de carga...');
+              Navigator.of(context).pop();
+            }
           }
         }
       } else {
@@ -8794,6 +8867,15 @@ class _MesasScreenState extends State<MesasScreen>
 
       // ✅ CRÍTICO: Liberar bloqueo de la mesa también
       _liberarBloqueoMesa(mesa.nombre);
+      
+      // ✅ ASEGURAR que permanecemos en la pantalla de mesas
+      if (mounted) {
+        final currentRoute = ModalRoute.of(context)?.settings.name;
+        if (currentRoute != '/mesas' && currentRoute != null) {
+          print('⚠️ Fuera de mesas después del pago, regresando...');
+          Navigator.of(context).pushReplacementNamed('/mesas');
+        }
+      }
     }
   }
 
@@ -8802,13 +8884,103 @@ class _MesasScreenState extends State<MesasScreen>
     try {
       print('🔄 Iniciando actualización de UI en background...');
 
-      // ✅ ACTUALIZACIÓN OPTIMIZADA - Una sola llamada
-      _programarActualizacionMesa(mesa.nombre);
+      // ✅ ACTUALIZACIÓN INMEDIATA - Sin debounce para que se vea el cambio inmediatamente
+      await actualizarMesaEspecifica(mesa.nombre);
 
       print('✅ Actualización de UI completada en background');
     } catch (e) {
       print('⚠️ Error en actualización de UI background: $e');
       // No mostrar error al usuario, la operación crítica ya se completó
+    }
+  }
+
+  /// Descuenta el inventario de los productos del pedido después de pagarlo
+  /// Este método se ejecuta DESPUÉS de que el pago sea exitoso
+  Future<void> _descontarInventarioDelPedido(Pedido pedido) async {
+    try {
+      print('📦 Iniciando descuento de inventario para pedido: ${pedido.id}');
+      print('   - Mesa: ${pedido.mesa}');
+      print('   - Items en pedido: ${pedido.items.length}');
+
+      final inventarioService = InventarioService();
+      
+      // Obtener todos los items del inventario
+      final inventario = await inventarioService.getInventario();
+      print('   - Items en inventario disponible: ${inventario.length}');
+
+      int itemsDescontados = 0;
+      
+      // Para cada item del pedido, descontar los ingredientes usados
+      for (var itemPedido in pedido.items) {
+        print('   🔍 Procesando item: ${itemPedido.productoNombre} x${itemPedido.cantidad}');
+        
+        // Los ingredientes usados están en itemPedido.ingredientesUsados
+        if (itemPedido.ingredientesUsados.isEmpty) {
+          print('      ℹ️ No tiene ingredientes para descontar');
+          continue;
+        }
+
+        print('      - Ingredientes usados: ${itemPedido.ingredientesUsados.length}');
+        
+        // Descontar cada ingrediente del inventario
+        for (var ingredienteId in itemPedido.ingredientesUsados) {
+          // Buscar el ingrediente en el inventario
+          final itemInventario = inventario.firstWhere(
+            (item) => item.id == ingredienteId,
+            orElse: () => Inventario(
+              id: '',
+              categoria: '',
+              codigo: '',
+              nombre: 'No encontrado',
+              unidad: '',
+              precioCompra: 0,
+              stockActual: 0,
+              stockMinimo: 0,
+              estado: 'INACTIVO',
+            ),
+          );
+
+          if (itemInventario.id.isEmpty) {
+            print('      ⚠️ Ingrediente no encontrado en inventario: $ingredienteId');
+            continue;
+          }
+
+          // Crear movimiento de salida por cada unidad del item pedido
+          final cantidadADescontar = itemPedido.cantidad.toDouble();
+          
+          final movimiento = MovimientoInventario(
+            inventarioId: itemInventario.id,
+            productoId: itemPedido.productoId,
+            productoNombre: itemPedido.productoNombre ?? 'Producto',
+            tipoMovimiento: 'Salida - Venta',
+            motivo: 'Venta de pedido pagado',
+            cantidadAnterior: itemInventario.stockActual,
+            cantidadMovimiento: -cantidadADescontar, // Negativo para salidas
+            cantidadNueva: itemInventario.stockActual - cantidadADescontar,
+            responsable: pedido.pagadoPor ?? 'Sistema',
+            referencia: 'Pedido ${pedido.id} - Mesa ${pedido.mesa}',
+            observaciones: 'Descuento automático al pagar pedido',
+            fecha: DateTime.now(),
+          );
+
+          try {
+            await inventarioService.crearMovimientoInventario(movimiento);
+            itemsDescontados++;
+            print('      ✅ Descontado: ${itemInventario.nombre} x $cantidadADescontar');
+          } catch (e) {
+            print('      ❌ Error descontando ${itemInventario.nombre}: $e');
+          }
+        }
+      }
+
+      print('✅ Descuento de inventario completado');
+      print('   - Items procesados: ${pedido.items.length}');
+      print('   - Ingredientes descontados: $itemsDescontados');
+      
+    } catch (e) {
+      print('❌ Error general al descontar inventario del pedido: $e');
+      // No interrumpimos el flujo del pago si esto falla
+      // El pago ya se realizó exitosamente
     }
   }
 

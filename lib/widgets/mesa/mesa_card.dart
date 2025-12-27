@@ -61,13 +61,13 @@ class _MesaCardState extends State<MesaCard> {
               return;
             }
 
-            // Activar flag por un tiempo muy corto para prevenir doble click
+            // Activar flag para prevenir doble click (2 segundos de bloqueo)
             setState(() {
               _isProcessing = true;
             });
 
-            // Liberar el flag después de un breve delay para evitar interferencia
-            Future.delayed(Duration(milliseconds: 500), () {
+            // Liberar el flag después de 2 segundos para evitar doble clicks accidentales
+            Future.delayed(Duration(seconds: 2), () {
               if (mounted) {
                 setState(() {
                   _isProcessing = false;
@@ -124,6 +124,13 @@ class _MesaCardState extends State<MesaCard> {
               // Si se creó o actualizó un pedido, recargar las mesas
               if (result == true) {
                 widget.onRecargarMesas();
+              }
+              
+              // Liberar el flag inmediatamente después de navegar
+              if (mounted) {
+                setState(() {
+                  _isProcessing = false;
+                });
               }
             } catch (e) {
               print('❌ Error al navegar a pedido: $e');
@@ -353,8 +360,8 @@ class _MesaCardState extends State<MesaCard> {
                   _isProcessing = true;
                 });
 
-                // Liberar el flag después de un breve delay
-                Future.delayed(Duration(milliseconds: 300), () {
+                // Liberar el flag después de 2 segundos (evitar doble click en pago)
+                Future.delayed(Duration(seconds: 2), () {
                   if (mounted) {
                     setState(() {
                       _isProcessing = false;

@@ -30,6 +30,7 @@ class ItemPedido extends ItemPedidoUnified {
     required super.precioUnitario,
     super.notas,
     super.ingredientesSeleccionados = const [],
+    super.ingredientesUsados = const [],
     super.agregadoPor,
     super.fechaAgregado,
   });
@@ -41,6 +42,7 @@ class ItemPedido extends ItemPedidoUnified {
     required double precio, // Campo legacy
     super.notas,
     super.ingredientesSeleccionados,
+    super.ingredientesUsados = const [],
     super.productoNombre,
     super.agregadoPor,
     super.fechaAgregado,
@@ -63,6 +65,9 @@ class ItemPedido extends ItemPedidoUnified {
       notas: json['notas']?.toString(),
       ingredientesSeleccionados: json['ingredientesSeleccionados'] != null
           ? List<String>.from(json['ingredientesSeleccionados'])
+          : const [],
+      ingredientesUsados: json['ingredientesUsados'] != null
+          ? List<String>.from(json['ingredientesUsados'])
           : const [],
       agregadoPor: json['agregadoPor']?.toString(),
       fechaAgregado: json['fechaAgregado'] != null
