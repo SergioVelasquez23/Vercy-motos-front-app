@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'dart:async';
@@ -219,8 +219,8 @@ class _MesasScreenState extends State<MesasScreen>
   bool _dialogoPagoEnProceso = false;
   DateTime? _ultimoClickPago;
   static const Duration _timeoutDialogoPago = Duration(
-    milliseconds: 800,
-  ); // Reducido drásticamente
+    milliseconds: 300,
+  ); // Optimizado para máxima velocidad
 
   // Paleta de colores mejorada
   static const _backgroundDark = Color(0xFF1A1A1A);
@@ -2073,24 +2073,28 @@ class _MesasScreenState extends State<MesasScreen>
 
   /// 🚀 NUEVO: Actualizar múltiples mesas después de operaciones
   Future<void> actualizarMesasTrasOperacion(List<String> nombresMesas) async {
-    // Pequeño delay para permitir que el backend procese los cambios
-    await Future.delayed(const Duration(milliseconds: 500));
+    // 🚀 OPTIMIZADO: Reducir delay de 500ms a 200ms para respuesta más rápida
+    await Future.delayed(const Duration(milliseconds: 200));
     await actualizarMesasEspecificas(nombresMesas);
   }
 
   /// 🚀 NUEVO: Actualizar mesa tras crear/editar pedido
   Future<void> actualizarMesaTrasPedido(String nombreMesa) async {
     print('📝 Actualizando mesa $nombreMesa tras operación de pedido');
-    await Future.delayed(const Duration(milliseconds: 300)); // Breve delay
+    // 🚀 OPTIMIZADO: Reducir delay de 300ms a 100ms para respuesta más rápida
+    await Future.delayed(const Duration(milliseconds: 100));
     await actualizarMesaEspecifica(nombreMesa);
+    // 🚀 NUEVO: Validar estado completo para asegurar consistencia
+    _validarEstadoMesasRapido(mesas);
   }
 
   /// 🚀 NUEVO: Actualizar mesa tras pago
   Future<void> actualizarMesaTrasPago(String nombreMesa) async {
     print('💰 Actualizando mesa $nombreMesa tras pago');
-    // 🚀 OPTIMIZADO: Reducir delay de 500ms a 100ms para respuesta más rápida
-    await Future.delayed(const Duration(milliseconds: 100));
+    // 🚀 OPTIMIZADO: Sin delay para respuesta instantánea
     await actualizarMesaEspecifica(nombreMesa);
+    // 🚀 NUEVO: Validar estado completo para asegurar consistencia
+    _validarEstadoMesasRapido(mesas);
   }
 
   /// 🚀 NUEVO: Actualizar mesas tras movimiento de productos
@@ -2099,8 +2103,138 @@ class _MesasScreenState extends State<MesasScreen>
     String mesaDestino,
   ) async {
     print('🔄 Actualizando mesas tras movimiento: $mesaOrigen -> $mesaDestino');
-    await Future.delayed(const Duration(milliseconds: 400));
+    // 🚀 OPTIMIZADO: Reducir delay de 400ms a 150ms para respuesta más rápida
+    await Future.delayed(const Duration(milliseconds: 150));
     await actualizarMesasEspecificas([mesaOrigen, mesaDestino]);
+    // 🚀 NUEVO: Validar estado completo para asegurar consistencia
+    _validarEstadoMesasRapido(mesas);
+  }
+  
+  /// 🚀 OPTIMIZADO: Validación sincrónica que actualiza el estado directamente
+  Future<void> _validarEstadoMesasRapidoSync(List<Mesa> mesasIniciales) async {
+    try {
+      print('🔍 Validando estados de ${mesasIniciales.length} mesas...');
+      
+      // 🚀 CLAVE: Una sola petición para TODOS los pedidos activos
+      final todosPedidos = await _pedidoService.getAllPedidos();
+      final pedidosActivos = todosPedidos
+          .where((p) => p.estado == EstadoPedido.activo && !p.estaPagado)
+          .toList();
+      
+      print('📋 Pedidos activos encontrados: ${pedidosActivos.length}');
+      
+      // Agrupar pedidos por mesa (en memoria, sin más peticiones)
+      final pedidosPorMesa = <String, List<Pedido>>{};
+      for (var pedido in pedidosActivos) {
+        if (pedido.mesa != null && pedido.mesa!.isNotEmpty) {
+          pedidosPorMesa.putIfAbsent(pedido.mesa!, () => []).add(pedido);
+        }
+      }
+      
+      // Validar y corregir estados (en memoria)
+      final mesasCorregidas = <Mesa>[];
+      int mesasCorregidas_count = 0;
+      
+      for (var mesa in mesasIniciales) {
+        final pedidosMesa = pedidosPorMesa[mesa.nombre] ?? [];
+        final deberiaEstarOcupada = pedidosMesa.isNotEmpty;
+        final totalReal = pedidosMesa.fold<double>(0.0, (sum, p) => sum + p.total);
+        
+        if (deberiaEstarOcupada != mesa.ocupada || (totalReal - mesa.total).abs() > 0.01) {
+          mesasCorregidas_count++;
+          print('🔄 Mesa ${mesa.nombre}: Corrigiendo (ocupada: ${mesa.ocupada} → $deberiaEstarOcupada, total: ${mesa.total} → $totalReal)');
+          mesasCorregidas.add(mesa.copyWith(
+            ocupada: deberiaEstarOcupada,
+            total: totalReal,
+            productos: deberiaEstarOcupada ? mesa.productos : [],
+            tipo: mesa.tipo, // Preservar tipo
+          ));
+        } else {
+          mesasCorregidas.add(mesa);
+        }
+      }
+      
+      // Actualizar estado con mesas validadas
+      if (mounted) {
+        setState(() {
+          mesas = mesasCorregidas;
+        });
+        
+        if (mesasCorregidas_count > 0) {
+          print('✅ Validación: $mesasCorregidas_count mesas corregidas');
+        } else {
+          print('✅ Validación: Todas las mesas correctas');
+        }
+      }
+    } catch (e) {
+      print('⚠️ Error en validación (continuando): $e');
+      // Si hay error, usar las mesas originales
+      if (mounted) {
+        setState(() {
+          mesas = mesasIniciales;
+        });
+      }
+    }
+  }
+  
+  ///  OPTIMIZADO: Validación ultra-rápida que usa UNA sola petición de todos los pedidos
+  Future<void> _validarEstadoMesasRapido(List<Mesa> mesas) async {
+    try {
+      print(' Iniciando validación rápida en background...');
+      
+      //  CLAVE: Una sola petición para TODOS los pedidos activos
+      final todosPedidos = await _pedidoService.getAllPedidos();
+      final pedidosActivos = todosPedidos
+          .where((p) => p.estado == EstadoPedido.activo && !p.estaPagado)
+          .toList();
+      
+      print(' Pedidos activos encontrados: ');
+      
+      // Agrupar pedidos por mesa (en memoria, sin más peticiones)
+      final pedidosPorMesa = <String, List<Pedido>>{};
+      for (var pedido in pedidosActivos) {
+        if (pedido.mesa != null && pedido.mesa!.isNotEmpty) {
+          pedidosPorMesa.putIfAbsent(pedido.mesa!, () => []).add(pedido);
+        }
+      }
+      
+      // Validar y corregir estados (en memoria)
+      final mesasCorregidas = <Mesa>[];
+      bool huboCorrecciones = false;
+      
+      for (var mesa in mesas) {
+        final pedidosMesa = pedidosPorMesa[mesa.nombre] ?? [];
+        final deberiaEstarOcupada = pedidosMesa.isNotEmpty;
+        final totalReal = pedidosMesa.fold<double>(0.0, (sum, p) => sum + p.total);
+        
+        if (deberiaEstarOcupada != mesa.ocupada || (totalReal - mesa.total).abs() > 0.01) {
+          huboCorrecciones = true;
+          print(' Mesa : Corrigiendo estado (ocupada:   , total:   )');
+          mesasCorregidas.add(mesa.copyWith(
+            ocupada: deberiaEstarOcupada,
+            total: totalReal,
+            productos: deberiaEstarOcupada ? mesa.productos : [],
+            tipo: mesa.tipo, // Preservar tipo
+          ));
+        } else {
+          mesasCorregidas.add(mesa);
+        }
+      }
+      
+      // Solo actualizar si hubo correcciones
+      if (huboCorrecciones && mounted) {
+        setState(() {
+          mesas = mesasCorregidas;
+          _widgetRebuildKey++;
+        });
+        print(' Validación rápida: Se corrigieron algunas mesas');
+      } else {
+        print(' Validación rápida: Todas las mesas están correctas');
+      }
+    } catch (e) {
+      print(' Error en validación rápida (no crítico): ');
+      // No mostrar error al usuario, es validación en background
+    }
   }
 
   /// � NUEVO: Validar estado real de mesas contra pedidos activos
@@ -2288,16 +2422,18 @@ class _MesasScreenState extends State<MesasScreen>
         }
       }
       
-      // ✅ CRÍTICO: Validar estado real de ocupación con pedidos activos
-      print('🔍 Validando estado de ocupación de ${mesasSinDuplicados.length} mesas...');
-      final mesasValidadas = await _validarEstadoMesas(mesasSinDuplicados);
+      print('⚡ Mesas cargadas: ${mesasSinDuplicados.length} (${loadedMesas.length - mesasSinDuplicados.length} fantasmas filtradas)');
       
+      // 🚀 OPTIMIZADO: Validar ANTES de mostrar para asegurar estados correctos
+      print('🔍 Validando estados de mesas...');
+      await _validarEstadoMesasRapidoSync(mesasSinDuplicados);
+      
+      // Mostrar mesas YA validadas
       setState(() {
-        mesas = mesasValidadas;
         isLoading = false;
       });
 
-      print('⚡ Mesas cargadas ultra-rápido: ${mesasValidadas.length} (${loadedMesas.length - mesasValidadas.length} fantasmas filtradas)');
+      print('✅ Mesas cargadas y validadas correctamente');
     } catch (e) {
       print('❌ Error en carga optimizada: $e');
       throw e;
@@ -7203,10 +7339,7 @@ class _MesasScreenState extends State<MesasScreen>
                                                       color:
                                                           medioPago0 ==
                                                               'efectivo'
-                                                          ? _primary
-                                                                .withOpacity(
-                                                                  0.2,
-                                                                )
+                                                          ? Colors.green[900]!.withOpacity(0.3)
                                                           : Colors.transparent,
                                                       borderRadius:
                                                           BorderRadius.circular(
@@ -7216,7 +7349,7 @@ class _MesasScreenState extends State<MesasScreen>
                                                         color:
                                                             medioPago0 ==
                                                                 'efectivo'
-                                                            ? _primary
+                                                            ? Colors.green[700]!
                                                             : _textMuted,
                                                         width: 2,
                                                       ),
@@ -7228,7 +7361,7 @@ class _MesasScreenState extends State<MesasScreen>
                                                           color:
                                                               medioPago0 ==
                                                                   'efectivo'
-                                                              ? _primary
+                                                              ? Colors.green[700]
                                                               : _textSecondary,
                                                           size: 20,
                                                         ),
@@ -7239,7 +7372,7 @@ class _MesasScreenState extends State<MesasScreen>
                                                             color:
                                                                 medioPago0 ==
                                                                     'efectivo'
-                                                                ? _primary
+                                                                ? Colors.green[700]
                                                                 : _textSecondary,
                                                             fontWeight:
                                                                 FontWeight.w600,
@@ -7264,10 +7397,7 @@ class _MesasScreenState extends State<MesasScreen>
                                                       color:
                                                           medioPago0 ==
                                                               'transferencia'
-                                                          ? _primary
-                                                                .withOpacity(
-                                                                  0.2,
-                                                                )
+                                                          ? Colors.blue[900]!.withOpacity(0.3)
                                                           : Colors.transparent,
                                                       borderRadius:
                                                           BorderRadius.circular(
@@ -7277,7 +7407,7 @@ class _MesasScreenState extends State<MesasScreen>
                                                         color:
                                                             medioPago0 ==
                                                                 'transferencia'
-                                                            ? _primary
+                                                            ? Colors.blue[700]!
                                                             : _textMuted,
                                                         width: 2,
                                                       ),
@@ -7289,7 +7419,7 @@ class _MesasScreenState extends State<MesasScreen>
                                                           color:
                                                               medioPago0 ==
                                                                   'transferencia'
-                                                              ? _primary
+                                                              ? Colors.blue[700]
                                                               : _textSecondary,
                                                           size: 20,
                                                         ),
@@ -7300,7 +7430,7 @@ class _MesasScreenState extends State<MesasScreen>
                                                             color:
                                                                 medioPago0 ==
                                                                     'transferencia'
-                                                                ? _primary
+                                                                ? Colors.blue[700]
                                                                 : _textSecondary,
                                                             fontWeight:
                                                                 FontWeight.w600,
@@ -7348,20 +7478,20 @@ class _MesasScreenState extends State<MesasScreen>
                                                           : Icons.credit_card,
                                                       size: 16,
                                                       color: !pagoMultiple
-                                                          ? _primary
+                                                          ? Colors.green[700]
                                                           : _textSecondary,
                                                     ),
                                                     label: Text('Pago Simple'),
                                                     style: OutlinedButton.styleFrom(
                                                       foregroundColor:
                                                           !pagoMultiple
-                                                          ? _primary
+                                                          ? Colors.green[700]
                                                           : _textSecondary,
                                                       backgroundColor:
                                                           !pagoMultiple
-                                                          ? _primary
+                                                          ? Colors.green[700]!
                                                                 .withOpacity(
-                                                                  0.1,
+                                                                  0.15,
                                                                 )
                                                           : null,
                                                       padding:
@@ -7377,7 +7507,7 @@ class _MesasScreenState extends State<MesasScreen>
                                                       ),
                                                       side: BorderSide(
                                                         color: !pagoMultiple
-                                                            ? _primary
+                                                            ? Colors.green[700]!
                                                             : _textMuted,
                                                         width: !pagoMultiple
                                                             ? 2
@@ -7401,20 +7531,20 @@ class _MesasScreenState extends State<MesasScreen>
                                                       Icons.payment,
                                                       size: 16,
                                                       color: pagoMultiple
-                                                          ? _primary
+                                                          ? Colors.purple[700]
                                                           : _textSecondary,
                                                     ),
                                                     label: Text('Pago Mixto'),
                                                     style: OutlinedButton.styleFrom(
                                                       foregroundColor:
                                                           pagoMultiple
-                                                          ? _primary
+                                                          ? Colors.purple[700]
                                                           : _textSecondary,
                                                       backgroundColor:
                                                           pagoMultiple
-                                                          ? _primary
+                                                          ? Colors.purple[700]!
                                                                 .withOpacity(
-                                                                  0.1,
+                                                                  0.15,
                                                                 )
                                                           : null,
                                                       padding:
@@ -7430,7 +7560,7 @@ class _MesasScreenState extends State<MesasScreen>
                                                       ),
                                                       side: BorderSide(
                                                         color: pagoMultiple
-                                                            ? _primary
+                                                            ? Colors.purple[700]!
                                                             : _textMuted,
                                                         width: pagoMultiple
                                                             ? 2
@@ -12139,16 +12269,14 @@ class _MesasScreenState extends State<MesasScreen>
         bool tienePedidos = pedidosActivos.isNotEmpty;
         Color statusColor = tienePedidos ? AppTheme.error : AppTheme.success;
         String estadoTexto = tienePedidos
-            ? '${pedidosActivos.length} pedido${pedidosActivos.length > 1 ? 's' : ''}'
+            ? 'Ocupada'
             : 'Disponible';
 
-        // Calcular total de todos los pedidos activos (método consistente)
-        double totalGeneral = 0.0;
-        for (var pedido in pedidosActivos) {
-          for (var item in pedido.items) {
-            totalGeneral += item.cantidad * item.precioUnitario;
-          }
-        }
+        // Calcular total de todos los pedidos activos sumando el total de cada pedido
+        double totalGeneral = pedidosActivos.fold<double>(
+          0.0,
+          (sum, pedido) => sum + pedido.total,
+        );
 
         // 📊 DEBUG: Log del estado calculado
         print(
@@ -12254,6 +12382,43 @@ class _MesasScreenState extends State<MesasScreen>
                       ],
                     ),
                   ),
+                  // Número de pedidos si hay pedidos activos
+                  if (tienePedidos)
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: AppTheme.spacingSmall,
+                        vertical: AppTheme.spacingXSmall,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppTheme.warning.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(
+                          AppTheme.radiusSmall,
+                        ),
+                        border: Border.all(
+                          color: AppTheme.warning.withOpacity(0.3),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.receipt,
+                            size: 12,
+                            color: AppTheme.warning,
+                          ),
+                          SizedBox(width: 4),
+                          Text(
+                            '${pedidosActivos.length} pedido${pedidosActivos.length > 1 ? 's' : ''}',
+                            style: AppTheme.labelMedium.copyWith(
+                              color: AppTheme.warning,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   // Total si existe
                   if (totalGeneral > 0)
                     Container(
@@ -12262,17 +12427,32 @@ class _MesasScreenState extends State<MesasScreen>
                         vertical: AppTheme.spacingXSmall,
                       ),
                       decoration: BoxDecoration(
-                        color: AppTheme.primary.withOpacity(0.1),
+                        color: AppTheme.primary.withOpacity(0.15),
                         borderRadius: BorderRadius.circular(
                           AppTheme.radiusSmall,
                         ),
-                      ),
-                      child: Text(
-                        formatCurrency(totalGeneral),
-                        style: AppTheme.labelMedium.copyWith(
-                          color: AppTheme.primary,
-                          fontWeight: FontWeight.bold,
+                        border: Border.all(
+                          color: AppTheme.primary.withOpacity(0.4),
+                          width: 1,
                         ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.attach_money,
+                            size: 14,
+                            color: AppTheme.primary,
+                          ),
+                          Text(
+                            formatCurrency(totalGeneral),
+                            style: AppTheme.labelMedium.copyWith(
+                              color: AppTheme.primary,
+                              fontWeight: FontWeight.bold,
+                              fontSize: context.isMobile ? 12 : 14,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                 ],
@@ -14259,3 +14439,4 @@ class _PedidosEspecialesScreenState extends State<PedidosEspecialesScreen> {
     return '${fecha.day.toString().padLeft(2, '0')}/${fecha.month.toString().padLeft(2, '0')}/${fecha.year} ${fecha.hour.toString().padLeft(2, '0')}:${fecha.minute.toString().padLeft(2, '0')}';
   }
 }
+

@@ -292,44 +292,59 @@ class _DialogoPagoState extends State<DialogoPago> {
 
   @override
   Widget build(BuildContext context) {
+    // 🚀 OPTIMIZACIÓN: Cachear valores para evitar recálculos en cada build
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+    
     return Dialog(
       backgroundColor: AppTheme.backgroundDark,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Container(
-        width: MediaQuery.of(context).size.width * 0.85,
+        width: screenWidth * 0.85,
         constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.9,
+          maxHeight: screenHeight * 0.9,
         ),
-        padding: EdgeInsets.all(28),
+        padding: const EdgeInsets.all(28),
         child: SingleChildScrollView(
+          // 🚀 OPTIMIZACIÓN: Usar physics para mejor rendimiento
+          physics: const ClampingScrollPhysics(),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildHeader(),
-              SizedBox(height: 32),
+              const SizedBox(height: 32),
               _buildProductosSection(),
-              SizedBox(height: 32),
+              const SizedBox(height: 32),
               _buildSubtotalSection(),
-              SizedBox(height: 32),
+              const SizedBox(height: 32),
               _buildDescuentosSection(),
-              SizedBox(height: 32),
+              const SizedBox(height: 32),
               _buildTotalSection(),
-              SizedBox(height: 32),
+              const SizedBox(height: 32),
               _buildOpcionesEspeciales(),
-              SizedBox(height: 32),
+              const SizedBox(height: 32),
               _buildInformacionPedido(),
-              SizedBox(height: 32),
-              _buildInformacionCliente(),
-              SizedBox(height: 32),
+              const SizedBox(height: 32),
+              // 🚀 OPTIMIZACIÓN: Solo construir sección cliente si está habilitada
+              if (incluirDatosCliente) ...[
+                _buildInformacionCliente(),
+                const SizedBox(height: 32),
+              ],
               _buildPropinaSection(),
-              SizedBox(height: 32),
-              _buildBilletesSection(),
-              SizedBox(height: 32),
+              const SizedBox(height: 32),
+              // 🚀 OPTIMIZACIÓN: Solo construir sección billetes si el medio de pago es efectivo
+              if (medioPago == 'efectivo' && !pagoMultiple) ...[
+                _buildBilletesSection(),
+                const SizedBox(height: 32),
+              ],
               _buildMetodoPagoSection(),
-              SizedBox(height: 32),
-              _buildPagoMultipleSection(),
-              SizedBox(height: 32),
+              const SizedBox(height: 32),
+              // 🚀 OPTIMIZACIÓN: Solo construir sección pago múltiple si está habilitada
+              if (pagoMultiple) ...[
+                _buildPagoMultipleSection(),
+                const SizedBox(height: 32),
+              ],
               _buildBotonesAccion(),
             ],
           ),

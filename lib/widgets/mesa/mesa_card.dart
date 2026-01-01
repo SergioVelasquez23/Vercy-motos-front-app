@@ -61,13 +61,13 @@ class _MesaCardState extends State<MesaCard> {
               return;
             }
 
-            // Activar flag para prevenir doble click (2 segundos de bloqueo)
+            // Activar flag para prevenir doble click (500ms de bloqueo optimizado)
             setState(() {
               _isProcessing = true;
             });
 
-            // Liberar el flag después de 2 segundos para evitar doble clicks accidentales
-            Future.delayed(Duration(seconds: 2), () {
+            // Liberar el flag después de 500ms para evitar doble clicks accidentales
+            Future.delayed(Duration(milliseconds: 500), () {
               if (mounted) {
                 setState(() {
                   _isProcessing = false;
@@ -350,7 +350,7 @@ class _MesaCardState extends State<MesaCard> {
       child: canProcessPayment
           ? GestureDetector(
               onTap: () async {
-                // ✅ SOLUCIÓN MEJORADA: Prevenir doble click con timeout corto
+                // ✅ SOLUCIÓN MEJORADA: Prevenir doble click con timeout optimizado
                 if (_isProcessing) {
                   print('⚠️ [DOBLE_CLICK] Botón de pago ya procesándose');
                   return;
@@ -360,8 +360,8 @@ class _MesaCardState extends State<MesaCard> {
                   _isProcessing = true;
                 });
 
-                // Liberar el flag después de 2 segundos (evitar doble click en pago)
-                Future.delayed(Duration(seconds: 2), () {
+                // Liberar el flag después de 800ms (optimizado para rapidez)
+                Future.delayed(Duration(milliseconds: 800), () {
                   if (mounted) {
                     setState(() {
                       _isProcessing = false;
