@@ -79,9 +79,12 @@ class _ProductosScreenState extends State<ProductosScreen> {
     );
     if (cacheProvider.hasData && mounted) {
       setState(() {
-        _categorias = cacheProvider.categorias ?? [];
-        _ingredientesCarnes = cacheProvider.ingredientes ?? [];
-        _productosCache = cacheProvider.productos ?? [];
+        // Crear copias de las listas para evitar modificaciones concurrentes
+        _categorias = List<Categoria>.from(cacheProvider.categorias ?? []);
+        _ingredientesCarnes = List<Ingrediente>.from(
+          cacheProvider.ingredientes ?? [],
+        );
+        _productosCache = List<Producto>.from(cacheProvider.productos ?? []);
         print('✅ Productos cargados desde cache: ${_productosCache.length}');
         _aplicarFiltrosYPaginacion();
         _isLoading = false;
@@ -105,9 +108,12 @@ class _ProductosScreenState extends State<ProductosScreen> {
         cacheProvider.warmupProductos();
       }
       setState(() {
-        _categorias = cacheProvider.categorias ?? [];
-        _ingredientesCarnes = cacheProvider.ingredientes ?? [];
-        _productosCache = cacheProvider.productos ?? [];
+        // Crear copias de las listas para evitar modificaciones concurrentes
+        _categorias = List<Categoria>.from(cacheProvider.categorias ?? []);
+        _ingredientesCarnes = List<Ingrediente>.from(
+          cacheProvider.ingredientes ?? [],
+        );
+        _productosCache = List<Producto>.from(cacheProvider.productos ?? []);
         print(
           '✅ Productos cargados: ${_productosCache.length}',
         );
@@ -817,8 +823,40 @@ class _ProductosScreenState extends State<ProductosScreen> {
           children: [
             IconButton(
               icon: Icon(Icons.edit, color: AppTheme.textPrimary),
-              onPressed: () {
-                _showProductoDialog(producto: producto);
+              onPressed: () async {
+                // 🔄 Cargar datos completos del producto antes de editar
+                showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (context) =>
+                      Center(child: CircularProgressIndicator()),
+                );
+
+                try {
+                  final productoCompleto = await _productoService.getProducto(
+                    producto.id,
+                  );
+                  Navigator.pop(context); // Cerrar loading
+
+                  if (productoCompleto != null) {
+                    _showProductoDialog(producto: productoCompleto);
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Error: No se pudo cargar el producto'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  Navigator.pop(context); // Cerrar loading
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Error al cargar producto: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
               },
             ),
             IconButton(
@@ -1068,23 +1106,25 @@ class _ProductosScreenState extends State<ProductosScreen> {
         : [];
 
     if (isEditing) {
-      print('📋 === INGREDIENTES INICIALES ===');
-      print('   Tiene ingredientes: $tieneIngredientes');
-      print('   Tipo producto: $tipoProducto');
-      print('   Ingredientes requeridos: ${ingredientesRequeridos.length}');
+      print('📋 === INGREDIENTES INICIALES DEL PRODUCTO ===');
+      print('   📸 Imagen URL: ${producto.imagenUrl}');
+      print('   🔧 Tiene ingredientes: $tieneIngredientes');
+      print('   🔧 Tipo producto: $tipoProducto');
+      print('   🥘 Ingredientes requeridos: ${ingredientesRequeridos.length}');
       for (var i = 0; i < ingredientesRequeridos.length; i++) {
         final ing = ingredientesRequeridos[i];
         print(
-          '      [$i] ID: "${ing.ingredienteId}", Nombre: "${ing.ingredienteNombre}", Cantidad necesaria: ${ing.cantidadNecesaria}',
+          '      ✓ [$i] ID: "${ing.ingredienteId}", Nombre: "${ing.ingredienteNombre}", Cantidad: ${ing.cantidadNecesaria}',
         );
       }
-      print('   Ingredientes opcionales: ${ingredientesOpcionales.length}');
+      print('   🥘 Ingredientes opcionales: ${ingredientesOpcionales.length}');
       for (var i = 0; i < ingredientesOpcionales.length; i++) {
         final ing = ingredientesOpcionales[i];
         print(
-          '      [$i] ID: "${ing.ingredienteId}", Nombre: "${ing.ingredienteNombre}", Precio adicional: \$${ing.precioAdicional}',
+          '      ✓ [$i] ID: "${ing.ingredienteId}", Nombre: "${ing.ingredienteNombre}", Precio: \$${ing.precioAdicional}',
         );
       }
+      print('📋 === FIN INGREDIENTES INICIALES ===');
     }
 
     showDialog(
@@ -1120,22 +1160,82 @@ class _ProductosScreenState extends State<ProductosScreen> {
                               }
 
                               if (pickedFile != null) {
-                                // Subir la imagen usando ProductoService con base64
-                                // Aquí deberías implementar la lógica de subida de imagen usando el provider o tu backend
-                                final filename = null;
-                                setState(() {
-                                  selectedImageUrl = filename;
-                                });
+                                print(
+                                  '📸 Imagen seleccionada: ${pickedFile.name}',
+                                );
 
+                                // Mostrar indicador de carga
                                 if (mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                      content: Text(
-                                        'Imagen subida exitosamente',
+                                      content: Row(
+                                        children: [
+                                          SizedBox(
+                                            width: 20,
+                                            height: 20,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              valueColor:
+                                                  AlwaysStoppedAnimation<Color>(
+                                                    Colors.white,
+                                                  ),
+                                            ),
+                                          ),
+                                          SizedBox(width: 12),
+                                          Text(
+                                            'Subiendo imagen al servidor...',
+                                          ),
+                                        ],
                                       ),
-                                      backgroundColor: Colors.green,
+                                      duration: Duration(seconds: 30),
+                                      backgroundColor: AppTheme.primary,
                                     ),
                                   );
+                                }
+
+                                try {
+                                  // Subir la imagen al servidor y obtener solo el nombre/ruta corta
+                                  final filename = await _imageService
+                                      .uploadImage(pickedFile);
+
+                                  setState(() {
+                                    selectedImageUrl = filename;
+                                  });
+                                  
+                                  print(
+                                    '✅ Imagen subida. Nombre corto: $filename',
+                                  );
+
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(
+                                      context,
+                                    ).hideCurrentSnackBar();
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          '✓ Imagen guardada exitosamente',
+                                        ),
+                                        backgroundColor: Colors.green,
+                                        duration: Duration(seconds: 2),
+                                      ),
+                                    );
+                                  }
+                                } catch (e) {
+                                  print('❌ Error subiendo imagen: $e');
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(
+                                      context,
+                                    ).hideCurrentSnackBar();
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          'Error al subir imagen: ${e.toString().replaceAll('Exception: ', '')}',
+                                        ),
+                                        backgroundColor: Colors.red,
+                                        duration: Duration(seconds: 4),
+                                      ),
+                                    );
+                                  }
                                 }
                               }
                             } catch (e) {
@@ -1164,17 +1264,22 @@ class _ProductosScreenState extends State<ProductosScreen> {
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: selectedImageUrl != null
-                            ? ImagenProductoWidget(
-                                key: ValueKey('dialog-img-${isEditing ? producto.id : "new"}-${selectedImageUrl.hashCode}'),
-                                urlRemota: _imageService.getImageUrl(
-                                  selectedImageUrl!,
+                            ? ClipRRect(
+                                borderRadius: BorderRadius.circular(10),
+                                child: ImagenProductoWidget(
+                                  key: ValueKey(
+                                    'dialog-img-${isEditing ? producto.id : "new"}-${selectedImageUrl.hashCode}',
+                                  ),
+                                  urlRemota: _imageService.getImageUrl(
+                                    selectedImageUrl!,
+                                  ),
+                                  nombreProducto: null,
+                                  productoId: isEditing ? producto.id : null,
+                                  width: double.infinity,
+                                  height: double.infinity,
+                                  fit: BoxFit.cover,
+                                  backendBaseUrl: _backendBaseUrl,
                                 ),
-                                nombreProducto: null,
-                                productoId: isEditing ? producto.id : null,
-                                width: double.infinity,
-                                height: double.infinity,
-                                fit: BoxFit.cover,
-                                backendBaseUrl: _backendBaseUrl,
                               )
                             : Icon(
                                 Icons.add_a_photo,
@@ -1528,18 +1633,36 @@ class _ProductosScreenState extends State<ProductosScreen> {
                     // Botón para gestionar ingredientes
                     ElevatedButton.icon(
                       onPressed: () async {
+                        print('🔍 Abriendo diálogo de ingredientes...');
+                        print(
+                          '   Requeridos actuales: ${ingredientesRequeridos.length}',
+                        );
+                        print(
+                          '   Opcionales actuales: ${ingredientesOpcionales.length}',
+                        );
+                        
                         final resultado = await _showIngredientesDialog(
                           tipoProducto: tipoProducto,
                           ingredientesRequeridos: ingredientesRequeridos,
                           ingredientesOpcionales: ingredientesOpcionales,
                         );
+                        
                         if (resultado != null) {
+                          print('✅ Diálogo cerrado con cambios');
+                          print(
+                            '   Requeridos nuevos: ${resultado['requeridos']?.length ?? 0}',
+                          );
+                          print(
+                            '   Opcionales nuevos: ${resultado['opcionales']?.length ?? 0}',
+                          );
                           setState(() {
                             ingredientesRequeridos =
                                 resultado['requeridos'] ?? [];
                             ingredientesOpcionales =
                                 resultado['opcionales'] ?? [];
                           });
+                        } else {
+                          print('❌ Diálogo cancelado sin cambios');
                         }
                       },
                       icon: Icon(Icons.add_circle_outline),
@@ -1836,7 +1959,20 @@ class _ProductosScreenState extends State<ProductosScreen> {
                             }
 
                             // Obtener imagen final
+                            // Si estamos editando y no se cambió la imagen, preservar la original
                             String? finalImageUrl = selectedImageUrl;
+                            if (isEditing && finalImageUrl == null) {
+                              // Preservar la imagen original si no se seleccionó una nueva
+                              finalImageUrl = producto.imagenUrl;
+                              print(
+                                '📸 Preservando imagen original: $finalImageUrl',
+                              );
+                            }
+
+                            print(
+                              '📸 Imagen final que se guardará: $finalImageUrl',
+                            );
+                            
                             // Check if we have a category selected
                             if (selectedCategoriaId != null &&
                                 categoriaSeleccionada == null) {
@@ -1872,6 +2008,31 @@ class _ProductosScreenState extends State<ProductosScreen> {
 
                             if (isEditing) {
                               // Actualizar producto existente
+                              print('🔍 === DATOS ANTES DE ACTUALIZAR ===');
+                              print('📦 Producto ID: ${producto.id}');
+                              print('📦 Nombre: ${nombreController.text}');
+                              print('📸 Imagen URL: $finalImageUrl');
+                              print('🔧 Tipo de producto: $tipoProducto');
+                              print(
+                                '🔧 Tiene ingredientes: $tieneIngredientes',
+                              );
+                              print(
+                                '🥘 Ingredientes requeridos: ${ingredientesRequeridos.length}',
+                              );
+                              for (var ing in ingredientesRequeridos) {
+                                print(
+                                  '   - ${ing.ingredienteNombre} (${ing.cantidadNecesaria})',
+                                );
+                              }
+                              print(
+                                '🥘 Ingredientes opcionales: ${ingredientesOpcionales.length}',
+                              );
+                              for (var ing in ingredientesOpcionales) {
+                                print(
+                                  '   - ${ing.ingredienteNombre} (${ing.cantidadNecesaria})',
+                                );
+                              }
+                              
                               final updatedProducto = Producto(
                                 id: producto.id,
                                 nombre: nombreController.text,
@@ -1912,6 +2073,14 @@ class _ProductosScreenState extends State<ProductosScreen> {
                                 updatedProducto,
                               );
                               print('✅ Producto actualizado en el backend');
+                              
+                              // Invalidar caché de imagen para que se recargue
+                              ImageLoaderService().invalidateProductImage(
+                                producto.id,
+                              );
+                              print(
+                                '🔄 Caché de imagen invalidado para ${producto.id}',
+                              );
                             } else {
                               // Crear nuevo producto
                               if (selectedCategoriaId == null) {
@@ -2100,6 +2269,21 @@ class _ProductosScreenState extends State<ProductosScreen> {
     required List<IngredienteProducto> ingredientesRequeridos,
     required List<IngredienteProducto> ingredientesOpcionales,
   }) async {
+    print('🔍 _showIngredientesDialog llamado');
+    print('   Tipo producto: $tipoProducto');
+    print(
+      '   Ingredientes requeridos recibidos: ${ingredientesRequeridos.length}',
+    );
+    for (var i = 0; i < ingredientesRequeridos.length; i++) {
+      print('      [$i] ${ingredientesRequeridos[i].ingredienteNombre}');
+    }
+    print(
+      '   Ingredientes opcionales recibidos: ${ingredientesOpcionales.length}',
+    );
+    for (var i = 0; i < ingredientesOpcionales.length; i++) {
+      print('      [$i] ${ingredientesOpcionales[i].ingredienteNombre}');
+    }
+    
     // Copias locales para editar
     List<IngredienteProducto> requeridosEditables = List.from(
       ingredientesRequeridos,

@@ -291,6 +291,13 @@ class ImageService {
 
     final cleanFilename = filename.trim();
 
+    // 🚫 RECHAZAR URLs blob (son temporales del navegador)
+    if (cleanFilename.startsWith('blob:')) {
+      print('⚠️ URL blob detectada (temporal del navegador): $cleanFilename');
+      print('   Esta imagen debe ser re-subida al servidor');
+      return ''; // Retornar vacío para que muestre placeholder
+    }
+
     // 🎯 PRIORIDAD 1: Si es una data URL base64, retornarla directamente
     if (cleanFilename.startsWith('data:image/')) {
       // ✅ COMENTADO: Log de data URL removido
@@ -352,9 +359,14 @@ class ImageService {
         return '';
       }
 
-      // Ahora usando Railway directamente, no necesitamos verificaciones especiales
-
-      return '${_apiConfig.baseUrl}$cleanFilename';
+      // Asegurar que no haya doble "/" en la URL
+      final baseUrl = _apiConfig.baseUrl.endsWith('/')
+          ? _apiConfig.baseUrl.substring(0, _apiConfig.baseUrl.length - 1)
+          : _apiConfig.baseUrl;
+      
+      final fullUrl = '$baseUrl$cleanFilename';
+      print('🔗 URL construida (con path): $fullUrl');
+      return fullUrl;
     }
 
     // Si es solo el nombre del archivo, validar que tenga extensión
@@ -363,11 +375,13 @@ class ImageService {
       return '';
     }
 
-    // Ahora usando Railway directamente
-
-    // Construir la URL completa
-    final fullUrl = '${_apiConfig.baseUrl}/images/platos/$cleanFilename';
-    print('🔗 URL construida para móvil: $fullUrl');
+    // Construir la URL completa asegurando que haya un solo "/"
+    final baseUrl = _apiConfig.baseUrl.endsWith('/')
+        ? _apiConfig.baseUrl.substring(0, _apiConfig.baseUrl.length - 1)
+        : _apiConfig.baseUrl;
+    
+    final fullUrl = '$baseUrl/images/platos/$cleanFilename';
+    print('🔗 URL construida: $fullUrl');
     return fullUrl;
   }
 

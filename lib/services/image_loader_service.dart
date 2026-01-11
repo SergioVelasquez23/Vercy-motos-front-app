@@ -23,12 +23,12 @@ class ImageLoaderService {
   final Set<String> _cargandoImagenes = {};
 
   // Callbacks para notificar cambios de imágenes
-  final Map<String, List<Function(String imagenUrl)>> _listeners = {};
+  final Map<String, List<Function(String? imagenUrl)>> _listeners = {};
 
   /// Registra un listener para cambios de imagen de un producto
   void addImageListener(
     String productoId,
-    Function(String imagenUrl) callback,
+    Function(String? imagenUrl) callback,
   ) {
     if (!_listeners.containsKey(productoId)) {
       _listeners[productoId] = [];
@@ -39,7 +39,7 @@ class ImageLoaderService {
   /// Elimina un listener
   void removeImageListener(
     String productoId,
-    Function(String imagenUrl) callback,
+    Function(String? imagenUrl) callback,
   ) {
     _listeners[productoId]?.remove(callback);
     if (_listeners[productoId]?.isEmpty ?? false) {
@@ -97,11 +97,7 @@ class ImageLoaderService {
           _imagenesCache[producto.id] = imagenUrl;
 
           // Notificar a todos los listeners de este producto
-          if (_listeners.containsKey(producto.id)) {
-            for (var callback in _listeners[producto.id]!) {
-              callback(imagenUrl);
-            }
-          }
+          _notificarListeners(producto.id, imagenUrl);
         }
       } catch (e) {
         print('❌ Error cargando imagen de ${producto.id}: $e');
@@ -137,11 +133,7 @@ class ImageLoaderService {
         _imagenesCache[productoId] = imagenUrl;
 
         // Notificar listeners
-        if (_listeners.containsKey(productoId)) {
-          for (var callback in _listeners[productoId]!) {
-            callback(imagenUrl);
-          }
-        }
+        _notificarListeners(productoId, imagenUrl);
 
         return imagenUrl;
       }
@@ -177,6 +169,25 @@ class ImageLoaderService {
       '🔄 Precargando imágenes cercanas: ${productosCercanos.length} productos',
     );
     await cargarImagenesLote(productosCercanos);
+  }
+
+  /// Notifica a los listeners sobre cambios en la imagen
+  void _notificarListeners(String productoId, String? imagenUrl) {
+    if (_listeners.containsKey(productoId)) {
+      for (var callback in _listeners[productoId]!) {
+        callback(imagenUrl);
+      }
+    }
+  }
+
+  /// Invalida la imagen en caché de un producto específico
+  void invalidateProductImage(String productoId) {
+    _imagenesCache.remove(productoId);
+    print('🗑️ Cache de imagen invalidado para producto: $productoId');
+
+    // ✅ Notificar a los listeners que el cache fue invalidado
+    // Pasar null para indicar que deben recargar
+    _notificarListeners(productoId, null);
   }
 
   /// Limpia el cache de imágenes

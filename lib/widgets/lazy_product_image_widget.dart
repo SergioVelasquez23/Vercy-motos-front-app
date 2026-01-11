@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/producto.dart';
 import '../services/image_loader_service.dart';
+import '../services/image_service.dart';
 import 'imagen_producto_widget.dart';
 
 /// Widget que carga imágenes de productos de forma lazy (bajo demanda)
@@ -32,6 +33,7 @@ class LazyProductImageWidget extends StatefulWidget {
 
 class _LazyProductImageWidgetState extends State<LazyProductImageWidget> {
   final ImageLoaderService _imageLoader = ImageLoaderService();
+  final ImageService _imageService = ImageService();
   String? _imagenUrl;
   bool _isLoading = false;
 
@@ -44,8 +46,9 @@ class _LazyProductImageWidgetState extends State<LazyProductImageWidget> {
   @override
   void didUpdateWidget(LazyProductImageWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Si cambió el producto, recargar la imagen
-    if (oldWidget.producto.id != widget.producto.id) {
+    // Si cambió el producto O su imagenUrl, recargar la imagen
+    if (oldWidget.producto.id != widget.producto.id ||
+        oldWidget.producto.imagenUrl != widget.producto.imagenUrl) {
       _imageLoader.removeImageListener(oldWidget.producto.id, _onImagenCargada);
       _imagenUrl = null;
       _isLoading = false;
@@ -66,6 +69,18 @@ class _LazyProductImageWidgetState extends State<LazyProductImageWidget> {
         });
       }
       return;
+    }
+
+    // ✅ NUEVO: Si no hay en cache pero tenemos una URL cargada, 
+    // significa que el cache fue invalidado, forzar recarga
+    if (_imagenUrl != null && imagenCache == null) {
+      print(
+        '🔄 Cache invalidado para ${widget.producto.id}, recargando imagen...',
+      );
+      setState(() {
+        _imagenUrl = null;
+        _isLoading = true;
+      });
     }
 
     // Registrar listener para cuando se cargue la imagen
@@ -89,12 +104,23 @@ class _LazyProductImageWidgetState extends State<LazyProductImageWidget> {
     }
   }
 
-  void _onImagenCargada(String imagenUrl) {
+  void _onImagenCargada(String? imagenUrl) {
     if (mounted) {
-      setState(() {
-        _imagenUrl = imagenUrl;
-        _isLoading = false;
-      });
+      // Si imagenUrl es null, significa que el cache fue invalidado
+      if (imagenUrl == null) {
+        print('🔄 Cache invalidado para ${widget.producto.id}, recargando...');
+        setState(() {
+          _imagenUrl = null;
+          _isLoading = false;
+        });
+        // Recargar la imagen
+        _cargarImagen();
+      } else {
+        setState(() {
+          _imagenUrl = imagenUrl;
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -108,17 +134,12 @@ class _LazyProductImageWidgetState extends State<LazyProductImageWidget> {
   Widget build(BuildContext context) {
     // Si tenemos la imagen, mostrarla
     if (_imagenUrl != null && _imagenUrl!.isNotEmpty) {
-      // Determinar si es data URI o URL relativa
-      String urlFinal;
-      if (_imagenUrl!.startsWith('data:')) {
-        // Es un data URI completo, usarlo directamente
-        urlFinal = _imagenUrl!;
-      } else if (_imagenUrl!.startsWith('http')) {
-        // Es una URL completa
-        urlFinal = _imagenUrl!;
-      } else {
-        // Es una ruta relativa, concatenar con baseUrl
-        urlFinal = '${widget.backendBaseUrl}$_imagenUrl';
+      // ✅ USAR ImageService para construir la URL correctamente
+      final urlFinal = _imageService.getImageUrl(_imagenUrl!);
+
+      // Si getImageUrl retorna vacío, mostrar placeholder
+      if (urlFinal.isEmpty) {
+        return _buildPlaceholder();
       }
       
       return ImagenProductoWidget(
@@ -134,6 +155,10 @@ class _LazyProductImageWidgetState extends State<LazyProductImageWidget> {
     }
 
     // Placeholder mientras carga
+    return _buildPlaceholder();
+  }
+
+  Widget _buildPlaceholder() {
     return Container(
       width: widget.width,
       height: widget.height,
