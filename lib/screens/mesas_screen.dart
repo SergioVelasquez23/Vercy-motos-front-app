@@ -12091,12 +12091,12 @@ class _MesasScreenState extends State<MesasScreen>
         // Detectar si es móvil usando el breakpoint establecado
         bool isMobile = constraints.maxWidth < 768;
 
-        // Definir altura responsive
+        // Definir altura responsive - AUMENTADA para mejor visualización
         double especialHeight = context.isMobile
-            ? 100
+            ? 140 // Aumentado de 100 a 140
             : context.isTablet
-            ? 120
-            : 140;
+            ? 160 // Aumentado de 120 a 160
+            : 180; // Aumentado de 140 a 180
 
         if (isMobile) {
           // Vista móvil: diseño en grid 2x2 como en desktop
@@ -12238,31 +12238,55 @@ class _MesasScreenState extends State<MesasScreen>
       );
     }
     
+    // 🔍 DEBUG: Verificar el nombre que se está buscando
+    final nombreBusqueda = nombre
+        .toUpperCase(); // ✅ CRÍTICO: Buscar en mayúsculas porque el backend guarda así
+    print(
+      '🔎 buildMesaEspecial: Buscando pedidos para "$nombre" -> "$nombreBusqueda" (key: $_widgetRebuildKey)',
+    );
+    
     return FutureBuilder<List<Pedido>>(
       key: ValueKey('mesa_especial_${nombre}_$_widgetRebuildKey'),
-      future: _pedidoService.getPedidosByMesa(nombre),
+      future: _pedidoService.getPedidosByMesa(
+        nombreBusqueda,
+      ), // ✅ Buscar en MAYÚSCULAS
       builder: (context, snapshot) {
+        // 🔍 DEBUG: Estado del snapshot
+        print(
+          '🔎 Mesa "$nombre" - ConnectionState: ${snapshot.connectionState}',
+        );
+        
         List<Pedido> pedidosActivos = [];
         if (snapshot.hasData) {
+          print(
+            '📦 Mesa "$nombre" - Total pedidos recibidos: ${snapshot.data!.length}',
+          );
+          
           pedidosActivos = snapshot.data!
               .where((pedido) => pedido.estado == EstadoPedido.activo)
               .toList();
 
           // 🔍 DEBUG: Log para verificar pedidos en mesas especiales
+          print(
+            '✅ Mesa especial "$nombre" tiene ${pedidosActivos.length} pedidos activos',
+          );
           if (pedidosActivos.isNotEmpty) {
-            print(
-              '🔍 Mesa especial "$nombre" tiene ${pedidosActivos.length} pedidos activos',
-            );
             for (var pedido in pedidosActivos) {
               print(
-                '   - Pedido ${pedido.id}: \$${pedido.total} - Estado: ${pedido.estado}',
+                '   - Pedido ${pedido.id}: \$${pedido.total} - Estado: ${pedido.estado} - Mesa: ${pedido.mesa}',
               );
             }
+          } else {
+            print(
+              '⚠️ Mesa "$nombre": Se recibieron ${snapshot.data!.length} pedidos pero ninguno está activo',
+            );
           }
         } else if (snapshot.hasError) {
           print(
             '❌ Error cargando pedidos para mesa especial "$nombre": ${snapshot.error}',
           );
+        } else {
+          print('⏳ Mesa "$nombre": Esperando datos...');
         }
 
         // Determinar el estado basado en pedidos activos
@@ -12280,8 +12304,10 @@ class _MesasScreenState extends State<MesasScreen>
 
         // 📊 DEBUG: Log del estado calculado
         print(
-          '📊 Mesa especial "$nombre": ${tienePedidos ? "OCUPADA" : "DISPONIBLE"} - ${pedidosActivos.length} pedidos - Total: \$${totalGeneral.toStringAsFixed(2)}',
+          '📊 RESULTADO Mesa "$nombre": ${tienePedidos ? "OCUPADA" : "DISPONIBLE"} - ${pedidosActivos.length} pedidos - Total: \$${totalGeneral.toStringAsFixed(2)} - Color: ${statusColor == AppTheme.error ? "ROJO" : "VERDE"}',
         );
+        print('   UI mostrará: "$estadoTexto"');
+        print('-----------------------------------');
 
         return GestureDetector(
           onTap: onTap,
@@ -12305,11 +12331,12 @@ class _MesasScreenState extends State<MesasScreen>
             child: Padding(
               padding: EdgeInsets.all(AppTheme.spacingMedium),
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                mainAxisSize: MainAxisSize.max,
                 children: [
                   // Icono principal
                   Container(
-                    padding: EdgeInsets.all(context.isMobile ? 8 : 12),
+                    padding: EdgeInsets.all(context.isMobile ? 6 : 8),
                     decoration: BoxDecoration(
                       color: AppTheme.primary.withOpacity(0.15),
                       shape: BoxShape.circle,
@@ -12319,28 +12346,26 @@ class _MesasScreenState extends State<MesasScreen>
                       icono,
                       color: AppTheme.primary,
                       size: context.isMobile
-                          ? 20
+                          ? 18
                           : context.isTablet
-                          ? 24
-                          : 28,
+                          ? 20
+                          : 24,
                     ),
                   ),
                   // Nombre de la mesa especial
-                  Flexible(
-                    child: Text(
-                      nombre,
-                      textAlign: TextAlign.center,
-                      style: AppTheme.bodyLarge.copyWith(
-                        fontSize: context.isMobile
-                            ? 14
-                            : context.isTablet
-                            ? 16
-                            : 18,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+                  Text(
+                    nombre,
+                    textAlign: TextAlign.center,
+                    style: AppTheme.bodyLarge.copyWith(
+                      fontSize: context.isMobile
+                          ? 13
+                          : context.isTablet
+                          ? 15
+                          : 16,
+                      fontWeight: FontWeight.w600,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   // Estado
                   Container(
@@ -12441,15 +12466,19 @@ class _MesasScreenState extends State<MesasScreen>
                         children: [
                           Icon(
                             Icons.attach_money,
-                            size: 14,
+                            size: 12,
                             color: AppTheme.primary,
                           ),
-                          Text(
-                            formatCurrency(totalGeneral),
-                            style: AppTheme.labelMedium.copyWith(
-                              color: AppTheme.primary,
-                              fontWeight: FontWeight.bold,
-                              fontSize: context.isMobile ? 12 : 14,
+                          Flexible(
+                            child: Text(
+                              formatCurrency(totalGeneral),
+                              style: AppTheme.labelMedium.copyWith(
+                                color: AppTheme.primary,
+                                fontWeight: FontWeight.bold,
+                                fontSize: context.isMobile ? 11 : 12,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],

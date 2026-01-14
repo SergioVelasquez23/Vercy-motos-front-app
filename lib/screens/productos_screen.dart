@@ -1515,15 +1515,17 @@ class _ProductosScreenState extends State<ProductosScreen> {
                           borderSide: BorderSide(color: AppTheme.primary),
                         ),
                       ),
-                      items: _categorias.map((categoria) {
-                        return DropdownMenuItem<String>(
-                          value: categoria.id,
-                          child: Text(
-                            categoria.nombre,
-                            style: TextStyle(color: AppTheme.textPrimary),
-                          ),
-                        );
-                      }).toList(),
+                      items: List<DropdownMenuItem<String>>.from(
+                        _categorias.map((categoria) {
+                          return DropdownMenuItem<String>(
+                            value: categoria.id,
+                            child: Text(
+                              categoria.nombre,
+                              style: TextStyle(color: AppTheme.textPrimary),
+                            ),
+                          );
+                        }),
+                      ),
                       onChanged: (value) {
                         setState(() {
                           selectedCategoriaId = value;
@@ -1698,14 +1700,16 @@ class _ProductosScreenState extends State<ProductosScreen> {
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                              ...ingredientesRequeridos.map(
-                                (ing) => Text(
-                                  '• ${ing.ingredienteNombre}',
-                                  style: TextStyle(
-                                    color: AppTheme.textPrimary.withOpacity(
-                                      0.8,
+                              ...List<Widget>.from(
+                                ingredientesRequeridos.map(
+                                  (ing) => Text(
+                                    '• ${ing.ingredienteNombre}',
+                                    style: TextStyle(
+                                      color: AppTheme.textPrimary.withOpacity(
+                                        0.8,
+                                      ),
+                                      fontSize: 11,
                                     ),
-                                    fontSize: 11,
                                   ),
                                 ),
                               ),
@@ -1720,14 +1724,15 @@ class _ProductosScreenState extends State<ProductosScreen> {
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                              ...ingredientesOpcionales.map(
-                                (ing) => Text(
-                                  '• ${ing.ingredienteNombre}',
-                                  style: TextStyle(
-                                    color: AppTheme.textPrimary.withOpacity(
-                                      0.8,
-                                    ),
-                                    fontSize: 11,
+                              ...List<Widget>.from(
+                                ingredientesOpcionales.map(
+                                  (ing) => Text(
+                                    '• ${ing.ingredienteNombre}',
+                                    style: TextStyle(
+                                      color: AppTheme.textPrimary.withOpacity(
+                                        0.8,
+                                      ),
+                                      fontSize: 11,
                                   ),
                                 ),
                               ),
@@ -1830,47 +1835,50 @@ class _ProductosScreenState extends State<ProductosScreen> {
                             Wrap(
                               spacing: 8,
                               runSpacing: 8,
-                              children: _ingredientesCarnes.map((ingrediente) {
-                                final bool isSelected =
-                                    ingredientesSeleccionados.contains(
+                              children: List<Widget>.from(
+                                _ingredientesCarnes.map((ingrediente) {
+                                  final bool isSelected =
+                                      ingredientesSeleccionados.contains(
+                                        ingrediente.nombre,
+                                      );
+                                  return FilterChip(
+                                    label: Text(
                                       ingrediente.nombre,
-                                    );
-                                return FilterChip(
-                                  label: Text(
-                                    ingrediente.nombre,
-                                    style: TextStyle(
-                                      color: isSelected
-                                          ? Colors.white
-                                          : AppTheme.textPrimary,
-                                      fontSize: 12,
+                                      style: TextStyle(
+                                        color: isSelected
+                                            ? Colors.white
+                                            : AppTheme.textPrimary,
+                                        fontSize: 12,
+                                      ),
                                     ),
-                                  ),
-                                  selected: isSelected,
-                                  onSelected: (selected) {
-                                    setState(() {
-                                      if (selected) {
-                                        ingredientesSeleccionados.add(
-                                          ingrediente.nombre,
-                                        );
-                                      } else {
-                                        ingredientesSeleccionados.remove(
-                                          ingrediente.nombre,
-                                        );
-                                      }
-                                    });
-                                  },
-                                  selectedColor: AppTheme.primary,
-                                  backgroundColor: AppTheme.cardBg.withOpacity(
-                                    0.5,
-                                  ),
-                                  checkmarkColor: Colors.white,
-                                  side: BorderSide(
-                                    color: isSelected
-                                        ? AppTheme.primary
-                                        : AppTheme.textPrimary.withOpacity(0.3),
-                                  ),
-                                );
-                              }).toList(),
+                                    selected: isSelected,
+                                    onSelected: (selected) {
+                                      setState(() {
+                                        if (selected) {
+                                          ingredientesSeleccionados.add(
+                                            ingrediente.nombre,
+                                          );
+                                        } else {
+                                          ingredientesSeleccionados.remove(
+                                            ingrediente.nombre,
+                                          );
+                                        }
+                                      });
+                                    },
+                                    selectedColor: AppTheme.primary,
+                                    backgroundColor: AppTheme.cardBg
+                                        .withOpacity(0.5),
+                                    checkmarkColor: Colors.white,
+                                    side: BorderSide(
+                                      color: isSelected
+                                          ? AppTheme.primary
+                                          : AppTheme.textPrimary.withOpacity(
+                                              0.3,
+                                            ),
+                                    ),
+                                  );
+                                }),
+                              ),
                             ),
                             if (ingredientesSeleccionados.isNotEmpty) ...[
                               SizedBox(height: 8),
