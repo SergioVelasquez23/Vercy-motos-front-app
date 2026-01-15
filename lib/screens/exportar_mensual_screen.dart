@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:intl/intl.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 import '../services/estadisticas_mensuales_service.dart';
 import '../services/excel_export_service.dart';
@@ -20,6 +22,13 @@ class _ExportarMensualScreenState extends State<ExportarMensualScreen> {
   bool _isLoading = false;
   bool _isExporting = false;
   Map<String, dynamic>? _datosPreview;
+
+  @override
+  void initState() {
+    super.initState();
+    // Inicializar formato de fecha para español
+    initializeDateFormatting('es_ES', null);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -174,17 +183,40 @@ class _ExportarMensualScreenState extends State<ExportarMensualScreen> {
                     ? const SizedBox(
                         width: 20,
                         height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.white,
+                          ),
+                        ),
                       )
                     : const Icon(Icons.preview),
-                label: Text(_isLoading ? 'Cargando...' : 'Vista Previa'),
+                label: Text(
+                  _isLoading
+                      ? 'Cargando datos del servidor...'
+                      : 'Cargar Vista Previa',
+                ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  disabledBackgroundColor: Colors.blue.withOpacity(0.6),
+                  disabledForegroundColor: Colors.white,
                 ),
               ),
             ),
+            if (_isLoading)
+              Padding(
+                padding: const EdgeInsets.only(top: 8.0),
+                child: Text(
+                  'Esto puede tardar hasta 2 minutos...',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.orange.shade700,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ),
             const SizedBox(height: 12),
             // Botón Exportar
             SizedBox(
@@ -398,13 +430,21 @@ class _ExportarMensualScreenState extends State<ExportarMensualScreen> {
   Future<void> _cargarPreview() async {
     setState(() {
       _isLoading = true;
+      _datosPreview = null; // Limpiar datos previos
     });
 
     try {
+      print(
+        'INFO: Iniciando carga de preview - ${_fechaSeleccionada.month}/${_fechaSeleccionada.year}',
+      );
+      
       final datos = await _estadisticasService.exportarEstadisticasMensuales(
         _fechaSeleccionada.year,
         _fechaSeleccionada.month,
       );
+
+      print('INFO: Datos recibidos exitosamente');
+      print('INFO: Claves en datos: ${datos.keys.toList()}');
 
       setState(() {
         _datosPreview = datos;
@@ -412,25 +452,64 @@ class _ExportarMensualScreenState extends State<ExportarMensualScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Vista previa cargada exitosamente'),
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white),
+                SizedBox(width: 8),
+                Expanded(child: Text('Vista previa cargada exitosamente')),
+              ],
+            ),
             backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
           ),
         );
       }
     } catch (e) {
+      print('ERROR: Error al cargar preview: $e');
+      
       if (mounted) {
+        // Determinar mensaje de error específico
+        String errorMsg = 'Error al cargar preview';
+        if (e.toString().contains('timeout') ||
+            e.toString().contains('Timeout')) {
+          errorMsg =
+              'El servidor tardó demasiado. Intenta con un rango de fechas menor.';
+        } else if (e.toString().contains('No autorizado') ||
+            e.toString().contains('401')) {
+          errorMsg = 'Sesión expirada. Vuelve a iniciar sesión.';
+        } else if (e.toString().contains('Sin conexión') ||
+            e.toString().contains('SocketException')) {
+          errorMsg = 'Sin conexión a internet. Verifica tu red.';
+        } else {
+          errorMsg = 'Error: ${e.toString()}';
+        }
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error al cargar preview: $e'),
+            content: Row(
+              children: [
+                Icon(Icons.error, color: Colors.white),
+                SizedBox(width: 8),
+                Expanded(child: Text(errorMsg)),
+              ],
+            ),
             backgroundColor: Colors.red,
+            duration: Duration(seconds: 4),
+            action: SnackBarAction(
+              label: 'Reintentar',
+              textColor: Colors.white,
+              onPressed: _cargarPreview,
+            ),
           ),
         );
       }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -588,6 +667,11 @@ class _ExportarMensualScreenState extends State<ExportarMensualScreen> {
     String filePath,
     bool compartirAutomaticamente,
   ) {
+    final isWeb = filePath.startsWith('web_download:');
+    final fileName = isWeb
+        ? filePath.replaceFirst('web_download:', '')
+        : filePath.split('/').last;
+    
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -603,19 +687,66 @@ class _ExportarMensualScreenState extends State<ExportarMensualScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('El archivo Excel se ha generado exitosamente.'),
-              const SizedBox(height: 8),
+              Text(
+                isWeb
+                    ? '¡Archivo descargado exitosamente! Verifica tu carpeta de descargas.'
+                    : 'El archivo Excel se ha generado exitosamente.',
+              ),
+              const SizedBox(height: 12),
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   color: Colors.grey.shade100,
                   borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: Colors.grey.shade300),
                 ),
-                child: Text(
-                  filePath.split('/').last,
-                  style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                child: Row(
+                  children: [
+                    Icon(
+                      isWeb ? Icons.download_done : Icons.folder,
+                      size: 16,
+                      color: Colors.green,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        fileName,
+                        style: const TextStyle(
+                          fontFamily: 'monospace',
+                          fontSize: 12,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
                 ),
               ),
+              if (isWeb) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: Colors.blue.shade200),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info_outline, size: 16, color: Colors.blue),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'El archivo se descargó en tu carpeta de Descargas',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.blue.shade700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ],
           ),
           actions: [
@@ -623,20 +754,21 @@ class _ExportarMensualScreenState extends State<ExportarMensualScreen> {
               onPressed: () => Navigator.of(context).pop(),
               child: const Text('Cerrar'),
             ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                ExcelExportService.compartirExcel(filePath);
-              },
-              child: const Text('Compartir'),
-            ),
+            if (!isWeb)
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  ExcelExportService.compartirExcel(filePath);
+                },
+                child: const Text('Compartir'),
+              ),
           ],
         );
       },
     );
 
-    // Compartir automáticamente si se seleccionó la opción
-    if (compartirAutomaticamente) {
+    // Compartir automáticamente si se seleccionó la opción (solo en móvil)
+    if (compartirAutomaticamente && !isWeb) {
       Future.delayed(const Duration(milliseconds: 500), () {
         ExcelExportService.compartirExcel(filePath);
       });

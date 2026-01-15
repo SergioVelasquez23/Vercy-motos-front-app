@@ -1,12 +1,12 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../config/api_config.dart';
+import 'base_api_service.dart';
 
 class EstadisticasMensualesService {
   final String _baseUrl = ApiConfig.instance.baseUrl;
-  final FlutterSecureStorage _storage = const FlutterSecureStorage();
+  final BaseApiService _baseService = BaseApiService();
 
   /// Exportar todas las estadísticas de un mes específico
   Future<Map<String, dynamic>> exportarEstadisticasMensuales(
@@ -14,7 +14,7 @@ class EstadisticasMensualesService {
     int mes,
   ) async {
     try {
-      final token = await _storage.read(key: 'jwt_token');
+      final token = await _baseService.getToken();
       if (token == null) {
         throw Exception('No hay token de autenticación');
       }
@@ -24,6 +24,7 @@ class EstadisticasMensualesService {
       );
 
       print('INFO: Exportando estadísticas mensuales - $mes/$anio');
+      print('INFO: URL completa: $url');
 
       final response = await http
           .get(
@@ -33,9 +34,18 @@ class EstadisticasMensualesService {
               'Authorization': 'Bearer $token',
             },
           )
-          .timeout(const Duration(seconds: 30));
+          .timeout(
+            const Duration(seconds: 120), // Aumentado de 30 a 120 segundos
+            onTimeout: () {
+              print('ERROR: Timeout al exportar estadísticas mensuales');
+              throw Exception(
+                'El servidor tardó demasiado en responder. Intenta con un mes con menos datos.',
+              );
+            },
+          );
 
       print('INFO: Respuesta del servidor: ${response.statusCode}');
+      print('INFO: Longitud de respuesta: ${response.body.length} bytes');
 
       if (response.statusCode == 200) {
         final jsonData = json.decode(response.body);

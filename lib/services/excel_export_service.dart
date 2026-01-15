@@ -1,8 +1,10 @@
 import 'dart:io';
 import 'package:excel/excel.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:universal_html/html.dart' as html;
 import '../models/denominacion_efectivo.dart';
 import '../utils/format_utils.dart';
 
@@ -304,6 +306,19 @@ class ExcelExportService {
     String fileName,
   ) async {
     try {
+      // Para Flutter Web: descargar automáticamente
+      if (kIsWeb) {
+        final blob = html.Blob([fileBytes]);
+        final url = html.Url.createObjectUrlFromBlob(blob);
+        final anchor = html.AnchorElement(href: url)
+          ..setAttribute('download', fileName)
+          ..click();
+        html.Url.revokeObjectUrl(url);
+
+        print('✅ Archivo Excel descargado en Web: $fileName');
+        return 'web_download:$fileName';
+      }
+
       // Solicitar permisos de almacenamiento
       if (Platform.isAndroid) {
         var status = await Permission.storage.status;
@@ -475,8 +490,29 @@ class ExcelExportService {
 
       // Generar timestamp
       String timestamp = DateTime.now().millisecondsSinceEpoch.toString();
+      String fileName =
+          'estadisticas_${mes.toString().padLeft(2, '0')}_${anio}_$timestamp.xlsx';
 
-      // Obtener directorio de descargas
+      // Codificar Excel
+      final excelBytes = excel.encode();
+      if (excelBytes == null) {
+        throw Exception('Error al codificar el archivo Excel');
+      }
+
+      // Para Flutter Web: descargar automáticamente
+      if (kIsWeb) {
+        final blob = html.Blob([excelBytes]);
+        final url = html.Url.createObjectUrlFromBlob(blob);
+        final anchor = html.AnchorElement(href: url)
+          ..setAttribute('download', fileName)
+          ..click();
+        html.Url.revokeObjectUrl(url);
+
+        print('✅ Archivo Excel descargado en Web: $fileName');
+        return 'web_download:$fileName';
+      }
+
+      // Para plataformas móviles
       Directory? directory;
       if (Platform.isAndroid) {
         directory = Directory('/storage/emulated/0/Download');
@@ -491,13 +527,8 @@ class ExcelExportService {
         throw Exception('Error al obtener el directorio de archivos');
       }
 
-      // Generar nombre del archivo
-      String fileName =
-          'estadisticas_${mes.toString().padLeft(2, '0')}_${anio}_$timestamp.xlsx';
       File file = File('${directory.path}/$fileName');
-
-      // Guardar archivo
-      await file.writeAsBytes(excel.encode()!);
+      await file.writeAsBytes(excelBytes);
 
       print('✅ Archivo Excel generado: ${file.path}');
       return file.path;

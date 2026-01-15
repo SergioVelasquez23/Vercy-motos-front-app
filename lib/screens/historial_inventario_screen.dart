@@ -650,14 +650,14 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                                             style: TextStyle(
                                               color: textDark,
                                               fontWeight: FontWeight.bold,
-                                              fontSize: 12,
+                                              fontSize: 11,
                                             ),
                                             textAlign: TextAlign.center,
                                           ),
                                         ),
                                       ),
                                       Expanded(
-                                        flex: 2,
+                                        flex: 3,
                                         child: Container(
                                           padding: EdgeInsets.symmetric(
                                             horizontal: 4,
@@ -668,7 +668,7 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                                             style: TextStyle(
                                               color: textDark,
                                               fontWeight: FontWeight.bold,
-                                              fontSize: 12,
+                                              fontSize: 11,
                                             ),
                                             textAlign: TextAlign.center,
                                           ),
@@ -686,7 +686,7 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                                             style: TextStyle(
                                               color: textDark,
                                               fontWeight: FontWeight.bold,
-                                              fontSize: 12,
+                                              fontSize: 11,
                                             ),
                                             textAlign: TextAlign.center,
                                           ),

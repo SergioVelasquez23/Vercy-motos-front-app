@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/resumen_cierre_completo.dart';
 import '../services/resumen_cierre_completo_service.dart';
+import '../services/pdf_export_service.dart';
 import '../utils/format_utils.dart';
 import '../utils/payment_calculator.dart';
 import '../theme/app_theme.dart';
@@ -33,11 +34,13 @@ class _ResumenCierreDetalladoScreenState
   Color get accent => AppTheme.accent;
 
   final ResumenCierreCompletoService _service = ResumenCierreCompletoService();
+  final PdfExportService _pdfService = PdfExportService();
   final ScrollController _scrollController = ScrollController();
 
   ResumenCierreCompleto? _resumen;
   bool _isLoading = true;
   String? _errorMessage;
+  bool _isExporting = false;
 
   @override
   void initState() {
@@ -245,16 +248,31 @@ class _ResumenCierreDetalladoScreenState
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 600;
+    
     return Scaffold(
       backgroundColor: bgDark,
       appBar: AppBar(
         backgroundColor: primary,
         title: Text(
-          'Resumen Detallado - ${widget.nombreCuadre}',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          isMobile
+              ? widget.nombreCuadre
+              : 'Resumen Detallado - ${widget.nombreCuadre}',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: isMobile ? 16 : 20,
+          ),
         ),
         iconTheme: IconThemeData(color: Colors.white),
         actions: [
+          if (_resumen != null)
+            IconButton(
+              icon: Icon(Icons.picture_as_pdf),
+              onPressed: _isExporting ? null : _exportarPdf,
+              tooltip: 'Exportar a PDF',
+            ),
           IconButton(
             icon: Icon(Icons.refresh),
             onPressed: _loadResumenDetallado,
@@ -279,6 +297,47 @@ class _ResumenCierreDetalladoScreenState
     );
   }
 
+  Future<void> _exportarPdf() async {
+    if (_resumen == null) return;
+
+    setState(() {
+      _isExporting = true;
+    });
+
+    try {
+      await _pdfService.exportarResumenCaja(
+        resumen: _resumen!,
+        nombreCuadre: widget.nombreCuadre,
+      );
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('PDF generado exitosamente'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al generar PDF: ${e.toString()}'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isExporting = false;
+        });
+      }
+    }
+  }
+
   Widget _buildBody() {
     if (_isLoading) {
       return Center(
@@ -298,22 +357,27 @@ class _ResumenCierreDetalladoScreenState
 
     if (_errorMessage != null) {
       return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.error, color: Colors.red, size: 64),
-            SizedBox(height: 16),
-            Text(
-              _errorMessage!,
-              style: TextStyle(color: Colors.red, fontSize: 16),
-              textAlign: TextAlign.center,
-            ),
-            SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _loadResumenDetallado,
-              child: Text('Reintentar'),
-            ),
-          ],
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: MediaQuery.of(context).size.width < 600 ? 20 : 40,
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error, color: Colors.red, size: 64),
+              SizedBox(height: 16),
+              Text(
+                _errorMessage!,
+                style: TextStyle(color: Colors.red, fontSize: 16),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: _loadResumenDetallado,
+                child: Text('Reintentar'),
+              ),
+            ],
+          ),
         ),
       );
     }
@@ -329,7 +393,10 @@ class _ResumenCierreDetalladoScreenState
 
     return SingleChildScrollView(
       controller: _scrollController,
-      padding: EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      padding: EdgeInsets.symmetric(
+        horizontal: MediaQuery.of(context).size.width < 600 ? 12 : 24,
+        vertical: MediaQuery.of(context).size.width < 600 ? 16 : 24,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -405,18 +472,40 @@ class _ResumenCierreDetalladoScreenState
   }
 
   Widget _buildGridRow(List<Widget> children) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: children
-          .map(
-            (child) => Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10.0),
-                child: child,
-              ),
-            ),
-          )
-          .toList(),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < 600;
+
+        if (isMobile) {
+          // En móvil, apilar verticalmente
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: children
+                .map(
+                  (child) => Padding(
+                    padding: EdgeInsets.only(bottom: 16),
+                    child: child,
+                  ),
+                )
+                .toList(),
+          );
+        }
+
+        // En tablet/desktop, mostrar en fila
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: children
+              .map(
+                (child) => Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 10.0),
+                    child: child,
+                  ),
+                ),
+              )
+              .toList(),
+        );
+      },
     );
   }
 
@@ -442,6 +531,9 @@ class _ResumenCierreDetalladoScreenState
 
   Widget _buildCuadreInfo() {
     final info = _resumen!.cuadreInfo;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 600;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -450,12 +542,8 @@ class _ResumenCierreDetalladoScreenState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Primera columna
-                  Expanded(
-                    child: Column(
+              isMobile
+                  ? Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _buildInfoRow('Nombre', info.nombre),
@@ -469,15 +557,7 @@ class _ResumenCierreDetalladoScreenState
                               ? Colors.orange
                               : Colors.green,
                         ),
-                      ],
-                    ),
-                  ),
-                  SizedBox(width: 28),
-                  // Segunda columna
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
+                        SizedBox(height: 10),
                         _buildInfoRow(
                           'Fecha Apertura',
                           _formatDate(info.fechaApertura),
@@ -496,10 +576,57 @@ class _ResumenCierreDetalladoScreenState
                           formatCurrency(info.fondoInicial),
                         ),
                       ],
+                    )
+                  : Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Primera columna
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildInfoRow('Nombre', info.nombre),
+                              SizedBox(height: 10),
+                              _buildInfoRow('Responsable', info.responsable),
+                              SizedBox(height: 10),
+                              _buildInfoRow(
+                                'Estado',
+                                info.estado,
+                                valueColor: info.estado == 'pendiente'
+                                    ? Colors.orange
+                                    : Colors.green,
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(width: 28),
+                        // Segunda columna
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildInfoRow(
+                                'Fecha Apertura',
+                                _formatDate(info.fechaApertura),
+                              ),
+                              SizedBox(height: 10),
+                              if (info.fechaCierre != null)
+                                _buildInfoRow(
+                                  'Fecha Cierre',
+                                  _formatDate(info.fechaCierre!),
+                                )
+                              else
+                                _buildInfoRow('Fecha Cierre', '-'),
+                              SizedBox(height: 10),
+                              _buildInfoRow(
+                                'Fondo Inicial',
+                                formatCurrency(info.fondoInicial),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                ],
-              ),
               if (info.fondoInicialDesglosado.isNotEmpty) ...[
                 Divider(height: 16, color: textLight.withOpacity(0.2)),
                 Text(
@@ -538,6 +665,9 @@ class _ResumenCierreDetalladoScreenState
     final resumen = _resumen!.resumenFinal;
     final movimientos =
         _resumen!.movimientosEfectivo; // ✅ Usar movimientos para fondo inicial
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 600;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -547,19 +677,13 @@ class _ResumenCierreDetalladoScreenState
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Información principal
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Primera columna
-                  Expanded(
-                    child: Column(
+              isMobile
+                  ? Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _buildInfoRow(
                           'Fondo Inicial',
-                          formatCurrency(
-                            movimientos.fondoInicial,
-                          ), // ✅ CORREGIDO: Usar movimientos
+                          formatCurrency(movimientos.fondoInicial),
                         ),
                         SizedBox(height: 10),
                         _buildInfoRow(
@@ -576,15 +700,7 @@ class _ResumenCierreDetalladoScreenState
                           'Ventas Efectivo',
                           formatCurrency(resumen.ventasEfectivo),
                         ),
-                      ],
-                    ),
-                  ),
-                  SizedBox(width: 28),
-                  // Segunda columna
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
+                        SizedBox(height: 10),
                         _buildInfoRow(
                           'Total Gastos',
                           formatCurrency(resumen.totalGastos),
@@ -605,31 +721,105 @@ class _ResumenCierreDetalladoScreenState
                           formatCurrency(resumen.comprasEfectivo),
                         ),
                       ],
+                    )
+                  : Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Primera columna
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildInfoRow(
+                                'Fondo Inicial',
+                                formatCurrency(
+                                  movimientos.fondoInicial,
+                                ), // ✅ CORREGIDO: Usar movimientos
+                              ),
+                              SizedBox(height: 10),
+                              _buildInfoRow(
+                                'Efectivo Esperado',
+                                formatCurrency(resumen.efectivoEsperado),
+                              ),
+                              SizedBox(height: 10),
+                              _buildInfoRow(
+                                'Total Ventas',
+                                formatCurrency(resumen.totalVentas),
+                              ),
+                              SizedBox(height: 10),
+                              _buildInfoRow(
+                                'Ventas Efectivo',
+                                formatCurrency(resumen.ventasEfectivo),
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(width: 28),
+                        // Segunda columna
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildInfoRow(
+                                'Total Gastos',
+                                formatCurrency(resumen.totalGastos),
+                              ),
+                              SizedBox(height: 10),
+                              _buildInfoRow(
+                                'Gastos Efectivo',
+                                formatCurrency(resumen.gastosEfectivo),
+                              ),
+                              SizedBox(height: 10),
+                              _buildInfoRow(
+                                'Total Compras',
+                                formatCurrency(resumen.totalCompras),
+                              ),
+                              SizedBox(height: 10),
+                              _buildInfoRow(
+                                'Compras Efectivo',
+                                formatCurrency(resumen.comprasEfectivo),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                ],
-              ),
 
               Divider(height: 16, color: textLight.withOpacity(0.3)),
 
               // Totales finales
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildInfoRow(
-                      'Gastos Directos',
-                      formatCurrency(resumen.gastosDirectos),
+              isMobile
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildInfoRow(
+                          'Gastos Directos',
+                          formatCurrency(resumen.gastosDirectos),
+                        ),
+                        SizedBox(height: 10),
+                        _buildInfoRow(
+                          'Fact. desde Caja',
+                          formatCurrency(resumen.facturasPagadasDesdeCaja),
+                        ),
+                      ],
+                    )
+                  : Row(
+                      children: [
+                        Expanded(
+                          child: _buildInfoRow(
+                            'Gastos Directos',
+                            formatCurrency(resumen.gastosDirectos),
+                          ),
+                        ),
+                        SizedBox(width: 28),
+                        Expanded(
+                          child: _buildInfoRow(
+                            'Fact. desde Caja',
+                            formatCurrency(resumen.facturasPagadasDesdeCaja),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  SizedBox(width: 28),
-                  Expanded(
-                    child: _buildInfoRow(
-                      'Fact. desde Caja',
-                      formatCurrency(resumen.facturasPagadasDesdeCaja),
-                    ),
-                  ),
-                ],
-              ),
 
               Divider(height: 16, color: textLight.withOpacity(0.3)),
 

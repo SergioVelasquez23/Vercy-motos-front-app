@@ -295,16 +295,28 @@ class _DialogoPagoState extends State<DialogoPago> {
     // 🚀 OPTIMIZACIÓN: Cachear valores para evitar recálculos en cada build
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
-    
+    final isMobile = screenWidth < 600;
+    final isTablet = screenWidth >= 600 && screenWidth < 900;
+
     return Dialog(
       backgroundColor: AppTheme.backgroundDark,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      insetPadding: EdgeInsets.symmetric(
+        horizontal: isMobile ? 8 : 20,
+        vertical: isMobile ? 16 : 24,
+      ),
       child: Container(
-        width: screenWidth * 0.85,
+        width: isMobile
+            ? screenWidth // Usar todo el ancho disponible en móvil
+            : isTablet
+            ? screenWidth *
+                  0.85 // 85% en tablet
+            : screenWidth * 0.7, // 70% en desktop
         constraints: BoxConstraints(
-          maxHeight: screenHeight * 0.9,
+          maxHeight: screenHeight * 0.95, // Aumentado de 0.9 a 0.95
+          maxWidth: isMobile ? double.infinity : 600,
         ),
-        padding: const EdgeInsets.all(28),
+        padding: EdgeInsets.all(isMobile ? 20 : 24),
         child: SingleChildScrollView(
           // 🚀 OPTIMIZACIÓN: Usar physics para mejor rendimiento
           physics: const ClampingScrollPhysics(),
@@ -313,37 +325,37 @@ class _DialogoPagoState extends State<DialogoPago> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildHeader(),
-              const SizedBox(height: 32),
+              SizedBox(height: isMobile ? 16 : 24),
               _buildProductosSection(),
-              const SizedBox(height: 32),
+              SizedBox(height: isMobile ? 16 : 24),
               _buildSubtotalSection(),
-              const SizedBox(height: 32),
+              SizedBox(height: isMobile ? 16 : 24),
               _buildDescuentosSection(),
-              const SizedBox(height: 32),
+              SizedBox(height: isMobile ? 16 : 24),
               _buildTotalSection(),
-              const SizedBox(height: 32),
+              SizedBox(height: isMobile ? 16 : 24),
               _buildOpcionesEspeciales(),
-              const SizedBox(height: 32),
+              SizedBox(height: isMobile ? 16 : 24),
               _buildInformacionPedido(),
-              const SizedBox(height: 32),
+              SizedBox(height: isMobile ? 16 : 24),
               // 🚀 OPTIMIZACIÓN: Solo construir sección cliente si está habilitada
               if (incluirDatosCliente) ...[
                 _buildInformacionCliente(),
-                const SizedBox(height: 32),
+                SizedBox(height: isMobile ? 16 : 24),
               ],
               _buildPropinaSection(),
-              const SizedBox(height: 32),
+              SizedBox(height: isMobile ? 16 : 24),
               // 🚀 OPTIMIZACIÓN: Solo construir sección billetes si el medio de pago es efectivo
               if (medioPago == 'efectivo' && !pagoMultiple) ...[
                 _buildBilletesSection(),
-                const SizedBox(height: 32),
+                SizedBox(height: isMobile ? 16 : 24),
               ],
               _buildMetodoPagoSection(),
-              const SizedBox(height: 32),
+              SizedBox(height: isMobile ? 16 : 24),
               // 🚀 OPTIMIZACIÓN: Solo construir sección pago múltiple si está habilitada
               if (pagoMultiple) ...[
                 _buildPagoMultipleSection(),
-                const SizedBox(height: 32),
+                SizedBox(height: isMobile ? 16 : 24),
               ],
               _buildBotonesAccion(),
             ],
@@ -1180,24 +1192,56 @@ class _DialogoPagoState extends State<DialogoPago> {
         SeccionContainer(
           child: Column(
             children: [
-              Row(
-                children: [
-                  _buildBilletButton(50000),
-                  SizedBox(width: 8),
-                  _buildBilletButton(20000),
-                  SizedBox(width: 8),
-                  _buildBilletButton(10000),
-                ],
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final buttonWidth = (constraints.maxWidth - 24) / 3;
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      SizedBox(
+                        width: buttonWidth,
+                        child: _buildBilletButton(50000),
+                      ),
+                      SizedBox(width: 12),
+                      SizedBox(
+                        width: buttonWidth,
+                        child: _buildBilletButton(20000),
+                      ),
+                      SizedBox(width: 12),
+                      SizedBox(
+                        width: buttonWidth,
+                        child: _buildBilletButton(10000),
+                      ),
+                    ],
+                  );
+                },
               ),
-              SizedBox(height: 8),
-              Row(
-                children: [
-                  _buildBilletButton(5000),
-                  SizedBox(width: 8),
-                  _buildBilletButton(2000),
-                  SizedBox(width: 8),
-                  _buildBilletButton(1000),
-                ],
+              SizedBox(height: 12),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final buttonWidth =
+                      (constraints.maxWidth - 24) /
+                      3; // 3 botones + 2 espacios de 12px
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      SizedBox(
+                        width: buttonWidth,
+                        child: _buildBilletButton(5000),
+                      ),
+                      SizedBox(width: 12),
+                      SizedBox(
+                        width: buttonWidth,
+                        child: _buildBilletButton(2000),
+                      ),
+                      SizedBox(width: 12),
+                      SizedBox(
+                        width: buttonWidth,
+                        child: _buildBilletButton(1000),
+                      ),
+                    ],
+                  );
+                },
               ),
               SizedBox(height: 16),
               TextField(
@@ -1256,18 +1300,17 @@ class _DialogoPagoState extends State<DialogoPago> {
   Widget _buildBilletButton(int valor) {
     final count = contadorBilletes[valor] ?? 0;
 
-    return Expanded(
-      child: InkWell(
-        onTap: () {
-          setState(() {
-            billetesSeleccionados += valor.toDouble();
-            contadorBilletes[valor] = count + 1;
-            billetesController.text = billetesSeleccionados.toStringAsFixed(0);
-          });
-        },
-        child: Container(
-          height: 80,
-          decoration: BoxDecoration(
+    return InkWell(
+      onTap: () {
+        setState(() {
+          billetesSeleccionados += valor.toDouble();
+          contadorBilletes[valor] = count + 1;
+          billetesController.text = billetesSeleccionados.toStringAsFixed(0);
+        });
+      },
+      child: Container(
+        height: 85,
+        decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [AppTheme.primary, AppTheme.primary.withOpacity(0.8)],
               begin: Alignment.topCenter,
@@ -1316,7 +1359,6 @@ class _DialogoPagoState extends State<DialogoPago> {
               ),
             ],
           ),
-        ),
       ),
     );
   }

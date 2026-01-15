@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../config/endpoints_config.dart';
 import '../models/factura_electronica_dian.dart';
+import '../models/configuracion_dian.dart';
 
 /// Servicio para gestionar la persistencia de configuración de facturación electrónica
 ///
@@ -20,6 +21,7 @@ class ConfiguracionFacturacionService {
   // Cache en memoria
   EmisorDian? _emisorCache;
   Map<String, dynamic>? _autorizacionCache;
+  ConfiguracionDian? _configuracionDianCache;
 
   Future<Map<String, String>> _getHeaders() async {
     final token = await storage.read(key: 'jwt_token');
@@ -321,6 +323,120 @@ class ConfiguracionFacturacionService {
   void limpiarCache() {
     _emisorCache = null;
     _autorizacionCache = null;
+    _configuracionDianCache = null;
     print('🧹 Cache de configuración limpiado');
   }
+
+  // ===== MÉTODOS PARA CONFIGURACIÓN DIAN COMPLETA =====
+
+  /// Guarda la configuración completa de DIAN en MongoDB
+  Future<bool> guardarConfiguracionDian(ConfiguracionDian config) async {
+    try {
+      final headers = await _getHeaders();
+
+      print('📝 Guardando configuración completa DIAN...');
+
+      final response = await http.post(
+        Uri.parse(
+          '${_endpoints.currentBaseUrl}/api/configuracion/facturacion/dian',
+        ),
+        headers: headers,
+        body: json.encode(config.toJson()),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        print('✅ Configuración DIAN guardada exitosamente');
+        _configuracionDianCache = config;
+        return true;
+      } else {
+        print('❌ Error guardando configuración DIAN: ${response.statusCode}');
+        print('   Respuesta: ${response.body}');
+        return false;
+      }
+    } catch (e) {
+      print('❌ Error de conexión guardando configuración DIAN: $e');
+      return false;
+    }
+  }
+
+  /// Obtiene la configuración completa de DIAN desde MongoDB
+  Future<ConfiguracionDian?> obtenerConfiguracionDian() async {
+    // Devolver cache si existe
+    if (_configuracionDianCache != null) {
+      print('📦 Devolviendo configuración DIAN desde cache');
+      return _configuracionDianCache;
+    }
+
+    try {
+      final headers = await _getHeaders();
+
+      print('🔍 Obteniendo configuración DIAN...');
+
+      final response = await http.get(
+        Uri.parse(
+          '${_endpoints.currentBaseUrl}/api/configuracion/facturacion/dian',
+        ),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+
+        if (responseData['success'] == true && responseData['data'] != null) {
+          final configData =
+              responseData['data']['data'] ?? responseData['data'];
+          _configuracionDianCache = ConfiguracionDian.fromJson(configData);
+          print('✅ Configuración DIAN obtenida');
+          return _configuracionDianCache;
+        }
+      } else if (response.statusCode == 404) {
+        print('ℹ️ No hay configuración DIAN guardada');
+        return null;
+      } else {
+        print('❌ Error obteniendo configuración DIAN: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      print('❌ Error de conexión obteniendo configuración DIAN: $e');
+    }
+
+    return null;
+  }
+
+  /// Actualiza solo el consecutivo actual de facturación
+  Future<bool> actualizarConsecutivoActual(String nuevoConsecutivo) async {
+    try {
+      final headers = await _getHeaders();
+
+      print('🔢 Actualizando consecutivo actual...');
+
+      final response = await http.patch(
+        Uri.parse(
+          '${_endpoints.currentBaseUrl}/api/configuracion/facturacion/dian/consecutivo',
+        ),
+        headers: headers,
+        body: json.encode({'iniciarNumeroFacturaDesde': nuevoConsecutivo}),
+      );
+
+      if (response.statusCode == 200) {
+        print('✅ Consecutivo actualizado a: $nuevoConsecutivo');
+
+        // Actualizar el cache si existe
+        if (_configuracionDianCache != null) {
+          _configuracionDianCache = _configuracionDianCache!.copyWith(
+            iniciarNumeroFacturaDesde: nuevoConsecutivo,
+          );
+        }
+
+        return true;
+      } else {
+        print('❌ Error actualizando consecutivo: ${response.statusCode}');
+        return false;
+      }
+    } catch (e) {
+      print('❌ Error de conexión actualizando consecutivo: $e');
+      return false;
+    }
+  }
 }
+

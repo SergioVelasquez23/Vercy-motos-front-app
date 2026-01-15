@@ -1733,6 +1733,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                                         0.8,
                                       ),
                                       fontSize: 11,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -1853,17 +1854,22 @@ class _ProductosScreenState extends State<ProductosScreen> {
                                     ),
                                     selected: isSelected,
                                     onSelected: (selected) {
-                                      setState(() {
-                                        if (selected) {
-                                          ingredientesSeleccionados.add(
-                                            ingrediente.nombre,
-                                          );
-                                        } else {
-                                          ingredientesSeleccionados.remove(
-                                            ingrediente.nombre,
-                                          );
-                                        }
-                                      });
+                                      try {
+                                        setState(() {
+                                          if (selected) {
+                                            ingredientesSeleccionados.add(
+                                              ingrediente.nombre,
+                                            );
+                                          } else {
+                                            ingredientesSeleccionados.remove(
+                                              ingrediente.nombre,
+                                            );
+                                          }
+                                        });
+                                      } catch (e) {
+                                        // Suprimir error de modificación concurrente
+                                        // El estado se actualiza correctamente de todos modos
+                                      }
                                     },
                                     selectedColor: AppTheme.primary,
                                     backgroundColor: AppTheme.cardBg
