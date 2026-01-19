@@ -11,7 +11,7 @@ class FacturaElectronicaConfig {
   static EmisorDian obtenerEmisorConfiguracion() {
     return EmisorDian(
       // Razón social registrada en la DIAN
-      razonSocial: 'RESTAURANTE SOPA Y CARBON SAS',
+      razonSocial: 'VERCY MOTOS SAS',
 
       // NIT sin dígito de verificación
       nit: '900123456',
@@ -34,7 +34,7 @@ class FacturaElectronicaConfig {
       tipoRegimen: 'O-23',
 
       // Nombre comercial del negocio
-      nombreComercial: 'Sopa y Carbón',
+      nombreComercial: 'Vercy Motos',
 
       // Dirección del establecimiento
       direccion: 'Calle 123 # 45-67',
@@ -58,7 +58,7 @@ class FacturaElectronicaConfig {
       telefono: '3001234567',
 
       // Email de contacto
-      email: 'facturacion@sopaycarbon.com',
+      email: 'facturacion@vercymotos.com',
 
       // Responsabilidades fiscales (separadas por ;)
       // O-13: Gran contribuyente

@@ -60,6 +60,11 @@ class ImageLoaderService {
   /// Carga las imágenes de un lote de productos (máximo 20)
   /// NOTA: Usa endpoint individual GET /api/productos/{id}/imagen
   Future<void> cargarImagenesLote(List<Producto> productos) async {
+    // 🚫 CARGA DE IMÁGENES DESACTIVADA - No hace nada
+    return;
+
+    // CÓDIGO DESACTIVADO TEMPORALMENTE:
+    /*
     // Filtrar productos que no tienen imagen cargada y no están en proceso
     final productosNecesitanImagen = productos
         .where(
@@ -108,10 +113,16 @@ class ImageLoaderService {
     }
 
     print('✅ Lote completado: ${_imagenesCache.length} imágenes en cache');
+    */
   }
 
   /// Carga la imagen de un solo producto
   Future<String?> cargarImagenProducto(String productoId) async {
+    // 🚫 CARGA DE IMÁGENES DESACTIVADA - Retorna null inmediatamente
+    return null;
+
+    // CÓDIGO DESACTIVADO TEMPORALMENTE:
+    /*
     // Si ya está en cache, retornar
     if (_imagenesCache.containsKey(productoId)) {
       return _imagenesCache[productoId];
@@ -145,6 +156,7 @@ class ImageLoaderService {
     } finally {
       _cargandoImagenes.remove(productoId);
     }
+    */
   }
 
   /// Precarga imágenes de productos cercanos (para scroll suave)
@@ -154,6 +166,11 @@ class ImageLoaderService {
     int cantidadAdelante = 10,
     int cantidadAtras = 5,
   }) async {
+    // 🚫 CARGA DE IMÁGENES DESACTIVADA - No hace nada
+    return;
+
+    // CÓDIGO DESACTIVADO TEMPORALMENTE:
+    /*
     final inicio = (indiceActual - cantidadAtras).clamp(
       0,
       todosProductos.length,
@@ -169,6 +186,7 @@ class ImageLoaderService {
       '🔄 Precargando imágenes cercanas: ${productosCercanos.length} productos',
     );
     await cargarImagenesLote(productosCercanos);
+    */
   }
 
   /// Notifica a los listeners sobre cambios en la imagen

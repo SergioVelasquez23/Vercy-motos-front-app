@@ -27,9 +27,9 @@ class AppNavigationBar extends StatelessWidget {
               ),
               _buildNavItem(
                 context,
-                icon: Icons.table_restaurant,
-                label: 'Mesas',
-                route: '/mesas',
+                icon: Icons.receipt,
+                label: 'Facturación',
+                route: '/facturacion',
               ),
               _buildNavItem(
                 context,
@@ -39,7 +39,7 @@ class AppNavigationBar extends StatelessWidget {
               ),
               _buildNavItem(
                 context,
-                icon: Icons.shopping_cart,
+                icon: Icons.two_wheeler,
                 label: 'Productos',
                 route: '/productos',
               ),
@@ -47,11 +47,11 @@ class AppNavigationBar extends StatelessWidget {
                 context,
                 icon: Icons.inventory,
                 label: 'Inventario',
-                route: '/ingredientes',
+                route: '/inventario',
               ),
               _buildNavItem(
                 context,
-                icon: Icons.receipt,
+                icon: Icons.shopping_bag,
                 label: 'Facturas Compras',
                 route: '/facturas_compras',
               ),
@@ -63,21 +63,21 @@ class AppNavigationBar extends StatelessWidget {
               ),
               _buildNavItem(
                 context,
+                icon: Icons.people,
+                label: 'Clientes',
+                route: '/clientes',
+              ),
+              _buildNavItem(
+                context,
                 icon: Icons.description,
-                label: 'Documentos',
-                route: '/documentos',
+                label: 'Cotizaciones',
+                route: '/cotizaciones',
               ),
               _buildNavItem(
                 context,
                 icon: Icons.account_balance,
                 label: 'Caja',
                 route: '/cuadre_caja',
-              ),
-              _buildNavItem(
-                context,
-                icon: Icons.receipt_long,
-                label: 'Fact. Electrónica',
-                route: '/facturacion/config',
               ),
               _buildNavItem(
                 context,
@@ -103,7 +103,7 @@ class AppNavigationBar extends StatelessWidget {
     return GestureDetector(
       onTap: () {
         if (!isActive) {
-          Navigator.pushReplacementNamed(context, route);
+          Navigator.pushNamed(context, route);
         }
       },
       child: Container(

@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 // Importación condicional para no afectar builds móviles
 // ignore: uri_does_not_exist
 import 'dart:html'
-    if (dart.library.io) 'package:serch_restapp/utils/html_stub.dart'
+    if (dart.library.io) 'package:vercy_motos/utils/html_stub.dart'
     as html;
 import '../utils/jwt_utils.dart';
 import 'datos_cache_provider.dart';

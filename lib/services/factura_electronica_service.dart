@@ -2,11 +2,11 @@ import 'package:intl/intl.dart';
 import 'package:crypto/crypto.dart';
 import 'dart:convert';
 import '../models/factura_electronica_dian.dart';
-import '../models/documento_mesa.dart';
+import '../models/pedido.dart';
 import '../models/item_pedido.dart';
 import 'configuracion_facturacion_service.dart';
 
-/// Servicio para generar facturas electrónicas DIAN desde documentos de mesa
+/// Servicio para generar facturas electrónicas DIAN desde pedidos
 class FacturaElectronicaService {
   static final _configService = ConfiguracionFacturacionService();
 
@@ -24,7 +24,7 @@ class FacturaElectronicaService {
   static String? _softwareSecurityCode;
   static String? _proveedorSoftwareNit;
 
-  /// Configurar el emisor (restaurante) y guardar en MongoDB
+  /// Configurar el emisor (negocio) y guardar en MongoDB
   static Future<void> configurarEmisor(EmisorDian emisor) async {
     _emisorConfiguracion = emisor;
     await _configService.guardarEmisor(emisor);
@@ -90,9 +90,9 @@ class FacturaElectronicaService {
     }
   }
 
-  /// Generar factura electrónica desde un documento de mesa
-  static Future<FacturaElectronicaDian> generarFacturaDesdeDocumentoMesa({
-    required DocumentoMesa documentoMesa,
+  /// Generar factura electrónica desde un pedido
+  static Future<FacturaElectronicaDian> generarFacturaDesdePedido({
+    required Pedido pedido,
     required String numeroConsecutivo,
     String? clienteNombre,
     String? clienteIdentificacion,
@@ -107,25 +107,18 @@ class FacturaElectronicaService {
 
     // Crear adquiriente
     final adquiriente = AdquirienteDian(
-      nombre:
-          clienteNombre ?? documentoMesa.clienteNombre ?? 'CONSUMIDOR FINAL',
-      identificacion:
-          clienteIdentificacion ??
-          documentoMesa.clienteIdentificacion ??
-          '222222222222', // Identificación genérica para consumidor final
-      tipoDocumento:
-          clienteTipoDocumento ??
-          documentoMesa.clienteTipoDocumento ??
-          '13', // Cédula por defecto
+      nombre: clienteNombre ?? 'CONSUMIDOR FINAL',
+      identificacion: clienteIdentificacion ?? '222222222222',
+      tipoDocumento: clienteTipoDocumento ?? '13', // Cédula por defecto
       tipoPersona: '2', // Persona natural por defecto
-      email: clienteEmail ?? documentoMesa.clienteEmail,
-      telefono: clienteTelefono ?? documentoMesa.clienteTelefono,
-      direccion: clienteDireccion ?? documentoMesa.clienteDireccion,
+      email: clienteEmail,
+      telefono: clienteTelefono,
+      direccion: clienteDireccion,
       pais: 'CO',
     );
 
-    // Convertir items del documento a items de factura
-    final itemsFactura = await _convertirItemsDocumentoAFactura(documentoMesa);
+    // Convertir items del pedido a items de factura
+    final itemsFactura = _convertirItemsPedidoAFactura(pedido);
 
     // Calcular totales
     final subtotal = itemsFactura.fold<double>(
@@ -146,8 +139,7 @@ class FacturaElectronicaService {
     // Agrupar impuestos por tipo
     final impuestosAgrupados = _agruparImpuestos(itemsFactura);
 
-    final totalFactura =
-        subtotal + totalImpuestos + (documentoMesa.propina ?? 0.0);
+    final totalFactura = subtotal + totalImpuestos;
 
     // Generar número de factura con prefijo
     final numeroFactura = '${_prefijoFactura ?? 'FACT'}$numeroConsecutivo';
@@ -177,12 +169,10 @@ class FacturaElectronicaService {
       totalImpuestos: totalImpuestos,
       totalFactura: totalFactura,
       impuestos: impuestosAgrupados,
-      formaPago: _mapearFormaPago(documentoMesa.formaPago),
-      medioPago: _mapearMedioPago(documentoMesa.formaPago),
-      mesaNombre: documentoMesa.mesaNombre,
-      documentoMesaId: documentoMesa.id,
-      vendedor: documentoMesa.vendedor,
-      propina: documentoMesa.propina,
+      formaPago: _mapearFormaPago(pedido.formaPago ?? 'efectivo'),
+      medioPago: _mapearMedioPago(pedido.formaPago ?? 'efectivo'),
+      pedidoId: pedido.id,
+      vendedor: pedido.mesero,
       estado: 'PENDIENTE',
     );
 
@@ -196,57 +186,35 @@ class FacturaElectronicaService {
     return facturaConCufe.copyWith(cufe: cufe, qrCode: qrCode);
   }
 
-  /// Convertir items del documento de mesa a items de factura DIAN
-  static Future<List<ItemFacturaDian>> _convertirItemsDocumentoAFactura(
-    DocumentoMesa documentoMesa,
-  ) async {
+  /// Convertir items del pedido a items de factura DIAN
+  static List<ItemFacturaDian> _convertirItemsPedidoAFactura(Pedido pedido) {
     final itemsFactura = <ItemFacturaDian>[];
     int numeroLinea = 1;
 
-    // Recorrer todos los pedidos del documento
-    for (final pedido in documentoMesa.pedidos) {
-      for (final item in pedido.items) {
-        // Calcular impuestos para este item
-        final impuestosItem = _calcularImpuestosItem(item);
+    for (final item in pedido.items) {
+      // Calcular impuestos para este item
+      final impuestosItem = _calcularImpuestosItem(item);
 
-        final subtotalItem = item.subtotal;
-        final totalImpuestosItem = impuestosItem.fold<double>(
-          0.0,
-          (sum, imp) => sum + imp.valorImpuesto,
-        );
-        final totalItem = subtotalItem + totalImpuestosItem;
+      final subtotalItem = item.subtotal;
+      final totalImpuestosItem = impuestosItem.fold<double>(
+        0.0,
+        (sum, imp) => sum + imp.valorImpuesto,
+      );
+      final totalItem = subtotalItem + totalImpuestosItem;
 
-        itemsFactura.add(
-          ItemFacturaDian(
-            numeroLinea: numeroLinea++,
-            codigoProducto: item.productoId,
-            descripcion: item.productoNombre ?? 'Producto sin nombre',
-            cantidad: item.cantidad.toDouble(),
-            unidadMedida: 'EA', // Unidad por defecto
-            precioUnitario: item.precioUnitario,
-            subtotalItem: subtotalItem,
-            descuento: 0.0, // ItemPedido no tiene campo descuento individual
-            impuestos: impuestosItem,
-            totalItem: totalItem,
-            notas: item.notas,
-          ),
-        );
-      }
-    }
-
-    // Agregar propina como item adicional si existe
-    if (documentoMesa.propina != null && documentoMesa.propina! > 0) {
       itemsFactura.add(
         ItemFacturaDian(
-          numeroLinea: numeroLinea,
-          codigoProducto: 'PROPINA',
-          descripcion: 'Propina voluntaria',
-          cantidad: 1.0,
-          unidadMedida: 'EA',
-          precioUnitario: documentoMesa.propina!,
-          subtotalItem: documentoMesa.propina!,
-          impuestos: [], // La propina generalmente no tiene IVA
-          totalItem: documentoMesa.propina!,
+          numeroLinea: numeroLinea++,
+          codigoProducto: item.productoId,
+          descripcion: item.productoNombre ?? 'Producto sin nombre',
+          cantidad: item.cantidad.toDouble(),
+          unidadMedida: 'EA', // Unidad por defecto
+          precioUnitario: item.precioUnitario,
+          subtotalItem: subtotalItem,
+          descuento: 0.0,
+          impuestos: impuestosItem,
+          totalItem: totalItem,
+          notas: item.notas,
         ),
       );
     }
@@ -256,14 +224,11 @@ class FacturaElectronicaService {
 
   /// Calcular impuestos para un item (principalmente IVA)
   static List<ImpuestoDian> _calcularImpuestosItem(ItemPedido item) {
-    // En Colombia, la mayoría de alimentos tienen IVA 0%, pero algunos tienen 5% o 19%
-    // Aquí puedes ajustar la lógica según tu negocio
-
     final impuestos = <ImpuestoDian>[];
 
-    // Por defecto, asumir IVA 19% para restaurantes
+    // Por defecto, asumir IVA 19% para venta de motos y repuestos
     // Puedes agregar lógica para determinar la tarifa según el producto
-    final tarifaIva = 19.0; // Puedes hacer esto configurable por producto
+    final tarifaIva = 19.0;
 
     if (tarifaIva > 0) {
       final baseImponible = item.subtotal;

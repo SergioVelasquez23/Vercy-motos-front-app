@@ -55,9 +55,8 @@ class FacturaElectronicaDian {
   final String? referenciaPago; // Número de transacción/recibo
 
   // ===== INFORMACIÓN ADICIONAL =====
-  final String? mesaNombre; // Vinculación con mesa
-  final String? documentoMesaId; // ID del documento de mesa asociado
-  final String? vendedor; // Nombre del mesero/vendedor
+  final String? pedidoId; // ID del pedido asociado
+  final String? vendedor; // Nombre del vendedor
   final double? propina; // Propina incluida
   final String? observaciones;
   final bool anulada;
@@ -110,8 +109,7 @@ class FacturaElectronicaDian {
     this.medioPago = '10', // Por defecto: Efectivo
     this.fechaVencimiento,
     this.referenciaPago,
-    this.mesaNombre,
-    this.documentoMesaId,
+    this.pedidoId,
     this.vendedor,
     this.propina,
     this.observaciones,
@@ -166,8 +164,7 @@ class FacturaElectronicaDian {
       if (fechaVencimiento != null)
         'fechaVencimiento': fechaVencimiento!.toIso8601String(),
       if (referenciaPago != null) 'referenciaPago': referenciaPago,
-      if (mesaNombre != null) 'mesaNombre': mesaNombre,
-      if (documentoMesaId != null) 'documentoMesaId': documentoMesaId,
+      if (pedidoId != null) 'pedidoId': pedidoId,
       if (vendedor != null) 'vendedor': vendedor,
       if (propina != null) 'propina': propina,
       if (observaciones != null) 'observaciones': observaciones,
@@ -231,8 +228,7 @@ class FacturaElectronicaDian {
           ? DateTime.parse(json['fechaVencimiento'])
           : null,
       referenciaPago: json['referenciaPago'],
-      mesaNombre: json['mesaNombre'],
-      documentoMesaId: json['documentoMesaId'],
+      pedidoId: json['pedidoId'],
       vendedor: json['vendedor'],
       propina: json['propina'] != null
           ? (json['propina'] as num).toDouble()
@@ -301,8 +297,7 @@ class FacturaElectronicaDian {
       medioPago: medioPago,
       fechaVencimiento: fechaVencimiento,
       referenciaPago: referenciaPago,
-      mesaNombre: mesaNombre,
-      documentoMesaId: documentoMesaId,
+      pedidoId: pedidoId,
       vendedor: vendedor,
       propina: propina,
       observaciones: observaciones,

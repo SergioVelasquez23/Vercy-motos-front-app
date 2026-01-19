@@ -26,6 +26,11 @@ class ImagenProductoWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 🚫 CARGA DE IMÁGENES DESACTIVADA - Siempre muestra ícono por defecto
+    return _buildIconoDefault();
+
+    // CÓDIGO DESACTIVADO TEMPORALMENTE:
+    /*
     // Si no hay URL, mostrar icono por defecto
     if (urlRemota == null || urlRemota!.isEmpty) {
       return _buildIconoDefault();
@@ -49,11 +54,14 @@ class ImagenProductoWidget extends StatelessWidget {
       // print('🎨 Mostrando imagen base64 persistente');
       return _buildImagenBase64(imagenUrl);
     }
+    */
 
+    // CÓDIGO DESACTIVADO - El resto del método también está inactivo
+    /*
     // PRIORIDAD 2: Si es una URL HTTP válida, intentar cargarla
     if (imagenUrl.startsWith('http')) {
       // Verificar si es una URL de Render válida
-      if (imagenUrl.contains('sopa-y-carbon.onrender.com')) {
+      if (imagenUrl.contains('vercy-motos-app.onrender.com')) {
         return _buildImagenNetwork(imagenUrl);
       }
       print('🌐 Intentando cargar imagen desde URL: $imagenUrl');
@@ -76,6 +84,7 @@ class ImagenProductoWidget extends StatelessWidget {
 
     // Si llegamos aquí, mostrar icono por defecto
     return _buildIconoDefault();
+    */
   }
 
   Widget _buildImagenBase64(String imagenUrl) {

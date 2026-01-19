@@ -65,6 +65,37 @@ class Pedido {
   String? pagadoPor;
   double propina = 0.0;
 
+  // ===== NUEVOS CAMPOS PARA FACTURACIÓN ELECTRÓNICA =====
+
+  // 📄 INFORMACIÓN DE FACTURA
+  String? descripcionFactura; // Descripción general de la factura
+  List<String>? archivosAdjuntos; // URLs de archivos adjuntos
+  String tipoFactura; // "POS", "Electrónica", "Computarizada"
+  DateTime? fechaVencimiento; // Fecha de vencimiento de la factura
+  String? numeroFactura; // Número único de factura
+  String? codigoBarrasFactura; // Código de barras de la factura
+
+  // 💰 RETENCIONES Y TRIBUTOS
+  double retencion; // % de retención
+  double valorRetencion; // Valor calculado de retención
+  double reteIVA; // % de ReteIVA
+  double valorReteIVA; // Valor calculado de ReteIVA
+  double reteICA; // % de ReteICA
+  double valorReteICA; // Valor calculado de ReteICA
+  Map<String, dynamic>? aiu; // AIU (Administración, Imprevistos, Utilidad)
+
+  // 🎯 DESCUENTOS DETALLADOS
+  String tipoDescuentoGeneral; // "Valor" o "Porcentaje"
+  double descuentoGeneral; // Valor del descuento general
+  double descuentoProductos; // Suma de descuentos de items individuales
+
+  // 📊 TOTALES CALCULADOS
+  double subtotal; // Suma de items sin impuestos/descuentos
+  double totalImpuestos; // Suma de todos los impuestos
+  double totalDescuentos; // Suma de todos los descuentos
+  double totalRetenciones; // Suma de todas las retenciones
+  double totalFinal; // Total después de todo
+
   void setFormaPago(String formaPago) {
     this.formaPago = formaPago;
   }
@@ -102,6 +133,28 @@ class Pedido {
     this.fechaPago,
     this.pagadoPor,
     this.propina = 0.0,
+    // Nuevos campos de facturación
+    this.descripcionFactura,
+    this.archivosAdjuntos,
+    this.tipoFactura = 'POS',
+    this.fechaVencimiento,
+    this.numeroFactura,
+    this.codigoBarrasFactura,
+    this.retencion = 0.0,
+    this.valorRetencion = 0.0,
+    this.reteIVA = 0.0,
+    this.valorReteIVA = 0.0,
+    this.reteICA = 0.0,
+    this.valorReteICA = 0.0,
+    this.aiu,
+    this.tipoDescuentoGeneral = 'Valor',
+    this.descuentoGeneral = 0.0,
+    this.descuentoProductos = 0.0,
+    this.subtotal = 0.0,
+    this.totalImpuestos = 0.0,
+    this.totalDescuentos = 0.0,
+    this.totalRetenciones = 0.0,
+    this.totalFinal = 0.0,
   });
 
   String get tipoTexto {
@@ -228,6 +281,29 @@ class Pedido {
     if (fechaPago != null) 'fechaPago': fechaPago!.toIso8601String(),
     if (pagadoPor != null) 'pagadoPor': pagadoPor,
     'propina': propina,
+    // Nuevos campos de facturación
+    if (descripcionFactura != null) 'descripcionFactura': descripcionFactura,
+    if (archivosAdjuntos != null) 'archivosAdjuntos': archivosAdjuntos,
+    'tipoFactura': tipoFactura,
+    if (fechaVencimiento != null)
+      'fechaVencimiento': fechaVencimiento!.toIso8601String(),
+    if (numeroFactura != null) 'numeroFactura': numeroFactura,
+    if (codigoBarrasFactura != null) 'codigoBarrasFactura': codigoBarrasFactura,
+    'retencion': retencion,
+    'valorRetencion': valorRetencion,
+    'reteIVA': reteIVA,
+    'valorReteIVA': valorReteIVA,
+    'reteICA': reteICA,
+    'valorReteICA': valorReteICA,
+    if (aiu != null) 'aiu': aiu,
+    'tipoDescuentoGeneral': tipoDescuentoGeneral,
+    'descuentoGeneral': descuentoGeneral,
+    'descuentoProductos': descuentoProductos,
+    'subtotal': subtotal,
+    'totalImpuestos': totalImpuestos,
+    'totalDescuentos': totalDescuentos,
+    'totalRetenciones': totalRetenciones,
+    'totalFinal': totalFinal,
   };
 
   factory Pedido.fromJson(Map<String, dynamic> json) {
@@ -283,6 +359,32 @@ class Pedido {
           : null,
       pagadoPor: json['pagadoPor'],
       propina: (json['propina'] ?? 0).toDouble(),
+      // Nuevos campos de facturación
+      descripcionFactura: json['descripcionFactura'],
+      archivosAdjuntos: json['archivosAdjuntos'] != null
+          ? List<String>.from(json['archivosAdjuntos'])
+          : null,
+      tipoFactura: json['tipoFactura'] ?? 'POS',
+      fechaVencimiento: json['fechaVencimiento'] != null
+          ? DateTime.parse(json['fechaVencimiento'])
+          : null,
+      numeroFactura: json['numeroFactura'],
+      codigoBarrasFactura: json['codigoBarrasFactura'],
+      retencion: (json['retencion'] ?? 0).toDouble(),
+      valorRetencion: (json['valorRetencion'] ?? 0).toDouble(),
+      reteIVA: (json['reteIVA'] ?? 0).toDouble(),
+      valorReteIVA: (json['valorReteIVA'] ?? 0).toDouble(),
+      reteICA: (json['reteICA'] ?? 0).toDouble(),
+      valorReteICA: (json['valorReteICA'] ?? 0).toDouble(),
+      aiu: json['aiu'] != null ? Map<String, dynamic>.from(json['aiu']) : null,
+      tipoDescuentoGeneral: json['tipoDescuentoGeneral'] ?? 'Valor',
+      descuentoGeneral: (json['descuentoGeneral'] ?? 0).toDouble(),
+      descuentoProductos: (json['descuentoProductos'] ?? 0).toDouble(),
+      subtotal: (json['subtotal'] ?? 0).toDouble(),
+      totalImpuestos: (json['totalImpuestos'] ?? 0).toDouble(),
+      totalDescuentos: (json['totalDescuentos'] ?? 0).toDouble(),
+      totalRetenciones: (json['totalRetenciones'] ?? 0).toDouble(),
+      totalFinal: (json['totalFinal'] ?? 0).toDouble(),
     );
   }
 }

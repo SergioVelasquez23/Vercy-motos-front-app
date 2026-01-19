@@ -1,6 +1,6 @@
 import '../models/producto.dart';
 
-/// Modelo ItemPedido unificado con backend Java
+/// Modelo ItemPedido unificado con backend Java + Facturación Electrónica
 ///
 /// Esta versión elimina la ambigüedad en precios y mantiene
 /// consistencia total con el modelo Java.
@@ -11,6 +11,7 @@ import '../models/producto.dart';
 /// - Subtotal siempre calculado automáticamente
 /// - Mejor validación y manejo de errores
 /// - Compatibilidad con formato JSON del backend
+/// - NUEVOS campos para facturación electrónica DIAN
 class ItemPedido {
   // 🏷️ IDENTIFICACIÓN
   final String? id; // Opcional, generado por BD
@@ -18,11 +19,22 @@ class ItemPedido {
   // 🔗 REFERENCIA A PRODUCTO
   final String productoId; // ID del producto (requerido)
   final String? productoNombre; // Cache del nombre (opcional)
+  final String? codigoProducto; // Código interno del producto
+  final String? codigoBarras; // Código de barras del producto
   final Producto? producto; // Referencia completa (opcional, para UI)
 
   // 📊 CANTIDADES Y PRECIOS
   final int cantidad; // Cantidad pedida (requerido)
   final double precioUnitario; // ÚNICO precio (requerido)
+
+  // 💰 IMPUESTOS (Facturación Electrónica)
+  final String? tipoImpuesto; // "IVA", "INC", "Exento", etc.
+  final double porcentajeImpuesto; // % del impuesto (19%, 8%, etc.)
+  final double valorImpuesto; // Valor calculado del impuesto
+
+  // 🎯 DESCUENTOS (Por Item)
+  final double porcentajeDescuento; // % de descuento en este item
+  final double valorDescuento; // Valor del descuento
 
   // 📝 INFORMACIÓN ADICIONAL
   final String? notas; // Notas especiales (opcional)
@@ -33,25 +45,59 @@ class ItemPedido {
     this.id,
     required this.productoId,
     this.productoNombre,
+    this.codigoProducto,
+    this.codigoBarras,
     this.producto,
     required this.cantidad,
     required this.precioUnitario,
+    this.tipoImpuesto,
+    this.porcentajeImpuesto = 0.0,
+    this.valorImpuesto = 0.0,
+    this.porcentajeDescuento = 0.0,
+    this.valorDescuento = 0.0,
     this.notas,
     this.ingredientesSeleccionados = const [],
   }) : assert(cantidad > 0, 'La cantidad debe ser mayor a 0'),
-       assert(precioUnitario >= 0, 'El precio unitario no puede ser negativo');
+       assert(precioUnitario >= 0, 'El precio unitario no puede ser negativo'),
+       assert(
+         porcentajeImpuesto >= 0,
+         'El porcentaje de impuesto no puede ser negativo',
+       ),
+       assert(
+         valorImpuesto >= 0,
+         'El valor del impuesto no puede ser negativo',
+       ),
+       assert(
+         porcentajeDescuento >= 0,
+         'El porcentaje de descuento no puede ser negativo',
+       ),
+       assert(
+         valorDescuento >= 0,
+         'El valor del descuento no puede ser negativo',
+       );
 
   // 🧮 CÁLCULOS AUTOMÁTICOS
   double get subtotal => cantidad * precioUnitario;
+  
+  // Valor total del item = subtotal + impuesto - descuento
+  double get valorTotal => subtotal + valorImpuesto - valorDescuento;
 
   // 📄 SERIALIZACIÓN JSON
   Map<String, dynamic> toJson() => {
     if (id != null) 'id': id,
     'productoId': productoId,
     if (productoNombre != null) 'productoNombre': productoNombre,
+    if (codigoProducto != null) 'codigoProducto': codigoProducto,
+    if (codigoBarras != null) 'codigoBarras': codigoBarras,
     'cantidad': cantidad,
     'precioUnitario': precioUnitario,
     'subtotal': subtotal, // Incluido para compatibilidad, pero calculado
+    if (tipoImpuesto != null) 'tipoImpuesto': tipoImpuesto,
+    'porcentajeImpuesto': porcentajeImpuesto,
+    'valorImpuesto': valorImpuesto,
+    'porcentajeDescuento': porcentajeDescuento,
+    'valorDescuento': valorDescuento,
+    'valorTotal': valorTotal,
     if (notas != null && notas!.isNotEmpty) 'notas': notas,
     'ingredientesSeleccionados': ingredientesSeleccionados,
   };
@@ -76,9 +122,18 @@ class ItemPedido {
       id: json['id'],
       productoId: json['productoId'] ?? '',
       productoNombre: json['productoNombre'],
+      codigoProducto: json['codigoProducto'],
+      codigoBarras: json['codigoBarras'],
       producto: producto,
       cantidad: (json['cantidad'] as num?)?.toInt() ?? 1,
       precioUnitario: precio,
+      tipoImpuesto: json['tipoImpuesto'],
+      porcentajeImpuesto:
+          (json['porcentajeImpuesto'] as num?)?.toDouble() ?? 0.0,
+      valorImpuesto: (json['valorImpuesto'] as num?)?.toDouble() ?? 0.0,
+      porcentajeDescuento:
+          (json['porcentajeDescuento'] as num?)?.toDouble() ?? 0.0,
+      valorDescuento: (json['valorDescuento'] as num?)?.toDouble() ?? 0.0,
       notas: json['notas'],
       ingredientesSeleccionados: json['ingredientesSeleccionados'] != null
           ? List<String>.from(json['ingredientesSeleccionados'])
@@ -116,9 +171,16 @@ class ItemPedido {
     String? id,
     String? productoId,
     String? productoNombre,
+    String? codigoProducto,
+    String? codigoBarras,
     Producto? producto,
     int? cantidad,
     double? precioUnitario,
+    String? tipoImpuesto,
+    double? porcentajeImpuesto,
+    double? valorImpuesto,
+    double? porcentajeDescuento,
+    double? valorDescuento,
     String? notas,
     List<String>? ingredientesSeleccionados,
   }) {
@@ -126,9 +188,16 @@ class ItemPedido {
       id: id ?? this.id,
       productoId: productoId ?? this.productoId,
       productoNombre: productoNombre ?? this.productoNombre,
+      codigoProducto: codigoProducto ?? this.codigoProducto,
+      codigoBarras: codigoBarras ?? this.codigoBarras,
       producto: producto ?? this.producto,
       cantidad: cantidad ?? this.cantidad,
       precioUnitario: precioUnitario ?? this.precioUnitario,
+      tipoImpuesto: tipoImpuesto ?? this.tipoImpuesto,
+      porcentajeImpuesto: porcentajeImpuesto ?? this.porcentajeImpuesto,
+      valorImpuesto: valorImpuesto ?? this.valorImpuesto,
+      porcentajeDescuento: porcentajeDescuento ?? this.porcentajeDescuento,
+      valorDescuento: valorDescuento ?? this.valorDescuento,
       notas: notas ?? this.notas,
       ingredientesSeleccionados:
           ingredientesSeleccionados ?? this.ingredientesSeleccionados,

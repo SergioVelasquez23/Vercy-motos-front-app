@@ -4,11 +4,8 @@ import 'package:provider/provider.dart';
 import 'dart:async';
 import '../theme/app_theme.dart';
 import 'productos_screen.dart';
-import 'mesas_screen.dart';
 import 'pedidos_screen_fusion.dart';
 import 'cuadre_caja_screen.dart';
-import 'documentos_mesa_screen.dart';
-import 'ingredientes_screen.dart';
 import 'facturas_compras_screen.dart';
 import 'proveedores_screen.dart';
 import 'historial_inventario_screen.dart';
@@ -21,6 +18,7 @@ import '../services/pedido_service.dart';
 import '../models/dashboard_data.dart';
 import '../providers/user_provider.dart';
 import '../widgets/admin_key_detector.dart';
+import '../widgets/vercy_sidebar_layout.dart';
 import '../utils/payment_calculator.dart';
 
 class InfoCardItem {
@@ -732,7 +730,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
       });
     }
 
-    // Los meseros pueden acceder al dashboard para ver mesas y su panel de pedidos
+    // Los vendedores pueden acceder al dashboard para ver su panel de pedidos
     // (Redirección automática comentada para permitir acceso al dashboard)
     /*
     if (userProvider.isOnlyMesero) {
@@ -762,62 +760,64 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
     */
 
     return AdminKeySequenceDetector(
-      child: Scaffold(
-        backgroundColor: AppTheme.backgroundDark,
-        body: SafeArea(
-          child: Column(
-            children: [
-              _buildTopBar(),
-              _buildNavBar(),
-              // Indicador de precarga de datos
-              _buildPrecargaIndicator(),
-              Expanded(
-                child: userProvider.isAdmin || userProvider.isSuperAdmin
-                    ? (_isLoading
-                          ? Center(
-                              child: CircularProgressIndicator(
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  AppTheme.primary,
+      child: VercySidebarLayout(
+        title: '¡Hola! Bienvenido a Vercy Motos',
+        child: Scaffold(
+          backgroundColor: AppTheme.backgroundDark,
+          body: SafeArea(
+            child: Column(
+              children: [
+                // Indicador de precarga de datos
+                _buildPrecargaIndicator(),
+                Expanded(
+                  child: userProvider.isAdmin || userProvider.isSuperAdmin
+                      ? (_isLoading
+                            ? Center(
+                                child: CircularProgressIndicator(
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    AppTheme.primary,
+                                  ),
                                 ),
-                              ),
-                            )
-                          : RefreshIndicator(
-                              onRefresh: _cargarDatos,
-                              child: SingleChildScrollView(
-                                physics: AlwaysScrollableScrollPhysics(),
-                                padding: EdgeInsets.all(
-                                  context.responsivePadding,
-                                ),
-                                child: Column(
-                                  children: [
-                                    // Cards de estadísticas principales
-                                    _buildStatsCards(context),
-                                    SizedBox(height: AppTheme.spacingXLarge),
-                                    // Gráfico de pedidos por hora (más prominente)
-                                    _buildPedidosPorHoraChart(context),
-                                    SizedBox(height: AppTheme.spacingXLarge),
+                              )
+                            : RefreshIndicator(
+                                onRefresh: _cargarDatos,
+                                child: SingleChildScrollView(
+                                  physics: AlwaysScrollableScrollPhysics(),
+                                  padding: EdgeInsets.all(
+                                    context.responsivePadding,
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      // Cards de estadísticas principales
+                                      _buildStatsCards(context),
+                                      SizedBox(height: AppTheme.spacingXLarge),
+                                      // Gráfico de pedidos por hora (más prominente)
+                                      _buildPedidosPorHoraChart(context),
+                                      SizedBox(height: AppTheme.spacingXLarge),
 
-                                    // Gráfico de ventas por día
-                                    _buildVentasPorDiaChart(context),
-                                    SizedBox(height: AppTheme.spacingXLarge),
+                                      // Gráfico de ventas por día
+                                      _buildVentasPorDiaChart(context),
+                                      SizedBox(height: AppTheme.spacingXLarge),
 
-                                    // Gráficos en fila o columna según el dispositivo
-                                    context.isMobile
-                                        ? Column(
-                                            children: [
-                                              _buildIngresosVsEgresosChart(
-                                                context,
-                                              ),
-                                              SizedBox(
-                                                height: AppTheme.spacingLarge,
-                                              ),
-                                              _buildTopProductosChart(context),
-                                            ],
-                                          )
-                                        : Row(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
+                                      // Gráficos en fila o columna según el dispositivo
+                                      context.isMobile
+                                          ? Column(
+                                              children: [
+                                                _buildIngresosVsEgresosChart(
+                                                  context,
+                                                ),
+                                                SizedBox(
+                                                  height: AppTheme.spacingLarge,
+                                                ),
+                                                _buildTopProductosChart(
+                                                  context,
+                                                ),
+                                              ],
+                                            )
+                                          : Row(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
                                               Expanded(
                                                 child:
                                                     _buildIngresosVsEgresosChart(
@@ -922,12 +922,13 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                           ],
                         ),
                       ),
-              ),
-            ],
-          ),
-        ), // Cierra Scaffold
-      ),
-    ); // Cierra AdminKeySequenceDetector
+                ),
+              ],
+            ),
+          ), // Cierra Scaffold
+        ), // Cierra VercySidebarLayout
+      ), // Cierra AdminKeySequenceDetector
+    );
   }
 
   Widget _buildTopBar() {
@@ -1036,19 +1037,9 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
       navItems.add(_buildNavItem(Icons.dashboard, 'Dashboard', 0, () {}));
     }
 
-    // 2. Mesas - Disponible para todos los roles
+    // 2. Pedidos - Disponible para todos los roles
     navItems.add(
-      _buildNavItem(Icons.table_restaurant, 'Mesas', 1, () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => MesasScreen()),
-        );
-      }),
-    );
-
-    // 3. Pedidos - Disponible para todos los roles
-    navItems.add(
-      _buildNavItem(Icons.shopping_cart, 'Pedidos', 2, () {
+      _buildNavItem(Icons.shopping_cart, 'Pedidos', 1, () {
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => PedidosScreenFusion()),
@@ -1058,9 +1049,9 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
 
     // Los siguientes módulos solo para ADMIN y SUPERADMIN
     if (userProvider.isAdmin) {
-      // 4. Productos
+      // 3. Productos
       navItems.add(
-        _buildNavItem(Icons.inventory_2, 'Productos', 3, () {
+        _buildNavItem(Icons.inventory_2, 'Productos', 2, () {
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => ProductosScreen()),
@@ -1068,12 +1059,12 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         }),
       );
 
-      // 5. Inventario (dropdown)
+      // 4. Inventario (dropdown)
       navItems.add(
         _buildDropdownNavItem(
           Icons.inventory_2_outlined,
           'Inventario',
-          4,
+          3,
           [
             PopupMenuItem<String>(
               value: 'historial',
@@ -1098,30 +1089,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                 ],
               ),
             ),
-            PopupMenuItem<String>(
-              value: 'ingredientes',
-              onTap: () {
-                Future.delayed(Duration.zero, () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => IngredientesScreen(),
-                    ),
-                  );
-                });
-              },
-              child: Row(
-                children: [
-                  Icon(Icons.restaurant_menu, color: Colors.green, size: 18),
-                  SizedBox(width: 8),
-                  Text(
-                    'Ingredientes',
-                    style: TextStyle(color: AppTheme.textPrimary),
-                  ),
-                ],
-              ),
-            ),
-            PopupMenuItem<String>(
+          PopupMenuItem<String>(
               value: 'proveedores',
               onTap: () {
                 Future.delayed(Duration.zero, () {
@@ -1146,18 +1114,12 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
             ),
           ],
           tooltip: "Menú de Inventario",
-          onCanceled: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => IngredientesScreen()),
-            );
-          },
         ),
       );
 
-      // 6. Facturas Compras
+      // 5. Facturas Compras
       navItems.add(
-        _buildNavItem(Icons.receipt_long, 'Facturas Compras', 5, () {
+        _buildNavItem(Icons.receipt_long, 'Facturas Compras', 4, () {
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => FacturasComprasScreen()),
@@ -1165,12 +1127,12 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         }),
       );
 
-      // 7. Gestión de Gastos (dropdown)
+      // 6. Gestión de Gastos (dropdown)
       navItems.add(
         _buildDropdownNavItem(
           Icons.account_balance_wallet,
           'Gastos',
-          6,
+          5,
           [
             PopupMenuItem<String>(
               value: 'ingresos_caja',
@@ -1252,30 +1214,9 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         ),
       );
 
-      // 8. Documentos / Mis Pedidos - Condicional según el rol
-
-      if (userProvider.isMesero) {
-        // Cualquier usuario con rol de mesero ve "Mis Pedidos"
-        navItems.add(
-          _buildNavItem(Icons.receipt_long, 'Mis Pedidos', 7, () {
-            Navigator.pushNamed(context, '/mesero');
-          }),
-        );
-      } else {
-        // Solo usuarios sin rol de mesero ven "Documentos"
-        navItems.add(
-          _buildNavItem(Icons.description, 'Documentos', 7, () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => DocumentosMesaScreen()),
-            );
-          }),
-        );
-      }
-
-      // 8. Caja
+      // 7. Caja
       navItems.add(
-        _buildNavItem(Icons.account_balance, 'Caja', 8, () {
+        _buildNavItem(Icons.account_balance, 'Caja', 6, () {
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => CuadreCajaScreen()),
@@ -1283,9 +1224,9 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         }),
       );
 
-      // 9. Configuración
+      // 8. Configuración
       navItems.add(
-        _buildNavItem(Icons.settings, 'Configuración', 9, () {
+        _buildNavItem(Icons.settings, 'Configuración', 7, () {
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => ConfiguracionScreen()),
@@ -2264,7 +2205,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                                     MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
-                                    'Mesa ${pedido['mesa'] ?? 'N/A'}',
+                                    'Pedido #${pedido['pedidoId']?.toString().substring(0, 8) ?? 'N/A'}',
                                     style: TextStyle(
                                       color: AppTheme.textPrimary,
                                       fontSize: 14, // Texto más grande

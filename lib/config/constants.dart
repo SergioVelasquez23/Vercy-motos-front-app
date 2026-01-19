@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 
 // Configuración de API
 const String kBackendUrl =
-    'https://sopa-y-carbon.onrender.com'; // URL del backend en producción (Render)
+    'https://vercy-motos-app.onrender.com'; // URL del backend en producción (Render)
 
 // URL de desarrollo local
 const String kLocalBackendUrl = 'http://localhost:8080';
@@ -70,5 +70,4 @@ const kTiposMovimiento = [
 ];
 
 // Nombre de la aplicación
-const kNombreApp =
-    'Kronnos'; // ✅ CORREGIDO: Actualizado de 'Sopa y Carbon' a 'Kronnos'
+const kNombreApp = 'Vercy Motos';

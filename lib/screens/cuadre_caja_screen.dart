@@ -64,7 +64,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
 
   // Services
   final CuadreCajaService _cuadreCajaService = CuadreCajaService();
-  final String baseUrl = 'https://sopa-y-carbon.onrender.com';
+  final String baseUrl = 'https://vercy-motos-app.onrender.com';
 
   // Filtros
   String? _selectedCaja;
@@ -561,6 +561,10 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
     return Scaffold(
       backgroundColor: bgDark,
       appBar: AppBar(
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: Text(
           'Cuadres de Caja',
           style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
@@ -887,7 +891,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                             '-- Responsable --',
                             style: TextStyle(color: textLight),
                           ),
-                          items: <String>['Sopa y Carbon', 'Sergio Pérez']
+                          items: <String>['Vercy Motos', 'Administrador']
                               .map<DropdownMenuItem<String>>((String value) {
                                 return DropdownMenuItem<String>(
                                   value: value,
@@ -1172,7 +1176,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                     style: TextStyle(fontSize: 16, color: textLight),
                   ),
                   Text(
-                    "Sopa y Carbon Vargas Rendón",
+                    "Vercy Motos",
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,

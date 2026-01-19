@@ -4,7 +4,6 @@ import '../models/producto.dart';
 import '../models/categoria.dart';
 import '../models/ingrediente.dart';
 import '../services/producto_service.dart';
-import '../services/ingrediente_service.dart';
 
 class DatosCacheProvider extends ChangeNotifier {
   static final DatosCacheProvider _instance = DatosCacheProvider._internal();
@@ -14,25 +13,20 @@ class DatosCacheProvider extends ChangeNotifier {
   // Datos en caché
   List<Producto>? _productos;
   List<Categoria>? _categorias;
-  List<Ingrediente>? _ingredientes;
 
   // Estados de carga
   bool _isLoadingProductos = false;
   bool _isLoadingCategorias = false;
-  bool _isLoadingIngredientes = false;
 
   // ✅ NUEVA ESTRATEGIA: Cache con timestamp y auto-refresh
   DateTime? _ultimaCargaProductos;
   DateTime? _ultimaCargaCategorias;
-  DateTime? _ultimaCargaIngredientes;
 
   // Configuración de caché (en minutos)
   final int _duracionCacheProductos =
       10; // ⚡ OPTIMIZADO: Aumentado a 10 min (menos recargas)
   final int _duracionCacheCategorias =
       30; // ⚡ OPTIMIZADO: Aumentado a 30 min (rara vez cambian)
-  final int _duracionCacheIngredientes =
-      20; // ⚡ OPTIMIZADO: Aumentado a 20 min (menos recargas)
 
   // Polling automático
   Timer? _pollingTimer;
@@ -41,19 +35,20 @@ class DatosCacheProvider extends ChangeNotifier {
 
   // Servicios
   final ProductoService _productoService = ProductoService();
-  final IngredienteService _ingredienteService = IngredienteService();
 
   // Getters
   List<Producto>? get productos => _productos;
   List<Categoria>? get categorias => _categorias;
-  List<Ingrediente>? get ingredientes => _ingredientes;
+  
+  // TODO: Ingredientes - Lista vacía temporal para compatibilidad
+  // Eliminar cuando se quite la funcionalidad de ingredientes
+  List<Ingrediente> get ingredientes => [];
 
   bool get isLoadingProductos => _isLoadingProductos;
   bool get isLoadingCategorias => _isLoadingCategorias;
-  bool get isLoadingIngredientes => _isLoadingIngredientes;
 
   bool get hasData =>
-      _productos != null && _categorias != null && _ingredientes != null;
+      _productos != null && _categorias != null;
 
   // ✅ NUEVOS GETTERS: Estado del caché
   bool get productosExpired =>
@@ -66,11 +61,6 @@ class DatosCacheProvider extends ChangeNotifier {
       DateTime.now().difference(_ultimaCargaCategorias!).inMinutes >
           _duracionCacheCategorias;
 
-  bool get ingredientesExpired =>
-      _ultimaCargaIngredientes == null ||
-      DateTime.now().difference(_ultimaCargaIngredientes!).inMinutes >
-          _duracionCacheIngredientes;
-
   DateTime? get ultimaActualizacion {
     if (_ultimaCargaProductos == null) return null;
     return _ultimaCargaProductos;
@@ -79,12 +69,8 @@ class DatosCacheProvider extends ChangeNotifier {
   // Inicializar el provider
   Future<void> initialize() async {
     print('🚀 Inicializando DatosCacheProvider...');
-    // Solo cargar categorías e ingredientes al inicio (son rápidos)
-    // Los productos se cargarán progresivamente con warmupProductos()
-    await Future.wait([
-      _cargarCategorias(force: false, silent: false),
-      _cargarIngredientes(force: false, silent: false),
-    ]);
+    // Las categorías se cargarán bajo demanda cuando se necesiten
+    // await _cargarCategorias(force: false, silent: false);
     _startPolling(); // ✅ Iniciar polling automático
   }
 
@@ -118,7 +104,6 @@ class DatosCacheProvider extends ChangeNotifier {
       await Future.wait([
         _cargarProductos(force: force, silent: silent),
         _cargarCategorias(force: force, silent: silent),
-        _cargarIngredientes(force: force, silent: silent),
       ]);
 
       print(
@@ -126,7 +111,6 @@ class DatosCacheProvider extends ChangeNotifier {
       );
       print('   - Productos: ${_productos?.length ?? 0}');
       print('   - Categorías: ${_categorias?.length ?? 0}');
-      print('   - Ingredientes: ${_ingredientes?.length ?? 0}');
     } catch (e) {
       print('❌ Error cargando datos: $e');
     }
@@ -147,16 +131,14 @@ class DatosCacheProvider extends ChangeNotifier {
     ) async {
       print('🔄 Ejecutando polling automático...');
 
-      // Solo recargar datos expirados (SILENCIOSO para no interrumpir UI)
+      // Solo recargar productos si expiraron (SILENCIOSO para no interrumpir UI)
       if (productosExpired) {
         await _cargarProductos(silent: true);
       }
-      if (categoriasExpired) {
-        await _cargarCategorias(silent: true);
-      }
-      if (ingredientesExpired) {
-        await _cargarIngredientes(silent: true);
-      }
+      // Categorías deshabilitadas - no se usan en esta app
+      // if (categoriasExpired) {
+      //   await _cargarCategorias(silent: true);
+      // }
     });
   }
 
@@ -288,40 +270,6 @@ class DatosCacheProvider extends ChangeNotifier {
     }
   }
 
-  // Cargar ingredientes (con cache inteligente)
-  Future<void> _cargarIngredientes({
-    bool force = false,
-    bool silent = false,
-  }) async {
-    // ✅ NUEVO: Verificar si necesita actualización
-    if (!force && !ingredientesExpired && _ingredientes != null) {
-      print('🥬 Ingredientes en caché válidos, usando caché local');
-      return;
-    }
-
-    if (_isLoadingIngredientes) return;
-
-    _isLoadingIngredientes = true;
-    // ✅ MEJORADO: Solo notificar si no es silencioso
-    if (!silent) notifyListeners();
-
-    try {
-      final ingredientes = await _ingredienteService.getAllIngredientes();
-      _ingredientes = ingredientes;
-      _ultimaCargaIngredientes =
-          DateTime.now(); // ✅ NUEVO: Actualizar timestamp
-      print(
-        '🥬 Ingredientes cargados: ${ingredientes.length} (${force ? 'forzado' : 'caché expirado'}) ${silent ? '(silencioso)' : ''}',
-      );
-    } catch (e) {
-      print('❌ Error cargando ingredientes: $e');
-    } finally {
-      _isLoadingIngredientes = false;
-      // ✅ MEJORADO: Solo notificar si no es silencioso
-      if (!silent) notifyListeners();
-    }
-  }
-
   // Recargar datos manualmente
   Future<void> recargarDatos() async {
     print('🔄 Recarga manual solicitada...');
@@ -335,10 +283,8 @@ class DatosCacheProvider extends ChangeNotifier {
     print('🗑️ Limpiando caché...');
     _productos = null;
     _categorias = null;
-    _ingredientes = null;
     _ultimaCargaProductos = null;
     _ultimaCargaCategorias = null;
-    _ultimaCargaIngredientes = null;
     notifyListeners();
   }
 

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../theme/app_theme.dart';
-import '../../models/mesa.dart';
 import '../../models/pedido.dart';
 import '../../models/item_pedido.dart';
 import '../../models/pago_parcial.dart';
@@ -9,10 +8,10 @@ import '../../widgets/common/common_widgets.dart';
 import '../../utils/format_utils.dart';
 
 class DialogoPago extends StatefulWidget {
-  final Mesa mesa;
   final Pedido pedido;
+  final String? clienteNombre;
 
-  const DialogoPago({super.key, required this.mesa, required this.pedido});
+  const DialogoPago({super.key, required this.pedido, this.clienteNombre});
 
   @override
   State<DialogoPago> createState() => _DialogoPagoState();
@@ -46,11 +45,8 @@ class _DialogoPagoState extends State<DialogoPago> {
   // Variables de estado
   String medioPago = 'efectivo';
   bool incluyePropina = false;
-  bool esCortesia = false;
-  bool esConsumoInterno = false;
   bool pagoMultiple = false;
-  bool incluirDatosCliente =
-      false; // ✅ NUEVO: Para mostrar/ocultar sección cliente
+  bool incluirDatosCliente = false;
   double billetesSeleccionados = 0.0;
   List<ItemPedido> productosSeleccionados = [];
 
@@ -911,31 +907,18 @@ class _DialogoPagoState extends State<DialogoPago> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SeccionTitulo(titulo: 'Opciones Especiales'),
+        SeccionTitulo(titulo: 'Opciones de Pago'),
         SizedBox(height: 16),
         SeccionContainer(
           child: Column(
             children: [
               _buildSwitchOption(
-                icon: Icons.card_giftcard,
-                title: 'Es cortesía (gratuito)',
-                value: esCortesia,
+                icon: Icons.person,
+                title: 'Incluir datos del cliente',
+                value: incluirDatosCliente,
                 onChanged: (value) {
                   setState(() {
-                    esCortesia = value;
-                    if (value) esConsumoInterno = false;
-                  });
-                },
-              ),
-              SizedBox(height: 16),
-              _buildSwitchOption(
-                icon: Icons.home_work,
-                title: 'Consumo interno',
-                value: esConsumoInterno,
-                onChanged: (value) {
-                  setState(() {
-                    esConsumoInterno = value;
-                    if (value) esCortesia = false;
+                    incluirDatosCliente = value;
                   });
                 },
               ),
@@ -1001,20 +984,16 @@ class _DialogoPagoState extends State<DialogoPago> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               InfoRow(
-                icono: Icons.table_restaurant,
-                etiqueta: 'Mesa',
-                valor: widget.pedido.mesa,
+                icono: Icons.receipt,
+                etiqueta: 'N° Factura',
+                valor: widget.pedido.id ?? 'Pendiente',
               ),
-              InfoRow(
-                icono: Icons.person,
-                etiqueta: 'Mesero',
-                valor: widget.pedido.mesero,
-              ),
-              if (widget.pedido.cliente != null)
+              if (widget.clienteNombre != null &&
+                  widget.clienteNombre!.isNotEmpty)
                 InfoRow(
                   icono: Icons.person_outline,
                   etiqueta: 'Cliente',
-                  valor: widget.pedido.cliente!,
+                  valor: widget.clienteNombre!,
                 ),
             ],
           ),
@@ -1603,8 +1582,6 @@ class _DialogoPagoState extends State<DialogoPago> {
       'descuentoPorcentaje': descuentoPorcentajeController.text,
       'descuentoValor': descuentoValorController.text,
       'propina': propina,
-      'esCortesia': esCortesia,
-      'esConsumoInterno': esConsumoInterno,
       'billetesRecibidos': billetesSeleccionados,
       'pagoMultiple': pagoMultiple,
       'montoEfectivo': montoEfectivoController.text,

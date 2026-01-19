@@ -91,6 +91,37 @@ class Producto {
   final List<String>
   ingredientesSeleccionadosCombo; // Nuevo campo para combo seleccionado
 
+  // Campos para carga masiva desde Excel
+  final String? codigo; // CODIGO*
+  final String? productoOServicio; // PRODUCTO O SERVICIO*
+  final String? controlInventario; // CONTROL DE INVENTARIO
+  final double? porcentajeImpuesto; // % IMPUESTO
+  final int? inventarioBajo; // INVENTARIO BAJO
+  final int? inventarioOptimo; // INVENTARIO ÓPTIMO
+  final String? tipoProductoNombre; // TIPO PRODUCTO (NOMBRE)
+  final String? lineaProductoNombre; // LINEA PRODUCTO (NOMBRE)
+  final String? claseProductoNombre; // CLASE PRODUCTO (NOMBRE)
+  final String? codigoBarras; // CÓDIGO DE BARRAS
+  final String? localizacion; // LOCALIZACIÓN
+  final String? nombreProveedor; // NOMBRE PROVEEDOR
+  final String? nitProveedor; // NIT PROVEEDOR (SIN DV)
+  final String? marca; // MARCA
+  final double? precioVentaOpc1; // PRECIO DE VENTA OPC 1
+  final double? precioVentaOpc2; // PRECIO DE VENTA OPC 2
+  final double? precioVentaOpc3; // PRECIO DE VENTA OPC 3
+  final double? precioVentaOpc4; // PRECIO DE VENTA OPC 4
+  final double? precioVentaOpc5; // PRECIO DE VENTA OPC 5
+  final int? almacen; // ALMACEN
+  final int? bodega; // BODEGA
+  final String? ubicacion1; // UBICACIÓN 1
+  final String? ubicacion2; // UBICACIÓN 2
+  final String? ubicacion3; // UBICACIÓN 3
+  final String? ubicacion4; // UBICACIÓN 4
+  final String? localizacionUbi1; // LOCALIZACIÓN UBI 1
+  final String? localizacionUbi2; // LOCALIZACIÓN UBI 2
+  final String? localizacionUbi3; // LOCALIZACIÓN UBI 3
+  final String? localizacionUbi4; // LOCALIZACIÓN UBI 4
+
   Producto({
     required this.id,
     required this.nombre,
@@ -111,6 +142,36 @@ class Producto {
     this.ingredientesRequeridos = const [],
     this.ingredientesOpcionales = const [],
     this.ingredientesSeleccionadosCombo = const [], // Nuevo campo
+    // Campos para carga masiva
+    this.codigo,
+    this.productoOServicio,
+    this.controlInventario,
+    this.porcentajeImpuesto,
+    this.inventarioBajo,
+    this.inventarioOptimo,
+    this.tipoProductoNombre,
+    this.lineaProductoNombre,
+    this.claseProductoNombre,
+    this.codigoBarras,
+    this.localizacion,
+    this.nombreProveedor,
+    this.nitProveedor,
+    this.marca,
+    this.precioVentaOpc1,
+    this.precioVentaOpc2,
+    this.precioVentaOpc3,
+    this.precioVentaOpc4,
+    this.precioVentaOpc5,
+    this.almacen,
+    this.bodega,
+    this.ubicacion1,
+    this.ubicacion2,
+    this.ubicacion3,
+    this.ubicacion4,
+    this.localizacionUbi1,
+    this.localizacionUbi2,
+    this.localizacionUbi3,
+    this.localizacionUbi4,
   });
 
   // Métodos de conveniencia para verificar tipo de producto
@@ -155,6 +216,36 @@ class Producto {
         .map((i) => i.toJson())
         .toList(),
     'ingredientesSeleccionadosCombo': ingredientesSeleccionadosCombo,
+    // Campos para carga masiva
+    'codigo': codigo,
+    'productoOServicio': productoOServicio,
+    'controlInventario': controlInventario,
+    'porcentajeImpuesto': porcentajeImpuesto,
+    'inventarioBajo': inventarioBajo,
+    'inventarioOptimo': inventarioOptimo,
+    'tipoProductoNombre': tipoProductoNombre,
+    'lineaProductoNombre': lineaProductoNombre,
+    'claseProductoNombre': claseProductoNombre,
+    'codigoBarras': codigoBarras,
+    'localizacion': localizacion,
+    'nombreProveedor': nombreProveedor,
+    'nitProveedor': nitProveedor,
+    'marca': marca,
+    'precioVentaOpc1': precioVentaOpc1,
+    'precioVentaOpc2': precioVentaOpc2,
+    'precioVentaOpc3': precioVentaOpc3,
+    'precioVentaOpc4': precioVentaOpc4,
+    'precioVentaOpc5': precioVentaOpc5,
+    'almacen': almacen,
+    'bodega': bodega,
+    'ubicacion1': ubicacion1,
+    'ubicacion2': ubicacion2,
+    'ubicacion3': ubicacion3,
+    'ubicacion4': ubicacion4,
+    'localizacionUbi1': localizacionUbi1,
+    'localizacionUbi2': localizacionUbi2,
+    'localizacionUbi3': localizacionUbi3,
+    'localizacionUbi4': localizacionUbi4,
   };
 
   factory Producto.fromJson(Map<String, dynamic> json) {
@@ -204,6 +295,36 @@ class Producto {
           json['ingredientesSeleccionadosCombo'] != null
           ? List<String>.from(json['ingredientesSeleccionadosCombo'])
           : [],
+      // Campos para carga masiva
+      codigo: json['codigo']?.toString(),
+      productoOServicio: json['productoOServicio']?.toString(),
+      controlInventario: json['controlInventario']?.toString(),
+      porcentajeImpuesto: (json['porcentajeImpuesto'] as num?)?.toDouble(),
+      inventarioBajo: json['inventarioBajo'] as int?,
+      inventarioOptimo: json['inventarioOptimo'] as int?,
+      tipoProductoNombre: json['tipoProductoNombre']?.toString(),
+      lineaProductoNombre: json['lineaProductoNombre']?.toString(),
+      claseProductoNombre: json['claseProductoNombre']?.toString(),
+      codigoBarras: json['codigoBarras']?.toString(),
+      localizacion: json['localizacion']?.toString(),
+      nombreProveedor: json['nombreProveedor']?.toString(),
+      nitProveedor: json['nitProveedor']?.toString(),
+      marca: json['marca']?.toString(),
+      precioVentaOpc1: (json['precioVentaOpc1'] as num?)?.toDouble(),
+      precioVentaOpc2: (json['precioVentaOpc2'] as num?)?.toDouble(),
+      precioVentaOpc3: (json['precioVentaOpc3'] as num?)?.toDouble(),
+      precioVentaOpc4: (json['precioVentaOpc4'] as num?)?.toDouble(),
+      precioVentaOpc5: (json['precioVentaOpc5'] as num?)?.toDouble(),
+      almacen: json['almacen'] as int?,
+      bodega: json['bodega'] as int?,
+      ubicacion1: json['ubicacion1']?.toString(),
+      ubicacion2: json['ubicacion2']?.toString(),
+      ubicacion3: json['ubicacion3']?.toString(),
+      ubicacion4: json['ubicacion4']?.toString(),
+      localizacionUbi1: json['localizacionUbi1']?.toString(),
+      localizacionUbi2: json['localizacionUbi2']?.toString(),
+      localizacionUbi3: json['localizacionUbi3']?.toString(),
+      localizacionUbi4: json['localizacionUbi4']?.toString(),
     );
   }
 
@@ -260,6 +381,35 @@ class Producto {
     List<IngredienteProducto>? ingredientesRequeridos,
     List<IngredienteProducto>? ingredientesOpcionales,
     List<String>? ingredientesSeleccionadosCombo,
+    String? codigo,
+    String? productoOServicio,
+    String? controlInventario,
+    double? porcentajeImpuesto,
+    int? inventarioBajo,
+    int? inventarioOptimo,
+    String? tipoProductoNombre,
+    String? lineaProductoNombre,
+    String? claseProductoNombre,
+    String? codigoBarras,
+    String? localizacion,
+    String? nombreProveedor,
+    String? nitProveedor,
+    String? marca,
+    double? precioVentaOpc1,
+    double? precioVentaOpc2,
+    double? precioVentaOpc3,
+    double? precioVentaOpc4,
+    double? precioVentaOpc5,
+    int? almacen,
+    int? bodega,
+    String? ubicacion1,
+    String? ubicacion2,
+    String? ubicacion3,
+    String? ubicacion4,
+    String? localizacionUbi1,
+    String? localizacionUbi2,
+    String? localizacionUbi3,
+    String? localizacionUbi4,
   }) {
     return Producto(
       id: id ?? this.id,
@@ -285,6 +435,35 @@ class Producto {
           ingredientesOpcionales ?? this.ingredientesOpcionales,
       ingredientesSeleccionadosCombo:
           ingredientesSeleccionadosCombo ?? this.ingredientesSeleccionadosCombo,
+      codigo: codigo ?? this.codigo,
+      productoOServicio: productoOServicio ?? this.productoOServicio,
+      controlInventario: controlInventario ?? this.controlInventario,
+      porcentajeImpuesto: porcentajeImpuesto ?? this.porcentajeImpuesto,
+      inventarioBajo: inventarioBajo ?? this.inventarioBajo,
+      inventarioOptimo: inventarioOptimo ?? this.inventarioOptimo,
+      tipoProductoNombre: tipoProductoNombre ?? this.tipoProductoNombre,
+      lineaProductoNombre: lineaProductoNombre ?? this.lineaProductoNombre,
+      claseProductoNombre: claseProductoNombre ?? this.claseProductoNombre,
+      codigoBarras: codigoBarras ?? this.codigoBarras,
+      localizacion: localizacion ?? this.localizacion,
+      nombreProveedor: nombreProveedor ?? this.nombreProveedor,
+      nitProveedor: nitProveedor ?? this.nitProveedor,
+      marca: marca ?? this.marca,
+      precioVentaOpc1: precioVentaOpc1 ?? this.precioVentaOpc1,
+      precioVentaOpc2: precioVentaOpc2 ?? this.precioVentaOpc2,
+      precioVentaOpc3: precioVentaOpc3 ?? this.precioVentaOpc3,
+      precioVentaOpc4: precioVentaOpc4 ?? this.precioVentaOpc4,
+      precioVentaOpc5: precioVentaOpc5 ?? this.precioVentaOpc5,
+      almacen: almacen ?? this.almacen,
+      bodega: bodega ?? this.bodega,
+      ubicacion1: ubicacion1 ?? this.ubicacion1,
+      ubicacion2: ubicacion2 ?? this.ubicacion2,
+      ubicacion3: ubicacion3 ?? this.ubicacion3,
+      ubicacion4: ubicacion4 ?? this.ubicacion4,
+      localizacionUbi1: localizacionUbi1 ?? this.localizacionUbi1,
+      localizacionUbi2: localizacionUbi2 ?? this.localizacionUbi2,
+      localizacionUbi3: localizacionUbi3 ?? this.localizacionUbi3,
+      localizacionUbi4: localizacionUbi4 ?? this.localizacionUbi4,
     );
   }
 }

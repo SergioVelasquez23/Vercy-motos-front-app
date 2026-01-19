@@ -7,7 +7,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 // ignore: uri_does_not_exist
 import 'dart:html'
-    if (dart.library.io) 'package:serch_restapp/utils/html_stub.dart'
+    if (dart.library.io) 'package:vercy_motos/utils/html_stub.dart'
     as html;
 
 class UserService {

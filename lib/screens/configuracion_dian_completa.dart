@@ -848,7 +848,7 @@ class _ConfiguracionDianCompletaState extends State<ConfiguracionDianCompleta>
             _buildTextField(
               controller: _nombreSoftwareController,
               label: 'Nombre del Software',
-              hint: 'Kronnos',
+              hint: 'Vercy Motos',
               icon: Icons.apps,
             ),
             const SizedBox(height: 16),

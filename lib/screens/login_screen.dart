@@ -5,7 +5,6 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../services/auth_service.dart';
 import '../providers/user_provider.dart';
 import '../theme/app_theme.dart';
-import '../services/mesa_service.dart';
 import '../services/producto_service.dart';
 import '../services/pedido_service.dart';
 
@@ -39,7 +38,6 @@ class _LoginScreenState extends State<LoginScreen> {
   Timer? _wakeupTicker;
   Timer? _wakeupStepTimer;
 
-  final MesaService _mesaService = MesaService();
   final ProductoService _productoService = ProductoService();
   final PedidoService _pedidoService = PedidoService();
 
@@ -94,7 +92,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _performWakeupStep() async {
-    print('🔁 Wake-up: intentando recarga completa (mesas/productos/pedidos)');
+    print('🔁 Wake-up: intentando recarga completa (productos/pedidos)');
 
     try {
       // Limpiar cache de productos para forzar descarga fresca
@@ -110,13 +108,6 @@ class _LoginScreenState extends State<LoginScreen> {
         print('✅ Wake-up: productos recargados con carga progresiva');
       } catch (e) {
         print('⚠️ Wake-up: fallo recargando productos: $e');
-      }
-
-      try {
-        await _mesaService.getMesas();
-        print('✅ Wake-up: mesas recargadas');
-      } catch (e) {
-        print('⚠️ Wake-up: fallo recargando mesas: $e');
       }
 
       try {
@@ -189,11 +180,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
           // Navegar automáticamente
           await Future.delayed(Duration(milliseconds: 100));
-          if (userProvider.isMesero && !userProvider.isAdmin) {
-            Navigator.pushReplacementNamed(context, '/mesas');
-          } else {
-            Navigator.pushReplacementNamed(context, '/dashboard');
-          }
+          Navigator.pushReplacementNamed(context, '/dashboard');
         } else if (response != null && response['requiresCode'] == true) {
           // Si requiere código 2FA, mostrar el campo
           setState(() {
@@ -304,11 +291,7 @@ class _LoginScreenState extends State<LoginScreen> {
             }
 
             await Future.delayed(Duration(milliseconds: 100));
-            if (userProvider.isMesero && !userProvider.isAdmin) {
-              Navigator.pushReplacementNamed(context, '/mesas');
-            } else {
-              Navigator.pushReplacementNamed(context, '/dashboard');
-            }
+            Navigator.pushReplacementNamed(context, '/dashboard');
           } catch (e) {
             setState(() {
               errorMessage = 'Error interno. Inténtalo de nuevo.';
@@ -346,12 +329,7 @@ class _LoginScreenState extends State<LoginScreen> {
         }
 
         await Future.delayed(Duration(milliseconds: 100));
-
-        if (userProvider.isMesero && !userProvider.isAdmin) {
-          Navigator.pushReplacementNamed(context, '/mesas');
-        } else {
-          Navigator.pushReplacementNamed(context, '/dashboard');
-        }
+        Navigator.pushReplacementNamed(context, '/dashboard');
       } else {
         setState(() {
           errorMessage = 'Código incorrecto o expirado.';
@@ -585,7 +563,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Container(
                     padding: EdgeInsets.all(context.responsivePadding),
                     constraints: BoxConstraints(
-                      maxWidth: context.isMobile ? double.infinity : 400,
+                      maxWidth: context.isMobile ? double.infinity : 520,
                     ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -593,76 +571,52 @@ class _LoginScreenState extends State<LoginScreen> {
                         // Logo elegante con sombra
                         Container(
                           padding: EdgeInsets.all(AppTheme.spacingLarge),
-                          decoration: AppTheme.elevatedCardDecoration,
-                          child: Container(
-                            width: context.isMobile ? 120 : 140,
-                            height: context.isMobile ? 120 : 140,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(
-                                AppTheme.radiusLarge,
-                              ),
-                              border: Border.all(
-                                color: AppTheme.primary.withOpacity(0.2),
-                                width: 2,
-                              ),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(
+                              AppTheme.radiusXLarge,
                             ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(
-                                AppTheme.radiusLarge - 2,
+                            border: Border.all(
+                              color: AppTheme.primary.withOpacity(0.18),
+                              width: 2,
+                            ),
+                            // Fondo cristalino (glassmorphism)
+                            color: Colors.white.withOpacity(0.08),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.18),
+                                blurRadius: 24,
+                                offset: Offset(0, 8),
                               ),
-                              child: Image.network(
-                                'https://sopa-y-carbon-app.web.app/icons/Icon-192.png',
-                                fit: BoxFit.cover,
-                                loadingBuilder:
-                                    (context, child, loadingProgress) {
-                                      if (loadingProgress == null) return child;
-                                      return Container(
-                                        decoration: BoxDecoration(
-                                          color: AppTheme.primary.withOpacity(
-                                            0.1,
-                                          ),
-                                          borderRadius: BorderRadius.circular(
-                                            AppTheme.radiusLarge - 2,
-                                          ),
-                                        ),
-                                        child: Center(
-                                          child: CircularProgressIndicator(
-                                            value:
-                                                loadingProgress
-                                                        .expectedTotalBytes !=
-                                                    null
-                                                ? loadingProgress
-                                                          .cumulativeBytesLoaded /
-                                                      loadingProgress
-                                                          .expectedTotalBytes!
-                                                : null,
-                                            color: AppTheme.primary,
-                                          ),
-                                        ),
-                                      );
-                                    },
+                            ],
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(
+                              AppTheme.radiusXLarge - 2,
+                            ),
+                            child: Container(
+                              width: context.isMobile ? 260 : 340,
+                              height: context.isMobile ? 180 : 220,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(
+                                  AppTheme.radiusXLarge - 2,
+                                ),
+                              ),
+                              child: Image.asset(
+                                'assets/images/logo.png',
+                                fit: BoxFit.contain,
                                 errorBuilder: (context, error, stackTrace) {
-                                  // Fallback a asset local si falla la red
-                                  return Image.asset(
-                                    'assets/images/logo.png',
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) {
-                                      return Container(
-                                        decoration: BoxDecoration(
-                                          color: AppTheme.primary.withOpacity(
-                                            0.1,
-                                          ),
-                                          borderRadius: BorderRadius.circular(
-                                            AppTheme.radiusLarge - 2,
-                                          ),
-                                        ),
-                                        child: Icon(
-                                          Icons.restaurant,
-                                          color: AppTheme.primary,
-                                          size: context.isMobile ? 60 : 70,
-                                        ),
-                                      );
-                                    },
+                                  return Container(
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.primary.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(
+                                        AppTheme.radiusXLarge - 2,
+                                      ),
+                                    ),
+                                    child: Icon(
+                                      Icons.restaurant,
+                                      color: AppTheme.primary,
+                                      size: context.isMobile ? 80 : 100,
+                                    ),
                                   );
                                 },
                               ),
@@ -1082,7 +1036,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       SizedBox(height: AppTheme.spacingMedium),
                       Text(
-                        'Se intentará recargar Mesas, Productos y Pedidos periódicamente.',
+                        'Se intentará recargar Productos y Pedidos periódicamente.',
                         textAlign: TextAlign.center,
                         style: AppTheme.bodySmall.copyWith(
                           color: Colors.white70,

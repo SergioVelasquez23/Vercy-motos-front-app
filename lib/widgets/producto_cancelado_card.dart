@@ -122,13 +122,13 @@ class ProductoCanceladoCard extends StatelessWidget {
                         Row(
                           children: [
                             Icon(
-                              Icons.table_restaurant,
+                              Icons.receipt_long,
                               size: 16,
                               color: AppTheme.textSecondary,
                             ),
                             SizedBox(width: 4),
                             Text(
-                              productoCancelado.mesaNombre,
+                              'Pedido: ${productoCancelado.pedidoId.substring(0, 8)}',
                               style: TextStyle(
                                 color: AppTheme.textSecondary,
                                 fontSize: 14,

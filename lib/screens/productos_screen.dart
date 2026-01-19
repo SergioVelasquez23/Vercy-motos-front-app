@@ -5,6 +5,12 @@ import '../config/performance_config.dart';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:io' show File;
+import 'package:http/http.dart' as http;
+import 'dart:html' as html show FileUploadInputElement, File, FileReader;
+import 'dart:typed_data' show Uint8List;
 
 import '../theme/app_theme.dart';
 import '../models/producto.dart';
@@ -25,7 +31,7 @@ class ProductosScreen extends StatefulWidget {
 }
 
 class _ProductosScreenState extends State<ProductosScreen> {
-  static const String _backendBaseUrl = "https://sopa-y-carbon.onrender.com";
+  static const String _backendBaseUrl = "https://vercy-motos-app.onrender.com";
   final ImageService _imageService = ImageService();
   final ProductoService _productoService = ProductoService();
   final ImageLoaderService _imageLoader = ImageLoaderService();
@@ -530,6 +536,12 @@ class _ProductosScreenState extends State<ProductosScreen> {
     return Scaffold(
       backgroundColor: AppTheme.backgroundDark,
       appBar: AppBar(
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () {
+            Navigator.pushReplacementNamed(context, '/dashboard');
+          },
+        ),
         title: Text('Gestión de Productos', style: AppTheme.headlineMedium),
         backgroundColor: AppTheme.primary,
         elevation: 0,
@@ -722,12 +734,27 @@ class _ProductosScreenState extends State<ProductosScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          _showProductoDialog();
-        },
-        backgroundColor: AppTheme.primary,
-        child: Icon(Icons.add),
+      floatingActionButton: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          FloatingActionButton(
+            heroTag: 'upload',
+            onPressed: _mostrarDialogoCargaMasiva,
+            backgroundColor: Colors.green,
+            child: Icon(Icons.upload_file),
+            tooltip: 'Carga masiva Excel',
+          ),
+          SizedBox(height: 16),
+          FloatingActionButton(
+            heroTag: 'add',
+            onPressed: () {
+              _showProductoDialog();
+            },
+            backgroundColor: AppTheme.primary,
+            child: Icon(Icons.add),
+            tooltip: 'Agregar producto',
+          ),
+        ],
       ),
     );
   }
@@ -2855,6 +2882,361 @@ class _ProductosScreenState extends State<ProductosScreen> {
     if (cantidad == null || cantidad <= 0) return false;
 
     return true;
+  }
+
+  // Método para mostrar el diálogo de carga masiva
+  void _mostrarDialogoCargaMasiva() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.upload_file, color: Colors.green),
+              SizedBox(width: 12),
+              Text('Carga Masiva de Productos'),
+            ],
+          ),
+          content: Container(
+            width: 400,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Sube un archivo Excel (.xlsx o .xls) con los productos a cargar.',
+                  style: TextStyle(fontSize: 14),
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'El archivo debe contener las siguientes columnas:',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  '• CODIGO*\n'
+                  '• NOMBRE DEL PRODUCTO*\n'
+                  '• PRECIO VENTA PRINCIPAL*\n'
+                  '• COSTO UNITARIO*\n'
+                  '• PRODUCTO O SERVICIO*\n'
+                  '• CONTROL DE INVENTARIO\n'
+                  '• % IMPUESTO\n'
+                  '• INVENTARIO BAJO\n'
+                  '• INVENTARIO ÓPTIMO\n'
+                  '• Y más...',
+                  style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Cancelar'),
+            ),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.pop(context);
+                _seleccionarYCargarArchivo();
+              },
+              icon: Icon(Icons.folder_open),
+              label: Text('Seleccionar Archivo'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Método para seleccionar y cargar el archivo Excel
+  Future<void> _seleccionarYCargarArchivo() async {
+    try {
+      print('🔍 Iniciando selección de archivo...');
+      print('🌐 ¿Es web? $kIsWeb');
+
+      if (kIsWeb) {
+        // En web, usar HTML input file directamente
+        await _seleccionarArchivoWeb();
+      } else {
+        // En desktop/mobile, usar file_picker
+        await _seleccionarArchivoDesktop();
+      }
+    } catch (e, stackTrace) {
+      print('❌ Error al seleccionar archivo: $e');
+      print('📍 StackTrace: $stackTrace');
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 5),
+            action: SnackBarAction(
+              label: 'OK',
+              textColor: Colors.white,
+              onPressed: () {},
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  // Método específico para web usando HTML input
+  Future<void> _seleccionarArchivoWeb() async {
+    print('🌐 Usando selector HTML para web...');
+
+    // Crear input file
+    final html.FileUploadInputElement uploadInput =
+        html.FileUploadInputElement();
+    uploadInput.accept =
+        '.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel';
+    uploadInput.click();
+
+    // Esperar a que el usuario seleccione un archivo
+    await uploadInput.onChange.first;
+
+    final files = uploadInput.files;
+    if (files == null || files.isEmpty) {
+      print('⚠️ No se seleccionó ningún archivo');
+      return;
+    }
+
+    final file = files[0];
+    print('✅ Archivo seleccionado: ${file.name}');
+    print('   - Tamaño: ${file.size} bytes');
+
+    // Mostrar diálogo de carga
+    if (mounted) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => WillPopScope(
+          onWillPop: () async => false,
+          child: Center(
+            child: Card(
+              child: Padding(
+                padding: EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 16),
+                    Text('Cargando productos...'),
+                    SizedBox(height: 8),
+                    Text(
+                      'Por favor espera',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Leer el archivo como bytes
+    final reader = html.FileReader();
+    reader.readAsArrayBuffer(file);
+    await reader.onLoad.first;
+
+    final bytes = reader.result as Uint8List;
+    print('📤 Enviando archivo desde web (${bytes.length} bytes)');
+
+    // Enviar el archivo
+    await _cargarArchivoExcelBytes(bytes, file.name);
+
+    // Cerrar diálogo de carga
+    if (mounted) {
+      Navigator.pop(context);
+    }
+  }
+
+  // Método específico para desktop/mobile usando file_picker
+  Future<void> _seleccionarArchivoDesktop() async {
+    print('💻 Usando FilePicker para desktop/mobile...');
+
+    FilePickerResult? result;
+
+    try {
+      result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['xlsx', 'xls'],
+        allowMultiple: false,
+        withReadStream: true,
+      );
+    } catch (pickerError) {
+      print('❌ Error en FilePicker: $pickerError');
+      throw Exception('Error al abrir selector de archivos: $pickerError');
+    }
+
+    // Verificar si se canceló la selección
+    if (result == null) {
+      print('⚠️ Selección de archivo cancelada por el usuario');
+      return;
+    }
+
+    // Verificar si hay archivos seleccionados
+    if (result.files.isEmpty) {
+      print('⚠️ No se seleccionaron archivos');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('No se seleccionó ningún archivo'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+      return;
+    }
+
+    PlatformFile file = result.files.first;
+    print('✅ Archivo seleccionado: ${file.name}');
+    print('   - Tamaño: ${file.size} bytes');
+    print('   - Tiene path: ${file.path != null}');
+
+    if (file.path == null || file.path!.isEmpty) {
+      throw Exception('No se pudo obtener la ruta del archivo');
+    }
+
+    // Mostrar diálogo de carga
+    if (mounted) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => WillPopScope(
+          onWillPop: () async => false,
+          child: Center(
+            child: Card(
+              child: Padding(
+                padding: EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 16),
+                    Text('Cargando productos...'),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    print('📤 Enviando archivo desde path: ${file.path}');
+    await _cargarArchivoExcel(file.path!);
+
+    // Cerrar diálogo de carga
+    if (mounted) {
+      Navigator.pop(context);
+    }
+  }
+
+  // Método para cargar el archivo Excel al backend usando bytes (para web)
+  Future<void> _cargarArchivoExcelBytes(
+    List<int> bytes,
+    String fileName,
+  ) async {
+    try {
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$_backendBaseUrl/api/productos/carga-masiva'),
+      );
+
+      // Agregar el archivo desde bytes
+      request.files.add(
+        http.MultipartFile.fromBytes('archivo', bytes, filename: fileName),
+      );
+
+      // Enviar la petición
+      var streamedResponse = await request.send();
+      var response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Productos cargados exitosamente'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+
+        // Recargar los productos
+        await _cargarDatosDesdeCache();
+      } else {
+        throw Exception(
+          'Error al cargar productos: ${response.statusCode} - ${response.body}',
+        );
+      }
+    } catch (e) {
+      print('Error al cargar archivo Excel: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al cargar productos: $e'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 5),
+          ),
+        );
+      }
+    }
+  }
+
+  // Método para cargar el archivo Excel al backend usando path (para desktop/mobile)
+  Future<void> _cargarArchivoExcel(String filePath) async {
+    try {
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$_backendBaseUrl/api/productos/carga-masiva'),
+      );
+
+      // Agregar el archivo
+      request.files.add(await http.MultipartFile.fromPath('archivo', filePath));
+
+      // Enviar la petición
+      var streamedResponse = await request.send();
+      var response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Productos cargados exitosamente'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+
+        // Recargar los productos
+        await _cargarDatosDesdeCache();
+      } else {
+        throw Exception(
+          'Error al cargar productos: ${response.statusCode} - ${response.body}',
+        );
+      }
+    } catch (e) {
+      print('Error al cargar archivo Excel: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al cargar productos: $e'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 5),
+          ),
+        );
+      }
+    }
   }
 
 }

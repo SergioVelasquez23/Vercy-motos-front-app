@@ -1,91 +1,47 @@
+// Archivo temporal - Modelo Ingrediente para compatibilidad
+// TODO: Eliminar cuando se quite la funcionalidad de ingredientes del proyecto
+
 class Ingrediente {
   final String id;
   final String nombre;
   final String categoria;
+  final String unidadMedida;
   final double cantidad;
-  final String unidad;
-  final double costo;
-  final String estado;
-  final bool descontable;
-  final double? stockActual;
-  final double? stockMinimo;
+  final double precioUnitario;
+  final String? descripcion;
+
+  // Alias para compatibilidad
+  String get unidad => unidadMedida;
 
   Ingrediente({
     required this.id,
     required this.nombre,
-    required this.categoria,
-    required this.cantidad,
-    required this.unidad,
-    required this.costo,
-    this.estado = 'Activo',
-    this.descontable = false,
-    this.stockActual,
-    this.stockMinimo,
+    this.categoria = '',
+    this.unidadMedida = 'unidad',
+    this.cantidad = 0,
+    this.precioUnitario = 0,
+    this.descripcion,
   });
 
-  // Getter para obtener el stock actual, priorizando stockActual si existe
-  double get stock => stockActual ?? cantidad;
-
-  // Getter para obtener el stock mínimo, con valor por defecto
-  double get stockMin => stockMinimo ?? 0.0;
+  factory Ingrediente.fromJson(Map<String, dynamic> json) {
+    return Ingrediente(
+      id: json['id']?.toString() ?? json['_id']?.toString() ?? '',
+      nombre: json['nombre']?.toString() ?? '',
+      categoria: json['categoria']?.toString() ?? '',
+      unidadMedida: json['unidadMedida']?.toString() ?? 'unidad',
+      cantidad: (json['cantidad'] as num?)?.toDouble() ?? 0,
+      precioUnitario: (json['precioUnitario'] as num?)?.toDouble() ?? 0,
+      descripcion: json['descripcion']?.toString(),
+    );
+  }
 
   Map<String, dynamic> toJson() => {
     'id': id,
     'nombre': nombre,
-    'categoriaId': categoria,
+    'categoria': categoria,
+    'unidadMedida': unidadMedida,
     'cantidad': cantidad,
-    'unidad': unidad,
-    'costo': costo,
-    'estado': estado,
-    'descontable': descontable,
-    if (stockActual != null) 'stockActual': stockActual,
-    if (stockMinimo != null) 'stockMinimo': stockMinimo,
+    'precioUnitario': precioUnitario,
+    'descripcion': descripcion,
   };
-
-  factory Ingrediente.fromJson(Map<String, dynamic> json) {
-    return Ingrediente(
-      id: json['_id']?.toString() ?? json['id']?.toString() ?? '',
-      nombre: json['nombre']?.toString() ?? '',
-      categoria:
-          json['categoria']?.toString() ??
-          json['categoriaId']?.toString() ??
-          '',
-      cantidad:
-          (json['cantidad'] as num?)?.toDouble() ??
-          (json['stockActual'] as num?)?.toDouble() ??
-          0.0,
-      unidad: json['unidad']?.toString() ?? '',
-      costo: (json['costo'] as num?)?.toDouble() ?? 0.0,
-      estado: json['estado']?.toString() ?? 'Activo',
-      descontable: json['descontable'] ?? false,
-      stockActual: (json['stockActual'] as num?)?.toDouble(),
-      stockMinimo: (json['stockMinimo'] as num?)?.toDouble(),
-    );
-  }
-
-  Ingrediente copyWith({
-    String? id,
-    String? nombre,
-    String? categoria,
-    double? cantidad,
-    String? unidad,
-    double? costo,
-    String? estado,
-    bool? descontable,
-    double? stockActual,
-    double? stockMinimo,
-  }) {
-    return Ingrediente(
-      id: id ?? this.id,
-      nombre: nombre ?? this.nombre,
-      categoria: categoria ?? this.categoria,
-      cantidad: cantidad ?? this.cantidad,
-      unidad: unidad ?? this.unidad,
-      costo: costo ?? this.costo,
-      estado: estado ?? this.estado,
-      descontable: descontable ?? this.descontable,
-      stockActual: stockActual ?? this.stockActual,
-      stockMinimo: stockMinimo ?? this.stockMinimo,
-    );
-  }
 }

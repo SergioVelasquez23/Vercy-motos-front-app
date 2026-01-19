@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import '../services/impresion_service.dart';
 import '../services/pdf_service.dart';
 import '../services/negocio_info_service.dart';
-import '../models/documento_mesa.dart';
 import '../models/negocio_info.dart';
 
 /// Mixin que proporciona funcionalidades de impresión reutilizables
@@ -19,20 +18,11 @@ mixin ImpresionMixin<T extends StatefulWidget> on State<T> {
   static const Color _cardBg = Color(0xFF1E1E1E);
   static const Color _textLight = Color(0xFFE0E0E0);
 
-  /// Prepara el resumen de un documento para impresión usando el backend
-  Future<Map<String, dynamic>?> prepararResumenDocumento(
-    DocumentoMesa documento,
+  /// Prepara el resumen de un pedido para impresión usando el backend
+  Future<Map<String, dynamic>?> prepararResumenPedido(String pedidoId,
   ) async {
     try {
-      print(
-        '🔍 Preparando resumen para documento: ${documento.numeroDocumento}',
-      );
-      print('📋 Pedidos IDs: ${documento.pedidosIds}');
-
-      if (documento.pedidosIds.isEmpty) {
-        print('⚠️ No hay pedidos en el documento');
-        return null;
-      }
+      print('🔍 Preparando resumen para pedido: $pedidoId');
 
       // Obtener información del negocio
       print('📄 Obteniendo información del negocio...');
@@ -46,105 +36,22 @@ mixin ImpresionMixin<T extends StatefulWidget> on State<T> {
         );
       }
 
-      // Si solo hay un pedido, usar el método directo como en mesas_screen
-      if (documento.pedidosIds.length == 1) {
-        print('📝 Documento con un solo pedido, usando método directo');
-        final resumen = await _impresionService.generarResumenPedido(
-          documento.pedidosIds.first,
-        );
+      final resumen = await _impresionService.generarResumenPedido(pedidoId);
 
-        // Actualizar la información del negocio en el resumen
-        if (resumen != null && negocioInfo != null) {
-          resumen['nombreRestaurante'] = negocioInfo.nombre;
-          resumen['direccionRestaurante'] =
-              '${negocioInfo.direccion ?? ''}${(negocioInfo.ciudad.isNotEmpty ?? false) ? ', ${negocioInfo.ciudad}' : ''}${(negocioInfo.departamento.isNotEmpty ?? false) ? ', ${negocioInfo.departamento}' : ''}';
-          resumen['telefonoRestaurante'] = negocioInfo.telefono ?? '';
-          if (negocioInfo.email.isNotEmpty == true) {
-            resumen['emailRestaurante'] = negocioInfo.email ?? '';
-          }
-          if (negocioInfo.nit?.isNotEmpty == true) {
-            resumen['nitRestaurante'] = negocioInfo.nit ?? '';
-          }
+      // Actualizar la información del negocio en el resumen
+      if (resumen != null && negocioInfo != null) {
+        resumen['nombreNegocio'] = negocioInfo.nombre;
+        resumen['direccionNegocio'] =
+            '${negocioInfo.direccion ?? ''}${(negocioInfo.ciudad.isNotEmpty ?? false) ? ', ${negocioInfo.ciudad}' : ''}${(negocioInfo.departamento.isNotEmpty ?? false) ? ', ${negocioInfo.departamento}' : ''}';
+        resumen['telefonoNegocio'] = negocioInfo.telefono ?? '';
+        if (negocioInfo.email.isNotEmpty == true) {
+          resumen['emailNegocio'] = negocioInfo.email ?? '';
         }
-
-        return resumen;
-      }
-
-      // Para múltiples pedidos, combinar todos
-      print(
-        '📝 Documento con múltiples pedidos: ${documento.pedidosIds.length}',
-      );
-      List<Map<String, dynamic>> todosLosItems = [];
-      double totalGeneral = 0;
-      String vendedor = documento.vendedor;
-      String mesaNombre = documento.mesaNombre;
-
-      for (int i = 0; i < documento.pedidosIds.length; i++) {
-        final pedidoId = documento.pedidosIds[i];
-        print('🔄 Obteniendo resumen del pedido ${i + 1}: $pedidoId');
-
-        final resumenPedido = await _impresionService.generarResumenPedido(
-          pedidoId,
-        );
-
-        if (resumenPedido != null) {
-          final items =
-              resumenPedido['detalleProductos'] as List<dynamic>? ?? [];
-          todosLosItems.addAll(items.cast<Map<String, dynamic>>());
-          totalGeneral += (resumenPedido['total'] as num?)?.toDouble() ?? 0;
-
-          print(
-            '   ✅ Pedido $pedidoId: ${items.length} items, total: ${resumenPedido['total']}',
-          );
-        } else {
-          print('   ⚠️ No se pudo obtener resumen del pedido: $pedidoId');
+        if (negocioInfo.nit?.isNotEmpty == true) {
+          resumen['nitNegocio'] = negocioInfo.nit ?? '';
         }
       }
 
-      // Crear resumen combinado con información del negocio
-      final resumen = {
-        'nombreRestaurante': negocioInfo?.nombre ?? 'Sopa y Carbón',
-        'direccionRestaurante': negocioInfo != null
-            ? '${negocioInfo.direccion}, ${negocioInfo.ciudad}, ${negocioInfo.departamento}'
-            : 'Dirección del restaurante',
-        'telefonoRestaurante':
-            negocioInfo?.telefono ?? 'Teléfono del restaurante',
-        'pedidoId': documento.numeroDocumento,
-        'fecha':
-            '${documento.fecha.year}-${documento.fecha.month.toString().padLeft(2, '0')}-${documento.fecha.day.toString().padLeft(2, '0')}',
-        'hora':
-            '${documento.fecha.hour.toString().padLeft(2, '0')}:${documento.fecha.minute.toString().padLeft(2, '0')}',
-        'mesa': mesaNombre,
-        'mesero': vendedor,
-        'total': totalGeneral,
-        'detalleProductos': todosLosItems,
-      };
-
-      // Agregar información adicional del negocio si está disponible
-      if (negocioInfo?.email.isNotEmpty == true) {
-        resumen['emailRestaurante'] = negocioInfo!.email ?? '';
-      }
-
-      if (negocioInfo?.nit?.isNotEmpty == true) {
-        resumen['nitRestaurante'] = negocioInfo!.nit ?? '';
-      }
-
-      // Agregar información de pago si está disponible
-      if (documento.formaPago != null) {
-        resumen['medioPago'] = documento.formaPago!;
-      }
-
-      if (documento.pagadoPor != null) {
-        resumen['atendidoPor'] = documento.pagadoPor!;
-      }
-
-      if (documento.propina != null && documento.propina! > 0) {
-        resumen['propina'] = documento.propina!;
-      }
-
-      print(
-        '✅ Resumen final: ${todosLosItems.length} items, total: $totalGeneral',
-      );
       return resumen;
     } catch (e) {
       print('❌ Error preparando resumen: $e');
@@ -323,17 +230,17 @@ mixin ImpresionMixin<T extends StatefulWidget> on State<T> {
       final negocioInfo = await _negocioInfoService.getNegocioInfo();
 
       if (negocioInfo != null) {
-        resumen['nombreRestaurante'] = negocioInfo.nombre;
-        resumen['direccionRestaurante'] =
+        resumen['nombreNegocio'] = negocioInfo.nombre;
+        resumen['direccionNegocio'] =
             '${negocioInfo.direccion ?? ''}${(negocioInfo.ciudad.isNotEmpty ?? false) ? ', ${negocioInfo.ciudad}' : ''}${(negocioInfo.departamento.isNotEmpty ?? false) ? ', ${negocioInfo.departamento}' : ''}';
-        resumen['telefonoRestaurante'] = negocioInfo.telefono ?? '';
+        resumen['telefonoNegocio'] = negocioInfo.telefono ?? '';
 
         if (negocioInfo.email.isNotEmpty == true) {
-          resumen['emailRestaurante'] = negocioInfo.email ?? '';
+          resumen['emailNegocio'] = negocioInfo.email ?? '';
         }
 
         if (negocioInfo.nit?.isNotEmpty == true) {
-          resumen['nitRestaurante'] = negocioInfo.nit ?? '';
+          resumen['nitNegocio'] = negocioInfo.nit ?? '';
         }
 
         print('✅ Información del negocio actualizada en resumen');

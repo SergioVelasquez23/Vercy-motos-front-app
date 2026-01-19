@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../models/documento_mesa.dart';
+import '../models/pedido.dart';
 import '../models/factura_electronica_dian.dart';
 import '../config/factura_electronica_config.dart';
 import '../services/factura_electronica_service.dart';
@@ -13,28 +13,34 @@ import '../services/configuracion_facturacion_service.dart';
 /// final resultado = await showDialog<Map<String, dynamic>>(
 ///   context: context,
 ///   builder: (context) => DatosFacturaElectronicaDialog(
-///     documentoMesa: documento,
+///     pedido: pedido,
 ///   ),
 /// );
 ///
 /// if (resultado != null) {
 ///   // Usuario proporcionó datos para factura
-///   final documentoConDatos = documento.copyWith(
-///     requiereFacturaElectronica: true,
-///     clienteNombre: resultado['nombre'],
-///     clienteIdentificacion: resultado['identificacion'],
-///     clienteTipoDocumento: resultado['tipoDocumento'],
-///     clienteEmail: resultado['email'],
-///     clienteTelefono: resultado['telefono'],
-///     clienteDireccion: resultado['direccion'],
-///   );
+///   // Procesar factura electrónica
 /// }
 /// ```
 class DatosFacturaElectronicaDialog extends StatefulWidget {
-  final DocumentoMesa documentoMesa;
+  final Pedido pedido;
+  final String? clienteNombre;
+  final String? clienteIdentificacion;
+  final String? clienteTipoDocumento;
+  final String? clienteEmail;
+  final String? clienteTelefono;
+  final String? clienteDireccion;
 
-  const DatosFacturaElectronicaDialog({Key? key, required this.documentoMesa})
-    : super(key: key);
+  const DatosFacturaElectronicaDialog({
+    Key? key,
+    required this.pedido,
+    this.clienteNombre,
+    this.clienteIdentificacion,
+    this.clienteTipoDocumento,
+    this.clienteEmail,
+    this.clienteTelefono,
+    this.clienteDireccion,
+  }) : super(key: key);
 
   @override
   State<DatosFacturaElectronicaDialog> createState() =>
@@ -59,24 +65,23 @@ class _DatosFacturaElectronicaDialogState
     super.initState();
 
     // Pre-llenar con datos existentes si los hay
-    if (widget.documentoMesa.clienteNombre != null) {
-      _nombreController.text = widget.documentoMesa.clienteNombre!;
+    if (widget.clienteNombre != null) {
+      _nombreController.text = widget.clienteNombre!;
     }
-    if (widget.documentoMesa.clienteIdentificacion != null) {
-      _identificacionController.text =
-          widget.documentoMesa.clienteIdentificacion!;
+    if (widget.clienteIdentificacion != null) {
+      _identificacionController.text = widget.clienteIdentificacion!;
     }
-    if (widget.documentoMesa.clienteTipoDocumento != null) {
-      _tipoDocumento = widget.documentoMesa.clienteTipoDocumento!;
+    if (widget.clienteTipoDocumento != null) {
+      _tipoDocumento = widget.clienteTipoDocumento!;
     }
-    if (widget.documentoMesa.clienteEmail != null) {
-      _emailController.text = widget.documentoMesa.clienteEmail!;
+    if (widget.clienteEmail != null) {
+      _emailController.text = widget.clienteEmail!;
     }
-    if (widget.documentoMesa.clienteTelefono != null) {
-      _telefonoController.text = widget.documentoMesa.clienteTelefono!;
+    if (widget.clienteTelefono != null) {
+      _telefonoController.text = widget.clienteTelefono!;
     }
-    if (widget.documentoMesa.clienteDireccion != null) {
-      _direccionController.text = widget.documentoMesa.clienteDireccion!;
+    if (widget.clienteDireccion != null) {
+      _direccionController.text = widget.clienteDireccion!;
     }
   }
 
@@ -139,7 +144,7 @@ class _DatosFacturaElectronicaDialogState
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Información del documento
+              // Información del pedido
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
@@ -150,11 +155,11 @@ class _DatosFacturaElectronicaDialogState
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Mesa: ${widget.documentoMesa.mesaNombre}',
+                      'Pedido #${widget.pedido.id?.substring(0, 8) ?? 'N/A'}',
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                     Text(
-                      'Total: \$${widget.documentoMesa.total.toStringAsFixed(0)}',
+                      'Total: \$${widget.pedido.total.toStringAsFixed(0)}',
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -357,22 +362,26 @@ class _DatosFacturaElectronicaDialogState
 
 /// Widget para mostrar el estado de una factura electrónica
 class EstadoFacturaElectronicaWidget extends StatelessWidget {
-  final DocumentoMesa documentoMesa;
+  final String? estadoFactura;
+  final String? numeroFactura;
 
-  const EstadoFacturaElectronicaWidget({Key? key, required this.documentoMesa})
-    : super(key: key);
+  const EstadoFacturaElectronicaWidget({
+    Key? key,
+    this.estadoFactura,
+    this.numeroFactura,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    if (!documentoMesa.requiereFacturaElectronica) {
+    if (estadoFactura == null) {
       return const SizedBox.shrink();
     }
 
-    final estado = documentoMesa.estadoFacturaElectronica ?? 'PENDIENTE';
+    final estado = estadoFactura ?? 'PENDIENTE';
     Color colorEstado;
     IconData iconoEstado;
 
-    switch (estado) {
+    switch (estado.toUpperCase()) {
       case 'EMITIDA':
       case 'ENVIADA_DIAN':
         colorEstado = Colors.blue;
@@ -414,9 +423,9 @@ class EstadoFacturaElectronicaWidget extends StatelessWidget {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              if (documentoMesa.facturaElectronica != null)
+              if (numeroFactura != null)
                 Text(
-                  documentoMesa.facturaElectronica!.numeroFactura,
+                  numeroFactura!,
                   style: TextStyle(fontSize: 11, color: colorEstado),
                 ),
               Text(estado, style: TextStyle(fontSize: 10, color: colorEstado)),
@@ -430,15 +439,27 @@ class EstadoFacturaElectronicaWidget extends StatelessWidget {
 
 /// Botón para solicitar factura electrónica
 class BotonSolicitarFacturaElectronica extends StatefulWidget {
-  final DocumentoMesa documentoMesa;
-  final Function(DocumentoMesa, dynamic)? onFacturaGenerada;
+  final Pedido pedido;
+  final Function(Pedido, FacturaElectronicaDian)? onFacturaGenerada;
   final bool compact;
+  final String? clienteNombre;
+  final String? clienteIdentificacion;
+  final String? clienteTipoDocumento;
+  final String? clienteEmail;
+  final String? clienteTelefono;
+  final String? clienteDireccion;
 
   const BotonSolicitarFacturaElectronica({
     Key? key,
-    required this.documentoMesa,
+    required this.pedido,
     this.onFacturaGenerada,
     this.compact = false,
+    this.clienteNombre,
+    this.clienteIdentificacion,
+    this.clienteTipoDocumento,
+    this.clienteEmail,
+    this.clienteTelefono,
+    this.clienteDireccion,
   }) : super(key: key);
 
   @override
@@ -453,7 +474,7 @@ class _BotonSolicitarFacturaElectronicaState
   /// Convierte FacturaElectronicaDian al formato esperado por el backend
   Map<String, dynamic> _convertirFacturaParaBackend(
     FacturaElectronicaDian factura,
-    DocumentoMesa documento,
+    Pedido pedido,
   ) {
     // Extraer prefijo y consecutivo del numeroFactura
     final numeroCompleto = factura.numeroFactura;
@@ -501,8 +522,7 @@ class _BotonSolicitarFacturaElectronicaState
       'xmlFactura': factura.xmlGenerado ?? '',
       'qrCode': factura.qrCode ?? '',
       'estado': 'generada',
-      'documentoMesaId': documento.id,
-      'pedidosIds': documento.pedidosIds,
+      'pedidoId': pedido.id,
       'creadoPor': 'Sistema',
     };
   }
@@ -511,8 +531,15 @@ class _BotonSolicitarFacturaElectronicaState
     // Capturar datos del cliente
     final resultado = await showDialog<Map<String, dynamic>>(
       context: context,
-      builder: (context) =>
-          DatosFacturaElectronicaDialog(documentoMesa: widget.documentoMesa),
+      builder: (context) => DatosFacturaElectronicaDialog(
+        pedido: widget.pedido,
+        clienteNombre: widget.clienteNombre,
+        clienteIdentificacion: widget.clienteIdentificacion,
+        clienteTipoDocumento: widget.clienteTipoDocumento,
+        clienteEmail: widget.clienteEmail,
+        clienteTelefono: widget.clienteTelefono,
+        clienteDireccion: widget.clienteDireccion,
+      ),
     );
 
     if (resultado == null) return;
@@ -520,17 +547,6 @@ class _BotonSolicitarFacturaElectronicaState
     setState(() => _generando = true);
 
     try {
-      // Actualizar documento con datos del cliente
-      final documentoActualizado = widget.documentoMesa.copyWith(
-        requiereFacturaElectronica: true,
-        clienteNombre: resultado['nombre'],
-        clienteIdentificacion: resultado['identificacion'],
-        clienteTipoDocumento: resultado['tipoDocumento'],
-        clienteEmail: resultado['email'],
-        clienteTelefono: resultado['telefono'],
-        clienteDireccion: resultado['direccion'],
-      );
-
       // Obtener siguiente consecutivo
       final configuracionService = ConfiguracionFacturacionService();
       final consecutivo = await configuracionService
@@ -542,10 +558,10 @@ class _BotonSolicitarFacturaElectronicaState
         );
       }
 
-      // Generar factura electrónica
+      // Generar factura electrónica desde el pedido
       final factura =
-          await FacturaElectronicaService.generarFacturaDesdeDocumentoMesa(
-            documentoMesa: documentoActualizado,
+          await FacturaElectronicaService.generarFacturaDesdePedido(
+        pedido: widget.pedido,
             numeroConsecutivo: consecutivo,
             clienteNombre: resultado['nombre'],
             clienteIdentificacion: resultado['identificacion'],
@@ -557,7 +573,7 @@ class _BotonSolicitarFacturaElectronicaState
 
       // Guardar factura en el backend
       final facturaGuardada = await configuracionService.guardarFactura(
-        _convertirFacturaParaBackend(factura, documentoActualizado),
+        _convertirFacturaParaBackend(factura, widget.pedido),
       );
 
       if (facturaGuardada == null) {
@@ -569,7 +585,7 @@ class _BotonSolicitarFacturaElectronicaState
 
       // Llamar callback si existe
       if (widget.onFacturaGenerada != null) {
-        widget.onFacturaGenerada!(documentoActualizado, factura);
+        widget.onFacturaGenerada!(widget.pedido, factura);
       }
 
       if (mounted) {

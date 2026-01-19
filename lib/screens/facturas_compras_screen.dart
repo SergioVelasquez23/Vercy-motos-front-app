@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import '../models/factura_compra.dart';
-import '../models/ingrediente.dart';
 import '../models/proveedor.dart';
+import '../models/producto.dart';
 import '../services/factura_compra_service.dart';
-import '../services/ingrediente_service.dart';
 import '../services/proveedor_service.dart';
+import '../services/producto_service.dart';
 import '../theme/app_theme.dart';
 
 class FacturasComprasScreen extends StatefulWidget {
@@ -674,8 +674,8 @@ class CrearFacturaCompraScreen extends StatefulWidget {
 class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
   final _formKey = GlobalKey<FormState>();
   final FacturaCompraService _facturaCompraService = FacturaCompraService();
-  final IngredienteService _ingredienteService = IngredienteService();
   final ProveedorService _proveedorService = ProveedorService();
+  final ProductoService _productoService = ProductoService();
 
   final _proveedorNitController = TextEditingController();
   final _proveedorNombreController = TextEditingController();
@@ -683,8 +683,8 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
   DateTime _fechaFactura = DateTime.now();
   DateTime _fechaVencimiento = DateTime.now().add(Duration(days: 30));
   final List<ItemFacturaCompra> _items = [];
-  List<Ingrediente> _ingredientes = [];
   List<Proveedor> _proveedores = [];
+  List<Producto> _productos = [];
   Proveedor? _proveedorSeleccionado;
   bool _isLoading = false;
   bool _pagadoDesdeCaja = false;
@@ -703,7 +703,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
   void initState() {
     super.initState();
     _generarNumeroFactura();
-    _cargarIngredientes();
+    _cargarProductos();
     _cargarProveedores();
   }
 
@@ -794,14 +794,14 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
     }
   }
 
-  Future<void> _cargarIngredientes() async {
+  Future<void> _cargarProductos() async {
     try {
-      final ingredientes = await _ingredienteService.getAllIngredientes();
+      final productos = await _productoService.getProductos();
       setState(() {
-        _ingredientes = ingredientes;
+        _productos = productos;
       });
     } catch (e) {
-      print('Error al cargar ingredientes: $e');
+      print('Error al cargar productos: $e');
     }
   }
 
@@ -1241,10 +1241,10 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
   }
 
   void _agregarItem() {
-    if (_ingredientes.isEmpty) {
+    if (_productos.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('No hay ingredientes disponibles'),
+          content: Text('No hay productos disponibles'),
           backgroundColor: Colors.orange,
         ),
       );
@@ -1254,7 +1254,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
     showDialog(
       context: context,
       builder: (context) => _DialogoAgregarItem(
-        ingredientes: _ingredientes,
+        productos: _productos,
         onItemAgregado: (item) {
           setState(() {
             _items.add(item);
@@ -1738,9 +1738,9 @@ class DetalleFacturaCompraScreen extends StatelessWidget {
   }
 }
 
-// Widget de diálogo para agregar items desde ingredientes
+// Widget de diálogo para agregar items desde productos
 class _DialogoAgregarItem extends StatefulWidget {
-  final List<Ingrediente> ingredientes;
+  final List<Producto> productos;
   final Function(ItemFacturaCompra) onItemAgregado;
   final Color primary;
   final Color cardBg;
@@ -1749,7 +1749,7 @@ class _DialogoAgregarItem extends StatefulWidget {
 
   const _DialogoAgregarItem({
     super.key,
-    required this.ingredientes,
+    required this.productos,
     required this.onItemAgregado,
     required this.primary,
     required this.cardBg,
@@ -1762,7 +1762,7 @@ class _DialogoAgregarItem extends StatefulWidget {
 }
 
 class _DialogoAgregarItemState extends State<_DialogoAgregarItem> {
-  Ingrediente? _ingredienteSeleccionado;
+  Producto? _productoSeleccionado;
   final _cantidadController = TextEditingController();
   final _precioController = TextEditingController();
   final _totalController = TextEditingController();
@@ -1778,15 +1778,16 @@ class _DialogoAgregarItemState extends State<_DialogoAgregarItem> {
     super.dispose();
   }
 
-  List<Ingrediente> get _ingredientesFiltrados {
-    if (_searchText.isEmpty) return widget.ingredientes;
-    return widget.ingredientes.where((ingrediente) {
-      return ingrediente.nombre.toLowerCase().contains(
+  List<Producto> get _productosFiltrados {
+    if (_searchText.isEmpty) return widget.productos;
+    return widget.productos.where((producto) {
+      return producto.nombre.toLowerCase().contains(
             _searchText.toLowerCase(),
           ) ||
-          ingrediente.categoria.toLowerCase().contains(
+          (producto.categoria?.nombre.toLowerCase().contains(
             _searchText.toLowerCase(),
-          );
+              ) ??
+              false);
     }).toList();
   }
 
@@ -1848,11 +1849,11 @@ class _DialogoAgregarItemState extends State<_DialogoAgregarItem> {
             ),
             SizedBox(height: 20),
 
-            // Búsqueda de ingredientes
+            // Búsqueda de productos
             TextField(
               style: TextStyle(color: widget.textDark),
               decoration: InputDecoration(
-                hintText: 'Buscar ingredientes...',
+                hintText: 'Buscar productos...',
                 hintStyle: TextStyle(color: widget.textLight),
                 prefixIcon: Icon(Icons.search, color: widget.textLight),
                 filled: true,
@@ -1874,9 +1875,9 @@ class _DialogoAgregarItemState extends State<_DialogoAgregarItem> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Lista de ingredientes
+                    // Lista de productos
                     Text(
-                      'Seleccionar Ingrediente:',
+                      'Seleccionar Producto:',
                       style: TextStyle(
                         color: widget.textDark,
                         fontSize: 16,
@@ -1891,23 +1892,23 @@ class _DialogoAgregarItemState extends State<_DialogoAgregarItem> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: ListView.builder(
-                        itemCount: _ingredientesFiltrados.length,
+                        itemCount: _productosFiltrados.length,
                         itemBuilder: (context, index) {
-                          final ingrediente = _ingredientesFiltrados[index];
+                          final producto = _productosFiltrados[index];
                           final isSelected =
-                              _ingredienteSeleccionado?.id == ingrediente.id;
+                              _productoSeleccionado?.id == producto.id;
 
                           return ListTile(
                             title: Text(
-                              ingrediente.nombre,
+                              producto.nombre,
                               style: TextStyle(color: widget.textDark),
                             ),
                             subtitle: Text(
-                              '${ingrediente.categoria} - Stock: ${ingrediente.cantidad} ${ingrediente.unidad}',
+                              '${producto.categoria?.nombre ?? 'Sin categoría'} - Stock: ${producto.cantidad}',
                               style: TextStyle(color: widget.textLight),
                             ),
                             trailing: Text(
-                              '\$${ingrediente.costo.toStringAsFixed(0)}/${ingrediente.unidad}',
+                              '\$${producto.precio.toStringAsFixed(0)}',
                               style: TextStyle(
                                 color: widget.textLight,
                                 fontWeight: FontWeight.w500,
@@ -1917,8 +1918,8 @@ class _DialogoAgregarItemState extends State<_DialogoAgregarItem> {
                             selectedTileColor: widget.primary.withOpacity(0.1),
                             onTap: () {
                               setState(() {
-                                _ingredienteSeleccionado = ingrediente;
-                                _precioController.text = ingrediente.costo
+                                _productoSeleccionado = producto;
+                                _precioController.text = producto.precio
                                     .toString();
                               });
                             },
@@ -1929,7 +1930,7 @@ class _DialogoAgregarItemState extends State<_DialogoAgregarItem> {
                     SizedBox(height: 16),
 
                     // Detalles del item
-                    if (_ingredienteSeleccionado != null) ...[
+                    if (_productoSeleccionado != null) ...[
                       Container(
                         padding: EdgeInsets.all(20),
                         decoration: BoxDecoration(
@@ -2019,7 +2020,7 @@ class _DialogoAgregarItemState extends State<_DialogoAgregarItem> {
                               decoration: InputDecoration(
                                 labelText: 'Cantidad',
                                 labelStyle: TextStyle(color: widget.textLight),
-                                suffixText: _ingredienteSeleccionado!.unidad,
+                                suffixText: 'unidades',
                                 suffixStyle: TextStyle(color: widget.textLight),
                                 enabledBorder: OutlineInputBorder(
                                   borderSide: BorderSide(
@@ -2051,8 +2052,7 @@ class _DialogoAgregarItemState extends State<_DialogoAgregarItem> {
                                   prefixStyle: TextStyle(
                                     color: widget.textLight,
                                   ),
-                                  helperText:
-                                      'Precio por ${_ingredienteSeleccionado!.unidad}',
+                                  helperText: 'Precio por unidad',
                                   helperStyle: TextStyle(
                                     color: widget.textLight,
                                     fontSize: 12,
@@ -2212,7 +2212,7 @@ class _DialogoAgregarItemState extends State<_DialogoAgregarItem> {
   }
 
   bool _puedeAgregar() {
-    if (_ingredienteSeleccionado == null) return false;
+    if (_productoSeleccionado == null) return false;
 
     final cantidadValida =
         _cantidadController.text.isNotEmpty &&
@@ -2247,10 +2247,10 @@ class _DialogoAgregarItemState extends State<_DialogoAgregarItem> {
     }
 
     final item = ItemFacturaCompra(
-      ingredienteId: _ingredienteSeleccionado!.id,
-      ingredienteNombre: _ingredienteSeleccionado!.nombre,
+      ingredienteId: _productoSeleccionado!.id ?? '',
+      ingredienteNombre: _productoSeleccionado!.nombre,
       cantidad: cantidad,
-      unidad: _ingredienteSeleccionado!.unidad,
+      unidad: 'unidad',
       precioUnitario: precio,
       subtotal: subtotal,
     );

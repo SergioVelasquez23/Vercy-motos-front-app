@@ -98,7 +98,7 @@ La pantalla tiene 4 pestañas:
 
 #### Pestaña 3: Software y Certificado
 - **Software ID** (ejemplo de tu imagen: `66f373d2-a05a-407d-a079-fb2c`)
-- **Nombre del software** (ejemplo: `Kronnos`)
+- **Nombre del software** (ejemplo: `Vercy Motos`)
 - **Clave técnica del software** (ejemplo: `fc8eac422eba16e22ffd8c6f94b`)
 - **PIN** (ejemplo: `77777`)
 - **Certificado digital** (contenido o ruta)

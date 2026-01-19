@@ -1,3 +1,3 @@
 {
-    "cmake.sourceDirectory": "D:/prueba sopa y carbon/serch-restapp/windows"
+  "cmake.sourceDirectory": "${workspaceFolder}/windows"
 }

@@ -75,7 +75,11 @@ class _ExportarMensualScreenState extends State<ExportarMensualScreen> {
                 const Expanded(
                   child: Text(
                     'Exportación Mensual a Excel',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
                   ),
                 ),
               ],

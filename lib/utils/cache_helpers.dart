@@ -103,7 +103,6 @@ class CacheHelpers {
   /// Verificar si necesita mostrar warning de datos desactualizados
   static bool shouldShowOutdatedWarning(DatosCacheProvider provider) {
     return provider.productosExpired ||
-        provider.categoriasExpired ||
-        provider.ingredientesExpired;
+        provider.categoriasExpired;
   }
 }

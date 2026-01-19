@@ -29,7 +29,7 @@ POST /api/configuracion/facturacion/dian
   "fechaDesdeRango": "2019-01-19",
   "fechaHastaRango": "2030-01-19",
   "softwareId": "66f373d2-a05a-407d-a079-fb2c",
-  "nombreSoftware": "Kronnos",
+  "nombreSoftware": "Vercy Motos",
   "claveTecnicaSoftware": "fc8eac422eba16e22ffd8c6f94b",
   "pin": "77777",
   "certificado": "base64_encoded_certificate_or_path",
