@@ -17,6 +17,7 @@ class VercySidebarLayout extends StatefulWidget {
 
 class _VercySidebarLayoutState extends State<VercySidebarLayout> {
   String? _selectedRoute;
+  Set<String> _expandedMenus = {}; // Para controlar qué menús están expandidos
 
   @override
   Widget build(BuildContext context) {
@@ -212,68 +213,113 @@ class _VercySidebarLayoutState extends State<VercySidebarLayout> {
     return ListView(
       padding: EdgeInsets.symmetric(vertical: 8),
       children: [
-        _buildMenuItem(
-          icon: Icons.receipt,
-          label: 'Facturar',
-          route: '/facturar',
-          isAdmin: true,
-        ),
-        _buildMenuItem(
-          icon: Icons.request_quote,
-          label: 'Cotización',
-          route: '/cotizaciones',
-          isAdmin: true,
-        ),
-        _buildMenuItem(
-          icon: Icons.people,
-          label: 'Clientes',
-          route: '/clientes',
-          isAdmin: true,
-        ),
-        _buildMenuItem(
-          icon: Icons.description,
-          label: 'Documentos',
-          route: '/facturas-lista',
-          isAdmin: true,
-        ),
-        _buildMenuItem(
-          icon: Icons.shopping_cart,
-          label: 'Compras y Gastos',
-          route: '/gastos',
-          isAdmin: true,
-          isExpandable: true,
-        ),
-        _buildMenuItem(
-          icon: Icons.account_balance_wallet,
-          label: 'Cartera',
-          route: null,
-          isAdmin: true,
-        ),
-        _buildMenuItem(
-          icon: Icons.inventory,
-          label: 'Inventario',
-          route: '/historial-inventario',
-          isAdmin: true,
-        ),
-        _buildMenuItem(
-          icon: Icons.local_shipping,
-          label: 'Traslados',
-          route: '/categorias',
-          isAdmin: true,
-        ),
-        _buildMenuItem(
-          icon: Icons.tune,
-          label: 'Ajuste',
-          route: '/reportes',
-          isAdmin: true,
-          isExpandable: true,
-        ),
-        _buildMenuItem(
-          icon: Icons.attach_money,
-          label: 'Caja',
-          route: '/cuadre_caja',
-          isAdmin: true,
-        ),
+        // Menú para Asesores (solo pueden crear pedidos)
+        if (userProvider.isOnlyAsesor) ...[
+          _buildMenuItem(
+            icon: Icons.shopping_cart,
+            label: 'Crear Pedido',
+            route: '/asesor-pedidos',
+            isAdmin: false,
+          ),
+        ],
+
+        // Menú para Admins y SuperAdmins
+        if (!userProvider.isOnlyAsesor) ...[
+          _buildMenuItem(
+            icon: Icons.receipt,
+            label: 'Facturar',
+            route: '/facturar',
+            isAdmin: true,
+          ),
+          _buildMenuItem(
+            icon: Icons.list_alt,
+            label: 'Pedidos Asesores',
+            route: '/admin-pedidos-asesor',
+            isAdmin: true,
+          ),
+          _buildMenuItem(
+            icon: Icons.request_quote,
+            label: 'Cotización',
+            route: '/cotizaciones',
+            isAdmin: true,
+          ),
+          _buildMenuItem(
+            icon: Icons.people,
+            label: 'Clientes',
+            route: '/clientes',
+            isAdmin: true,
+          ),
+          _buildMenuItem(
+            icon: Icons.description,
+            label: 'Documentos',
+            route: '/facturas-lista',
+            isAdmin: true,
+          ),
+          _buildExpandableMenuItem(
+            icon: Icons.shopping_cart,
+            label: 'Compras y Gastos',
+            isAdmin: true,
+            subItems: [
+              _SubMenuItem(
+                icon: Icons.receipt_long,
+                label: 'Facturas de Compras',
+                route: '/facturas-compras',
+              ),
+              _SubMenuItem(
+                icon: Icons.money_off,
+                label: 'Gestión de Gastos',
+                route: '/gastos',
+              ),
+              _SubMenuItem(
+                icon: Icons.money,
+                label: 'Ingresos Caja',
+                route: '/ingresos-caja',
+              ),
+            ],
+          ),
+          _buildMenuItem(
+            icon: Icons.account_balance_wallet,
+            label: 'Cartera',
+            route: null,
+            isAdmin: true,
+          ),
+          _buildExpandableMenuItem(
+            icon: Icons.inventory,
+            label: 'Inventario',
+            isAdmin: true,
+            subItems: [
+              _SubMenuItem(
+                icon: Icons.history,
+                label: 'Historial',
+                route: '/historial-inventario',
+              ),
+              _SubMenuItem(
+                icon: Icons.inventory_2,
+                label: 'Productos',
+                route: '/productos',
+              ),
+            ],
+          ),
+          _buildMenuItem(
+            icon: Icons.local_shipping,
+            label: 'Traslados',
+            route: '/traslados',
+            isAdmin: true,
+          ),
+          _buildMenuItem(
+            icon: Icons.tune,
+            label: 'Ajuste',
+            route: '/reportes',
+            isAdmin: true,
+            isExpandable: true,
+          ),
+          _buildMenuItem(
+            icon: Icons.attach_money,
+            label: 'Caja',
+            route: '/cuadre_caja',
+            isAdmin: true,
+          ),
+        ],
       ],
     );
   }
@@ -282,11 +328,12 @@ class _VercySidebarLayoutState extends State<VercySidebarLayout> {
   Widget _buildMenuItem({
     required IconData icon,
     required String label,
-    required String route,
+    String? route,
     required bool isAdmin,
     bool isExpandable = false,
   }) {
-    final isSelected = ModalRoute.of(context)?.settings.name == route;
+    final isSelected =
+        route != null && ModalRoute.of(context)?.settings.name == route;
 
     return Container(
       margin: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -316,12 +363,14 @@ class _VercySidebarLayoutState extends State<VercySidebarLayout> {
         trailing: isExpandable
             ? Icon(Icons.keyboard_arrow_down, color: AppTheme.metal, size: 20)
             : null,
-        onTap: () {
-          setState(() {
-            _selectedRoute = route;
-          });
-          Navigator.pushReplacementNamed(context, route);
-        },
+        onTap: route != null
+            ? () {
+                setState(() {
+                  _selectedRoute = route;
+                });
+                Navigator.pushReplacementNamed(context, route);
+              }
+            : null,
         dense: true,
         contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       ),
@@ -383,4 +432,106 @@ class _VercySidebarLayoutState extends State<VercySidebarLayout> {
       ),
     );
   }
+
+  /// Construir item de menú expandible con subitems
+  Widget _buildExpandableMenuItem({
+    required IconData icon,
+    required String label,
+    required bool isAdmin,
+    required List<_SubMenuItem> subItems,
+  }) {
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    if (isAdmin && !userProvider.isAdmin) return SizedBox.shrink();
+
+    final isExpanded = _expandedMenus.contains(label);
+
+    return Column(
+      children: [
+        InkWell(
+          onTap: () {
+            setState(() {
+              if (isExpanded) {
+                _expandedMenus.remove(label);
+              } else {
+                _expandedMenus.add(label);
+              }
+            });
+          },
+          child: Container(
+            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            child: Row(
+              children: [
+                Icon(icon, color: AppTheme.textSecondary, size: 20),
+                SizedBox(width: 14),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      color: AppTheme.textPrimary,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+                Icon(
+                  isExpanded ? Icons.expand_less : Icons.expand_more,
+                  color: AppTheme.textSecondary,
+                  size: 20,
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (isExpanded)
+          ...subItems.map((subItem) => _buildSubMenuItem(subItem)),
+      ],
+    );
+  }
+
+  /// Construir subitem de menú
+  Widget _buildSubMenuItem(_SubMenuItem subItem) {
+    final isSelected = _selectedRoute == subItem.route;
+
+    return InkWell(
+      onTap: () {
+        setState(() => _selectedRoute = subItem.route);
+        Navigator.pushReplacementNamed(context, subItem.route);
+      },
+      child: Container(
+        margin: EdgeInsets.only(left: 20),
+        padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected ? AppTheme.primary.withOpacity(0.1) : null,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              subItem.icon,
+              color: isSelected ? AppTheme.primary : AppTheme.textSecondary,
+              size: 18,
+            ),
+            SizedBox(width: 12),
+            Text(
+              subItem.label,
+              style: TextStyle(
+                color: isSelected ? AppTheme.primary : AppTheme.textPrimary,
+                fontSize: 13,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Clase auxiliar para subitems de menú
+class _SubMenuItem {
+  final IconData icon;
+  final String label;
+  final String route;
+
+  _SubMenuItem({required this.icon, required this.label, required this.route});
 }

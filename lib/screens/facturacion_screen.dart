@@ -3,15 +3,22 @@ import 'package:provider/provider.dart';
 import '../models/pedido.dart';
 import '../models/item_pedido.dart';
 import '../models/producto.dart';
+import '../models/pedido_asesor.dart';
 import '../services/pedido_service.dart';
 import '../services/producto_service.dart';
 import '../services/cliente_service.dart';
+import '../services/pedido_asesor_service.dart';
 import '../models/cliente.dart';
 import '../theme/app_theme.dart';
 import '../providers/user_provider.dart';
+import '../providers/datos_cache_provider.dart';
 import '../widgets/vercy_sidebar_layout.dart';
 
 class FacturacionScreen extends StatefulWidget {
+  final PedidoAsesor? pedidoAsesor;
+
+  const FacturacionScreen({super.key, this.pedidoAsesor});
+  
   @override
   _FacturacionScreenState createState() => _FacturacionScreenState();
 }
@@ -20,6 +27,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
   final PedidoService _pedidoService = PedidoService();
   final ProductoService _productoService = ProductoService();
   final ClienteService _clienteService = ClienteService();
+  final PedidoAsesorService _pedidoAsesorService = PedidoAsesorService();
 
   // Controladores de formulario
   final TextEditingController _idController = TextEditingController();
@@ -74,16 +82,67 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
   void initState() {
     super.initState();
     _cargarProductos();
+    
+    // Si se pasó un pedido de asesor, precargar los datos
+    if (widget.pedidoAsesor != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _precargarDatosPedidoAsesor();
+      });
+    }
+  }
+
+  void _precargarDatosPedidoAsesor() {
+    final pedido = widget.pedidoAsesor!;
+
+    setState(() {
+      // Precargar nombre del cliente
+      _clienteController.text = pedido.clienteNombre;
+
+      // Precargar items
+      _items = List.from(pedido.items);
+
+      // Recalcular totales
+      _calcularTotal();
+    });
+
+    // Mostrar notificación
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Pedido de ${pedido.asesorNombre} cargado correctamente'),
+        backgroundColor: Colors.green,
+      ),
+    );
+  }
+
+  void _calcularTotal() {
+    // Este método se usa para recalcular totales cuando se cargan items
+    // En facturacion_screen, los cálculos de totales se hacen en _guardarFactura
+    // Este método está aquí para mantener compatibilidad
+    setState(() {});
   }
 
   Future<void> _cargarProductos() async {
-    try {
-      final productos = await _productoService.getProductos();
+    // Obtener productos desde el provider en lugar de cargarlos nuevamente
+    final cacheProvider = Provider.of<DatosCacheProvider>(
+      context,
+      listen: false,
+    );
+
+    if (cacheProvider.productos != null &&
+        cacheProvider.productos!.isNotEmpty) {
       setState(() {
-        _productosDisponibles = productos;
+        _productosDisponibles = cacheProvider.productos!;
       });
-    } catch (e) {
-      print('Error al cargar productos: $e');
+    } else {
+      // Si no hay productos en cache, cargarlos
+      try {
+        final productos = await _productoService.getProductos();
+        setState(() {
+          _productosDisponibles = productos;
+        });
+      } catch (e) {
+        print('Error al cargar productos: $e');
+      }
     }
   }
 
@@ -1928,6 +1987,22 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
 
       await _pedidoService.createPedido(pedido);
 
+      // Si este pedido viene de un asesor, marcarlo como facturado
+      if (widget.pedidoAsesor != null && widget.pedidoAsesor!.id != null) {
+        try {
+          final userProvider = Provider.of<UserProvider>(
+            context,
+            listen: false,
+          );
+          await _pedidoAsesorService.marcarComoFacturado(
+            widget.pedidoAsesor!.id!,
+            userProvider.userName ?? 'Admin',
+          );
+        } catch (e) {
+          print('Error al marcar pedido asesor como facturado: $e');
+        }
+      }
+
       setState(() => _isLoading = false);
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1945,6 +2020,11 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
         _fechaFactura = DateTime.now();
         _fechaVencimiento = DateTime.now().add(Duration(days: 30));
       });
+      
+      // Si venía de pedido asesor, regresar a la lista de pedidos
+      if (widget.pedidoAsesor != null) {
+        Navigator.of(context).pop();
+      }
     } catch (e) {
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(

@@ -28,14 +28,6 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
   // Variable para controlar el timeout del botón guardar factura
   bool _guardandoFactura = false;
 
-  // Usando AppTheme para colores consistentes
-  // Variables de compatibilidad temporal
-  Color get primary => AppTheme.primary;
-  Color get cardBg => AppTheme.cardBg;
-  Color get textDark => AppTheme.textPrimary;
-  Color get textLight => AppTheme.textSecondary;
-  Color get bgDark => AppTheme.backgroundDark;
-
   @override
   void initState() {
     super.initState();
@@ -173,6 +165,10 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
         backgroundColor: AppTheme.backgroundDark,
         elevation: 0,
         iconTheme: IconThemeData(color: AppTheme.textPrimary),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pushReplacementNamed(context, '/dashboard'),
+        ),
         actions: [
           IconButton(
             icon: Icon(Icons.refresh, color: AppTheme.textPrimary),
@@ -195,7 +191,7 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        backgroundColor: primary,
+        backgroundColor: AppTheme.primary,
         onPressed: () => _navegarACrearFactura(),
         child: Icon(Icons.add, color: Colors.white),
       ),
@@ -207,21 +203,21 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
       margin: EdgeInsets.all(16),
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: cardBg,
+        color: AppTheme.cardBg,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         children: [
           TextField(
             controller: _searchController,
-            style: TextStyle(color: textDark),
+            style: TextStyle(color: AppTheme.textPrimary),
             decoration: InputDecoration(
               hintText: 'Buscar por número, proveedor...',
-              hintStyle: TextStyle(color: textLight),
-              prefixIcon: Icon(Icons.search, color: textLight),
+              hintStyle: TextStyle(color: AppTheme.textSecondary),
+              prefixIcon: Icon(Icons.search, color: AppTheme.textSecondary),
               suffixIcon: _searchController.text.isNotEmpty
                   ? IconButton(
-                      icon: Icon(Icons.clear, color: textLight),
+                      icon: Icon(Icons.clear, color: AppTheme.textSecondary),
                       onPressed: () {
                         _searchController.clear();
                         _aplicarFiltros();
@@ -230,15 +226,15 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
                   : null,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: textLight.withOpacity(0.3)),
+                borderSide: BorderSide(color: AppTheme.textSecondary.withOpacity(0.3)),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: textLight.withOpacity(0.3)),
+                borderSide: BorderSide(color: AppTheme.textSecondary.withOpacity(0.3)),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: primary),
+                borderSide: BorderSide(color: AppTheme.primary),
               ),
             ),
             onChanged: (value) => _aplicarFiltros(),
@@ -246,7 +242,7 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
           SizedBox(height: 16),
           Row(
             children: [
-              Text('Estado: ', style: TextStyle(color: textDark)),
+              Text('Estado: ', style: TextStyle(color: AppTheme.textPrimary)),
               SizedBox(width: 8),
               Expanded(
                 child: Scrollbar(
@@ -268,12 +264,12 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
                                     _aplicarFiltros();
                                   });
                                 },
-                                selectedColor: primary.withOpacity(0.2),
-                                checkmarkColor: primary,
+                                selectedColor: AppTheme.primary.withOpacity(0.2),
+                                checkmarkColor: AppTheme.primary,
                                 labelStyle: TextStyle(
                                   color: _filtroEstado == estado
-                                      ? primary
-                                      : textLight,
+                                      ? AppTheme.primary
+                                      : AppTheme.textSecondary,
                                 ),
                               ),
                             ),
@@ -288,7 +284,7 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
           SizedBox(height: 16),
           Row(
             children: [
-              Text('Pago: ', style: TextStyle(color: textDark)),
+              Text('Pago: ', style: TextStyle(color: AppTheme.textPrimary)),
               SizedBox(width: 8),
               Expanded(
                 child: Scrollbar(
@@ -327,7 +323,7 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
                                     labelStyle: TextStyle(
                                       color: _filtroPagoCaja == filtro['value']
                                           ? Colors.blue
-                                          : textLight,
+                                          : AppTheme.textSecondary,
                                     ),
                                   ),
                                 ),
@@ -349,12 +345,12 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.receipt_long, size: 64, color: textLight),
+          Icon(Icons.receipt_long, size: 64, color: AppTheme.textSecondary),
           SizedBox(height: 16),
           Text(
             'No hay facturas de compras',
             style: TextStyle(
-              color: textDark,
+              color: AppTheme.textPrimary,
               fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
@@ -362,7 +358,7 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
           SizedBox(height: 8),
           Text(
             'Crea tu primera factura de compras',
-            style: TextStyle(color: textLight),
+            style: TextStyle(color: AppTheme.textSecondary),
           ),
           SizedBox(height: 24),
           ElevatedButton.icon(
@@ -370,7 +366,7 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
             icon: Icon(Icons.add),
             label: Text('Crear Factura'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: primary,
+              backgroundColor: AppTheme.primary,
               foregroundColor: Colors.white,
             ),
           ),
@@ -386,7 +382,7 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
       itemBuilder: (context, index) {
         final factura = _facturasFiltradas[index];
         return Card(
-          color: cardBg,
+          color: AppTheme.cardBg,
           margin: EdgeInsets.only(bottom: 12),
           child: Column(
             children: [
@@ -400,7 +396,7 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
                     children: [
                       // Icono a la izquierda
                       CircleAvatar(
-                        backgroundColor: primary,
+                        backgroundColor: AppTheme.primary,
                         child: Icon(Icons.receipt, color: Colors.white),
                       ),
                       SizedBox(width: 12),
@@ -413,25 +409,25 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
                             Text(
                               factura.numeroFactura,
                               style: TextStyle(
-                                color: textDark,
+                                color: AppTheme.textPrimary,
                                 fontWeight: FontWeight.bold,
                               ),
                               overflow: TextOverflow.ellipsis,
                             ),
                             Text(
                               factura.proveedorNombre,
-                              style: TextStyle(color: textDark),
+                              style: TextStyle(color: AppTheme.textPrimary),
                               overflow: TextOverflow.ellipsis,
                             ),
                             Text(
                               'NIT: ${factura.proveedorNit ?? 'No especificado'}',
-                              style: TextStyle(color: textLight, fontSize: 12),
+                              style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
                               overflow: TextOverflow.ellipsis,
                             ),
                             // Mostrar fecha de creación en lugar de fecha de factura para facilitar la verificación del orden
                             Text(
                               'Creado: ${_formatearFechaConHora(factura.fechaCreacion)} - Factura: ${_formatearFecha(factura.fechaFactura)}',
-                              style: TextStyle(color: textLight, fontSize: 12),
+                              style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
                             ),
                           ],
                         ),
@@ -478,7 +474,7 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
                           Text(
                             '\$${factura.total.toStringAsFixed(0)}',
                             style: TextStyle(
-                              color: primary,
+                              color: AppTheme.primary,
                               fontWeight: FontWeight.bold,
                               fontSize: 16,
                             ),
@@ -595,17 +591,17 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: cardBg,
-        title: Text('Eliminar Factura', style: TextStyle(color: textDark)),
+        backgroundColor: AppTheme.cardBg,
+        title: Text('Eliminar Factura', style: TextStyle(color: AppTheme.textPrimary)),
         content: Text(
           '¿Estás seguro de que deseas eliminar la factura ${factura.numeroFactura}?\n\n'
           'Esta acción no se puede deshacer y afectará al inventario.',
-          style: TextStyle(color: textLight),
+          style: TextStyle(color: AppTheme.textSecondary),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: Text('Cancelar', style: TextStyle(color: textLight)),
+            child: Text('Cancelar', style: TextStyle(color: AppTheme.textSecondary)),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
@@ -679,6 +675,11 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
 
   final _proveedorNitController = TextEditingController();
   final _proveedorNombreController = TextEditingController();
+  
+  // 💰 Controladores DIAN para retenciones
+  final _porcentajeRetencionController = TextEditingController(text: '0');
+  final _porcentajeReteIvaController = TextEditingController(text: '0');
+  final _porcentajeReteIcaController = TextEditingController(text: '0');
 
   DateTime _fechaFactura = DateTime.now();
   DateTime _fechaVencimiento = DateTime.now().add(Duration(days: 30));
@@ -693,11 +694,6 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
   bool _guardandoFactura = false;
   String? _numeroFactura;
 
-  final Color primary = Color(0xFFFF6B00);
-  final Color bgDark = Color(0xFF1E1E1E);
-  final Color cardBg = Color(0xFF252525);
-  final Color textDark = Color(0xFFE0E0E0);
-  final Color textLight = Color(0xFFA0A0A0);
 
   @override
   void initState() {
@@ -711,6 +707,9 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
   void dispose() {
     _proveedorNitController.dispose();
     _proveedorNombreController.dispose();
+    _porcentajeRetencionController.dispose();
+    _porcentajeReteIvaController.dispose();
+    _porcentajeReteIcaController.dispose();
     super.dispose();
   }
 
@@ -819,15 +818,15 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: bgDark,
+      backgroundColor: AppTheme.backgroundDark,
       appBar: AppBar(
         title: Text(
           'Nueva Factura de Compras',
-          style: TextStyle(color: textDark, fontWeight: FontWeight.bold),
+          style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold),
         ),
-        backgroundColor: bgDark,
+        backgroundColor: AppTheme.backgroundDark,
         elevation: 0,
-        iconTheme: IconThemeData(color: textDark),
+        iconTheme: IconThemeData(color: AppTheme.textPrimary),
         actions: [
           // Botón Debug eliminado según solicitud del usuario
           TextButton(
@@ -835,7 +834,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
             child: Text(
               _guardandoFactura ? 'Guardando...' : 'Guardar',
               style: TextStyle(
-                color: _guardandoFactura ? textLight : primary,
+                color: _guardandoFactura ? AppTheme.textSecondary : AppTheme.primary,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -843,7 +842,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
         ],
       ),
       body: _isLoading
-          ? Center(child: CircularProgressIndicator(color: primary))
+          ? Center(child: CircularProgressIndicator(color: AppTheme.primary))
           : Form(
               key: _formKey,
               child: SingleChildScrollView(
@@ -867,7 +866,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
 
   Widget _buildInfoBasica() {
     return Card(
-      color: cardBg,
+      color: AppTheme.cardBg,
       child: Padding(
         padding: EdgeInsets.all(16),
         child: Column(
@@ -876,23 +875,23 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
             Text(
               'Información Básica',
               style: TextStyle(
-                color: textDark,
+                color: AppTheme.textPrimary,
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
             ),
             SizedBox(height: 16),
             TextFormField(
-              style: TextStyle(color: textDark),
+              style: TextStyle(color: AppTheme.textPrimary),
               decoration: InputDecoration(
                 labelText: 'Número de Factura',
-                labelStyle: TextStyle(color: textLight),
+                labelStyle: TextStyle(color: AppTheme.textSecondary),
                 border: OutlineInputBorder(),
                 enabledBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: textLight.withOpacity(0.3)),
+                  borderSide: BorderSide(color: AppTheme.textSecondary.withOpacity(0.3)),
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: primary),
+                  borderSide: BorderSide(color: AppTheme.primary),
                 ),
               ),
               initialValue: _numeroFactura ?? 'Generando...',
@@ -901,27 +900,27 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
             SizedBox(height: 16),
             DropdownButtonFormField<Proveedor>(
               initialValue: _proveedorSeleccionado,
-              style: TextStyle(color: textDark),
+              style: TextStyle(color: AppTheme.textPrimary),
               decoration: InputDecoration(
                 labelText: 'Proveedor',
-                labelStyle: TextStyle(color: textLight),
+                labelStyle: TextStyle(color: AppTheme.textSecondary),
                 hintText: 'Seleccionar proveedor',
-                hintStyle: TextStyle(color: textLight.withOpacity(0.7)),
+                hintStyle: TextStyle(color: AppTheme.textSecondary.withOpacity(0.7)),
                 border: OutlineInputBorder(),
                 enabledBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: textLight.withOpacity(0.3)),
+                  borderSide: BorderSide(color: AppTheme.textSecondary.withOpacity(0.3)),
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: primary),
+                  borderSide: BorderSide(color: AppTheme.primary),
                 ),
               ),
-              dropdownColor: cardBg,
+              dropdownColor: AppTheme.cardBg,
               items: [
                 DropdownMenuItem<Proveedor>(
                   value: null,
                   child: Text(
                     'Proveedor general',
-                    style: TextStyle(color: textLight),
+                    style: TextStyle(color: AppTheme.textSecondary),
                   ),
                 ),
                 ..._proveedores.map((proveedor) {
@@ -929,7 +928,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                     value: proveedor,
                     child: Text(
                       proveedor.nombre,
-                      style: TextStyle(color: textDark),
+                      style: TextStyle(color: AppTheme.textPrimary),
                     ),
                   );
                 }),
@@ -950,48 +949,48 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
             SizedBox(height: 16),
             TextFormField(
               controller: _proveedorNitController,
-              style: TextStyle(color: textDark),
+              style: TextStyle(color: AppTheme.textPrimary),
               enabled: _proveedorSeleccionado == null,
               decoration: InputDecoration(
                 labelText: 'NIT del Proveedor (Opcional)',
-                labelStyle: TextStyle(color: textLight),
+                labelStyle: TextStyle(color: AppTheme.textSecondary),
                 hintText: _proveedorSeleccionado != null
                     ? 'Autocompletado desde proveedor seleccionado'
                     : 'Solo para proveedores personalizados',
-                hintStyle: TextStyle(color: textLight.withOpacity(0.7)),
+                hintStyle: TextStyle(color: AppTheme.textSecondary.withOpacity(0.7)),
                 border: OutlineInputBorder(),
                 enabledBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: textLight.withOpacity(0.3)),
+                  borderSide: BorderSide(color: AppTheme.textSecondary.withOpacity(0.3)),
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: primary),
+                  borderSide: BorderSide(color: AppTheme.primary),
                 ),
                 disabledBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: textLight.withOpacity(0.1)),
+                  borderSide: BorderSide(color: AppTheme.textSecondary.withOpacity(0.1)),
                 ),
               ),
             ),
             SizedBox(height: 16),
             TextFormField(
               controller: _proveedorNombreController,
-              style: TextStyle(color: textDark),
+              style: TextStyle(color: AppTheme.textPrimary),
               enabled: _proveedorSeleccionado == null,
               decoration: InputDecoration(
                 labelText: 'Nombre del Proveedor (Opcional)',
-                labelStyle: TextStyle(color: textLight),
+                labelStyle: TextStyle(color: AppTheme.textSecondary),
                 hintText: _proveedorSeleccionado != null
                     ? 'Autocompletado desde proveedor seleccionado'
                     : 'Solo para proveedores personalizados',
-                hintStyle: TextStyle(color: textLight.withOpacity(0.7)),
+                hintStyle: TextStyle(color: AppTheme.textSecondary.withOpacity(0.7)),
                 border: OutlineInputBorder(),
                 enabledBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: textLight.withOpacity(0.3)),
+                  borderSide: BorderSide(color: AppTheme.textSecondary.withOpacity(0.3)),
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: primary),
+                  borderSide: BorderSide(color: AppTheme.primary),
                 ),
                 disabledBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: textLight.withOpacity(0.1)),
+                  borderSide: BorderSide(color: AppTheme.textSecondary.withOpacity(0.1)),
                 ),
               ),
             ),
@@ -999,11 +998,11 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
             SwitchListTile(
               title: Text(
                 'Pagado desde caja',
-                style: TextStyle(color: textDark),
+                style: TextStyle(color: AppTheme.textPrimary),
               ),
               subtitle: Text(
                 'Marcar si esta compra afecta el flujo de caja del día',
-                style: TextStyle(color: textLight, fontSize: 12),
+                style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
               ),
               value: _pagadoDesdeCaja,
               onChanged: (value) {
@@ -1011,8 +1010,95 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                   _pagadoDesdeCaja = value;
                 });
               },
-              activeThumbColor: primary,
-              activeTrackColor: primary.withOpacity(0.3),
+              activeThumbColor: AppTheme.primary,
+              activeTrackColor: AppTheme.primary.withOpacity(0.3),
+            ),
+            SizedBox(height: 16),
+            Divider(color: AppTheme.textSecondary.withOpacity(0.3)),
+            SizedBox(height: 16),
+            // 💰 Sección de Retenciones DIAN
+            Text(
+              'Retenciones (Opcional)',
+              style: TextStyle(
+                color: AppTheme.textPrimary,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Configure los porcentajes de retención si aplican',
+              style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+            ),
+            SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _porcentajeRetencionController,
+                    style: TextStyle(color: AppTheme.textPrimary),
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: '% Rete Fuente',
+                      labelStyle: TextStyle(color: AppTheme.textSecondary),
+                      suffixText: '%',
+                      suffixStyle: TextStyle(color: AppTheme.textSecondary),
+                      helperText: '0.1% - 11%',
+                      helperStyle: TextStyle(color: AppTheme.textSecondary, fontSize: 10),
+                      filled: true,
+                      fillColor: Colors.grey[800],
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    onChanged: (_) => setState(() {}),
+                  ),
+                ),
+                SizedBox(width: 12),
+                Expanded(
+                  child: TextField(
+                    controller: _porcentajeReteIvaController,
+                    style: TextStyle(color: AppTheme.textPrimary),
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: '% Rete IVA',
+                      labelStyle: TextStyle(color: AppTheme.textSecondary),
+                      suffixText: '%',
+                      suffixStyle: TextStyle(color: AppTheme.textSecondary),
+                      helperText: '15% estándar',
+                      helperStyle: TextStyle(color: AppTheme.textSecondary, fontSize: 10),
+                      filled: true,
+                      fillColor: Colors.grey[800],
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    onChanged: (_) => setState(() {}),
+                  ),
+                ),
+                SizedBox(width: 12),
+                Expanded(
+                  child: TextField(
+                    controller: _porcentajeReteIcaController,
+                    style: TextStyle(color: AppTheme.textPrimary),
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: '% Rete ICA',
+                      labelStyle: TextStyle(color: AppTheme.textSecondary),
+                      suffixText: '%',
+                      suffixStyle: TextStyle(color: AppTheme.textSecondary),
+                      helperText: 'Varía por municipio',
+                      helperStyle: TextStyle(color: AppTheme.textSecondary, fontSize: 10),
+                      filled: true,
+                      fillColor: Colors.grey[800],
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    onChanged: (_) => setState(() {}),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -1022,7 +1108,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
 
   Widget _buildFechas() {
     return Card(
-      color: cardBg,
+      color: AppTheme.cardBg,
       child: Padding(
         padding: EdgeInsets.all(16),
         child: Column(
@@ -1031,7 +1117,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
             Text(
               'Fechas',
               style: TextStyle(
-                color: textDark,
+                color: AppTheme.textPrimary,
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
@@ -1043,13 +1129,13 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                   child: ListTile(
                     title: Text(
                       'Fecha de Factura',
-                      style: TextStyle(color: textDark),
+                      style: TextStyle(color: AppTheme.textPrimary),
                     ),
                     subtitle: Text(
                       _formatearFecha(_fechaFactura),
-                      style: TextStyle(color: textLight),
+                      style: TextStyle(color: AppTheme.textSecondary),
                     ),
-                    leading: Icon(Icons.calendar_today, color: primary),
+                    leading: Icon(Icons.calendar_today, color: AppTheme.primary),
                     onTap: () => _seleccionarFecha(context, true),
                   ),
                 ),
@@ -1057,13 +1143,13 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                   child: ListTile(
                     title: Text(
                       'Fecha de Vencimiento',
-                      style: TextStyle(color: textDark),
+                      style: TextStyle(color: AppTheme.textPrimary),
                     ),
                     subtitle: Text(
                       _formatearFecha(_fechaVencimiento),
-                      style: TextStyle(color: textLight),
+                      style: TextStyle(color: AppTheme.textSecondary),
                     ),
-                    leading: Icon(Icons.event, color: primary),
+                    leading: Icon(Icons.event, color: AppTheme.primary),
                     onTap: () => _seleccionarFecha(context, false),
                   ),
                 ),
@@ -1077,7 +1163,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
 
   Widget _buildItems() {
     return Card(
-      color: cardBg,
+      color: AppTheme.cardBg,
       child: Padding(
         padding: EdgeInsets.all(16),
         child: Column(
@@ -1089,7 +1175,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                 Text(
                   'Items de la Factura',
                   style: TextStyle(
-                    color: textDark,
+                    color: AppTheme.textPrimary,
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
@@ -1099,7 +1185,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                   icon: Icon(Icons.add),
                   label: Text('Agregar Item'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: primary,
+                    backgroundColor: AppTheme.primary,
                     foregroundColor: Colors.white,
                   ),
                 ),
@@ -1112,11 +1198,11 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                 child: Center(
                   child: Column(
                     children: [
-                      Icon(Icons.inventory_2, size: 48, color: textLight),
+                      Icon(Icons.inventory_2, size: 48, color: AppTheme.textSecondary),
                       SizedBox(height: 8),
                       Text(
                         'No hay items agregados',
-                        style: TextStyle(color: textLight),
+                        style: TextStyle(color: AppTheme.textSecondary),
                       ),
                     ],
                   ),
@@ -1127,16 +1213,16 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                 final index = entry.key;
                 final item = entry.value;
                 return Card(
-                  color: bgDark,
+                  color: AppTheme.backgroundDark,
                   margin: EdgeInsets.only(bottom: 8),
                   child: ListTile(
                     title: Text(
                       item.ingredienteNombre,
-                      style: TextStyle(color: textDark),
+                      style: TextStyle(color: AppTheme.textPrimary),
                     ),
                     subtitle: Text(
                       '${item.cantidad} ${item.unidad} x \$${item.precioUnitario.toStringAsFixed(0)}',
-                      style: TextStyle(color: textLight),
+                      style: TextStyle(color: AppTheme.textSecondary),
                     ),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -1144,7 +1230,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                         Text(
                           '\$${item.subtotal.toStringAsFixed(0)}',
                           style: TextStyle(
-                            color: primary,
+                            color: AppTheme.primary,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -1164,56 +1250,110 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
   }
 
   Widget _buildResumen() {
-    final total = _items.fold<double>(0, (sum, item) => sum + item.subtotal);
+    // Calcular totales DIAN
+    final subtotalItems = _items.fold<double>(0, (sum, item) => sum + item.subtotal);
+    final totalDescuentosItems = _items.fold<double>(0, (sum, item) => sum + item.valorDescuento);
+    final baseGravable = subtotalItems - totalDescuentosItems;
+    final totalImpuestosItems = _items.fold<double>(0, (sum, item) => sum + item.valorImpuesto);
+    
+    // Retenciones
+    final porcRetencion = double.tryParse(_porcentajeRetencionController.text) ?? 0;
+    final porcReteIva = double.tryParse(_porcentajeReteIvaController.text) ?? 0;
+    final porcReteIca = double.tryParse(_porcentajeReteIcaController.text) ?? 0;
+    
+    final valorRetencion = baseGravable * (porcRetencion / 100);
+    final valorReteIva = totalImpuestosItems * (porcReteIva / 100);
+    final valorReteIca = baseGravable * (porcReteIca / 100);
+    final totalRetenciones = valorRetencion + valorReteIva + valorReteIca;
+    
+    // Total final
+    final totalFinal = baseGravable + totalImpuestosItems - totalRetenciones;
 
     return Card(
-      color: cardBg,
+      color: AppTheme.cardBg,
       child: Padding(
         padding: EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Resumen',
+              'Resumen DIAN',
               style: TextStyle(
-                color: textDark,
+                color: AppTheme.textPrimary,
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
             ),
             SizedBox(height: 16),
+            // Desglose de totales
+            _buildResumenRow('Subtotal:', subtotalItems),
+            if (totalDescuentosItems > 0) ...[
+              _buildResumenRow('Descuentos:', -totalDescuentosItems, isNegative: true),
+              _buildResumenRow('Base Gravable:', baseGravable),
+            ],
+            if (totalImpuestosItems > 0)
+              _buildResumenRow('Total IVA:', totalImpuestosItems),
+            // Retenciones
+            if (totalRetenciones > 0) ...[
+              Divider(color: AppTheme.textSecondary.withOpacity(0.3)),
+              Text(
+                'Retenciones:',
+                style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+              ),
+              if (valorRetencion > 0)
+                _buildResumenRow('  Rete Fuente (${porcRetencion.toStringAsFixed(1)}%):', -valorRetencion, isNegative: true),
+              if (valorReteIva > 0)
+                _buildResumenRow('  Rete IVA (${porcReteIva.toStringAsFixed(1)}%):', -valorReteIva, isNegative: true),
+              if (valorReteIca > 0)
+                _buildResumenRow('  Rete ICA (${porcReteIca.toStringAsFixed(3)}%):', -valorReteIca, isNegative: true),
+            ],
+            Divider(color: AppTheme.primary.withOpacity(0.5)),
+            SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Total:',
+                  'TOTAL A PAGAR:',
                   style: TextStyle(
-                    color: textDark,
+                    color: AppTheme.primary,
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 Text(
-                  '\$${total.toStringAsFixed(0)}',
+                  '\$${totalFinal.toStringAsFixed(0)}',
                   style: TextStyle(
-                    color: primary,
-                    fontSize: 18,
+                    color: AppTheme.primary,
+                    fontSize: 22,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
               ],
             ),
-            SizedBox(height: 8),
-            Text(
-              'Nota: El IVA ya está incluido en los precios de los items',
-              style: TextStyle(
-                color: textLight,
-                fontSize: 12,
-                fontStyle: FontStyle.italic,
-              ),
-            ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildResumenRow(String label, double valor, {bool isNegative = false}) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+          ),
+          Text(
+            '${isNegative ? "-" : ""}\$${valor.abs().toStringAsFixed(0)}',
+            style: TextStyle(
+              color: isNegative ? Colors.red[300] : AppTheme.textPrimary,
+              fontSize: 14,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1260,10 +1400,6 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
             _items.add(item);
           });
         },
-        primary: primary,
-        cardBg: cardBg,
-        textDark: textDark,
-        textLight: textLight,
       ),
     );
   }
@@ -1372,13 +1508,35 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
             unidad: item.unidad,
             precioUnitario: item.precioUnitario,
             subtotal: subtotalCalculado,
+            porcentajeImpuesto: item.porcentajeImpuesto,
+            valorImpuesto: item.valorImpuesto,
+            porcentajeDescuento: item.porcentajeDescuento,
+            valorDescuento: item.valorDescuento,
           );
         }
         return item;
       }).toList();
 
+      // Calcular totales DIAN
+      final subtotalItems = itemsVerificados.fold<double>(0, (sum, item) => sum + item.subtotal);
+      final totalDescuentosItems = itemsVerificados.fold<double>(0, (sum, item) => sum + item.valorDescuento);
+      final baseGravable = subtotalItems - totalDescuentosItems;
+      final totalImpuestosItems = itemsVerificados.fold<double>(0, (sum, item) => sum + item.valorImpuesto);
+      
+      // Retenciones
+      final porcRetencion = double.tryParse(_porcentajeRetencionController.text) ?? 0;
+      final porcReteIva = double.tryParse(_porcentajeReteIvaController.text) ?? 0;
+      final porcReteIca = double.tryParse(_porcentajeReteIcaController.text) ?? 0;
+      
+      final valorRetencion = baseGravable * (porcRetencion / 100);
+      final valorReteIva = totalImpuestosItems * (porcReteIva / 100);
+      final valorReteIca = baseGravable * (porcReteIca / 100);
+      final totalRetenciones = valorRetencion + valorReteIva + valorReteIca;
+      
+      // Total final DIAN
+      final totalFinal = baseGravable + totalImpuestosItems - totalRetenciones;
+
       final factura = FacturaCompra(
-        // No pasamos ID - se genera automáticamente en el backend
         numeroFactura: _numeroFactura ?? '',
         proveedorNit: _proveedorNitController.text.trim().isEmpty
             ? null
@@ -1388,13 +1546,24 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
             : _proveedorNombreController.text.trim(),
         fechaFactura: _fechaFactura,
         fechaVencimiento: _fechaVencimiento,
-        // El modelo recalculará el total automáticamente, pero lo pasamos explícitamente para claridad
-        total: total,
+        total: totalFinal,
         estado: 'PENDIENTE',
         pagadoDesdeCaja: _pagadoDesdeCaja,
-        items: itemsVerificados, // Usar los items verificados
+        items: itemsVerificados,
         fechaCreacion: DateTime.now(),
         fechaActualizacion: DateTime.now(),
+        // Campos DIAN
+        subtotal: subtotalItems,
+        totalDescuentos: totalDescuentosItems,
+        baseGravable: baseGravable,
+        totalImpuestos: totalImpuestosItems,
+        totalRetenciones: totalRetenciones,
+        porcentajeRetencion: porcRetencion,
+        valorRetencion: valorRetencion,
+        porcentajeReteIva: porcReteIva,
+        valorReteIva: valorReteIva,
+        porcentajeReteIca: porcReteIca,
+        valorReteIca: valorReteIca,
       );
 
       print('🏪 Enviando factura al servicio...');
@@ -1467,24 +1636,19 @@ class DetalleFacturaCompraScreen extends StatelessWidget {
     return factura.estado.toUpperCase() == 'PAGADA' || factura.pagadoDesdeCaja;
   }
 
-  final Color primary = const Color(0xFFFF6B00);
-  final Color bgDark = const Color(0xFF1E1E1E);
-  final Color cardBg = const Color(0xFF252525);
-  final Color textDark = const Color(0xFFE0E0E0);
-  final Color textLight = const Color(0xFFA0A0A0);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: bgDark,
+      backgroundColor: AppTheme.backgroundDark,
       appBar: AppBar(
         title: Text(
           'Detalle de Factura',
-          style: TextStyle(color: textDark, fontWeight: FontWeight.bold),
+          style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold),
         ),
-        backgroundColor: bgDark,
+        backgroundColor: AppTheme.backgroundDark,
         elevation: 0,
-        iconTheme: IconThemeData(color: textDark),
+        iconTheme: IconThemeData(color: AppTheme.textPrimary),
       ),
       body: SingleChildScrollView(
         padding: EdgeInsets.all(16),
@@ -1504,7 +1668,7 @@ class DetalleFacturaCompraScreen extends StatelessWidget {
 
   Widget _buildInfoGeneral() {
     return Card(
-      color: cardBg,
+      color: AppTheme.cardBg,
       child: Padding(
         padding: EdgeInsets.all(16),
         child: Column(
@@ -1513,7 +1677,7 @@ class DetalleFacturaCompraScreen extends StatelessWidget {
             Text(
               'Información General',
               style: TextStyle(
-                color: textDark,
+                color: AppTheme.textPrimary,
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
@@ -1538,7 +1702,7 @@ class DetalleFacturaCompraScreen extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Estado:', style: TextStyle(color: textLight)),
+                Text('Estado:', style: TextStyle(color: AppTheme.textSecondary)),
                 // Si está pagado desde caja, mostrar PAGADA independientemente del estado en la base de datos
                 // Usar el método auxiliar para determinar el estado visual
                 _buildEstadoChip(
@@ -1550,7 +1714,7 @@ class DetalleFacturaCompraScreen extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Pagado desde caja:', style: TextStyle(color: textLight)),
+                Text('Pagado desde caja:', style: TextStyle(color: AppTheme.textSecondary)),
                 Row(
                   children: [
                     Icon(
@@ -1568,7 +1732,7 @@ class DetalleFacturaCompraScreen extends StatelessWidget {
                       style: TextStyle(
                         color: factura.pagadoDesdeCaja
                             ? Colors.green
-                            : textLight,
+                            : AppTheme.textSecondary,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -1584,7 +1748,7 @@ class DetalleFacturaCompraScreen extends StatelessWidget {
 
   Widget _buildItems() {
     return Card(
-      color: cardBg,
+      color: AppTheme.cardBg,
       child: Padding(
         padding: EdgeInsets.all(16),
         child: Column(
@@ -1593,7 +1757,7 @@ class DetalleFacturaCompraScreen extends StatelessWidget {
             Text(
               'Items de la Factura',
               style: TextStyle(
-                color: textDark,
+                color: AppTheme.textPrimary,
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
@@ -1601,21 +1765,21 @@ class DetalleFacturaCompraScreen extends StatelessWidget {
             SizedBox(height: 16),
             ...factura.items.map(
               (item) => Card(
-                color: bgDark,
+                color: AppTheme.backgroundDark,
                 margin: EdgeInsets.only(bottom: 8),
                 child: ListTile(
                   title: Text(
                     item.ingredienteNombre,
-                    style: TextStyle(color: textDark),
+                    style: TextStyle(color: AppTheme.textPrimary),
                   ),
                   subtitle: Text(
                     '${item.cantidad} ${item.unidad} x \$${item.precioUnitario.toStringAsFixed(0)}',
-                    style: TextStyle(color: textLight),
+                    style: TextStyle(color: AppTheme.textSecondary),
                   ),
                   trailing: Text(
                     '\$${item.subtotal.toStringAsFixed(0)}',
                     style: TextStyle(
-                      color: primary,
+                      color: AppTheme.primary,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -1630,7 +1794,7 @@ class DetalleFacturaCompraScreen extends StatelessWidget {
 
   Widget _buildResumen() {
     return Card(
-      color: cardBg,
+      color: AppTheme.cardBg,
       child: Padding(
         padding: EdgeInsets.all(16),
         child: Column(
@@ -1639,7 +1803,7 @@ class DetalleFacturaCompraScreen extends StatelessWidget {
             Text(
               'Resumen',
               style: TextStyle(
-                color: textDark,
+                color: AppTheme.textPrimary,
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
@@ -1651,7 +1815,7 @@ class DetalleFacturaCompraScreen extends StatelessWidget {
                 Text(
                   'Total:',
                   style: TextStyle(
-                    color: textDark,
+                    color: AppTheme.textPrimary,
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
@@ -1659,7 +1823,7 @@ class DetalleFacturaCompraScreen extends StatelessWidget {
                 Text(
                   '\$${factura.total.toStringAsFixed(0)}',
                   style: TextStyle(
-                    color: primary,
+                    color: AppTheme.primary,
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
@@ -1670,7 +1834,7 @@ class DetalleFacturaCompraScreen extends StatelessWidget {
             Text(
               'Nota: El IVA ya está incluido en los precios',
               style: TextStyle(
-                color: textLight,
+                color: AppTheme.textSecondary,
                 fontSize: 12,
                 fontStyle: FontStyle.italic,
               ),
@@ -1687,8 +1851,8 @@ class DetalleFacturaCompraScreen extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(color: textLight)),
-          Text(value, style: TextStyle(color: textDark)),
+          Text(label, style: TextStyle(color: AppTheme.textSecondary)),
+          Text(value, style: TextStyle(color: AppTheme.textPrimary)),
         ],
       ),
     );
@@ -1742,19 +1906,11 @@ class DetalleFacturaCompraScreen extends StatelessWidget {
 class _DialogoAgregarItem extends StatefulWidget {
   final List<Producto> productos;
   final Function(ItemFacturaCompra) onItemAgregado;
-  final Color primary;
-  final Color cardBg;
-  final Color textDark;
-  final Color textLight;
 
   const _DialogoAgregarItem({
     super.key,
     required this.productos,
     required this.onItemAgregado,
-    required this.primary,
-    required this.cardBg,
-    required this.textDark,
-    required this.textLight,
   });
 
   @override
@@ -1766,15 +1922,18 @@ class _DialogoAgregarItemState extends State<_DialogoAgregarItem> {
   final _cantidadController = TextEditingController();
   final _precioController = TextEditingController();
   final _totalController = TextEditingController();
+  final _porcentajeImpuestoController = TextEditingController(text: '19'); // IVA 19% por defecto
+  final _porcentajeDescuentoController = TextEditingController(text: '0');
   String _searchText = '';
-  bool _usarTotal =
-      true; // ✅ CAMBIO: Modo total por defecto para ahorrar tiempo
+  bool _usarTotal = true;
 
   @override
   void dispose() {
     _cantidadController.dispose();
     _precioController.dispose();
     _totalController.dispose();
+    _porcentajeImpuestoController.dispose();
+    _porcentajeDescuentoController.dispose();
     super.dispose();
   }
 
@@ -1795,14 +1954,20 @@ class _DialogoAgregarItemState extends State<_DialogoAgregarItem> {
     final cantidad = double.tryParse(_cantidadController.text) ?? 0;
 
     if (_usarTotal) {
-      // Si está usando total directo, retornar el total ingresado
       return double.tryParse(_totalController.text) ?? 0;
     } else {
-      // Si está usando precio unitario, calcular el subtotal normalmente
       final precio = double.tryParse(_precioController.text) ?? 0;
       return cantidad * precio;
     }
   }
+
+  double get _porcentajeImpuesto => double.tryParse(_porcentajeImpuestoController.text) ?? 0;
+  double get _porcentajeDescuento => double.tryParse(_porcentajeDescuentoController.text) ?? 0;
+  
+  double get _valorDescuento => _subtotal * (_porcentajeDescuento / 100);
+  double get _baseGravable => _subtotal - _valorDescuento;
+  double get _valorImpuesto => _baseGravable * (_porcentajeImpuesto / 100);
+  double get _totalItem => _baseGravable + _valorImpuesto;
 
   double get _precioUnitarioCalculado {
     final cantidad = double.tryParse(_cantidadController.text) ?? 0;
@@ -1818,7 +1983,7 @@ class _DialogoAgregarItemState extends State<_DialogoAgregarItem> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      backgroundColor: widget.cardBg,
+      backgroundColor: AppTheme.cardBg,
       child: Container(
         width: MediaQuery.of(context).size.width * 0.9,
         constraints: BoxConstraints(
@@ -1836,14 +2001,14 @@ class _DialogoAgregarItemState extends State<_DialogoAgregarItem> {
                 Text(
                   'Agregar Item',
                   style: TextStyle(
-                    color: widget.textDark,
+                    color: AppTheme.textPrimary,
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 IconButton(
                   onPressed: () => Navigator.pop(context),
-                  icon: Icon(Icons.close, color: widget.textLight),
+                  icon: Icon(Icons.close, color: AppTheme.textSecondary),
                 ),
               ],
             ),
@@ -1851,11 +2016,11 @@ class _DialogoAgregarItemState extends State<_DialogoAgregarItem> {
 
             // Búsqueda de productos
             TextField(
-              style: TextStyle(color: widget.textDark),
+              style: TextStyle(color: AppTheme.textPrimary),
               decoration: InputDecoration(
                 hintText: 'Buscar productos...',
-                hintStyle: TextStyle(color: widget.textLight),
-                prefixIcon: Icon(Icons.search, color: widget.textLight),
+                hintStyle: TextStyle(color: AppTheme.textSecondary),
+                prefixIcon: Icon(Icons.search, color: AppTheme.textSecondary),
                 filled: true,
                 fillColor: Colors.grey[800],
                 border: OutlineInputBorder(
@@ -1879,7 +2044,7 @@ class _DialogoAgregarItemState extends State<_DialogoAgregarItem> {
                     Text(
                       'Seleccionar Producto:',
                       style: TextStyle(
-                        color: widget.textDark,
+                        color: AppTheme.textPrimary,
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),
@@ -1901,21 +2066,21 @@ class _DialogoAgregarItemState extends State<_DialogoAgregarItem> {
                           return ListTile(
                             title: Text(
                               producto.nombre,
-                              style: TextStyle(color: widget.textDark),
+                              style: TextStyle(color: AppTheme.textPrimary),
                             ),
                             subtitle: Text(
                               '${producto.categoria?.nombre ?? 'Sin categoría'} - Stock: ${producto.cantidad}',
-                              style: TextStyle(color: widget.textLight),
+                              style: TextStyle(color: AppTheme.textSecondary),
                             ),
                             trailing: Text(
                               '\$${producto.precio.toStringAsFixed(0)}',
                               style: TextStyle(
-                                color: widget.textLight,
+                                color: AppTheme.textSecondary,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
                             selected: isSelected,
-                            selectedTileColor: widget.primary.withOpacity(0.1),
+                            selectedTileColor: AppTheme.primary.withOpacity(0.1),
                             onTap: () {
                               setState(() {
                                 _productoSeleccionado = producto;
@@ -1934,7 +2099,7 @@ class _DialogoAgregarItemState extends State<_DialogoAgregarItem> {
                       Container(
                         padding: EdgeInsets.all(20),
                         decoration: BoxDecoration(
-                          color: widget.cardBg,
+                          color: AppTheme.cardBg,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(color: Colors.grey[600]!),
                         ),
@@ -1945,7 +2110,7 @@ class _DialogoAgregarItemState extends State<_DialogoAgregarItem> {
                             Text(
                               'Detalles del Item',
                               style: TextStyle(
-                                color: widget.textDark,
+                                color: AppTheme.textPrimary,
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -1959,7 +2124,7 @@ class _DialogoAgregarItemState extends State<_DialogoAgregarItem> {
                                   _usarTotal
                                       ? Icons.calculate
                                       : Icons.attach_money,
-                                  color: widget.textLight,
+                                  color: AppTheme.textSecondary,
                                   size: 20,
                                 ),
                                 SizedBox(width: 12),
@@ -1971,7 +2136,7 @@ class _DialogoAgregarItemState extends State<_DialogoAgregarItem> {
                                       Text(
                                         'Modo de entrada de precios',
                                         style: TextStyle(
-                                          color: widget.textDark,
+                                          color: AppTheme.textPrimary,
                                           fontSize: 14,
                                           fontWeight: FontWeight.w500,
                                         ),
@@ -1982,7 +2147,7 @@ class _DialogoAgregarItemState extends State<_DialogoAgregarItem> {
                                             ? 'Total directo - el precio unitario se calculará automáticamente'
                                             : 'Precio unitario manual - ingresa el precio por unidad',
                                         style: TextStyle(
-                                          color: widget.textLight,
+                                          color: AppTheme.textSecondary,
                                           fontSize: 12,
                                         ),
                                       ),
@@ -2002,8 +2167,8 @@ class _DialogoAgregarItemState extends State<_DialogoAgregarItem> {
                                       }
                                     });
                                   },
-                                  activeColor: widget.primary,
-                                  activeTrackColor: widget.primary.withOpacity(
+                                  activeColor: AppTheme.primary,
+                                  activeTrackColor: AppTheme.primary.withOpacity(
                                     0.3,
                                   ),
                                 ),
@@ -2015,13 +2180,13 @@ class _DialogoAgregarItemState extends State<_DialogoAgregarItem> {
                             // Cantidad (siempre visible)
                             TextField(
                               controller: _cantidadController,
-                              style: TextStyle(color: widget.textDark),
+                              style: TextStyle(color: AppTheme.textPrimary),
                               keyboardType: TextInputType.number,
                               decoration: InputDecoration(
                                 labelText: 'Cantidad',
-                                labelStyle: TextStyle(color: widget.textLight),
+                                labelStyle: TextStyle(color: AppTheme.textSecondary),
                                 suffixText: 'unidades',
-                                suffixStyle: TextStyle(color: widget.textLight),
+                                suffixStyle: TextStyle(color: AppTheme.textSecondary),
                                 enabledBorder: OutlineInputBorder(
                                   borderSide: BorderSide(
                                     color: Colors.grey[600]!,
@@ -2029,7 +2194,7 @@ class _DialogoAgregarItemState extends State<_DialogoAgregarItem> {
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 focusedBorder: OutlineInputBorder(
-                                  borderSide: BorderSide(color: widget.primary),
+                                  borderSide: BorderSide(color: AppTheme.primary),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                               ),
@@ -2041,20 +2206,20 @@ class _DialogoAgregarItemState extends State<_DialogoAgregarItem> {
                             if (!_usarTotal) ...[
                               TextField(
                                 controller: _precioController,
-                                style: TextStyle(color: widget.textDark),
+                                style: TextStyle(color: AppTheme.textPrimary),
                                 keyboardType: TextInputType.number,
                                 decoration: InputDecoration(
                                   labelText: 'Precio Unitario',
                                   labelStyle: TextStyle(
-                                    color: widget.textLight,
+                                    color: AppTheme.textSecondary,
                                   ),
                                   prefixText: '\$',
                                   prefixStyle: TextStyle(
-                                    color: widget.textLight,
+                                    color: AppTheme.textSecondary,
                                   ),
                                   helperText: 'Precio por unidad',
                                   helperStyle: TextStyle(
-                                    color: widget.textLight,
+                                    color: AppTheme.textSecondary,
                                     fontSize: 12,
                                   ),
                                   enabledBorder: OutlineInputBorder(
@@ -2065,7 +2230,7 @@ class _DialogoAgregarItemState extends State<_DialogoAgregarItem> {
                                   ),
                                   focusedBorder: OutlineInputBorder(
                                     borderSide: BorderSide(
-                                      color: widget.primary,
+                                      color: AppTheme.primary,
                                     ),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
@@ -2075,21 +2240,21 @@ class _DialogoAgregarItemState extends State<_DialogoAgregarItem> {
                             ] else ...[
                               TextField(
                                 controller: _totalController,
-                                style: TextStyle(color: widget.textDark),
+                                style: TextStyle(color: AppTheme.textPrimary),
                                 keyboardType: TextInputType.number,
                                 decoration: InputDecoration(
                                   labelText: 'Total del Item',
                                   labelStyle: TextStyle(
-                                    color: widget.textLight,
+                                    color: AppTheme.textSecondary,
                                   ),
                                   prefixText: '\$',
                                   prefixStyle: TextStyle(
-                                    color: widget.textLight,
+                                    color: AppTheme.textSecondary,
                                   ),
                                   helperText:
                                       'El precio unitario se calculará automáticamente',
                                   helperStyle: TextStyle(
-                                    color: widget.textLight,
+                                    color: AppTheme.textSecondary,
                                     fontSize: 12,
                                   ),
                                   enabledBorder: OutlineInputBorder(
@@ -2100,7 +2265,7 @@ class _DialogoAgregarItemState extends State<_DialogoAgregarItem> {
                                   ),
                                   focusedBorder: OutlineInputBorder(
                                     borderSide: BorderSide(
-                                      color: widget.primary,
+                                      color: AppTheme.primary,
                                     ),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
@@ -2110,7 +2275,63 @@ class _DialogoAgregarItemState extends State<_DialogoAgregarItem> {
                             ],
                             SizedBox(height: 16),
 
-                            // Información del subtotal
+                            // 💰 Campos DIAN: IVA y Descuento
+                            Row(
+                              children: [
+                                // Campo IVA
+                                Expanded(
+                                  child: TextField(
+                                    controller: _porcentajeImpuestoController,
+                                    style: TextStyle(color: AppTheme.textPrimary),
+                                    keyboardType: TextInputType.number,
+                                    decoration: InputDecoration(
+                                      labelText: '% IVA',
+                                      labelStyle: TextStyle(color: AppTheme.textSecondary),
+                                      suffixText: '%',
+                                      suffixStyle: TextStyle(color: AppTheme.textSecondary),
+                                      helperText: '0%, 5%, 19%',
+                                      helperStyle: TextStyle(color: AppTheme.textSecondary, fontSize: 10),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderSide: BorderSide(color: Colors.grey[600]!),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderSide: BorderSide(color: AppTheme.primary),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                    ),
+                                    onChanged: (_) => setState(() {}),
+                                  ),
+                                ),
+                                SizedBox(width: 12),
+                                // Campo Descuento
+                                Expanded(
+                                  child: TextField(
+                                    controller: _porcentajeDescuentoController,
+                                    style: TextStyle(color: AppTheme.textPrimary),
+                                    keyboardType: TextInputType.number,
+                                    decoration: InputDecoration(
+                                      labelText: '% Descuento',
+                                      labelStyle: TextStyle(color: AppTheme.textSecondary),
+                                      suffixText: '%',
+                                      suffixStyle: TextStyle(color: AppTheme.textSecondary),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderSide: BorderSide(color: Colors.grey[600]!),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderSide: BorderSide(color: AppTheme.primary),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                    ),
+                                    onChanged: (_) => setState(() {}),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 16),
+
+                            // Información del subtotal con desglose DIAN
                             Container(
                               padding: EdgeInsets.all(12),
                               decoration: BoxDecoration(
@@ -2128,14 +2349,14 @@ class _DialogoAgregarItemState extends State<_DialogoAgregarItem> {
                                         Text(
                                           'Precio Unitario Calculado:',
                                           style: TextStyle(
-                                            color: widget.textDark,
+                                            color: AppTheme.textPrimary,
                                             fontSize: 14,
                                           ),
                                         ),
                                         Text(
                                           '\$${_precioUnitarioCalculado.toStringAsFixed(2)}',
                                           style: TextStyle(
-                                            color: widget.textDark,
+                                            color: AppTheme.textPrimary,
                                             fontSize: 14,
                                             fontWeight: FontWeight.w500,
                                           ),
@@ -2143,28 +2364,33 @@ class _DialogoAgregarItemState extends State<_DialogoAgregarItem> {
                                       ],
                                     ),
                                     SizedBox(height: 8),
-                                    Divider(
-                                      color: widget.textLight.withOpacity(0.3),
-                                    ),
-                                    SizedBox(height: 8),
                                   ],
-                                  // Subtotal final
+                                  // Subtotal base
+                                  _buildDesgloseRow('Subtotal:', _subtotal),
+                                  if (_valorDescuento > 0) ...[
+                                    _buildDesgloseRow('Descuento (${_porcentajeDescuento.toStringAsFixed(0)}%):', -_valorDescuento, isNegative: true),
+                                    _buildDesgloseRow('Base Gravable:', _baseGravable),
+                                  ],
+                                  if (_valorImpuesto > 0)
+                                    _buildDesgloseRow('IVA (${_porcentajeImpuesto.toStringAsFixed(0)}%):', _valorImpuesto),
+                                  Divider(color: AppTheme.textSecondary.withOpacity(0.3)),
+                                  // Total final
                                   Row(
                                     mainAxisAlignment:
                                         MainAxisAlignment.spaceBetween,
                                     children: [
                                       Text(
-                                        'Subtotal:',
+                                        'TOTAL ITEM:',
                                         style: TextStyle(
-                                          color: widget.textDark,
+                                          color: AppTheme.primary,
                                           fontSize: 16,
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
                                       Text(
-                                        '\$${_subtotal.toStringAsFixed(0)}',
+                                        '\$${_totalItem.toStringAsFixed(0)}',
                                         style: TextStyle(
-                                          color: widget.textDark,
+                                          color: AppTheme.primary,
                                           fontSize: 18,
                                           fontWeight: FontWeight.bold,
                                         ),
@@ -2191,14 +2417,14 @@ class _DialogoAgregarItemState extends State<_DialogoAgregarItem> {
                   onPressed: () => Navigator.pop(context),
                   child: Text(
                     'Cancelar',
-                    style: TextStyle(color: widget.textLight),
+                    style: TextStyle(color: AppTheme.textSecondary),
                   ),
                 ),
                 SizedBox(width: 12),
                 ElevatedButton(
                   onPressed: _puedeAgregar() ? _agregarItem : null,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: widget.primary,
+                    backgroundColor: AppTheme.primary,
                     foregroundColor: Colors.white,
                   ),
                   child: Text('Agregar'),
@@ -2221,14 +2447,34 @@ class _DialogoAgregarItemState extends State<_DialogoAgregarItem> {
     if (!cantidadValida) return false;
 
     if (_usarTotal) {
-      // Modo total: validar que el total sea válido
       return _totalController.text.isNotEmpty &&
           (double.tryParse(_totalController.text) ?? 0) > 0;
     } else {
-      // Modo precio unitario: validar que el precio sea válido
       return _precioController.text.isNotEmpty &&
           (double.tryParse(_precioController.text) ?? 0) > 0;
     }
+  }
+
+  Widget _buildDesgloseRow(String label, double valor, {bool isNegative = false}) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+          ),
+          Text(
+            '${isNegative ? "-" : ""}\$${valor.abs().toStringAsFixed(0)}',
+            style: TextStyle(
+              color: isNegative ? Colors.red[300] : AppTheme.textPrimary,
+              fontSize: 13,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _agregarItem() {
@@ -2237,13 +2483,11 @@ class _DialogoAgregarItemState extends State<_DialogoAgregarItem> {
     double subtotal;
 
     if (_usarTotal) {
-      // Modo total directo
       subtotal = double.parse(_totalController.text);
-      precio = subtotal / cantidad; // Calcular precio unitario
+      precio = subtotal / cantidad;
     } else {
-      // Modo precio unitario
       precio = double.parse(_precioController.text);
-      subtotal = cantidad * precio; // Calcular subtotal
+      subtotal = cantidad * precio;
     }
 
     final item = ItemFacturaCompra(
@@ -2253,6 +2497,11 @@ class _DialogoAgregarItemState extends State<_DialogoAgregarItem> {
       unidad: 'unidad',
       precioUnitario: precio,
       subtotal: subtotal,
+      // Campos DIAN
+      porcentajeImpuesto: _porcentajeImpuesto,
+      valorImpuesto: _valorImpuesto,
+      porcentajeDescuento: _porcentajeDescuento,
+      valorDescuento: _valorDescuento,
     );
 
     widget.onItemAgregado(item);

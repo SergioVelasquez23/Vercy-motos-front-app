@@ -17,6 +17,12 @@ import 'screens/reportes_screen.dart';
 import 'screens/pedidos_screen_fusion.dart';
 import 'screens/configuracion_facturacion_screen.dart';
 import 'screens/gastos_screen.dart';
+import 'screens/ingresos_caja_screen.dart';
+import 'screens/facturas_compras_screen.dart';
+import 'screens/traslados_screen.dart';
+import 'screens/historial_inventario_screen.dart';
+import 'screens/asesor_pedidos_screen.dart';
+import 'screens/admin_pedidos_asesor_screen.dart';
 import 'models/cliente.dart';
 import 'models/cotizacion.dart';
 import 'providers/user_provider.dart';
@@ -115,6 +121,8 @@ class MyApp extends StatelessWidget {
       routes: {
         '/dashboard': (context) => DashboardScreenV2(),
         '/facturar': (context) => FacturacionScreen(),
+        '/asesor-pedidos': (context) => AsesorPedidosScreen(),
+        '/admin-pedidos-asesor': (context) => AdminPedidosAsesorScreen(),
         '/clientes': (context) => ClientesListScreen(),
         '/clientes/form': (context) {
           final cliente =
@@ -128,12 +136,15 @@ class MyApp extends StatelessWidget {
           return CotizacionFormScreen(cotizacion: cotizacion);
         },
         '/productos': (context) => ProductosScreen(),
+        '/traslados': (context) => TrasladosScreen(),
         '/categorias': (context) => CategoriasScreen(),
         '/historial-inventario': (context) => HistorialInventarioScreen(),
         '/cuadre_caja': (context) => CuadreCajaScreen(),
         '/abrir_caja': (context) => AbrirCajaScreen(),
         '/cerrar_caja': (context) => CerrarCajaScreen(),
+        '/facturas-compras': (context) => FacturasComprasScreen(),
         '/gastos': (context) => GastosScreen(),
+        '/ingresos-caja': (context) => IngresosCajaScreen(),
         '/pedidos': (context) =>
             const PedidosScreenFusion(), // Pantalla fusionada
         // '/pedidos_v2': (context) =>

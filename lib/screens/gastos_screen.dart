@@ -8,6 +8,7 @@ import '../models/proveedor.dart';
 import '../services/gasto_service.dart';
 import '../services/cuadre_caja_service.dart';
 import '../services/proveedor_service.dart';
+import '../theme/app_theme.dart';
 
 class GastosScreen extends StatefulWidget {
   final String? cuadreCajaId;
@@ -19,12 +20,6 @@ class GastosScreen extends StatefulWidget {
 }
 
 class _GastosScreenState extends State<GastosScreen> {
-  final Color primary = Color(0xFFFF6B00); // Color naranja fuego
-  final Color bgDark = Color(0xFF1E1E1E); // Color de fondo negro
-  final Color cardBg = Color(0xFF252525); // Color de tarjetas
-  final Color textDark = Color(0xFFE0E0E0); // Color de texto claro
-  final Color textLight = Color(0xFFA0A0A0); // Color de texto más suave
-
   // Services
   final GastoService _gastoService = GastoService();
   final CuadreCajaService _cuadreCajaService = CuadreCajaService();
@@ -387,16 +382,22 @@ class _GastosScreenState extends State<GastosScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: cardBg,
-        title: Text('Confirmar eliminación', style: TextStyle(color: textDark)),
+        backgroundColor: AppTheme.cardBg,
+        title: Text(
+          'Confirmar eliminación',
+          style: TextStyle(color: AppTheme.textPrimary),
+        ),
         content: Text(
           '¿Está seguro de eliminar este gasto?',
-          style: TextStyle(color: textLight),
+          style: TextStyle(color: AppTheme.textSecondary),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: Text('Cancelar', style: TextStyle(color: textLight)),
+            child: Text(
+              'Cancelar',
+              style: TextStyle(color: AppTheme.textSecondary),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
@@ -450,21 +451,25 @@ class _GastosScreenState extends State<GastosScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: bgDark,
+      backgroundColor: AppTheme.backgroundDark,
       appBar: AppBar(
-        backgroundColor: primary,
+        backgroundColor: AppTheme.primary,
         title: Text('Gestión de Gastos', style: TextStyle(color: Colors.white)),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pushReplacementNamed(context, '/dashboard'),
+        ),
         actions: [],
       ),
       body: _isLoading
-          ? Center(child: CircularProgressIndicator(color: primary))
+          ? Center(child: CircularProgressIndicator(color: AppTheme.primary))
           : _showForm
           ? _buildForm()
           : _buildGastosList(),
       floatingActionButton: !_showForm
           ? FloatingActionButton(
               onPressed: () => _showFormDialog(),
-              backgroundColor: primary,
+              backgroundColor: AppTheme.primary,
               child: Icon(Icons.add, color: Colors.white),
               tooltip: 'Agregar Nuevo Gasto',
             )
@@ -482,7 +487,7 @@ class _GastosScreenState extends State<GastosScreen> {
           Row(
             children: [
               IconButton(
-                icon: Icon(Icons.arrow_back, color: textDark),
+                icon: Icon(Icons.arrow_back, color: AppTheme.textPrimary),
                 onPressed: () => setState(() => _showForm = false),
               ),
               Text(
@@ -490,7 +495,7 @@ class _GastosScreenState extends State<GastosScreen> {
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
-                  color: textDark,
+                  color: AppTheme.textPrimary,
                 ),
               ),
             ],
@@ -499,7 +504,7 @@ class _GastosScreenState extends State<GastosScreen> {
 
           // Formulario
           Card(
-            color: cardBg,
+            color: AppTheme.cardBg,
             child: Padding(
               padding: EdgeInsets.all(20),
               child: Column(
@@ -509,7 +514,10 @@ class _GastosScreenState extends State<GastosScreen> {
                     DropdownButtonFormField<String>(
                       decoration: InputDecoration(
                         labelText: 'Cuadre de Caja*',
-                        labelStyle: TextStyle(color: textLight, fontSize: 14),
+                        labelStyle: TextStyle(
+                          color: AppTheme.textSecondary,
+                          fontSize: 14,
+                        ),
                         border: OutlineInputBorder(),
                         contentPadding: EdgeInsets.symmetric(
                           horizontal: 12,
@@ -517,8 +525,11 @@ class _GastosScreenState extends State<GastosScreen> {
                         ),
                       ),
                       initialValue: _selectedCuadreId,
-                      dropdownColor: cardBg,
-                      style: TextStyle(color: textDark, fontSize: 14),
+                      dropdownColor: AppTheme.cardBg,
+                      style: TextStyle(
+                        color: AppTheme.textPrimary,
+                        fontSize: 14,
+                      ),
                       items: _cuadresDisponibles.map((cuadre) {
                         return DropdownMenuItem(
                           value: cuadre.id,
@@ -560,13 +571,16 @@ class _GastosScreenState extends State<GastosScreen> {
                         children: [
                           Icon(
                             Icons.calendar_today,
-                            color: textLight,
+                            color: AppTheme.textSecondary,
                             size: 20,
                           ),
                           SizedBox(width: 12),
                           Text(
                             '${_selectedDate.day.toString().padLeft(2, '0')}/${_selectedDate.month.toString().padLeft(2, '0')}/${_selectedDate.year}',
-                            style: TextStyle(color: textDark, fontSize: 16),
+                            style: TextStyle(
+                              color: AppTheme.textPrimary,
+                              fontSize: 16,
+                            ),
                           ),
                         ],
                       ),
@@ -582,7 +596,7 @@ class _GastosScreenState extends State<GastosScreen> {
                           decoration: InputDecoration(
                             labelText: 'Tipo de gasto*',
                             labelStyle: TextStyle(
-                              color: textLight,
+                              color: AppTheme.textSecondary,
                               fontSize: 14,
                             ),
                             border: OutlineInputBorder(),
@@ -592,8 +606,11 @@ class _GastosScreenState extends State<GastosScreen> {
                             ),
                           ),
                           initialValue: _selectedTipoGastoId,
-                          dropdownColor: cardBg,
-                          style: TextStyle(color: textDark, fontSize: 14),
+                          dropdownColor: AppTheme.cardBg,
+                          style: TextStyle(
+                            color: AppTheme.textPrimary,
+                            fontSize: 14,
+                          ),
                           items: _tiposGasto.map((tipo) {
                             return DropdownMenuItem(
                               value: tipo.id,
@@ -610,7 +627,7 @@ class _GastosScreenState extends State<GastosScreen> {
                           decoration: InputDecoration(
                             labelText: 'Proveedor',
                             labelStyle: TextStyle(
-                              color: textLight,
+                              color: AppTheme.textSecondary,
                               fontSize: 14,
                             ),
                             border: OutlineInputBorder(),
@@ -620,14 +637,17 @@ class _GastosScreenState extends State<GastosScreen> {
                             ),
                           ),
                           value: _selectedProveedorId,
-                          dropdownColor: cardBg,
-                          style: TextStyle(color: textDark, fontSize: 14),
+                          dropdownColor: AppTheme.cardBg,
+                          style: TextStyle(
+                            color: AppTheme.textPrimary,
+                            fontSize: 14,
+                          ),
                           items: [
                             DropdownMenuItem<String>(
                               value: null,
                               child: Text(
                                 'Sin proveedor',
-                                style: TextStyle(color: textLight),
+                                style: TextStyle(color: AppTheme.textSecondary),
                               ),
                             ),
                             ..._proveedores.map((proveedor) {
@@ -651,19 +671,26 @@ class _GastosScreenState extends State<GastosScreen> {
                     readOnly: true,
                     decoration: InputDecoration(
                       labelText: 'N° Factura (Generado automáticamente)',
-                      labelStyle: TextStyle(color: textLight, fontSize: 14),
+                      labelStyle: TextStyle(
+                        color: AppTheme.textSecondary,
+                        fontSize: 14,
+                      ),
                       border: OutlineInputBorder(),
                       contentPadding: EdgeInsets.symmetric(
                         horizontal: 12,
                         vertical: 12,
                       ),
                       suffixIcon: IconButton(
-                        icon: Icon(Icons.refresh, color: primary, size: 20),
+                        icon: Icon(
+                          Icons.refresh,
+                          color: AppTheme.primary,
+                          size: 20,
+                        ),
                         onPressed: _generateInvoiceNumber,
                         tooltip: 'Regenerar número',
                       ),
                     ),
-                    style: TextStyle(color: textDark, fontSize: 14),
+                    style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
                   ),
                   SizedBox(height: 12),
 
@@ -671,7 +698,10 @@ class _GastosScreenState extends State<GastosScreen> {
                   DropdownButtonFormField<String>(
                     decoration: InputDecoration(
                       labelText: 'Forma de Pago',
-                      labelStyle: TextStyle(color: textLight, fontSize: 14),
+                      labelStyle: TextStyle(
+                        color: AppTheme.textSecondary,
+                        fontSize: 14,
+                      ),
                       border: OutlineInputBorder(),
                       contentPadding: EdgeInsets.symmetric(
                         horizontal: 12,
@@ -679,8 +709,8 @@ class _GastosScreenState extends State<GastosScreen> {
                       ),
                     ),
                     initialValue: _selectedFormaPago,
-                    dropdownColor: cardBg,
-                    style: TextStyle(color: textDark, fontSize: 14),
+                    dropdownColor: AppTheme.cardBg,
+                    style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
                     items: _formasPago.map((forma) {
                       return DropdownMenuItem(value: forma, child: Text(forma));
                     }).toList(),
@@ -695,14 +725,17 @@ class _GastosScreenState extends State<GastosScreen> {
                     maxLines: 3,
                     decoration: InputDecoration(
                       labelText: 'Concepto del Gasto*',
-                      labelStyle: TextStyle(color: textLight, fontSize: 14),
+                      labelStyle: TextStyle(
+                        color: AppTheme.textSecondary,
+                        fontSize: 14,
+                      ),
                       border: OutlineInputBorder(),
                       contentPadding: EdgeInsets.symmetric(
                         horizontal: 12,
                         vertical: 12,
                       ),
                     ),
-                    style: TextStyle(color: textDark, fontSize: 14),
+                    style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
                   ),
                   SizedBox(height: 12),
 
@@ -715,7 +748,7 @@ class _GastosScreenState extends State<GastosScreen> {
                           decoration: InputDecoration(
                             labelText: 'Subtotal*',
                             labelStyle: TextStyle(
-                              color: textLight,
+                              color: AppTheme.textSecondary,
                               fontSize: 14,
                             ),
                             border: OutlineInputBorder(),
@@ -724,7 +757,10 @@ class _GastosScreenState extends State<GastosScreen> {
                               vertical: 12,
                             ),
                           ),
-                          style: TextStyle(color: textDark, fontSize: 14),
+                          style: TextStyle(
+                            color: AppTheme.textPrimary,
+                            fontSize: 14,
+                          ),
                           keyboardType: TextInputType.number,
                           onChanged: _calculateTotal,
                         ),
@@ -736,7 +772,7 @@ class _GastosScreenState extends State<GastosScreen> {
                           decoration: InputDecoration(
                             labelText: 'Impuestos',
                             labelStyle: TextStyle(
-                              color: textLight,
+                              color: AppTheme.textSecondary,
                               fontSize: 14,
                             ),
                             border: OutlineInputBorder(),
@@ -745,7 +781,10 @@ class _GastosScreenState extends State<GastosScreen> {
                               vertical: 12,
                             ),
                           ),
-                          style: TextStyle(color: textDark, fontSize: 14),
+                          style: TextStyle(
+                            color: AppTheme.textPrimary,
+                            fontSize: 14,
+                          ),
                           keyboardType: TextInputType.number,
                           onChanged: _calculateTotal,
                         ),
@@ -759,8 +798,8 @@ class _GastosScreenState extends State<GastosScreen> {
                     width: double.infinity,
                     padding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
                     decoration: BoxDecoration(
-                      color: primary.withOpacity(0.1),
-                      border: Border.all(color: primary),
+                      color: AppTheme.primary.withOpacity(0.1),
+                      border: Border.all(color: AppTheme.primary),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Row(
@@ -769,7 +808,7 @@ class _GastosScreenState extends State<GastosScreen> {
                         Text(
                           'Total',
                           style: TextStyle(
-                            color: textDark,
+                            color: AppTheme.textPrimary,
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),
@@ -779,7 +818,7 @@ class _GastosScreenState extends State<GastosScreen> {
                               ? '0,00'
                               : _montoController.text,
                           style: TextStyle(
-                            color: primary,
+                            color: AppTheme.primary,
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                           ),
@@ -793,15 +832,17 @@ class _GastosScreenState extends State<GastosScreen> {
                   Container(
                     padding: EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: primary.withOpacity(0.1),
+                      color: AppTheme.primary.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: primary.withOpacity(0.3)),
+                      border: Border.all(
+                        color: AppTheme.primary.withOpacity(0.3),
+                      ),
                     ),
                     child: Row(
                       children: [
                         Icon(
                           Icons.account_balance_wallet,
-                          color: primary,
+                          color: AppTheme.primary,
                           size: 20,
                         ),
                         SizedBox(width: 12),
@@ -809,7 +850,7 @@ class _GastosScreenState extends State<GastosScreen> {
                           child: Text(
                             'Pagar desde caja (descontar del efectivo)',
                             style: TextStyle(
-                              color: textDark,
+                              color: AppTheme.textPrimary,
                               fontSize: 14,
                               fontWeight: FontWeight.w500,
                             ),
@@ -824,7 +865,7 @@ class _GastosScreenState extends State<GastosScreen> {
                             // Recalcular total cuando cambia el switch
                             _calculateTotal();
                           },
-                          activeColor: primary,
+                          activeColor: AppTheme.primary,
                         ),
                       ],
                     ),
@@ -847,7 +888,10 @@ class _GastosScreenState extends State<GastosScreen> {
                           Expanded(
                             child: Text(
                               'Se descontará del efectivo disponible en caja. Asegúrate de que hay suficiente efectivo.',
-                              style: TextStyle(color: textDark, fontSize: 12),
+                              style: TextStyle(
+                                color: AppTheme.textPrimary,
+                                fontSize: 12,
+                              ),
                             ),
                           ),
                         ],
@@ -873,7 +917,7 @@ class _GastosScreenState extends State<GastosScreen> {
                       Expanded(
                         child: ElevatedButton(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: primary,
+                            backgroundColor: AppTheme.primary,
                             foregroundColor: Colors.white,
                             padding: EdgeInsets.symmetric(vertical: 16),
                           ),
@@ -901,7 +945,7 @@ class _GastosScreenState extends State<GastosScreen> {
       children: [
         // Panel de filtros expandido
         Card(
-          color: cardBg,
+          color: AppTheme.cardBg,
           margin: EdgeInsets.all(16),
           child: Padding(
             padding: EdgeInsets.all(16),
@@ -915,14 +959,17 @@ class _GastosScreenState extends State<GastosScreen> {
                     Text(
                       'Filtros de Búsqueda',
                       style: TextStyle(
-                        color: textDark,
+                        color: AppTheme.textPrimary,
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     TextButton(
                       onPressed: _limpiarFiltros,
-                      child: Text('Limpiar', style: TextStyle(color: primary)),
+                      child: Text(
+                        'Limpiar',
+                        style: TextStyle(color: AppTheme.primary),
+                      ),
                     ),
                   ],
                 ),
@@ -937,12 +984,14 @@ class _GastosScreenState extends State<GastosScreen> {
                         child: DropdownButtonFormField<String>(
                           decoration: InputDecoration(
                             labelText: 'Filtrar por Cuadre',
-                            labelStyle: TextStyle(color: textLight),
+                            labelStyle: TextStyle(
+                              color: AppTheme.textSecondary,
+                            ),
                             border: OutlineInputBorder(),
                           ),
                           value: _selectedCuadreId,
-                          dropdownColor: cardBg,
-                          style: TextStyle(color: textDark),
+                          dropdownColor: AppTheme.cardBg,
+                          style: TextStyle(color: AppTheme.textPrimary),
                           items: [
                             DropdownMenuItem(
                               value: null,
@@ -970,16 +1019,22 @@ class _GastosScreenState extends State<GastosScreen> {
                     Expanded(
                       child: TextFormField(
                         controller: _conceptoBusquedaController,
-                        style: TextStyle(color: textDark),
+                        style: TextStyle(color: AppTheme.textPrimary),
                         decoration: InputDecoration(
                           labelText: 'Buscar por concepto',
-                          labelStyle: TextStyle(color: textLight),
+                          labelStyle: TextStyle(color: AppTheme.textSecondary),
                           border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.search, color: textLight),
+                          prefixIcon: Icon(
+                            Icons.search,
+                            color: AppTheme.textSecondary,
+                          ),
                           suffixIcon:
                               _conceptoBusquedaController.text.isNotEmpty
                               ? IconButton(
-                                  icon: Icon(Icons.clear, color: textLight),
+                                  icon: Icon(
+                                    Icons.clear,
+                                    color: AppTheme.textSecondary,
+                                  ),
                                   onPressed: () {
                                     _conceptoBusquedaController.clear();
                                     setState(() => _filtroConcepto = null);
@@ -1015,8 +1070,8 @@ class _GastosScreenState extends State<GastosScreen> {
                               return Theme(
                                 data: Theme.of(context).copyWith(
                                   colorScheme: ColorScheme.dark(
-                                    primary: primary,
-                                    surface: cardBg,
+                                    primary: AppTheme.primary,
+                                    surface: AppTheme.cardBg,
                                   ),
                                 ),
                                 child: child!,
@@ -1030,18 +1085,21 @@ class _GastosScreenState extends State<GastosScreen> {
                         child: Container(
                           padding: EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            border: Border.all(color: textLight),
+                            border: Border.all(color: AppTheme.textSecondary),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Row(
                             children: [
-                              Icon(Icons.calendar_today, color: textLight),
+                              Icon(
+                                Icons.calendar_today,
+                                color: AppTheme.textSecondary,
+                              ),
                               SizedBox(width: 8),
                               Text(
                                 _fechaInicio != null
                                     ? '${_fechaInicio!.day}/${_fechaInicio!.month}/${_fechaInicio!.year}'
                                     : 'Fecha inicio',
-                                style: TextStyle(color: textDark),
+                                style: TextStyle(color: AppTheme.textPrimary),
                               ),
                             ],
                           ),
@@ -1064,8 +1122,8 @@ class _GastosScreenState extends State<GastosScreen> {
                               return Theme(
                                 data: Theme.of(context).copyWith(
                                   colorScheme: ColorScheme.dark(
-                                    primary: primary,
-                                    surface: cardBg,
+                                    primary: AppTheme.primary,
+                                    surface: AppTheme.cardBg,
                                   ),
                                 ),
                                 child: child!,
@@ -1079,18 +1137,21 @@ class _GastosScreenState extends State<GastosScreen> {
                         child: Container(
                           padding: EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            border: Border.all(color: textLight),
+                            border: Border.all(color: AppTheme.textSecondary),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Row(
                             children: [
-                              Icon(Icons.calendar_today, color: textLight),
+                              Icon(
+                                Icons.calendar_today,
+                                color: AppTheme.textSecondary,
+                              ),
                               SizedBox(width: 8),
                               Text(
                                 _fechaFin != null
                                     ? '${_fechaFin!.day}/${_fechaFin!.month}/${_fechaFin!.year}'
                                     : 'Fecha fin',
-                                style: TextStyle(color: textDark),
+                                style: TextStyle(color: AppTheme.textPrimary),
                               ),
                             ],
                           ),
@@ -1106,7 +1167,10 @@ class _GastosScreenState extends State<GastosScreen> {
                     padding: EdgeInsets.only(top: 16),
                     child: Text(
                       'Mostrando ${gastosMostrar.length} de ${_gastos.length} gastos',
-                      style: TextStyle(color: textLight, fontSize: 14),
+                      style: TextStyle(
+                        color: AppTheme.textSecondary,
+                        fontSize: 14,
+                      ),
                     ),
                   ),
               ],
@@ -1121,13 +1185,20 @@ class _GastosScreenState extends State<GastosScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.search_off, size: 64, color: textLight),
+                      Icon(
+                        Icons.search_off,
+                        size: 64,
+                        color: AppTheme.textSecondary,
+                      ),
                       SizedBox(height: 16),
                       Text(
                         _gastos.isEmpty
                             ? 'No hay gastos registrados'
                             : 'No se encontraron gastos con los filtros aplicados',
-                        style: TextStyle(color: textLight, fontSize: 16),
+                        style: TextStyle(
+                          color: AppTheme.textSecondary,
+                          fontSize: 16,
+                        ),
                         textAlign: TextAlign.center,
                       ),
                     ],
@@ -1139,7 +1210,7 @@ class _GastosScreenState extends State<GastosScreen> {
                   itemBuilder: (context, index) {
                     final gasto = gastosMostrar[index];
                     return Card(
-                      color: cardBg,
+                      color: AppTheme.cardBg,
                       margin: EdgeInsets.only(bottom: 12),
                       elevation: 2,
                       child: Padding(
@@ -1154,7 +1225,7 @@ class _GastosScreenState extends State<GastosScreen> {
                                   child: Text(
                                     gasto.concepto,
                                     style: TextStyle(
-                                      color: textDark,
+                                      color: AppTheme.textPrimary,
                                       fontWeight: FontWeight.bold,
                                       fontSize: 16,
                                     ),
@@ -1163,7 +1234,7 @@ class _GastosScreenState extends State<GastosScreen> {
                                 Text(
                                   gasto.montoFormateado,
                                   style: TextStyle(
-                                    color: primary,
+                                    color: AppTheme.primary,
                                     fontWeight: FontWeight.bold,
                                     fontSize: 18,
                                   ),
@@ -1176,13 +1247,13 @@ class _GastosScreenState extends State<GastosScreen> {
                                 Icon(
                                   Icons.category,
                                   size: 16,
-                                  color: textLight,
+                                  color: AppTheme.textSecondary,
                                 ),
                                 SizedBox(width: 4),
                                 Text(
                                   gasto.tipoGastoNombre,
                                   style: TextStyle(
-                                    color: textLight,
+                                    color: AppTheme.textSecondary,
                                     fontSize: 14,
                                   ),
                                 ),
@@ -1190,13 +1261,13 @@ class _GastosScreenState extends State<GastosScreen> {
                                 Icon(
                                   Icons.calendar_today,
                                   size: 16,
-                                  color: textLight,
+                                  color: AppTheme.textSecondary,
                                 ),
                                 SizedBox(width: 4),
                                 Text(
                                   gasto.fechaFormateada,
                                   style: TextStyle(
-                                    color: textLight,
+                                    color: AppTheme.textSecondary,
                                     fontSize: 14,
                                   ),
                                 ),
@@ -1209,13 +1280,13 @@ class _GastosScreenState extends State<GastosScreen> {
                                   Icon(
                                     Icons.business,
                                     size: 16,
-                                    color: textLight,
+                                    color: AppTheme.textSecondary,
                                   ),
                                   SizedBox(width: 4),
                                   Text(
                                     gasto.proveedor!,
                                     style: TextStyle(
-                                      color: textLight,
+                                      color: AppTheme.textSecondary,
                                       fontSize: 14,
                                     ),
                                   ),
@@ -1229,13 +1300,13 @@ class _GastosScreenState extends State<GastosScreen> {
                                   Icon(
                                     Icons.receipt,
                                     size: 16,
-                                    color: textLight,
+                                    color: AppTheme.textSecondary,
                                   ),
                                   SizedBox(width: 4),
                                   Text(
                                     'Factura: ${gasto.numeroFactura}',
                                     style: TextStyle(
-                                      color: textLight,
+                                      color: AppTheme.textSecondary,
                                       fontSize: 14,
                                     ),
                                   ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/cotizacion.dart';
 import '../models/item_cotizacion.dart';
 import '../models/cliente.dart';
@@ -6,6 +7,7 @@ import '../models/producto.dart';
 import '../services/cotizacion_service.dart';
 import '../services/cliente_service.dart';
 import '../services/producto_service.dart';
+import '../providers/datos_cache_provider.dart';
 import '../theme/app_theme.dart';
 
 class CotizacionFormScreen extends StatefulWidget {
@@ -60,13 +62,27 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
   }
 
   Future<void> _cargarProductos() async {
-    try {
-      final productos = await _productoService.getProductos();
+    // Obtener productos desde el provider en lugar de cargarlos nuevamente
+    final cacheProvider = Provider.of<DatosCacheProvider>(
+      context,
+      listen: false,
+    );
+
+    if (cacheProvider.productos != null &&
+        cacheProvider.productos!.isNotEmpty) {
       setState(() {
-        _productosDisponibles = productos;
+        _productosDisponibles = cacheProvider.productos!;
       });
-    } catch (e) {
-      print('Error al cargar productos: $e');
+    } else {
+      // Si no hay productos en cache, cargarlos
+      try {
+        final productos = await _productoService.getProductos();
+        setState(() {
+          _productosDisponibles = productos;
+        });
+      } catch (e) {
+        print('Error al cargar productos: $e');
+      }
     }
   }
 

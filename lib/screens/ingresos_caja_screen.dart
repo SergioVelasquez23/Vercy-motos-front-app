@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_theme.dart';
 import '../models/ingreso_caja.dart';
 import '../services/ingreso_caja_service.dart';
 
@@ -23,11 +24,6 @@ class _IngresosCajaScreenState extends State<IngresosCajaScreen> {
   bool _mostrarFiltros = false;
 
   // Colores estilo GastosScreen
-  final Color primary = Color(0xFFFF6B00); // Naranja fuego
-  final Color bgDark = Color(0xFF1E1E1E); // Fondo oscuro
-  final Color cardBg = Color(0xFF252525); // Tarjetas
-  final Color textDark = Color(0xFFE0E0E0); // Texto claro
-  final Color textLight = Color(0xFFA0A0A0); // Texto suave
 
   @override
   void initState() {
@@ -103,10 +99,10 @@ class _IngresosCajaScreenState extends State<IngresosCajaScreen> {
         return Theme(
           data: ThemeData.dark().copyWith(
             colorScheme: ColorScheme.dark(
-              primary: primary,
+            primary: AppTheme.primary,
               onPrimary: Colors.white,
-              surface: cardBg,
-              onSurface: textDark,
+              surface: AppTheme.cardBg,
+              onSurface: AppTheme.textPrimary,
             ),
           ),
           child: child!,
@@ -171,15 +167,19 @@ class _IngresosCajaScreenState extends State<IngresosCajaScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: bgDark,
+      backgroundColor: AppTheme.backgroundDark,
       appBar: AppBar(
-        backgroundColor: primary,
+        backgroundColor: AppTheme.primary,
         title: Text('Ingresos de Caja', style: TextStyle(color: Colors.white)),
         iconTheme: IconThemeData(color: Colors.white),
         elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pushReplacementNamed(context, '/dashboard'),
+        ),
       ),
       body: _loading
-          ? Center(child: CircularProgressIndicator(color: primary))
+          ? Center(child: CircularProgressIndicator(color: AppTheme.primary))
           : Column(
               children: [
                 // Barra de búsqueda
@@ -192,14 +192,14 @@ class _IngresosCajaScreenState extends State<IngresosCajaScreen> {
                         decoration: InputDecoration(
                           hintText:
                               'Buscar por concepto, monto, responsable...',
-                          hintStyle: TextStyle(color: textLight),
-                          prefixIcon: Icon(Icons.search, color: primary),
+                          hintStyle: TextStyle(color: AppTheme.textSecondary),
+                          prefixIcon: Icon(Icons.search, color: AppTheme.primary),
                           suffixIcon: IconButton(
                             icon: Icon(
                               _mostrarFiltros
                                   ? Icons.filter_list_off
                                   : Icons.filter_list,
-                              color: primary,
+                              color: AppTheme.primary,
                             ),
                             onPressed: () {
                               setState(() {
@@ -208,13 +208,13 @@ class _IngresosCajaScreenState extends State<IngresosCajaScreen> {
                             },
                           ),
                           filled: true,
-                          fillColor: cardBg,
+                          fillColor: AppTheme.cardBg,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
                             borderSide: BorderSide.none,
                           ),
                         ),
-                        style: TextStyle(color: textDark),
+                        style: TextStyle(color: AppTheme.textPrimary),
                       ),
 
                       // Panel de filtros expandible
@@ -223,7 +223,7 @@ class _IngresosCajaScreenState extends State<IngresosCajaScreen> {
                         Container(
                           padding: EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: cardBg,
+                            color: AppTheme.cardBg,
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Column(
@@ -232,7 +232,7 @@ class _IngresosCajaScreenState extends State<IngresosCajaScreen> {
                               Text(
                                 'Filtros avanzados',
                                 style: TextStyle(
-                                  color: textDark,
+                                  color: AppTheme.textPrimary,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -246,13 +246,13 @@ class _IngresosCajaScreenState extends State<IngresosCajaScreen> {
                                       onPressed: () => _seleccionarFecha(true),
                                       icon: Icon(
                                         Icons.date_range,
-                                        color: primary,
+                                        color: AppTheme.primary,
                                       ),
                                       label: Text(
                                         _fechaInicio == null
                                             ? 'Desde'
                                             : 'Desde: ${_fechaInicio!.day}/${_fechaInicio!.month}/${_fechaInicio!.year}',
-                                        style: TextStyle(color: textDark),
+                                        style: TextStyle(color: AppTheme.textPrimary),
                                       ),
                                       style: TextButton.styleFrom(
                                         backgroundColor: Colors.grey[800],
@@ -265,13 +265,13 @@ class _IngresosCajaScreenState extends State<IngresosCajaScreen> {
                                       onPressed: () => _seleccionarFecha(false),
                                       icon: Icon(
                                         Icons.date_range,
-                                        color: primary,
+                                        color: AppTheme.primary,
                                       ),
                                       label: Text(
                                         _fechaFin == null
                                             ? 'Hasta'
                                             : 'Hasta: ${_fechaFin!.day}/${_fechaFin!.month}/${_fechaFin!.year}',
-                                        style: TextStyle(color: textDark),
+                                        style: TextStyle(color: AppTheme.textPrimary),
                                       ),
                                       style: TextButton.styleFrom(
                                         backgroundColor: Colors.grey[800],
@@ -287,10 +287,10 @@ class _IngresosCajaScreenState extends State<IngresosCajaScreen> {
                               TextField(
                                 decoration: InputDecoration(
                                   hintText: 'ID de Cuadre',
-                                  hintStyle: TextStyle(color: textLight),
+                                  hintStyle: TextStyle(color: AppTheme.textSecondary),
                                   prefixIcon: Icon(
                                     Icons.receipt_long,
-                                    color: primary,
+                                    color: AppTheme.primary,
                                   ),
                                   filled: true,
                                   fillColor: Colors.grey[800],
@@ -299,7 +299,7 @@ class _IngresosCajaScreenState extends State<IngresosCajaScreen> {
                                     borderSide: BorderSide.none,
                                   ),
                                 ),
-                                style: TextStyle(color: textDark),
+                                style: TextStyle(color: AppTheme.textPrimary),
                                 onChanged: (value) {
                                   setState(() {
                                     _cuadreCajaId = value;
@@ -345,7 +345,7 @@ class _IngresosCajaScreenState extends State<IngresosCajaScreen> {
                               _ingresos.isEmpty
                                   ? 'No hay ingresos registrados'
                                   : 'No se encontraron resultados',
-                              style: TextStyle(color: textLight, fontSize: 16),
+                              style: TextStyle(color: AppTheme.textSecondary, fontSize: 16),
                             ),
                           )
                         : ListView.builder(
@@ -354,13 +354,13 @@ class _IngresosCajaScreenState extends State<IngresosCajaScreen> {
                             itemBuilder: (context, i) {
                               final ingreso = _ingresosFiltrados[i];
                               return Card(
-                                color: cardBg,
+                                color: AppTheme.cardBg,
                                 margin: EdgeInsets.only(bottom: 12),
                                 child: ListTile(
                                   title: Text(
                                     ingreso.concepto,
                                     style: TextStyle(
-                                      color: textDark,
+                                      color: AppTheme.textPrimary,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
@@ -370,12 +370,12 @@ class _IngresosCajaScreenState extends State<IngresosCajaScreen> {
                                     children: [
                                       Text(
                                         'Monto: ${ingreso.monto} | Forma: ${ingreso.formaPago}',
-                                        style: TextStyle(color: textLight),
+                                        style: TextStyle(color: AppTheme.textSecondary),
                                       ),
                                       Text(
                                         'Fecha: ${ingreso.fechaIngreso.toLocal()}',
                                         style: TextStyle(
-                                          color: textLight,
+                                          color: AppTheme.textSecondary,
                                           fontSize: 12,
                                         ),
                                       ),
@@ -383,7 +383,7 @@ class _IngresosCajaScreenState extends State<IngresosCajaScreen> {
                                         Text(
                                           'Responsable: ${ingreso.responsable}',
                                           style: TextStyle(
-                                            color: textLight,
+                                            color: AppTheme.textSecondary,
                                             fontSize: 12,
                                           ),
                                         ),
@@ -412,7 +412,7 @@ class _IngresosCajaScreenState extends State<IngresosCajaScreen> {
               ],
             ),
       floatingActionButton: FloatingActionButton(
-        backgroundColor: primary,
+        backgroundColor: AppTheme.primary,
         onPressed: _mostrarDialogoNuevoIngreso,
         tooltip: 'Nuevo ingreso',
         child: Icon(Icons.add, color: Colors.white),
@@ -436,13 +436,9 @@ class _IngresoCajaFormState extends State<_IngresoCajaForm> {
 
   @override
   Widget build(BuildContext context) {
-    final Color primary = Color(0xFFFF6B00);
-    final Color cardBg = Color(0xFF252525);
-    final Color textDark = Color(0xFFE0E0E0);
-    final Color textLight = Color(0xFFA0A0A0);
-    return SingleChildScrollView(
+            return SingleChildScrollView(
       child: Card(
-        color: cardBg,
+        color: AppTheme.cardBg,
         margin: EdgeInsets.all(16),
         child: Padding(
           padding: const EdgeInsets.all(20.0),
@@ -454,14 +450,14 @@ class _IngresoCajaFormState extends State<_IngresoCajaForm> {
               children: [
                 Row(
                   children: [
-                    Icon(Icons.attach_money, color: primary),
+                    Icon(Icons.attach_money, color: AppTheme.primary),
                     SizedBox(width: 8),
                     Text(
                       'Nuevo Ingreso',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 22,
-                        color: textDark,
+                        color: AppTheme.textPrimary,
                       ),
                     ),
                   ],
@@ -470,10 +466,10 @@ class _IngresoCajaFormState extends State<_IngresoCajaForm> {
                 TextFormField(
                   decoration: InputDecoration(
                     labelText: 'Concepto',
-                    labelStyle: TextStyle(color: textLight),
+                    labelStyle: TextStyle(color: AppTheme.textSecondary),
                     border: OutlineInputBorder(),
                   ),
-                  style: TextStyle(color: textDark),
+                  style: TextStyle(color: AppTheme.textPrimary),
                   validator: (v) => v == null || v.isEmpty ? 'Requerido' : null,
                   onSaved: (v) => concepto = v!,
                 ),
@@ -481,10 +477,10 @@ class _IngresoCajaFormState extends State<_IngresoCajaForm> {
                 TextFormField(
                   decoration: InputDecoration(
                     labelText: 'Monto',
-                    labelStyle: TextStyle(color: textLight),
+                    labelStyle: TextStyle(color: AppTheme.textSecondary),
                     border: OutlineInputBorder(),
                   ),
-                  style: TextStyle(color: textDark),
+                  style: TextStyle(color: AppTheme.textPrimary),
                   keyboardType: TextInputType.number,
                   validator: (v) => v == null || double.tryParse(v) == null
                       ? 'Monto válido'
@@ -500,20 +496,20 @@ class _IngresoCajaFormState extends State<_IngresoCajaForm> {
                   onChanged: (v) => setState(() => formaPago = v!),
                   decoration: InputDecoration(
                     labelText: 'Forma de pago',
-                    labelStyle: TextStyle(color: textLight),
+                    labelStyle: TextStyle(color: AppTheme.textSecondary),
                     border: OutlineInputBorder(),
                   ),
-                  dropdownColor: cardBg,
-                  style: TextStyle(color: textDark),
+                  dropdownColor: AppTheme.cardBg,
+                  style: TextStyle(color: AppTheme.textPrimary),
                 ),
                 SizedBox(height: 16),
                 TextFormField(
                   decoration: InputDecoration(
                     labelText: 'Responsable',
-                    labelStyle: TextStyle(color: textLight),
+                    labelStyle: TextStyle(color: AppTheme.textSecondary),
                     border: OutlineInputBorder(),
                   ),
-                  style: TextStyle(color: textDark),
+                  style: TextStyle(color: AppTheme.textPrimary),
                   validator: (v) => v == null || v.isEmpty ? 'Requerido' : null,
                   onSaved: (v) => responsable = v!,
                 ),
@@ -521,10 +517,10 @@ class _IngresoCajaFormState extends State<_IngresoCajaForm> {
                 TextFormField(
                   decoration: InputDecoration(
                     labelText: 'Observaciones',
-                    labelStyle: TextStyle(color: textLight),
+                    labelStyle: TextStyle(color: AppTheme.textSecondary),
                     border: OutlineInputBorder(),
                   ),
-                  style: TextStyle(color: textDark),
+                  style: TextStyle(color: AppTheme.textPrimary),
                   onSaved: (v) => observaciones = v ?? '',
                 ),
                 SizedBox(height: 24),
@@ -577,3 +573,4 @@ class _IngresoCajaFormState extends State<_IngresoCajaForm> {
     );
   }
 }
+

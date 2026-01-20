@@ -1,5 +1,5 @@
 class FacturaCompra {
-  final String? id; // Hacemos el ID opcional
+  final String? id;
   final String numeroFactura;
   final String? proveedorNit;
   final String proveedorNombre;
@@ -11,9 +11,28 @@ class FacturaCompra {
   final List<ItemFacturaCompra> items;
   final DateTime fechaCreacion;
   final DateTime fechaActualizacion;
+  
+  // 💰 Campos DIAN para impuestos y retenciones
+  final double subtotal;
+  final double totalDescuentos;
+  final double baseGravable;
+  final double totalImpuestos;
+  final double totalRetenciones;
+
+  // Retención en la fuente
+  final double porcentajeRetencion;
+  final double valorRetencion;
+
+  // Retención de IVA
+  final double porcentajeReteIva;
+  final double valorReteIva;
+
+  // Retención de ICA
+  final double porcentajeReteIca;
+  final double valorReteIca;
 
   FacturaCompra({
-    this.id, // Ahora es opcional
+    this.id,
     required this.numeroFactura,
     this.proveedorNit,
     String? proveedorNombre,
@@ -25,8 +44,26 @@ class FacturaCompra {
     required this.items,
     required this.fechaCreacion,
     required this.fechaActualizacion,
+    // Campos DIAN con valores por defecto
+    double? subtotal,
+    this.totalDescuentos = 0.0,
+    double? baseGravable,
+    this.totalImpuestos = 0.0,
+    this.totalRetenciones = 0.0,
+    this.porcentajeRetencion = 0.0,
+    this.valorRetencion = 0.0,
+    this.porcentajeReteIva = 0.0,
+    this.valorReteIva = 0.0,
+    this.porcentajeReteIca = 0.0,
+    this.valorReteIca = 0.0,
   }) : proveedorNombre = proveedorNombre ?? 'Proveedor general',
-       // Si no se proporciona un total, calcularlo automáticamente de los items
+       subtotal =
+           subtotal ??
+           items.fold<double>(0, (sum, item) => sum + item.subtotal),
+       baseGravable =
+           baseGravable ??
+           (subtotal ??
+               items.fold<double>(0, (sum, item) => sum + item.subtotal)),
        total =
            total ?? items.fold<double>(0, (sum, item) => sum + item.subtotal);
 
@@ -61,7 +98,7 @@ class FacturaCompra {
     return FacturaCompra(
       id: json['_id'] ?? '',
       numeroFactura:
-          json['numero'] ?? json['numeroFactura'] ?? '', // Backend usa 'numero'
+          json['numero'] ?? json['numeroFactura'] ?? '',
       proveedorNit: json['proveedorNit'],
       proveedorNombre: json['proveedorNombre'],
       fechaFactura: DateTime.parse(
@@ -71,10 +108,8 @@ class FacturaCompra {
       ),
       fechaVencimiento: json['fechaVencimiento'] != null
           ? DateTime.parse(json['fechaVencimiento'])
-          : DateTime.now().add(
-              Duration(days: 30),
-            ), // Default a 30 días si no existe
-      total: finalTotal, // Usar el total calculado si el del JSON es 0
+          : DateTime.now().add(Duration(days: 30)),
+      total: finalTotal,
       estado: json['estado'] ?? 'PENDIENTE',
       pagadoDesdeCaja: json['pagadoDesdeCaja'] ?? false,
       items: items,
@@ -84,6 +119,18 @@ class FacturaCompra {
       fechaActualizacion: json['fechaActualizacion'] != null
           ? DateTime.parse(json['fechaActualizacion'])
           : DateTime.now(),
+      // Campos DIAN
+      subtotal: (json['subtotal'] ?? calculatedTotal).toDouble(),
+      totalDescuentos: (json['totalDescuentos'] ?? 0).toDouble(),
+      baseGravable: (json['baseGravable'] ?? calculatedTotal).toDouble(),
+      totalImpuestos: (json['totalImpuestos'] ?? 0).toDouble(),
+      totalRetenciones: (json['totalRetenciones'] ?? 0).toDouble(),
+      porcentajeRetencion: (json['porcentajeRetencion'] ?? 0).toDouble(),
+      valorRetencion: (json['valorRetencion'] ?? 0).toDouble(),
+      porcentajeReteIva: (json['porcentajeReteIva'] ?? 0).toDouble(),
+      valorReteIva: (json['valorReteIva'] ?? 0).toDouble(),
+      porcentajeReteIca: (json['porcentajeReteIca'] ?? 0).toDouble(),
+      valorReteIca: (json['valorReteIca'] ?? 0).toDouble(),
     );
   }
 
@@ -109,21 +156,31 @@ class FacturaCompra {
     }
 
     final Map<String, dynamic> json = {
-      'numero': numeroFactura, // Backend usa 'numero', no 'numeroFactura'
-      'fecha': fechaFactura.toIso8601String(), // Backend usa 'fecha'
-      'tipoFactura': 'compra', // Especificar que es una factura de compra
+      'numero': numeroFactura,
+      'fecha': fechaFactura.toIso8601String(),
+      'tipoFactura': 'compra',
       'proveedorNit': proveedorNit,
       'proveedorNombre': proveedorNombre,
-      'total':
-          calculatedTotal, // Usar el total recalculado para asegurar consistencia
+      'total': calculatedTotal,
       'pagadoDesdeCaja': pagadoDesdeCaja,
-      'itemsIngredientes': itemsJsonList, // Backend usa 'itemsIngredientes'
-      // También incluimos una copia en 'items' por si el backend busca ahí
+      'itemsIngredientes': itemsJsonList,
       'items': itemsJsonList,
-      'medioPago': 'Efectivo', // Valor por defecto
-      'formaPago': 'Contado', // Valor por defecto
-      'registradoPor': 'admin', // Valor por defecto
-      'observaciones': '', // Valor por defecto
+      'medioPago': 'Efectivo',
+      'formaPago': 'Contado',
+      'registradoPor': 'admin',
+      'observaciones': '',
+      // Campos DIAN para impuestos y retenciones
+      'subtotal': subtotal,
+      'totalDescuentos': totalDescuentos,
+      'baseGravable': baseGravable,
+      'totalImpuestos': totalImpuestos,
+      'totalRetenciones': totalRetenciones,
+      'porcentajeRetencion': porcentajeRetencion,
+      'valorRetencion': valorRetencion,
+      'porcentajeReteIva': porcentajeReteIva,
+      'valorReteIva': valorReteIva,
+      'porcentajeReteIca': porcentajeReteIca,
+      'valorReteIca': valorReteIca,
     };
 
     // Solo incluir el ID si existe y no está vacío (para crear vs actualizar)
@@ -142,6 +199,12 @@ class ItemFacturaCompra {
   final String unidad;
   final double precioUnitario;
   final double subtotal;
+  
+  // 💰 Campos DIAN para impuestos detallados por item
+  final double porcentajeImpuesto;
+  final double valorImpuesto;
+  final double porcentajeDescuento;
+  final double valorDescuento;
 
   ItemFacturaCompra({
     required this.ingredienteId,
@@ -150,6 +213,10 @@ class ItemFacturaCompra {
     required this.unidad,
     required this.precioUnitario,
     required this.subtotal,
+    this.porcentajeImpuesto = 0.0,
+    this.valorImpuesto = 0.0,
+    this.porcentajeDescuento = 0.0,
+    this.valorDescuento = 0.0,
   });
 
   factory ItemFacturaCompra.fromJson(Map<String, dynamic> json) {
@@ -159,8 +226,11 @@ class ItemFacturaCompra {
       cantidad: (json['cantidad'] ?? 0).toDouble(),
       unidad: json['unidad'] ?? '',
       precioUnitario: (json['precioUnitario'] ?? 0).toDouble(),
-      subtotal: (json['precioTotal'] ?? json['subtotal'] ?? 0)
-          .toDouble(), // Backend usa 'precioTotal'
+      subtotal: (json['precioTotal'] ?? json['subtotal'] ?? 0).toDouble(),
+      porcentajeImpuesto: (json['porcentajeImpuesto'] ?? 0).toDouble(),
+      valorImpuesto: (json['valorImpuesto'] ?? 0).toDouble(),
+      porcentajeDescuento: (json['porcentajeDescuento'] ?? 0).toDouble(),
+      valorDescuento: (json['valorDescuento'] ?? 0).toDouble(),
     );
   }
 
@@ -186,10 +256,15 @@ class ItemFacturaCompra {
       'cantidad': validCantidad,
       'unidad': unidad,
       'precioUnitario': validPrecioUnitario,
-      'precioTotal': validSubtotal, // Backend espera 'precioTotal'
-      'subtotal': validSubtotal, // Incluir también como 'subtotal' por si acaso
-      'descontable': true, // Valor por defecto
-      'observaciones': '', // Valor por defecto
+      'precioTotal': validSubtotal,
+      'subtotal': validSubtotal,
+      'descontable': true,
+      'observaciones': '',
+      // Campos DIAN
+      'porcentajeImpuesto': porcentajeImpuesto,
+      'valorImpuesto': valorImpuesto,
+      'porcentajeDescuento': porcentajeDescuento,
+      'valorDescuento': valorDescuento,
     };
   }
 }

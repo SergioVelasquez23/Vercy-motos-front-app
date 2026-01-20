@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../services/auth_service.dart';
 import '../providers/user_provider.dart';
+import '../providers/datos_cache_provider.dart';
 import '../theme/app_theme.dart';
 import '../services/producto_service.dart';
 import '../services/pedido_service.dart';
@@ -178,6 +179,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
           print('✅ Auto-login exitoso');
 
+          // Pre-cargar productos en background
+          final cacheProvider = Provider.of<DatosCacheProvider>(
+            context,
+            listen: false,
+          );
+          cacheProvider.warmupProductos();
+
           // Navegar automáticamente
           await Future.delayed(Duration(milliseconds: 100));
           Navigator.pushReplacementNamed(context, '/dashboard');
@@ -290,6 +298,13 @@ class _LoginScreenState extends State<LoginScreen> {
               await _clearSavedCredentials();
             }
 
+            // Pre-cargar productos en background
+            final cacheProvider = Provider.of<DatosCacheProvider>(
+              context,
+              listen: false,
+            );
+            cacheProvider.warmupProductos();
+
             await Future.delayed(Duration(milliseconds: 100));
             Navigator.pushReplacementNamed(context, '/dashboard');
           } catch (e) {
@@ -327,6 +342,13 @@ class _LoginScreenState extends State<LoginScreen> {
         } else {
           await _clearSavedCredentials();
         }
+
+        // Pre-cargar productos en background
+        final cacheProvider = Provider.of<DatosCacheProvider>(
+          context,
+          listen: false,
+        );
+        cacheProvider.warmupProductos();
 
         await Future.delayed(Duration(milliseconds: 100));
         Navigator.pushReplacementNamed(context, '/dashboard');
