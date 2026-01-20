@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../config/constants.dart';
+import '../theme/app_theme.dart';
 import '../models/movimiento_inventario.dart';
 import '../services/inventario_service.dart';
 import '../widgets/loading_indicator.dart';
@@ -304,26 +305,26 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final Color primary = Color(kPrimaryColor);
-    final Color bgDark = Color(kBackgroundDark);
-    final Color cardBg = Color(kCardBackgroundDark);
-    final Color textDark = Color(kTextDark);
-
     return Scaffold(
-      backgroundColor: bgDark,
+      backgroundColor: AppTheme.backgroundDark,
       appBar: AppBar(
-        backgroundColor: cardBg,
+        backgroundColor: AppTheme.cardBg,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: AppTheme.textPrimary),
+          onPressed: () =>
+              Navigator.pushReplacementNamed(context, '/dashboard'),
+        ),
         title: Text(
           'Historial de Inventario',
           style: TextStyle(
-            color: textDark,
+            color: AppTheme.textPrimary,
             fontSize: 18,
             fontWeight: FontWeight.bold,
           ),
         ),
         actions: [
           IconButton(
-            icon: Icon(Icons.refresh, color: textDark),
+            icon: Icon(Icons.refresh, color: AppTheme.textPrimary),
             onPressed: _cargarMovimientos,
             tooltip: 'Actualizar datos',
           ),
@@ -335,9 +336,11 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
           Container(
             padding: EdgeInsets.all(12.0),
             decoration: BoxDecoration(
-              color: cardBg.withOpacity(0.7),
+              color: AppTheme.cardBg,
               border: Border(
-                bottom: BorderSide(color: Colors.grey.withOpacity(0.3)),
+                bottom: BorderSide(
+                  color: AppTheme.textSecondary.withOpacity(0.3),
+                ),
               ),
             ),
             child: Column(
@@ -354,7 +357,7 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                             vertical: 12,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.white12,
+                            color: AppTheme.surfaceDark,
                             borderRadius: BorderRadius.circular(8.0),
                           ),
                           child: Row(
@@ -362,18 +365,24 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                               Icon(
                                 Icons.calendar_today,
                                 size: 16,
-                                color: primary,
+                                color: AppTheme.primary,
                               ),
                               SizedBox(width: 8),
                               Text(
                                 'Desde:',
-                                style: TextStyle(color: textDark, fontSize: 12),
+                                style: TextStyle(
+                                  color: AppTheme.textPrimary,
+                                  fontSize: 12,
+                                ),
                               ),
                               SizedBox(width: 8),
                               Expanded(
                                 child: Text(
                                   DateFormat(kDateFormat).format(_fechaDesde),
-                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: AppTheme.textPrimary,
+                                  ),
                                   textAlign: TextAlign.right,
                                 ),
                               ),
@@ -392,7 +401,7 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                             vertical: 12,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.white12,
+                            color: AppTheme.surfaceDark,
                             borderRadius: BorderRadius.circular(8.0),
                           ),
                           child: Row(
@@ -400,18 +409,24 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                               Icon(
                                 Icons.calendar_today,
                                 size: 16,
-                                color: primary,
+                                color: AppTheme.primary,
                               ),
                               SizedBox(width: 8),
                               Text(
                                 'Hasta:',
-                                style: TextStyle(color: textDark, fontSize: 12),
+                                style: TextStyle(
+                                  color: AppTheme.textPrimary,
+                                  fontSize: 12,
+                                ),
                               ),
                               SizedBox(width: 8),
                               Expanded(
                                 child: Text(
                                   DateFormat(kDateFormat).format(_fechaHasta),
-                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: AppTheme.textPrimary,
+                                  ),
                                   textAlign: TextAlign.right,
                                 ),
                               ),
@@ -432,7 +447,7 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                       child: Container(
                         padding: EdgeInsets.symmetric(horizontal: 12),
                         decoration: BoxDecoration(
-                          color: Colors.white12,
+                          color: AppTheme.surfaceDark,
                           borderRadius: BorderRadius.circular(8.0),
                         ),
                         child: DropdownButton<String>(
@@ -445,8 +460,8 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                                 producto,
                                 style: TextStyle(
                                   color: producto == 'Todos los productos'
-                                      ? Colors.grey
-                                      : textDark,
+                                      ? AppTheme.textSecondary
+                                      : AppTheme.textPrimary,
                                   fontSize: 12,
                                 ),
                                 overflow: TextOverflow.ellipsis,
@@ -459,8 +474,8 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                               _aplicarFiltros();
                             });
                           },
-                          dropdownColor: cardBg,
-                          style: TextStyle(color: textDark),
+                          dropdownColor: AppTheme.surfaceDark,
+                          style: TextStyle(color: AppTheme.textPrimary),
                           underline: Container(),
                         ),
                       ),
@@ -472,7 +487,7 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                       child: Container(
                         padding: EdgeInsets.symmetric(horizontal: 12),
                         decoration: BoxDecoration(
-                          color: Colors.white12,
+                          color: AppTheme.surfaceDark,
                           borderRadius: BorderRadius.circular(8.0),
                         ),
                         child: DropdownButton<String>(
@@ -485,8 +500,8 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                                 tipo,
                                 style: TextStyle(
                                   color: tipo == '-- Tipo --'
-                                      ? Colors.grey
-                                      : textDark,
+                                      ? AppTheme.textSecondary
+                                      : AppTheme.textPrimary,
                                   fontSize: 12,
                                 ),
                                 overflow: TextOverflow.ellipsis,
@@ -499,8 +514,8 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                               _aplicarFiltros();
                             });
                           },
-                          dropdownColor: cardBg,
-                          style: TextStyle(color: textDark),
+                          dropdownColor: AppTheme.surfaceDark,
+                          style: TextStyle(color: AppTheme.textPrimary),
                           underline: Container(),
                         ),
                       ),
@@ -515,16 +530,16 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                         decoration: InputDecoration(
                           hintText: 'Buscar...',
                           hintStyle: TextStyle(
-                            color: Colors.grey,
+                            color: AppTheme.textSecondary,
                             fontSize: 12,
                           ),
                           prefixIcon: Icon(
                             Icons.search,
                             size: 18,
-                            color: Colors.grey,
+                            color: AppTheme.textSecondary,
                           ),
                           filled: true,
-                          fillColor: Colors.white12,
+                          fillColor: AppTheme.surfaceDark,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8.0),
                             borderSide: BorderSide.none,
@@ -534,13 +549,16 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                             vertical: 8,
                           ),
                         ),
-                        style: TextStyle(color: textDark, fontSize: 12),
+                        style: TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontSize: 12,
+                        ),
                       ),
                     ),
                     SizedBox(width: 8),
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: primary,
+                        backgroundColor: AppTheme.primary,
                         padding: EdgeInsets.symmetric(
                           horizontal: 16,
                           vertical: 12,
@@ -567,7 +585,10 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                 ? Center(
                     child: Text(
                       'No se encontraron movimientos',
-                      style: TextStyle(color: textDark, fontSize: 16),
+                      style: TextStyle(
+                        color: AppTheme.textPrimary,
+                        fontSize: 16,
+                      ),
                     ),
                   )
                 : LayoutBuilder(
@@ -575,7 +596,7 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                       return Container(
                         width: constraints.maxWidth,
                         height: constraints.maxHeight,
-                        color: cardBg,
+                        color: AppTheme.cardBg,
                         child: SingleChildScrollView(
                           scrollDirection: Axis.horizontal,
                           child: SizedBox(
@@ -589,7 +610,7 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                                   height: 80,
                                   width: double.infinity,
                                   decoration: BoxDecoration(
-                                    color: primary.withOpacity(0.2),
+                                    color: AppTheme.primary.withOpacity(0.2),
                                     border: Border(
                                       bottom: BorderSide(
                                         color: Colors.grey.withOpacity(0.5),
@@ -605,7 +626,7 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                                           child: Text(
                                             'FECHA',
                                             style: TextStyle(
-                                              color: textDark,
+                                              color: AppTheme.textPrimary,
                                               fontWeight: FontWeight.bold,
                                               fontSize: 14,
                                             ),
@@ -618,7 +639,7 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                                           child: Text(
                                             'PRODUCTO',
                                             style: TextStyle(
-                                              color: textDark,
+                                              color: AppTheme.textPrimary,
                                               fontWeight: FontWeight.bold,
                                               fontSize: 14,
                                             ),
@@ -631,7 +652,7 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                                           child: Text(
                                             'TIPO',
                                             style: TextStyle(
-                                              color: textDark,
+                                              color: AppTheme.textPrimary,
                                               fontWeight: FontWeight.bold,
                                               fontSize: 14,
                                             ),
@@ -648,7 +669,7 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                                           child: Text(
                                             'Stock\nInicial',
                                             style: TextStyle(
-                                              color: textDark,
+                                              color: AppTheme.textPrimary,
                                               fontWeight: FontWeight.bold,
                                               fontSize: 11,
                                             ),
@@ -666,7 +687,7 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                                           child: Text(
                                             'Cantidad\nMovida',
                                             style: TextStyle(
-                                              color: textDark,
+                                              color: AppTheme.textPrimary,
                                               fontWeight: FontWeight.bold,
                                               fontSize: 11,
                                             ),
@@ -684,7 +705,7 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                                           child: Text(
                                             'Stock\nFinal',
                                             style: TextStyle(
-                                              color: textDark,
+                                              color: AppTheme.textPrimary,
                                               fontWeight: FontWeight.bold,
                                               fontSize: 11,
                                             ),
@@ -709,7 +730,8 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                                           .toLowerCase()
                                           .contains('salida');
 
-                                      Color colorCantidad = textDark;
+                                      Color colorCantidad =
+                                          AppTheme.textPrimary;
                                       if (esEntrada) {
                                         colorCantidad = Colors.green;
                                       } else if (esSalida) {
@@ -744,7 +766,7 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                                                     'dd/MM/yyyy\nHH:mm',
                                                   ).format(movimiento.fecha),
                                                   style: TextStyle(
-                                                    color: textDark,
+                                                    color: AppTheme.textPrimary,
                                                     fontSize: 11,
                                                   ),
                                                 ),
@@ -760,7 +782,7 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                                                 child: Text(
                                                   movimiento.productoNombre,
                                                   style: TextStyle(
-                                                    color: textDark,
+                                                    color: AppTheme.textPrimary,
                                                     fontSize: 11,
                                                   ),
                                                   overflow:
@@ -802,7 +824,8 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                                                           ? Colors.green
                                                           : esSalida
                                                           ? Colors.red
-                                                          : textDark,
+                                                          : AppTheme
+                                                                .textPrimary,
                                                       fontSize: 10,
                                                       fontWeight:
                                                           FontWeight.bold,
@@ -823,7 +846,7 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                                                   movimiento.cantidadAnterior
                                                       .toStringAsFixed(0),
                                                   style: TextStyle(
-                                                    color: textDark,
+                                                    color: AppTheme.textPrimary,
                                                     fontSize: 11,
                                                   ),
                                                   textAlign: TextAlign.center,
@@ -863,7 +886,7 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                                                   movimiento.cantidadNueva
                                                       .toStringAsFixed(0),
                                                   style: TextStyle(
-                                                    color: textDark,
+                                                    color: AppTheme.textPrimary,
                                                     fontSize: 11,
                                                     fontWeight: FontWeight.bold,
                                                   ),

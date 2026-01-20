@@ -791,9 +791,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                                       // Cards de estadísticas principales
                                       _buildStatsCards(context),
                                       SizedBox(height: AppTheme.spacingXLarge),
-                                      // Gráfico de pedidos por hora (más prominente)
-                                      _buildPedidosPorHoraChart(context),
-                                      SizedBox(height: AppTheme.spacingXLarge),
 
                                       // Gráfico de ventas por día
                                       _buildVentasPorDiaChart(context),

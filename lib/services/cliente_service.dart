@@ -13,17 +13,41 @@ class ClienteService {
   /// Obtener todos los clientes
   Future<List<Cliente>> obtenerClientes() async {
     try {
-      final response = await http.get(Uri.parse(baseUrl));
+      print('🌐 Obteniendo clientes desde: $baseUrl');
+      final response = await http.get(
+        Uri.parse(baseUrl),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      );
 
+      print('📦 Response status (clientes): ${response.statusCode}');
+      
       if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
+        print('📦 Response body length: ${response.body.length}');
+        final dynamic responseData = json.decode(response.body);
+
+        // Manejar si viene como lista directa o dentro de un objeto
+        List<dynamic> data;
+        if (responseData is List) {
+          data = responseData;
+        } else if (responseData is Map && responseData['data'] != null) {
+          data = responseData['data'];
+        } else {
+          print('⚠️ Estructura inesperada: ${responseData.runtimeType}');
+          throw Exception('Estructura de respuesta inesperada');
+        }
+
+        print('✅ Clientes encontrados: ${data.length}');
         return data.map((json) => Cliente.fromJson(json)).toList();
       }
 
+      print('❌ Error response body: ${response.body}');
       throw Exception('Error al obtener clientes: ${response.statusCode}');
     } catch (e) {
       print('❌ Error en obtenerClientes: $e');
-      throw Exception('Error al obtener clientes: $e');
+      rethrow;
     }
   }
 

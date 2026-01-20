@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import '../models/cotizacion.dart';
 import '../models/item_cotizacion.dart';
 import '../models/cliente.dart';
+import '../models/producto.dart';
 import '../services/cotizacion_service.dart';
 import '../services/cliente_service.dart';
+import '../services/producto_service.dart';
 import '../theme/app_theme.dart';
 
 class CotizacionFormScreen extends StatefulWidget {
@@ -18,6 +20,7 @@ class CotizacionFormScreen extends StatefulWidget {
 class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
   final CotizacionService _cotizacionService = CotizacionService();
   final ClienteService _clienteService = ClienteService();
+  final ProductoService _productoService = ProductoService();
   final _formKey = GlobalKey<FormState>();
 
   // Controladores
@@ -35,6 +38,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
   DateTime _fechaVencimiento = DateTime.now().add(Duration(days: 30));
   String _tipoImpuesto = 'IVA';
   List<ItemCotizacion> _items = [];
+  List<Producto> _productosDisponibles = [];
   Cliente? _clienteSeleccionado;
   bool _isLoading = false;
   bool _esEdicion = false;
@@ -48,9 +52,21 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
   void initState() {
     super.initState();
     _esEdicion = widget.cotizacion != null;
+    _cargarProductos();
 
     if (_esEdicion) {
       _cargarDatosCotizacion();
+    }
+  }
+
+  Future<void> _cargarProductos() async {
+    try {
+      final productos = await _productoService.getProductos();
+      setState(() {
+        _productosDisponibles = productos;
+      });
+    } catch (e) {
+      print('Error al cargar productos: $e');
     }
   }
 
@@ -84,7 +100,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: AppTheme.backgroundDark,
       appBar: AppBar(
         title: Text(_esEdicion ? 'Editar Cotización' : 'Nueva Cotización'),
         backgroundColor: AppTheme.primary,
@@ -123,10 +139,10 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
     return Container(
       padding: EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.cardBg,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
-          BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 2)),
+          BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 2)),
         ],
       ),
       child: Column(
@@ -137,7 +153,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: Colors.white,
             ),
           ),
           SizedBox(height: 16),
@@ -152,7 +168,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
                       'Fecha',
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
-                        color: Colors.black87,
+                        color: Colors.white,
                       ),
                     ),
                     SizedBox(height: 8),
@@ -193,7 +209,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
                       'Validez (días)',
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
-                        color: Colors.black87,
+                        color: Colors.white,
                       ),
                     ),
                     SizedBox(height: 8),
@@ -228,7 +244,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
                       'Vence',
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
-                        color: Colors.black87,
+                        color: Colors.white,
                       ),
                     ),
                     SizedBox(height: 8),
@@ -273,7 +289,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
                       'Cliente *',
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
-                        color: Colors.black87,
+                        color: Colors.white,
                       ),
                     ),
                     SizedBox(height: 8),
@@ -314,7 +330,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
                 'Observaciones',
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
-                  color: Colors.black87,
+                  color: Colors.white,
                 ),
               ),
               SizedBox(height: 8),
@@ -341,10 +357,10 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
     return Container(
       padding: EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.cardBg,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
-          BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 2)),
+          BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 2)),
         ],
       ),
       child: Column(
@@ -355,7 +371,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: Colors.white,
             ),
           ),
           SizedBox(height: 16),
@@ -374,12 +390,139 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
               SizedBox(width: 12),
               Expanded(
                 flex: 3,
-                child: TextField(
-                  controller: _nombreProductoController,
-                  decoration: InputDecoration(
-                    labelText: 'Nombre producto *',
-                    border: OutlineInputBorder(),
-                  ),
+                child: Autocomplete<Producto>(
+                  optionsBuilder: (TextEditingValue textEditingValue) {
+                    if (textEditingValue.text.isEmpty) {
+                      return const Iterable<Producto>.empty();
+                    }
+                    if (textEditingValue.text.length < 2) {
+                      return const Iterable<Producto>.empty();
+                    }
+                    return _productosDisponibles
+                        .where((Producto producto) {
+                          return producto.nombre.toLowerCase().contains(
+                                textEditingValue.text.toLowerCase(),
+                              ) ||
+                              producto.id.toLowerCase().contains(
+                                textEditingValue.text.toLowerCase(),
+                              );
+                        })
+                        .take(15);
+                  },
+                  displayStringForOption: (Producto producto) =>
+                      producto.nombre,
+                  onSelected: (Producto producto) {
+                    setState(() {
+                      _nombreProductoController.text = producto.nombre;
+                      _codigoProductoController.text = producto.id;
+                      _precioController.text = producto.precio.toString();
+                    });
+                  },
+                  fieldViewBuilder:
+                      (
+                        BuildContext context,
+                        TextEditingController textEditingController,
+                        FocusNode focusNode,
+                        VoidCallback onFieldSubmitted,
+                      ) {
+                        return TextField(
+                          controller: textEditingController,
+                          focusNode: focusNode,
+                          decoration: InputDecoration(
+                            labelText: 'Nombre producto *',
+                            border: OutlineInputBorder(),
+                            suffixIcon: Icon(
+                              Icons.arrow_drop_down,
+                              color: AppTheme.textSecondary,
+                            ),
+                            hintText: 'Escribe al menos 2 letras...',
+                            hintStyle: TextStyle(color: AppTheme.textSecondary),
+                          ),
+                        );
+                      },
+                  optionsViewBuilder:
+                      (
+                        BuildContext context,
+                        AutocompleteOnSelected<Producto> onSelected,
+                        Iterable<Producto> options,
+                      ) {
+                        return Align(
+                          alignment: Alignment.topLeft,
+                          child: Material(
+                            elevation: 4.0,
+                            color: AppTheme.surfaceDark,
+                            borderRadius: BorderRadius.circular(8),
+                            child: Container(
+                              constraints: BoxConstraints(
+                                maxHeight: 300,
+                                maxWidth: 400,
+                              ),
+                              child: ListView.builder(
+                                padding: EdgeInsets.all(8.0),
+                                itemCount: options.length,
+                                shrinkWrap: true,
+                                itemBuilder: (BuildContext context, int index) {
+                                  final Producto option = options.elementAt(
+                                    index,
+                                  );
+                                  return InkWell(
+                                    onTap: () {
+                                      onSelected(option);
+                                    },
+                                    child: Container(
+                                      padding: EdgeInsets.all(12.0),
+                                      decoration: BoxDecoration(
+                                        border: Border(
+                                          bottom: BorderSide(
+                                            color: AppTheme.textSecondary
+                                                .withOpacity(0.2),
+                                            width: 1,
+                                          ),
+                                        ),
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            option.nombre,
+                                            style: TextStyle(
+                                              color: AppTheme.textPrimary,
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                          SizedBox(height: 4),
+                                          Row(
+                                            children: [
+                                              Text(
+                                                'Código: ${option.id}',
+                                                style: TextStyle(
+                                                  color: AppTheme.textSecondary,
+                                                  fontSize: 12,
+                                                ),
+                                              ),
+                                              Spacer(),
+                                              Text(
+                                                '\$${option.precio.toStringAsFixed(0)}',
+                                                style: TextStyle(
+                                                  color: AppTheme.primary,
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+                        );
+                      },
                 ),
               ),
               SizedBox(width: 12),
@@ -457,6 +600,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
                 label: Text('Agregar'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.primary,
+                  foregroundColor: Colors.white,
                   padding: EdgeInsets.symmetric(horizontal: 24, vertical: 20),
                 ),
               ),
@@ -472,7 +616,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
       return Container(
         padding: EdgeInsets.all(48),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppTheme.cardBg,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Center(
@@ -481,12 +625,12 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
               Icon(
                 Icons.shopping_cart_outlined,
                 size: 64,
-                color: Colors.grey[400],
+                color: Colors.grey[600],
               ),
               SizedBox(height: 16),
               Text(
                 'No hay productos agregados',
-                style: TextStyle(color: Colors.grey[600], fontSize: 16),
+                style: TextStyle(color: Colors.grey[400], fontSize: 16),
               ),
             ],
           ),
@@ -496,10 +640,10 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.cardBg,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
-          BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 2)),
+          BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 2)),
         ],
       ),
       child: Column(
@@ -594,10 +738,10 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
     return Container(
       padding: EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.cardBg,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
-          BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 2)),
+          BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 2)),
         ],
       ),
       child: Column(
@@ -608,7 +752,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: Colors.white,
             ),
           ),
           SizedBox(height: 16),
@@ -678,10 +822,10 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
     return Container(
       padding: EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.cardBg,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
-          BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 2)),
+          BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 2)),
         ],
       ),
       child: Column(
@@ -690,7 +834,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
           _buildTotalRow('Impuestos', totalImpuestos),
           _buildTotalRow('Descuentos', -totalDescuentos),
           _buildTotalRow('Retenciones', -totalRetenciones),
-          Divider(thickness: 2),
+          Divider(thickness: 2, color: Colors.grey.shade700),
           _buildTotalRow('TOTAL', total, isTotal: true),
         ],
       ),
@@ -708,6 +852,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
             style: TextStyle(
               fontSize: isTotal ? 20 : 16,
               fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
+              color: Colors.white,
             ),
           ),
           Text(
@@ -715,7 +860,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
             style: TextStyle(
               fontSize: isTotal ? 20 : 16,
               fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
-              color: isTotal ? AppTheme.primary : Colors.black87,
+              color: isTotal ? AppTheme.primary : Colors.white,
             ),
           ),
         ],
@@ -727,10 +872,10 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
     return Container(
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.cardBg,
         boxShadow: [
           BoxShadow(
-            color: Colors.black12,
+            color: Colors.black26,
             blurRadius: 8,
             offset: Offset(0, -2),
           ),
@@ -756,13 +901,17 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
                   ? SizedBox(
                       height: 20,
                       width: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
                     )
                   : Text(
                       _esEdicion ? 'Actualizar Cotización' : 'Crear Cotización',
                     ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.primary,
+                foregroundColor: Colors.white,
                 padding: EdgeInsets.symmetric(vertical: 16),
               ),
             ),

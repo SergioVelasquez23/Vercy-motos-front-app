@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/dashboard_screen_v2.dart';
 import 'screens/facturacion_screen.dart';
+import 'screens/facturas_list_screen.dart';
 import 'screens/clientes_list_screen.dart';
 import 'screens/cliente_form_screen.dart';
 import 'screens/cotizaciones_list_screen.dart';
@@ -128,6 +129,7 @@ class MyApp extends StatelessWidget {
         },
         '/productos': (context) => ProductosScreen(),
         '/categorias': (context) => CategoriasScreen(),
+        '/historial-inventario': (context) => HistorialInventarioScreen(),
         '/cuadre_caja': (context) => CuadreCajaScreen(),
         '/abrir_caja': (context) => AbrirCajaScreen(),
         '/cerrar_caja': (context) => CerrarCajaScreen(),
@@ -141,6 +143,7 @@ class MyApp extends StatelessWidget {
         '/pedidos_cortesia': (context) => PedidosScreenFusion(),
         '/pedidos_internos': (context) =>
             PedidosScreenFusion(), // Cambiado aquí
+        '/facturas-lista': (context) => FacturasListScreen(),
         '/facturacion/config': (context) =>
             const ConfiguracionFacturacionScreen(),
 

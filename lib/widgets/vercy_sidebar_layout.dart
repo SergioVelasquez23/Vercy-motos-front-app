@@ -233,7 +233,7 @@ class _VercySidebarLayoutState extends State<VercySidebarLayout> {
         _buildMenuItem(
           icon: Icons.description,
           label: 'Documentos',
-          route: '/pedidos',
+          route: '/facturas-lista',
           isAdmin: true,
         ),
         _buildMenuItem(
@@ -246,13 +246,13 @@ class _VercySidebarLayoutState extends State<VercySidebarLayout> {
         _buildMenuItem(
           icon: Icons.account_balance_wallet,
           label: 'Cartera',
-          route: '/cuadre_caja',
+          route: null,
           isAdmin: true,
         ),
         _buildMenuItem(
           icon: Icons.inventory,
           label: 'Inventario',
-          route: '/productos',
+          route: '/historial-inventario',
           isAdmin: true,
         ),
         _buildMenuItem(

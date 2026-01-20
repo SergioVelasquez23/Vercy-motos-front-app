@@ -80,7 +80,7 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen> {
     return VercySidebarLayout(
       title: 'Cotizaciones',
       child: Scaffold(
-        backgroundColor: Colors.grey[50],
+        backgroundColor: AppTheme.backgroundDark,
         body: Column(
           children: [
             _buildHeader(),
@@ -109,9 +109,9 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen> {
     return Container(
       padding: EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.cardBg,
         boxShadow: [
-          BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
+          BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2)),
         ],
       ),
       child: Row(
@@ -123,13 +123,13 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen> {
             style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.bold,
-              color: Colors.grey[800],
+              color: Colors.white,
             ),
           ),
           Spacer(),
           Text(
             '${_cotizacionesFiltradas.length} cotizaciones',
-            style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+            style: TextStyle(fontSize: 16, color: Colors.grey[400]),
           ),
         ],
       ),
@@ -140,8 +140,8 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen> {
     return Container(
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(bottom: BorderSide(color: Colors.grey[300]!)),
+        color: AppTheme.cardBg,
+        border: Border(bottom: BorderSide(color: Colors.grey[800]!)),
       ),
       child: Row(
         children: [
@@ -150,9 +150,11 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen> {
             flex: 3,
             child: TextField(
               controller: _searchController,
+              style: TextStyle(color: Colors.white),
               decoration: InputDecoration(
                 hintText: 'Buscar cotización...',
-                prefixIcon: Icon(Icons.search),
+                hintStyle: TextStyle(color: Colors.grey[500]),
+                prefixIcon: Icon(Icons.search, color: Colors.grey[400]),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
@@ -160,6 +162,8 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen> {
                   horizontal: 16,
                   vertical: 12,
                 ),
+                filled: true,
+                fillColor: AppTheme.surfaceDark,
               ),
               onChanged: (value) => _aplicarFiltros(),
             ),
@@ -168,6 +172,8 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen> {
           // Filtro por estado
           DropdownButton<String>(
             value: _filtroEstado,
+            dropdownColor: AppTheme.cardBg,
+            style: TextStyle(color: Colors.white),
             items: [
               DropdownMenuItem(
                 value: 'todos',
@@ -187,7 +193,7 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen> {
           SizedBox(width: 16),
           // Botón refrescar
           IconButton(
-            icon: Icon(Icons.refresh),
+            icon: Icon(Icons.refresh, color: Colors.white),
             onPressed: _cargarCotizaciones,
             tooltip: 'Refrescar',
           ),
@@ -210,8 +216,8 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen> {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(bottom: BorderSide(color: Colors.grey[300]!)),
+        color: AppTheme.cardBg,
+        border: Border(bottom: BorderSide(color: Colors.grey[800]!)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -266,13 +272,13 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.request_quote_outlined, size: 80, color: Colors.grey[400]),
+          Icon(Icons.request_quote_outlined, size: 80, color: Colors.grey[600]),
           SizedBox(height: 16),
           Text(
             _searchController.text.isEmpty
                 ? 'No hay cotizaciones registradas'
                 : 'No se encontraron cotizaciones',
-            style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+            style: TextStyle(fontSize: 18, color: Colors.grey[400]),
           ),
           SizedBox(height: 8),
           TextButton.icon(
@@ -289,10 +295,10 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen> {
     return Container(
       margin: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.cardBg,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
-          BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 2)),
+          BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 2)),
         ],
       ),
       child: ListView.separated(
@@ -327,7 +333,11 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen> {
           Expanded(
             child: Text(
               'Cotización #${cotizacion.id?.substring(0, 8) ?? 'N/A'}',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+                color: Colors.white,
+              ),
             ),
           ),
           Chip(
@@ -346,26 +356,32 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen> {
           SizedBox(height: 4),
           Row(
             children: [
-              Icon(Icons.person, size: 14, color: Colors.grey[600]),
+              Icon(Icons.person, size: 14, color: Colors.grey[400]),
               SizedBox(width: 4),
-              Text('Cliente: ${cotizacion.clienteId}'),
+              Text(
+                'Cliente: ${cotizacion.clienteId}',
+                style: TextStyle(color: Colors.grey[300]),
+              ),
             ],
           ),
           SizedBox(height: 4),
           Row(
             children: [
-              Icon(Icons.calendar_today, size: 14, color: Colors.grey[600]),
+              Icon(Icons.calendar_today, size: 14, color: Colors.grey[400]),
               SizedBox(width: 4),
               Text(
                 'Fecha: ${cotizacion.fecha.day}/${cotizacion.fecha.month}/${cotizacion.fecha.year}',
+                style: TextStyle(color: Colors.grey[300]),
               ),
               SizedBox(width: 16),
               if (cotizacion.fechaVencimiento != null) ...[
-                Icon(Icons.event, size: 14, color: Colors.grey[600]),
+                Icon(Icons.event, size: 14, color: Colors.grey[400]),
                 SizedBox(width: 4),
                 Text(
                   'Vence: ${cotizacion.fechaVencimiento!.day}/${cotizacion.fechaVencimiento!.month}/${cotizacion.fechaVencimiento!.year}',
-                  style: TextStyle(color: diasVigencia < 0 ? Colors.red : null),
+                  style: TextStyle(
+                    color: diasVigencia < 0 ? Colors.red : Colors.grey[300],
+                  ),
                 ),
               ],
             ],
@@ -373,9 +389,12 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen> {
           SizedBox(height: 4),
           Row(
             children: [
-              Icon(Icons.shopping_cart, size: 14, color: Colors.grey[600]),
+              Icon(Icons.shopping_cart, size: 14, color: Colors.grey[400]),
               SizedBox(width: 4),
-              Text('${cotizacion.items.length} items'),
+              Text(
+                '${cotizacion.items.length} items',
+                style: TextStyle(color: Colors.grey[300]),
+              ),
             ],
           ),
           SizedBox(height: 8),

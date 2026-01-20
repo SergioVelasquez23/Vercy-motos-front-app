@@ -563,7 +563,8 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
       appBar: AppBar(
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () =>
+              Navigator.pushReplacementNamed(context, '/dashboard'),
         ),
         title: Text(
           'Cuadres de Caja',
