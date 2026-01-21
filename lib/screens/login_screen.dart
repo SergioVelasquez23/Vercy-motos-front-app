@@ -306,7 +306,21 @@ class _LoginScreenState extends State<LoginScreen> {
             cacheProvider.warmupProductos();
 
             await Future.delayed(Duration(milliseconds: 100));
-            Navigator.pushReplacementNamed(context, '/dashboard');
+            
+            // Debug: imprimir roles del usuario
+            print('🔐 Roles del usuario: ${userProvider.roles}');
+            print('🔐 isOnlyAsesor: ${userProvider.isOnlyAsesor}');
+
+            // Redirigir según el rol del usuario
+            if (userProvider.isOnlyAsesor) {
+              // Los asesores van directamente a su pantalla de pedidos
+              print('🔐 Redirigiendo a /asesor-pedidos');
+              Navigator.pushReplacementNamed(context, '/asesor-pedidos');
+            } else {
+              // Admins y otros roles van al dashboard
+              print('🔐 Redirigiendo a /dashboard');
+              Navigator.pushReplacementNamed(context, '/dashboard');
+            }
           } catch (e) {
             setState(() {
               errorMessage = 'Error interno. Inténtalo de nuevo.';

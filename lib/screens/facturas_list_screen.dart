@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import '../models/factura.dart';
+import '../models/pedido.dart';
+import '../models/negocio_info.dart';
 import '../services/factura_service.dart';
+import '../services/pedido_service.dart';
+import '../services/pdf_service.dart';
+import '../services/negocio_info_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/vercy_sidebar_layout.dart';
 
@@ -11,9 +16,13 @@ class FacturasListScreen extends StatefulWidget {
 
 class _FacturasListScreenState extends State<FacturasListScreen> {
   final FacturaService _facturaService = FacturaService();
+  final PedidoService _pedidoService = PedidoService();
+  final PDFService _pdfService = PDFService();
+  final NegocioInfoService _negocioInfoService = NegocioInfoService();
 
   List<Factura> _facturas = [];
-  List<Factura> _facturasFiltradas = [];
+  List<Pedido> _pedidosPagados = [];
+  List<dynamic> _documentosFiltrados = []; // Puede ser Factura o Pedido
   bool _isLoading = false;
 
   // Filtros
@@ -25,55 +34,112 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
   @override
   void initState() {
     super.initState();
-    _cargarFacturas();
+    _cargarDocumentos();
   }
 
-  Future<void> _cargarFacturas() async {
+  Future<void> _cargarDocumentos() async {
     setState(() => _isLoading = true);
     try {
+      // Cargar facturas tradicionales
       final facturas = await _facturaService.getFacturas();
+      
+      // Cargar pedidos pagados (incluye los de FACTURACION)
+      final todosLosPedidos = await _pedidoService.getAllPedidos();
+      final pedidosPagados = todosLosPedidos
+          .where(
+            (p) =>
+                p.estado == EstadoPedido.pagado &&
+                (p.tipoFactura == 'POS' || p.mesa == 'FACTURACION'),
+          )
+          .toList();
+
+      // Ordenar por fecha descendente
+      pedidosPagados.sort((a, b) => b.fecha.compareTo(a.fecha));
+      
       setState(() {
         _facturas = facturas;
+        _pedidosPagados = pedidosPagados;
         _aplicarFiltros();
       });
     } catch (e) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Error al cargar facturas: $e')));
+      ).showSnackBar(SnackBar(content: Text('Error al cargar documentos: $e')));
     } finally {
       setState(() => _isLoading = false);
     }
   }
 
   void _aplicarFiltros() {
-    _facturasFiltradas = _facturas.where((factura) {
-      // Filtro por tipo (POS, etc.)
+    List<dynamic> documentos = [];
+
+    // Agregar facturas filtradas
+    for (var factura in _facturas) {
       if (_filtroTipo.isNotEmpty && factura.numero != null) {
         if (!factura.numero!.toUpperCase().startsWith(_filtroTipo)) {
-          return false;
+          continue;
         }
       }
-
-      // Filtro por número
       if (_filtroNumero.isNotEmpty && factura.numero != null) {
         if (!factura.numero!.toLowerCase().contains(
           _filtroNumero.toLowerCase(),
         )) {
-          return false;
+          continue;
         }
       }
-
-      // Filtro por cliente
       if (_filtroCliente.isNotEmpty) {
         if (!factura.clienteNombre.toLowerCase().contains(
           _filtroCliente.toLowerCase(),
         )) {
-          return false;
+          continue;
         }
       }
+      documentos.add(factura);
+    }
+    
+    // Agregar pedidos pagados filtrados (solo para tipo POS o vacío)
+    if (_filtroTipo.isEmpty || _filtroTipo == 'POS') {
+      for (var pedido in _pedidosPagados) {
+        if (_filtroNumero.isNotEmpty) {
+          if (!pedido.id.toLowerCase().contains(_filtroNumero.toLowerCase())) {
+            continue;
+          }
+        }
+        if (_filtroCliente.isNotEmpty) {
+          final cliente = pedido.cliente ?? 'CONSUMIDOR FINAL';
+          if (!cliente.toLowerCase().contains(_filtroCliente.toLowerCase())) {
+            continue;
+          }
+        }
+        documentos.add(pedido);
+      }
+    }
 
-      return true;
-    }).toList();
+    // Ordenar por fecha descendente
+    documentos.sort((a, b) {
+      DateTime fechaA;
+      DateTime fechaB;
+
+      if (a is Factura) {
+        fechaA = a.fechaCreacion ?? DateTime(1970);
+      } else if (a is Pedido) {
+        fechaA = a.fechaPago ?? a.fecha;
+      } else {
+        fechaA = DateTime(1970);
+      }
+
+      if (b is Factura) {
+        fechaB = b.fechaCreacion ?? DateTime(1970);
+      } else if (b is Pedido) {
+        fechaB = b.fechaPago ?? b.fecha;
+      } else {
+        fechaB = DateTime(1970);
+      }
+
+      return fechaB.compareTo(fechaA);
+    });
+
+    _documentosFiltrados = documentos;
   }
 
   @override
@@ -258,7 +324,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
   }
 
   Widget _buildTable() {
-    if (_facturasFiltradas.isEmpty) {
+    if (_documentosFiltrados.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -266,7 +332,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
             Icon(Icons.description_outlined, size: 64, color: Colors.grey),
             SizedBox(height: 16),
             Text(
-              'No hay facturas para mostrar',
+              'No hay documentos para mostrar',
               style: TextStyle(color: Colors.grey, fontSize: 18),
             ),
           ],
@@ -382,24 +448,73 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
 
           // Filas de la tabla
           Expanded(
-            child: ListView.builder(
-              itemCount: _facturasFiltradas.length,
-              itemBuilder: (context, index) {
-                final factura = _facturasFiltradas[index];
-                return _buildTableRow(factura, index);
-              },
-            ),
+            child: _documentosFiltrados.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.receipt_long,
+                          size: 64,
+                          color: Colors.grey.shade600,
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          'No hay documentos registrados',
+                          style: TextStyle(
+                            color: Colors.grey.shade400,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    itemCount: _documentosFiltrados.length,
+                    itemBuilder: (context, index) {
+                      final documento = _documentosFiltrados[index];
+                      return _buildTableRow(documento, index);
+                    },
+                  ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildTableRow(Factura factura, int index) {
+  Widget _buildTableRow(dynamic documento, int index) {
     final isEven = index % 2 == 0;
     final backgroundColor = isEven ? AppTheme.cardBg : AppTheme.surfaceDark;
-    final saldo = factura.total - (factura.descuento ?? 0);
-    final isPagado = factura.estadoPago == 'PAGADO';
+    
+    // Extraer datos según el tipo de documento
+    String numero;
+    String clienteNombre;
+    DateTime? fecha;
+    double total;
+    double abono;
+    double saldo;
+    bool isPagado;
+    bool esPedido = documento is Pedido;
+
+    if (documento is Factura) {
+      numero = documento.numero ?? 'N/A';
+      clienteNombre = documento.clienteNombre;
+      fecha = documento.fechaCreacion;
+      total = documento.total;
+      isPagado = documento.estadoPago == 'PAGADO';
+      abono = isPagado ? total : 0;
+      saldo = isPagado ? 0 : total - (documento.descuento ?? 0);
+    } else if (documento is Pedido) {
+      numero = 'POS-${documento.id.substring(0, 8).toUpperCase()}';
+      clienteNombre = documento.cliente ?? 'CONSUMIDOR FINAL';
+      fecha = documento.fechaPago ?? documento.fecha;
+      total = documento.total;
+      isPagado = documento.estado == EstadoPedido.pagado;
+      abono = total;
+      saldo = 0;
+    } else {
+      return SizedBox.shrink();
+    }
 
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -414,9 +529,33 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
           // Número de factura
           Expanded(
             flex: 2,
-            child: Text(
-              factura.numero ?? 'N/A',
-              style: TextStyle(color: Colors.white, fontSize: 13),
+            child: Row(
+              children: [
+                if (esPedido)
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                    margin: EdgeInsets.only(right: 4),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primary.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      'POS',
+                      style: TextStyle(
+                        color: AppTheme.primary,
+                        fontSize: 9,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                Expanded(
+                  child: Text(
+                    numero,
+                    style: TextStyle(color: Colors.white, fontSize: 13),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
             ),
           ),
 
@@ -424,7 +563,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
           Expanded(
             flex: 3,
             child: Text(
-              factura.clienteNombre,
+              clienteNombre,
               style: TextStyle(color: Colors.white, fontSize: 13),
               overflow: TextOverflow.ellipsis,
             ),
@@ -434,8 +573,8 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
           Expanded(
             flex: 2,
             child: Text(
-              factura.fechaCreacion != null
-                  ? '${factura.fechaCreacion!.year}-${factura.fechaCreacion!.month.toString().padLeft(2, '0')}-${factura.fechaCreacion!.day.toString().padLeft(2, '0')}'
+              fecha != null
+                  ? '${fecha.year}-${fecha.month.toString().padLeft(2, '0')}-${fecha.day.toString().padLeft(2, '0')}'
                   : 'N/A',
               style: TextStyle(color: Colors.white, fontSize: 13),
             ),
@@ -445,17 +584,17 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
           Expanded(
             flex: 2,
             child: Text(
-              '\$ ${factura.total.toStringAsFixed(0)}',
+              '\$ ${total.toStringAsFixed(0)}',
               style: TextStyle(color: Colors.white, fontSize: 13),
               textAlign: TextAlign.right,
             ),
           ),
 
-          // Abono (mismo que total si está pagado)
+          // Abono
           Expanded(
             flex: 2,
             child: Text(
-              '\$ ${isPagado ? factura.total.toStringAsFixed(0) : '0'}',
+              '\$ ${abono.toStringAsFixed(0)}',
               style: TextStyle(color: Colors.white, fontSize: 13),
               textAlign: TextAlign.right,
             ),
@@ -465,7 +604,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
           Expanded(
             flex: 2,
             child: Text(
-              '\$ ${isPagado ? '0' : saldo.toStringAsFixed(0)}',
+              '\$ ${saldo.toStringAsFixed(0)}',
               style: TextStyle(color: Colors.white, fontSize: 13),
               textAlign: TextAlign.right,
             ),
@@ -493,7 +632,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
                   ),
                   SizedBox(width: 4),
                   Text(
-                    isPagado ? 'VIGENTE' : 'PENDIENTE',
+                    isPagado ? 'PAGADO' : 'PENDIENTE',
                     style: TextStyle(
                       color: isPagado ? AppTheme.success : AppTheme.warning,
                       fontSize: 12,
@@ -507,31 +646,28 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
 
           // Acciones
           Container(
-            width: 80,
+            width: 100,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
+                // Botón ver/imprimir PDF
                 IconButton(
                   icon: Icon(
-                    Icons.receipt_long,
-                    color: AppTheme.primary,
+                    Icons.picture_as_pdf,
+                    color: Colors.red.shade400,
                     size: 20,
                   ),
-                  onPressed: () {
-                    // TODO: Ver detalle de factura
-                  },
-                  tooltip: 'Ver factura',
+                  onPressed: () => _verPDF(documento),
+                  tooltip: 'Ver PDF',
                 ),
                 IconButton(
                   icon: Icon(
-                    Icons.more_vert,
+                    Icons.print,
                     color: AppTheme.primary,
                     size: 20,
                   ),
-                  onPressed: () {
-                    // TODO: Más opciones
-                  },
-                  tooltip: 'Más opciones',
+                  onPressed: () => _imprimirDocumento(documento),
+                  tooltip: 'Imprimir',
                 ),
               ],
             ),
@@ -539,5 +675,105 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
         ],
       ),
     );
+  }
+
+  Future<Map<String, dynamic>> _crearResumenDocumento(dynamic documento) async {
+    final negocioInfo = await _negocioInfoService.getNegocioInfo();
+
+    Map<String, dynamic> resumen;
+
+    if (documento is Pedido) {
+      resumen = {
+        'numeroPedido': documento.id,
+        'fecha': documento.fechaPago ?? documento.fecha,
+        'cliente': documento.cliente ?? 'CONSUMIDOR FINAL',
+        'productos': documento.items
+            .map(
+              (item) => {
+                'nombre': item.productoNombre ?? 'Producto',
+                'cantidad': item.cantidad,
+                'precioUnitario': item.precioUnitario,
+                'subtotal': item.cantidad * item.precioUnitario,
+              },
+            )
+            .toList(),
+        'subtotal': documento.total / 1.19,
+        'iva': documento.total - (documento.total / 1.19),
+        'total': documento.total,
+        'metodoPago': documento.formaPago ?? 'EFECTIVO',
+        'negocio': negocioInfo != null
+            ? {
+                'nombre': negocioInfo.nombre,
+                'nit': negocioInfo.nit,
+                'direccion': negocioInfo.direccion,
+                'telefono': negocioInfo.telefono,
+              }
+            : null,
+      };
+    } else if (documento is Factura) {
+      final subtotalCalc = documento.subtotal;
+      final ivaCalc = documento.total - documento.subtotal;
+      resumen = {
+        'numeroPedido': documento.numero ?? documento.id,
+        'fecha': documento.fechaCreacion ?? DateTime.now(),
+        'cliente': documento.clienteNombre,
+        'productos':
+            documento.items
+                ?.map(
+                  (item) => {
+                    'nombre': item.productoNombre ?? 'Producto',
+                    'cantidad': item.cantidad,
+                    'precioUnitario': item.precioUnitario,
+                    'subtotal': item.cantidad * item.precioUnitario,
+                  },
+                )
+                .toList() ??
+            [],
+        'subtotal': subtotalCalc,
+        'iva': ivaCalc,
+        'total': documento.total,
+        'metodoPago': documento.metodoPago ?? 'EFECTIVO',
+        'negocio': negocioInfo != null
+            ? {
+                'nombre': negocioInfo.nombre,
+                'nit': negocioInfo.nit,
+                'direccion': negocioInfo.direccion,
+                'telefono': negocioInfo.telefono,
+              }
+            : null,
+      };
+    } else {
+      throw Exception('Tipo de documento no soportado');
+    }
+
+    return resumen;
+  }
+
+  Future<void> _verPDF(dynamic documento) async {
+    try {
+      final resumen = await _crearResumenDocumento(documento);
+      await _pdfService.mostrarVistaPrevia(resumen: resumen, esFactura: true);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al generar PDF: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _imprimirDocumento(dynamic documento) async {
+    try {
+      final resumen = await _crearResumenDocumento(documento);
+      await _pdfService.imprimirFactura(resumen);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al imprimir: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 }

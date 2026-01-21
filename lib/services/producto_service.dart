@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:image_picker/image_picker.dart';
@@ -8,6 +8,17 @@ import '../models/producto.dart';
 import '../models/categoria.dart';
 import '../config/api_config.dart';
 import '../utils/retry_strategy.dart';
+
+/// Flag para habilitar/deshabilitar logs detallados de productos
+/// En producción web esto debe ser false para evitar spam en consola
+const bool _enableProductLogs = kDebugMode;
+
+/// Helper para imprimir solo en modo debug
+void _logProducto(String message) {
+  if (_enableProductLogs) {
+    print(message);
+  }
+}
 
 /// Clase para manejar el estado de paginación de productos
 class ProductosPaginationState {
@@ -77,7 +88,7 @@ class ProductoService {
       headers['Authorization'] = 'Bearer $token';
     }
 
-    print('🔧 Headers para request: $headers');
+    if (_enableProductLogs) print('🔧 Headers para request: $headers');
     return headers;
   }
 
@@ -331,10 +342,10 @@ class ProductoService {
       final url =
           '$baseUrl/api/productos/ligero?page=${_paginationState.currentPage}&size=${_paginationState.pageSize}';
 
-      print(
+      _logProducto(
         '📄 Cargando página ${_paginationState.currentPage + 1} (${_paginationState.pageSize} productos) [LIGERO]',
       );
-      print('🔗 URL: $url');
+      _logProducto('🔗 URL: $url');
 
       // 🔄 Usar estrategia de reintentos para carga paginada
       final response = await _retryStrategy.execute(
@@ -346,25 +357,27 @@ class ProductoService {
               error.toString().contains('Connection');
         },
         onRetry: (attempt, delay) {
-          print(
+          _logProducto(
             '🔄 Reintentando carga de página ${_paginationState.currentPage + 1}',
           );
         },
       );
 
-      print('📦 Paginación - Response status: ${response.statusCode}');
-      print('📏 Paginación - Response body length: ${response.body.length}');
+      _logProducto('📦 Paginación - Response status: ${response.statusCode}');
+      _logProducto(
+        '📏 Paginación - Response body length: ${response.body.length}',
+      );
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
-        print(
+        _logProducto(
           '🔍 Paginación - Response structure: ${responseData.keys.toList()}',
         );
 
         if (responseData['success'] == true) {
           final data = responseData['data'];
-          print('📊 Paginación - Data structure: ${data.keys.toList()}');
-          print(
+          _logProducto('📊 Paginación - Data structure: ${data.keys.toList()}');
+          _logProducto(
             '📊 Paginación - Content length: ${(data['content'] as List).length}',
           );
 
@@ -385,7 +398,7 @@ class ProductoService {
 
           final progreso =
               '${_paginationState.productos.length}/${_paginationState.totalElements}';
-          print('✅ Página cargada exitosamente. Progreso: $progreso');
+          _logProducto('✅ Página cargada exitosamente. Progreso: $progreso');
 
           return {
             'productos': nuevosProductos,

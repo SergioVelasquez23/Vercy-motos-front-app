@@ -35,7 +35,11 @@ class PedidoAsesorService {
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        return PedidoAsesor.fromJson(json.decode(response.body));
+        final decoded = json.decode(response.body);
+        final data = decoded is Map && decoded['data'] != null 
+            ? decoded['data'] 
+            : decoded;
+        return PedidoAsesor.fromJson(data);
       } else {
         final error = json.decode(response.body);
         throw Exception(error['message'] ?? 'Error al crear pedido');
@@ -70,14 +74,46 @@ class PedidoAsesorService {
       final response = await http.get(Uri.parse(url), headers: headers);
 
       if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
+        final decoded = json.decode(response.body);
+
+        // Manejar diferentes estructuras de respuesta
+        List<dynamic> data;
+        if (decoded is List) {
+          data = decoded;
+        } else if (decoded is Map) {
+          if (decoded['data'] != null) {
+            final dataField = decoded['data'];
+            if (dataField is List) {
+              data = dataField;
+            } else if (dataField is Map && dataField['content'] != null) {
+              data = dataField['content'] as List;
+            } else {
+              data = [];
+            }
+          } else if (decoded['content'] != null) {
+            data = decoded['content'] as List;
+          } else {
+            data = [];
+          }
+        } else {
+          data = [];
+        }
+        
         return data.map((json) => PedidoAsesor.fromJson(json)).toList();
       } else {
-        throw Exception('Error al cargar pedidos: ${response.statusCode}');
+        // Intentar obtener el mensaje de error del backend
+        String errorMsg = 'Error al cargar pedidos: ${response.statusCode}';
+        try {
+          final errorBody = json.decode(response.body);
+          if (errorBody['message'] != null) {
+            errorMsg = errorBody['message'];
+          }
+        } catch (_) {}
+        throw Exception(errorMsg);
       }
     } catch (e) {
       print('Error en listarPedidos: $e');
-      rethrow;
+      return []; // Retornar lista vacía para no romper la UI
     }
   }
 
@@ -91,7 +127,11 @@ class PedidoAsesorService {
       );
 
       if (response.statusCode == 200) {
-        return PedidoAsesor.fromJson(json.decode(response.body));
+        final decoded = json.decode(response.body);
+        final data = decoded is Map && decoded['data'] != null
+            ? decoded['data']
+            : decoded;
+        return PedidoAsesor.fromJson(data);
       } else {
         throw Exception('Error al obtener pedido: ${response.statusCode}');
       }
@@ -112,7 +152,11 @@ class PedidoAsesorService {
       );
 
       if (response.statusCode == 200) {
-        return PedidoAsesor.fromJson(json.decode(response.body));
+        final decoded = json.decode(response.body);
+        final data = decoded is Map && decoded['data'] != null
+            ? decoded['data']
+            : decoded;
+        return PedidoAsesor.fromJson(data);
       } else {
         final error = json.decode(response.body);
         throw Exception(error['message'] ?? 'Error al actualizar pedido');
@@ -137,7 +181,11 @@ class PedidoAsesorService {
       );
 
       if (response.statusCode == 200) {
-        return PedidoAsesor.fromJson(json.decode(response.body));
+        final decoded = json.decode(response.body);
+        final data = decoded is Map && decoded['data'] != null
+            ? decoded['data']
+            : decoded;
+        return PedidoAsesor.fromJson(data);
       } else {
         final error = json.decode(response.body);
         throw Exception(error['message'] ?? 'Error al facturar pedido');
@@ -158,7 +206,11 @@ class PedidoAsesorService {
       );
 
       if (response.statusCode == 200) {
-        return PedidoAsesor.fromJson(json.decode(response.body));
+        final decoded = json.decode(response.body);
+        final data = decoded is Map && decoded['data'] != null
+            ? decoded['data']
+            : decoded;
+        return PedidoAsesor.fromJson(data);
       } else {
         final error = json.decode(response.body);
         throw Exception(error['message'] ?? 'Error al cancelar pedido');

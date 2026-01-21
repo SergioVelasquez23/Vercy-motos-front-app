@@ -8,24 +8,36 @@ const String kBackendUrl =
 // URL de desarrollo local
 const String kLocalBackendUrl = 'http://localhost:8080';
 
+// Cache para evitar logs repetitivos
+bool _urlYaLogueada = false;
+
 // URL dinámica que considera el entorno de desarrollo
 String get kDynamicBackendUrl {
   // En flutter web, siempre usar el backend de producción para evitar problemas de CORS
   if (kIsWeb) {
-    print(
-      '🌐 Flutter Web detectado - usando backend de producción: $kBackendUrl',
-    );
+    if (!_urlYaLogueada && kDebugMode) {
+      print(
+        '🌐 Flutter Web detectado - usando backend de producción: $kBackendUrl',
+      );
+      _urlYaLogueada = true;
+    }
     return kBackendUrl;
   }
 
   if (kDebugMode) {
-    print(
-      '🔧 Modo desarrollo detectado - usando backend local: $kLocalBackendUrl',
-    );
+    if (!_urlYaLogueada) {
+      print(
+        '🔧 Modo desarrollo detectado - usando backend local: $kLocalBackendUrl',
+      );
+      _urlYaLogueada = true;
+    }
     return kLocalBackendUrl;
   }
 
-  print('🚀 Modo producción - usando backend: $kBackendUrl');
+  if (!_urlYaLogueada) {
+    print('🚀 Modo producción - usando backend: $kBackendUrl');
+    _urlYaLogueada = true;
+  }
   return kBackendUrl;
 }
 

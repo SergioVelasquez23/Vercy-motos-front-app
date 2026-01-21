@@ -15,7 +15,7 @@ import '../utils/connectivity_utils.dart';
 import '../config/api_config.dart';
 
 class AuthService {
-  // Registro de usuario
+  // Registro de usuario - Por defecto se registra como ASESOR
   Future<dynamic> registerUser(
     String name,
     String email,
@@ -26,7 +26,12 @@ class AuthService {
       final response = await http.post(
         Uri.parse(url),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'name': name, 'email': email, 'password': password}),
+        body: jsonEncode({
+          'name': name,
+          'email': email,
+          'password': password,
+          'roles': ['ASESOR'], // Rol por defecto para nuevos usuarios
+        }),
       );
       if (response.statusCode == 200 || response.statusCode == 201) {
         return {'success': true, 'message': 'Usuario registrado exitosamente'};

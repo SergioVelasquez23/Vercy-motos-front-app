@@ -117,32 +117,66 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey[50],
-      appBar: AppBar(
-        title: Text(_esEdicion ? 'Editar Cliente' : 'Nuevo Cliente'),
-        backgroundColor: AppTheme.primary,
-      ),
-      body: Form(
-        key: _formKey,
-        child: SingleChildScrollView(
-          padding: EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildSeccionIdentificacion(),
-              SizedBox(height: 24),
-              _buildSeccionContacto(),
-              SizedBox(height: 24),
-              _buildSeccionTributario(),
-              SizedBox(height: 24),
-              _buildSeccionComercial(),
-              SizedBox(height: 100), // Espacio para el botón flotante
-            ],
+    return Theme(
+      data: Theme.of(context).copyWith(
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: AppTheme.surfaceDark,
+          labelStyle: TextStyle(color: Colors.grey.shade400),
+          hintStyle: TextStyle(color: Colors.grey.shade500),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: Colors.grey.shade700),
           ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: Colors.grey.shade700),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: AppTheme.primary, width: 2),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: Colors.red, width: 1),
+          ),
+          prefixIconColor: Colors.grey.shade400,
+        ),
+        textSelectionTheme: TextSelectionThemeData(
+          cursorColor: AppTheme.primary,
+        ),
+        dropdownMenuTheme: DropdownMenuThemeData(
+          textStyle: TextStyle(color: Colors.white),
         ),
       ),
-      bottomNavigationBar: _buildBottomBar(),
+      child: Scaffold(
+        backgroundColor: AppTheme.backgroundDark,
+        appBar: AppBar(
+          title: Text(_esEdicion ? 'Editar Cliente' : 'Nuevo Cliente'),
+          backgroundColor: AppTheme.cardBg,
+          foregroundColor: Colors.white,
+        ),
+        body: Form(
+          key: _formKey,
+          child: SingleChildScrollView(
+            padding: EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildSeccionIdentificacion(),
+                SizedBox(height: 24),
+                _buildSeccionContacto(),
+                SizedBox(height: 24),
+                _buildSeccionTributario(),
+                SizedBox(height: 24),
+                _buildSeccionComercial(),
+                SizedBox(height: 100), // Espacio para el botón flotante
+              ],
+            ),
+          ),
+        ),
+        bottomNavigationBar: _buildBottomBar(),
+      ),
     );
   }
 
@@ -153,11 +187,9 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.cardBg,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 2)),
-        ],
+        border: Border.all(color: Colors.grey.shade800, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -165,7 +197,7 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
           Container(
             padding: EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppTheme.primary.withOpacity(0.1),
+              color: AppTheme.primary.withOpacity(0.15),
               borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
             ),
             child: Row(
@@ -177,7 +209,7 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+                    color: Colors.white,
                   ),
                 ),
               ],
@@ -511,23 +543,18 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
     return Container(
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black12,
-            blurRadius: 8,
-            offset: Offset(0, -2),
-          ),
-        ],
+        color: AppTheme.cardBg,
+        border: Border(top: BorderSide(color: Colors.grey.shade800, width: 1)),
       ),
       child: Row(
         children: [
           Expanded(
             child: OutlinedButton(
               onPressed: () => Navigator.pop(context),
-              child: Text('Cancelar'),
+              child: Text('Cancelar', style: TextStyle(color: Colors.white)),
               style: OutlinedButton.styleFrom(
                 padding: EdgeInsets.symmetric(vertical: 16),
+                side: BorderSide(color: Colors.grey.shade600),
               ),
             ),
           ),
@@ -540,9 +567,18 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
                   ? SizedBox(
                       height: 20,
                       width: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
                     )
-                  : Text(_esEdicion ? 'Actualizar Cliente' : 'Crear Cliente'),
+                  : Text(
+                      _esEdicion ? 'Actualizar Cliente' : 'Crear Cliente',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.primary,
                 padding: EdgeInsets.symmetric(vertical: 16),

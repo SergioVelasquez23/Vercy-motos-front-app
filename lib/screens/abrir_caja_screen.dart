@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/user_provider.dart';
 import '../models/cuadre_caja.dart';
 import '../services/cuadre_caja_service.dart';
+import '../theme/app_theme.dart';
 
 class AbrirCajaScreen extends StatefulWidget {
   const AbrirCajaScreen({super.key});
@@ -12,12 +13,6 @@ class AbrirCajaScreen extends StatefulWidget {
 }
 
 class _AbrirCajaScreenState extends State<AbrirCajaScreen> {
-  final Color primary = Color(0xFFFF6B00); // Color naranja fuego
-  final Color bgDark = Color(0xFF1E1E1E); // Color de fondo negro
-  final Color cardBg = Color(0xFF252525); // Color de tarjetas
-  final Color textDark = Color(0xFFE0E0E0); // Color de texto claro
-  final Color textLight = Color(0xFFA0A0A0); // Color de texto más suave
-
   // Controllers
   final TextEditingController _montoInicialController = TextEditingController();
   final TextEditingController _observacionesController =
@@ -155,7 +150,7 @@ class _AbrirCajaScreenState extends State<AbrirCajaScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(mensaje),
-        backgroundColor: Colors.green,
+        backgroundColor: AppTheme.success,
         duration: Duration(seconds: 3),
       ),
     );
@@ -166,13 +161,13 @@ class _AbrirCajaScreenState extends State<AbrirCajaScreen> {
     final userProvider = Provider.of<UserProvider>(context);
 
     return Scaffold(
-      backgroundColor: bgDark,
+      backgroundColor: AppTheme.backgroundDark,
       appBar: AppBar(
         title: Text(
           'Abrir Caja',
           style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
         ),
-        backgroundColor: primary,
+        backgroundColor: AppTheme.primary,
         elevation: 0,
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: Colors.white),
@@ -180,7 +175,7 @@ class _AbrirCajaScreenState extends State<AbrirCajaScreen> {
         ),
       ),
       body: _isLoading
-          ? Center(child: CircularProgressIndicator(color: primary))
+          ? Center(child: CircularProgressIndicator(color: AppTheme.primary))
           : SingleChildScrollView(
               padding: EdgeInsets.all(16),
               child: Column(
@@ -188,31 +183,33 @@ class _AbrirCajaScreenState extends State<AbrirCajaScreen> {
                 children: [
                   // Título
                   Center(
-                    child: Text(
-                      'APERTURA DE CAJA',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: textDark,
-                        shadows: [
-                          Shadow(
-                            offset: Offset(1, 1),
-                            blurRadius: 3,
-                            color: Colors.black.withOpacity(0.3),
-                          ),
-                        ],
+                    child: Container(
+                      padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      decoration: BoxDecoration(
+                        gradient: AppTheme.primaryGradient,
+                        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                        boxShadow: AppTheme.primaryShadow,
+                      ),
+                      child: Text(
+                        'APERTURA DE CAJA',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          letterSpacing: 1.2,
+                        ),
                       ),
                     ),
                   ),
-                  SizedBox(height: 20),
+                  SizedBox(height: 24),
 
                   // Verificación de estado de caja
                   if (_hayCajaAbierta) ...[
-                    Card(
-                      color: Colors.red.shade900,
-                      elevation: 4,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: AppTheme.error.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                        border: Border.all(color: AppTheme.error.withOpacity(0.5)),
                       ),
                       child: Padding(
                         padding: EdgeInsets.all(16),
@@ -221,344 +218,341 @@ class _AbrirCajaScreenState extends State<AbrirCajaScreen> {
                           children: [
                             Row(
                               children: [
-                                Icon(Icons.warning, color: Colors.red.shade300),
-                                SizedBox(width: 8),
+                                Container(
+                                  padding: EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.error.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Icon(Icons.warning_amber_rounded, color: AppTheme.error, size: 24),
+                                ),
+                                SizedBox(width: 12),
                                 Text(
                                   'CAJA YA ABIERTA',
                                   style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
-                                    color: Colors.red.shade100,
+                                    color: AppTheme.error,
                                   ),
                                 ),
                               ],
                             ),
-                            SizedBox(height: 12),
+                            SizedBox(height: 16),
                             if (_cajaActual != null) ...[
-                              Text(
-                                'Caja: ${_cajaActual!.nombre}',
-                                style: TextStyle(color: Colors.red.shade100),
+                              _buildInfoRow(Icons.point_of_sale, 'Caja', _cajaActual!.nombre),
+                              SizedBox(height: 8),
+                              _buildInfoRow(Icons.person, 'Responsable', _cajaActual!.responsable),
+                              SizedBox(height: 8),
+                              _buildInfoRow(
+                                Icons.access_time,
+                                'Apertura',
+                                '${_cajaActual!.fechaApertura.day}/${_cajaActual!.fechaApertura.month}/${_cajaActual!.fechaApertura.year} ${_cajaActual!.fechaApertura.hour}:${_cajaActual!.fechaApertura.minute.toString().padLeft(2, '0')}',
                               ),
-                              Text(
-                                'Responsable: ${_cajaActual!.responsable}',
-                                style: TextStyle(color: Colors.red.shade100),
-                              ),
-                              Text(
-                                'Fecha apertura: ${_cajaActual!.fechaApertura.day}/${_cajaActual!.fechaApertura.month}/${_cajaActual!.fechaApertura.year} ${_cajaActual!.fechaApertura.hour}:${_cajaActual!.fechaApertura.minute.toString().padLeft(2, '0')}',
-                                style: TextStyle(color: Colors.red.shade100),
-                              ),
-                              Text(
-                                'Monto inicial: \$${_cajaActual!.fondoInicial.toStringAsFixed(0)}',
-                                style: TextStyle(color: Colors.red.shade100),
+                              SizedBox(height: 8),
+                              _buildInfoRow(
+                                Icons.attach_money,
+                                'Monto inicial',
+                                '\$${_cajaActual!.fondoInicial.toStringAsFixed(0)}',
                               ),
                             ],
-                            SizedBox(height: 12),
-                            Text(
-                              'Debe cerrar la caja actual antes de abrir una nueva.',
-                              style: TextStyle(
-                                color: Colors.red.shade100,
-                                fontWeight: FontWeight.bold,
+                            SizedBox(height: 16),
+                            Container(
+                              padding: EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: AppTheme.warning.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.info_outline, color: AppTheme.warning, size: 20),
+                                  SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'Debe cerrar la caja actual antes de abrir una nueva.',
+                                      style: TextStyle(
+                                        color: AppTheme.textPrimary,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
                         ),
                       ),
                     ),
-                    SizedBox(height: 20),
+                    SizedBox(height: 24),
 
                     // Botón para ir a cerrar caja
                     Center(
-                      child: ElevatedButton.icon(
-                        icon: Icon(Icons.lock_clock),
-                        label: Text('Ir a Cerrar Caja'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.orange,
-                          foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 32,
-                            vertical: 16,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [AppTheme.warning, AppTheme.warning.withOpacity(0.8)],
                           ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
+                          borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppTheme.warning.withOpacity(0.3),
+                              blurRadius: 8,
+                              offset: Offset(0, 4),
+                            ),
+                          ],
                         ),
-                        onPressed: () {
-                          Navigator.of(
-                            context,
-                          ).pushReplacementNamed('/cerrar_caja');
-                        },
+                        child: ElevatedButton.icon(
+                          icon: Icon(Icons.lock_clock, size: 22),
+                          label: Text(
+                            'Ir a Cerrar Caja',
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            foregroundColor: Colors.white,
+                            shadowColor: Colors.transparent,
+                            padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                            ),
+                          ),
+                          onPressed: () {
+                            Navigator.of(context).pushReplacementNamed('/cerrar_caja');
+                          },
+                        ),
                       ),
                     ),
                   ] else ...[
                     // Formulario para abrir caja
 
                     // Información del usuario
-                    Card(
-                      elevation: 4,
-                      color: cardBg,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Padding(
-                        padding: EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Responsable',
-                              style: TextStyle(fontSize: 16, color: textLight),
-                            ),
-                            Text(
-                              userProvider.userName ??
-                                  'Usuario no identificado',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: textDark,
-                              ),
-                            ),
-                            SizedBox(height: 16),
-                            Text(
-                              'Fecha y Hora',
-                              style: TextStyle(fontSize: 16, color: textLight),
-                            ),
-                            Text(
-                              '${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year} ${DateTime.now().hour}:${DateTime.now().minute.toString().padLeft(2, '0')}',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: textDark,
-                              ),
-                            ),
-                          ],
-                        ),
+                    _buildCard(
+                      icon: Icons.person_outline,
+                      title: 'Información del Turno',
+                      child: Column(
+                        children: [
+                          _buildInfoTile(
+                            'Responsable',
+                            userProvider.userName ?? 'Usuario no identificado',
+                            Icons.badge,
+                          ),
+                          Divider(color: AppTheme.textMuted.withOpacity(0.2)),
+                          _buildInfoTile(
+                            'Fecha y Hora',
+                            '${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year} ${DateTime.now().hour}:${DateTime.now().minute.toString().padLeft(2, '0')}',
+                            Icons.schedule,
+                          ),
+                        ],
                       ),
                     ),
-                    SizedBox(height: 20),
+                    SizedBox(height: 16),
 
                     // Selección de caja
-                    Card(
-                      elevation: 4,
-                      color: cardBg,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Padding(
-                        padding: EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Seleccionar Caja',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: textDark,
-                              ),
-                            ),
-                            SizedBox(height: 10),
-                            DropdownButtonFormField<String>(
-                              decoration: InputDecoration(
-                                border: OutlineInputBorder(),
-                                focusedBorder: OutlineInputBorder(
-                                  borderSide: BorderSide(color: primary),
-                                ),
-                              ),
-                              style: TextStyle(color: textDark),
-                              initialValue: _selectedCaja,
-                              items: ['Caja Principal', 'Caja Secundaria']
-                                  .map<DropdownMenuItem<String>>((
-                                    String value,
-                                  ) {
-                                    return DropdownMenuItem<String>(
-                                      value: value,
-                                      child: Text(value),
-                                    );
-                                  })
-                                  .toList(),
-                              onChanged: (String? newValue) {
-                                setState(() {
-                                  _selectedCaja = newValue;
-                                });
-                              },
-                            ),
-                          ],
+                    _buildCard(
+                      icon: Icons.point_of_sale,
+                      title: 'Seleccionar Caja',
+                      child: DropdownButtonFormField<String>(
+                        decoration: InputDecoration(
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                            borderSide: BorderSide(color: AppTheme.textMuted),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                            borderSide: BorderSide(color: AppTheme.textMuted),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                            borderSide: BorderSide(color: AppTheme.primary, width: 2),
+                          ),
+                          filled: true,
+                          fillColor: AppTheme.surfaceDark,
+                          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         ),
+                        dropdownColor: AppTheme.cardBg,
+                        style: TextStyle(color: AppTheme.textPrimary),
+                        value: _selectedCaja,
+                        items: ['Caja Principal', 'Caja Secundaria']
+                            .map<DropdownMenuItem<String>>((String value) {
+                          return DropdownMenuItem<String>(
+                            value: value,
+                            child: Text(value),
+                          );
+                        }).toList(),
+                        onChanged: (String? newValue) {
+                          setState(() {
+                            _selectedCaja = newValue;
+                          });
+                        },
                       ),
                     ),
-                    SizedBox(height: 20),
+                    SizedBox(height: 16),
 
                     // Monto inicial
-                    Card(
-                      elevation: 4,
-                      color: cardBg,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Padding(
-                        padding: EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Monto Inicial *',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: textDark,
+                    _buildCard(
+                      icon: Icons.attach_money,
+                      title: 'Monto Inicial *',
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          TextFormField(
+                            controller: _montoInicialController,
+                            keyboardType: TextInputType.numberWithOptions(decimal: true),
+                            style: TextStyle(color: AppTheme.textPrimary, fontSize: 18),
+                            decoration: InputDecoration(
+                              hintText: 'Ingrese el monto inicial',
+                              hintStyle: TextStyle(color: AppTheme.textMuted),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
                               ),
-                            ),
-                            SizedBox(height: 10),
-                            TextFormField(
-                              controller: _montoInicialController,
-                              keyboardType: TextInputType.numberWithOptions(
-                                decimal: true,
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                                borderSide: BorderSide(color: AppTheme.textMuted),
                               ),
-                              style: TextStyle(color: textDark),
-                              decoration: InputDecoration(
-                                labelText: 'Ingrese el monto inicial',
-                                labelStyle: TextStyle(color: textLight),
-                                border: OutlineInputBorder(),
-                                prefixIcon: Icon(
-                                  Icons.attach_money,
-                                  color: primary,
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                                borderSide: BorderSide(color: AppTheme.primary, width: 2),
+                              ),
+                              filled: true,
+                              fillColor: AppTheme.surfaceDark,
+                              prefixIcon: Container(
+                                margin: EdgeInsets.all(8),
+                                padding: EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.primary.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(8),
                                 ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderSide: BorderSide(color: primary),
+                                child: Icon(Icons.attach_money, color: AppTheme.primary),
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Icon(Icons.info_outline, size: 14, color: AppTheme.textMuted),
+                              SizedBox(width: 6),
+                              Text(
+                                'Este será el dinero con el que inicia la caja',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppTheme.textMuted,
                                 ),
                               ),
-                            ),
-                            SizedBox(height: 8),
-                            Text(
-                              'Este será el dinero con el que inicia la caja',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: textLight,
-                                fontStyle: FontStyle.italic,
-                              ),
-                            ),
-                          ],
-                        ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
-                    SizedBox(height: 20),
+                    SizedBox(height: 16),
 
                     // Identificación máquina
-                    Card(
-                      elevation: 4,
-                      color: cardBg,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Padding(
-                        padding: EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Identificación de Máquina',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: textDark,
-                              ),
+                    _buildCard(
+                      icon: Icons.computer,
+                      title: 'Identificación de Máquina',
+                      child: TextFormField(
+                        controller: _idMaquinaController,
+                        style: TextStyle(color: AppTheme.textPrimary),
+                        decoration: InputDecoration(
+                          hintText: 'ID o nombre de la máquina',
+                          hintStyle: TextStyle(color: AppTheme.textMuted),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                            borderSide: BorderSide(color: AppTheme.textMuted),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                            borderSide: BorderSide(color: AppTheme.primary, width: 2),
+                          ),
+                          filled: true,
+                          fillColor: AppTheme.surfaceDark,
+                          prefixIcon: Container(
+                            margin: EdgeInsets.all(8),
+                            padding: EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: AppTheme.secondary.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(8),
                             ),
-                            SizedBox(height: 10),
-                            TextFormField(
-                              controller: _idMaquinaController,
-                              style: TextStyle(color: textDark),
-                              decoration: InputDecoration(
-                                labelText: 'ID o nombre de la máquina',
-                                labelStyle: TextStyle(color: textLight),
-                                border: OutlineInputBorder(),
-                                prefixIcon: Icon(
-                                  Icons.computer,
-                                  color: primary,
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderSide: BorderSide(color: primary),
-                                ),
-                              ),
-                            ),
-                          ],
+                            child: Icon(Icons.computer, color: AppTheme.secondary),
+                          ),
                         ),
                       ),
                     ),
-                    SizedBox(height: 20),
+                    SizedBox(height: 16),
 
                     // Observaciones
-                    Card(
-                      elevation: 4,
-                      color: cardBg,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Padding(
-                        padding: EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Observaciones',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: textDark,
-                              ),
-                            ),
-                            SizedBox(height: 10),
-                            TextFormField(
-                              controller: _observacionesController,
-                              maxLines: 3,
-                              style: TextStyle(color: textDark),
-                              decoration: InputDecoration(
-                                labelText:
-                                    'Observaciones adicionales (opcional)',
-                                labelStyle: TextStyle(color: textLight),
-                                border: OutlineInputBorder(),
-                                alignLabelWithHint: true,
-                                focusedBorder: OutlineInputBorder(
-                                  borderSide: BorderSide(color: primary),
-                                ),
-                              ),
-                            ),
-                          ],
+                    _buildCard(
+                      icon: Icons.notes,
+                      title: 'Observaciones',
+                      child: TextFormField(
+                        controller: _observacionesController,
+                        maxLines: 3,
+                        style: TextStyle(color: AppTheme.textPrimary),
+                        decoration: InputDecoration(
+                          hintText: 'Observaciones adicionales (opcional)',
+                          hintStyle: TextStyle(color: AppTheme.textMuted),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                            borderSide: BorderSide(color: AppTheme.textMuted),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                            borderSide: BorderSide(color: AppTheme.primary, width: 2),
+                          ),
+                          filled: true,
+                          fillColor: AppTheme.surfaceDark,
+                          alignLabelWithHint: true,
                         ),
                       ),
                     ),
-                    SizedBox(height: 30),
+                    SizedBox(height: 32),
 
                     // Botón para abrir caja
                     Center(
-                      child: ElevatedButton.icon(
-                        icon: Icon(Icons.lock_open),
-                        label: Text('ABRIR CAJA'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: primary,
-                          foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 40,
-                            vertical: 20,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          elevation: 4,
+                      child: Container(
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          gradient: AppTheme.primaryGradient,
+                          borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                          boxShadow: AppTheme.primaryShadow,
                         ),
-                        onPressed: _abrirCaja,
+                        child: ElevatedButton.icon(
+                          icon: Icon(Icons.lock_open, size: 24),
+                          label: Text(
+                            'ABRIR CAJA',
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            foregroundColor: Colors.white,
+                            shadowColor: Colors.transparent,
+                            padding: EdgeInsets.symmetric(horizontal: 40, vertical: 18),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                            ),
+                          ),
+                          onPressed: _abrirCaja,
+                        ),
                       ),
                     ),
                   ],
 
-                  SizedBox(height: 20),
+                  SizedBox(height: 24),
 
                   // Botón para actualizar estado
                   Center(
                     child: TextButton.icon(
-                      icon: Icon(Icons.refresh, color: primary),
+                      icon: Icon(Icons.refresh, color: AppTheme.primary),
                       label: Text(
                         'Actualizar Estado',
-                        style: TextStyle(color: primary),
+                        style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.w500),
+                      ),
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                       ),
                       onPressed: _verificarEstadoCaja,
                     ),
@@ -566,6 +560,99 @@ class _AbrirCajaScreenState extends State<AbrirCajaScreen> {
                 ],
               ),
             ),
+    );
+  }
+
+  Widget _buildCard({required IconData icon, required String title, required Widget child}) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.cardBg,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+        border: Border.all(color: AppTheme.textMuted.withOpacity(0.1)),
+        boxShadow: AppTheme.cardShadow,
+      ),
+      child: Padding(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    gradient: AppTheme.primaryGradient,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(icon, color: Colors.white, size: 20),
+                ),
+                SizedBox(width: 12),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 16),
+            child,
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoTile(String label, String value, IconData icon) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Icon(icon, color: AppTheme.primary, size: 20),
+          SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String label, String value) {
+    return Row(
+      children: [
+        Icon(icon, color: AppTheme.textSecondary, size: 18),
+        SizedBox(width: 8),
+        Text(
+          '$label: ',
+          style: TextStyle(color: AppTheme.textMuted, fontSize: 14),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w500),
+          ),
+        ),
+      ],
     );
   }
 }

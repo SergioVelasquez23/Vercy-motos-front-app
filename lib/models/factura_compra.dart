@@ -9,6 +9,7 @@ class FacturaCompra {
   final String estado;
   final bool pagadoDesdeCaja;
   final List<ItemFacturaCompra> items;
+  final String? descripcion;
   final DateTime fechaCreacion;
   final DateTime fechaActualizacion;
   
@@ -42,6 +43,7 @@ class FacturaCompra {
     required this.estado,
     this.pagadoDesdeCaja = false,
     required this.items,
+    this.descripcion,
     required this.fechaCreacion,
     required this.fechaActualizacion,
     // Campos DIAN con valores por defecto
@@ -113,6 +115,7 @@ class FacturaCompra {
       estado: json['estado'] ?? 'PENDIENTE',
       pagadoDesdeCaja: json['pagadoDesdeCaja'] ?? false,
       items: items,
+      descripcion: json['descripcion'],
       fechaCreacion: json['fechaCreacion'] != null
           ? DateTime.parse(json['fechaCreacion'])
           : DateTime.now(),
@@ -168,6 +171,7 @@ class FacturaCompra {
       'medioPago': 'Efectivo',
       'formaPago': 'Contado',
       'registradoPor': 'admin',
+      'descripcion': descripcion ?? '',
       'observaciones': '',
       // Campos DIAN para impuestos y retenciones
       'subtotal': subtotal,

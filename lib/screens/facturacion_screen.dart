@@ -6,13 +6,17 @@ import '../models/producto.dart';
 import '../models/pedido_asesor.dart';
 import '../services/pedido_service.dart';
 import '../services/producto_service.dart';
-import '../services/cliente_service.dart';
 import '../services/pedido_asesor_service.dart';
+import '../services/pdf_service.dart';
+import '../services/negocio_info_service.dart';
+import '../services/impresion_service.dart';
 import '../models/cliente.dart';
+import '../models/negocio_info.dart';
 import '../theme/app_theme.dart';
 import '../providers/user_provider.dart';
 import '../providers/datos_cache_provider.dart';
 import '../widgets/vercy_sidebar_layout.dart';
+import '../dialogs/dialogo_pago.dart';
 
 class FacturacionScreen extends StatefulWidget {
   final PedidoAsesor? pedidoAsesor;
@@ -26,8 +30,11 @@ class FacturacionScreen extends StatefulWidget {
 class _FacturacionScreenState extends State<FacturacionScreen> {
   final PedidoService _pedidoService = PedidoService();
   final ProductoService _productoService = ProductoService();
-  final ClienteService _clienteService = ClienteService();
+  // ignore: unused_field
   final PedidoAsesorService _pedidoAsesorService = PedidoAsesorService();
+  final PDFService _pdfService = PDFService();
+  final NegocioInfoService _negocioInfoService = NegocioInfoService();
+  final ImpresionService _impresionService = ImpresionService();
 
   // Controladores de formulario
   final TextEditingController _idController = TextEditingController();
@@ -70,6 +77,19 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
   DateTime? _fechaCompra;
   DateTime? _fechaDctoPago;
   String _listaPrecios = 'Detal';
+
+  // Método de pago
+  String _metodoPago = 'efectivo';
+  final List<Map<String, dynamic>> _metodosPago = [
+    {'value': 'efectivo', 'label': 'Efectivo', 'icon': Icons.attach_money},
+    {'value': 'tarjeta', 'label': 'Tarjeta', 'icon': Icons.credit_card},
+    {
+      'value': 'transferencia',
+      'label': 'Transferencia',
+      'icon': Icons.account_balance,
+    },
+    {'value': 'multiple', 'label': 'Múltiple', 'icon': Icons.payments},
+  ];
 
   Cliente? _clienteSeleccionado;
   Producto? _productoSeleccionado;
@@ -185,6 +205,8 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                   children: [
                     _buildMainForm(),
                     SizedBox(height: 24),
+                    _buildMetodoPago(),
+                    SizedBox(height: 24),
                     _buildDatosExtras(),
                     SizedBox(height: 24),
                     _buildDatosProducto(),
@@ -192,17 +214,16 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                     _buildItemsList(),
                     SizedBox(height: 24),
                     _buildTotales(),
+                    SizedBox(height: 24),
+                    _buildBotonesAccion(),
+                    SizedBox(
+                      height: 80,
+                    ), // Espacio para evitar que el contenido quede debajo de los botones
                   ],
                 ),
               ),
             ),
           ],
-        ),
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: _guardarFactura,
-          backgroundColor: AppTheme.primary,
-          icon: Icon(Icons.save),
-          label: Text('Guardar Factura'),
         ),
       ),
     );
@@ -235,10 +256,13 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
               // TODO: Implementar facturas en borrador
             },
             icon: Icon(Icons.drafts),
-            label: Text('Facturas en borrador'),
+            label: Text(
+              'Facturas en borrador',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.primary,
-              foregroundColor: AppTheme.textPrimary,
+              foregroundColor: Colors.black87,
               padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
             ),
           ),
@@ -1564,9 +1588,13 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                       ElevatedButton.icon(
                         onPressed: _agregarItem,
                         icon: Icon(Icons.add),
-                        label: Text('Agregar'),
+                        label: Text(
+                          'Agregar',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppTheme.primary,
+                          foregroundColor: Colors.black87,
                           padding: EdgeInsets.symmetric(
                             horizontal: 24,
                             vertical: 20,
@@ -1947,7 +1975,193 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     ).showSnackBar(SnackBar(content: Text('Función en desarrollo')));
   }
 
-  Future<void> _guardarFactura() async {
+  // Widget para seleccionar método de pago
+  Widget _buildMetodoPago() {
+    return Container(
+      padding: EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppTheme.cardBg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.primary.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.payment, color: AppTheme.primary),
+              SizedBox(width: 8),
+              Text(
+                'Método de Pago',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 16),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: _metodosPago.map((metodo) {
+              final isSelected = _metodoPago == metodo['value'];
+              return InkWell(
+                onTap: () => setState(() => _metodoPago = metodo['value']),
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? AppTheme.primary.withOpacity(0.2)
+                        : AppTheme.surfaceDark,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isSelected
+                          ? AppTheme.primary
+                          : AppTheme.textMuted.withOpacity(0.3),
+                      width: isSelected ? 2 : 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        metodo['icon'],
+                        color: isSelected
+                            ? AppTheme.primary
+                            : AppTheme.textSecondary,
+                        size: 24,
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        metodo['label'],
+                        style: TextStyle(
+                          color: isSelected
+                              ? AppTheme.primary
+                              : AppTheme.textPrimary,
+                          fontWeight: isSelected
+                              ? FontWeight.bold
+                              : FontWeight.normal,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Widget con botones de acción
+  Widget _buildBotonesAccion() {
+    final subtotal = _items.fold(0.0, (sum, item) => sum + item.subtotal);
+
+    return Container(
+      padding: EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppTheme.cardBg,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 2)),
+        ],
+      ),
+      child: Column(
+        children: [
+          // Resumen rápido
+          Container(
+            padding: EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: AppTheme.primaryGradient,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Total a Pagar:',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                Text(
+                  '\$${subtotal.toStringAsFixed(0)}',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: 20),
+
+          // Botones de acción
+          Row(
+            children: [
+              // Guardar como borrador
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _isLoading ? null : _guardarComoBorrador,
+                  icon: Icon(Icons.drafts),
+                  label: Text('Guardar Borrador'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppTheme.textPrimary,
+                    side: BorderSide(color: AppTheme.textMuted),
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(width: 16),
+
+              // Guardar y Pagar
+              Expanded(
+                flex: 2,
+                child: ElevatedButton.icon(
+                  onPressed: _isLoading ? null : _guardarYPagar,
+                  icon: _isLoading
+                      ? SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Icon(Icons.check_circle),
+                  label: Text(
+                    'Guardar y Pagar',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.success,
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Guardar como borrador (pedido activo sin pagar)
+  Future<void> _guardarComoBorrador() async {
     if (_items.isEmpty) {
       ScaffoldMessenger.of(
         context,
@@ -1959,8 +2173,6 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
 
     try {
       final subtotal = _items.fold(0.0, (sum, item) => sum + item.subtotal);
-      final totalImpuestos = 0.0;
-      final totalDescuentos = 0.0;
       final total = subtotal;
 
       final pedido = Pedido(
@@ -1969,7 +2181,8 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
             : _idController.text,
         fecha: _fechaFactura,
         tipo: TipoPedido.normal,
-        mesa: 'N/A',
+        mesa:
+            'FACTURACION', // Identificador especial para pedidos de facturación
         cliente: _clienteController.text,
         mesero:
             Provider.of<UserProvider>(context, listen: false).userName ??
@@ -1980,59 +2193,596 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
         tipoFactura: _tipoFactura,
         fechaVencimiento: _fechaVencimiento,
         subtotal: subtotal,
-        totalImpuestos: totalImpuestos,
-        totalDescuentos: totalDescuentos,
+        totalImpuestos: 0.0,
+        totalDescuentos: 0.0,
         totalFinal: total,
       );
 
       await _pedidoService.createPedido(pedido);
 
-      // Si este pedido viene de un asesor, marcarlo como facturado
-      if (widget.pedidoAsesor != null && widget.pedidoAsesor!.id != null) {
-        try {
-          final userProvider = Provider.of<UserProvider>(
-            context,
-            listen: false,
-          );
-          await _pedidoAsesorService.marcarComoFacturado(
-            widget.pedidoAsesor!.id!,
-            userProvider.userName ?? 'Admin',
-          );
-        } catch (e) {
-          print('Error al marcar pedido asesor como facturado: $e');
-        }
-      }
-
       setState(() => _isLoading = false);
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Factura creada exitosamente'),
-          backgroundColor: Colors.green,
+          content: Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.white),
+              SizedBox(width: 8),
+              Text('Pedido guardado como borrador'),
+            ],
+          ),
+          backgroundColor: Colors.orange,
         ),
       );
 
-      // Limpiar formulario
-      setState(() {
-        _items.clear();
-        _idController.clear();
-        _clienteController.text = 'CONSUMIDOR FINAL';
-        _fechaFactura = DateTime.now();
-        _fechaVencimiento = DateTime.now().add(Duration(days: 30));
-      });
-      
-      // Si venía de pedido asesor, regresar a la lista de pedidos
-      if (widget.pedidoAsesor != null) {
-        Navigator.of(context).pop();
+      _limpiarFormulario();
+    } catch (e) {
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al guardar: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  // Guardar y pagar - abre el diálogo de pago
+  Future<void> _guardarYPagar() async {
+    if (_items.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Agregue al menos un producto')));
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final subtotal = _items.fold(0.0, (sum, item) => sum + item.subtotal);
+      final total = subtotal;
+      final userName =
+          Provider.of<UserProvider>(context, listen: false).userName ??
+          'Sistema';
+
+      // Crear el pedido primero
+      final pedido = Pedido(
+        id: _idController.text.isEmpty
+            ? 'temp-${DateTime.now().millisecondsSinceEpoch}'
+            : _idController.text,
+        fecha: _fechaFactura,
+        tipo: TipoPedido.normal,
+        mesa: 'FACTURACION',
+        cliente: _clienteController.text,
+        mesero: userName,
+        items: _items,
+        total: total,
+        estado: EstadoPedido.activo,
+        tipoFactura: _tipoFactura,
+        fechaVencimiento: _fechaVencimiento,
+        subtotal: subtotal,
+        totalImpuestos: 0.0,
+        totalDescuentos: 0.0,
+        totalFinal: total,
+      );
+
+      // Guardar el pedido
+      final pedidoCreado = await _pedidoService.createPedido(pedido);
+
+      setState(() => _isLoading = false);
+
+      // Abrir diálogo de pago
+      final resultado = await showDialog<Map<String, dynamic>>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => DialogoPago(
+          pedido: pedidoCreado,
+          clienteNombre: _clienteController.text,
+        ),
+      );
+
+      // Si el usuario confirmó el pago (DialogoPago devuelve datos cuando confirma)
+      if (resultado != null) {
+        setState(() => _isLoading = true);
+
+        try {
+          // Extraer datos del pago del diálogo
+          final medioPago = resultado['medioPago'] ?? 'efectivo';
+          final propina = (resultado['propina'] as num?)?.toDouble() ?? 0.0;
+          final totalCalculado =
+              (resultado['totalCalculado'] as num?)?.toDouble() ?? total;
+          final pagoMultiple = resultado['pagoMultiple'] ?? false;
+          final montoEfectivo =
+              double.tryParse(resultado['montoEfectivo']?.toString() ?? '0') ??
+              0.0;
+          final montoTarjeta =
+              double.tryParse(resultado['montoTarjeta']?.toString() ?? '0') ??
+              0.0;
+          final montoTransferencia =
+              double.tryParse(
+                resultado['montoTransferencia']?.toString() ?? '0',
+              ) ??
+              0.0;
+
+          // Calcular descuento si aplica
+          final descuentoPorcentaje =
+              double.tryParse(
+                resultado['descuentoPorcentaje']?.toString() ?? '0',
+              ) ??
+              0.0;
+          final descuentoValor =
+              double.tryParse(resultado['descuentoValor']?.toString() ?? '0') ??
+              0.0;
+          double descuentoTotal = descuentoValor;
+          if (descuentoPorcentaje > 0) {
+            descuentoTotal += total * (descuentoPorcentaje / 100);
+          }
+
+          // Llamar al servicio para procesar el pago
+          await _pedidoService.pagarPedido(
+            pedidoCreado.id,
+            formaPago: pagoMultiple ? 'mixto' : medioPago,
+            propina: propina,
+            totalPagado: totalCalculado,
+            procesadoPor: userName,
+            notas: 'Pago desde facturación',
+            descuento: descuentoTotal,
+            pagoMultiple: pagoMultiple,
+            montoEfectivo: montoEfectivo,
+            montoTarjeta: montoTarjeta,
+            montoTransferencia: montoTransferencia,
+          );
+
+          setState(() => _isLoading = false);
+
+          // Mostrar diálogo de éxito con opciones de impresión
+          await _mostrarDialogoFacturaExitosa(
+            pedidoCreado,
+            medioPago,
+            totalCalculado,
+            descuentoTotal,
+            propina,
+          );
+
+          _limpiarFormulario();
+
+          // Si venía de pedido asesor, regresar
+          if (widget.pedidoAsesor != null) {
+            Navigator.of(context).pop();
+          }
+        } catch (e) {
+          setState(() => _isLoading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error al procesar pago: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     } catch (e) {
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error al crear factura: $e'),
+          content: Text('Error al crear pedido: $e'),
           backgroundColor: Colors.red,
         ),
       );
     }
+  }
+
+  // Mostrar diálogo de factura exitosa con opciones de impresión
+  Future<void> _mostrarDialogoFacturaExitosa(
+    Pedido pedido,
+    String medioPago,
+    double totalPagado,
+    double descuento,
+    double propina,
+  ) async {
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppTheme.cardBg,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppTheme.success.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.check_circle, color: AppTheme.success, size: 32),
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '¡Factura Pagada!',
+                    style: AppTheme.headlineMedium.copyWith(
+                      color: AppTheme.success,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    'ID: ${pedido.id}',
+                    style: AppTheme.bodySmall.copyWith(
+                      color: AppTheme.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Resumen del pago
+            Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppTheme.backgroundDark,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildResumenItem('Cliente', pedido.cliente ?? 'CONSUMIDOR FINAL'),
+                  _buildResumenItem('Forma de pago', _formatearFormaPago(medioPago)),
+                  if (descuento > 0) _buildResumenItem('Descuento', '-\$${descuento.toStringAsFixed(0)}'),
+                  if (propina > 0) _buildResumenItem('Propina', '+\$${propina.toStringAsFixed(0)}'),
+                  Divider(color: AppTheme.textSecondary.withOpacity(0.3)),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'TOTAL PAGADO',
+                        style: TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      Text(
+                        '\$${totalPagado.toStringAsFixed(0)}',
+                        style: TextStyle(
+                          color: AppTheme.success,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: 16),
+            Text(
+              '¿Qué desea hacer con la factura?',
+              style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+            ),
+            SizedBox(height: 12),
+            // Opciones de impresión
+            Row(
+              children: [
+                Expanded(
+                  child: _buildOpcionFactura(
+                    icon: Icons.picture_as_pdf,
+                    label: 'Ver PDF',
+                    color: Colors.red,
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      _generarYMostrarPDF(pedido, medioPago, totalPagado, descuento, propina);
+                    },
+                  ),
+                ),
+                SizedBox(width: 8),
+                Expanded(
+                  child: _buildOpcionFactura(
+                    icon: Icons.print,
+                    label: 'Imprimir',
+                    color: AppTheme.primary,
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      _imprimirFactura(pedido, medioPago, totalPagado, descuento, propina);
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(
+              'Cerrar sin imprimir',
+              style: TextStyle(color: AppTheme.textSecondary),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildResumenItem(String label, String valor) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+          ),
+          Text(
+            valor,
+            style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOpcionFactura({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: color.withOpacity(0.3)),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: 28),
+            SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(color: color, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatearFormaPago(String formaPago) {
+    switch (formaPago.toLowerCase()) {
+      case 'efectivo': return 'Efectivo';
+      case 'tarjeta': return 'Tarjeta';
+      case 'transferencia': return 'Transferencia';
+      case 'mixto': return 'Pago Mixto';
+      case 'multiple': return 'Pago Múltiple';
+      default: return formaPago;
+    }
+  }
+
+  // Generar y mostrar PDF de la factura
+  Future<void> _generarYMostrarPDF(
+    Pedido pedido,
+    String medioPago,
+    double totalPagado,
+    double descuento,
+    double propina,
+  ) async {
+    try {
+      // Mostrar indicador de carga
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          backgroundColor: AppTheme.cardBg,
+          content: Row(
+            children: [
+              CircularProgressIndicator(color: AppTheme.primary),
+              SizedBox(width: 16),
+              Text('Generando PDF...', style: TextStyle(color: AppTheme.textPrimary)),
+            ],
+          ),
+        ),
+      );
+
+      // Obtener información del negocio
+      NegocioInfo? negocioInfo;
+      try {
+        negocioInfo = await _negocioInfoService.getNegocioInfo();
+      } catch (e) {
+        print('⚠️ Error obteniendo info del negocio: $e');
+      }
+
+      // Preparar el resumen para el PDF
+      final resumen = _prepararResumenFactura(pedido, medioPago, totalPagado, descuento, propina, negocioInfo);
+
+      Navigator.of(context).pop(); // Cerrar indicador de carga
+
+      // Mostrar el PDF
+      await _pdfService.mostrarVistaPrevia(resumen: resumen, esFactura: true);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('PDF generado correctamente'),
+          backgroundColor: AppTheme.success,
+        ),
+      );
+    } catch (e) {
+      Navigator.of(context).pop(); // Cerrar indicador si está abierto
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error generando PDF: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  // Imprimir factura
+  Future<void> _imprimirFactura(
+    Pedido pedido,
+    String medioPago,
+    double totalPagado,
+    double descuento,
+    double propina,
+  ) async {
+    try {
+      // Mostrar indicador de carga
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          backgroundColor: AppTheme.cardBg,
+          content: Row(
+            children: [
+              CircularProgressIndicator(color: AppTheme.primary),
+              SizedBox(width: 16),
+              Text('Preparando impresión...', style: TextStyle(color: AppTheme.textPrimary)),
+            ],
+          ),
+        ),
+      );
+
+      // Obtener información del negocio
+      NegocioInfo? negocioInfo;
+      try {
+        negocioInfo = await _negocioInfoService.getNegocioInfo();
+      } catch (e) {
+        print('⚠️ Error obteniendo info del negocio: $e');
+      }
+
+      // Preparar el resumen para el PDF
+      final resumen = _prepararResumenFactura(pedido, medioPago, totalPagado, descuento, propina, negocioInfo);
+
+      Navigator.of(context).pop(); // Cerrar indicador de carga
+
+      // Mostrar diálogo de impresión
+      await _pdfService.mostrarDialogoImpresion(resumen: resumen, esFactura: true);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Factura enviada a impresión'),
+          backgroundColor: AppTheme.success,
+        ),
+      );
+    } catch (e) {
+      Navigator.of(context).pop(); // Cerrar indicador si está abierto
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al imprimir: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  // Preparar resumen de factura para PDF/impresión
+  Map<String, dynamic> _prepararResumenFactura(
+    Pedido pedido,
+    String medioPago,
+    double totalPagado,
+    double descuento,
+    double propina,
+    NegocioInfo? negocioInfo,
+  ) {
+    final now = DateTime.now();
+    final fechaFormateada = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    final horaFormateada = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}';
+
+    return {
+      // Información del negocio
+      'nombreRestaurante': negocioInfo?.nombre ?? 'VERCY MOTOS',
+      'nombreNegocio': negocioInfo?.nombre ?? 'VERCY MOTOS',
+      'nit': negocioInfo?.nit ?? '',
+      'direccionRestaurante': negocioInfo?.direccion ?? '',
+      'telefonoRestaurante': negocioInfo?.telefono ?? '',
+      'email': negocioInfo?.email ?? '',
+      'ciudad': negocioInfo?.ciudad ?? '',
+      'departamento': negocioInfo?.departamento ?? '',
+
+      // Información de la factura
+      'pedidoId': pedido.id,
+      'numero': pedido.id,
+      'tipoDocumento': 'FACTURA POS',
+      'fecha': fechaFormateada,
+      'hora': horaFormateada,
+      'fechaVencimiento': pedido.fechaVencimiento != null
+          ? '${pedido.fechaVencimiento!.year}-${pedido.fechaVencimiento!.month.toString().padLeft(2, '0')}-${pedido.fechaVencimiento!.day.toString().padLeft(2, '0')}'
+          : fechaFormateada,
+
+      // Información del cliente
+      'cliente': pedido.cliente ?? 'CONSUMIDOR FINAL',
+      'clienteNit': '222222222-2', // Default para consumidor final
+      'clienteDireccion': '',
+      'clienteTelefono': '',
+
+      // Información del vendedor
+      'mesero': pedido.mesero ?? 'Sistema',
+      'vendedor': pedido.mesero ?? 'Sistema',
+
+      // Productos
+      'productos': pedido.items.map((item) => {
+        'codigo': item.productoId,
+        'nombre': item.productoNombre,
+        'producto': item.productoNombre,
+        'cantidad': item.cantidad,
+        'precio': item.precioUnitario,
+        'precioUnitario': item.precioUnitario,
+        'subtotal': item.subtotal,
+        'iva': 0,
+        'descuento': 0,
+      }).toList(),
+
+      // Totales
+      'subtotal': pedido.subtotal,
+      'totalSinIva': pedido.total,
+      'totalIva': 0.0,
+      'impuestos': 0.0,
+      'descuento': descuento,
+      'propina': propina,
+      'total': totalPagado,
+      'totalFactura': totalPagado,
+
+      // Forma de pago
+      'medioPago': medioPago,
+      'formaPago': _formatearFormaPago(medioPago),
+
+      // Cantidades
+      'cantidadArticulos': pedido.items.fold(0, (sum, item) => sum + item.cantidad),
+      'cantidadProductos': pedido.items.length,
+
+      // Tipo
+      'tipoContado': 'CONTADO',
+    };
+  }
+
+  // Limpiar formulario después de guardar
+  void _limpiarFormulario() {
+    setState(() {
+      _items.clear();
+      _idController.clear();
+      _clienteController.text = 'CONSUMIDOR FINAL';
+      _fechaFactura = DateTime.now();
+      _fechaVencimiento = DateTime.now().add(Duration(days: 30));
+      _metodoPago = 'efectivo';
+      _productoSeleccionado = null;
+      _limpiarFormularioProducto();
+    });
+  }
+
+  Future<void> _guardarFactura() async {
+    // Este método ahora solo se usa para compatibilidad
+    // La lógica principal está en _guardarYPagar y _guardarComoBorrador
+    await _guardarYPagar();
   }
 }

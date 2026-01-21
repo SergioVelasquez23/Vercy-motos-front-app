@@ -78,58 +78,34 @@ class _ClientesListScreenState extends State<ClientesListScreen> {
   Widget build(BuildContext context) {
     return VercySidebarLayout(
       title: 'Clientes',
-      child: Scaffold(
-        backgroundColor: AppTheme.backgroundDark,
-        body: Column(
+      child: Container(
+        padding: EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildHeader(),
+            // Título
+            Text(
+              'Lista de Clientes',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            SizedBox(height: 24),
             _buildFiltros(),
+            SizedBox(height: 16),
             Expanded(
               child: _isLoading
-                  ? Center(child: CircularProgressIndicator())
+                  ? Center(
+                      child: CircularProgressIndicator(color: AppTheme.primary),
+                    )
                   : _clientesFiltrados.isEmpty
                   ? _buildEmptyState()
                   : _buildClientesList(),
             ),
           ],
         ),
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: () => _navegarAFormulario(null),
-          backgroundColor: AppTheme.primary,
-          icon: Icon(Icons.person_add),
-          label: Text('Nuevo Cliente'),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return Container(
-      padding: EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: AppTheme.cardBg,
-        boxShadow: [
-          BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2)),
-        ],
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.people, color: AppTheme.primary, size: 32),
-          SizedBox(width: 12),
-          Text(
-            'Gestión de Clientes',
-            style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-          Spacer(),
-          Text(
-            '${_clientesFiltrados.length} clientes',
-            style: TextStyle(fontSize: 16, color: Colors.grey[400]),
-          ),
-        ],
       ),
     );
   }
@@ -139,7 +115,8 @@ class _ClientesListScreenState extends State<ClientesListScreen> {
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppTheme.cardBg,
-        border: Border(bottom: BorderSide(color: Colors.grey[800]!)),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade800),
       ),
       child: Row(
         children: [
@@ -155,6 +132,15 @@ class _ClientesListScreenState extends State<ClientesListScreen> {
                 prefixIcon: Icon(Icons.search, color: Colors.grey[400]),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: Colors.grey.shade700),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: Colors.grey.shade700),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: AppTheme.primary, width: 2),
                 ),
                 contentPadding: EdgeInsets.symmetric(
                   horizontal: 16,
@@ -168,29 +154,75 @@ class _ClientesListScreenState extends State<ClientesListScreen> {
           ),
           SizedBox(width: 16),
           // Filtro por estado
-          DropdownButton<String>(
-            value: _filtroEstado,
-            dropdownColor: AppTheme.cardBg,
-            style: TextStyle(color: Colors.white),
-            items: [
-              DropdownMenuItem(
-                value: 'todos',
-                child: Text('Todos los estados'),
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: AppTheme.surfaceDark,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey.shade700),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: _filtroEstado,
+                dropdownColor: AppTheme.cardBg,
+                style: TextStyle(color: Colors.white),
+                icon: Icon(Icons.arrow_drop_down, color: Colors.grey),
+                items: [
+                  DropdownMenuItem(
+                    value: 'todos',
+                    child: Text('Todos los estados'),
+                  ),
+                  DropdownMenuItem(value: 'activos', child: Text('Activos')),
+                  DropdownMenuItem(
+                    value: 'bloqueados',
+                    child: Text('Bloqueados'),
+                  ),
+                ],
+                onChanged: (value) {
+                  setState(() => _filtroEstado = value!);
+                  _aplicarFiltros();
+                },
               ),
-              DropdownMenuItem(value: 'activos', child: Text('Activos')),
-              DropdownMenuItem(value: 'bloqueados', child: Text('Bloqueados')),
-            ],
-            onChanged: (value) {
-              setState(() => _filtroEstado = value!);
-              _aplicarFiltros();
-            },
+            ),
           ),
-          SizedBox(width: 16),
+          SizedBox(width: 12),
           // Botón refrescar
-          IconButton(
-            icon: Icon(Icons.refresh, color: Colors.white),
-            onPressed: _cargarClientes,
-            tooltip: 'Refrescar',
+          Container(
+            decoration: BoxDecoration(
+              color: AppTheme.primary,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: IconButton(
+              icon: Icon(Icons.refresh, color: Colors.white),
+              onPressed: _cargarClientes,
+              tooltip: 'Refrescar',
+            ),
+          ),
+          SizedBox(width: 12),
+          // Contador de clientes
+          Text(
+            '${_clientesFiltrados.length} clientes',
+            style: TextStyle(fontSize: 14, color: Colors.grey[400]),
+          ),
+          Spacer(),
+          // Botón Nuevo Cliente
+          ElevatedButton.icon(
+            onPressed: () => _navegarAFormulario(null),
+            icon: Icon(Icons.person_add, color: Colors.white),
+            label: Text(
+              'Nuevo Cliente',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primary,
+              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
           ),
         ],
       ),
@@ -202,19 +234,29 @@ class _ClientesListScreenState extends State<ClientesListScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.people_outline, size: 80, color: Colors.grey[600]),
+          Icon(Icons.people_outline, size: 64, color: Colors.grey[600]),
           SizedBox(height: 16),
           Text(
             _searchController.text.isEmpty
                 ? 'No hay clientes registrados'
                 : 'No se encontraron clientes',
-            style: TextStyle(fontSize: 18, color: Colors.grey[400]),
+            style: TextStyle(fontSize: 16, color: Colors.grey[400]),
           ),
-          SizedBox(height: 8),
-          TextButton.icon(
+          SizedBox(height: 16),
+          ElevatedButton.icon(
             onPressed: () => _navegarAFormulario(null),
-            icon: Icon(Icons.add),
-            label: Text('Crear primer cliente'),
+            icon: Icon(Icons.add, color: Colors.white),
+            label: Text(
+              'Crear primer cliente',
+              style: TextStyle(color: Colors.white),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primary,
+              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
           ),
         ],
       ),

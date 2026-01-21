@@ -125,7 +125,7 @@ class UserProvider extends ChangeNotifier {
     }
   }
 
-  void logout() {
+  Future<void> logout() async {
     _token = null;
     _roles = [];
     _userId = null;
@@ -135,7 +135,12 @@ class UserProvider extends ChangeNotifier {
     if (kIsWeb) {
       html.window.localStorage.remove('jwt_token');
     } else {
-      storage.delete(key: 'jwt_token');
+      // Limpiar token
+      await storage.delete(key: 'jwt_token');
+      // Limpiar credenciales guardadas para evitar auto-login
+      await storage.delete(key: 'saved_email');
+      await storage.delete(key: 'saved_password');
+      await storage.delete(key: 'remember_credentials');
     }
 
     notifyListeners();

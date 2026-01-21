@@ -18,6 +18,8 @@ class VercySidebarLayout extends StatefulWidget {
 class _VercySidebarLayoutState extends State<VercySidebarLayout> {
   String? _selectedRoute;
   Set<String> _expandedMenus = {}; // Para controlar qué menús están expandidos
+  bool _isSidebarVisible =
+      true; // Variable para controlar la visibilidad del sidebar
 
   @override
   Widget build(BuildContext context) {
@@ -28,20 +30,22 @@ class _VercySidebarLayoutState extends State<VercySidebarLayout> {
       backgroundColor: AppTheme.backgroundDark,
       body: Row(
         children: [
-          // Sidebar (menú lateral)
-          Container(
-            width: 270,
-            decoration: BoxDecoration(
-              color: AppTheme.surfaceDark,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
-                  blurRadius: 10,
-                  offset: Offset(2, 0),
-                ),
-              ],
-            ),
-            child: Column(
+          // Sidebar (menú lateral) - Solo se muestra si _isSidebarVisible es true
+          if (_isSidebarVisible)
+            AnimatedContainer(
+              duration: Duration(milliseconds: 300),
+              width: 270,
+              decoration: BoxDecoration(
+                color: AppTheme.surfaceDark,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.3),
+                    blurRadius: 10,
+                    offset: Offset(2, 0),
+                  ),
+                ],
+              ),
+              child: Column(
               children: [
                 // Logo y header
                 _buildHeader(context),
@@ -141,12 +145,15 @@ class _VercySidebarLayoutState extends State<VercySidebarLayout> {
       ),
       child: Row(
         children: [
-          // Icono de menú hamburguesa (opcional para responsive)
+          // Icono de menú hamburguesa para mostrar/ocultar sidebar
           IconButton(
             icon: Icon(Icons.menu, color: Colors.white),
             onPressed: () {
-              // Podría abrir un drawer en versión móvil
+              setState(() {
+                _isSidebarVisible = !_isSidebarVisible;
+              });
             },
+            tooltip: _isSidebarVisible ? 'Ocultar menú' : 'Mostrar menú',
           ),
           SizedBox(width: 16),
 
@@ -261,13 +268,28 @@ class _VercySidebarLayoutState extends State<VercySidebarLayout> {
             isAdmin: true,
             subItems: [
               _SubMenuItem(
-                icon: Icons.receipt_long,
-                label: 'Facturas de Compras',
+                icon: Icons.people_outline,
+                label: 'Proveedores',
+                route: '/proveedores',
+              ),
+              _SubMenuItem(
+                icon: Icons.list_alt,
+                label: 'Lista de Compras',
+                route: '/compras',
+              ),
+              _SubMenuItem(
+                icon: Icons.add_shopping_cart,
+                label: 'Crear Compra',
                 route: '/facturas-compras',
               ),
               _SubMenuItem(
-                icon: Icons.money_off,
-                label: 'Gestión de Gastos',
+                icon: Icons.receipt_long,
+                label: 'Lista de Gastos',
+                route: '/gastos-lista',
+              ),
+              _SubMenuItem(
+                icon: Icons.add_circle_outline,
+                label: 'Crear Gasto',
                 route: '/gastos',
               ),
               _SubMenuItem(
@@ -280,8 +302,9 @@ class _VercySidebarLayoutState extends State<VercySidebarLayout> {
           _buildMenuItem(
             icon: Icons.account_balance_wallet,
             label: 'Cartera',
-            route: null,
+            route: null, // Desactivado temporalmente
             isAdmin: true,
+            isDisabled: true,
           ),
           _buildExpandableMenuItem(
             icon: Icons.inventory,
@@ -289,14 +312,19 @@ class _VercySidebarLayoutState extends State<VercySidebarLayout> {
             isAdmin: true,
             subItems: [
               _SubMenuItem(
+                icon: Icons.list_alt,
+                label: 'Lista Productos',
+                route: '/productos-lista',
+              ),
+              _SubMenuItem(
+                icon: Icons.add_box,
+                label: 'Gestión Productos',
+                route: '/productos',
+              ),
+              _SubMenuItem(
                 icon: Icons.history,
                 label: 'Historial',
                 route: '/historial-inventario',
-              ),
-              _SubMenuItem(
-                icon: Icons.inventory_2,
-                label: 'Productos',
-                route: '/productos',
               ),
             ],
           ),
@@ -309,9 +337,9 @@ class _VercySidebarLayoutState extends State<VercySidebarLayout> {
           _buildMenuItem(
             icon: Icons.tune,
             label: 'Ajuste',
-            route: '/reportes',
+            route: null, // Desactivado temporalmente
             isAdmin: true,
-            isExpandable: true,
+            isDisabled: true,
           ),
           _buildMenuItem(
             icon: Icons.attach_money,
@@ -331,6 +359,7 @@ class _VercySidebarLayoutState extends State<VercySidebarLayout> {
     String? route,
     required bool isAdmin,
     bool isExpandable = false,
+    bool isDisabled = false,
   }) {
     final isSelected =
         route != null && ModalRoute.of(context)?.settings.name == route;
@@ -349,28 +378,48 @@ class _VercySidebarLayoutState extends State<VercySidebarLayout> {
       child: ListTile(
         leading: Icon(
           icon,
-          color: isSelected ? AppTheme.primary : AppTheme.metal,
+          color: isDisabled
+              ? Colors.grey.shade600
+              : (isSelected ? AppTheme.primary : AppTheme.metal),
           size: 24,
         ),
         title: Text(
           label,
           style: TextStyle(
-            color: isSelected ? AppTheme.primary : AppTheme.textSecondary,
+            color: isDisabled
+                ? Colors.grey.shade600
+                : (isSelected ? AppTheme.primary : AppTheme.textSecondary),
             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
             fontSize: 15,
           ),
         ),
-        trailing: isExpandable
-            ? Icon(Icons.keyboard_arrow_down, color: AppTheme.metal, size: 20)
-            : null,
-        onTap: route != null
+        trailing: isDisabled
+            ? Icon(Icons.lock_outline, color: Colors.grey.shade600, size: 16)
+            : (isExpandable
+                  ? Icon(
+                      Icons.keyboard_arrow_down,
+                      color: AppTheme.metal,
+                      size: 20,
+                    )
+                  : null),
+        onTap: (route != null && !isDisabled)
             ? () {
                 setState(() {
                   _selectedRoute = route;
                 });
                 Navigator.pushReplacementNamed(context, route);
               }
-            : null,
+            : (isDisabled
+                  ? () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('$label - Próximamente'),
+                          duration: Duration(seconds: 1),
+                          backgroundColor: Colors.grey.shade700,
+                        ),
+                      );
+                    }
+                  : null),
         dense: true,
         contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       ),
@@ -422,9 +471,9 @@ class _VercySidebarLayoutState extends State<VercySidebarLayout> {
           ),
           IconButton(
             icon: Icon(Icons.logout, color: AppTheme.error, size: 20),
-            onPressed: () {
-              Provider.of<UserProvider>(context, listen: false).logout();
-              Navigator.pushReplacementNamed(context, '/');
+            onPressed: () async {
+              await Provider.of<UserProvider>(context, listen: false).logout();
+              Navigator.pushReplacementNamed(context, '/login');
             },
             tooltip: 'Cerrar sesión',
           ),

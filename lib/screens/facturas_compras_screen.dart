@@ -675,11 +675,16 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
 
   final _proveedorNitController = TextEditingController();
   final _proveedorNombreController = TextEditingController();
+  final _descripcionController = TextEditingController();
   
   // 💰 Controladores DIAN para retenciones
   final _porcentajeRetencionController = TextEditingController(text: '0');
   final _porcentajeReteIvaController = TextEditingController(text: '0');
   final _porcentajeReteIcaController = TextEditingController(text: '0');
+  
+  // Descuento general
+  final _descuentoGeneralValorController = TextEditingController(text: '0');
+  String _tipoDescuentoGeneral = 'Porcentaje'; // 'Porcentaje' o 'Valor'
 
   DateTime _fechaFactura = DateTime.now();
   DateTime _fechaVencimiento = DateTime.now().add(Duration(days: 30));
@@ -707,9 +712,11 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
   void dispose() {
     _proveedorNitController.dispose();
     _proveedorNombreController.dispose();
+    _descripcionController.dispose();
     _porcentajeRetencionController.dispose();
     _porcentajeReteIvaController.dispose();
     _porcentajeReteIcaController.dispose();
+    _descuentoGeneralValorController.dispose();
     super.dispose();
   }
 
@@ -821,24 +828,34 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
       backgroundColor: AppTheme.backgroundDark,
       appBar: AppBar(
         title: Text(
-          'Nueva Factura de Compras',
+          'Crear compra',
           style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold),
         ),
         backgroundColor: AppTheme.backgroundDark,
         elevation: 0,
         iconTheme: IconThemeData(color: AppTheme.textPrimary),
         actions: [
-          // Botón Debug eliminado según solicitud del usuario
+          // Botón Compras en borrador
           TextButton(
-            onPressed: _guardandoFactura ? null : _guardarFactura,
+            onPressed: () {
+              // TODO: Navegar a compras en borrador
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Compras en borrador - Próximamente')),
+              );
+            },
+            style: TextButton.styleFrom(
+              backgroundColor: AppTheme.primary,
+              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            ),
             child: Text(
-              _guardandoFactura ? 'Guardando...' : 'Guardar',
+              'Compras en borrador',
               style: TextStyle(
-                color: _guardandoFactura ? AppTheme.textSecondary : AppTheme.primary,
+                color: Colors.white,
                 fontWeight: FontWeight.bold,
               ),
             ),
           ),
+          SizedBox(width: 8),
         ],
       ),
       body: _isLoading
@@ -856,7 +873,11 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                     SizedBox(height: 24),
                     _buildItems(),
                     SizedBox(height: 24),
+                    _buildDescripcionYRetenciones(),
+                    SizedBox(height: 24),
                     _buildResumen(),
+                    SizedBox(height: 24),
+                    _buildBotones(),
                   ],
                 ),
               ),
@@ -1253,7 +1274,19 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
     // Calcular totales DIAN
     final subtotalItems = _items.fold<double>(0, (sum, item) => sum + item.subtotal);
     final totalDescuentosItems = _items.fold<double>(0, (sum, item) => sum + item.valorDescuento);
-    final baseGravable = subtotalItems - totalDescuentosItems;
+    
+    // Calcular descuento general
+    final descuentoGeneralValor =
+        double.tryParse(_descuentoGeneralValorController.text) ?? 0;
+    double descuentoGeneralAplicado = 0;
+    if (_tipoDescuentoGeneral == 'Porcentaje') {
+      descuentoGeneralAplicado = subtotalItems * (descuentoGeneralValor / 100);
+    } else {
+      descuentoGeneralAplicado = descuentoGeneralValor;
+    }
+
+    final baseGravable =
+        subtotalItems - totalDescuentosItems - descuentoGeneralAplicado;
     final totalImpuestosItems = _items.fold<double>(0, (sum, item) => sum + item.valorImpuesto);
     
     // Retenciones
@@ -1276,36 +1309,123 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Resumen DIAN',
-              style: TextStyle(
-                color: AppTheme.textPrimary,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Resumen',
+                  style: TextStyle(
+                    color: AppTheme.textPrimary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
             ),
             SizedBox(height: 16),
             // Desglose de totales
             _buildResumenRow('Subtotal:', subtotalItems),
-            if (totalDescuentosItems > 0) ...[
-              _buildResumenRow('Descuentos:', -totalDescuentosItems, isNegative: true),
-              _buildResumenRow('Base Gravable:', baseGravable),
-            ],
+            if (totalDescuentosItems > 0)
+              _buildResumenRow(
+                'Dcto Producto:',
+                -totalDescuentosItems,
+                isNegative: true,
+              ),
+
+            // Descuento General
+            SizedBox(height: 8),
+            Row(
+              children: [
+                Text(
+                  'Dcto General',
+                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+                ),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 100,
+                        child: DropdownButtonFormField<String>(
+                          value: _tipoDescuentoGeneral,
+                          dropdownColor: AppTheme.cardBg,
+                          style: TextStyle(
+                            color: AppTheme.textPrimary,
+                            fontSize: 12,
+                          ),
+                          decoration: InputDecoration(
+                            isDense: true,
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 8,
+                            ),
+                            border: OutlineInputBorder(),
+                          ),
+                          items: [
+                            DropdownMenuItem(
+                              value: 'Porcentaje',
+                              child: Text('%'),
+                            ),
+                            DropdownMenuItem(value: 'Valor', child: Text('\$')),
+                          ],
+                          onChanged: (value) {
+                            setState(
+                              () =>
+                                  _tipoDescuentoGeneral = value ?? 'Porcentaje',
+                            );
+                          },
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: TextFormField(
+                          controller: _descuentoGeneralValorController,
+                          keyboardType: TextInputType.number,
+                          style: TextStyle(
+                            color: AppTheme.textPrimary,
+                            fontSize: 12,
+                          ),
+                          decoration: InputDecoration(
+                            isDense: true,
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 8,
+                            ),
+                            border: OutlineInputBorder(),
+                            hintText: _tipoDescuentoGeneral == 'Porcentaje'
+                                ? '%'
+                                : '\$',
+                            hintStyle: TextStyle(color: AppTheme.textSecondary),
+                          ),
+                          onChanged: (_) => setState(() {}),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(width: 8),
+                Text(
+                  '-\$${descuentoGeneralAplicado.toStringAsFixed(0)}',
+                  style: TextStyle(color: Colors.red[300], fontSize: 14),
+                ),
+              ],
+            ),
+            SizedBox(height: 8),
+            
             if (totalImpuestosItems > 0)
-              _buildResumenRow('Total IVA:', totalImpuestosItems),
+              _buildResumenRow('Impuesto:', totalImpuestosItems),
             // Retenciones
             if (totalRetenciones > 0) ...[
-              Divider(color: AppTheme.textSecondary.withOpacity(0.3)),
-              Text(
-                'Retenciones:',
-                style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
-              ),
               if (valorRetencion > 0)
-                _buildResumenRow('  Rete Fuente (${porcRetencion.toStringAsFixed(1)}%):', -valorRetencion, isNegative: true),
+                _buildResumenRow(
+                  'Retención:',
+                  -valorRetencion,
+                  isNegative: true,
+                ),
               if (valorReteIva > 0)
-                _buildResumenRow('  Rete IVA (${porcReteIva.toStringAsFixed(1)}%):', -valorReteIva, isNegative: true),
+                _buildResumenRow('Reteiva:', -valorReteIva, isNegative: true),
               if (valorReteIca > 0)
-                _buildResumenRow('  Rete ICA (${porcReteIca.toStringAsFixed(3)}%):', -valorReteIca, isNegative: true),
+                _buildResumenRow('Reteica:', -valorReteIca, isNegative: true),
             ],
             Divider(color: AppTheme.primary.withOpacity(0.5)),
             SizedBox(height: 8),
@@ -1313,7 +1433,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'TOTAL A PAGAR:',
+                  'TOTAL',
                   style: TextStyle(
                     color: AppTheme.primary,
                     fontSize: 18,
@@ -1355,6 +1475,212 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildDescripcionYRetenciones() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Columna izquierda - Descripción
+        Expanded(
+          flex: 2,
+          child: Card(
+            color: AppTheme.cardBg,
+            child: Padding(
+              padding: EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Descripción',
+                    style: TextStyle(
+                      color: AppTheme.textPrimary,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(height: 16),
+                  TextFormField(
+                    controller: _descripcionController,
+                    maxLines: 5,
+                    style: TextStyle(color: AppTheme.textPrimary),
+                    decoration: InputDecoration(
+                      hintText: 'Ingrese una descripción de la compra...',
+                      hintStyle: TextStyle(color: AppTheme.textSecondary),
+                      border: OutlineInputBorder(),
+                      enabledBorder: OutlineInputBorder(
+                        borderSide: BorderSide(
+                          color: AppTheme.textSecondary.withOpacity(0.3),
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: AppTheme.primary),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        SizedBox(width: 16),
+
+        // Columna derecha - Retenciones
+        Expanded(
+          child: Card(
+            color: AppTheme.cardBg,
+            child: Padding(
+              padding: EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Retenciones',
+                    style: TextStyle(
+                      color: AppTheme.textPrimary,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(height: 16),
+
+                  // Retención
+                  TextFormField(
+                    controller: _porcentajeRetencionController,
+                    keyboardType: TextInputType.number,
+                    style: TextStyle(color: AppTheme.textPrimary),
+                    decoration: InputDecoration(
+                      labelText: 'Retencion %',
+                      labelStyle: TextStyle(color: AppTheme.textSecondary),
+                      border: OutlineInputBorder(),
+                      enabledBorder: OutlineInputBorder(
+                        borderSide: BorderSide(
+                          color: AppTheme.textSecondary.withOpacity(0.3),
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: AppTheme.primary),
+                      ),
+                    ),
+                    onChanged: (_) => setState(() {}),
+                  ),
+                  SizedBox(height: 12),
+
+                  // Reteiva
+                  TextFormField(
+                    controller: _porcentajeReteIvaController,
+                    keyboardType: TextInputType.number,
+                    style: TextStyle(color: AppTheme.textPrimary),
+                    decoration: InputDecoration(
+                      labelText: 'Reteiva %',
+                      labelStyle: TextStyle(color: AppTheme.textSecondary),
+                      border: OutlineInputBorder(),
+                      enabledBorder: OutlineInputBorder(
+                        borderSide: BorderSide(
+                          color: AppTheme.textSecondary.withOpacity(0.3),
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: AppTheme.primary),
+                      ),
+                    ),
+                    onChanged: (_) => setState(() {}),
+                  ),
+                  SizedBox(height: 12),
+
+                  // Reteica
+                  TextFormField(
+                    controller: _porcentajeReteIcaController,
+                    keyboardType: TextInputType.number,
+                    style: TextStyle(color: AppTheme.textPrimary),
+                    decoration: InputDecoration(
+                      labelText: 'Reteica %',
+                      labelStyle: TextStyle(color: AppTheme.textSecondary),
+                      border: OutlineInputBorder(),
+                      enabledBorder: OutlineInputBorder(
+                        borderSide: BorderSide(
+                          color: AppTheme.textSecondary.withOpacity(0.3),
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: AppTheme.primary),
+                      ),
+                    ),
+                    onChanged: (_) => setState(() {}),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBotones() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        // Botón Crear Borrador
+        OutlinedButton(
+          onPressed: _guardandoFactura
+              ? null
+              : () {
+                  // TODO: Implementar guardar como borrador
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Guardar como borrador - Próximamente'),
+                    ),
+                  );
+                },
+          style: OutlinedButton.styleFrom(
+            side: BorderSide(color: AppTheme.primary),
+            padding: EdgeInsets.symmetric(horizontal: 48, vertical: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+          child: Text(
+            'Crear Borrador',
+            style: TextStyle(
+              color: AppTheme.primary,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        SizedBox(width: 24),
+
+        // Botón Comprar
+        ElevatedButton(
+          onPressed: _guardandoFactura ? null : _guardarFactura,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppTheme.primary,
+            padding: EdgeInsets.symmetric(horizontal: 64, vertical: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+          child: _guardandoFactura
+              ? SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2,
+                  ),
+                )
+              : Text(
+                  'Comprar',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+        ),
+      ],
     );
   }
 

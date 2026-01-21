@@ -423,37 +423,67 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
 
     final counts = _stats!['collectionCounts'] as Map<String, dynamic>;
 
-    return Card(
-      color: AppTheme.cardBg,
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.cardBg,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+        border: Border.all(color: AppTheme.textMuted.withOpacity(0.1)),
+        boxShadow: AppTheme.cardShadow,
+      ),
       child: Padding(
-        padding: EdgeInsets.all(16),
+        padding: EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Estadísticas de Base de Datos',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: AppTheme.textPrimary,
-              ),
+            Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    gradient: AppTheme.primaryGradient,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.analytics_outlined, color: Colors.white, size: 22),
+                ),
+                SizedBox(width: 12),
+                Text(
+                  'Estadísticas de Base de Datos',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
+              ],
             ),
-            SizedBox(height: 12),
+            SizedBox(height: 20),
             ...counts.entries.map(
-              (entry) => Padding(
-                padding: EdgeInsets.symmetric(vertical: 2),
+              (entry) => Container(
+                margin: EdgeInsets.only(bottom: 8),
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: AppTheme.surfaceDark,
+                  borderRadius: BorderRadius.circular(8),
+                ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
                       entry.key,
-                      style: TextStyle(color: AppTheme.textPrimary),
+                      style: TextStyle(color: AppTheme.textSecondary),
                     ),
-                    Text(
-                      '${entry.value}',
-                      style: TextStyle(
-                        color: AppTheme.accent,
-                        fontWeight: FontWeight.bold,
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      decoration: BoxDecoration(
+                        gradient: AppTheme.primaryGradient,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '${entry.value}',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ],
@@ -467,48 +497,64 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
   }
 
   Widget _buildDateRangeSelector() {
-    return Card(
-      color: AppTheme.cardBg,
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.cardBg,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+        border: Border.all(color: AppTheme.textMuted.withOpacity(0.1)),
+        boxShadow: AppTheme.cardShadow,
+      ),
       child: Padding(
-        padding: EdgeInsets.all(16),
+        padding: EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              '📅 Seleccionar Rango de Fechas',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: AppTheme.textPrimary,
-              ),
+            Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    gradient: AppTheme.secondaryGradient,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.date_range, color: Colors.white, size: 22),
+                ),
+                SizedBox(width: 12),
+                Text(
+                  'Seleccionar Rango de Fechas',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
+              ],
             ),
-            SizedBox(height: 16),
+            SizedBox(height: 20),
             Row(
               children: [
                 Expanded(
-                  child: ListTile(
-                    title: Text(
-                      'Fecha Inicio',
-                      style: TextStyle(color: AppTheme.textPrimary),
-                    ),
-                    subtitle: Text(
-                      _fechaInicio != null
-                          ? formatDate(_fechaInicio!)
-                          : 'No seleccionada',
-                      style: TextStyle(color: AppTheme.textSecondary),
-                    ),
-                    trailing: Icon(
-                      Icons.calendar_today,
-                      color: AppTheme.accent,
-                    ),
-                    onTap: () async {
+                  child: _buildDateSelector(
+                    'Fecha Inicio',
+                    _fechaInicio,
+                    Icons.calendar_month,
+                    () async {
                       final date = await showDatePicker(
                         context: context,
-                        initialDate:
-                            _fechaInicio ??
-                            DateTime.now().subtract(Duration(days: 30)),
+                        initialDate: _fechaInicio ?? DateTime.now().subtract(Duration(days: 30)),
                         firstDate: DateTime(2020),
                         lastDate: DateTime.now(),
+                        builder: (context, child) {
+                          return Theme(
+                            data: Theme.of(context).copyWith(
+                              colorScheme: ColorScheme.dark(
+                                primary: AppTheme.primary,
+                                surface: AppTheme.cardBg,
+                              ),
+                            ),
+                            child: child!,
+                          );
+                        },
                       );
                       if (date != null) {
                         setState(() => _fechaInicio = date);
@@ -516,29 +562,29 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                     },
                   ),
                 ),
-                SizedBox(width: 16),
+                SizedBox(width: 12),
                 Expanded(
-                  child: ListTile(
-                    title: Text(
-                      'Fecha Fin',
-                      style: TextStyle(color: AppTheme.textPrimary),
-                    ),
-                    subtitle: Text(
-                      _fechaFin != null
-                          ? formatDate(_fechaFin!)
-                          : 'No seleccionada',
-                      style: TextStyle(color: AppTheme.textSecondary),
-                    ),
-                    trailing: Icon(
-                      Icons.calendar_today,
-                      color: AppTheme.accent,
-                    ),
-                    onTap: () async {
+                  child: _buildDateSelector(
+                    'Fecha Fin',
+                    _fechaFin,
+                    Icons.event,
+                    () async {
                       final date = await showDatePicker(
                         context: context,
                         initialDate: _fechaFin ?? DateTime.now(),
                         firstDate: DateTime(2020),
                         lastDate: DateTime.now(),
+                        builder: (context, child) {
+                          return Theme(
+                            data: Theme.of(context).copyWith(
+                              colorScheme: ColorScheme.dark(
+                                primary: AppTheme.primary,
+                                surface: AppTheme.cardBg,
+                              ),
+                            ),
+                            child: child!,
+                          );
+                        },
                       );
                       if (date != null) {
                         setState(() => _fechaFin = date);
@@ -548,16 +594,65 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                 ),
               ],
             ),
-            SizedBox(height: 8),
-            CheckboxListTile(
-              title: Text(
-                'Incluir facturas en eliminación',
-                style: TextStyle(color: AppTheme.textPrimary),
+            SizedBox(height: 16),
+            Container(
+              decoration: BoxDecoration(
+                color: AppTheme.surfaceDark,
+                borderRadius: BorderRadius.circular(10),
               ),
-              value: _incluirFacturas,
-              onChanged: (value) =>
-                  setState(() => _incluirFacturas = value ?? false),
-              activeColor: AppTheme.accent,
+              child: CheckboxListTile(
+                title: Text(
+                  'Incluir facturas en eliminación',
+                  style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+                ),
+                value: _incluirFacturas,
+                onChanged: (value) => setState(() => _incluirFacturas = value ?? false),
+                activeColor: AppTheme.secondary,
+                checkColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDateSelector(String label, DateTime? date, IconData icon, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppTheme.surfaceDark,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: date != null ? AppTheme.primary.withOpacity(0.5) : AppTheme.textMuted.withOpacity(0.2),
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: date != null ? AppTheme.primary : AppTheme.textMuted, size: 20),
+            SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    date != null ? formatDate(date) : 'No seleccionada',
+                    style: TextStyle(
+                      color: date != null ? AppTheme.textPrimary : AppTheme.textMuted,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -566,53 +661,61 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
   }
 
   Widget _buildActionButtons() {
-    return Card(
-      color: AppTheme.cardBg,
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.cardBg,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+        border: Border.all(color: AppTheme.textMuted.withOpacity(0.1)),
+        boxShadow: AppTheme.cardShadow,
+      ),
       child: Padding(
-        padding: EdgeInsets.all(16),
+        padding: EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              '🛠️ Acciones Administrativas',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: AppTheme.textPrimary,
-              ),
+            Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [AppTheme.warning, AppTheme.warning.withOpacity(0.7)],
+                    ),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.build_outlined, color: Colors.white, size: 22),
+                ),
+                SizedBox(width: 12),
+                Text(
+                  'Acciones Administrativas',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
+              ],
             ),
-            SizedBox(height: 16),
+            SizedBox(height: 20),
 
             // Botones de acción general
             Row(
               children: [
                 Expanded(
-                  child: ElevatedButton.icon(
+                  child: _buildActionButton(
+                    icon: Icons.refresh,
+                    label: 'Actualizar Stats',
+                    color: AppTheme.primary,
                     onPressed: _isLoading ? null : _loadStats,
-                    icon: Icon(Icons.refresh, color: Colors.white),
-                    label: Text(
-                      'Actualizar Stats',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.black,
-                      foregroundColor: Colors.white,
-                    ),
                   ),
                 ),
-                SizedBox(width: 8),
+                SizedBox(width: 12),
                 Expanded(
-                  child: ElevatedButton.icon(
+                  child: _buildActionButton(
+                    icon: Icons.table_restaurant,
+                    label: 'Resetear Mesas',
+                    color: AppTheme.secondary,
                     onPressed: _isLoading ? null : _resetMesas,
-                    icon: Icon(Icons.table_restaurant, color: Colors.white),
-                    label: Text(
-                      'Resetear Mesas',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.black,
-                      foregroundColor: Colors.white,
-                    ),
                   ),
                 ),
               ],
@@ -621,21 +724,12 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
             SizedBox(height: 12),
 
             // Botón de estadísticas mensuales
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: _isLoading ? null : _navegarAEstadisticasMensuales,
-                icon: Icon(Icons.file_download, color: Colors.white),
-                label: Text(
-                  'Exportar Estadísticas Mensuales',
-                  style: TextStyle(color: Colors.white),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  foregroundColor: Colors.white,
-                  padding: EdgeInsets.symmetric(vertical: 12),
-                ),
-              ),
+            _buildActionButton(
+              icon: Icons.file_download_outlined,
+              label: 'Exportar Estadísticas Mensuales',
+              color: AppTheme.info,
+              onPressed: _isLoading ? null : _navegarAEstadisticasMensuales,
+              isFullWidth: true,
             ),
 
             SizedBox(height: 12),
@@ -644,95 +738,145 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
             Row(
               children: [
                 Expanded(
-                  child: ElevatedButton.icon(
+                  child: _buildActionButton(
+                    icon: Icons.analytics_outlined,
+                    label: 'Contar por Fechas',
+                    color: AppTheme.metal,
                     onPressed: _isLoading ? null : _contarPorFechas,
-                    icon: Icon(Icons.analytics, color: Colors.white),
-                    label: Text(
-                      'Contar por Fechas',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.black,
-                      foregroundColor: Colors.white,
-                    ),
                   ),
                 ),
-                SizedBox(width: 8),
+                SizedBox(width: 12),
                 Expanded(
-                  child: ElevatedButton.icon(
+                  child: _buildActionButton(
+                    icon: Icons.delete_forever_outlined,
+                    label: 'Eliminar por Fechas',
+                    color: AppTheme.warning,
                     onPressed: _isLoading ? null : _eliminarPorFechas,
-                    icon: Icon(Icons.delete_forever, color: Colors.white),
-                    label: Text(
-                      'Eliminar por Fechas',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.black,
-                      foregroundColor: Colors.white,
-                    ),
                   ),
                 ),
               ],
             ),
 
+            SizedBox(height: 16),
+            Divider(color: AppTheme.textMuted.withOpacity(0.2)),
             SizedBox(height: 12),
 
-            // NUEVO: Botón para eliminar TODOS los pedidos activos
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: _isLoading ? null : _eliminarTodosPedidosActivos,
-                icon: Icon(Icons.delete_sweep, color: Colors.white),
-                label: Text(
-                  'ELIMINAR TODOS LOS PEDIDOS ACTIVOS',
-                  style: TextStyle(color: Colors.white),
+            // Zona de peligro
+            Row(
+              children: [
+                Icon(Icons.warning_amber_rounded, color: AppTheme.error, size: 18),
+                SizedBox(width: 8),
+                Text(
+                  'Zona de Peligro',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.error,
+                  ),
                 ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.black,
-                  foregroundColor: Colors.white,
-                  padding: EdgeInsets.symmetric(vertical: 14),
-                ),
-              ),
+              ],
+            ),
+            SizedBox(height: 12),
+
+            // Botón para eliminar TODOS los pedidos activos
+            _buildDangerButton(
+              icon: Icons.delete_sweep,
+              label: 'ELIMINAR TODOS LOS PEDIDOS ACTIVOS',
+              onPressed: _isLoading ? null : _eliminarTodosPedidosActivos,
             ),
 
-            SizedBox(height: 12),
+            SizedBox(height: 10),
 
             // Botón para eliminar pedido específico
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: _isLoading ? null : _eliminarPedidoEspecifico,
-                icon: Icon(Icons.delete_outline, color: Colors.white),
-                label: Text(
-                  'Eliminar Pedido Específico',
-                  style: TextStyle(color: Colors.white),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.black,
-                  foregroundColor: Colors.white,
-                  padding: EdgeInsets.symmetric(vertical: 12),
-                ),
-              ),
+            _buildDangerButton(
+              icon: Icons.delete_outline,
+              label: 'Eliminar Pedido Específico',
+              onPressed: _isLoading ? null : _eliminarPedidoEspecifico,
+              isSecondary: true,
             ),
 
-            SizedBox(height: 12),
+            SizedBox(height: 10),
 
             // Botón de eliminación total
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: _isLoading ? null : _clearAllData,
-                icon: Icon(Icons.warning, color: Colors.white),
-                label: Text(
-                  'ELIMINAR TODOS LOS DATOS',
-                  style: TextStyle(color: Colors.white),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.black,
-                  foregroundColor: Colors.white,
-                  padding: EdgeInsets.symmetric(vertical: 16),
-                ),
+            _buildDangerButton(
+              icon: Icons.warning_rounded,
+              label: 'ELIMINAR TODOS LOS DATOS',
+              onPressed: _isLoading ? null : _clearAllData,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    VoidCallback? onPressed,
+    bool isFullWidth = false,
+  }) {
+    return Container(
+      width: isFullWidth ? double.infinity : null,
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color.withOpacity(0.15),
+          foregroundColor: color,
+          elevation: 0,
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+            side: BorderSide(color: color.withOpacity(0.3)),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: isFullWidth ? MainAxisSize.max : MainAxisSize.min,
+          children: [
+            Icon(icon, size: 20),
+            SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                label,
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                overflow: TextOverflow.ellipsis,
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDangerButton({
+    required IconData icon,
+    required String label,
+    VoidCallback? onPressed,
+    bool isSecondary = false,
+  }) {
+    return Container(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: isSecondary ? AppTheme.surfaceDark : AppTheme.error.withOpacity(0.15),
+          foregroundColor: AppTheme.error,
+          elevation: 0,
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+            side: BorderSide(color: AppTheme.error.withOpacity(0.3)),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 20),
+            SizedBox(width: 10),
+            Text(
+              label,
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
             ),
           ],
         ),
@@ -743,36 +887,55 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
   Widget _buildResultCard() {
     if (_lastResult == null) return SizedBox.shrink();
 
-    return Card(
-      color: AppTheme.cardBg,
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.cardBg,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+        border: Border.all(color: AppTheme.success.withOpacity(0.3)),
+        boxShadow: AppTheme.cardShadow,
+      ),
       child: Padding(
-        padding: EdgeInsets.all(16),
+        padding: EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Último Resultado',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: AppTheme.textPrimary,
-              ),
+            Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppTheme.success.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.check_circle_outline, color: AppTheme.success, size: 22),
+                ),
+                SizedBox(width: 12),
+                Text(
+                  'Último Resultado',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
+              ],
             ),
-            SizedBox(height: 12),
+            SizedBox(height: 16),
             Container(
               width: double.infinity,
-              padding: EdgeInsets.all(12),
+              padding: EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppTheme.backgroundDark,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppTheme.accent.withOpacity(0.3)),
+                color: AppTheme.surfaceDark,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppTheme.success.withOpacity(0.2)),
               ),
-              child: Text(
+              child: SelectableText(
                 _lastResult!,
                 style: TextStyle(
-                  color: AppTheme.textPrimary,
+                  color: AppTheme.textSecondary,
                   fontFamily: 'monospace',
                   fontSize: 12,
+                  height: 1.5,
                 ),
               ),
             ),
@@ -787,14 +950,42 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     return Scaffold(
       backgroundColor: AppTheme.backgroundDark,
       appBar: AppBar(
-        title: Text(
-          '🔧 Panel de Administración',
-          style: TextStyle(color: Colors.white),
+        title: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.admin_panel_settings, color: Colors.white, size: 20),
+            ),
+            SizedBox(width: 10),
+            Text(
+              'Panel de Administración',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+          ],
         ),
-        backgroundColor: Colors.red[900],
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFFB71C1C), Color(0xFF880E4F)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.close, color: Colors.white),
+          icon: Container(
+            padding: EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(Icons.close, color: Colors.white, size: 18),
+          ),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -803,11 +994,28 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  CircularProgressIndicator(color: AppTheme.accent),
-                  SizedBox(height: 16),
-                  Text(
-                    'Procesando...',
-                    style: TextStyle(color: AppTheme.textPrimary),
+                  Container(
+                    padding: EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: AppTheme.cardBg,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Column(
+                      children: [
+                        CircularProgressIndicator(
+                          color: AppTheme.primary,
+                          strokeWidth: 3,
+                        ),
+                        SizedBox(height: 20),
+                        Text(
+                          'Procesando...',
+                          style: TextStyle(
+                            color: AppTheme.textPrimary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -823,6 +1031,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                   _buildActionButtons(),
                   SizedBox(height: 16),
                   _buildResultCard(),
+                  SizedBox(height: 24),
                 ],
               ),
             ),
