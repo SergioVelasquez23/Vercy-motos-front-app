@@ -30,7 +30,6 @@ class FacturacionScreen extends StatefulWidget {
 class _FacturacionScreenState extends State<FacturacionScreen> {
   final PedidoService _pedidoService = PedidoService();
   final ProductoService _productoService = ProductoService();
-  // ignore: unused_field
   final PedidoAsesorService _pedidoAsesorService = PedidoAsesorService();
   final PDFService _pdfService = PDFService();
   final NegocioInfoService _negocioInfoService = NegocioInfoService();
@@ -2332,6 +2331,19 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
             montoTarjeta: montoTarjeta,
             montoTransferencia: montoTransferencia,
           );
+
+          // Si venía de pedido asesor, marcarlo como facturado
+          if (widget.pedidoAsesor != null && widget.pedidoAsesor!.id != null) {
+            try {
+              await _pedidoAsesorService.marcarComoFacturado(
+                widget.pedidoAsesor!.id!,
+                userName,
+              );
+            } catch (e) {
+              print('Error al marcar pedido asesor como facturado: $e');
+              // No detener el flujo si falla esto
+            }
+          }
 
           setState(() => _isLoading = false);
 

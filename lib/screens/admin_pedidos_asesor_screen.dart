@@ -57,13 +57,15 @@ class _AdminPedidosAsesorScreenState extends State<AdminPedidosAsesorScreen> {
     });
   }
 
-  void _seleccionarPedido(PedidoAsesor pedido) {
-    Navigator.push(
+  void _seleccionarPedido(PedidoAsesor pedido) async {
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => FacturacionScreen(pedidoAsesor: pedido),
       ),
     );
+    // Recargar lista al regresar
+    _cargarPedidos();
   }
 
   Future<void> _cancelarPedido(String pedidoId) async {
@@ -136,6 +138,13 @@ class _AdminPedidosAsesorScreenState extends State<AdminPedidosAsesorScreen> {
               Navigator.pushReplacementNamed(context, '/dashboard'),
         ),
         actions: [
+          IconButton(
+            icon: Icon(Icons.add_circle_outline, color: Colors.white),
+            onPressed: () {
+              Navigator.pushNamed(context, '/asesor-pedidos');
+            },
+            tooltip: 'Crear Nuevo Pedido',
+          ),
           IconButton(
             icon: Icon(Icons.refresh, color: Colors.white),
             onPressed: _cargarPedidos,
@@ -253,7 +262,16 @@ class _AdminPedidosAsesorScreenState extends State<AdminPedidosAsesorScreen> {
             ? () => _seleccionarPedido(pedido)
             : null,
         borderRadius: BorderRadius.circular(12),
-        child: Padding(
+        child: Container(
+          decoration: pedido.estado == 'PENDIENTE'
+              ? BoxDecoration(
+                  border: Border.all(
+                    color: AppTheme.primary.withOpacity(0.3),
+                    width: 2,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                )
+              : null,
           padding: EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -308,21 +326,55 @@ class _AdminPedidosAsesorScreenState extends State<AdminPedidosAsesorScreen> {
                       ],
                     ),
                   ),
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: _getEstadoColor(pedido.estado).withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: _getEstadoColor(pedido.estado)),
-                    ),
-                    child: Text(
-                      pedido.estado,
-                      style: TextStyle(
-                        color: _getEstadoColor(pedido.estado),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _getEstadoColor(
+                            pedido.estado,
+                          ).withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: _getEstadoColor(pedido.estado),
+                          ),
+                        ),
+                        child: Text(
+                          pedido.estado,
+                          style: TextStyle(
+                            color: _getEstadoColor(pedido.estado),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
                       ),
-                    ),
+                      if (pedido.estado == 'PENDIENTE') ...[
+                        SizedBox(height: 8),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.touch_app,
+                              color: AppTheme.primary,
+                              size: 16,
+                            ),
+                            SizedBox(width: 4),
+                            Text(
+                              'Click para procesar',
+                              style: TextStyle(
+                                color: AppTheme.primary,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
                   ),
                 ],
               ),
