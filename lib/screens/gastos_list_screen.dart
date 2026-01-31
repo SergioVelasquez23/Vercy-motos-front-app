@@ -26,11 +26,11 @@ class _GastosListScreenState extends State<GastosListScreen> {
   // Otros filtros
   bool _soloCuentasPorPagar = false;
   bool _verPagosParciales = false;
-  String _categoriaSeleccionada = 'TODAS';
+  String _tipoGastoSeleccionado = 'TODOS';
 
   List<Gasto> _gastos = [];
   List<Gasto> _gastosFiltrados = [];
-  List<String> _categorias = ['TODAS'];
+  List<String> _tiposGastoFiltro = ['TODOS'];
   bool _isLoading = false;
 
   @override
@@ -51,17 +51,17 @@ class _GastosListScreenState extends State<GastosListScreen> {
     try {
       final gastos = await _gastoService.getAllGastos();
 
-      // Extraer categorías únicas
-      final categoriasSet = <String>{'TODAS'};
+      // Extraer tipos de gasto únicos
+      final tiposGastoSet = <String>{'TODOS'};
       for (var gasto in gastos) {
         if (gasto.tipoGastoNombre.isNotEmpty) {
-          categoriasSet.add(gasto.tipoGastoNombre);
+          tiposGastoSet.add(gasto.tipoGastoNombre);
         }
       }
 
       setState(() {
         _gastos = gastos;
-        _categorias = categoriasSet.toList()..sort();
+        _tiposGastoFiltro = tiposGastoSet.toList()..sort();
         _aplicarFiltros();
       });
     } catch (e) {
@@ -114,17 +114,17 @@ class _GastosListScreenState extends State<GastosListScreen> {
         final matchCuentasPorPagar =
             !_soloCuentasPorPagar || !gasto.pagadoDesdeCaja;
 
-        // Filtro categoría
-        final matchCategoria =
-            _categoriaSeleccionada == 'TODAS' ||
-            gasto.tipoGastoNombre == _categoriaSeleccionada;
+        // Filtro tipo de gasto
+        final matchTipoGasto =
+            _tipoGastoSeleccionado == 'TODOS' ||
+            gasto.tipoGastoNombre == _tipoGastoSeleccionado;
 
         return matchNumero &&
             matchProveedor &&
             matchFechaInicio &&
             matchFechaFin &&
             matchCuentasPorPagar &&
-            matchCategoria;
+            matchTipoGasto;
       }).toList();
 
       // Ordenar por fecha más reciente
@@ -403,7 +403,7 @@ class _GastosListScreenState extends State<GastosListScreen> {
           ),
           SizedBox(width: 12),
 
-          // Dropdown Categoría
+          // Dropdown Tipo de Gasto
           Container(
             padding: EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
@@ -413,18 +413,18 @@ class _GastosListScreenState extends State<GastosListScreen> {
             ),
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
-                value: _categoriaSeleccionada,
+                value: _tipoGastoSeleccionado,
                 dropdownColor: AppTheme.cardBg,
                 style: TextStyle(color: Colors.white, fontSize: 14),
                 icon: Icon(Icons.arrow_drop_down, color: Colors.grey),
-                items: _categorias.map((cat) {
+                items: _tiposGastoFiltro.map((tipo) {
                   return DropdownMenuItem(
-                    value: cat,
-                    child: Text(cat == 'TODAS' ? 'Categoría' : cat),
+                    value: tipo,
+                    child: Text(tipo == 'TODOS' ? 'Tipo de Gasto' : tipo),
                   );
                 }).toList(),
                 onChanged: (value) {
-                  setState(() => _categoriaSeleccionada = value ?? 'TODAS');
+                  setState(() => _tipoGastoSeleccionado = value ?? 'TODOS');
                   _aplicarFiltros();
                 },
               ),
@@ -549,7 +549,7 @@ class _GastosListScreenState extends State<GastosListScreen> {
                   flex: 2,
                   align: TextAlign.right,
                 ),
-                _buildEncabezadoColumna('Categoría', flex: 2),
+                _buildEncabezadoColumna('Tipo de Gasto', flex: 2),
                 _buildEncabezadoColumna('', flex: 1), // Acciones
               ],
             ),
@@ -716,7 +716,7 @@ class _GastosListScreenState extends State<GastosListScreen> {
             ),
           ),
 
-          // Categoría
+          // Tipo de Gasto
           Expanded(
             flex: 2,
             child: Text(
@@ -815,7 +815,7 @@ class _GastosListScreenState extends State<GastosListScreen> {
             children: [
               _buildDetalleItem('Concepto', gasto.concepto),
               _buildDetalleItem('Proveedor', gasto.proveedor ?? 'N/A'),
-              _buildDetalleItem('Categoría', gasto.tipoGastoNombre),
+              _buildDetalleItem('Tipo de Gasto', gasto.tipoGastoNombre),
               _buildDetalleItem(
                 'Monto',
                 '\$ ${formatNumberWithDots(gasto.monto)}',

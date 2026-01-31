@@ -64,7 +64,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
 
   // Services
   final CuadreCajaService _cuadreCajaService = CuadreCajaService();
-  final String baseUrl = 'https://vercy-motos-app.onrender.com';
+  final String baseUrl = 'https://vercy-motos-app-048m.onrender.com';
 
   // Filtros
   String? _selectedCaja;

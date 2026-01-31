@@ -3,8 +3,10 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../models/traslado.dart';
 import '../models/producto.dart';
+import '../models/bodega.dart';
 import '../services/traslado_service.dart';
 import '../services/producto_service.dart';
+import '../services/bodega_service.dart';
 import '../providers/user_provider.dart';
 import '../theme/app_theme.dart';
 
@@ -18,11 +20,14 @@ class TrasladosScreen extends StatefulWidget {
 class _TrasladosScreenState extends State<TrasladosScreen> {
   final TrasladoService _trasladoService = TrasladoService();
   final ProductoService _productoService = ProductoService();
+  final BodegaService _bodegaService = BodegaService();
   final TextEditingController _searchController = TextEditingController();
 
   List<Traslado> _traslados = [];
   List<Traslado> _trasladosFiltrados = [];
   List<Producto> _productos = [];
+  List<Bodega> _bodegas = [];
+  Map<String, int> _stockPorBodega = {};
   bool _isLoading = false;
   String _filtroEstado = 'TODOS';
   bool _mostrarFormulario = false;
@@ -47,11 +52,32 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
         estado: _filtroEstado != 'TODOS' ? _filtroEstado : null,
       );
       final productos = await _productoService.getProductos();
+      final bodegas = await _bodegaService.obtenerBodegas();
+
+      // Calcular stock por bodega
+      final stockPorBodega = <String, int>{};
+      for (final bodega in bodegas) {
+        if (bodega.id != null) {
+          int totalStock = 0;
+          for (final producto in productos) {
+            if (bodega.nombre.toUpperCase() == 'ALMACEN' ||
+                bodega.id == 'ALMACEN') {
+              totalStock += producto.almacen ?? 0;
+            } else if (bodega.nombre.toUpperCase() == 'BODEGA' ||
+                bodega.id == 'BODEGA') {
+              totalStock += producto.bodega ?? 0;
+            }
+          }
+          stockPorBodega[bodega.nombre] = totalStock;
+        }
+      }
 
       setState(() {
         _traslados = traslados;
         _trasladosFiltrados = traslados;
         _productos = productos;
+        _bodegas = bodegas.where((b) => b.activa).toList();
+        _stockPorBodega = stockPorBodega;
       });
     } catch (e) {
       _mostrarError('Error al cargar datos: $e');
@@ -342,6 +368,13 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
+          _buildBotonAccion(
+            icon: Icons.warehouse,
+            label: 'Ubicaciones',
+            color: AppTheme.secondary,
+            onPressed: () => Navigator.pushNamed(context, '/bodegas'),
+          ),
+          SizedBox(width: 12),
           _buildBotonAccion(
             icon: Icons.refresh,
             label: 'Actualizar',
@@ -1072,23 +1105,55 @@ class _FormularioCrearTraslado extends StatefulWidget {
 
 class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
   final TrasladoService _trasladoService = TrasladoService();
+  final BodegaService _bodegaService = BodegaService();
   final _eanController = TextEditingController();
   final _codigoController = TextEditingController();
   final _nombreController = TextEditingController();
   final _cantidadController = TextEditingController();
   final _descripcionController = TextEditingController();
+  final _buscarProductoController = TextEditingController();
 
   String? _origenSeleccionado;
   String? _destinoSeleccionado;
   Producto? _productoSeleccionado;
   bool _isLoading = false;
+  bool _cargandoBodegas = true;
+  
+  // Stock real del producto seleccionado en la bodega origen
+  double _stockDisponibleOrigen = 0.0;
+  bool _consultandoStock = false;
 
   final List<Map<String, dynamic>> _productosAgregados = [];
 
-  final List<Map<String, String>> _bodegas = [
-    {'id': 'BODEGA', 'nombre': 'BODEGA'},
-    {'id': 'ALMACEN', 'nombre': 'ALMACEN'},
-  ];
+  // Bodegas cargadas dinámicamente desde el servicio
+  List<Bodega> _bodegas = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarBodegas();
+  }
+
+  Future<void> _cargarBodegas() async {
+    try {
+      final bodegas = await _bodegaService.obtenerBodegas();
+      setState(() {
+        // Solo mostrar bodegas activas
+        _bodegas = bodegas.where((b) => b.activa).toList();
+        _cargandoBodegas = false;
+      });
+    } catch (e) {
+      print('Error cargando bodegas: $e');
+      // Fallback a bodegas por defecto
+      setState(() {
+        _bodegas = [
+          Bodega(id: 'BODEGA', nombre: 'BODEGA', activa: true),
+          Bodega(id: 'ALMACEN', nombre: 'ALMACEN', activa: true),
+        ];
+        _cargandoBodegas = false;
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -1097,7 +1162,38 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
     _nombreController.dispose();
     _cantidadController.dispose();
     _descripcionController.dispose();
+    _buscarProductoController.dispose();
     super.dispose();
+  }
+
+  // Consultar stock real en la bodega origen
+  Future<void> _consultarStockEnOrigen() async {
+    if (_productoSeleccionado == null || _origenSeleccionado == null) {
+      setState(() => _stockDisponibleOrigen = 0.0);
+      return;
+    }
+
+    setState(() => _consultandoStock = true);
+
+    try {
+      final stock = await _bodegaService.obtenerStockProductoEnBodega(
+        _origenSeleccionado!,
+        _productoSeleccionado!.id,
+      );
+
+      setState(() {
+        _stockDisponibleOrigen = stock;
+        _consultandoStock = false;
+      });
+
+      print('✅ Stock disponible en origen: $stock unidades');
+    } catch (e) {
+      print('❌ Error consultando stock: $e');
+      setState(() {
+        _stockDisponibleOrigen = 0.0;
+        _consultandoStock = false;
+      });
+    }
   }
 
   void _buscarProductoPorEAN() {
@@ -1115,6 +1211,8 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
         _codigoController.text = producto.id ?? '';
         _nombreController.text = producto.nombre ?? '';
       });
+      // Consultar stock real en la bodega origen
+      _consultarStockEnOrigen();
     } else {
       _mostrarError('Producto no encontrado');
     }
@@ -1134,6 +1232,16 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
     final cantidad = double.tryParse(_cantidadController.text);
     if (cantidad == null || cantidad <= 0) {
       _mostrarError('La cantidad debe ser mayor a 0');
+      return;
+    }
+
+    // VALIDAR STOCK REAL EN BODEGA ORIGEN
+    if (cantidad > _stockDisponibleOrigen) {
+      _mostrarError(
+        'Stock insuficiente en bodega origen.\n'
+        'Disponible: $_stockDisponibleOrigen unidades\n'
+        'Solicitado: $cantidad unidades',
+      );
       return;
     }
 
@@ -1296,7 +1404,11 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
             child: _buildDropdownBodega(
               label: 'Origen',
               value: _origenSeleccionado,
-              onChanged: (value) => setState(() => _origenSeleccionado = value),
+              onChanged: (value) {
+                setState(() => _origenSeleccionado = value);
+                // Cuando cambia la bodega origen, reconsultar el stock
+                _consultarStockEnOrigen();
+              },
             ),
           ),
           SizedBox(width: 24),
@@ -1354,16 +1466,34 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
                 vertical: 12,
               ),
             ),
-            hint: Text('--', style: TextStyle(color: AppTheme.textMuted)),
+            hint: _cargandoBodegas
+                ? Text(
+                    'Cargando...',
+                    style: TextStyle(color: AppTheme.textMuted),
+                  )
+                : Text(
+                    'Seleccione',
+                    style: TextStyle(color: AppTheme.textMuted),
+                  ),
             dropdownColor: AppTheme.cardBg,
             style: TextStyle(color: AppTheme.textPrimary),
             items: _bodegas.map((bodega) {
               return DropdownMenuItem(
-                value: bodega['id'],
-                child: Text(bodega['nombre']!),
+                value: bodega.id,
+                child: Row(
+                  children: [
+                    Icon(
+                      bodega.tipo == 'ALMACEN' ? Icons.store : Icons.warehouse,
+                      size: 18,
+                      color: AppTheme.primary,
+                    ),
+                    SizedBox(width: 8),
+                    Text(bodega.nombre),
+                  ],
+                ),
               );
             }).toList(),
-            onChanged: onChanged,
+            onChanged: _cargandoBodegas ? null : onChanged,
           ),
         ),
       ],
@@ -1417,7 +1547,7 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
           ),
           SizedBox(height: 16),
 
-          // Fila: Código, Nombre, Cantidad
+          // Fila: Código, Nombre (Dropdown), Cantidad
           Row(
             children: [
               Expanded(
@@ -1431,11 +1561,7 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
               SizedBox(width: 12),
               Expanded(
                 flex: 4,
-                child: _buildCampoFormulario(
-                  label: 'Nombre',
-                  controller: _nombreController,
-                  readOnly: true,
-                ),
+                child: _buildDropdownProducto(),
               ),
               SizedBox(width: 12),
               Expanded(
@@ -1472,54 +1598,527 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
               ),
             ],
           ),
+          
+          // Mostrar stock del producto seleccionado
+          if (_productoSeleccionado != null)
+            _buildStockProductoSeleccionado(),
+        ],
+      ),
+    );
+  }
 
-          // O seleccionar de lista
-          SizedBox(height: 16),
-          Text(
-            'O seleccionar de la lista:',
-            style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
-          ),
-          SizedBox(height: 8),
-          Container(
-            decoration: BoxDecoration(
-              color: AppTheme.surfaceDark,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppTheme.textMuted.withOpacity(0.2)),
-            ),
-            child: DropdownButtonFormField<Producto>(
-              value: _productoSeleccionado,
-              decoration: InputDecoration(
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
+  Widget _buildStockProductoSeleccionado() {
+    // Mostrar stock REAL de la bodega origen seleccionada
+    final stockOrigen = _origenSeleccionado != null ? _stockDisponibleOrigen : 0.0;
+    
+    // Los valores estáticos del modelo (ya no confiables)
+    final stockAlmacenLegacy = _productoSeleccionado!.almacen ?? 0;
+    final stockBodegaLegacy = _productoSeleccionado!.bodega ?? 0;
+    
+    return Container(
+      margin: EdgeInsets.only(top: 16),
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppTheme.primary.withOpacity(0.1),
+            AppTheme.secondary.withOpacity(0.1),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.primary.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.info_outline, color: AppTheme.primary, size: 18),
+              SizedBox(width: 8),
+              Text(
+                'Stock del producto',
+                style: TextStyle(
+                  color: AppTheme.textPrimary,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
                 ),
-                hintText: 'Seleccionar producto',
-                hintStyle: TextStyle(color: AppTheme.textMuted),
               ),
-              dropdownColor: AppTheme.cardBg,
-              style: TextStyle(color: AppTheme.textPrimary),
-              isExpanded: true,
-              items: widget.productos.map((producto) {
-                return DropdownMenuItem(
-                  value: producto,
-                  child: Text(
-                    '${producto.nombre} (Alm: ${producto.almacen ?? 0}, Bod: ${producto.bodega ?? 0})',
-                    overflow: TextOverflow.ellipsis,
+            ],
+          ),
+          SizedBox(height: 12),
+          
+          // STOCK REAL EN BODEGA ORIGEN
+          if (_origenSeleccionado != null) ...[
+            Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: stockOrigen > 0 
+                    ? AppTheme.success.withOpacity(0.15)
+                    : AppTheme.error.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: stockOrigen > 0 
+                      ? AppTheme.success.withOpacity(0.4)
+                      : AppTheme.error.withOpacity(0.4),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.inventory_2,
+                        color: stockOrigen > 0 ? AppTheme.success : AppTheme.error,
+                        size: 24,
+                      ),
+                      SizedBox(width: 12),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'BODEGA ORIGEN',
+                            style: TextStyle(
+                              color: AppTheme.textSecondary,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          Text(
+                            _consultandoStock 
+                                ? 'Consultando...'
+                                : '$stockOrigen unidades',
+                            style: TextStyle(
+                              color: stockOrigen > 0 ? AppTheme.success : AppTheme.error,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                );
-              }).toList(),
-              onChanged: (value) {
-                setState(() {
-                  _productoSeleccionado = value;
-                  _codigoController.text = value?.id ?? '';
-                  _nombreController.text = value?.nombre ?? '';
-                });
-              },
+                  if (_consultandoStock)
+                    SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation(AppTheme.primary),
+                      ),
+                    ),
+                ],
+              ),
             ),
+            SizedBox(height: 12),
+          ] else ...[
+            Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppTheme.warning.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppTheme.warning.withOpacity(0.4)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.warning, color: AppTheme.warning, size: 20),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Seleccione una bodega origen para ver el stock disponible',
+                      style: TextStyle(
+                        color: AppTheme.warning,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: 12),
+          ],
+          
+          // Información adicional (valores legacy - solo informativos)
+          Row(
+            children: [
+              Expanded(
+                child: _buildStockInfoCard(
+                  'Total Almacén',
+                  stockAlmacenLegacy,
+                  Icons.store,
+                  AppTheme.info,
+                  esLegacy: true,
+                ),
+              ),
+              SizedBox(width: 12),
+              Expanded(
+                child: _buildStockInfoCard(
+                  'Total Bodega',
+                  stockBodegaLegacy,
+                  Icons.warehouse,
+                  AppTheme.metal,
+                  esLegacy: true,
+                ),
+              ),
+            ],
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildStockInfoCard(
+    String label,
+    int cantidad,
+    IconData icon,
+    Color color, {
+    bool esLegacy = false,
+  }) {
+    return Container(
+      padding: EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 20),
+          SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: AppTheme.textSecondary,
+              fontSize: 10,
+            ),
+          ),
+          Text(
+            '$cantidad',
+            style: TextStyle(
+              color: color,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          if (esLegacy)
+            Text(
+              '(aprox)',
+              style: TextStyle(
+                color: AppTheme.textMuted,
+                fontSize: 9,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildDropdownProducto() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: AppTheme.primary,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
+          ),
+          child: Text(
+            'Producto',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
+            ),
+          ),
+        ),
+        Container(
+          decoration: BoxDecoration(
+            color: AppTheme.surfaceDark,
+            borderRadius: BorderRadius.vertical(bottom: Radius.circular(8)),
+            border: Border.all(color: AppTheme.textMuted.withOpacity(0.2)),
+          ),
+          child: RawAutocomplete<Producto>(
+            optionsBuilder: (TextEditingValue textEditingValue) {
+              // Siempre mostrar opciones (vacío = primeros 30, con texto = filtrados)
+              if (textEditingValue.text.isEmpty) {
+                return widget.productos.take(30);
+              }
+              final query = textEditingValue.text.toLowerCase();
+              return widget.productos
+                  .where((producto) {
+                    return producto.nombre.toLowerCase().contains(query) ||
+                        (producto.codigo?.toLowerCase().contains(query) ??
+                            false) ||
+                        (producto.codigoBarras?.toLowerCase().contains(query) ??
+                            false) ||
+                        producto.id.toLowerCase().contains(query);
+                  })
+                  .take(50);
+            },
+            displayStringForOption: (Producto producto) => producto.nombre,
+            fieldViewBuilder:
+                (context, controller, focusNode, onFieldSubmitted) {
+                  return TextField(
+                    controller: controller,
+                    focusNode: focusNode,
+                    style: TextStyle(color: AppTheme.textPrimary),
+                    onTap: () {
+                      // Mostrar opciones al tocar el campo
+                      if (controller.text.isEmpty) {
+                        controller.text = '';
+                        controller.selection = TextSelection.fromPosition(
+                          TextPosition(offset: controller.text.length),
+                        );
+                      }
+                    },
+                    decoration: InputDecoration(
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      hintText: 'Buscar o seleccionar producto...',
+                      hintStyle: TextStyle(color: AppTheme.textMuted),
+                      prefixIcon: Icon(
+                        Icons.search,
+                        color: AppTheme.primary,
+                        size: 20,
+                      ),
+                      suffixIcon: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (controller.text.isNotEmpty)
+                            IconButton(
+                              icon: Icon(
+                                Icons.clear,
+                                color: AppTheme.textMuted,
+                                size: 18,
+                              ),
+                              onPressed: () {
+                                controller.clear();
+                                setState(() {
+                                  _productoSeleccionado = null;
+                                  _codigoController.clear();
+                                  _nombreController.clear();
+                                });
+                              },
+                            ),
+                          Icon(
+                            Icons.arrow_drop_down,
+                            color: AppTheme.textMuted,
+                          ),
+                          SizedBox(width: 8),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+            optionsViewBuilder: (context, onSelected, options) {
+              return Align(
+                alignment: Alignment.topLeft,
+                child: Material(
+                  elevation: 8,
+                  color: AppTheme.cardBg,
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    width: 500,
+                    constraints: BoxConstraints(maxHeight: 350),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primary.withOpacity(0.1),
+                            borderRadius: BorderRadius.vertical(
+                              top: Radius.circular(8),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.inventory_2,
+                                color: AppTheme.primary,
+                                size: 16,
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                '${options.length} productos encontrados',
+                                style: TextStyle(
+                                  color: AppTheme.primary,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Flexible(
+                          child: ListView.builder(
+                            padding: EdgeInsets.zero,
+                            shrinkWrap: true,
+                            itemCount: options.length,
+                            itemBuilder: (context, index) {
+                              final producto = options.elementAt(index);
+                              final stockAlmacen = producto.almacen ?? 0;
+                              final stockBodega = producto.bodega ?? 0;
+                              return InkWell(
+                                onTap: () => onSelected(producto),
+                                child: Container(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 10,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    border: Border(
+                                      bottom: BorderSide(
+                                        color: AppTheme.textMuted.withOpacity(
+                                          0.1,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        padding: EdgeInsets.all(6),
+                                        decoration: BoxDecoration(
+                                          color: AppTheme.primary.withOpacity(
+                                            0.1,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            6,
+                                          ),
+                                        ),
+                                        child: Icon(
+                                          Icons.inventory_2,
+                                          color: AppTheme.primary,
+                                          size: 16,
+                                        ),
+                                      ),
+                                      SizedBox(width: 10),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              producto.nombre,
+                                              style: TextStyle(
+                                                color: AppTheme.textPrimary,
+                                                fontWeight: FontWeight.w500,
+                                                fontSize: 13,
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            Text(
+                                              'Cod: ${producto.codigo ?? producto.id.substring(0, 8)}',
+                                              style: TextStyle(
+                                                color: AppTheme.textMuted,
+                                                fontSize: 10,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      SizedBox(width: 8),
+                                      Container(
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 4,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: AppTheme.success.withOpacity(
+                                            0.15,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            4,
+                                          ),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(
+                                              Icons.store,
+                                              color: AppTheme.success,
+                                              size: 12,
+                                            ),
+                                            SizedBox(width: 4),
+                                            Text(
+                                              '$stockAlmacen',
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                color: AppTheme.success,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      SizedBox(width: 6),
+                                      Container(
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 4,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: AppTheme.warning.withOpacity(
+                                            0.15,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            4,
+                                          ),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(
+                                              Icons.warehouse,
+                                              color: AppTheme.warning,
+                                              size: 12,
+                                            ),
+                                            SizedBox(width: 4),
+                                            Text(
+                                              '$stockBodega',
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                color: AppTheme.warning,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+            onSelected: (Producto producto) {
+              setState(() {
+                _productoSeleccionado = producto;
+                _codigoController.text = producto.id;
+                _nombreController.text = producto.nombre;
+              });
+              // Consultar stock real cuando se selecciona el producto
+              _consultarStockEnOrigen();
+            },
+          ),
+        ),
+      ],
     );
   }
 

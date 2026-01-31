@@ -61,7 +61,7 @@ class ImagenProductoWidget extends StatelessWidget {
     // PRIORIDAD 2: Si es una URL HTTP válida, intentar cargarla
     if (imagenUrl.startsWith('http')) {
       // Verificar si es una URL de Render válida
-      if (imagenUrl.contains('vercy-motos-app.onrender.com')) {
+      if (imagenUrl.contains('vercy-motos-app-048m.onrender.com')) {
         return _buildImagenNetwork(imagenUrl);
       }
       print('🌐 Intentando cargar imagen desde URL: $imagenUrl');

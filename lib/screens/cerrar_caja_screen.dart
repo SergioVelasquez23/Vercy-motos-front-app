@@ -7,6 +7,7 @@ import '../services/pedido_service.dart';
 import '../services/resumen_cierre_completo_service.dart';
 import '../models/resumen_cierre_completo.dart';
 import '../utils/format_utils.dart';
+import '../theme/app_theme.dart';
 
 class CerrarCajaScreen extends StatefulWidget {
   const CerrarCajaScreen({super.key});
@@ -22,11 +23,6 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
   ResumenCierreCompleto? _resumenCompletoData;
   final ResumenCierreCompletoService _resumenService =
       ResumenCierreCompletoService();
-  final Color primary = Color(0xFFFF6B00); // Color naranja fuego
-  final Color bgDark = Color(0xFF1E1E1E); // Color de fondo negro
-  final Color cardBg = Color(0xFF252525); // Color de tarjetas
-  final Color textDark = Color(0xFFE0E0E0); // Color de texto claro
-  final Color textLight = Color(0xFFA0A0A0); // Color de texto más suave
 
   // Controllers
   final TextEditingController _efectivoDeclaradoController =
@@ -516,83 +512,90 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: bgDark,
+      backgroundColor: AppTheme.backgroundDark,
       appBar: AppBar(
         title: Text(
           'Cerrar Caja',
-          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+          style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
         ),
-        backgroundColor: primary,
+        backgroundColor: AppTheme.backgroundDark,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.white),
+          icon: Icon(Icons.arrow_back, color: AppTheme.textPrimary),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
       body: _isLoading
-          ? Center(child: CircularProgressIndicator(color: primary))
+          ? Center(child: CircularProgressIndicator(color: AppTheme.primary))
           : SingleChildScrollView(
               padding: EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Título
-                  Center(
-                    child: Text(
-                      'CIERRE DE CAJA',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: textDark,
-                        shadows: [
-                          Shadow(
-                            offset: Offset(1, 1),
-                            blurRadius: 3,
-                            color: Colors.black.withOpacity(0.3),
+                  // Título con gradiente
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+                    decoration: BoxDecoration(
+                      gradient: AppTheme.primaryGradient,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      children: [
+                        Icon(Icons.point_of_sale, color: Colors.white, size: 40),
+                        SizedBox(height: 8),
+                        Text(
+                          'CIERRE DE CAJA',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            letterSpacing: 1.5,
+                          ),
+                        ),
+                        if (_cajaActual != null) ...[
+                          SizedBox(height: 4),
+                          Text(
+                            _cajaActual!.nombre ?? 'Caja Principal',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.white70,
+                            ),
                           ),
                         ],
-                      ),
+                      ],
                     ),
                   ),
                   SizedBox(height: 20),
 
                   // Verificación de estado de caja
                   if (!_hayCajaAbierta) ...[
-                    Card(
-                      color: Colors.orange.shade900,
-                      elevation: 4,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                    Container(
+                      padding: EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: AppTheme.warning.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppTheme.warning.withOpacity(0.5)),
                       ),
-                      child: Padding(
-                        padding: EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Icon(Icons.info, color: Colors.orange.shade300),
-                                SizedBox(width: 8),
-                                Text(
-                                  'NO HAY CAJA ABIERTA',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.orange.shade100,
-                                  ),
-                                ),
-                              ],
+                      child: Column(
+                        children: [
+                          Icon(Icons.warning_amber_rounded, color: AppTheme.warning, size: 48),
+                          SizedBox(height: 12),
+                          Text(
+                            'NO HAY CAJA ABIERTA',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.warning,
                             ),
-                            SizedBox(height: 12),
-                            Text(
-                              'No hay ninguna caja abierta para cerrar.',
-                              style: TextStyle(
-                                color: Colors.orange.shade100,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            'No hay ninguna caja abierta para cerrar.',
+                            style: TextStyle(color: AppTheme.textSecondary),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
                       ),
                     ),
                     SizedBox(height: 20),
@@ -603,7 +606,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
                         icon: Icon(Icons.lock_open),
                         label: Text('Ir a Abrir Caja'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
+                          backgroundColor: AppTheme.success,
                           foregroundColor: Colors.white,
                           padding: EdgeInsets.symmetric(
                             horizontal: 32,
@@ -624,71 +627,80 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
                     // Secciones del Resumen Completo
                     if (_resumenCompletoData != null) ...[
                       _buildMovimientosEfectivoSection(),
-                      SizedBox(height: 20),
+                      SizedBox(height: 16),
                       _buildResumenVentasSection(),
-                      SizedBox(height: 20),
+                      SizedBox(height: 16),
                       _buildResumenGastosSection(),
-                      SizedBox(height: 20),
+                      SizedBox(height: 16),
                       _buildResumenComprasSection(),
-                      SizedBox(height: 20),
+                      SizedBox(height: 16),
                     ],
 
                     // Observaciones
-                    Card(
-                      elevation: 4,
-                      color: cardBg,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                    Container(
+                      padding: EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppTheme.cardBg,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppTheme.primary.withOpacity(0.3)),
                       ),
-                      child: Padding(
-                        padding: EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Observaciones',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: textDark,
-                              ),
-                            ),
-                            SizedBox(height: 10),
-                            TextFormField(
-                              controller: _observacionesController,
-                              maxLines: 3,
-                              style: TextStyle(color: textDark),
-                              decoration: InputDecoration(
-                                labelText:
-                                    'Observaciones del cierre (opcional)',
-                                labelStyle: TextStyle(color: textLight),
-                                border: OutlineInputBorder(),
-                                alignLabelWithHint: true,
-                                focusedBorder: OutlineInputBorder(
-                                  borderSide: BorderSide(color: primary),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.note_alt, color: AppTheme.primary, size: 20),
+                              SizedBox(width: 8),
+                              Text(
+                                'Observaciones',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.textPrimary,
                                 ),
                               ),
+                            ],
+                          ),
+                          SizedBox(height: 12),
+                          TextFormField(
+                            controller: _observacionesController,
+                            maxLines: 3,
+                            style: TextStyle(color: AppTheme.textPrimary),
+                            decoration: InputDecoration(
+                              hintText: 'Observaciones del cierre (opcional)',
+                              hintStyle: TextStyle(color: AppTheme.textMuted),
+                              filled: true,
+                              fillColor: AppTheme.surfaceDark,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide.none,
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide(color: AppTheme.primary),
+                              ),
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
-                    SizedBox(height: 30),
+                    SizedBox(height: 24),
 
                     // Botón para cerrar caja
-                    Center(
+                    Container(
+                      width: double.infinity,
                       child: ElevatedButton.icon(
-                        icon: Icon(Icons.lock),
-                        label: Text('CERRAR CAJA'),
+                        icon: Icon(Icons.lock, size: 24),
+                        label: Text(
+                          'CERRAR CAJA',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red,
+                          backgroundColor: AppTheme.error,
                           foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 40,
-                            vertical: 20,
-                          ),
+                          padding: EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(12),
                           ),
                           elevation: 4,
                         ),
@@ -705,10 +717,10 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
                         TextButton.icon(
-                          icon: Icon(Icons.refresh, color: primary),
+                          icon: Icon(Icons.refresh, color: AppTheme.primary),
                           label: Text(
                             'Actualizar Estado',
-                            style: TextStyle(color: primary),
+                            style: TextStyle(color: AppTheme.primary),
                           ),
                           onPressed: _verificarEstadoCaja,
                         ),
@@ -728,11 +740,11 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(color: textLight)),
+          Text(label, style: TextStyle(color: AppTheme.textSecondary)),
           Text(
             value,
             style: TextStyle(
-              color: valueColor ?? textDark,
+              color: valueColor ?? AppTheme.textPrimary,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -781,472 +793,488 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
         _transferenciasEsperadas = transferenciaValue;
       }
     }
-    final Color cardBg = Color(0xFF2A2A2A);
 
-    return Card(
-      elevation: 4,
-      color: cardBg,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      child: Padding(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Movimientos de Efectivo',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF2196F3),
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.cardBg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.primary.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.account_balance_wallet, color: AppTheme.primary, size: 20),
+              SizedBox(width: 8),
+              Text(
+                'Movimientos de Efectivo',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.primary,
+                ),
               ),
+            ],
+          ),
+          SizedBox(height: 16),
+          _buildInfoRow(
+            'Fondo Inicial:',
+            formatCurrency(movimientos.fondoInicial),
+          ),
+          _buildInfoRow(
+            'Ventas Efectivo:',
+            formatCurrency(
+              _ventasEfectivo > 0
+                  ? _ventasEfectivo
+                  : movimientos.ventasEfectivo,
             ),
-            SizedBox(height: 16),
-            _buildInfoRow(
-              'Fondo Inicial:',
-              formatCurrency(movimientos.fondoInicial),
+            valueColor: AppTheme.success,
+          ),
+          _buildInfoRow(
+            'Ventas Transferencia:',
+            formatCurrency(
+              _transferenciasEsperadas > 0
+                  ? _transferenciasEsperadas
+                  : movimientos.ventasTransferencia,
             ),
-            _buildInfoRow(
-              'Ventas Efectivo:',
-              formatCurrency(
-                _ventasEfectivo > 0
-                    ? _ventasEfectivo
-                    : movimientos.ventasEfectivo,
-              ),
-              valueColor: Colors.green,
+            valueColor: AppTheme.primary,
+          ),
+          _buildInfoRow(
+            'Gastos Efectivo:',
+            formatCurrency(movimientos.gastosEfectivo),
+            valueColor: AppTheme.error,
+          ),
+          _buildInfoRow(
+            'Compras Efectivo:',
+            formatCurrency(movimientos.comprasEfectivo),
+            valueColor: AppTheme.warning,
+          ),
+          Divider(color: Colors.grey.withOpacity(0.3), height: 20),
+          _buildInfoRow(
+            'Efectivo Esperado:',
+            formatCurrency(
+              _efectivoEsperado > 0
+                  ? _efectivoEsperado
+                  : movimientos.efectivoEsperado,
             ),
-            _buildInfoRow(
-              'Ventas Transferencia:',
-              formatCurrency(
-                _transferenciasEsperadas > 0
-                    ? _transferenciasEsperadas
-                    : movimientos.ventasTransferencia,
-              ),
-              valueColor: Colors.blue,
-            ),
-            _buildInfoRow(
-              'Gastos Efectivo:',
-              formatCurrency(movimientos.gastosEfectivo),
-              valueColor: Colors.red,
-            ),
-            _buildInfoRow(
-              'Compras Efectivo:',
-              formatCurrency(movimientos.comprasEfectivo),
-              valueColor: Colors.orange,
-            ),
-            _buildInfoRow(
-              'Efectivo Esperado:',
-              formatCurrency(
-                _efectivoEsperado > 0
-                    ? _efectivoEsperado
-                    : movimientos.efectivoEsperado,
-              ),
-              valueColor: Colors.yellow,
-            ),
-          ],
-        ),
+            valueColor: Colors.amber,
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildResumenGastosSection() {
     final gastos = _resumenCompletoData!.resumenGastos;
-    final Color cardBg = Color(0xFF2A2A2A);
-    final Color textDark = Colors.white;
-    final Color textLight = Colors.white70;
 
-    return Card(
-      elevation: 4,
-      color: cardBg,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      child: Padding(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Resumen de Gastos',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.red,
-              ),
-            ),
-            SizedBox(height: 16),
-            _buildInfoRow(
-              'Total Gastos:',
-              formatCurrency(gastos.totalGastos),
-              valueColor: Colors.red,
-            ),
-            _buildInfoRow(
-              'Gastos Efectivo:',
-              formatCurrency(gastos.gastosPorFormaPago['efectivo'] ?? 0),
-              valueColor: Colors.red,
-            ),
-            _buildInfoRow(
-              'Gastos Transferencia:',
-              formatCurrency(gastos.gastosPorFormaPago['transferencia'] ?? 0),
-              valueColor: Colors.red,
-            ),
-
-            if (gastos.detallesGastos.isNotEmpty) ...[
-              SizedBox(height: 16),
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.cardBg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.error.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.money_off, color: AppTheme.error, size: 20),
+              SizedBox(width: 8),
               Text(
-                'Detalles de Gastos:',
+                'Resumen de Gastos',
                 style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: textDark,
-                ),
-              ),
-              SizedBox(height: 8),
-              ...gastos.detallesGastos.map(
-                (gasto) => Container(
-                  margin: EdgeInsets.only(bottom: 8),
-                  padding: EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.red.withOpacity(0.3)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Gasto: ${gasto.concepto}',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.red,
-                            ),
-                          ),
-                          Text(
-                            formatCurrency(gasto.monto),
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.red,
-                            ),
-                          ),
-                        ],
-                      ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Concepto: ${gasto.concepto ?? 'N/A'}',
-                            style: TextStyle(fontSize: 12, color: textLight),
-                          ),
-                          Text(
-                            'Forma: ${gasto.formaPago ?? 'N/A'}',
-                            style: TextStyle(fontSize: 12, color: textLight),
-                          ),
-                        ],
-                      ),
-                      Text(
-                        'Proveedor: ${gasto.proveedor ?? 'N/A'}',
-                        style: TextStyle(fontSize: 12, color: textLight),
-                      ),
-                      if (gasto.fecha != null) ...[
-                        SizedBox(height: 4),
-                        Text(
-                          'Fecha: ${_formatearFecha(gasto.fecha!)}',
-                          style: TextStyle(fontSize: 12, color: textLight),
-                        ),
-                      ],
-                    ],
-                  ),
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.error,
                 ),
               ),
             ],
+          ),
+          SizedBox(height: 16),
+          _buildInfoRow(
+            'Total Gastos:',
+            formatCurrency(gastos.totalGastos),
+            valueColor: AppTheme.error,
+          ),
+          _buildInfoRow(
+            'Gastos Efectivo:',
+            formatCurrency(gastos.gastosPorFormaPago['efectivo'] ?? 0),
+            valueColor: AppTheme.error,
+          ),
+          _buildInfoRow(
+            'Gastos Transferencia:',
+            formatCurrency(gastos.gastosPorFormaPago['transferencia'] ?? 0),
+            valueColor: AppTheme.error,
+          ),
+
+          if (gastos.detallesGastos.isNotEmpty) ...[
+            SizedBox(height: 16),
+            Text(
+              'Detalles de Gastos:',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.textPrimary,
+              ),
+            ),
+            SizedBox(height: 8),
+            ...gastos.detallesGastos.map(
+              (gasto) => Container(
+                margin: EdgeInsets.only(bottom: 8),
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppTheme.error.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppTheme.error.withOpacity(0.3)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            gasto.concepto,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.error,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          formatCurrency(gasto.monto),
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.error,
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 4),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Proveedor: ${gasto.proveedor ?? 'N/A'}',
+                          style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                        ),
+                        Text(
+                          'Forma: ${gasto.formaPago ?? 'N/A'}',
+                          style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                        ),
+                      ],
+                    ),
+                    if (gasto.fecha != null) ...[
+                      SizedBox(height: 4),
+                      Text(
+                        'Fecha: ${_formatearFecha(gasto.fecha!)}',
+                        style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
           ],
-        ),
+        ],
       ),
     );
   }
 
   Widget _buildResumenComprasSection() {
     final compras = _resumenCompletoData!.resumenCompras;
-    final Color cardBg = Color(0xFF2A2A2A);
-    final Color textDark = Colors.white;
-    final Color textLight = Colors.white70;
 
-    return Card(
-      elevation: 4,
-      color: cardBg,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      child: Padding(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Resumen de Compras',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.orange,
-              ),
-            ),
-            SizedBox(height: 16),
-            _buildInfoRow(
-              'Total Compras desde Caja:',
-              formatCurrency(compras.totalComprasDesdeCaja),
-              valueColor: Colors.orange,
-            ),
-            _buildInfoRow(
-              'Total Compras No desde Caja:',
-              formatCurrency(compras.totalComprasNoDesdeCaja),
-              valueColor: Colors.orange,
-            ),
-            _buildInfoRow(
-              'Total General de Compras:',
-              formatCurrency(compras.totalComprasGenerales),
-              valueColor: Colors.orange,
-            ),
-
-            if (compras.detallesComprasDesdeCaja.isNotEmpty) ...[
-              SizedBox(height: 16),
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.cardBg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.warning.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.shopping_cart, color: AppTheme.warning, size: 20),
+              SizedBox(width: 8),
               Text(
-                'Compras Pagadas desde Caja:',
+                'Resumen de Compras',
                 style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: textDark,
-                ),
-              ),
-              SizedBox(height: 8),
-              ...compras.detallesComprasDesdeCaja.map(
-                (compra) => Container(
-                  margin: EdgeInsets.only(bottom: 8),
-                  padding: EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.orange.withOpacity(0.3)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            compra.numero,
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.orange,
-                            ),
-                          ),
-                          Text(
-                            formatCurrency(compra.total),
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.orange,
-                            ),
-                          ),
-                        ],
-                      ),
-                      Text(
-                        'Proveedor: ${compra.proveedor}',
-                        style: TextStyle(fontSize: 12, color: textLight),
-                      ),
-                      Text(
-                        'Medio: ${compra.medioPago}',
-                        style: TextStyle(fontSize: 12, color: textLight),
-                      ),
-                      if (compra.fecha != null) ...[
-                        Text(
-                          'Fecha: ${_formatearFecha(compra.fecha!)}',
-                          style: TextStyle(fontSize: 12, color: textLight),
-                        ),
-                      ],
-                    ],
-                  ),
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.warning,
                 ),
               ),
             ],
+          ),
+          SizedBox(height: 16),
+          _buildInfoRow(
+            'Total Compras desde Caja:',
+            formatCurrency(compras.totalComprasDesdeCaja),
+            valueColor: AppTheme.warning,
+          ),
+          _buildInfoRow(
+            'Total Compras No desde Caja:',
+            formatCurrency(compras.totalComprasNoDesdeCaja),
+            valueColor: AppTheme.textSecondary,
+          ),
+          _buildInfoRow(
+            'Total General de Compras:',
+            formatCurrency(compras.totalComprasGenerales),
+            valueColor: AppTheme.warning,
+          ),
+
+          if (compras.detallesComprasDesdeCaja.isNotEmpty) ...[
+            SizedBox(height: 16),
+            Text(
+              'Compras Pagadas desde Caja:',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.textPrimary,
+              ),
+            ),
+            SizedBox(height: 8),
+            ...compras.detallesComprasDesdeCaja.map(
+              (compra) => Container(
+                margin: EdgeInsets.only(bottom: 8),
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppTheme.warning.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppTheme.warning.withOpacity(0.3)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          compra.numero,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.warning,
+                          ),
+                        ),
+                        Text(
+                          formatCurrency(compra.total),
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.warning,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Text(
+                      'Proveedor: ${compra.proveedor}',
+                      style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                    ),
+                    Text(
+                      'Medio: ${compra.medioPago}',
+                      style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                    ),
+                    if (compra.fecha != null) ...[
+                      Text(
+                        'Fecha: ${_formatearFecha(compra.fecha!)}',
+                        style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
           ],
-        ),
+        ],
       ),
     );
   }
 
   Widget _buildResumenVentasSection() {
     final ventas = _resumenCompletoData!.resumenVentas;
-    final Color cardBg = Color(0xFF2A2A2A);
 
-    return Card(
-      elevation: 4,
-      color: cardBg,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      child: Padding(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Resumen de Ventas',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF4CAF50),
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.cardBg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.success.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.trending_up, color: AppTheme.success, size: 20),
+              SizedBox(width: 8),
+              Text(
+                'Resumen de Ventas',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.success,
+                ),
               ),
+            ],
+          ),
+          SizedBox(height: 16),
+          _buildInfoRow('Total Pedidos:', ventas.totalPedidos.toString()),
+          _buildInfoRow(
+            'Total Ventas:',
+            formatCurrency(ventas.totalVentas),
+            valueColor: AppTheme.success,
+          ),
+          _buildInfoRow(
+            'Promedio por Pedido:',
+            ventas.totalPedidos > 0
+                ? formatCurrency(ventas.totalVentas / ventas.totalPedidos)
+                : formatCurrency(0),
+            valueColor: Colors.amber,
+          ),
+          Divider(color: Colors.grey.withOpacity(0.3), height: 24),
+          Text(
+            'Ventas por Forma de Pago:',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.textSecondary,
             ),
-            SizedBox(height: 16),
-            _buildInfoRow('Total Pedidos:', ventas.totalPedidos.toString()),
+          ),
+          SizedBox(height: 8),
+          _buildInfoRow(
+            'Ventas Efectivo:',
+            formatCurrency(ventas.ventasPorFormaPago['efectivo'] ?? 0),
+            valueColor: AppTheme.success,
+          ),
+          _buildInfoRow(
+            'Ventas Transferencia:',
+            formatCurrency(ventas.ventasPorFormaPago['transferencia'] ?? 0),
+            valueColor: AppTheme.primary,
+          ),
+          if ((ventas.ventasPorFormaPago['tarjeta'] ?? 0) > 0)
             _buildInfoRow(
-              'Total Ventas:',
-              formatCurrency(ventas.totalVentas),
-              valueColor: Colors.green,
+              'Ventas Tarjeta:',
+              formatCurrency(ventas.ventasPorFormaPago['tarjeta'] ?? 0),
+              valueColor: AppTheme.warning,
             ),
+          if ((ventas.ventasPorFormaPago['mixto'] ?? 0) > 0)
             _buildInfoRow(
-              'Promedio por Pedido:',
-              ventas.totalPedidos > 0
-                  ? formatCurrency(ventas.totalVentas / ventas.totalPedidos)
-                  : formatCurrency(0),
-              valueColor: Colors.amber,
-            ),
-            Divider(color: Colors.grey.withOpacity(0.3), height: 24),
-            Text(
-              'Ventas por Forma de Pago:',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Colors.white70,
-              ),
-            ),
-            SizedBox(height: 8),
-            _buildInfoRow(
-              'Ventas Efectivo:',
-              formatCurrency(ventas.ventasPorFormaPago['efectivo'] ?? 0),
-              valueColor: Colors.green,
-            ),
-            _buildInfoRow(
-              'Ventas Transferencia:',
-              formatCurrency(ventas.ventasPorFormaPago['transferencia'] ?? 0),
-              valueColor: Colors.blue,
-            ),
-            if ((ventas.ventasPorFormaPago['tarjeta'] ?? 0) > 0)
-              _buildInfoRow(
-                'Ventas Tarjeta:',
-                formatCurrency(ventas.ventasPorFormaPago['tarjeta'] ?? 0),
-                valueColor: Colors.orange,
-              ),
-            if ((ventas.ventasPorFormaPago['mixto'] ?? 0) > 0)
-              _buildInfoRow(
-                'Ventas Mixtas:',
-                formatCurrency(ventas.ventasPorFormaPago['mixto'] ?? 0),
-                valueColor: Colors.purple,
-              ),
-
-            // Display Ingresos Caja
-            Divider(color: Colors.grey.withOpacity(0.3), height: 24),
-            Text(
-              'Ingresos Adicionales:',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Colors.white70,
-              ),
-            ),
-            SizedBox(height: 8),
-            _buildInfoRow(
-              'Ingresos Efectivo:',
-              formatCurrency(
-                _resumenCompletoData?.movimientosEfectivo.ingresosEfectivo ?? 0,
-              ),
-              valueColor: Colors.amber,
-            ),
-            _buildInfoRow(
-              'Total Ingresos Caja:',
-              formatCurrency(
-                _resumenCompletoData?.movimientosEfectivo.totalIngresosCaja ??
-                    0,
-              ),
-              valueColor: Colors.amber,
+              'Ventas Mixtas:',
+              formatCurrency(ventas.ventasPorFormaPago['mixto'] ?? 0),
+              valueColor: AppTheme.secondary,
             ),
 
-            // Add quantity info by payment method
-            Divider(color: Colors.grey.withOpacity(0.3), height: 24),
-            Text(
-              'Cantidad de Pedidos por Forma de Pago:',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Colors.white70,
-              ),
+          // Display Ingresos Caja
+          Divider(color: Colors.grey.withOpacity(0.3), height: 24),
+          Text(
+            'Ingresos Adicionales:',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.textSecondary,
             ),
-            SizedBox(height: 8),
-            _buildInfoRow(
-              'Pedidos en Efectivo:',
-              ventas.cantidadPorFormaPago['efectivo']?.toString() ?? "0",
-              valueColor: Colors.green,
+          ),
+          SizedBox(height: 8),
+          _buildInfoRow(
+            'Ingresos Efectivo:',
+            formatCurrency(
+              _resumenCompletoData?.movimientosEfectivo.ingresosEfectivo ?? 0,
             ),
-            _buildInfoRow(
-              'Pedidos por Transferencia:',
-              ventas.cantidadPorFormaPago['transferencia']?.toString() ?? "0",
-              valueColor: Colors.blue,
+            valueColor: Colors.amber,
+          ),
+          _buildInfoRow(
+            'Total Ingresos Caja:',
+            formatCurrency(
+              _resumenCompletoData?.movimientosEfectivo.totalIngresosCaja ??
+                  0,
             ),
-            if ((ventas.cantidadPorFormaPago['tarjeta'] ?? 0) > 0)
-              _buildInfoRow(
-                'Pedidos con Tarjeta:',
-                ventas.cantidadPorFormaPago['tarjeta']?.toString() ?? "0",
-                valueColor: Colors.orange,
-              ),
-            if ((ventas.cantidadPorFormaPago['mixto'] ?? 0) > 0)
-              _buildInfoRow(
-                'Pedidos con Pago Mixto:',
-                ventas.cantidadPorFormaPago['mixto']?.toString() ?? "0",
-                valueColor: Colors.purple,
-              ),
+            valueColor: Colors.amber,
+          ),
 
-            // Add a summary of today's sales instead of individual orders
-            SizedBox(height: 16),
-            Text(
-              'Resumen General',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Colors.white,
-              ),
+          // Add quantity info by payment method
+          Divider(color: Colors.grey.withOpacity(0.3), height: 24),
+          Text(
+            'Cantidad de Pedidos por Forma de Pago:',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.textSecondary,
             ),
-            SizedBox(height: 8),
-            Container(
-              padding: EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.green.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.green.withOpacity(0.3)),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Pedidos del día: ${ventas.totalPedidos}',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.green,
-                        ),
+          ),
+          SizedBox(height: 8),
+          _buildInfoRow(
+            'Pedidos en Efectivo:',
+            ventas.cantidadPorFormaPago['efectivo']?.toString() ?? "0",
+            valueColor: AppTheme.success,
+          ),
+          _buildInfoRow(
+            'Pedidos por Transferencia:',
+            ventas.cantidadPorFormaPago['transferencia']?.toString() ?? "0",
+            valueColor: AppTheme.primary,
+          ),
+          if ((ventas.cantidadPorFormaPago['tarjeta'] ?? 0) > 0)
+            _buildInfoRow(
+              'Pedidos con Tarjeta:',
+              ventas.cantidadPorFormaPago['tarjeta']?.toString() ?? "0",
+              valueColor: AppTheme.warning,
+            ),
+          if ((ventas.cantidadPorFormaPago['mixto'] ?? 0) > 0)
+            _buildInfoRow(
+              'Pedidos con Pago Mixto:',
+              ventas.cantidadPorFormaPago['mixto']?.toString() ?? "0",
+              valueColor: AppTheme.secondary,
+            ),
+
+          // Add a summary of today's sales instead of individual orders
+          SizedBox(height: 16),
+          Text(
+            'Resumen General',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.textPrimary,
+            ),
+          ),
+          SizedBox(height: 8),
+          Container(
+            padding: EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppTheme.success.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppTheme.success.withOpacity(0.3)),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Pedidos del día: ${ventas.totalPedidos}',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.success,
                       ),
-                      SizedBox(height: 4),
-                      Text(
-                        'Ventas totales: ${formatCurrency(ventas.totalVentas)}',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w500,
-                          color: Colors.white70,
-                        ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'Ventas totales: ${formatCurrency(ventas.totalVentas)}',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w500,
+                        color: AppTheme.textSecondary,
                       ),
-                    ],
-                  ),
-                ],
-              ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

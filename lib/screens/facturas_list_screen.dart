@@ -680,20 +680,50 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
   Future<Map<String, dynamic>> _crearResumenDocumento(dynamic documento) async {
     final negocioInfo = await _negocioInfoService.getNegocioInfo();
 
+    // Helper para formatear fecha (formato YYYY-MM-DD)
+    String formatearFecha(DateTime? fecha) {
+      if (fecha == null) return '';
+      return '${fecha.year}-${fecha.month.toString().padLeft(2, '0')}-${fecha.day.toString().padLeft(2, '0')}';
+    }
+
+    String formatearHora(DateTime? fecha) {
+      if (fecha == null) return '';
+      return '${fecha.hour.toString().padLeft(2, '0')}:${fecha.minute.toString().padLeft(2, '0')}:${fecha.second.toString().padLeft(2, '0')}';
+    }
+
     Map<String, dynamic> resumen;
 
     if (documento is Pedido) {
+      final fechaDoc = documento.fechaPago ?? documento.fecha;
       resumen = {
-        'numeroPedido': documento.id,
-        'fecha': documento.fechaPago ?? documento.fecha,
+        // Datos del negocio
+        'nombreNegocio': negocioInfo?.nombre ?? 'VERCY MOTOS',
+        'nombreRestaurante': negocioInfo?.nombre ?? 'VERCY MOTOS',
+        'nit': negocioInfo?.nit ?? '',
+        'email': negocioInfo?.email ?? '',
+        'telefonoRestaurante': negocioInfo?.telefono ?? '',
+        'direccionRestaurante': negocioInfo?.direccion ?? '',
+        'ciudad': negocioInfo?.ciudad ?? 'MANIZALES',
+        'departamento': negocioInfo?.departamento ?? 'CALDAS',
+        // Datos del documento
+        'numeroPedido': documento.id.toString(),
+        'numero': documento.id.toString(),
+        'fecha': formatearFecha(fechaDoc),
+        'hora': formatearHora(fechaDoc),
+        'fechaVencimiento': formatearFecha(fechaDoc),
         'cliente': documento.cliente ?? 'CONSUMIDOR FINAL',
+        'clienteNit': '222222222-2',
         'productos': documento.items
             .map(
               (item) => {
+                'codigo': item.productoId ?? '',
                 'nombre': item.productoNombre ?? 'Producto',
                 'cantidad': item.cantidad,
+                'precio': item.precioUnitario,
                 'precioUnitario': item.precioUnitario,
                 'subtotal': item.cantidad * item.precioUnitario,
+                'iva': 0,
+                'descuento': 0,
               },
             )
             .toList(),
@@ -701,30 +731,46 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
         'iva': documento.total - (documento.total / 1.19),
         'total': documento.total,
         'metodoPago': documento.formaPago ?? 'EFECTIVO',
-        'negocio': negocioInfo != null
-            ? {
-                'nombre': negocioInfo.nombre,
-                'nit': negocioInfo.nit,
-                'direccion': negocioInfo.direccion,
-                'telefono': negocioInfo.telefono,
-              }
-            : null,
+        'formaPago': documento.formaPago ?? 'EFECTIVO',
+        'vendedor': documento.mesero ?? 'Sin Vendedor',
+        'mesero': documento.mesero ?? 'Sin Vendedor',
       };
     } else if (documento is Factura) {
       final subtotalCalc = documento.subtotal;
       final ivaCalc = documento.total - documento.subtotal;
+      final fechaDoc = documento.fechaCreacion ?? DateTime.now();
       resumen = {
-        'numeroPedido': documento.numero ?? documento.id,
-        'fecha': documento.fechaCreacion ?? DateTime.now(),
-        'cliente': documento.clienteNombre,
+        // Datos del negocio
+        'nombreNegocio': negocioInfo?.nombre ?? 'VERCY MOTOS',
+        'nombreRestaurante': negocioInfo?.nombre ?? 'VERCY MOTOS',
+        'nit': negocioInfo?.nit ?? '',
+        'email': negocioInfo?.email ?? '',
+        'telefonoRestaurante': negocioInfo?.telefono ?? '',
+        'direccionRestaurante': negocioInfo?.direccion ?? '',
+        'ciudad': negocioInfo?.ciudad ?? 'MANIZALES',
+        'departamento': negocioInfo?.departamento ?? 'CALDAS',
+        // Datos del documento
+        'numeroPedido': documento.numero ?? documento.id?.toString() ?? '',
+        'numero': documento.numero ?? documento.id?.toString() ?? '',
+        'fecha': formatearFecha(fechaDoc),
+        'hora': formatearHora(fechaDoc),
+        'fechaVencimiento': formatearFecha(fechaDoc),
+        'cliente': documento.clienteNombre.isNotEmpty
+            ? documento.clienteNombre
+            : 'CONSUMIDOR FINAL',
+        'clienteNit': '222222222-2',
         'productos':
             documento.items
                 ?.map(
                   (item) => {
+                    'codigo': item.productoId ?? '',
                     'nombre': item.productoNombre ?? 'Producto',
                     'cantidad': item.cantidad,
+                    'precio': item.precioUnitario,
                     'precioUnitario': item.precioUnitario,
                     'subtotal': item.cantidad * item.precioUnitario,
+                    'iva': 0,
+                    'descuento': 0,
                   },
                 )
                 .toList() ??
@@ -733,14 +779,9 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
         'iva': ivaCalc,
         'total': documento.total,
         'metodoPago': documento.metodoPago ?? 'EFECTIVO',
-        'negocio': negocioInfo != null
-            ? {
-                'nombre': negocioInfo.nombre,
-                'nit': negocioInfo.nit,
-                'direccion': negocioInfo.direccion,
-                'telefono': negocioInfo.telefono,
-              }
-            : null,
+        'formaPago': documento.metodoPago ?? 'EFECTIVO',
+        'vendedor': 'Sin Vendedor',
+        'mesero': 'Sin Vendedor',
       };
     } else {
       throw Exception('Tipo de documento no soportado');

@@ -48,7 +48,13 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
     setState(() => _isLoading = true);
 
     try {
+      print('🔍 Cargando movimientos de inventario...');
       final movimientos = await _inventarioService.getMovimientosInventario();
+      print('📦 Movimientos recibidos: ${movimientos.length}');
+
+      if (movimientos.isNotEmpty) {
+        print('📋 Primer movimiento: ${movimientos.first.toJson()}');
+      }
 
       setState(() {
         _movimientos = movimientos;
@@ -59,6 +65,7 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
 
       _aplicarFiltros();
     } catch (e) {
+      print('❌ Error al cargar movimientos: $e');
       setState(() {
         _error = 'Error al cargar movimientos: $e';
         _isLoading = false;
@@ -217,6 +224,11 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
   }
 
   void _aplicarFiltros() {
+    print('🔄 Aplicando filtros...');
+    print('📅 Fecha desde: $_fechaDesde');
+    print('📅 Fecha hasta: $_fechaHasta');
+    print('📋 Total movimientos antes de filtrar: ${_movimientos.length}');
+    
     List<MovimientoInventario> filtrados = List.from(_movimientos);
 
     // Filtro por rango de fechas
@@ -225,6 +237,8 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
       return fechaMovimiento.isAfter(_fechaDesde.subtract(Duration(days: 1))) &&
           fechaMovimiento.isBefore(_fechaHasta.add(Duration(days: 1)));
     }).toList();
+    
+    print('📋 Después de filtrar por fechas: ${filtrados.length}');
 
     // Filtro por producto
     if (_productoSeleccionado != 'Todos los productos') {
@@ -255,6 +269,10 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
 
     // Ordenar por fecha descendente (más recientes primero)
     filtrados.sort((a, b) => b.fecha.compareTo(a.fecha));
+    
+    print(
+      '📋 Total movimientos después de todos los filtros: ${filtrados.length}',
+    );
 
     setState(() {
       _movimientosFiltrados = filtrados;
@@ -647,6 +665,19 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                                         ),
                                       ),
                                       Expanded(
+                                        flex: 3,
+                                        child: Center(
+                                          child: Text(
+                                            'MOTIVO',
+                                            style: TextStyle(
+                                              color: AppTheme.textPrimary,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      Expanded(
                                         flex: 2,
                                         child: Center(
                                           child: Text(
@@ -788,6 +819,67 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
                                                   overflow:
                                                       TextOverflow.ellipsis,
                                                   maxLines: 2,
+                                                ),
+                                              ),
+                                            ),
+                                            // Columna MOTIVO
+                                            Expanded(
+                                              flex: 3,
+                                              child: Container(
+                                                padding: EdgeInsets.symmetric(
+                                                  horizontal: 4,
+                                                  vertical: 8,
+                                                ),
+                                                child: Column(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment.center,
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      movimiento.motivo,
+                                                      style: TextStyle(
+                                                        color: AppTheme
+                                                            .textPrimary,
+                                                        fontSize: 10,
+                                                        fontWeight:
+                                                            FontWeight.w500,
+                                                      ),
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                      maxLines: 1,
+                                                    ),
+                                                    if (movimiento.facturaNo !=
+                                                            null &&
+                                                        movimiento
+                                                            .facturaNo!
+                                                            .isNotEmpty)
+                                                      Text(
+                                                        'Ref: ${movimiento.facturaNo}',
+                                                        style: TextStyle(
+                                                          color: AppTheme
+                                                              .textSecondary,
+                                                          fontSize: 9,
+                                                        ),
+                                                        overflow: TextOverflow
+                                                            .ellipsis,
+                                                      ),
+                                                    if (movimiento.proveedor !=
+                                                            null &&
+                                                        movimiento
+                                                            .proveedor!
+                                                            .isNotEmpty)
+                                                      Text(
+                                                        movimiento.proveedor!,
+                                                        style: TextStyle(
+                                                          color:
+                                                              AppTheme.primary,
+                                                          fontSize: 9,
+                                                        ),
+                                                        overflow: TextOverflow
+                                                            .ellipsis,
+                                                      ),
+                                                  ],
                                                 ),
                                               ),
                                             ),

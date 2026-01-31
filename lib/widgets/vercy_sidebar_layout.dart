@@ -322,6 +322,11 @@ class _VercySidebarLayoutState extends State<VercySidebarLayout> {
                 route: '/productos',
               ),
               _SubMenuItem(
+                icon: Icons.category,
+                label: 'Categorías',
+                route: '/categorias',
+              ),
+              _SubMenuItem(
                 icon: Icons.history,
                 label: 'Historial',
                 route: '/historial-inventario',

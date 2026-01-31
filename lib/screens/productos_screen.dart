@@ -2,6 +2,10 @@ import '../widgets/imagen_producto_widget.dart';
 import '../widgets/lazy_product_image_widget.dart';
 import '../widgets/optimized_loading_widget.dart';
 import '../config/performance_config.dart';
+import 'package:barcode_widget/barcode_widget.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -31,7 +35,8 @@ class ProductosScreen extends StatefulWidget {
 }
 
 class _ProductosScreenState extends State<ProductosScreen> {
-  static const String _backendBaseUrl = "https://vercy-motos-app.onrender.com";
+  static const String _backendBaseUrl =
+      "https://vercy-motos-app-048m.onrender.com";
   final ImageService _imageService = ImageService();
   final ProductoService _productoService = ProductoService();
   final ImageLoaderService _imageLoader = ImageLoaderService();
@@ -548,6 +553,11 @@ class _ProductosScreenState extends State<ProductosScreen> {
         centerTitle: true,
         actions: [
           IconButton(
+            icon: Icon(Icons.qr_code_2),
+            tooltip: 'Imprimir Códigos de Barras',
+            onPressed: () => _mostrarDialogoImprimirCodigoBarras(),
+          ),
+          IconButton(
             icon: _isRefreshing
                 ? SizedBox(
                     width: 20,
@@ -1039,12 +1049,23 @@ class _ProductosScreenState extends State<ProductosScreen> {
       }
     }
 
-    // Controladores para el formulario
+    // Controladores para el formulario - INFORMACIÓN BÁSICA
     final nombreController = TextEditingController(
       text: isEditing ? producto.nombre : '',
     );
+    final descripcionController = TextEditingController(
+      text: isEditing ? producto.descripcion ?? '' : '',
+    );
 
-    print('✅ NombreController inicializado con: "${nombreController.text}"');
+    // CÓDIGOS E IDENTIFICACIÓN (SEPARADOS)
+    final codigoController = TextEditingController(
+      text: isEditing ? (producto.codigo ?? '') : '',
+    );
+    final codigoBarrasController = TextEditingController(
+      text: isEditing ? (producto.codigoBarras ?? '') : '',
+    );
+
+    // PRECIOS
     final precioController = TextEditingController(
       text: isEditing ? producto.precio.toString() : '',
     );
@@ -1056,6 +1077,97 @@ class _ProductosScreenState extends State<ProductosScreen> {
     );
     final utilidadController = TextEditingController(
       text: isEditing ? producto.utilidad.toString() : '',
+    );
+    final porcentajeImpuestoController = TextEditingController(
+      text: isEditing ? (producto.porcentajeImpuesto?.toString() ?? '') : '',
+    );
+
+    // PRECIOS OPCIONALES
+    final precioVentaOpc1Controller = TextEditingController(
+      text: isEditing ? (producto.precioVentaOpc1?.toString() ?? '') : '',
+    );
+    final precioVentaOpc2Controller = TextEditingController(
+      text: isEditing ? (producto.precioVentaOpc2?.toString() ?? '') : '',
+    );
+    final precioVentaOpc3Controller = TextEditingController(
+      text: isEditing ? (producto.precioVentaOpc3?.toString() ?? '') : '',
+    );
+    final precioVentaOpc4Controller = TextEditingController(
+      text: isEditing ? (producto.precioVentaOpc4?.toString() ?? '') : '',
+    );
+    final precioVentaOpc5Controller = TextEditingController(
+      text: isEditing ? (producto.precioVentaOpc5?.toString() ?? '') : '',
+    );
+
+    // CLASIFICACIÓN
+    final productoOServicioController = TextEditingController(
+      text: isEditing ? (producto.productoOServicio ?? '') : '',
+    );
+    final tipoProductoNombreController = TextEditingController(
+      text: isEditing ? (producto.tipoProductoNombre ?? '') : '',
+    );
+    final lineaProductoNombreController = TextEditingController(
+      text: isEditing ? (producto.lineaProductoNombre ?? '') : '',
+    );
+    final claseProductoNombreController = TextEditingController(
+      text: isEditing ? (producto.claseProductoNombre ?? '') : '',
+    );
+    final marcaController = TextEditingController(
+      text: isEditing ? (producto.marca ?? '') : '',
+    );
+
+    // INVENTARIO
+    final controlInventarioController = TextEditingController(
+      text: isEditing ? (producto.controlInventario ?? '') : '',
+    );
+    final inventarioBajoController = TextEditingController(
+      text: isEditing ? (producto.inventarioBajo?.toString() ?? '') : '',
+    );
+    final inventarioOptimoController = TextEditingController(
+      text: isEditing ? (producto.inventarioOptimo?.toString() ?? '') : '',
+    );
+    final localizacionController = TextEditingController(
+      text: isEditing ? (producto.localizacion ?? '') : '',
+    );
+
+    // PROVEEDOR
+    final nombreProveedorController = TextEditingController(
+      text: isEditing ? (producto.nombreProveedor ?? '') : '',
+    );
+    final nitProveedorController = TextEditingController(
+      text: isEditing ? (producto.nitProveedor ?? '') : '',
+    );
+
+    // BODEGA Y UBICACIONES
+    final almacenController = TextEditingController(
+      text: isEditing ? (producto.almacen?.toString() ?? '') : '',
+    );
+    final bodegaController = TextEditingController(
+      text: isEditing ? (producto.bodega?.toString() ?? '') : '',
+    );
+    final ubicacion1Controller = TextEditingController(
+      text: isEditing ? (producto.ubicacion1 ?? '') : '',
+    );
+    final ubicacion2Controller = TextEditingController(
+      text: isEditing ? (producto.ubicacion2 ?? '') : '',
+    );
+    final ubicacion3Controller = TextEditingController(
+      text: isEditing ? (producto.ubicacion3 ?? '') : '',
+    );
+    final ubicacion4Controller = TextEditingController(
+      text: isEditing ? (producto.ubicacion4 ?? '') : '',
+    );
+    final localizacionUbi1Controller = TextEditingController(
+      text: isEditing ? (producto.localizacionUbi1 ?? '') : '',
+    );
+    final localizacionUbi2Controller = TextEditingController(
+      text: isEditing ? (producto.localizacionUbi2 ?? '') : '',
+    );
+    final localizacionUbi3Controller = TextEditingController(
+      text: isEditing ? (producto.localizacionUbi3 ?? '') : '',
+    );
+    final localizacionUbi4Controller = TextEditingController(
+      text: isEditing ? (producto.localizacionUbi4 ?? '') : '',
     );
 
     // Función para calcular la utilidad automáticamente
@@ -1086,9 +1198,6 @@ class _ProductosScreenState extends State<ProductosScreen> {
     // Agregar listeners para cálculo automático
     precioController.addListener(calcularUtilidad);
     costoController.addListener(calcularUtilidad);
-    final descripcionController = TextEditingController(
-      text: isEditing ? producto.descripcion ?? '' : '',
-    );
 
     bool tieneVariantes = isEditing ? producto.tieneVariantes : false;
     String estado = isEditing ? producto.estado : 'Activo';
@@ -1339,6 +1448,233 @@ class _ProductosScreenState extends State<ProductosScreen> {
                     ),
                     SizedBox(height: 16),
 
+                    // ══════════════════════════════════════
+                    // SECCIÓN: CÓDIGOS E IDENTIFICACIÓN
+                    // ══════════════════════════════════════
+                    ExpansionTile(
+                      initiallyExpanded: true,
+                      title: Text(
+                        'Códigos e Identificación',
+                        style: TextStyle(
+                          color: AppTheme.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      iconColor: AppTheme.primary,
+                      collapsedIconColor: AppTheme.textPrimary,
+                      children: [
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 16),
+                          child: Column(
+                            children: [
+                              // Código interno
+                              TextField(
+                                controller: codigoController,
+                                style: TextStyle(color: AppTheme.textPrimary),
+                                decoration: InputDecoration(
+                                  labelText: 'Código Interno',
+                                  labelStyle: TextStyle(
+                                    color: AppTheme.textPrimary.withOpacity(
+                                      0.7,
+                                    ),
+                                  ),
+                                  prefixIcon: Icon(
+                                    Icons.tag,
+                                    color: AppTheme.primary,
+                                  ),
+                                  helperText: 'Código único del sistema',
+                                  helperStyle: TextStyle(
+                                    color: AppTheme.textSecondary,
+                                    fontSize: 11,
+                                  ),
+                                  filled: true,
+                                  fillColor: AppTheme.cardBg.withOpacity(0.3),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                    borderSide: BorderSide(
+                                      color: AppTheme.primary,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(height: 16),
+
+                              // Código de barras
+                              TextField(
+                                controller: codigoBarrasController,
+                                style: TextStyle(color: AppTheme.textPrimary),
+                                decoration: InputDecoration(
+                                  labelText: 'Código de Barras',
+                                  labelStyle: TextStyle(
+                                    color: AppTheme.textPrimary.withOpacity(
+                                      0.7,
+                                    ),
+                                  ),
+                                  prefixIcon: Icon(
+                                    Icons.qr_code,
+                                    color: AppTheme.primary,
+                                  ),
+                                  helperText:
+                                      'Escanea o ingresa el código manualmente',
+                                  helperStyle: TextStyle(
+                                    color: AppTheme.textSecondary,
+                                    fontSize: 11,
+                                  ),
+                                  filled: true,
+                                  fillColor: AppTheme.cardBg.withOpacity(0.3),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                    borderSide: BorderSide(
+                                      color: AppTheme.primary,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(height: 16),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    // ══════════════════════════════════════
+                    // SECCIÓN: CLASIFICACIÓN
+                    // ══════════════════════════════════════
+                    ExpansionTile(
+                      initiallyExpanded: false,
+                      title: Text(
+                        'Clasificación del Producto',
+                        style: TextStyle(
+                          color: AppTheme.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      iconColor: AppTheme.primary,
+                      collapsedIconColor: AppTheme.textPrimary,
+                      children: [
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 16),
+                          child: Column(
+                            children: [
+                              // Producto o Servicio
+                              TextField(
+                                controller: productoOServicioController,
+                                style: TextStyle(color: AppTheme.textPrimary),
+                                decoration: InputDecoration(
+                                  labelText: 'Producto o Servicio',
+                                  helperText:
+                                      'Ej: Producto, Servicio, Materia Prima',
+                                  helperStyle: TextStyle(fontSize: 11),
+                                  filled: true,
+                                  fillColor: AppTheme.cardBg.withOpacity(0.3),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(height: 16),
+
+                              // Tipo Producto
+                              TextField(
+                                controller: tipoProductoNombreController,
+                                style: TextStyle(color: AppTheme.textPrimary),
+                                decoration: InputDecoration(
+                                  labelText: 'Tipo Producto',
+                                  helperText: 'Ej: Repuesto, Aceite, Llanta',
+                                  helperStyle: TextStyle(fontSize: 11),
+                                  filled: true,
+                                  fillColor: AppTheme.cardBg.withOpacity(0.3),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(height: 16),
+
+                              // Línea Producto
+                              TextField(
+                                controller: lineaProductoNombreController,
+                                style: TextStyle(color: AppTheme.textPrimary),
+                                decoration: InputDecoration(
+                                  labelText: 'Línea Producto',
+                                  helperText: 'Ej: Motos, Accesorios',
+                                  helperStyle: TextStyle(fontSize: 11),
+                                  filled: true,
+                                  fillColor: AppTheme.cardBg.withOpacity(0.3),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(height: 16),
+
+                              // Clase Producto
+                              TextField(
+                                controller: claseProductoNombreController,
+                                style: TextStyle(color: AppTheme.textPrimary),
+                                decoration: InputDecoration(
+                                  labelText: 'Clase Producto',
+                                  helperText: 'Subcategoría específica',
+                                  helperStyle: TextStyle(fontSize: 11),
+                                  filled: true,
+                                  fillColor: AppTheme.cardBg.withOpacity(0.3),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(height: 16),
+
+                              // Marca
+                              TextField(
+                                controller: marcaController,
+                                style: TextStyle(color: AppTheme.textPrimary),
+                                decoration: InputDecoration(
+                                  labelText: 'Marca',
+                                  prefixIcon: Icon(Icons.branding_watermark),
+                                  filled: true,
+                                  fillColor: AppTheme.cardBg.withOpacity(0.3),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(height: 16),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    // Descripción
+                    TextField(
+                      controller: descripcionController,
+                      maxLines: 3,
+                      style: TextStyle(color: AppTheme.textPrimary),
+                      decoration: InputDecoration(
+                        labelText: 'Descripción (Opcional)',
+                        labelStyle: TextStyle(
+                          color: AppTheme.textPrimary.withOpacity(0.7),
+                        ),
+                        filled: true,
+                        fillColor: AppTheme.cardBg.withOpacity(0.3),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: AppTheme.primary),
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 16),
+
                     // Precio
                     TextField(
                       controller: precioController,
@@ -1522,6 +1858,460 @@ class _ProductosScreenState extends State<ProductosScreen> {
                     ),
                     SizedBox(height: 16),
 
+                    // ══════════════════════════════════════
+                    // SECCIÓN: INVENTARIO Y CONTROL
+                    // ══════════════════════════════════════
+                    ExpansionTile(
+                      initiallyExpanded: false,
+                      title: Text(
+                        'Inventario y Control',
+                        style: TextStyle(
+                          color: AppTheme.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      iconColor: AppTheme.primary,
+                      collapsedIconColor: AppTheme.textPrimary,
+                      children: [
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 16),
+                          child: Column(
+                            children: [
+                              // Control de inventario
+                              TextField(
+                                controller: controlInventarioController,
+                                style: TextStyle(color: AppTheme.textPrimary),
+                                decoration: InputDecoration(
+                                  labelText: 'Control de Inventario',
+                                  helperText: 'Ej: SI, NO',
+                                  helperStyle: TextStyle(fontSize: 11),
+                                  filled: true,
+                                  fillColor: AppTheme.cardBg.withOpacity(0.3),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(height: 16),
+
+                              // % Impuesto
+                              TextField(
+                                controller: porcentajeImpuestoController,
+                                style: TextStyle(color: AppTheme.textPrimary),
+                                keyboardType: TextInputType.number,
+                                decoration: InputDecoration(
+                                  labelText: '% Impuesto',
+                                  prefixIcon: Icon(Icons.percent),
+                                  helperText: 'Porcentaje de impuesto (0-100)',
+                                  helperStyle: TextStyle(fontSize: 11),
+                                  filled: true,
+                                  fillColor: AppTheme.cardBg.withOpacity(0.3),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(height: 16),
+
+                              // Inventario bajo
+                              TextField(
+                                controller: inventarioBajoController,
+                                style: TextStyle(color: AppTheme.textPrimary),
+                                keyboardType: TextInputType.number,
+                                decoration: InputDecoration(
+                                  labelText: 'Inventario Bajo',
+                                  helperText: 'Cantidad mínima para alerta',
+                                  helperStyle: TextStyle(fontSize: 11),
+                                  filled: true,
+                                  fillColor: AppTheme.cardBg.withOpacity(0.3),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(height: 16),
+
+                              // Inventario óptimo
+                              TextField(
+                                controller: inventarioOptimoController,
+                                style: TextStyle(color: AppTheme.textPrimary),
+                                keyboardType: TextInputType.number,
+                                decoration: InputDecoration(
+                                  labelText: 'Inventario Óptimo',
+                                  helperText: 'Cantidad ideal en existencia',
+                                  helperStyle: TextStyle(fontSize: 11),
+                                  filled: true,
+                                  fillColor: AppTheme.cardBg.withOpacity(0.3),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(height: 16),
+
+                              // Localización
+                              TextField(
+                                controller: localizacionController,
+                                style: TextStyle(color: AppTheme.textPrimary),
+                                decoration: InputDecoration(
+                                  labelText: 'Localización',
+                                  prefixIcon: Icon(Icons.location_on),
+                                  helperText: 'Ubicación general del producto',
+                                  helperStyle: TextStyle(fontSize: 11),
+                                  filled: true,
+                                  fillColor: AppTheme.cardBg.withOpacity(0.3),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(height: 16),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    // ══════════════════════════════════════
+                    // SECCIÓN: PROVEEDOR
+                    // ══════════════════════════════════════
+                    ExpansionTile(
+                      initiallyExpanded: false,
+                      title: Text(
+                        'Información del Proveedor',
+                        style: TextStyle(
+                          color: AppTheme.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      iconColor: AppTheme.primary,
+                      collapsedIconColor: AppTheme.textPrimary,
+                      children: [
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 16),
+                          child: Column(
+                            children: [
+                              // Nombre proveedor
+                              TextField(
+                                controller: nombreProveedorController,
+                                style: TextStyle(color: AppTheme.textPrimary),
+                                decoration: InputDecoration(
+                                  labelText: 'Nombre Proveedor',
+                                  prefixIcon: Icon(Icons.business),
+                                  filled: true,
+                                  fillColor: AppTheme.cardBg.withOpacity(0.3),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(height: 16),
+
+                              // NIT proveedor
+                              TextField(
+                                controller: nitProveedorController,
+                                style: TextStyle(color: AppTheme.textPrimary),
+                                decoration: InputDecoration(
+                                  labelText: 'NIT Proveedor (sin DV)',
+                                  prefixIcon: Icon(Icons.badge),
+                                  filled: true,
+                                  fillColor: AppTheme.cardBg.withOpacity(0.3),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(height: 16),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    // ══════════════════════════════════════
+                    // SECCIÓN: BODEGA Y UBICACIONES
+                    // ══════════════════════════════════════
+                    ExpansionTile(
+                      initiallyExpanded: false,
+                      title: Text(
+                        'Bodega y Ubicaciones',
+                        style: TextStyle(
+                          color: AppTheme.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      iconColor: AppTheme.primary,
+                      collapsedIconColor: AppTheme.textPrimary,
+                      children: [
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 16),
+                          child: Column(
+                            children: [
+                              // Almacén
+                              TextField(
+                                controller: almacenController,
+                                style: TextStyle(color: AppTheme.textPrimary),
+                                keyboardType: TextInputType.number,
+                                decoration: InputDecoration(
+                                  labelText: 'Almacén',
+                                  prefixIcon: Icon(Icons.warehouse),
+                                  helperText: 'Número de almacén',
+                                  helperStyle: TextStyle(fontSize: 11),
+                                  filled: true,
+                                  fillColor: AppTheme.cardBg.withOpacity(0.3),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(height: 16),
+
+                              // Bodega
+                              TextField(
+                                controller: bodegaController,
+                                style: TextStyle(color: AppTheme.textPrimary),
+                                keyboardType: TextInputType.number,
+                                decoration: InputDecoration(
+                                  labelText: 'Bodega',
+                                  prefixIcon: Icon(Icons.store),
+                                  helperText: 'Número de bodega',
+                                  helperStyle: TextStyle(fontSize: 11),
+                                  filled: true,
+                                  fillColor: AppTheme.cardBg.withOpacity(0.3),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(height: 16),
+
+                              // Ubicación 1
+                              TextField(
+                                controller: ubicacion1Controller,
+                                style: TextStyle(color: AppTheme.textPrimary),
+                                decoration: InputDecoration(
+                                  labelText: 'Ubicación 1',
+                                  filled: true,
+                                  fillColor: AppTheme.cardBg.withOpacity(0.3),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(height: 16),
+
+                              // Ubicación 2
+                              TextField(
+                                controller: ubicacion2Controller,
+                                style: TextStyle(color: AppTheme.textPrimary),
+                                decoration: InputDecoration(
+                                  labelText: 'Ubicación 2',
+                                  filled: true,
+                                  fillColor: AppTheme.cardBg.withOpacity(0.3),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(height: 16),
+
+                              // Ubicación 3
+                              TextField(
+                                controller: ubicacion3Controller,
+                                style: TextStyle(color: AppTheme.textPrimary),
+                                decoration: InputDecoration(
+                                  labelText: 'Ubicación 3',
+                                  filled: true,
+                                  fillColor: AppTheme.cardBg.withOpacity(0.3),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(height: 16),
+
+                              // Ubicación 4
+                              TextField(
+                                controller: ubicacion4Controller,
+                                style: TextStyle(color: AppTheme.textPrimary),
+                                decoration: InputDecoration(
+                                  labelText: 'Ubicación 4',
+                                  filled: true,
+                                  fillColor: AppTheme.cardBg.withOpacity(0.3),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(height: 16),
+
+                              // Localización Ubi 1-4
+                              TextField(
+                                controller: localizacionUbi1Controller,
+                                style: TextStyle(color: AppTheme.textPrimary),
+                                decoration: InputDecoration(
+                                  labelText: 'Localización Ubicación 1',
+                                  filled: true,
+                                  fillColor: AppTheme.cardBg.withOpacity(0.3),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(height: 16),
+
+                              TextField(
+                                controller: localizacionUbi2Controller,
+                                style: TextStyle(color: AppTheme.textPrimary),
+                                decoration: InputDecoration(
+                                  labelText: 'Localización Ubicación 2',
+                                  filled: true,
+                                  fillColor: AppTheme.cardBg.withOpacity(0.3),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(height: 16),
+
+                              TextField(
+                                controller: localizacionUbi3Controller,
+                                style: TextStyle(color: AppTheme.textPrimary),
+                                decoration: InputDecoration(
+                                  labelText: 'Localización Ubicación 3',
+                                  filled: true,
+                                  fillColor: AppTheme.cardBg.withOpacity(0.3),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(height: 16),
+
+                              TextField(
+                                controller: localizacionUbi4Controller,
+                                style: TextStyle(color: AppTheme.textPrimary),
+                                decoration: InputDecoration(
+                                  labelText: 'Localización Ubicación 4',
+                                  filled: true,
+                                  fillColor: AppTheme.cardBg.withOpacity(0.3),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(height: 16),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    // ══════════════════════════════════════
+                    // SECCIÓN: PRECIOS OPCIONALES
+                    // ══════════════════════════════════════
+                    ExpansionTile(
+                      initiallyExpanded: false,
+                      title: Text(
+                        'Precios de Venta Opcionales',
+                        style: TextStyle(
+                          color: AppTheme.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      iconColor: AppTheme.primary,
+                      collapsedIconColor: AppTheme.textPrimary,
+                      children: [
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 16),
+                          child: Column(
+                            children: [
+                              // Precio Venta Opción 1
+                              TextField(
+                                controller: precioVentaOpc1Controller,
+                                style: TextStyle(color: AppTheme.textPrimary),
+                                keyboardType: TextInputType.number,
+                                decoration: InputDecoration(
+                                  labelText: 'Precio de Venta Opción 1',
+                                  prefixText: '\$ ',
+                                  filled: true,
+                                  fillColor: AppTheme.cardBg.withOpacity(0.3),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(height: 16),
+
+                              TextField(
+                                controller: precioVentaOpc2Controller,
+                                style: TextStyle(color: AppTheme.textPrimary),
+                                keyboardType: TextInputType.number,
+                                decoration: InputDecoration(
+                                  labelText: 'Precio de Venta Opción 2',
+                                  prefixText: '\$ ',
+                                  filled: true,
+                                  fillColor: AppTheme.cardBg.withOpacity(0.3),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(height: 16),
+
+                              TextField(
+                                controller: precioVentaOpc3Controller,
+                                style: TextStyle(color: AppTheme.textPrimary),
+                                keyboardType: TextInputType.number,
+                                decoration: InputDecoration(
+                                  labelText: 'Precio de Venta Opción 3',
+                                  prefixText: '\$ ',
+                                  filled: true,
+                                  fillColor: AppTheme.cardBg.withOpacity(0.3),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(height: 16),
+
+                              TextField(
+                                controller: precioVentaOpc4Controller,
+                                style: TextStyle(color: AppTheme.textPrimary),
+                                keyboardType: TextInputType.number,
+                                decoration: InputDecoration(
+                                  labelText: 'Precio de Venta Opción 4',
+                                  prefixText: '\$ ',
+                                  filled: true,
+                                  fillColor: AppTheme.cardBg.withOpacity(0.3),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(height: 16),
+
+                              TextField(
+                                controller: precioVentaOpc5Controller,
+                                style: TextStyle(color: AppTheme.textPrimary),
+                                keyboardType: TextInputType.number,
+                                decoration: InputDecoration(
+                                  labelText: 'Precio de Venta Opción 5',
+                                  prefixText: '\$ ',
+                                  filled: true,
+                                  fillColor: AppTheme.cardBg.withOpacity(0.3),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(height: 16),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+
                     // Categoría
                     DropdownButtonFormField<String>(
                       initialValue: selectedCategoriaId,
@@ -1556,6 +2346,70 @@ class _ProductosScreenState extends State<ProductosScreen> {
                       onChanged: (value) {
                         setState(() {
                           selectedCategoriaId = value;
+                        });
+                      },
+                    ),
+                    SizedBox(height: 16),
+
+                    // Estado
+                    DropdownButtonFormField<String>(
+                      value: estado,
+                      style: TextStyle(color: AppTheme.textPrimary),
+                      dropdownColor: AppTheme.cardBg,
+                      decoration: InputDecoration(
+                        labelText: 'Estado',
+                        labelStyle: TextStyle(
+                          color: AppTheme.textPrimary.withOpacity(0.7),
+                        ),
+                        prefixIcon: Icon(
+                          Icons.toggle_on,
+                          color: AppTheme.primary,
+                        ),
+                        filled: true,
+                        fillColor: AppTheme.cardBg.withOpacity(0.3),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: AppTheme.primary),
+                        ),
+                      ),
+                      items: [
+                        DropdownMenuItem<String>(
+                          value: 'Activo',
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.check_circle,
+                                color: Colors.green,
+                                size: 16,
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                'Activo',
+                                style: TextStyle(color: AppTheme.textPrimary),
+                              ),
+                            ],
+                          ),
+                        ),
+                        DropdownMenuItem<String>(
+                          value: 'Inactivo',
+                          child: Row(
+                            children: [
+                              Icon(Icons.cancel, color: Colors.red, size: 16),
+                              SizedBox(width: 8),
+                              Text(
+                                'Inactivo',
+                                style: TextStyle(color: AppTheme.textPrimary),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        setState(() {
+                          estado = value!;
                         });
                       },
                     ),
@@ -2081,6 +2935,14 @@ class _ProductosScreenState extends State<ProductosScreen> {
                                 costo: double.parse(costoController.text),
                                 imagenUrl: finalImageUrl,
                                 categoria: categoriaSeleccionada,
+                                // CÓDIGOS SEPARADOS
+                                codigo: codigoController.text.isNotEmpty
+                                    ? codigoController.text
+                                    : null,
+                                codigoBarras:
+                                    codigoBarrasController.text.isNotEmpty
+                                    ? codigoBarrasController.text
+                                    : null,
                                 descripcion:
                                     descripcionController.text.isNotEmpty
                                     ? descripcionController.text
@@ -2091,6 +2953,105 @@ class _ProductosScreenState extends State<ProductosScreen> {
                                 utilidad:
                                     double.tryParse(utilidadController.text) ??
                                     0,
+                                // CLASIFICACIÓN
+                                productoOServicio:
+                                    productoOServicioController.text.isNotEmpty
+                                    ? productoOServicioController.text
+                                    : null,
+                                tipoProductoNombre:
+                                    tipoProductoNombreController.text.isNotEmpty
+                                    ? tipoProductoNombreController.text
+                                    : null,
+                                lineaProductoNombre:
+                                    lineaProductoNombreController
+                                        .text
+                                        .isNotEmpty
+                                    ? lineaProductoNombreController.text
+                                    : null,
+                                claseProductoNombre:
+                                    claseProductoNombreController
+                                        .text
+                                        .isNotEmpty
+                                    ? claseProductoNombreController.text
+                                    : null,
+                                marca: marcaController.text.isNotEmpty
+                                    ? marcaController.text
+                                    : null,
+                                // INVENTARIO
+                                controlInventario:
+                                    controlInventarioController.text.isNotEmpty
+                                    ? controlInventarioController.text
+                                    : null,
+                                porcentajeImpuesto: double.tryParse(
+                                  porcentajeImpuestoController.text,
+                                ),
+                                inventarioBajo: int.tryParse(
+                                  inventarioBajoController.text,
+                                ),
+                                inventarioOptimo: int.tryParse(
+                                  inventarioOptimoController.text,
+                                ),
+                                localizacion:
+                                    localizacionController.text.isNotEmpty
+                                    ? localizacionController.text
+                                    : null,
+                                // PROVEEDOR
+                                nombreProveedor:
+                                    nombreProveedorController.text.isNotEmpty
+                                    ? nombreProveedorController.text
+                                    : null,
+                                nitProveedor:
+                                    nitProveedorController.text.isNotEmpty
+                                    ? nitProveedorController.text
+                                    : null,
+                                // PRECIOS OPCIONALES
+                                precioVentaOpc1: double.tryParse(
+                                  precioVentaOpc1Controller.text,
+                                ),
+                                precioVentaOpc2: double.tryParse(
+                                  precioVentaOpc2Controller.text,
+                                ),
+                                precioVentaOpc3: double.tryParse(
+                                  precioVentaOpc3Controller.text,
+                                ),
+                                precioVentaOpc4: double.tryParse(
+                                  precioVentaOpc4Controller.text,
+                                ),
+                                precioVentaOpc5: double.tryParse(
+                                  precioVentaOpc5Controller.text,
+                                ),
+                                // BODEGA Y UBICACIONES
+                                almacen: int.tryParse(almacenController.text),
+                                bodega: int.tryParse(bodegaController.text),
+                                ubicacion1: ubicacion1Controller.text.isNotEmpty
+                                    ? ubicacion1Controller.text
+                                    : null,
+                                ubicacion2: ubicacion2Controller.text.isNotEmpty
+                                    ? ubicacion2Controller.text
+                                    : null,
+                                ubicacion3: ubicacion3Controller.text.isNotEmpty
+                                    ? ubicacion3Controller.text
+                                    : null,
+                                ubicacion4: ubicacion4Controller.text.isNotEmpty
+                                    ? ubicacion4Controller.text
+                                    : null,
+                                localizacionUbi1:
+                                    localizacionUbi1Controller.text.isNotEmpty
+                                    ? localizacionUbi1Controller.text
+                                    : null,
+                                localizacionUbi2:
+                                    localizacionUbi2Controller.text.isNotEmpty
+                                    ? localizacionUbi2Controller.text
+                                    : null,
+                                localizacionUbi3:
+                                    localizacionUbi3Controller.text.isNotEmpty
+                                    ? localizacionUbi3Controller.text
+                                    : null,
+                                localizacionUbi4:
+                                    localizacionUbi4Controller.text.isNotEmpty
+                                    ? localizacionUbi4Controller.text
+                                    : null,
+                                // OTROS
                                 tieneVariantes: tieneVariantes,
                                 estado: estado,
                                 ingredientesDisponibles:
@@ -2138,6 +3099,14 @@ class _ProductosScreenState extends State<ProductosScreen> {
                                 costo: double.parse(costoController.text),
                                 imagenUrl: finalImageUrl,
                                 categoria: categoriaSeleccionada,
+                                // CÓDIGOS SEPARADOS
+                                codigo: codigoController.text.isNotEmpty
+                                    ? codigoController.text
+                                    : null,
+                                codigoBarras:
+                                    codigoBarrasController.text.isNotEmpty
+                                    ? codigoBarrasController.text
+                                    : null,
                                 descripcion:
                                     descripcionController.text.isNotEmpty
                                     ? descripcionController.text
@@ -2148,6 +3117,105 @@ class _ProductosScreenState extends State<ProductosScreen> {
                                 utilidad:
                                     double.tryParse(utilidadController.text) ??
                                     0,
+                                // CLASIFICACIÓN
+                                productoOServicio:
+                                    productoOServicioController.text.isNotEmpty
+                                    ? productoOServicioController.text
+                                    : null,
+                                tipoProductoNombre:
+                                    tipoProductoNombreController.text.isNotEmpty
+                                    ? tipoProductoNombreController.text
+                                    : null,
+                                lineaProductoNombre:
+                                    lineaProductoNombreController
+                                        .text
+                                        .isNotEmpty
+                                    ? lineaProductoNombreController.text
+                                    : null,
+                                claseProductoNombre:
+                                    claseProductoNombreController
+                                        .text
+                                        .isNotEmpty
+                                    ? claseProductoNombreController.text
+                                    : null,
+                                marca: marcaController.text.isNotEmpty
+                                    ? marcaController.text
+                                    : null,
+                                // INVENTARIO
+                                controlInventario:
+                                    controlInventarioController.text.isNotEmpty
+                                    ? controlInventarioController.text
+                                    : null,
+                                porcentajeImpuesto: double.tryParse(
+                                  porcentajeImpuestoController.text,
+                                ),
+                                inventarioBajo: int.tryParse(
+                                  inventarioBajoController.text,
+                                ),
+                                inventarioOptimo: int.tryParse(
+                                  inventarioOptimoController.text,
+                                ),
+                                localizacion:
+                                    localizacionController.text.isNotEmpty
+                                    ? localizacionController.text
+                                    : null,
+                                // PROVEEDOR
+                                nombreProveedor:
+                                    nombreProveedorController.text.isNotEmpty
+                                    ? nombreProveedorController.text
+                                    : null,
+                                nitProveedor:
+                                    nitProveedorController.text.isNotEmpty
+                                    ? nitProveedorController.text
+                                    : null,
+                                // PRECIOS OPCIONALES
+                                precioVentaOpc1: double.tryParse(
+                                  precioVentaOpc1Controller.text,
+                                ),
+                                precioVentaOpc2: double.tryParse(
+                                  precioVentaOpc2Controller.text,
+                                ),
+                                precioVentaOpc3: double.tryParse(
+                                  precioVentaOpc3Controller.text,
+                                ),
+                                precioVentaOpc4: double.tryParse(
+                                  precioVentaOpc4Controller.text,
+                                ),
+                                precioVentaOpc5: double.tryParse(
+                                  precioVentaOpc5Controller.text,
+                                ),
+                                // BODEGA Y UBICACIONES
+                                almacen: int.tryParse(almacenController.text),
+                                bodega: int.tryParse(bodegaController.text),
+                                ubicacion1: ubicacion1Controller.text.isNotEmpty
+                                    ? ubicacion1Controller.text
+                                    : null,
+                                ubicacion2: ubicacion2Controller.text.isNotEmpty
+                                    ? ubicacion2Controller.text
+                                    : null,
+                                ubicacion3: ubicacion3Controller.text.isNotEmpty
+                                    ? ubicacion3Controller.text
+                                    : null,
+                                ubicacion4: ubicacion4Controller.text.isNotEmpty
+                                    ? ubicacion4Controller.text
+                                    : null,
+                                localizacionUbi1:
+                                    localizacionUbi1Controller.text.isNotEmpty
+                                    ? localizacionUbi1Controller.text
+                                    : null,
+                                localizacionUbi2:
+                                    localizacionUbi2Controller.text.isNotEmpty
+                                    ? localizacionUbi2Controller.text
+                                    : null,
+                                localizacionUbi3:
+                                    localizacionUbi3Controller.text.isNotEmpty
+                                    ? localizacionUbi3Controller.text
+                                    : null,
+                                localizacionUbi4:
+                                    localizacionUbi4Controller.text.isNotEmpty
+                                    ? localizacionUbi4Controller.text
+                                    : null,
+                                // OTROS
                                 tieneVariantes: tieneVariantes,
                                 estado: estado,
                                 ingredientesDisponibles:
@@ -2182,6 +3250,15 @@ class _ProductosScreenState extends State<ProductosScreen> {
                                   listen: false,
                                 );
                             await cacheProvider.recargarDatos();
+
+                            // Actualizar lista local con copia para evitar modificación concurrente
+                            if (mounted) {
+                              setState(() {
+                                _productosCache = List.from(
+                                  cacheProvider.productos ?? [],
+                                );
+                              });
+                            }
 
                             if (mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -3239,4 +4316,560 @@ class _ProductosScreenState extends State<ProductosScreen> {
     }
   }
 
+  // ============================================
+  // IMPRESIÓN DE CÓDIGOS DE BARRAS
+  // ============================================
+
+  void _mostrarDialogoImprimirCodigoBarras() {
+    final productoController = TextEditingController();
+    Producto? productoSeleccionado;
+    String unidadMedida = 'Unics';
+    String tipoFecha = '-Fect';
+    String mostrarPrecio = 'Si';
+    int cantidad = 2;
+    String tipoLista = '-Lis.p';
+    String tipoPrecio = '-Prec';
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            backgroundColor: AppTheme.cardBg,
+            title: Row(
+              children: [
+                Icon(Icons.qr_code_2, color: AppTheme.primary),
+                SizedBox(width: 12),
+                Text(
+                  'Imprimir código de barras',
+                  style: TextStyle(color: AppTheme.textPrimary, fontSize: 18),
+                ),
+              ],
+            ),
+            content: Container(
+              width: 600,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Campo de búsqueda de producto
+                    Text(
+                      'Producto',
+                      style: TextStyle(
+                        color: AppTheme.textSecondary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    Autocomplete<Producto>(
+                      optionsBuilder: (TextEditingValue textEditingValue) {
+                        if (textEditingValue.text.isEmpty) {
+                          return const Iterable<Producto>.empty();
+                        }
+                        return _productosCache
+                            .where((Producto producto) {
+                              return producto.nombre.toLowerCase().contains(
+                                    textEditingValue.text.toLowerCase(),
+                                  ) ||
+                                  producto.id.toLowerCase().contains(
+                                    textEditingValue.text.toLowerCase(),
+                                  );
+                            })
+                            .take(10);
+                      },
+                      displayStringForOption: (Producto producto) =>
+                          producto.nombre,
+                      onSelected: (Producto producto) {
+                        setDialogState(() {
+                          productoSeleccionado = producto;
+                          productoController.text = producto.nombre;
+                        });
+                      },
+                      fieldViewBuilder:
+                          (
+                            BuildContext context,
+                            TextEditingController textEditingController,
+                            FocusNode focusNode,
+                            VoidCallback onFieldSubmitted,
+                          ) {
+                            return TextField(
+                              controller: textEditingController,
+                              focusNode: focusNode,
+                              style: TextStyle(color: AppTheme.textPrimary),
+                              decoration: InputDecoration(
+                                hintText: 'Buscar producto...',
+                                hintStyle: TextStyle(
+                                  color: AppTheme.textSecondary,
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                filled: true,
+                                fillColor: AppTheme.surfaceDark,
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 12,
+                                ),
+                                prefixIcon: Icon(
+                                  Icons.search,
+                                  color: AppTheme.primary,
+                                ),
+                              ),
+                            );
+                          },
+                    ),
+                    SizedBox(height: 20),
+
+                    // Fila de opciones
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: [
+                        // Unidad de medida
+                        _buildDropdownField(
+                          'Unidad',
+                          unidadMedida,
+                          ['Unics', 'Kg', 'Lt', 'Mt', 'Und'],
+                          (value) =>
+                              setDialogState(() => unidadMedida = value!),
+                          120,
+                        ),
+
+                        // Tipo de fecha
+                        _buildDropdownField(
+                          'Fecha',
+                          tipoFecha,
+                          ['-Fect', '+Fect', 'N/A'],
+                          (value) => setDialogState(() => tipoFecha = value!),
+                          120,
+                        ),
+
+                        // Mostrar precio
+                        _buildDropdownField(
+                          'Precio',
+                          mostrarPrecio,
+                          ['Si', 'No'],
+                          (value) =>
+                              setDialogState(() => mostrarPrecio = value!),
+                          100,
+                        ),
+
+                        // Cantidad
+                        Container(
+                          width: 100,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Cantidad',
+                                style: TextStyle(
+                                  color: AppTheme.textSecondary,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              SizedBox(height: 4),
+                              TextField(
+                                controller: TextEditingController(
+                                  text: cantidad.toString(),
+                                ),
+                                keyboardType: TextInputType.number,
+                                style: TextStyle(color: AppTheme.textPrimary),
+                                decoration: InputDecoration(
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  filled: true,
+                                  fillColor: AppTheme.surfaceDark,
+                                  contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 8,
+                                  ),
+                                ),
+                                onChanged: (value) {
+                                  final val = int.tryParse(value);
+                                  if (val != null && val > 0) {
+                                    setDialogState(() => cantidad = val);
+                                  }
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // Lista de precios
+                        _buildDropdownField(
+                          'Lista',
+                          tipoLista,
+                          ['-Lis.p', '+Lis.p', 'Detal', 'Mayor'],
+                          (value) => setDialogState(() => tipoLista = value!),
+                          120,
+                        ),
+
+                        // Tipo de precio
+                        _buildDropdownField(
+                          'Tipo',
+                          tipoPrecio,
+                          ['-Prec', '+Prec', 'Base'],
+                          (value) => setDialogState(() => tipoPrecio = value!),
+                          120,
+                        ),
+                      ],
+                    ),
+
+                    SizedBox(height: 20),
+
+                    // Vista previa
+                    if (productoSeleccionado != null)
+                      Container(
+                        padding: EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: AppTheme.surfaceDark,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: AppTheme.primary.withOpacity(0.3),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Text(
+                              'Vista previa',
+                              style: TextStyle(
+                                color: AppTheme.textSecondary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            SizedBox(height: 12),
+                            _buildCodigoBarrasPreview(
+                              productoSeleccionado!,
+                              mostrarPrecio: mostrarPrecio == 'Si',
+                              unidadMedida: unidadMedida,
+                              tipoFecha: tipoFecha,
+                              tipoLista: tipoLista,
+                              tipoPrecio: tipoPrecio,
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(
+                  'Cancelar',
+                  style: TextStyle(color: AppTheme.textSecondary),
+                ),
+              ),
+              ElevatedButton.icon(
+                onPressed:
+                    productoSeleccionado == null ||
+                        productoSeleccionado!.codigo == null
+                    ? null
+                    : () {
+                        _imprimirCodigoBarras(
+                          productoSeleccionado!,
+                          cantidad,
+                          mostrarPrecio == 'Si',
+                        );
+                        Navigator.pop(context);
+                      },
+                icon: Icon(Icons.print),
+                label: Text('Imprimir'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primary,
+                  disabledBackgroundColor: AppTheme.textMuted,
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildDropdownField(
+    String label,
+    String value,
+    List<String> items,
+    void Function(String?) onChanged,
+    double width,
+  ) {
+    return Container(
+      width: width,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+          ),
+          SizedBox(height: 4),
+          DropdownButtonFormField<String>(
+            value: value,
+            items: items
+                .map((item) => DropdownMenuItem(value: item, child: Text(item)))
+                .toList(),
+            onChanged: onChanged,
+            style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+            dropdownColor: AppTheme.surfaceDark,
+            decoration: InputDecoration(
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              filled: true,
+              fillColor: AppTheme.surfaceDark,
+              contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCodigoBarrasPreview(
+    Producto producto, {
+    required bool mostrarPrecio,
+    required String unidadMedida,
+    required String tipoFecha,
+    required String tipoLista,
+    required String tipoPrecio,
+  }) {
+    return Container(
+      padding: EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Unidad de medida y tipo de fecha
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                unidadMedida,
+                style: TextStyle(
+                  color: Colors.black,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                tipoFecha,
+                style: TextStyle(
+                  color: Colors.black,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 4),
+          // Nombre del producto
+          Text(
+            producto.nombre,
+            style: TextStyle(
+              color: Colors.black,
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          SizedBox(height: 4),
+          // Tipo de lista y tipo de precio
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                tipoLista,
+                style: TextStyle(color: Colors.black, fontSize: 9),
+              ),
+              Text(
+                tipoPrecio,
+                style: TextStyle(color: Colors.black, fontSize: 9),
+              ),
+            ],
+          ),
+          SizedBox(height: 4),
+          // Precio (solo si está seleccionado)
+          if (mostrarPrecio)
+            Text(
+              '\$${producto.precio.toStringAsFixed(0)}',
+              style: TextStyle(
+                color: Colors.black,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          if (mostrarPrecio) SizedBox(height: 8),
+          // Código de barras
+          if (producto.codigoBarras != null &&
+              producto.codigoBarras!.isNotEmpty)
+            BarcodeWidget(
+              barcode: Barcode.code128(),
+              data: producto.codigoBarras!,
+              width: 180,
+              height: 60,
+              drawText: false,
+            )
+          else if (producto.codigo != null && producto.codigo!.isNotEmpty)
+            BarcodeWidget(
+              barcode: Barcode.code128(),
+              data: producto.codigo!,
+              width: 180,
+              height: 60,
+              drawText: false,
+            )
+          else
+            Container(
+              padding: EdgeInsets.all(20),
+              child: Text(
+                'Sin código de barras',
+                style: TextStyle(color: Colors.red, fontSize: 12),
+              ),
+            ),
+          SizedBox(height: 4),
+          // Número del código
+          Text(
+            producto.codigoBarras ?? producto.codigo ?? 'N/A',
+            style: TextStyle(color: Colors.black, fontSize: 10),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _imprimirCodigoBarras(
+    Producto producto,
+    int cantidad,
+    bool mostrarPrecio,
+  ) async {
+    try {
+      final pdf = pw.Document();
+
+      // Crear una página con múltiples etiquetas
+      pdf.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          margin: pw.EdgeInsets.all(20),
+          build: (context) {
+            List<pw.Widget> etiquetas = [];
+
+            for (int i = 0; i < cantidad; i++) {
+              etiquetas.add(
+                pw.Container(
+                  width: 250,
+                  margin: pw.EdgeInsets.all(8),
+                  padding: pw.EdgeInsets.all(12),
+                  decoration: pw.BoxDecoration(
+                    border: pw.Border.all(color: PdfColors.grey300),
+                    borderRadius: pw.BorderRadius.circular(8),
+                  ),
+                  child: pw.Column(
+                    mainAxisSize: pw.MainAxisSize.min,
+                    children: [
+                      // Identificador
+                      pw.Text(
+                        'a',
+                        style: pw.TextStyle(
+                          fontSize: 10,
+                          fontWeight: pw.FontWeight.bold,
+                        ),
+                      ),
+                      pw.SizedBox(height: 4),
+                      // Nombre del producto
+                      pw.Text(
+                        producto.nombre,
+                        style: pw.TextStyle(
+                          fontSize: 11,
+                          fontWeight: pw.FontWeight.bold,
+                        ),
+                        textAlign: pw.TextAlign.center,
+                        maxLines: 2,
+                      ),
+                      pw.SizedBox(height: 4),
+                      // Precio
+                      if (mostrarPrecio)
+                        pw.Text(
+                          '\$${producto.precio.toStringAsFixed(0)}',
+                          style: pw.TextStyle(
+                            fontSize: 12,
+                            fontWeight: pw.FontWeight.bold,
+                          ),
+                        ),
+                      pw.SizedBox(height: 8),
+                      // Código de barras
+                      pw.BarcodeWidget(
+                        barcode: pw.Barcode.code128(),
+                        data: producto.codigo ?? producto.id,
+                        width: 180,
+                        height: 60,
+                        drawText: false,
+                      ),
+                      pw.SizedBox(height: 4),
+                      // Número del código
+                      pw.Text(
+                        producto.codigo ?? producto.id,
+                        style: pw.TextStyle(fontSize: 10),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
+
+            // Organizar en grid de 2 columnas
+            List<pw.Widget> rows = [];
+            for (int i = 0; i < etiquetas.length; i += 2) {
+              rows.add(
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.center,
+                  children: [
+                    etiquetas[i],
+                    if (i + 1 < etiquetas.length) etiquetas[i + 1],
+                  ],
+                ),
+              );
+            }
+
+            return rows;
+          },
+        ),
+      );
+
+      // Mostrar diálogo de impresión
+      await Printing.layoutPdf(
+        onLayout: (PdfPageFormat format) async => pdf.save(),
+        name: 'Codigo_Barras_${producto.nombre}.pdf',
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Código de barras generado correctamente'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error al generar código de barras: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al generar código de barras: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
 }

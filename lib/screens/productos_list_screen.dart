@@ -106,14 +106,23 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
   }
 
   String _getEstadoInventario(Producto producto) {
-    final inventario = producto.almacen ?? 0;
+    // Calcular stock total sumando almacén + bodega
+    final stockAlmacen = producto.almacen ?? 0;
+    final stockBodega = producto.bodega ?? 0;
+    final inventarioTotal = stockAlmacen + stockBodega;
+    
     final bajo = producto.inventarioBajo ?? 5;
     final optimo = producto.inventarioOptimo ?? 20;
 
-    if (inventario <= 0) return 'Sin Stock';
-    if (inventario <= bajo) return 'Bajo';
-    if (inventario >= optimo) return 'Óptimo';
+    if (inventarioTotal <= 0) return 'Sin Stock';
+    if (inventarioTotal <= bajo) return 'Bajo';
+    if (inventarioTotal >= optimo) return 'Óptimo';
     return 'Normal';
+  }
+  
+  // Obtener el stock total para mostrar en la tabla
+  int _getStockTotal(Producto producto) {
+    return (producto.almacen ?? 0) + (producto.bodega ?? 0);
   }
 
   Color _getColorEstado(String estado) {
@@ -478,13 +487,25 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
             ),
           ),
 
-          // Inventario
+          // Inventario (total: almacén + bodega)
           Expanded(
             flex: 1,
-            child: Text(
-              '${producto.almacen ?? 0},00',
-              style: TextStyle(color: Colors.white, fontSize: 13),
-              textAlign: TextAlign.center,
+            child: Tooltip(
+              message:
+                  'Almacén: ${producto.almacen ?? 0}\nBodega: ${producto.bodega ?? 0}',
+              child: Text(
+                '${_getStockTotal(producto)}',
+                style: TextStyle(
+                  color: _getStockTotal(producto) > 0
+                      ? Colors.white
+                      : Colors.red,
+                  fontSize: 13,
+                  fontWeight: _getStockTotal(producto) == 0
+                      ? FontWeight.bold
+                      : FontWeight.normal,
+                ),
+                textAlign: TextAlign.center,
+              ),
             ),
           ),
 

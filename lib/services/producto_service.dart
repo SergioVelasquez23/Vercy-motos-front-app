@@ -1119,6 +1119,51 @@ class ProductoService {
     }
   }
 
+  // 🆕 Buscar UN producto por código de barras (endpoint específico)
+  Future<Producto?> getProductoPorCodigoBarras(String codigoBarras) async {
+    try {
+      print('🔍 Buscando producto por código de barras: "$codigoBarras"');
+      final headers = await _getHeaders();
+
+      final url = '$baseUrl/api/productos/codigo-barras/$codigoBarras';
+      final response = await http
+          .get(Uri.parse(url), headers: headers)
+          .timeout(Duration(seconds: 10));
+
+      print('📡 Response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final jsonBody = json.decode(response.body);
+
+        // Manejar formato ApiResponse
+        if (jsonBody is Map<String, dynamic>) {
+          if (jsonBody.containsKey('success') && jsonBody['success'] == true) {
+            final data = jsonBody['data'];
+            if (data != null) {
+              print('✅ Producto encontrado por código de barras');
+              return Producto.fromJson(data);
+            }
+          }
+          // Si no tiene success, intentar parsear directamente
+          else if (jsonBody.containsKey('nombre')) {
+            return Producto.fromJson(jsonBody);
+          }
+        }
+
+        print('⚠️ Formato de respuesta inesperado');
+        return null;
+      } else if (response.statusCode == 404) {
+        print('⚠️ Producto no encontrado con código: "$codigoBarras"');
+        return null;
+      } else {
+        throw Exception('Error del servidor: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ Error buscando por código de barras: $e');
+      return null;
+    }
+  }
+
   // Obtener productos por categoría
   Future<List<Producto>> getProductosByCategoria(String categoriaId) async {
     try {
@@ -1584,6 +1629,13 @@ class ProductoService {
           print(
             '📦 Encontrados ${productos.length} productos en key "productos" (SIN IMÁGENES)',
           );
+          // 🔍 LOG TEMPORAL: Ver campos del primer producto
+          if (productos.isNotEmpty) {
+            print(
+              '🔍 PRIMER PRODUCTO JSON KEYS: ${(productos[0] as Map).keys.toList()}',
+            );
+            print('🔍 PRIMER PRODUCTO JSON: ${productos[0]}');
+          }
           return productos
               .map<Producto>((json) => Producto.fromJsonLigero(json))
               .toList();
@@ -1596,6 +1648,13 @@ class ProductoService {
           print(
             '📦 Encontrados ${data.length} productos en data (SIN IMÁGENES)',
           );
+          // 🔍 LOG TEMPORAL: Ver campos del primer producto
+          if (data.isNotEmpty) {
+            print(
+              '🔍 PRIMER PRODUCTO JSON KEYS: ${(data[0] as Map).keys.toList()}',
+            );
+            print('🔍 PRIMER PRODUCTO JSON: ${data[0]}');
+          }
           return data
               .map<Producto>((json) => Producto.fromJsonLigero(json))
               .toList();

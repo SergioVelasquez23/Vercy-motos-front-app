@@ -66,8 +66,10 @@ class FacturaCompra {
            baseGravable ??
            (subtotal ??
                items.fold<double>(0, (sum, item) => sum + item.subtotal)),
-       total =
-           total ?? items.fold<double>(0, (sum, item) => sum + item.subtotal);
+       // Si total es null o 0, usar la suma de items
+       total = (total != null && total > 0)
+           ? total
+           : items.fold<double>(0, (sum, item) => sum + item.subtotal);
 
   factory FacturaCompra.fromJson(Map<String, dynamic> json) {
     // Primero extraemos los items para poder calcular el total
@@ -138,10 +140,28 @@ class FacturaCompra {
   }
 
   Map<String, dynamic> toJson() {
-    // Calcular el total basado en los ítems, incluso si ya está establecido
+    // Calcular el total basado en los ítems siempre
     double calculatedTotal = items.fold<double>(
       0,
       (sum, item) => sum + item.subtotal,
+    );
+    
+    // Calcular el total con impuestos
+    double calculatedTotalConImpuestos = items.fold<double>(
+      0,
+      (sum, item) =>
+          sum + item.subtotal + item.valorImpuesto - item.valorDescuento,
+    );
+
+    // Usar el total calculado si el actual es 0 o menor
+    double finalTotal = total > 0
+        ? total
+        : (calculatedTotalConImpuestos > 0
+              ? calculatedTotalConImpuestos
+              : calculatedTotal);
+
+    print(
+      '📊 toJson - Total del objeto: $total, Calculado: $calculatedTotal, Con impuestos: $calculatedTotalConImpuestos, Final: $finalTotal',
     );
 
     // Verificar que hay items y que no son nulos
@@ -158,13 +178,28 @@ class FacturaCompra {
       print('⚠️ No hay items para serializar en la factura');
     }
 
+    // Calcular subtotal y impuestos de los items
+    double itemsSubtotal = items.fold<double>(
+      0,
+      (sum, item) => sum + item.subtotal,
+    );
+    double itemsImpuestos = items.fold<double>(
+      0,
+      (sum, item) => sum + item.valorImpuesto,
+    );
+    double itemsDescuentos = items.fold<double>(
+      0,
+      (sum, item) => sum + item.valorDescuento,
+    );
+
     final Map<String, dynamic> json = {
       'numero': numeroFactura,
       'fecha': fechaFactura.toIso8601String(),
+      'fechaVencimiento': fechaVencimiento.toIso8601String(),
       'tipoFactura': 'compra',
       'proveedorNit': proveedorNit,
       'proveedorNombre': proveedorNombre,
-      'total': calculatedTotal,
+      'total': finalTotal, // Usar el total final calculado
       'pagadoDesdeCaja': pagadoDesdeCaja,
       'itemsIngredientes': itemsJsonList,
       'items': itemsJsonList,
@@ -173,11 +208,13 @@ class FacturaCompra {
       'registradoPor': 'admin',
       'descripcion': descripcion ?? '',
       'observaciones': '',
-      // Campos DIAN para impuestos y retenciones
-      'subtotal': subtotal,
-      'totalDescuentos': totalDescuentos,
-      'baseGravable': baseGravable,
-      'totalImpuestos': totalImpuestos,
+      // Campos DIAN para impuestos y retenciones - usar valores calculados de items si los originales son 0
+      'subtotal': subtotal > 0 ? subtotal : itemsSubtotal,
+      'totalDescuentos': totalDescuentos > 0
+          ? totalDescuentos
+          : itemsDescuentos,
+      'baseGravable': baseGravable > 0 ? baseGravable : itemsSubtotal,
+      'totalImpuestos': totalImpuestos > 0 ? totalImpuestos : itemsImpuestos,
       'totalRetenciones': totalRetenciones,
       'porcentajeRetencion': porcentajeRetencion,
       'valorRetencion': valorRetencion,

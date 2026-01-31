@@ -378,8 +378,14 @@ class GastoService {
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
+        print('GastoService - getAllTiposGasto body: ${response.body}');
         List<dynamic> jsonList = responseData['data'] ?? [];
-        return jsonList.map((json) => TipoGasto.fromJson(json)).toList();
+        print('GastoService - Tipos encontrados: ${jsonList.length}');
+        final tipos = jsonList.map((json) => TipoGasto.fromJson(json)).toList();
+        print(
+          'GastoService - Tipos parseados: ${tipos.map((t) => '${t.nombre} (activo: ${t.activo})').toList()}',
+        );
+        return tipos;
       } else {
         throw Exception(
           'Error al obtener tipos de gasto: ${response.statusCode}',

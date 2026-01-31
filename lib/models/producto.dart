@@ -330,11 +330,21 @@ class Producto {
 
   // Método ligero para cargas rápidas - solo campos esenciales del endpoint paginado
   factory Producto.fromJsonLigero(Map<String, dynamic> json) {
+    // 🔍 LOG TEMPORAL: Ver todas las llaves del JSON para diagnosticar codigoBarras
+    if (json['nombre']?.toString().contains('PUFF') == true) {
+      print('🔍 DEBUG JSON para producto: ${json['nombre']}');
+      print('   Llaves disponibles: ${json.keys.toList()}');
+      print('   codigoBarras: ${json['codigoBarras']}');
+      print('   codigo_barras: ${json['codigo_barras']}');
+      print('   CODIGO_BARRAS: ${json['CODIGO_BARRAS']}');
+      print('   codigo: ${json['codigo']}');
+    }
+    
     return Producto(
       id: json['_id']?.toString() ?? json['id']?.toString() ?? '',
       nombre: json['nombre']?.toString() ?? '',
       precio: (json['precio'] as num?)?.toDouble() ?? 0.0,
-      costo: 0.0, // No viene en el endpoint ligero
+      costo: (json['costo'] as num?)?.toDouble() ?? 0.0,
       impuestos: 0.0, // No viene en el endpoint ligero
       utilidad: 0.0, // No viene en el endpoint ligero
       tieneVariantes: false, // No viene en el endpoint ligero
@@ -357,6 +367,13 @@ class Producto {
       ingredientesRequeridos: [], // No vienen en el endpoint ligero
       ingredientesOpcionales: [], // No vienen en el endpoint ligero
       ingredientesSeleccionadosCombo: [],
+      // Campos de inventario - IMPORTANTES para mostrar stock
+      // El endpoint /ligero usa cantidadAlmacen y cantidadBodega (agregación MongoDB)
+      almacen: json['cantidadAlmacen'] as int? ?? json['almacen'] as int?,
+      bodega: json['cantidadBodega'] as int? ?? json['bodega'] as int?,
+      inventarioBajo: json['inventarioBajo'] as int?,
+      inventarioOptimo: json['inventarioOptimo'] as int?,
+      codigoBarras: json['codigoBarras']?.toString(),
     );
   }
 

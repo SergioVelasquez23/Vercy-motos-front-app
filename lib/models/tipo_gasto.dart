@@ -13,7 +13,7 @@ class TipoGasto {
 
   factory TipoGasto.fromJson(Map<String, dynamic> json) {
     return TipoGasto(
-      id: json['_id'],
+      id: json['_id']?.toString() ?? json['id']?.toString(),
       nombre: json['nombre'] ?? '',
       descripcion: json['descripcion'],
       activo: json['activo'] ?? true,

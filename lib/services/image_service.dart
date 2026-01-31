@@ -311,7 +311,7 @@ class ImageService {
     // Si ya es una URL completa, validarla
     if (cleanFilename.startsWith('http')) {
       // Las URLs ya están en Render, solo validarlas
-      if (cleanFilename.contains('vercy-motos-app.onrender.com')) {
+      if (cleanFilename.contains('vercy-motos-app-048m.onrender.com')) {
         return cleanFilename;
       }
 

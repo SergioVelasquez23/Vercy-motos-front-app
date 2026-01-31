@@ -6,6 +6,7 @@ import '../services/proveedor_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/vercy_sidebar_layout.dart';
 import '../utils/format_utils.dart';
+import 'facturas_compras_screen.dart';
 
 class ComprasListScreen extends StatefulWidget {
   const ComprasListScreen({super.key});
@@ -683,7 +684,7 @@ class _ComprasListScreenState extends State<ComprasListScreen> {
             ),
           ),
 
-          // Factura (con botón editar)
+          // Factura (con botones editar y eliminar)
           Expanded(
             flex: 2,
             child: Row(
@@ -699,9 +700,31 @@ class _ComprasListScreenState extends State<ComprasListScreen> {
                     padding: EdgeInsets.zero,
                     icon: Icon(Icons.edit, color: Colors.white, size: 16),
                     onPressed: () {
-                      // TODO: Navegar a editar factura
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => CrearFacturaCompraScreen(
+                            facturaParaEditar: compra,
+                          ),
+                        ),
+                      ).then((_) => _cargarDatos());
                     },
                     tooltip: 'Editar',
+                  ),
+                ),
+                SizedBox(width: 8),
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    padding: EdgeInsets.zero,
+                    icon: Icon(Icons.delete, color: Colors.white, size: 16),
+                    onPressed: () => _confirmarEliminarCompra(compra),
+                    tooltip: 'Eliminar',
                   ),
                 ),
               ],
@@ -804,5 +827,74 @@ class _ComprasListScreenState extends State<ComprasListScreen> {
         ],
       ),
     );
+  }
+
+  // Método para confirmar la eliminación de una compra
+  Future<void> _confirmarEliminarCompra(FacturaCompra compra) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppTheme.cardBg,
+        title: Text(
+          'Eliminar Compra',
+          style: TextStyle(color: AppTheme.textPrimary),
+        ),
+        content: Text(
+          '¿Estás seguro de que deseas eliminar la compra ${compra.numeroFactura}?\n\n'
+          'Esta acción no se puede deshacer y afectará al inventario.',
+          style: TextStyle(color: AppTheme.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(
+              'Cancelar',
+              style: TextStyle(color: AppTheme.textSecondary),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text('Eliminar', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      setState(() => _isLoading = true);
+      try {
+        final resultado = await _facturaCompraService.eliminarFacturaCompra(
+          compra.id!,
+        );
+
+        if (resultado['success'] == true) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Compra eliminada correctamente'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          await _cargarDatos();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Error: ${resultado['message'] ?? "No se pudo eliminar la compra"}',
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al eliminar compra: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      } finally {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 }

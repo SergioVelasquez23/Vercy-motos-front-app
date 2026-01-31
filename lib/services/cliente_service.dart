@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import '../models/cliente.dart';
 import '../config/endpoints_config.dart';
 
@@ -23,7 +24,7 @@ class ClienteService {
       );
 
       print('📦 Response status (clientes): ${response.statusCode}');
-      
+
       if (response.statusCode == 200) {
         print('📦 Response body length: ${response.body.length}');
         final dynamic responseData = json.decode(response.body);
@@ -273,6 +274,164 @@ class ClienteService {
     } catch (e) {
       print('❌ Error en obtenerEstadisticas: $e');
       throw Exception('Error al obtener estadísticas: $e');
+    }
+  }
+
+  // ============================================
+  // CARGA MASIVA DESDE EXCEL
+  // ============================================
+
+  /// Cargar clientes masivamente desde archivo Excel (usando bytes - para web)
+  Future<Map<String, dynamic>> cargarClientesMasivosBytes(
+    List<int> bytes,
+    String fileName,
+  ) async {
+    try {
+      print('📤 Enviando archivo de clientes (${bytes.length} bytes)');
+      print('📤 URL: $baseUrl/carga-masiva');
+      print('📤 Filename: $fileName');
+
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl/carga-masiva'),
+      );
+
+      // Headers para CORS y content type
+      request.headers.addAll({'Accept': 'application/json'});
+
+      // El backend espera el campo 'file' no 'archivo'
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'file',
+          bytes,
+          filename: fileName,
+          contentType: MediaType(
+            'application',
+            'vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          ),
+        ),
+      );
+
+      print('📤 Campo multipart: file');
+      print('📤 Enviando request...');
+
+      // Enviar con timeout extendido (5 minutos para archivos grandes)
+      var streamedResponse = await request.send().timeout(
+        const Duration(minutes: 5),
+        onTimeout: () {
+          throw Exception(
+            'Timeout: El servidor tardó demasiado en responder. Intenta con un archivo más pequeño.',
+          );
+        },
+      );
+
+      print('📤 Response recibido, procesando...');
+      var response = await http.Response.fromStream(streamedResponse);
+
+      print('📦 Response status (carga masiva): ${response.statusCode}');
+      print('📦 Response body: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = json.decode(response.body);
+
+        // El backend puede devolver errores como número o como lista
+        var erroresData = data['errores'];
+        List<dynamic> erroresList = [];
+        int erroresCount = 0;
+
+        if (erroresData is List) {
+          erroresList = erroresData;
+          erroresCount = erroresData.length;
+        } else if (erroresData is int) {
+          erroresCount = erroresData;
+        }
+
+        return {
+          'success': data['success'] ?? true,
+          'message': data['message'] ?? 'Clientes cargados exitosamente',
+          'clientesCargados':
+              data['creados'] ?? data['clientesCargados'] ?? data['total'] ?? 0,
+          'actualizados': data['actualizados'] ?? 0,
+          'totalProcesados': data['totalProcesados'] ?? 0,
+          'errores': erroresList,
+          'erroresCount': erroresCount,
+          'tiempoMs': data['tiempoMs'] ?? 0,
+        };
+      }
+
+      // Intentar parsear el error
+      try {
+        final errorData = json.decode(response.body);
+        throw Exception(errorData['message'] ?? 'Error al cargar clientes');
+      } catch (_) {
+        throw Exception('Error al cargar clientes: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ Error en cargarClientesMasivosBytes: $e');
+      rethrow;
+    }
+  }
+
+  /// Cargar clientes masivamente desde archivo Excel (usando path - para desktop/mobile)
+  Future<Map<String, dynamic>> cargarClientesMasivosPath(
+    String filePath,
+  ) async {
+    try {
+      print('📤 Enviando archivo de clientes desde: $filePath');
+
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl/carga-masiva'),
+      );
+
+      // El backend espera el campo 'file' no 'archivo'
+      request.files.add(await http.MultipartFile.fromPath('file', filePath));
+
+      print('📤 Campo multipart: file');
+
+      var streamedResponse = await request.send();
+      var response = await http.Response.fromStream(streamedResponse);
+
+      print('📦 Response status (carga masiva): ${response.statusCode}');
+      print('📦 Response body: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = json.decode(response.body);
+
+        // El backend puede devolver errores como número o como lista
+        var erroresData = data['errores'];
+        List<dynamic> erroresList = [];
+        int erroresCount = 0;
+
+        if (erroresData is List) {
+          erroresList = erroresData;
+          erroresCount = erroresData.length;
+        } else if (erroresData is int) {
+          erroresCount = erroresData;
+        }
+
+        return {
+          'success': data['success'] ?? true,
+          'message': data['message'] ?? 'Clientes cargados exitosamente',
+          'clientesCargados':
+              data['creados'] ?? data['clientesCargados'] ?? data['total'] ?? 0,
+          'actualizados': data['actualizados'] ?? 0,
+          'totalProcesados': data['totalProcesados'] ?? 0,
+          'errores': erroresList,
+          'erroresCount': erroresCount,
+          'tiempoMs': data['tiempoMs'] ?? 0,
+        };
+      }
+
+      try {
+        final errorData = json.decode(response.body);
+        throw Exception(errorData['message'] ?? 'Error al cargar clientes');
+      } catch (_) {
+        throw Exception('Error al cargar clientes: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ Error en cargarClientesMasivosPath: $e');
+      rethrow;
     }
   }
 }

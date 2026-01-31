@@ -123,8 +123,8 @@ class ApiConfig {
     // URLs fallback por ambiente - localhost en desarrollo
     final fallbackUrls = {
       'development': 'http://localhost:8080',
-      'staging': 'https://vercy-motos-app.onrender.com',
-      'production': 'https://vercy-motos-app.onrender.com',
+      'staging': 'https://vercy-motos-app-048m.onrender.com',
+      'production': 'https://vercy-motos-app-048m.onrender.com',
     };
 
     return fallbackUrls[environmentName] ?? kDynamicBackendUrl;

@@ -12,6 +12,41 @@ class PDFService {
   pw.Font? _fontRegular;
   pw.Font? _fontBold;
 
+  /// Convertir cualquier valor a String de forma segura
+  String _toSafeString(dynamic value, [String defaultValue = '']) {
+    if (value == null) return defaultValue;
+    if (value is String) return _sanitizeText(value);
+    if (value is DateTime) {
+      return '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year}';
+    }
+    if (value is num) return value.toString();
+    return _sanitizeText(value.toString());
+  }
+
+  /// Sanitizar texto para PDF eliminando caracteres problemáticos
+  String _sanitizeText(String? text) {
+    if (text == null || text.isEmpty) return '';
+
+    // Reemplazar caracteres especiales que causan problemas
+    return text
+        .replaceAll('á', 'a')
+        .replaceAll('é', 'e')
+        .replaceAll('í', 'i')
+        .replaceAll('ó', 'o')
+        .replaceAll('ú', 'u')
+        .replaceAll('Á', 'A')
+        .replaceAll('É', 'E')
+        .replaceAll('Í', 'I')
+        .replaceAll('Ó', 'O')
+        .replaceAll('Ú', 'U')
+        .replaceAll('ñ', 'n')
+        .replaceAll('Ñ', 'N')
+        .replaceAll('¿', '')
+        .replaceAll('¡', '')
+        // Eliminar otros caracteres no ASCII
+        .replaceAll(RegExp(r'[^\x00-\x7F]'), '');
+  }
+
   /// Cargar fuentes de manera segura para web y móvil
   Future<pw.Font> _getFontRegular() async {
     if (_fontRegular != null) return _fontRegular!;
@@ -54,6 +89,20 @@ class PDFService {
     final font = await _getFontRegular();
     final fontBold = await _getFontBold();
 
+    // Pre-procesar valores
+    final nombreRestaurante = _toSafeString(
+      resumen['nombreRestaurante'],
+      'SOPA Y CARBON',
+    );
+    final direccionRestaurante = _toSafeString(
+      resumen['direccionRestaurante'],
+      'Direccion del restaurante',
+    );
+    final telefonoRestaurante = _toSafeString(
+      resumen['telefonoRestaurante'],
+      'Telefono',
+    );
+
     pdf.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.roll80, // Formato de ticket térmico
@@ -67,7 +116,7 @@ class PDFService {
                 child: pw.Column(
                   children: [
                     pw.Text(
-                      resumen['nombreRestaurante'] ?? 'SOPA Y CARBÓN',
+                      nombreRestaurante,
                       style: pw.TextStyle(
                         font: fontBold,
                         fontSize: 16,
@@ -76,12 +125,11 @@ class PDFService {
                     ),
                     pw.SizedBox(height: 4),
                     pw.Text(
-                      resumen['direccionRestaurante'] ??
-                          'Dirección del restaurante',
+                      direccionRestaurante,
                       style: pw.TextStyle(font: font, fontSize: 10),
                     ),
                     pw.Text(
-                      'Tel: ${resumen['telefonoRestaurante'] ?? 'Teléfono'}',
+                      'Tel: $telefonoRestaurante',
                       style: pw.TextStyle(font: font, fontSize: 10),
                     ),
                   ],
@@ -171,6 +219,43 @@ class PDFService {
     final font = await _getFontRegular();
     final fontBold = await _getFontBold();
 
+    // Pre-procesar todos los valores del resumen para evitar errores
+    // Obtener datos del negocio (pueden venir directamente o en objeto 'negocio')
+    final negocio = resumen['negocio'] as Map<String, dynamic>?;
+    final nombreNegocio = _toSafeString(
+      resumen['nombreNegocio'] ??
+          resumen['nombreRestaurante'] ??
+          negocio?['nombre'],
+      'VERCY MOTOS',
+    );
+    final nit = _toSafeString(resumen['nit'] ?? negocio?['nit']);
+    final email = _toSafeString(resumen['email'] ?? negocio?['email']);
+    final telefono = _toSafeString(
+      resumen['telefonoRestaurante'] ?? negocio?['telefono'],
+    );
+    final direccion = _toSafeString(
+      resumen['direccionRestaurante'] ?? negocio?['direccion'],
+    );
+    final fecha = _toSafeString(resumen['fecha']);
+    final hora = _toSafeString(resumen['hora']);
+    final cliente = _toSafeString(resumen['cliente'], 'CONSUMIDOR FINAL');
+    final clienteNit = _toSafeString(resumen['clienteNit'], '222222222-2');
+    final departamento = _toSafeString(
+      resumen['departamento'] ?? negocio?['departamento'],
+      'CALDAS',
+    );
+    final ciudad = _toSafeString(
+      resumen['ciudad'] ?? negocio?['ciudad'],
+      'MANIZALES',
+    );
+    final numeroPedido = _toSafeString(
+      resumen['numeroPedido'] ?? resumen['numero'],
+    );
+    final metodoPago = _toSafeString(
+      resumen['metodoPago'] ?? resumen['formaPago'],
+      'EFECTIVO',
+    );
+
     // Colores
     const primaryColor = PdfColor.fromInt(0xFF2196F3);
     const headerBgColor = PdfColor.fromInt(0xFFF5F5F5);
@@ -194,26 +279,22 @@ class PDFService {
                       crossAxisAlignment: pw.CrossAxisAlignment.start,
                       children: [
                         pw.Text(
-                          resumen['nombreNegocio'] ??
-                              resumen['nombreRestaurante'] ??
-                              'VERCY MOTOS',
+                          nombreNegocio,
                           style: pw.TextStyle(font: fontBold, fontSize: 18),
                         ),
-                        if (resumen['nit'] != null &&
-                            resumen['nit'].toString().isNotEmpty)
+                        if (nit.isNotEmpty)
                           pw.Text(
-                            'NIT: ${resumen['nit']}',
+                            'NIT: $nit',
                             style: pw.TextStyle(font: font, fontSize: 10),
                           ),
                         pw.SizedBox(height: 8),
-                        if (resumen['email'] != null &&
-                            resumen['email'].toString().isNotEmpty)
+                        if (email.isNotEmpty)
                           pw.Text(
-                            'CORREO: ${resumen['email']}',
+                            'CORREO: $email',
                             style: pw.TextStyle(font: font, fontSize: 9),
                           ),
                         pw.Text(
-                          'TELÉFONO: ${resumen['telefonoRestaurante'] ?? ''}/ NO RESPONSABLE DE IVA',
+                          'TELEFONO: $telefono / NO RESPONSABLE DE IVA',
                           style: pw.TextStyle(font: font, fontSize: 9),
                         ),
                       ],
@@ -232,11 +313,11 @@ class PDFService {
                             style: pw.TextStyle(font: font, fontSize: 9),
                           ),
                           pw.Text(
-                            'Expedición',
+                            'Expedicion',
                             style: pw.TextStyle(font: font, fontSize: 9),
                           ),
                           pw.Text(
-                            '${resumen['fecha'] ?? ''} ${resumen['hora'] ?? ''}',
+                            '$fecha $hora',
                             style: pw.TextStyle(font: fontBold, fontSize: 10),
                           ),
                         ],
@@ -264,27 +345,27 @@ class PDFService {
                           crossAxisAlignment: pw.CrossAxisAlignment.start,
                           children: [
                             pw.Text(
-                              'Cliente: ${resumen['cliente'] ?? 'CONSUMIDOR FINAL'}',
+                              'Cliente: $cliente',
                               style: pw.TextStyle(font: fontBold, fontSize: 10),
                             ),
                             pw.Text(
-                              'ID: CC ${resumen['clienteNit'] ?? '222222222-2'}',
+                              'ID: CC $clienteNit',
                               style: pw.TextStyle(font: font, fontSize: 9),
                             ),
                             pw.Text(
-                              'Departamento: ${resumen['departamento'] ?? 'CALDAS'}',
+                              'Departamento: $departamento',
                               style: pw.TextStyle(font: font, fontSize: 9),
                             ),
                             pw.Text(
-                              'Ciudad: ${resumen['ciudad'] ?? 'MANIZALES'}',
+                              'Ciudad: $ciudad',
                               style: pw.TextStyle(font: font, fontSize: 9),
                             ),
                             pw.Text(
-                              'Teléfono:',
+                              'Telefono:',
                               style: pw.TextStyle(font: font, fontSize: 9),
                             ),
                             pw.Text(
-                              'Dirección:',
+                              'Direccion:',
                               style: pw.TextStyle(font: font, fontSize: 9),
                             ),
                             pw.Text(
@@ -326,7 +407,7 @@ class PDFService {
                             pw.Container(
                               padding: const pw.EdgeInsets.all(4),
                               child: pw.Text(
-                                resumen['numero'] ?? resumen['pedidoId'] ?? '',
+                                numeroPedido,
                                 style: pw.TextStyle(
                                   font: fontBold,
                                   fontSize: 11,
@@ -373,7 +454,7 @@ class PDFService {
                                   child: pw.Container(
                                     padding: const pw.EdgeInsets.all(2),
                                     child: pw.Text(
-                                      resumen['fecha'] ?? '',
+                                      fecha,
                                       style: pw.TextStyle(
                                         font: font,
                                         fontSize: 8,
@@ -386,9 +467,10 @@ class PDFService {
                                   child: pw.Container(
                                     padding: const pw.EdgeInsets.all(2),
                                     child: pw.Text(
-                                      resumen['fechaVencimiento'] ??
-                                          resumen['fecha'] ??
-                                          '',
+                                      _toSafeString(
+                                        resumen['fechaVencimiento'],
+                                        fecha,
+                                      ),
                                       style: pw.TextStyle(
                                         font: font,
                                         fontSize: 8,
@@ -512,8 +594,8 @@ class PDFService {
               // ========== PIE DE PÁGINA ==========
               pw.Center(
                 child: pw.Text(
-                  'Elaborado por: APLICACIONES DE INGENIERÍA INFORMÁTICA S.A.S. NIT: 901.498.756, software Contoda ® www.contoda.com.co',
-                  style: pw.TextStyle(font: font, fontSize: 7),
+                  'Gracias por su compra - $nombreNegocio',
+                  style: pw.TextStyle(font: font, fontSize: 8),
                 ),
               ),
             ],
@@ -548,8 +630,13 @@ class PDFService {
 
     for (var producto in productos) {
       final cantidad = producto['cantidad'] ?? 1;
-      final codigo = producto['codigo'] ?? producto['productoId'] ?? '';
-      final nombre = producto['nombre'] ?? producto['producto'] ?? 'Producto';
+      final codigo = _toSafeString(
+        producto['codigo'] ?? producto['productoId'],
+      );
+      final nombre = _toSafeString(
+        producto['nombre'] ?? producto['producto'],
+        'Producto',
+      );
       final precioUnit =
           (producto['precio'] ?? producto['precioUnitario'] ?? 0.0);
       final descuento = producto['descuento'] ?? 0;
@@ -561,7 +648,7 @@ class PDFService {
         pw.TableRow(
           children: [
             _buildTableCell('$itemNum', font),
-            _buildTableCell(codigo.toString(), font),
+            _buildTableCell(codigo, font),
             _buildTableCell('$cantidad', font),
             _buildTableCell(nombre, font, align: pw.TextAlign.left),
             _buildTableCell(_formatearNumero(precioUnit), font),
@@ -608,11 +695,14 @@ class PDFService {
     final cantidadProductos =
         resumen['cantidadProductos'] ??
         (productos is List ? productos.length : 0);
-    final vendedor = resumen['vendedor'] ?? resumen['mesero'] ?? 'Sin Vendedor';
+    final vendedor = _toSafeString(
+      resumen['vendedor'] ?? resumen['mesero'],
+      'Sin Vendedor',
+    );
     final subtotal = resumen['subtotal'] ?? resumen['totalSinIva'] ?? 0.0;
     final descuento = resumen['descuento'] ?? 0.0;
     final total = resumen['total'] ?? resumen['totalFactura'] ?? 0.0;
-    final formaPago = resumen['formaPago'] ?? 'Efectivo';
+    final formaPago = _toSafeString(resumen['formaPago'], 'Efectivo');
 
     return pw.Row(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -988,37 +1078,37 @@ class PDFService {
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
         pw.Text(
-          '${esFactura ? 'Factura' : 'Pedido'}: ${resumen['pedidoId'] ?? resumen['numero'] ?? 'N/A'}',
+          '${esFactura ? 'Factura' : 'Pedido'}: ${_toSafeString(resumen['pedidoId'] ?? resumen['numero'], 'N/A')}',
           style: pw.TextStyle(font: font, fontSize: 10),
         ),
         if (resumen['fecha'] != null)
           pw.Text(
-            'Fecha: ${resumen['fecha']}',
+            'Fecha: ${_toSafeString(resumen['fecha'])}',
             style: pw.TextStyle(font: font, fontSize: 10),
           ),
         if (resumen['hora'] != null)
           pw.Text(
-            'Hora: ${resumen['hora']}',
+            'Hora: ${_toSafeString(resumen['hora'])}',
             style: pw.TextStyle(font: font, fontSize: 10),
           ),
         if (resumen['mesa'] != null)
           pw.Text(
-            'Mesa: ${resumen['mesa']}',
+            'Mesa: ${_toSafeString(resumen['mesa'])}',
             style: pw.TextStyle(font: font, fontSize: 10),
           ),
         if (resumen['mesero'] != null)
           pw.Text(
-            'Mesero: ${resumen['mesero']}',
+            'Mesero: ${_toSafeString(resumen['mesero'])}',
             style: pw.TextStyle(font: font, fontSize: 10),
           ),
         if (resumen['cliente'] != null)
           pw.Text(
-            'Cliente: ${resumen['cliente']}',
+            'Cliente: ${_toSafeString(resumen['cliente'])}',
             style: pw.TextStyle(font: font, fontSize: 10),
           ),
         if (resumen['medioPago'] != null)
           pw.Text(
-            'Medio de pago: ${resumen['medioPago']}',
+            'Medio de pago: ${_toSafeString(resumen['medioPago'])}',
             style: pw.TextStyle(font: font, fontSize: 10),
           ),
       ],

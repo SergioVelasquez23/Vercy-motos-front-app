@@ -4,12 +4,15 @@ import '../models/pedido.dart';
 import '../models/item_pedido.dart';
 import '../models/producto.dart';
 import '../models/pedido_asesor.dart';
+import '../models/movimiento_inventario.dart';
 import '../services/pedido_service.dart';
 import '../services/producto_service.dart';
 import '../services/pedido_asesor_service.dart';
 import '../services/pdf_service.dart';
 import '../services/negocio_info_service.dart';
 import '../services/impresion_service.dart';
+import '../services/inventario_service.dart';
+import '../services/cliente_service.dart';
 import '../models/cliente.dart';
 import '../models/negocio_info.dart';
 import '../theme/app_theme.dart';
@@ -34,6 +37,8 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
   final PDFService _pdfService = PDFService();
   final NegocioInfoService _negocioInfoService = NegocioInfoService();
   final ImpresionService _impresionService = ImpresionService();
+  final InventarioService _inventarioService = InventarioService();
+  final ClienteService _clienteService = ClienteService();
 
   // Controladores de formulario
   final TextEditingController _idController = TextEditingController();
@@ -90,10 +95,27 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     {'value': 'multiple', 'label': 'Múltiple', 'icon': Icons.payments},
   ];
 
+  // Controladores de retenciones y AIU
+  final TextEditingController _retencionController = TextEditingController(
+    text: '0',
+  );
+  final TextEditingController _reteIVAController = TextEditingController(
+    text: '0',
+  );
+  final TextEditingController _reteICAController = TextEditingController(
+    text: '0',
+  );
+  final TextEditingController _aiuController = TextEditingController(text: '0');
+  final TextEditingController _dctoGeneralController = TextEditingController(
+    text: '0',
+  );
+  bool _retencionesExpanded = false;
+
   Cliente? _clienteSeleccionado;
   Producto? _productoSeleccionado;
   List<ItemPedido> _items = [];
   List<Producto> _productosDisponibles = [];
+  List<Cliente> _clientesDisponibles = [];
 
   bool _isLoading = false;
 
@@ -101,6 +123,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
   void initState() {
     super.initState();
     _cargarProductos();
+    _cargarClientes();
     
     // Si se pasó un pedido de asesor, precargar los datos
     if (widget.pedidoAsesor != null) {
@@ -165,6 +188,17 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     }
   }
 
+  Future<void> _cargarClientes() async {
+    try {
+      final clientes = await _clienteService.obtenerClientes();
+      setState(() {
+        _clientesDisponibles = clientes;
+      });
+    } catch (e) {
+      print('Error al cargar clientes: $e');
+    }
+  }
+
   @override
   void dispose() {
     _idController.dispose();
@@ -182,6 +216,11 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     _vendedorController.dispose();
     _porcentajeDctoPagoController.dispose();
     _guiaController.dispose();
+    _retencionController.dispose();
+    _reteIVAController.dispose();
+    _reteICAController.dispose();
+    _aiuController.dispose();
+    _dctoGeneralController.dispose();
     super.dispose();
   }
 
@@ -193,373 +232,549 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       title: 'Facturación',
       child: Scaffold(
         backgroundColor: AppTheme.backgroundDark,
-        body: Column(
-          children: [
-            _buildHeader(),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: EdgeInsets.all(24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildMainForm(),
-                    SizedBox(height: 24),
-                    _buildMetodoPago(),
-                    SizedBox(height: 24),
-                    _buildDatosExtras(),
-                    SizedBox(height: 24),
-                    _buildDatosProducto(),
-                    SizedBox(height: 24),
-                    _buildItemsList(),
-                    SizedBox(height: 24),
-                    _buildTotales(),
-                    SizedBox(height: 24),
-                    _buildBotonesAccion(),
-                    SizedBox(
-                      height: 80,
-                    ), // Espacio para evitar que el contenido quede debajo de los botones
-                  ],
+        body: LayoutBuilder(
+          builder: (context, constraints) {
+            final isMobile = constraints.maxWidth < 600;
+            final padding = isMobile ? 12.0 : 24.0;
+            final spacing = isMobile ? 16.0 : 24.0;
+
+            return Column(
+              children: [
+                _buildHeader(),
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: EdgeInsets.all(padding),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildMainForm(),
+                        SizedBox(height: spacing),
+                        _buildMetodoPago(),
+                        SizedBox(height: spacing),
+                        _buildDatosExtras(),
+                        SizedBox(height: spacing),
+                        _buildDatosProducto(),
+                        SizedBox(height: spacing),
+                        _buildItemsList(),
+                        SizedBox(height: spacing),
+                        _buildRetencionesYAIU(),
+                        SizedBox(height: spacing),
+                        _buildTotales(),
+                        SizedBox(height: spacing),
+                        _buildBotonesAccion(),
+                        SizedBox(height: 80),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
-            ),
-          ],
+              ],
+            );
+          },
         ),
       ),
     );
   }
 
   Widget _buildHeader() {
-    return Container(
-      padding: EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: AppTheme.cardBg,
-        boxShadow: [
-          BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
-        ],
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.receipt_long, color: AppTheme.primary, size: 32),
-          SizedBox(width: 12),
-          Text(
-            'Crear factura',
-            style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: AppTheme.textPrimary,
-            ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < 500;
+        
+        return Container(
+          padding: EdgeInsets.all(isMobile ? 12 : 24),
+          decoration: BoxDecoration(
+            color: AppTheme.cardBg,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black12,
+                blurRadius: 4,
+                offset: Offset(0, 2),
+              ),
+            ],
           ),
-          Spacer(),
-          ElevatedButton.icon(
-            onPressed: () {
-              // TODO: Implementar facturas en borrador
-            },
-            icon: Icon(Icons.drafts),
-            label: Text(
-              'Facturas en borrador',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primary,
-              foregroundColor: Colors.black87,
-              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            ),
-          ),
-        ],
-      ),
+          child: isMobile
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.receipt_long,
+                          color: AppTheme.primary,
+                          size: 24,
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          'Crear factura',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () {},
+                        icon: Icon(Icons.drafts, size: 18),
+                        label: Text(
+                          'Facturas en borrador',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primary,
+                          foregroundColor: Colors.black87,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                )
+              : Row(
+                  children: [
+                    Icon(Icons.receipt_long, color: AppTheme.primary, size: 32),
+                    SizedBox(width: 12),
+                    Text(
+                      'Crear factura',
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.textPrimary,
+                      ),
+                    ),
+                    Spacer(),
+                    ElevatedButton.icon(
+                      onPressed: () {},
+                      icon: Icon(Icons.drafts),
+                      label: Text(
+                        'Facturas en borrador',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primary,
+                        foregroundColor: Colors.black87,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 16,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+        );
+      },
     );
   }
 
   Widget _buildMainForm() {
-    return Container(
-      padding: EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: AppTheme.cardBg,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 2)),
-        ],
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              // Tipo
-              Expanded(
-                flex: 2,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Tipo',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.textPrimary,
-                        fontSize: 14,
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    DropdownButtonFormField<String>(
-                      value: _tipoFactura,
-                      decoration: InputDecoration(
-                        border: OutlineInputBorder(),
-                        contentPadding: EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 16,
-                        ),
-                        filled: true,
-                        fillColor: AppTheme.surfaceDark,
-                        hintStyle: TextStyle(color: AppTheme.textSecondary),
-                      ),
-                      style: TextStyle(
-                        color: AppTheme.textPrimary,
-                        fontSize: 14,
-                      ),
-                      items: ['POS', 'FACTURA']
-                          .map(
-                            (tipo) => DropdownMenuItem(
-                              value: tipo,
-                              child: Text(tipo),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: (value) =>
-                          setState(() => _tipoFactura = value!),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(width: 16),
-              // F. Factura
-              Expanded(
-                flex: 2,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'F. Factura',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.textPrimary,
-                        fontSize: 14,
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    InkWell(
-                      onTap: () async {
-                        final fecha = await showDatePicker(
-                          context: context,
-                          initialDate: _fechaFactura,
-                          firstDate: DateTime(2020),
-                          lastDate: DateTime(2030),
-                        );
-                        if (fecha != null)
-                          setState(() => _fechaFactura = fecha);
-                      },
-                      child: InputDecorator(
-                        decoration: InputDecoration(
-                          border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 16,
-                          ),
-                          suffixIcon: Icon(
-                            Icons.calendar_today,
-                            color: AppTheme.textSecondary,
-                          ),
-                          filled: true,
-                          fillColor: AppTheme.surfaceDark,
-                        ),
-                        child: Text(
-                          '${_fechaFactura.year}-${_fechaFactura.month.toString().padLeft(2, '0')}-${_fechaFactura.day.toString().padLeft(2, '0')}',
-                          style: TextStyle(
-                            color: AppTheme.textPrimary,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(width: 16),
-              // F. Vencimiento
-              Expanded(
-                flex: 2,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'F. Vencimiento',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.textPrimary,
-                        fontSize: 14,
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    InkWell(
-                      onTap: () async {
-                        final fecha = await showDatePicker(
-                          context: context,
-                          initialDate: _fechaVencimiento,
-                          firstDate: _fechaFactura,
-                          lastDate: DateTime(2030),
-                        );
-                        if (fecha != null)
-                          setState(() => _fechaVencimiento = fecha);
-                      },
-                      child: InputDecorator(
-                        decoration: InputDecoration(
-                          border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 16,
-                          ),
-                          suffixIcon: Icon(
-                            Icons.calendar_today,
-                            color: AppTheme.textSecondary,
-                          ),
-                          filled: true,
-                          fillColor: AppTheme.surfaceDark,
-                        ),
-                        child: Text(
-                          '${_fechaVencimiento.year}-${_fechaVencimiento.month.toString().padLeft(2, '0')}-${_fechaVencimiento.day.toString().padLeft(2, '0')}',
-                          style: TextStyle(
-                            color: AppTheme.textPrimary,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < 600;
+        
+        return Container(
+          padding: EdgeInsets.all(isMobile ? 12 : 24),
+          decoration: BoxDecoration(
+            color: AppTheme.cardBg,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black12,
+                blurRadius: 8,
+                offset: Offset(0, 2),
               ),
             ],
           ),
-          SizedBox(height: 16),
-          Row(
+          child: Column(
             children: [
-              // ID
-              Expanded(
-                flex: 2,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              if (isMobile) ...[
+                // Diseño móvil - campos apilados verticalmente
+                _buildFormField('Tipo', _buildTipoDropdown()),
+                SizedBox(height: 12),
+                Row(
                   children: [
-                    Text(
-                      'ID',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.textPrimary,
-                        fontSize: 14,
+                    Expanded(
+                      child: _buildFormField(
+                        'F. Factura',
+                        _buildFechaFacturaPicker(),
                       ),
                     ),
-                    SizedBox(height: 8),
-                    TextField(
-                      controller: _idController,
-                      style: TextStyle(
-                        color: AppTheme.textPrimary,
-                        fontSize: 14,
-                      ),
-                      decoration: InputDecoration(
-                        border: OutlineInputBorder(),
-                        contentPadding: EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 16,
-                        ),
-                        filled: true,
-                        fillColor: AppTheme.surfaceDark,
-                        hintText: 'ID de factura',
-                        hintStyle: TextStyle(color: AppTheme.textSecondary),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: _buildFormField(
+                        'F. Vencimiento',
+                        _buildFechaVencimientoPicker(),
                       ),
                     ),
                   ],
                 ),
-              ),
-              SizedBox(width: 16),
-              // Cliente
-              Expanded(
-                flex: 4,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                SizedBox(height: 12),
+                _buildFormField('ID', _buildIdField()),
+                SizedBox(height: 12),
+                _buildFormField('Cliente', _buildClienteField()),
+              ] else ...[
+                // Diseño desktop - original
+                Row(
                   children: [
-                    Text(
-                      'Cliente',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.textPrimary,
-                        fontSize: 14,
+                    Expanded(
+                      flex: 2,
+                      child: _buildFormField('Tipo', _buildTipoDropdown()),
+                    ),
+                    SizedBox(width: 16),
+                    Expanded(
+                      flex: 2,
+                      child: _buildFormField(
+                        'F. Factura',
+                        _buildFechaFacturaPicker(),
                       ),
                     ),
-                    SizedBox(height: 8),
-                    TextField(
-                      controller: _clienteController,
-                      style: TextStyle(
-                        color: AppTheme.textPrimary,
-                        fontSize: 14,
-                      ),
-                      decoration: InputDecoration(
-                        border: OutlineInputBorder(),
-                        contentPadding: EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 16,
-                        ),
-                        filled: true,
-                        fillColor: AppTheme.surfaceDark,
-                        hintStyle: TextStyle(color: AppTheme.textSecondary),
+                    SizedBox(width: 16),
+                    Expanded(
+                      flex: 2,
+                      child: _buildFormField(
+                        'F. Vencimiento',
+                        _buildFechaVencimientoPicker(),
                       ),
                     ),
                   ],
                 ),
-              ),
-              SizedBox(width: 8),
-              // Botones de acción
-              Padding(
-                padding: EdgeInsets.only(top: 24),
-                child: Row(
+                SizedBox(height: 16),
+                Row(
                   children: [
-                    Tooltip(
-                      message: 'Buscar cliente',
-                      child: IconButton(
-                        onPressed: _buscarCliente,
-                        icon: Icon(Icons.search, size: 20),
-                        style: IconButton.styleFrom(
-                          backgroundColor: Colors.blue[700],
-                          foregroundColor: Colors.white,
-                        ),
-                      ),
+                    Expanded(
+                      flex: 2,
+                      child: _buildFormField('ID', _buildIdField()),
                     ),
-                    SizedBox(width: 4),
-                    Tooltip(
-                      message: 'Crear nuevo cliente',
-                      child: IconButton(
-                        onPressed: _crearCliente,
-                        icon: Icon(Icons.person_add, size: 20),
-                        style: IconButton.styleFrom(
-                          backgroundColor: Colors.green[700],
-                          foregroundColor: Colors.white,
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: 4),
-                    Tooltip(
-                      message: 'Ver detalles del cliente',
-                      child: IconButton(
-                        onPressed: _editarCliente,
-                        icon: Icon(Icons.contact_page, size: 20),
-                        style: IconButton.styleFrom(
-                          backgroundColor: Colors.orange[700],
-                          foregroundColor: Colors.white,
-                        ),
-                      ),
+                    SizedBox(width: 16),
+                    Expanded(
+                      flex: 4,
+                      child: _buildFormField('Cliente', _buildClienteField()),
                     ),
                   ],
                 ),
-              ),
+              ],
             ],
           ),
-        ],
+        );
+      },
+    );
+  }
+
+  Widget _buildFormField(String label, Widget field) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            color: AppTheme.textPrimary,
+            fontSize: 14,
+          ),
+        ),
+        SizedBox(height: 8),
+        field,
+      ],
+    );
+  }
+
+  Widget _buildTipoDropdown() {
+    return DropdownButtonFormField<String>(
+      value: _tipoFactura,
+      decoration: InputDecoration(
+        border: OutlineInputBorder(),
+        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+        filled: true,
+        fillColor: AppTheme.surfaceDark,
       ),
+      style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+      items: ['POS', 'FACTURA']
+          .map((tipo) => DropdownMenuItem(value: tipo, child: Text(tipo)))
+          .toList(),
+      onChanged: (value) => setState(() => _tipoFactura = value!),
+    );
+  }
+
+  Widget _buildFechaFacturaPicker() {
+    return InkWell(
+      onTap: () async {
+        final fecha = await showDatePicker(
+          context: context,
+          initialDate: _fechaFactura,
+          firstDate: DateTime(2020),
+          lastDate: DateTime(2030),
+        );
+        if (fecha != null) setState(() => _fechaFactura = fecha);
+      },
+      child: InputDecorator(
+        decoration: InputDecoration(
+          border: OutlineInputBorder(),
+          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+          suffixIcon: Icon(
+            Icons.calendar_today,
+            color: AppTheme.textSecondary,
+            size: 18,
+          ),
+          filled: true,
+          fillColor: AppTheme.surfaceDark,
+        ),
+        child: Text(
+          '${_fechaFactura.year}-${_fechaFactura.month.toString().padLeft(2, '0')}-${_fechaFactura.day.toString().padLeft(2, '0')}',
+          style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFechaVencimientoPicker() {
+    return InkWell(
+      onTap: () async {
+        final fecha = await showDatePicker(
+          context: context,
+          initialDate: _fechaVencimiento,
+          firstDate: _fechaFactura,
+          lastDate: DateTime(2030),
+        );
+        if (fecha != null) setState(() => _fechaVencimiento = fecha);
+      },
+      child: InputDecorator(
+        decoration: InputDecoration(
+          border: OutlineInputBorder(),
+          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+          suffixIcon: Icon(
+            Icons.calendar_today,
+            color: AppTheme.textSecondary,
+            size: 18,
+          ),
+          filled: true,
+          fillColor: AppTheme.surfaceDark,
+        ),
+        child: Text(
+          '${_fechaVencimiento.year}-${_fechaVencimiento.month.toString().padLeft(2, '0')}-${_fechaVencimiento.day.toString().padLeft(2, '0')}',
+          style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildIdField() {
+    return TextField(
+      controller: _idController,
+      style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+      decoration: InputDecoration(
+        border: OutlineInputBorder(),
+        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+        filled: true,
+        fillColor: AppTheme.surfaceDark,
+        hintText: 'ID de factura',
+        hintStyle: TextStyle(color: AppTheme.textSecondary),
+      ),
+    );
+  }
+
+  Widget _buildClienteField() {
+    return Row(
+      children: [
+        Expanded(
+          child: Autocomplete<Cliente>(
+            optionsBuilder: (TextEditingValue textEditingValue) {
+              if (textEditingValue.text.isEmpty) {
+                return _clientesDisponibles.take(10);
+              }
+              return _clientesDisponibles
+                  .where((Cliente cliente) {
+                    final nombreCompleto = cliente.nombreCompleto.toLowerCase();
+                    final documento = cliente.numeroIdentificacion
+                        .toLowerCase();
+                    final query = textEditingValue.text.toLowerCase();
+                    return nombreCompleto.contains(query) ||
+                        documento.contains(query);
+                  })
+                  .take(15);
+            },
+            displayStringForOption: (Cliente cliente) => cliente.nombreCompleto,
+            onSelected: (Cliente cliente) {
+              setState(() {
+                _clienteSeleccionado = cliente;
+                _clienteController.text = cliente.nombreCompleto;
+              });
+            },
+            fieldViewBuilder:
+                (
+                  BuildContext context,
+                  TextEditingController textEditingController,
+                  FocusNode focusNode,
+                  VoidCallback onFieldSubmitted,
+                ) {
+                  // Si hay cliente seleccionado, mostrar su nombre
+                  if (_clienteSeleccionado != null &&
+                      textEditingController.text.isEmpty) {
+                    textEditingController.text =
+                        _clienteSeleccionado!.nombreCompleto;
+                  }
+                  return TextField(
+                    controller: textEditingController,
+                    focusNode: focusNode,
+                    style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 16,
+                      ),
+                      filled: true,
+                      fillColor: AppTheme.surfaceDark,
+                      hintText: 'Buscar cliente...',
+                      hintStyle: TextStyle(color: AppTheme.textSecondary),
+                      prefixIcon: Icon(
+                        Icons.search,
+                        color: AppTheme.textSecondary,
+                        size: 20,
+                      ),
+                      suffixIcon: Icon(
+                        Icons.arrow_drop_down,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                  );
+                },
+            optionsViewBuilder:
+                (
+                  BuildContext context,
+                  AutocompleteOnSelected<Cliente> onSelected,
+                  Iterable<Cliente> options,
+                ) {
+                  return Align(
+                    alignment: Alignment.topLeft,
+                    child: Material(
+                      elevation: 4.0,
+                      color: AppTheme.surfaceDark,
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        constraints: BoxConstraints(
+                          maxHeight: 300,
+                          maxWidth: 400,
+                        ),
+                        child: ListView.builder(
+                          padding: EdgeInsets.all(8.0),
+                          itemCount: options.length,
+                          shrinkWrap: true,
+                          itemBuilder: (BuildContext context, int index) {
+                            final Cliente cliente = options.elementAt(index);
+                            return InkWell(
+                              onTap: () => onSelected(cliente),
+                              child: Container(
+                                padding: EdgeInsets.all(12.0),
+                                decoration: BoxDecoration(
+                                  border: Border(
+                                    bottom: BorderSide(
+                                      color: AppTheme.textSecondary.withOpacity(
+                                        0.2,
+                                      ),
+                                      width: 1,
+                                    ),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    CircleAvatar(
+                                      backgroundColor: AppTheme.primary
+                                          .withOpacity(0.2),
+                                      radius: 18,
+                                      child: Text(
+                                        cliente.nombreCompleto.isNotEmpty
+                                            ? cliente.nombreCompleto[0]
+                                                  .toUpperCase()
+                                            : '?',
+                                        style: TextStyle(
+                                          color: AppTheme.primary,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                    SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            cliente.nombreCompleto,
+                                            style: TextStyle(
+                                              color: AppTheme.textPrimary,
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                          if (cliente
+                                              .numeroIdentificacion
+                                              .isNotEmpty)
+                                            Text(
+                                              'Doc: ${cliente.numeroIdentificacion}',
+                                              style: TextStyle(
+                                                color: AppTheme.textSecondary,
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  );
+                },
+          ),
+        ),
+        SizedBox(width: 8),
+        // Botón crear cliente
+        Tooltip(
+          message: 'Crear cliente',
+          child: InkWell(
+            onTap: _crearCliente,
+            child: Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppTheme.primary,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.person_add, color: Colors.white, size: 20),
+            ),
+          ),
+        ),
+        SizedBox(width: 4),
+        // Botón limpiar cliente
+        if (_clienteSeleccionado != null)
+          Tooltip(
+            message: 'Quitar cliente',
+            child: InkWell(
+              onTap: () {
+                setState(() {
+                  _clienteSeleccionado = null;
+                  _clienteController.text = 'CONSUMIDOR FINAL';
+                });
+              },
+              child: Container(
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppTheme.error,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(Icons.close, color: Colors.white, size: 20),
+              ),
+            ),
+          ),
+      ],
     );
   }
 
@@ -1164,7 +1379,26 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                             fontSize: 14,
                           ),
                           decoration: InputDecoration(
-                            border: OutlineInputBorder(),
+                            border: OutlineInputBorder(
+                              borderSide: BorderSide(
+                                color: _codigoBarrasController.text.isNotEmpty
+                                    ? AppTheme.primary
+                                    : AppTheme.textMuted.withOpacity(0.3),
+                                width: 2,
+                              ),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderSide: BorderSide(
+                                color: AppTheme.textMuted.withOpacity(0.3),
+                                width: 1,
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderSide: BorderSide(
+                                color: AppTheme.primary,
+                                width: 2,
+                              ),
+                            ),
                             contentPadding: EdgeInsets.symmetric(
                               horizontal: 12,
                               vertical: 8,
@@ -1173,18 +1407,42 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                             fillColor: AppTheme.surfaceDark,
                             hintText: 'Escanee o ingrese código',
                             hintStyle: TextStyle(color: AppTheme.textSecondary),
-                            suffixIcon: Icon(
+                            prefixIcon: Icon(
                               Icons.qr_code_scanner,
-                              color: AppTheme.textSecondary,
+                              color: AppTheme.primary,
+                              size: 20,
                             ),
+                            suffixIcon: _codigoBarrasController.text.isNotEmpty
+                                ? IconButton(
+                                    icon: Icon(
+                                      Icons.search,
+                                      color: AppTheme.primary,
+                                      size: 20,
+                                    ),
+                                    onPressed: () {
+                                      _buscarProductoPorCodigoBarras(
+                                        _codigoBarrasController.text,
+                                      );
+                                      _codigoBarrasController.clear();
+                                    },
+                                  )
+                                : null,
                           ),
-                          onSubmitted: (value) {
-                            _buscarProductoPorCodigoBarras(value);
-                            // Mantener el foco en el campo para siguiente scan
-                            Future.delayed(
-                              Duration(milliseconds: 100),
-                              () => _codigoBarrasController.clear(),
-                            );
+                          onChanged: (value) {
+                            setState(
+                              () {},
+                            ); // Para actualizar el icono de búsqueda
+                          },
+                          onSubmitted: (value) async {
+                            if (value.isNotEmpty) {
+                              // Esperar un momento para que se vea el código escaneado
+                              await Future.delayed(Duration(milliseconds: 500));
+                              await _buscarProductoPorCodigoBarras(value);
+                              // Esperar otro momento para que se vea el resultado
+                              await Future.delayed(Duration(milliseconds: 800));
+                              // Limpiar y mantener el foco para siguiente escaneo
+                              _codigoBarrasController.clear();
+                            }
                           },
                         ),
                       ),
@@ -1484,7 +1742,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                             filled: true,
                             fillColor: AppTheme.surfaceDark,
                           ),
-                          items: ['IVA', 'INC', 'Exento']
+                          items: ['IVA', 'IMPOCONSUMO', 'NINGUNO']
                               .map(
                                 (tipo) => DropdownMenuItem(
                                   value: tipo,
@@ -1791,11 +2049,219 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     );
   }
 
+  Widget _buildRetencionesYAIU() {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.cardBg,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 2)),
+        ],
+      ),
+      child: Column(
+        children: [
+          InkWell(
+            onTap: () =>
+                setState(() => _retencionesExpanded = !_retencionesExpanded),
+            child: Container(
+              padding: EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Icon(Icons.calculate, color: AppTheme.primary, size: 24),
+                  SizedBox(width: 12),
+                  Text(
+                    'Retenciones, AIU y Descuentos',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.textPrimary,
+                    ),
+                  ),
+                  Spacer(),
+                  Icon(
+                    _retencionesExpanded
+                        ? Icons.keyboard_arrow_up
+                        : Icons.keyboard_arrow_down,
+                    color: AppTheme.textSecondary,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (_retencionesExpanded) ...[
+            Divider(height: 1),
+            Padding(
+              padding: EdgeInsets.all(24),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final isMobile = constraints.maxWidth < 600;
+
+                  if (isMobile) {
+                    return Column(
+                      children: [
+                        // Primera fila: Retención y ReteIVA
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildRetencionField(
+                                'Retención',
+                                _retencionController,
+                                '%',
+                              ),
+                            ),
+                            SizedBox(width: 12),
+                            Expanded(
+                              child: _buildRetencionField(
+                                'ReteIVA',
+                                _reteIVAController,
+                                '%',
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 16),
+                        // Segunda fila: ReteICA y AIU
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildRetencionField(
+                                'ReteICA',
+                                _reteICAController,
+                                '%',
+                              ),
+                            ),
+                            SizedBox(width: 12),
+                            Expanded(
+                              child: _buildRetencionField(
+                                'AIU',
+                                _aiuController,
+                                '%',
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 16),
+                        // Tercera fila: Descuento General
+                        _buildRetencionField(
+                          'Dcto. General',
+                          _dctoGeneralController,
+                          'Valor',
+                        ),
+                      ],
+                    );
+                  } else {
+                    return Row(
+                      children: [
+                        Expanded(
+                          child: _buildRetencionField(
+                            'Retención',
+                            _retencionController,
+                            '%',
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: _buildRetencionField(
+                            'ReteIVA',
+                            _reteIVAController,
+                            '%',
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: _buildRetencionField(
+                            'ReteICA',
+                            _reteICAController,
+                            '%',
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: _buildRetencionField(
+                            'AIU',
+                            _aiuController,
+                            '%',
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: _buildRetencionField(
+                            'Dcto. General',
+                            _dctoGeneralController,
+                            'Valor',
+                          ),
+                        ),
+                      ],
+                    );
+                  }
+                },
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRetencionField(
+    String label,
+    TextEditingController controller,
+    String suffix,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: AppTheme.textSecondary,
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        SizedBox(height: 6),
+        TextField(
+          controller: controller,
+          keyboardType: TextInputType.numberWithOptions(decimal: true),
+          style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+          onChanged: (value) => setState(() {}),
+          decoration: InputDecoration(
+            border: OutlineInputBorder(),
+            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            filled: true,
+            fillColor: AppTheme.surfaceDark,
+            suffixText: suffix,
+            suffixStyle: TextStyle(color: AppTheme.textSecondary),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildTotales() {
     final subtotal = _items.fold(0.0, (sum, item) => sum + item.subtotal);
+    
+    // Calcular retenciones
+    final retencionPct = double.tryParse(_retencionController.text) ?? 0;
+    final reteIVAPct = double.tryParse(_reteIVAController.text) ?? 0;
+    final reteICAPct = double.tryParse(_reteICAController.text) ?? 0;
+    final aiuPct = double.tryParse(_aiuController.text) ?? 0;
+    final dctoGeneral = double.tryParse(_dctoGeneralController.text) ?? 0;
+
+    final retencionValor = subtotal * (retencionPct / 100);
+    final reteIVAValor = subtotal * (reteIVAPct / 100);
+    final reteICAValor = subtotal * (reteICAPct / 100);
+    final aiuValor = subtotal * (aiuPct / 100);
+    
     final totalImpuestos = 0.0;
-    final totalDescuentos = 0.0;
-    final total = subtotal;
+    final totalDescuentos = dctoGeneral;
+    final totalRetenciones = retencionValor + reteIVAValor + reteICAValor;
+    final total =
+        subtotal +
+        totalImpuestos +
+        aiuValor -
+        totalDescuentos -
+        totalRetenciones;
 
     return Container(
       padding: EdgeInsets.all(24),
@@ -1809,8 +2275,26 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       child: Column(
         children: [
           _buildTotalRow('Subtotal', subtotal),
-          _buildTotalRow('Impuestos', totalImpuestos),
-          _buildTotalRow('Descuentos', -totalDescuentos),
+          _buildTotalRow('Dcto Producto', 0),
+          _buildTotalRow('Impuesto', totalImpuestos),
+          _buildTotalRow('Dcto General', -totalDescuentos),
+          if (retencionValor > 0)
+            _buildTotalRow(
+              'Retención (${retencionPct.toStringAsFixed(1)}%)',
+              -retencionValor,
+            ),
+          if (reteIVAValor > 0)
+            _buildTotalRow(
+              'ReteIVA (${reteIVAPct.toStringAsFixed(1)}%)',
+              -reteIVAValor,
+            ),
+          if (reteICAValor > 0)
+            _buildTotalRow(
+              'ReteICA (${reteICAPct.toStringAsFixed(1)}%)',
+              -reteICAValor,
+            ),
+          if (aiuValor > 0)
+            _buildTotalRow('AIU (${aiuPct.toStringAsFixed(1)}%)', aiuValor),
           Divider(thickness: 2, color: Colors.grey.shade700),
           _buildTotalRow('TOTAL', total, isTotal: true),
         ],
@@ -1916,35 +2400,116 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
   Future<void> _buscarProductoPorCodigoBarras(String codigo) async {
     if (codigo.isEmpty) return;
 
-    setState(() => _isLoading = true);
+    // 🧹 LIMPIAR el código: eliminar espacios, saltos de línea, retornos de carro
+    // y cualquier carácter no visible que el lector pueda agregar
+    final codigoLimpio = codigo.trim().replaceAll(RegExp(r'[\r\n\t]'), '');
+
+    if (codigoLimpio.isEmpty) return;
+
+    Producto? producto;
+    String codigoUsado = codigoLimpio;
 
     try {
-      final productos = await _productoService.getProductos();
-      final producto = productos.firstWhere(
-        (p) => p.id == codigo,
-        orElse: () => throw Exception('Producto no encontrado'),
+      print('🔍 Buscando producto por código de barras original: "$codigo"');
+      print(
+        '🧹 Código limpio: "$codigoLimpio" (longitud: ${codigoLimpio.length})',
       );
+
+      // 🚀 INTENTO 1: Buscar con el código completo
+      producto = await _productoService.getProductoPorCodigoBarras(
+        codigoLimpio,
+      );
+
+      // 🔄 INTENTO 2: Si no se encuentra y tiene más de 3 caracteres,
+      // intentar quitando el último dígito (el lector puede agregar un carácter extra)
+      if (producto == null && codigoLimpio.length > 3) {
+        final codigoSinUltimo = codigoLimpio.substring(0, codigoLimpio.length - 1);
+        print('⚠️ No encontrado con código completo, intentando sin último dígito...');
+        print('   Código sin último dígito: "$codigoSinUltimo"');
+        
+        producto = await _productoService.getProductoPorCodigoBarras(
+          codigoSinUltimo,
+        );
+        
+        if (producto != null) {
+          codigoUsado = codigoSinUltimo;
+          print('✅ ¡Encontrado sin el último dígito! El lector agregó: "${codigoLimpio[codigoLimpio.length - 1]}"');
+        }
+      }
+
+      if (producto == null) {
+        throw Exception('Producto no encontrado');
+      }
+
+      print('✅ Producto encontrado: ${producto.nombre}');
+      print('   - Código: ${producto.codigo}');
+      print('   - Código de barras: ${producto.codigoBarras}');
+      print('   - Código usado para buscar: "$codigoUsado"');
 
       setState(() {
         _productoSeleccionado = producto;
-        _codigoController.text = producto.id;
+        _codigoController.text = producto!.codigo ?? '';
         _nombreProductoController.text = producto.nombre;
         _valorUnitController.text = producto.precio.toString();
-        _isLoading = false;
       });
-    } catch (e) {
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Producto no encontrado')));
-    }
-  }
 
-  void _buscarCliente() async {
-    // TODO: Implementar búsqueda de clientes
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('Función en desarrollo')));
+      // Mostrar feedback visual de éxito
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.white, size: 20),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  '✓ ${producto!.nombre} - \$${producto.precio.toStringAsFixed(0)}',
+                  style: TextStyle(fontWeight: FontWeight.w500),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+          margin: EdgeInsets.only(bottom: 80, left: 16, right: 16),
+        ),
+      );
+
+      // Agregar automáticamente el producto si está configurado
+      // (comentado por defecto, descomentar si se quiere agregar automáticamente)
+      // _agregarItem();
+    } catch (e) {
+      // Mostrar error con feedback visual
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.error_outline, color: Colors.white, size: 20),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Producto no encontrado: $codigoLimpio',
+                  style: TextStyle(fontWeight: FontWeight.w500),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.red.shade700,
+          duration: Duration(seconds: 4),
+          behavior: SnackBarBehavior.floating,
+          margin: EdgeInsets.only(bottom: 80, left: 16, right: 16),
+        ),
+      );
+
+      // NO limpiar los campos - dejar el código para que el usuario pueda verlo
+      setState(() {
+        _productoSeleccionado = null;
+        // Mantener el código escaneado visible en el campo
+        _codigoController.text = codigoLimpio;
+        _nombreProductoController.clear();
+        _valorUnitController.clear();
+      });
+    }
   }
 
   void _crearCliente() async {
@@ -1965,13 +2530,6 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
         ),
       );
     }
-  }
-
-  void _editarCliente() {
-    // TODO: Implementar editar cliente
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('Función en desarrollo')));
   }
 
   // Widget para seleccionar método de pago
@@ -2268,72 +2826,29 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       // Guardar el pedido
       final pedidoCreado = await _pedidoService.createPedido(pedido);
 
-      setState(() => _isLoading = false);
-
-      // Abrir diálogo de pago
-      final resultado = await showDialog<Map<String, dynamic>>(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => DialogoPago(
-          pedido: pedidoCreado,
-          clienteNombre: _clienteController.text,
-        ),
-      );
-
-      // Si el usuario confirmó el pago (DialogoPago devuelve datos cuando confirma)
-      if (resultado != null) {
-        setState(() => _isLoading = true);
-
+      // Si viene de pedido asesor, procesar pago directamente sin diálogo
+      if (widget.pedidoAsesor != null) {
         try {
-          // Extraer datos del pago del diálogo
-          final medioPago = resultado['medioPago'] ?? 'efectivo';
-          final propina = (resultado['propina'] as num?)?.toDouble() ?? 0.0;
-          final totalCalculado =
-              (resultado['totalCalculado'] as num?)?.toDouble() ?? total;
-          final pagoMultiple = resultado['pagoMultiple'] ?? false;
-          final montoEfectivo =
-              double.tryParse(resultado['montoEfectivo']?.toString() ?? '0') ??
-              0.0;
-          final montoTarjeta =
-              double.tryParse(resultado['montoTarjeta']?.toString() ?? '0') ??
-              0.0;
-          final montoTransferencia =
-              double.tryParse(
-                resultado['montoTransferencia']?.toString() ?? '0',
-              ) ??
-              0.0;
-
-          // Calcular descuento si aplica
-          final descuentoPorcentaje =
-              double.tryParse(
-                resultado['descuentoPorcentaje']?.toString() ?? '0',
-              ) ??
-              0.0;
-          final descuentoValor =
-              double.tryParse(resultado['descuentoValor']?.toString() ?? '0') ??
-              0.0;
-          double descuentoTotal = descuentoValor;
-          if (descuentoPorcentaje > 0) {
-            descuentoTotal += total * (descuentoPorcentaje / 100);
-          }
-
-          // Llamar al servicio para procesar el pago
+          // Procesar pago directo con método de pago seleccionado
           await _pedidoService.pagarPedido(
             pedidoCreado.id,
-            formaPago: pagoMultiple ? 'mixto' : medioPago,
-            propina: propina,
-            totalPagado: totalCalculado,
+            formaPago: _metodoPago,
+            propina: 0.0,
+            totalPagado: total,
             procesadoPor: userName,
-            notas: 'Pago desde facturación',
-            descuento: descuentoTotal,
-            pagoMultiple: pagoMultiple,
-            montoEfectivo: montoEfectivo,
-            montoTarjeta: montoTarjeta,
-            montoTransferencia: montoTransferencia,
+            notas: 'Pago de pedido asesor',
+            descuento: 0.0,
+            pagoMultiple: false,
+            montoEfectivo: _metodoPago == 'efectivo' ? total : 0.0,
+            montoTarjeta: _metodoPago == 'tarjeta' ? total : 0.0,
+            montoTransferencia: _metodoPago == 'transferencia' ? total : 0.0,
           );
 
-          // Si venía de pedido asesor, marcarlo como facturado
-          if (widget.pedidoAsesor != null && widget.pedidoAsesor!.id != null) {
+          // 📦 Registrar movimientos de inventario (salida de stock)
+          await _registrarMovimientosInventarioVenta(pedidoCreado);
+
+          // Marcar pedido asesor como facturado
+          if (widget.pedidoAsesor!.id != null) {
             try {
               await _pedidoAsesorService.marcarComoFacturado(
                 widget.pedidoAsesor!.id!,
@@ -2341,27 +2856,63 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
               );
             } catch (e) {
               print('Error al marcar pedido asesor como facturado: $e');
-              // No detener el flujo si falla esto
             }
           }
+
+          setState(() => _isLoading = false);
+
+          // Mostrar mensaje de éxito
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Pedido procesado exitosamente'),
+              backgroundColor: Colors.green,
+            ),
+          );
+
+          _limpiarFormulario();
+          Navigator.of(context).pop(); // Regresar a lista de pedidos
+        } catch (e) {
+          setState(() => _isLoading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error al procesar pago: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } else {
+        // Para facturación normal, procesar pago directamente sin diálogo
+        try {
+          // Procesar pago directo con método de pago seleccionado
+          await _pedidoService.pagarPedido(
+            pedidoCreado.id,
+            formaPago: _metodoPago,
+            propina: 0.0,
+            totalPagado: total,
+            procesadoPor: userName,
+            notas: 'Pago desde facturación',
+            descuento: 0.0,
+            pagoMultiple: false,
+            montoEfectivo: _metodoPago == 'efectivo' ? total : 0.0,
+            montoTarjeta: _metodoPago == 'tarjeta' ? total : 0.0,
+            montoTransferencia: _metodoPago == 'transferencia' ? total : 0.0,
+          );
+
+          // 📦 Registrar movimientos de inventario (salida de stock)
+          await _registrarMovimientosInventarioVenta(pedidoCreado);
 
           setState(() => _isLoading = false);
 
           // Mostrar diálogo de éxito con opciones de impresión
           await _mostrarDialogoFacturaExitosa(
             pedidoCreado,
-            medioPago,
-            totalCalculado,
-            descuentoTotal,
-            propina,
+            _metodoPago,
+            total,
+            0.0,
+            0.0,
           );
 
           _limpiarFormulario();
-
-          // Si venía de pedido asesor, regresar
-          if (widget.pedidoAsesor != null) {
-            Navigator.of(context).pop();
-          }
         } catch (e) {
           setState(() => _isLoading = false);
           ScaffoldMessenger.of(context).showSnackBar(
@@ -2380,6 +2931,51 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
           backgroundColor: Colors.red,
         ),
       );
+    }
+  }
+
+  // 📦 Registrar movimientos de inventario cuando se factura (venta)
+  Future<void> _registrarMovimientosInventarioVenta(Pedido pedido) async {
+    try {
+      print('📦 Registrando movimientos de inventario para venta ${pedido.id}');
+
+      for (var item in pedido.items) {
+        try {
+          final movimiento = MovimientoInventario(
+            inventarioId: item.productoId,
+            productoId: item.productoId,
+            productoNombre: item.productoNombre ?? 'Producto',
+            tipoMovimiento: 'Salida',
+            motivo: 'Venta - Factura ${pedido.id}',
+            cantidadAnterior: 0, // El backend calculará el stock anterior
+            cantidadMovimiento: item.cantidad.toDouble(),
+            cantidadNueva: 0, // El backend calculará el stock nuevo
+            responsable: pedido.mesero ?? 'Sistema',
+            referencia: 'FV-${pedido.id}',
+            observaciones: 'Venta a ${pedido.cliente ?? 'CONSUMIDOR FINAL'}',
+            costoUnitario: item.precioUnitario,
+            precioTotal: item.subtotal,
+            fecha: DateTime.now(),
+            facturaNo: pedido.id,
+            proveedor: null,
+          );
+
+          await _inventarioService.registrarMovimiento(movimiento);
+          print(
+            '✅ Movimiento registrado para: ${item.productoNombre} (-${item.cantidad})',
+          );
+        } catch (e) {
+          print(
+            '⚠️ Error al registrar movimiento para ${item.productoNombre}: $e',
+          );
+          // Continuar con el siguiente item aunque haya error
+        }
+      }
+
+      print('✅ Todos los movimientos de inventario registrados para la venta');
+    } catch (e) {
+      print('❌ Error general al registrar movimientos de inventario: $e');
+      // No lanzar excepción para no interrumpir el flujo de la factura
     }
   }
 

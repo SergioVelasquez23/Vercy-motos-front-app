@@ -4,8 +4,10 @@ import '../models/pedido_asesor.dart';
 import '../models/item_pedido.dart';
 import '../models/producto.dart';
 import '../models/categoria.dart';
+import '../models/cliente.dart';
 import '../services/pedido_asesor_service.dart';
 import '../services/producto_service.dart';
+import '../services/cliente_service.dart';
 import '../providers/user_provider.dart';
 import '../providers/datos_cache_provider.dart';
 import '../theme/app_theme.dart';
@@ -20,6 +22,7 @@ class AsesorPedidosScreen extends StatefulWidget {
 class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
   final PedidoAsesorService _pedidoService = PedidoAsesorService();
   final ProductoService _productoService = ProductoService();
+  final ClienteService _clienteService = ClienteService();
   
   // Controladores
   final TextEditingController _clienteController = TextEditingController();
@@ -37,8 +40,10 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
   List<Producto> _productos = [];
   List<Producto> _productosFiltrados = [];
   List<Categoria> _categorias = [];
+  List<Cliente> _clientes = [];
   String? _categoriaSeleccionada;
   Producto? _productoSeleccionado;
+  Cliente? _clienteSeleccionado;
   bool _isLoading = false;
   
   // Totales
@@ -85,10 +90,19 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
         print('Error al cargar categorías: $e');
       }
 
+      // Cargar clientes
+      List<Cliente> clientes = [];
+      try {
+        clientes = await _clienteService.obtenerClientes();
+      } catch (e) {
+        print('Error al cargar clientes: $e');
+      }
+
       setState(() {
         _productos = productos;
         _productosFiltrados = productos;
         _categorias = categorias;
+        _clientes = clientes;
       });
     } catch (e) {
       _mostrarError('Error al cargar datos: $e');
@@ -217,8 +231,11 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
   }
 
   Future<void> _guardarPedido() async {
-    if (_clienteController.text.trim().isEmpty) {
-      _mostrarError('Por favor ingresa el nombre del cliente');
+    // Evitar doble click
+    if (_isLoading) return;
+
+    if (_clienteSeleccionado == null) {
+      _mostrarError('Por favor selecciona un cliente');
       return;
     }
 
@@ -233,7 +250,11 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
       final userProvider = Provider.of<UserProvider>(context, listen: false);
 
       final pedido = PedidoAsesor(
-        clienteNombre: _clienteController.text.trim(),
+        clienteNombre:
+            _clienteSeleccionado!.razonSocial ??
+            '${_clienteSeleccionado!.nombres ?? ''} ${_clienteSeleccionado!.apellidos ?? ''}'
+                .trim(),
+        clienteId: _clienteSeleccionado!.id,
         asesorNombre: userProvider.userName ?? 'Asesor',
         asesorId: userProvider.userId,
         items: _carrito,
@@ -252,10 +273,17 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
 
       _mostrarExito('Pedido creado exitosamente');
       _limpiarFormulario();
+      
+      // Navegar a la lista de pedidos asesores
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, '/admin-pedidos-asesor');
+      }
     } catch (e) {
       _mostrarError('Error al guardar pedido: $e');
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -263,6 +291,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
     setState(() {
       _carrito.clear();
       _clienteController.clear();
+      _clienteSeleccionado = null;
       _telefonoController.clear();
       _observacionesController.clear();
       _productoSeleccionado = null;
@@ -278,6 +307,11 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
     return Scaffold(
       backgroundColor: AppTheme.backgroundDark,
       appBar: AppBar(
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: Colors.white),
+          tooltip: 'Volver',
+          onPressed: () => Navigator.pop(context),
+        ),
         title: Row(
           children: [
             Icon(Icons.shopping_cart, color: Colors.white),
@@ -293,7 +327,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
         ),
         backgroundColor: AppTheme.primary,
         elevation: 0,
-        automaticallyImplyLeading: false,
+        automaticallyImplyLeading: true,
         actions: [
           // Información del usuario
           Padding(
@@ -316,25 +350,80 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
       ),
       body: _isLoading && _productos.isEmpty
           ? Center(child: CircularProgressIndicator(color: AppTheme.primary))
-          : Row(
-              children: [
-                // Panel izquierdo - Productos
-                Expanded(flex: 3, child: _buildProductosPanel()),
-                // Panel derecho - Carrito
-                Container(
-                  width: 400,
-                  decoration: BoxDecoration(
-                    color: AppTheme.cardBg,
-                    border: Border(
-                      left: BorderSide(
-                        color: AppTheme.primary.withOpacity(0.3),
-                        width: 2,
+          : LayoutBuilder(
+              builder: (context, constraints) {
+                // Determinar si es pantalla grande (tablet/desktop)
+                final isLargeScreen = constraints.maxWidth > 800;
+
+                if (isLargeScreen) {
+                  // Layout para desktop/tablet - dos columnas
+                  return Row(
+                    children: [
+                      // Panel izquierdo - Productos
+                      Expanded(flex: 3, child: _buildProductosPanel()),
+                      // Panel derecho - Carrito
+                      Container(
+                        width: 400,
+                        decoration: BoxDecoration(
+                          color: AppTheme.cardBg,
+                          border: Border(
+                            left: BorderSide(
+                              color: AppTheme.primary.withOpacity(0.3),
+                              width: 2,
+                            ),
+                          ),
+                        ),
+                        child: _buildCarritoPanel(),
                       ),
-                    ),
-                  ),
-                  child: _buildCarritoPanel(),
-                ),
-              ],
+                    ],
+                  );
+                } else {
+                  // Layout para móvil - columna única
+                  return Column(
+                    children: [
+                      // Panel de productos (ocupa la mayor parte)
+                      Expanded(child: _buildProductosPanel()),
+                      // Botón flotante para ver carrito
+                      Container(
+                        padding: EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppTheme.cardBg,
+                          border: Border(
+                            top: BorderSide(
+                              color: AppTheme.primary.withOpacity(0.3),
+                              width: 2,
+                            ),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: () => _mostrarCarritoModal(context),
+                                icon: Icon(
+                                  Icons.shopping_cart,
+                                  color: Colors.white,
+                                ),
+                                label: Text(
+                                  'Ver Pedido (${_carrito.length}) - \$${_total.toStringAsFixed(0)}',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppTheme.primary,
+                                  padding: EdgeInsets.symmetric(vertical: 16),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  );
+                }
+              },
             ),
     );
   }
@@ -494,7 +583,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
               : GridView.builder(
                   padding: EdgeInsets.all(16),
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 4,
+                    crossAxisCount: _getCrossAxisCount(context),
                     childAspectRatio: 0.85,
                     crossAxisSpacing: 12,
                     mainAxisSpacing: 12,
@@ -611,7 +700,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
       children: [
         // Encabezado del carrito
         Container(
-          padding: EdgeInsets.all(16),
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
             color: AppTheme.primary.withOpacity(0.1),
             border: Border(
@@ -620,19 +709,19 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
           ),
           child: Row(
             children: [
-              Icon(Icons.shopping_basket, color: AppTheme.primary),
+              Icon(Icons.shopping_basket, color: AppTheme.primary, size: 20),
               SizedBox(width: 8),
               Text(
                 'Pedido',
                 style: TextStyle(
                   color: AppTheme.textPrimary,
                   fontWeight: FontWeight.bold,
-                  fontSize: 18,
+                  fontSize: 16,
                 ),
               ),
               Spacer(),
               Container(
-                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                 decoration: BoxDecoration(
                   color: AppTheme.primary,
                   borderRadius: BorderRadius.circular(12),
@@ -642,15 +731,19 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
+                    fontSize: 12,
                   ),
                 ),
               ),
             ],
           ),
         ),
-        // Datos del cliente
+        // Datos del cliente - compacto
         Container(
-          padding: EdgeInsets.all(16),
+          padding: EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: AppTheme.surfaceDark.withOpacity(0.5),
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -659,56 +752,293 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
                 style: TextStyle(
                   color: AppTheme.textPrimary,
                   fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                ),
-              ),
-              SizedBox(height: 12),
-              TextField(
-                controller: _clienteController,
-                style: TextStyle(color: AppTheme.textPrimary),
-                decoration: InputDecoration(
-                  labelText: 'Nombre del cliente *',
-                  labelStyle: TextStyle(color: AppTheme.textSecondary),
-                  prefixIcon: Icon(Icons.person, color: AppTheme.primary),
-                  filled: true,
-                  fillColor: AppTheme.surfaceDark,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide.none,
-                  ),
+                  fontSize: 13,
                 ),
               ),
               SizedBox(height: 8),
-              TextField(
-                controller: _telefonoController,
-                style: TextStyle(color: AppTheme.textPrimary),
-                keyboardType: TextInputType.phone,
-                decoration: InputDecoration(
-                  labelText: 'Teléfono (opcional)',
-                  labelStyle: TextStyle(color: AppTheme.textSecondary),
-                  prefixIcon: Icon(Icons.phone, color: AppTheme.textSecondary),
-                  filled: true,
-                  fillColor: AppTheme.surfaceDark,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide.none,
+              // Selector de cliente con botón para crear nuevo
+              Row(
+                children: [
+                  Expanded(
+                    child: Autocomplete<Cliente>(
+                      optionsBuilder: (TextEditingValue textEditingValue) {
+                        if (textEditingValue.text.isEmpty) {
+                          return _clientes.take(10);
+                        }
+                        return _clientes
+                            .where((Cliente cliente) {
+                              final nombre =
+                                  (cliente.razonSocial ??
+                                          '${cliente.nombres ?? ''} ${cliente.apellidos ?? ''}'
+                                              .trim())
+                                      .toLowerCase();
+                              final documento = cliente.numeroIdentificacion
+                                  .toLowerCase();
+                              final query = textEditingValue.text.toLowerCase();
+                              return nombre.contains(query) ||
+                                  documento.contains(query);
+                            })
+                            .take(15);
+                      },
+                      displayStringForOption: (Cliente cliente) {
+                        return cliente.razonSocial ??
+                            '${cliente.nombres ?? ''} ${cliente.apellidos ?? ''}'
+                                .trim();
+                      },
+                      onSelected: (Cliente cliente) {
+                        setState(() {
+                          _clienteSeleccionado = cliente;
+                          _clienteController.text =
+                              cliente.razonSocial ??
+                              '${cliente.nombres ?? ''} ${cliente.apellidos ?? ''}'
+                                  .trim();
+                          _telefonoController.text = cliente.telefono ?? '';
+                        });
+                      },
+                      fieldViewBuilder:
+                          (
+                            BuildContext context,
+                            TextEditingController textEditingController,
+                            FocusNode focusNode,
+                            VoidCallback onFieldSubmitted,
+                          ) {
+                            if (_clienteSeleccionado != null &&
+                                textEditingController.text.isEmpty) {
+                              textEditingController.text =
+                                  _clienteSeleccionado!.razonSocial ??
+                                  '${_clienteSeleccionado!.nombres ?? ''} ${_clienteSeleccionado!.apellidos ?? ''}'
+                                      .trim();
+                            }
+                            return TextField(
+                              controller: textEditingController,
+                              focusNode: focusNode,
+                              style: TextStyle(
+                                color: AppTheme.textPrimary,
+                                fontSize: 13,
+                              ),
+                              decoration: InputDecoration(
+                                labelText: 'Cliente *',
+                                labelStyle: TextStyle(
+                                  color: AppTheme.textSecondary,
+                                  fontSize: 12,
+                                ),
+                                prefixIcon: Icon(
+                                  Icons.person,
+                                  color: AppTheme.primary,
+                                  size: 18,
+                                ),
+                                suffixIcon: Icon(
+                                  Icons.arrow_drop_down,
+                                  color: AppTheme.textSecondary,
+                                ),
+                                filled: true,
+                                fillColor: AppTheme.surfaceDark,
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 12,
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide.none,
+                                ),
+                                hintText: 'Buscar cliente...',
+                                hintStyle: TextStyle(
+                                  color: AppTheme.textSecondary,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            );
+                          },
+                      optionsViewBuilder:
+                          (
+                            BuildContext context,
+                            AutocompleteOnSelected<Cliente> onSelected,
+                            Iterable<Cliente> options,
+                          ) {
+                            return Align(
+                              alignment: Alignment.topLeft,
+                              child: Material(
+                                elevation: 4.0,
+                                color: AppTheme.surfaceDark,
+                                borderRadius: BorderRadius.circular(8),
+                                child: Container(
+                                  constraints: BoxConstraints(
+                                    maxHeight: 300,
+                                    maxWidth: 400,
+                                  ),
+                                  child: ListView.builder(
+                                    padding: EdgeInsets.all(8.0),
+                                    itemCount: options.length,
+                                    shrinkWrap: true,
+                                    itemBuilder: (BuildContext context, int index) {
+                                      final Cliente cliente = options.elementAt(
+                                        index,
+                                      );
+                                      final nombre =
+                                          cliente.razonSocial ??
+                                          '${cliente.nombres ?? ''} ${cliente.apellidos ?? ''}'
+                                              .trim();
+                                      return InkWell(
+                                        onTap: () => onSelected(cliente),
+                                        child: Container(
+                                          padding: EdgeInsets.all(12.0),
+                                          decoration: BoxDecoration(
+                                            border: Border(
+                                              bottom: BorderSide(
+                                                color: AppTheme.textSecondary
+                                                    .withOpacity(0.2),
+                                                width: 1,
+                                              ),
+                                            ),
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              CircleAvatar(
+                                                backgroundColor: AppTheme
+                                                    .primary
+                                                    .withOpacity(0.2),
+                                                radius: 16,
+                                                child: Text(
+                                                  nombre.isNotEmpty
+                                                      ? nombre[0].toUpperCase()
+                                                      : '?',
+                                                  style: TextStyle(
+                                                    color: AppTheme.primary,
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 12,
+                                                  ),
+                                                ),
+                                              ),
+                                              SizedBox(width: 12),
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      nombre.isEmpty
+                                                          ? cliente
+                                                                .numeroIdentificacion
+                                                          : nombre,
+                                                      style: TextStyle(
+                                                        color: AppTheme
+                                                            .textPrimary,
+                                                        fontWeight:
+                                                            FontWeight.w500,
+                                                        fontSize: 13,
+                                                      ),
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                    ),
+                                                    Text(
+                                                      cliente
+                                                          .numeroIdentificacion,
+                                                      style: TextStyle(
+                                                        color: AppTheme
+                                                            .textSecondary,
+                                                        fontSize: 11,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                    ),
                   ),
-                ),
+                  SizedBox(width: 4),
+                  SizedBox(
+                    width: 40,
+                    height: 40,
+                    child: IconButton(
+                      icon: Icon(
+                        Icons.add_circle,
+                        color: AppTheme.primary,
+                        size: 28,
+                      ),
+                      padding: EdgeInsets.zero,
+                      tooltip: 'Crear nuevo cliente',
+                      onPressed: _mostrarDialogoNuevoCliente,
+                    ),
+                  ),
+                ],
               ),
-              SizedBox(height: 8),
-              TextField(
-                controller: _observacionesController,
-                style: TextStyle(color: AppTheme.textPrimary),
-                maxLines: 2,
-                decoration: InputDecoration(
-                  labelText: 'Observaciones (opcional)',
-                  labelStyle: TextStyle(color: AppTheme.textSecondary),
-                  prefixIcon: Icon(Icons.note, color: AppTheme.textSecondary),
-                  filled: true,
-                  fillColor: AppTheme.surfaceDark,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide.none,
+              SizedBox(height: 6),
+              // Teléfono y observaciones en fila
+              Row(
+                children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: 40,
+                      child: TextField(
+                        controller: _telefonoController,
+                        style: TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontSize: 13,
+                        ),
+                        keyboardType: TextInputType.phone,
+                        decoration: InputDecoration(
+                          labelText: 'Teléfono (opcional)',
+                          labelStyle: TextStyle(
+                            color: AppTheme.textSecondary,
+                            fontSize: 11,
+                          ),
+                          prefixIcon: Icon(
+                            Icons.phone,
+                            color: AppTheme.textSecondary,
+                            size: 16,
+                          ),
+                          filled: true,
+                          fillColor: AppTheme.surfaceDark,
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 0,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 6),
+              SizedBox(
+                height: 40,
+                child: TextField(
+                  controller: _observacionesController,
+                  style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+                  decoration: InputDecoration(
+                    labelText: 'Observaciones (opcional)',
+                    labelStyle: TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 11,
+                    ),
+                    prefixIcon: Icon(
+                      Icons.note,
+                      color: AppTheme.textSecondary,
+                      size: 16,
+                    ),
+                    filled: true,
+                    fillColor: AppTheme.surfaceDark,
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 0,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide.none,
+                    ),
                   ),
                 ),
               ),
@@ -716,7 +1046,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
           ),
         ),
         Divider(color: AppTheme.primary.withOpacity(0.3), height: 1),
-        // Lista de items
+        // Lista de items - ahora tiene más espacio
         Expanded(
           child: _carrito.isEmpty
               ? Center(
@@ -725,20 +1055,23 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
                     children: [
                       Icon(
                         Icons.shopping_cart_outlined,
-                        size: 48,
+                        size: 40,
                         color: AppTheme.textSecondary,
                       ),
                       SizedBox(height: 8),
                       Text(
                         'Carrito vacío',
-                        style: TextStyle(color: AppTheme.textSecondary),
+                        style: TextStyle(
+                          color: AppTheme.textSecondary,
+                          fontSize: 14,
+                        ),
                       ),
                       SizedBox(height: 4),
                       Text(
                         'Toque un producto para agregarlo',
                         style: TextStyle(
                           color: AppTheme.textSecondary,
-                          fontSize: 12,
+                          fontSize: 11,
                         ),
                       ),
                     ],
@@ -1006,6 +1339,1024 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
             child: Text('Cerrar Sesión', style: TextStyle(color: Colors.white)),
           ),
         ],
+      ),
+    );
+  }
+
+  // Determinar número de columnas según ancho de pantalla
+  int _getCrossAxisCount(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    if (width > 1200) return 5;
+    if (width > 900) return 4;
+    if (width > 600) return 3;
+    return 2; // Móvil
+  }
+
+  // Mostrar carrito como modal en móvil
+  void _mostrarCarritoModal(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (modalContext) => StatefulBuilder(
+        builder: (context, setModalState) {
+          return DraggableScrollableSheet(
+            initialChildSize: 0.9,
+            minChildSize: 0.5,
+            maxChildSize: 0.95,
+            builder: (context, scrollController) => Container(
+              decoration: BoxDecoration(
+                color: AppTheme.cardBg,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(20),
+                  topRight: Radius.circular(20),
+                ),
+              ),
+              child: Column(
+                children: [
+                  // Handle visual
+                  Container(
+                    margin: EdgeInsets.only(top: 8, bottom: 4),
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppTheme.textSecondary.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  // Header
+                  Container(
+                    padding: EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      border: Border(
+                        bottom: BorderSide(
+                          color: AppTheme.primary.withOpacity(0.3),
+                        ),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.shopping_cart, color: AppTheme.primary),
+                        SizedBox(width: 8),
+                        Text(
+                          'Pedido',
+                          style: TextStyle(
+                            color: AppTheme.textPrimary,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
+                        ),
+                        Spacer(),
+                        IconButton(
+                          icon: Icon(
+                            Icons.close,
+                            color: AppTheme.textSecondary,
+                          ),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Contenido del carrito
+                  Expanded(
+                    child: _buildCarritoPanelModal(setModalState, modalContext),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  // Panel del carrito para el modal con su propio setState
+  Widget _buildCarritoPanelModal(
+    StateSetter setModalState,
+    BuildContext modalContext,
+  ) {
+    return Column(
+      children: [
+        // Encabezado del carrito
+        Container(
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: AppTheme.primary.withOpacity(0.1),
+            border: Border(
+              bottom: BorderSide(color: AppTheme.primary.withOpacity(0.3)),
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.shopping_basket, color: AppTheme.primary, size: 20),
+              SizedBox(width: 8),
+              Text(
+                'Pedido',
+                style: TextStyle(
+                  color: AppTheme.textPrimary,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+              Spacer(),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppTheme.primary,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '${_carrito.length} items',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        // Datos del cliente - compacto
+        Container(
+          padding: EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: AppTheme.surfaceDark.withOpacity(0.5),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Datos del Cliente',
+                style: TextStyle(
+                  color: AppTheme.textPrimary,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+              ),
+              SizedBox(height: 8),
+              // Selector de cliente
+              Row(
+                children: [
+                  Expanded(
+                    child: Autocomplete<Cliente>(
+                      optionsBuilder: (TextEditingValue textEditingValue) {
+                        if (textEditingValue.text.isEmpty) {
+                          return _clientes.take(10);
+                        }
+                        return _clientes
+                            .where((Cliente cliente) {
+                              final nombre =
+                                  (cliente.razonSocial ??
+                                          '${cliente.nombres ?? ''} ${cliente.apellidos ?? ''}'
+                                              .trim())
+                                      .toLowerCase();
+                              final documento = cliente.numeroIdentificacion
+                                  .toLowerCase();
+                              final query = textEditingValue.text.toLowerCase();
+                              return nombre.contains(query) ||
+                                  documento.contains(query);
+                            })
+                            .take(15);
+                      },
+                      displayStringForOption: (Cliente cliente) {
+                        return cliente.razonSocial ??
+                            '${cliente.nombres ?? ''} ${cliente.apellidos ?? ''}'
+                                .trim();
+                      },
+                      onSelected: (Cliente cliente) {
+                        setState(() {
+                          _clienteSeleccionado = cliente;
+                          _clienteController.text =
+                              cliente.razonSocial ??
+                              '${cliente.nombres ?? ''} ${cliente.apellidos ?? ''}'
+                                  .trim();
+                          _telefonoController.text = cliente.telefono ?? '';
+                        });
+                        setModalState(() {});
+                      },
+                      fieldViewBuilder:
+                          (
+                            BuildContext context,
+                            TextEditingController textEditingController,
+                            FocusNode focusNode,
+                            VoidCallback onFieldSubmitted,
+                          ) {
+                            if (_clienteSeleccionado != null &&
+                                textEditingController.text.isEmpty) {
+                              textEditingController.text =
+                                  _clienteSeleccionado!.razonSocial ??
+                                  '${_clienteSeleccionado!.nombres ?? ''} ${_clienteSeleccionado!.apellidos ?? ''}'
+                                      .trim();
+                            }
+                            return TextField(
+                              controller: textEditingController,
+                              focusNode: focusNode,
+                              style: TextStyle(
+                                color: AppTheme.textPrimary,
+                                fontSize: 13,
+                              ),
+                              decoration: InputDecoration(
+                                labelText: 'Cliente *',
+                                labelStyle: TextStyle(
+                                  color: AppTheme.textSecondary,
+                                  fontSize: 12,
+                                ),
+                                prefixIcon: Icon(
+                                  Icons.person,
+                                  color: AppTheme.primary,
+                                  size: 18,
+                                ),
+                                suffixIcon: Icon(
+                                  Icons.arrow_drop_down,
+                                  color: AppTheme.textSecondary,
+                                ),
+                                filled: true,
+                                fillColor: AppTheme.surfaceDark,
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 12,
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide.none,
+                                ),
+                                hintText: 'Buscar cliente...',
+                                hintStyle: TextStyle(
+                                  color: AppTheme.textSecondary,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            );
+                          },
+                      optionsViewBuilder:
+                          (
+                            BuildContext context,
+                            AutocompleteOnSelected<Cliente> onSelected,
+                            Iterable<Cliente> options,
+                          ) {
+                            return Align(
+                              alignment: Alignment.topLeft,
+                              child: Material(
+                                elevation: 4.0,
+                                color: AppTheme.surfaceDark,
+                                borderRadius: BorderRadius.circular(8),
+                                child: Container(
+                                  constraints: BoxConstraints(
+                                    maxHeight: 300,
+                                    maxWidth: 400,
+                                  ),
+                                  child: ListView.builder(
+                                    padding: EdgeInsets.all(8.0),
+                                    itemCount: options.length,
+                                    shrinkWrap: true,
+                                    itemBuilder: (BuildContext context, int index) {
+                                      final Cliente cliente = options.elementAt(
+                                        index,
+                                      );
+                                      final nombre =
+                                          cliente.razonSocial ??
+                                          '${cliente.nombres ?? ''} ${cliente.apellidos ?? ''}'
+                                              .trim();
+                                      return InkWell(
+                                        onTap: () => onSelected(cliente),
+                                        child: Container(
+                                          padding: EdgeInsets.all(12.0),
+                                          decoration: BoxDecoration(
+                                            border: Border(
+                                              bottom: BorderSide(
+                                                color: AppTheme.textSecondary
+                                                    .withOpacity(0.2),
+                                                width: 1,
+                                              ),
+                                            ),
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              CircleAvatar(
+                                                backgroundColor: AppTheme
+                                                    .primary
+                                                    .withOpacity(0.2),
+                                                radius: 16,
+                                                child: Text(
+                                                  nombre.isNotEmpty
+                                                      ? nombre[0].toUpperCase()
+                                                      : '?',
+                                                  style: TextStyle(
+                                                    color: AppTheme.primary,
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 12,
+                                                  ),
+                                                ),
+                                              ),
+                                              SizedBox(width: 12),
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      nombre.isEmpty
+                                                          ? cliente
+                                                                .numeroIdentificacion
+                                                          : nombre,
+                                                      style: TextStyle(
+                                                        color: AppTheme
+                                                            .textPrimary,
+                                                        fontWeight:
+                                                            FontWeight.w500,
+                                                        fontSize: 13,
+                                                      ),
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                    ),
+                                                    Text(
+                                                      cliente
+                                                          .numeroIdentificacion,
+                                                      style: TextStyle(
+                                                        color: AppTheme
+                                                            .textSecondary,
+                                                        fontSize: 11,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                    ),
+                  ),
+                  SizedBox(width: 4),
+                  SizedBox(
+                    width: 40,
+                    height: 40,
+                    child: IconButton(
+                      icon: Icon(
+                        Icons.add_circle,
+                        color: AppTheme.primary,
+                        size: 28,
+                      ),
+                      padding: EdgeInsets.zero,
+                      tooltip: 'Crear nuevo cliente',
+                      onPressed: _mostrarDialogoNuevoCliente,
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 6),
+              SizedBox(
+                height: 40,
+                child: TextField(
+                  controller: _telefonoController,
+                  style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+                  keyboardType: TextInputType.phone,
+                  decoration: InputDecoration(
+                    labelText: 'Teléfono (opcional)',
+                    labelStyle: TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 11,
+                    ),
+                    prefixIcon: Icon(
+                      Icons.phone,
+                      color: AppTheme.textSecondary,
+                      size: 16,
+                    ),
+                    filled: true,
+                    fillColor: AppTheme.surfaceDark,
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 0,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(height: 6),
+              SizedBox(
+                height: 40,
+                child: TextField(
+                  controller: _observacionesController,
+                  style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+                  decoration: InputDecoration(
+                    labelText: 'Observaciones (opcional)',
+                    labelStyle: TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 11,
+                    ),
+                    prefixIcon: Icon(
+                      Icons.note,
+                      color: AppTheme.textSecondary,
+                      size: 16,
+                    ),
+                    filled: true,
+                    fillColor: AppTheme.surfaceDark,
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 0,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Divider(color: AppTheme.primary.withOpacity(0.3), height: 1),
+        // Lista de items
+        Expanded(
+          child: _carrito.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.shopping_cart_outlined,
+                        size: 40,
+                        color: AppTheme.textSecondary,
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'Carrito vacío',
+                        style: TextStyle(
+                          color: AppTheme.textSecondary,
+                          fontSize: 14,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        'Toque un producto para agregarlo',
+                        style: TextStyle(
+                          color: AppTheme.textSecondary,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : ListView.builder(
+                  padding: EdgeInsets.all(8),
+                  itemCount: _carrito.length,
+                  itemBuilder: (context, index) {
+                    final item = _carrito[index];
+                    return _buildCarritoItemModal(item, index, setModalState);
+                  },
+                ),
+        ),
+        // Totales y botones
+        Container(
+          padding: EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppTheme.surfaceDark,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black26,
+                blurRadius: 8,
+                offset: Offset(0, -2),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Subtotal:',
+                    style: TextStyle(color: AppTheme.textSecondary),
+                  ),
+                  Text(
+                    '\$${_subtotal.toStringAsFixed(0)}',
+                    style: TextStyle(
+                      color: AppTheme.textPrimary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              Divider(color: AppTheme.primary.withOpacity(0.3)),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'TOTAL:',
+                    style: TextStyle(
+                      color: AppTheme.textPrimary,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
+                  Text(
+                    '\$${_total.toStringAsFixed(0)}',
+                    style: TextStyle(
+                      color: AppTheme.primary,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20,
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _carrito.isEmpty
+                          ? null
+                          : () {
+                              _limpiarFormulario();
+                              setModalState(() {});
+                            },
+                      icon: Icon(Icons.clear),
+                      label: Text('Limpiar'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppTheme.error,
+                        side: BorderSide(color: AppTheme.error),
+                        padding: EdgeInsets.symmetric(vertical: 14),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 12),
+                  Expanded(
+                    flex: 2,
+                    child: ElevatedButton.icon(
+                      onPressed: _isLoading || _carrito.isEmpty
+                          ? null
+                          : () => _guardarPedidoDesdeModal(
+                              setModalState,
+                              modalContext,
+                            ),
+                      icon: _isLoading
+                          ? SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : Icon(Icons.save, color: Colors.white),
+                      label: Text(
+                        _isLoading ? 'Guardando...' : 'Guardar Pedido',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primary,
+                        padding: EdgeInsets.symmetric(vertical: 14),
+                        disabledBackgroundColor: AppTheme.primary.withOpacity(
+                          0.5,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Método para guardar pedido desde el modal
+  Future<void> _guardarPedidoDesdeModal(
+    StateSetter setModalState,
+    BuildContext modalContext,
+  ) async {
+    if (_isLoading) return;
+
+    if (_clienteSeleccionado == null) {
+      _mostrarError('Por favor selecciona un cliente');
+      return;
+    }
+
+    if (_carrito.isEmpty) {
+      _mostrarError('El carrito está vacío');
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    setModalState(() {});
+
+    try {
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+
+      final pedido = PedidoAsesor(
+        clienteNombre:
+            _clienteSeleccionado!.razonSocial ??
+            '${_clienteSeleccionado!.nombres ?? ''} ${_clienteSeleccionado!.apellidos ?? ''}'
+                .trim(),
+        clienteId: _clienteSeleccionado!.id,
+        asesorNombre: userProvider.userName ?? 'Asesor',
+        asesorId: userProvider.userId,
+        items: _carrito,
+        subtotal: _subtotal,
+        impuestos: 0,
+        total: _total,
+        fechaCreacion: DateTime.now(),
+        observaciones: _observacionesController.text.trim().isEmpty
+            ? (_telefonoController.text.trim().isNotEmpty
+                  ? 'Tel: ${_telefonoController.text.trim()}'
+                  : null)
+            : '${_observacionesController.text.trim()}${_telefonoController.text.trim().isNotEmpty ? ' | Tel: ${_telefonoController.text.trim()}' : ''}',
+      );
+
+      await _pedidoService.crearPedido(pedido);
+
+      // Cerrar el modal primero
+      if (Navigator.canPop(modalContext)) {
+        Navigator.pop(modalContext);
+      }
+
+      _limpiarFormulario();
+      _mostrarExito('Pedido creado exitosamente');
+
+      // Navegar a la lista de pedidos asesores
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, '/admin-pedidos-asesor');
+      }
+    } catch (e) {
+      _mostrarError('Error al guardar pedido: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  // Item del carrito para el modal
+  Widget _buildCarritoItemModal(
+    ItemPedido item,
+    int index,
+    StateSetter setModalState,
+  ) {
+    return Container(
+      margin: EdgeInsets.only(bottom: 8),
+      padding: EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: AppTheme.cardBg,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppTheme.primary.withOpacity(0.2)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.productoNombre ?? 'Producto',
+                  style: TextStyle(
+                    color: AppTheme.textPrimary,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                SizedBox(height: 2),
+                Text(
+                  '\$${item.precioUnitario.toStringAsFixed(0)} x ${item.cantidad}',
+                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 11),
+                ),
+              ],
+            ),
+          ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                icon: Icon(
+                  Icons.remove_circle_outline,
+                  color: AppTheme.textSecondary,
+                  size: 22,
+                ),
+                padding: EdgeInsets.zero,
+                constraints: BoxConstraints(minWidth: 32, minHeight: 32),
+                onPressed: () {
+                  _actualizarCantidad(index, item.cantidad - 1);
+                  setModalState(() {});
+                },
+              ),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 8),
+                child: Text(
+                  '${item.cantidad}',
+                  style: TextStyle(
+                    color: AppTheme.textPrimary,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+              IconButton(
+                icon: Icon(
+                  Icons.add_circle_outline,
+                  color: AppTheme.primary,
+                  size: 22,
+                ),
+                padding: EdgeInsets.zero,
+                constraints: BoxConstraints(minWidth: 32, minHeight: 32),
+                onPressed: () {
+                  _actualizarCantidad(index, item.cantidad + 1);
+                  setModalState(() {});
+                },
+              ),
+            ],
+          ),
+          Text(
+            '\$${item.subtotal.toStringAsFixed(0)}',
+            style: TextStyle(
+              color: AppTheme.primary,
+              fontWeight: FontWeight.bold,
+              fontSize: 13,
+            ),
+          ),
+          IconButton(
+            icon: Icon(Icons.delete_outline, color: AppTheme.error, size: 20),
+            padding: EdgeInsets.zero,
+            constraints: BoxConstraints(minWidth: 32, minHeight: 32),
+            onPressed: () {
+              _eliminarDelCarrito(index);
+              setModalState(() {});
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Mostrar diálogo para crear nuevo cliente
+  void _mostrarDialogoNuevoCliente() {
+    final nombreController = TextEditingController();
+    final apellidoController = TextEditingController();
+    final docController = TextEditingController();
+    final telefonoController = TextEditingController();
+    final correoController = TextEditingController();
+    String tipoDoc = 'CC';
+    String tipoPersona = 'Persona Natural';
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: AppTheme.cardBg,
+          title: Text(
+            'Crear Nuevo Cliente',
+            style: TextStyle(color: AppTheme.textPrimary),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Tipo de persona
+                DropdownButtonFormField<String>(
+                  value: tipoPersona,
+                  decoration: InputDecoration(
+                    labelText: 'Tipo de Persona',
+                    labelStyle: TextStyle(color: AppTheme.textSecondary),
+                    filled: true,
+                    fillColor: AppTheme.surfaceDark,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                  style: TextStyle(color: AppTheme.textPrimary),
+                  dropdownColor: AppTheme.surfaceDark,
+                  items: ['Persona Natural', 'Persona Jurídica']
+                      .map(
+                        (tipo) =>
+                            DropdownMenuItem(value: tipo, child: Text(tipo)),
+                      )
+                      .toList(),
+                  onChanged: (value) {
+                    setDialogState(() => tipoPersona = value!);
+                  },
+                ),
+                SizedBox(height: 12),
+                // Tipo de documento
+                DropdownButtonFormField<String>(
+                  value: tipoDoc,
+                  decoration: InputDecoration(
+                    labelText: 'Tipo Documento',
+                    labelStyle: TextStyle(color: AppTheme.textSecondary),
+                    filled: true,
+                    fillColor: AppTheme.surfaceDark,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                  style: TextStyle(color: AppTheme.textPrimary),
+                  dropdownColor: AppTheme.surfaceDark,
+                  items: ['CC', 'NIT', 'CE', 'Pasaporte', 'TI']
+                      .map(
+                        (tipo) =>
+                            DropdownMenuItem(value: tipo, child: Text(tipo)),
+                      )
+                      .toList(),
+                  onChanged: (value) {
+                    setDialogState(() => tipoDoc = value!);
+                  },
+                ),
+                SizedBox(height: 12),
+                // Número de documento
+                TextField(
+                  controller: docController,
+                  style: TextStyle(color: AppTheme.textPrimary),
+                  decoration: InputDecoration(
+                    labelText: 'Número de Documento *',
+                    labelStyle: TextStyle(color: AppTheme.textSecondary),
+                    filled: true,
+                    fillColor: AppTheme.surfaceDark,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+                if (tipoPersona == 'Persona Natural') ...[
+                  SizedBox(height: 12),
+                  TextField(
+                    controller: nombreController,
+                    style: TextStyle(color: AppTheme.textPrimary),
+                    decoration: InputDecoration(
+                      labelText: 'Nombres *',
+                      labelStyle: TextStyle(color: AppTheme.textSecondary),
+                      filled: true,
+                      fillColor: AppTheme.surfaceDark,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 12),
+                  TextField(
+                    controller: apellidoController,
+                    style: TextStyle(color: AppTheme.textPrimary),
+                    decoration: InputDecoration(
+                      labelText: 'Apellidos *',
+                      labelStyle: TextStyle(color: AppTheme.textSecondary),
+                      filled: true,
+                      fillColor: AppTheme.surfaceDark,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                ] else ...[
+                  SizedBox(height: 12),
+                  TextField(
+                    controller: nombreController,
+                    style: TextStyle(color: AppTheme.textPrimary),
+                    decoration: InputDecoration(
+                      labelText: 'Razón Social *',
+                      labelStyle: TextStyle(color: AppTheme.textSecondary),
+                      filled: true,
+                      fillColor: AppTheme.surfaceDark,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                ],
+                SizedBox(height: 12),
+                TextField(
+                  controller: telefonoController,
+                  style: TextStyle(color: AppTheme.textPrimary),
+                  keyboardType: TextInputType.phone,
+                  decoration: InputDecoration(
+                    labelText: 'Teléfono',
+                    labelStyle: TextStyle(color: AppTheme.textSecondary),
+                    filled: true,
+                    fillColor: AppTheme.surfaceDark,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+                SizedBox(height: 12),
+                TextField(
+                  controller: correoController,
+                  style: TextStyle(color: AppTheme.textPrimary),
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: InputDecoration(
+                    labelText: 'Correo',
+                    labelStyle: TextStyle(color: AppTheme.textSecondary),
+                    filled: true,
+                    fillColor: AppTheme.surfaceDark,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                'Cancelar',
+                style: TextStyle(color: AppTheme.textSecondary),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (docController.text.trim().isEmpty) {
+                  _mostrarError('Ingrese el número de documento');
+                  return;
+                }
+
+                if (tipoPersona == 'Persona Natural' &&
+                    (nombreController.text.trim().isEmpty ||
+                        apellidoController.text.trim().isEmpty)) {
+                  _mostrarError('Ingrese nombres y apellidos');
+                  return;
+                }
+
+                if (tipoPersona == 'Persona Jurídica' &&
+                    nombreController.text.trim().isEmpty) {
+                  _mostrarError('Ingrese la razón social');
+                  return;
+                }
+
+                try {
+                  final nuevoCliente = Cliente(
+                    tipoPersona: tipoPersona,
+                    tipoIdentificacion: tipoDoc,
+                    numeroIdentificacion: docController.text.trim(),
+                    nombres: tipoPersona == 'Persona Natural'
+                        ? nombreController.text.trim()
+                        : null,
+                    apellidos: tipoPersona == 'Persona Natural'
+                        ? apellidoController.text.trim()
+                        : null,
+                    razonSocial: tipoPersona == 'Persona Jurídica'
+                        ? nombreController.text.trim()
+                        : '${nombreController.text.trim()} ${apellidoController.text.trim()}',
+                    telefono: telefonoController.text.trim().isEmpty
+                        ? null
+                        : telefonoController.text.trim(),
+                    correo: correoController.text.trim().isEmpty
+                        ? null
+                        : correoController.text.trim(),
+                    responsableIVA: 'No',
+                    calidadAgenteRetencion: 'No aplica',
+                    diasCredito: 0,
+                    cupoCredito: 0,
+                    saldoActual: 0,
+                    estado: 'activo',
+                    habilitadoFacturacionElectronica: false,
+                  );
+
+                  final clienteCreado = await _clienteService.crearCliente(
+                    nuevoCliente,
+                  );
+
+                  setState(() {
+                    _clientes.add(clienteCreado);
+                    _clienteSeleccionado = clienteCreado;
+                    _clienteController.text = clienteCreado.razonSocial ?? '';
+                    _telefonoController.text = clienteCreado.telefono ?? '';
+                  });
+
+                  Navigator.pop(context);
+                  _mostrarExito('Cliente creado exitosamente');
+                } catch (e) {
+                  _mostrarError('Error al crear cliente: $e');
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primary,
+              ),
+              child: Text('Crear', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
       ),
     );
   }

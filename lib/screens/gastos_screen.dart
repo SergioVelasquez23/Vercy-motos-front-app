@@ -12,8 +12,13 @@ import '../theme/app_theme.dart';
 
 class GastosScreen extends StatefulWidget {
   final String? cuadreCajaId;
+  final bool mostrarFormulario;
 
-  const GastosScreen({super.key, this.cuadreCajaId});
+  const GastosScreen({
+    super.key,
+    this.cuadreCajaId,
+    this.mostrarFormulario = false,
+  });
 
   @override
   _GastosScreenState createState() => _GastosScreenState();
@@ -64,10 +69,36 @@ class _GastosScreenState extends State<GastosScreen> {
   final TextEditingController _conceptoBusquedaController =
       TextEditingController();
 
+  // Variables para el nuevo formulario de gastos
+  DateTime? _fechaVencimiento;
+  String? _selectedTipoGastoIdNuevo;
+  bool _documentoSoporte = false;
+  bool _mostrarRetenciones = false;
+  List<Map<String, dynamic>> _conceptosGasto = [];
+
+  // Controladores para nuevo concepto
+  final TextEditingController _nuevoConceptoController =
+      TextEditingController();
+  final TextEditingController _nuevoValorController = TextEditingController();
+  String _nuevoImpuestoTipo = 'Impuesto';
+
+  // Controladores para retenciones
+  final TextEditingController _retencionController = TextEditingController();
+  final TextEditingController _reteivaController = TextEditingController();
+  final TextEditingController _reteicaController = TextEditingController();
+  final TextEditingController _descripcionController = TextEditingController();
+
+  // Totales calculados
+  double _subtotalGasto = 0;
+  double _descuentoGasto = 0;
+  double _impuestosGasto = 0;
+  double _totalGasto = 0;
+
   @override
   void initState() {
     super.initState();
     _selectedCuadreId = widget.cuadreCajaId;
+    _showForm = widget.mostrarFormulario;
     _initializeData();
   }
 
@@ -80,6 +111,12 @@ class _GastosScreenState extends State<GastosScreen> {
     _subtotalController.dispose();
     _impuestosController.dispose();
     _conceptoBusquedaController.dispose();
+    _nuevoConceptoController.dispose();
+    _nuevoValorController.dispose();
+    _retencionController.dispose();
+    _reteivaController.dispose();
+    _reteicaController.dispose();
+    _descripcionController.dispose();
     super.dispose();
   }
 
@@ -102,8 +139,12 @@ class _GastosScreenState extends State<GastosScreen> {
   Future<void> _loadTiposGasto() async {
     try {
       final tipos = await _gastoService.getAllTiposGasto();
+      print('GastosScreen - Tipos de gasto cargados: ${tipos.length}');
+      print(
+        'GastosScreen - Tipos activos: ${tipos.where((t) => t.activo).length}',
+      );
       if (mounted) {
-        setState(() => _tiposGasto = tipos);
+        setState(() => _tiposGasto = tipos.where((t) => t.activo).toList());
       }
     } catch (e) {
       print('Error loading tipos gasto: $e');
@@ -217,6 +258,22 @@ class _GastosScreenState extends State<GastosScreen> {
       _selectedCuadreId = gasto.cuadreCajaId;
       _pagadoDesdeCaja = gasto.pagadoDesdeCaja;
 
+      // Para el nuevo formulario
+      _selectedTipoGastoIdNuevo = gasto.tipoGastoId;
+      _conceptosGasto = [
+        {
+          'concepto': gasto.concepto,
+          'valor': gasto.subtotal,
+          'descuento': 0.0,
+          'tasa': gasto.impuestos > 0 ? 19.0 : 0.0,
+          'impuesto': gasto.impuestos,
+          'total': gasto.monto,
+        },
+      ];
+      _subtotalGasto = gasto.subtotal;
+      _impuestosGasto = gasto.impuestos;
+      _totalGasto = gasto.monto;
+
       // Buscar el proveedor por nombre para seleccionarlo
       if (gasto.proveedor != null && gasto.proveedor!.isNotEmpty) {
         final proveedor = _proveedores
@@ -227,9 +284,27 @@ class _GastosScreenState extends State<GastosScreen> {
 
       print('DEBUG: Proveedor seleccionado: $_selectedProveedorId'); // DEBUG
     } else {
-      // Nuevo gasto
+      // Nuevo gasto - limpiar todo
       _clearForm();
-      _generateInvoiceNumber(); // Generar número de factura automáticamente
+      _generateInvoiceNumber();
+
+      // Limpiar nuevo formulario
+      _fechaVencimiento = null;
+      _selectedTipoGastoIdNuevo = null;
+      _documentoSoporte = false;
+      _mostrarRetenciones = false;
+      _conceptosGasto = [];
+      _nuevoConceptoController.clear();
+      _nuevoValorController.clear();
+      _nuevoImpuestoTipo = 'Impuesto';
+      _retencionController.clear();
+      _reteivaController.clear();
+      _reteicaController.clear();
+      _descripcionController.clear();
+      _subtotalGasto = 0;
+      _descuentoGasto = 0;
+      _impuestosGasto = 0;
+      _totalGasto = 0;
     }
 
     setState(() {
@@ -341,6 +416,12 @@ class _GastosScreenState extends State<GastosScreen> {
         _showSuccess('Gasto creado exitosamente');
       }
 
+      // Si vino con mostrarFormulario=true (desde menú), navegar a la lista
+      if (widget.mostrarFormulario && mounted) {
+        Navigator.pushReplacementNamed(context, '/gastos-lista');
+        return;
+      }
+
       setState(() => _showForm = false);
       await _loadGastos();
     } catch (e) {
@@ -448,6 +529,192 @@ class _GastosScreenState extends State<GastosScreen> {
     }
   }
 
+  // Método para mostrar diálogo de crear tipo de gasto
+  Future<void> _mostrarDialogoCrearTipoGasto() async {
+    final nombreController = TextEditingController();
+    final descripcionController = TextEditingController();
+    bool guardando = false;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: AppTheme.cardBg,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppTheme.primary.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(Icons.category, color: AppTheme.primary, size: 24),
+              ),
+              SizedBox(width: 12),
+              Text(
+                'Nuevo Tipo de Gasto',
+                style: TextStyle(
+                  color: AppTheme.textPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          content: Container(
+            width: 400,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nombreController,
+                  style: TextStyle(color: AppTheme.textPrimary),
+                  decoration: InputDecoration(
+                    labelText: 'Nombre *',
+                    labelStyle: TextStyle(color: AppTheme.textSecondary),
+                    hintText: 'Ej: Servicios Públicos, Nómina...',
+                    hintStyle: TextStyle(
+                      color: AppTheme.textSecondary.withOpacity(0.5),
+                    ),
+                    filled: true,
+                    fillColor: AppTheme.surfaceDark,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(
+                        color: AppTheme.textSecondary.withOpacity(0.3),
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(
+                        color: AppTheme.textSecondary.withOpacity(0.3),
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: AppTheme.primary),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 16),
+                TextField(
+                  controller: descripcionController,
+                  style: TextStyle(color: AppTheme.textPrimary),
+                  maxLines: 2,
+                  decoration: InputDecoration(
+                    labelText: 'Descripción (opcional)',
+                    labelStyle: TextStyle(color: AppTheme.textSecondary),
+                    hintText: 'Descripción del tipo de gasto',
+                    hintStyle: TextStyle(
+                      color: AppTheme.textSecondary.withOpacity(0.5),
+                    ),
+                    filled: true,
+                    fillColor: AppTheme.surfaceDark,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(
+                        color: AppTheme.textSecondary.withOpacity(0.3),
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(
+                        color: AppTheme.textSecondary.withOpacity(0.3),
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: AppTheme.primary),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: guardando ? null : () => Navigator.pop(context),
+              child: Text(
+                'Cancelar',
+                style: TextStyle(color: AppTheme.textSecondary),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: guardando
+                  ? null
+                  : () async {
+                      if (nombreController.text.trim().isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('El nombre es requerido'),
+                            backgroundColor: Colors.orange,
+                          ),
+                        );
+                        return;
+                      }
+
+                      setDialogState(() => guardando = true);
+
+                      try {
+                        final nuevoTipo = await _gastoService.createTipoGasto(
+                          nombre: nombreController.text.trim(),
+                          descripcion: descripcionController.text.trim().isEmpty
+                              ? null
+                              : descripcionController.text.trim(),
+                          activo: true,
+                        );
+
+                        // Recargar tipos de gasto
+                        await _loadTiposGasto();
+
+                        // Seleccionar el nuevo tipo creado
+                        setState(() {
+                          _selectedTipoGastoIdNuevo = nuevoTipo.id;
+                        });
+
+                        Navigator.pop(context);
+                        _showSuccess(
+                          'Tipo de gasto "${nuevoTipo.nombre}" creado',
+                        );
+                      } catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Error: $e'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      } finally {
+                        setDialogState(() => guardando = false);
+                      }
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primary,
+                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: guardando
+                  ? SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Text('Crear', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -457,9 +724,16 @@ class _GastosScreenState extends State<GastosScreen> {
         title: Text('Gestión de Gastos', style: TextStyle(color: Colors.white)),
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pushReplacementNamed(context, '/dashboard'),
+          onPressed: () =>
+              Navigator.pushReplacementNamed(context, '/dashboard'),
         ),
-        actions: [],
+        actions: [
+          IconButton(
+            icon: Icon(Icons.category, color: Colors.white),
+            tooltip: 'Tipos de Gasto',
+            onPressed: () => Navigator.pushNamed(context, '/tipos-gasto'),
+          ),
+        ],
       ),
       body: _isLoading
           ? Center(child: CircularProgressIndicator(color: AppTheme.primary))
@@ -479,463 +753,1094 @@ class _GastosScreenState extends State<GastosScreen> {
 
   Widget _buildForm() {
     return SingleChildScrollView(
-      padding: EdgeInsets.all(16),
+      padding: EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
-          Row(
+          // Header con título
+          Text(
+            'Crear Gastos',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: AppTheme.textPrimary,
+            ),
+          ),
+          SizedBox(height: 24),
+
+          // Fila superior: Proveedor, Fecha, Vencimiento, Tipo de Gasto, Documento Soporte
+          _buildHeaderRow(),
+          SizedBox(height: 24),
+
+          // Tabla de conceptos
+          _buildConceptosTable(),
+          SizedBox(height: 32),
+
+          // Sección inferior: Descripción, Retenciones, Resumen
+          _buildBottomSection(),
+          SizedBox(height: 24),
+
+          // Botón Pagar
+          _buildPayButton(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeaderRow() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Proveedor con botón +
+        Expanded(
+          flex: 2,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              IconButton(
-                icon: Icon(Icons.arrow_back, color: AppTheme.textPrimary),
-                onPressed: () => setState(() => _showForm = false),
-              ),
               Text(
-                _gastoEditando != null ? 'Editar Gasto' : 'Nuevo Gasto',
+                'Proveedor',
                 style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.textPrimary,
+                  color: AppTheme.textSecondary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: AppTheme.surfaceDark,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: AppTheme.textSecondary.withOpacity(0.3),
+                        ),
+                      ),
+                      child: DropdownButtonFormField<String>(
+                        value: _selectedProveedorId,
+                        style: TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontSize: 15,
+                        ),
+                        decoration: InputDecoration(
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          border: InputBorder.none,
+                          hintText: 'Seleccionar...',
+                          hintStyle: TextStyle(
+                            color: AppTheme.textSecondary,
+                            fontSize: 15,
+                          ),
+                        ),
+                        dropdownColor: AppTheme.cardBg,
+                        isExpanded: true,
+                        items: [
+                          DropdownMenuItem<String>(
+                            value: null,
+                            child: Text(
+                              'Seleccionar...',
+                              style: TextStyle(color: AppTheme.textSecondary),
+                            ),
+                          ),
+                          ..._proveedores.map(
+                            (p) => DropdownMenuItem<String>(
+                              value: p.id,
+                              child: Text(p.nombre),
+                            ),
+                          ),
+                        ],
+                        onChanged: (v) =>
+                            setState(() => _selectedProveedorId = v),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 8),
+                  Container(
+                    height: 48,
+                    width: 48,
+                    decoration: BoxDecoration(
+                      color: AppTheme.surfaceDark,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: AppTheme.textSecondary.withOpacity(0.3),
+                      ),
+                    ),
+                    child: IconButton(
+                      icon: Icon(
+                        Icons.add,
+                        color: AppTheme.textSecondary,
+                        size: 24,
+                      ),
+                      padding: EdgeInsets.zero,
+                      onPressed: () {
+                        // TODO: Abrir diálogo para crear proveedor
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        SizedBox(width: 20),
+
+        // Fecha
+        Expanded(
+          flex: 1,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Fecha:',
+                style: TextStyle(
+                  color: AppTheme.textSecondary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              SizedBox(height: 8),
+              InkWell(
+                onTap: () async {
+                  final date = await showDatePicker(
+                    context: context,
+                    initialDate: _selectedDate,
+                    firstDate: DateTime(2020),
+                    lastDate: DateTime(2030),
+                  );
+                  if (date != null) setState(() => _selectedDate = date);
+                },
+                child: Container(
+                  height: 48,
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: AppTheme.surfaceDark,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: AppTheme.textSecondary.withOpacity(0.3),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Icon(
+                        Icons.calendar_today,
+                        color: AppTheme.textSecondary,
+                        size: 20,
+                      ),
+                      SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          '${_selectedDate.day.toString().padLeft(2, '0')}/${_selectedDate.month.toString().padLeft(2, '0')}/${_selectedDate.year}',
+                          style: TextStyle(
+                            color: AppTheme.textPrimary,
+                            fontSize: 15,
+                          ),
+                        ),
+                      ),
+                      Icon(
+                        Icons.close,
+                        color: AppTheme.textSecondary,
+                        size: 20,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
           ),
-          SizedBox(height: 20),
+        ),
+        SizedBox(width: 20),
 
-          // Formulario
-          Card(
-            color: AppTheme.cardBg,
-            child: Padding(
-              padding: EdgeInsets.all(20),
-              child: Column(
-                children: [
-                  // Cuadre de caja (solo si no viene predefinido)
-                  if (widget.cuadreCajaId == null) ...[
-                    DropdownButtonFormField<String>(
-                      decoration: InputDecoration(
-                        labelText: 'Cuadre de Caja*',
-                        labelStyle: TextStyle(
-                          color: AppTheme.textSecondary,
-                          fontSize: 14,
-                        ),
-                        border: OutlineInputBorder(),
-                        contentPadding: EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 12,
-                        ),
-                      ),
-                      initialValue: _selectedCuadreId,
-                      dropdownColor: AppTheme.cardBg,
-                      style: TextStyle(
-                        color: AppTheme.textPrimary,
-                        fontSize: 14,
-                      ),
-                      items: _cuadresDisponibles.map((cuadre) {
-                        return DropdownMenuItem(
-                          value: cuadre.id,
-                          child: Text(
-                            '${cuadre.nombre} - ${cuadre.responsable}',
-                          ),
-                        );
-                      }).toList(),
-                      onChanged: (value) {
-                        setState(() => _selectedCuadreId = value);
-                      },
+        // Vencimiento
+        Expanded(
+          flex: 1,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Vencimiento:',
+                style: TextStyle(
+                  color: AppTheme.textSecondary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              SizedBox(height: 8),
+              InkWell(
+                onTap: () async {
+                  final date = await showDatePicker(
+                    context: context,
+                    initialDate:
+                        _fechaVencimiento ??
+                        DateTime.now().add(Duration(days: 30)),
+                    firstDate: DateTime(2020),
+                    lastDate: DateTime(2030),
+                  );
+                  if (date != null) setState(() => _fechaVencimiento = date);
+                },
+                child: Container(
+                  height: 48,
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: AppTheme.surfaceDark,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: AppTheme.textSecondary.withOpacity(0.3),
                     ),
-                    SizedBox(height: 12),
-                  ],
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Icon(
+                        Icons.calendar_today,
+                        color: AppTheme.textSecondary,
+                        size: 20,
+                      ),
+                      SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          _fechaVencimiento != null
+                              ? '${_fechaVencimiento!.day.toString().padLeft(2, '0')}/${_fechaVencimiento!.month.toString().padLeft(2, '0')}/${_fechaVencimiento!.year}'
+                              : 'Fecha',
+                          style: TextStyle(
+                            color: _fechaVencimiento != null
+                                ? AppTheme.textPrimary
+                                : AppTheme.textSecondary,
+                            fontSize: 15,
+                          ),
+                        ),
+                      ),
+                      Icon(
+                        Icons.close,
+                        color: AppTheme.textSecondary,
+                        size: 20,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(width: 20),
 
-                  // Fecha
-                  InkWell(
-                    onTap: () async {
-                      final date = await showDatePicker(
-                        context: context,
-                        initialDate: _selectedDate,
-                        firstDate: DateTime(2020),
-                        lastDate: DateTime(2030),
-                      );
-                      if (date != null) {
-                        setState(() => _selectedDate = date);
-                      }
-                    },
+        // Tipo de Gasto con botón +
+        Expanded(
+          flex: 1,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Tipo de Gasto:',
+                style: TextStyle(
+                  color: AppTheme.textSecondary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
                     child: Container(
-                      padding: EdgeInsets.symmetric(
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: AppTheme.surfaceDark,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: AppTheme.textSecondary.withOpacity(0.3),
+                        ),
+                      ),
+                      child: DropdownButtonFormField<String>(
+                        value: _selectedTipoGastoIdNuevo,
+                        style: TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontSize: 15,
+                        ),
+                        decoration: InputDecoration(
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          border: InputBorder.none,
+                          hintText: 'Tipo de Gasto',
+                          hintStyle: TextStyle(
+                            color: AppTheme.textSecondary,
+                            fontSize: 15,
+                          ),
+                        ),
+                        dropdownColor: AppTheme.cardBg,
+                        isExpanded: true,
+                        items: [
+                          DropdownMenuItem<String>(
+                            value: null,
+                            child: Text(
+                              'Tipo de Gasto',
+                              style: TextStyle(color: AppTheme.textSecondary),
+                            ),
+                          ),
+                          ..._tiposGasto.map(
+                            (t) => DropdownMenuItem<String>(
+                              value: t.id,
+                              child: Text(t.nombre),
+                            ),
+                          ),
+                        ],
+                        onChanged: (v) =>
+                            setState(() => _selectedTipoGastoIdNuevo = v),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 8),
+                  Container(
+                    height: 48,
+                    width: 48,
+                    decoration: BoxDecoration(
+                      color: AppTheme.surfaceDark,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: AppTheme.textSecondary.withOpacity(0.3),
+                      ),
+                    ),
+                    child: IconButton(
+                      icon: Icon(
+                        Icons.add,
+                        color: AppTheme.textSecondary,
+                        size: 24,
+                      ),
+                      padding: EdgeInsets.zero,
+                      onPressed: () => _mostrarDialogoCrearTipoGasto(),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        SizedBox(width: 20),
+
+        // Documento Soporte con toggle
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text(
+                  'Documento Soporte',
+                  style: TextStyle(
+                    color: AppTheme.textSecondary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                SizedBox(width: 6),
+                Container(
+                  width: 22,
+                  height: 22,
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.info_outline,
+                    color: Colors.white,
+                    size: 14,
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 8),
+            Container(
+              height: 48,
+              child: Row(
+                children: [
+                  Transform.scale(
+                    scale: 1.2,
+                    child: Switch(
+                      value: _documentoSoporte,
+                      onChanged: (v) => setState(() => _documentoSoporte = v),
+                      activeColor: AppTheme.primary,
+                      activeTrackColor: AppTheme.primary.withOpacity(0.3),
+                    ),
+                  ),
+                  SizedBox(width: 4),
+                  Text(
+                    _documentoSoporte ? 'Sí' : 'No',
+                    style: TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildConceptosTable() {
+    return Column(
+      children: [
+        // Header de la tabla
+        Container(
+          decoration: BoxDecoration(
+            color: AppTheme.primary,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(4),
+              topRight: Radius.circular(4),
+            ),
+          ),
+          child: Row(
+            children: [
+              _buildTableHeader('Concepto', flex: 5),
+              _buildTableHeaderButton('Valor', width: 280),
+              _buildTableHeaderButton('Impuesto', width: 180),
+              _buildTableHeaderButton('Total', width: 160),
+              SizedBox(width: 80), // Espacio para columna eliminar/agregar
+            ],
+          ),
+        ),
+        // Filas de conceptos
+        ..._conceptosGasto.asMap().entries.map((entry) {
+          final index = entry.key;
+          final concepto = entry.value;
+          return _buildConceptoRow(index, concepto);
+        }),
+        // Fila para agregar nuevo concepto
+        _buildNuevoConceptoRow(),
+      ],
+    );
+  }
+
+  Widget _buildTableHeader(String text, {int flex = 1}) {
+    return Expanded(
+      flex: flex,
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+        child: Text(
+          text,
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 17,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTableHeaderButton(String text, {double width = 140}) {
+    return Container(
+      width: width,
+      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(
+          text,
+          style: TextStyle(
+            color: AppTheme.primary,
+            fontWeight: FontWeight.bold,
+            fontSize: 15,
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildConceptoRow(int index, Map<String, dynamic> concepto) {
+    return Container(
+      decoration: BoxDecoration(
+        border: Border(
+          left: BorderSide(color: AppTheme.textSecondary.withOpacity(0.3)),
+          right: BorderSide(color: AppTheme.textSecondary.withOpacity(0.3)),
+          bottom: BorderSide(color: AppTheme.textSecondary.withOpacity(0.3)),
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 5,
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+              child: Text(
+                concepto['concepto'] ?? '',
+                style: TextStyle(color: AppTheme.textPrimary, fontSize: 16),
+              ),
+            ),
+          ),
+          _buildTableCell(
+            '\$${(concepto['valor'] ?? 0).toStringAsFixed(0)}',
+            width: 280,
+          ),
+          _buildTableCell(
+            '\$${(concepto['impuesto'] ?? 0).toStringAsFixed(0)}',
+            width: 180,
+          ),
+          _buildTableCell(
+            '\$${(concepto['total'] ?? 0).toStringAsFixed(0)}',
+            width: 160,
+          ),
+          Container(
+            width: 80,
+            child: IconButton(
+              icon: Icon(Icons.delete_outline, color: AppTheme.error, size: 26),
+              onPressed: () {
+                setState(() {
+                  _conceptosGasto.removeAt(index);
+                  _calcularTotalesGasto();
+                });
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTableCell(String text, {double width = 140}) {
+    return Container(
+      width: width,
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+      child: Text(
+        text,
+        style: TextStyle(color: AppTheme.textPrimary, fontSize: 16),
+        textAlign: TextAlign.center,
+      ),
+    );
+  }
+
+  Widget _buildNuevoConceptoRow() {
+    return Container(
+      decoration: BoxDecoration(
+        border: Border(
+          left: BorderSide(color: AppTheme.textSecondary.withOpacity(0.3)),
+          right: BorderSide(color: AppTheme.textSecondary.withOpacity(0.3)),
+          bottom: BorderSide(color: AppTheme.textSecondary.withOpacity(0.3)),
+        ),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(8),
+          bottomRight: Radius.circular(8),
+        ),
+      ),
+      child: Row(
+        children: [
+          // Campo concepto
+          Expanded(
+            flex: 5,
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              child: TextField(
+                controller: _nuevoConceptoController,
+                style: TextStyle(color: AppTheme.textPrimary, fontSize: 16),
+                decoration: InputDecoration(
+                  isDense: false,
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 18,
+                  ),
+                  hintText: 'Ingrese el concepto...',
+                  hintStyle: TextStyle(
+                    color: AppTheme.textSecondary,
+                    fontSize: 16,
+                  ),
+                  filled: true,
+                  fillColor: AppTheme.surfaceDark,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          // Tipo de valor (Valor/%) y campo de valor
+          Container(
+            width: 280,
+            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+            child: Row(
+              children: [
+                Container(
+                  width: 80,
+                  child: DropdownButtonFormField<String>(
+                    value: 'Valor',
+                    style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+                    decoration: InputDecoration(
+                      isDense: true,
+                      contentPadding: EdgeInsets.symmetric(
                         horizontal: 12,
                         vertical: 16,
                       ),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.calendar_today,
-                            color: AppTheme.textSecondary,
-                            size: 20,
-                          ),
-                          SizedBox(width: 12),
-                          Text(
-                            '${_selectedDate.day.toString().padLeft(2, '0')}/${_selectedDate.month.toString().padLeft(2, '0')}/${_selectedDate.year}',
-                            style: TextStyle(
-                              color: AppTheme.textPrimary,
-                              fontSize: 16,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: 12),
-
-                  // Tipo de gasto y Proveedor en la misma fila
-                  Row(
-                    children: [
-                      Expanded(
-                        child: DropdownButtonFormField<String>(
-                          decoration: InputDecoration(
-                            labelText: 'Tipo de gasto*',
-                            labelStyle: TextStyle(
-                              color: AppTheme.textSecondary,
-                              fontSize: 14,
-                            ),
-                            border: OutlineInputBorder(),
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 12,
-                            ),
-                          ),
-                          initialValue: _selectedTipoGastoId,
-                          dropdownColor: AppTheme.cardBg,
-                          style: TextStyle(
-                            color: AppTheme.textPrimary,
-                            fontSize: 14,
-                          ),
-                          items: _tiposGasto.map((tipo) {
-                            return DropdownMenuItem(
-                              value: tipo.id,
-                              child: Text(tipo.nombre),
-                            );
-                          }).toList(),
-                          onChanged: (value) =>
-                              setState(() => _selectedTipoGastoId = value),
-                        ),
-                      ),
-                      SizedBox(width: 12),
-                      Expanded(
-                        child: DropdownButtonFormField<String>(
-                          decoration: InputDecoration(
-                            labelText: 'Proveedor',
-                            labelStyle: TextStyle(
-                              color: AppTheme.textSecondary,
-                              fontSize: 14,
-                            ),
-                            border: OutlineInputBorder(),
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 12,
-                            ),
-                          ),
-                          value: _selectedProveedorId,
-                          dropdownColor: AppTheme.cardBg,
-                          style: TextStyle(
-                            color: AppTheme.textPrimary,
-                            fontSize: 14,
-                          ),
-                          items: [
-                            DropdownMenuItem<String>(
-                              value: null,
-                              child: Text(
-                                'Sin proveedor',
-                                style: TextStyle(color: AppTheme.textSecondary),
-                              ),
-                            ),
-                            ..._proveedores.map((proveedor) {
-                              return DropdownMenuItem<String>(
-                                value: proveedor.id,
-                                child: Text(proveedor.nombre),
-                              );
-                            }),
-                          ],
-                          onChanged: (value) =>
-                              setState(() => _selectedProveedorId = value),
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 12),
-
-                  // Número de factura
-                  TextFormField(
-                    controller: _numeroFacturaController,
-                    readOnly: true,
-                    decoration: InputDecoration(
-                      labelText: 'N° Factura (Generado automáticamente)',
-                      labelStyle: TextStyle(
-                        color: AppTheme.textSecondary,
-                        fontSize: 14,
-                      ),
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 12,
-                      ),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          Icons.refresh,
-                          color: AppTheme.primary,
-                          size: 20,
-                        ),
-                        onPressed: _generateInvoiceNumber,
-                        tooltip: 'Regenerar número',
-                      ),
-                    ),
-                    style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
-                  ),
-                  SizedBox(height: 12),
-
-                  // Forma de pago
-                  DropdownButtonFormField<String>(
-                    decoration: InputDecoration(
-                      labelText: 'Forma de Pago',
-                      labelStyle: TextStyle(
-                        color: AppTheme.textSecondary,
-                        fontSize: 14,
-                      ),
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 12,
-                      ),
-                    ),
-                    initialValue: _selectedFormaPago,
-                    dropdownColor: AppTheme.cardBg,
-                    style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
-                    items: _formasPago.map((forma) {
-                      return DropdownMenuItem(value: forma, child: Text(forma));
-                    }).toList(),
-                    onChanged: (value) =>
-                        setState(() => _selectedFormaPago = value),
-                  ),
-                  SizedBox(height: 12),
-
-                  // Concepto del gasto
-                  TextFormField(
-                    controller: _conceptoController,
-                    maxLines: 3,
-                    decoration: InputDecoration(
-                      labelText: 'Concepto del Gasto*',
-                      labelStyle: TextStyle(
-                        color: AppTheme.textSecondary,
-                        fontSize: 14,
-                      ),
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 12,
-                      ),
-                    ),
-                    style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
-                  ),
-                  SizedBox(height: 12),
-
-                  // Subtotal e Impuestos en la misma fila
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextFormField(
-                          controller: _subtotalController,
-                          decoration: InputDecoration(
-                            labelText: 'Subtotal*',
-                            labelStyle: TextStyle(
-                              color: AppTheme.textSecondary,
-                              fontSize: 14,
-                            ),
-                            border: OutlineInputBorder(),
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 12,
-                            ),
-                          ),
-                          style: TextStyle(
-                            color: AppTheme.textPrimary,
-                            fontSize: 14,
-                          ),
-                          keyboardType: TextInputType.number,
-                          onChanged: _calculateTotal,
-                        ),
-                      ),
-                      SizedBox(width: 12),
-                      Expanded(
-                        child: TextFormField(
-                          controller: _impuestosController,
-                          decoration: InputDecoration(
-                            labelText: 'Impuestos',
-                            labelStyle: TextStyle(
-                              color: AppTheme.textSecondary,
-                              fontSize: 14,
-                            ),
-                            border: OutlineInputBorder(),
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 12,
-                            ),
-                          ),
-                          style: TextStyle(
-                            color: AppTheme.textPrimary,
-                            fontSize: 14,
-                          ),
-                          keyboardType: TextInputType.number,
-                          onChanged: _calculateTotal,
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 12),
-
-                  // Total
-                  Container(
-                    width: double.infinity,
-                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primary.withOpacity(0.1),
-                      border: Border.all(color: AppTheme.primary),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Total',
-                          style: TextStyle(
-                            color: AppTheme.textPrimary,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(
-                          _montoController.text.isEmpty
-                              ? '0,00'
-                              : _montoController.text,
-                          style: TextStyle(
-                            color: AppTheme.primary,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  SizedBox(height: 16),
-
-                  // Checkbox para pago desde caja
-                  Container(
-                    padding: EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primary.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: AppTheme.primary.withOpacity(0.3),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.account_balance_wallet,
-                          color: AppTheme.primary,
-                          size: 20,
-                        ),
-                        SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            'Pagar desde caja (descontar del efectivo)',
-                            style: TextStyle(
-                              color: AppTheme.textPrimary,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                        Switch(
-                          value: _pagadoDesdeCaja,
-                          onChanged: (value) {
-                            setState(() {
-                              _pagadoDesdeCaja = value;
-                            });
-                            // Recalcular total cuando cambia el switch
-                            _calculateTotal();
-                          },
-                          activeColor: AppTheme.primary,
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // Mostrar información de efectivo disponible si está activado el switch
-                  if (_pagadoDesdeCaja && _selectedCuadreId != null) ...[
-                    SizedBox(height: 12),
-                    Container(
-                      padding: EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.withOpacity(0.1),
+                      filled: true,
+                      fillColor: AppTheme.surfaceDark,
+                      border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.blue.withOpacity(0.3)),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.info, color: Colors.blue, size: 20),
-                          SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Se descontará del efectivo disponible en caja. Asegúrate de que hay suficiente efectivo.',
-                              style: TextStyle(
-                                color: AppTheme.textPrimary,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ),
-                        ],
+                        borderSide: BorderSide.none,
                       ),
                     ),
-                  ],
-                  SizedBox(height: 20),
-
-                  // Botones
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.grey,
-                            padding: EdgeInsets.symmetric(vertical: 16),
-                          ),
-                          onPressed: () => setState(() => _showForm = false),
-                          child: Text('Cancelar'),
-                        ),
+                    dropdownColor: AppTheme.cardBg,
+                    items: [
+                      DropdownMenuItem(
+                        value: 'Valor',
+                        child: Text('Valor', style: TextStyle(fontSize: 14)),
                       ),
-                      SizedBox(width: 16),
-                      Expanded(
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.primary,
-                            foregroundColor: Colors.white,
-                            padding: EdgeInsets.symmetric(vertical: 16),
-                          ),
-                          onPressed: _guardandoGasto ? null : _saveGasto,
-                          child: Text(
-                            _guardandoGasto ? 'Guardando...' : 'Guardar',
-                          ),
-                        ),
+                      DropdownMenuItem(
+                        value: '%',
+                        child: Text('%', style: TextStyle(fontSize: 14)),
                       ),
                     ],
+                    onChanged: (v) {},
                   ),
-                ],
+                ),
+                SizedBox(width: 10),
+                Expanded(
+                  child: TextField(
+                    controller: _nuevoValorController,
+                    keyboardType: TextInputType.number,
+                    style: TextStyle(color: AppTheme.textPrimary, fontSize: 16),
+                    decoration: InputDecoration(
+                      isDense: false,
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 18,
+                      ),
+                      hintText: '0,00',
+                      hintStyle: TextStyle(
+                        color: AppTheme.textSecondary,
+                        fontSize: 16,
+                      ),
+                      filled: true,
+                      fillColor: AppTheme.surfaceDark,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Impuesto dropdown
+          Container(
+            width: 180,
+            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+            child: DropdownButtonFormField<String>(
+              value: _nuevoImpuestoTipo,
+              style: TextStyle(color: AppTheme.textPrimary, fontSize: 15),
+              decoration: InputDecoration(
+                isDense: false,
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 18,
+                ),
+                filled: true,
+                fillColor: AppTheme.surfaceDark,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+              dropdownColor: AppTheme.cardBg,
+              items: [
+                DropdownMenuItem(
+                  value: 'Impuesto',
+                  child: Text('Impuesto', style: TextStyle(fontSize: 15)),
+                ),
+                DropdownMenuItem(
+                  value: 'IVA 19%',
+                  child: Text('IVA 19%', style: TextStyle(fontSize: 15)),
+                ),
+                DropdownMenuItem(
+                  value: 'IVA 5%',
+                  child: Text('IVA 5%', style: TextStyle(fontSize: 15)),
+                ),
+                DropdownMenuItem(
+                  value: 'Exento',
+                  child: Text('Exento', style: TextStyle(fontSize: 15)),
+                ),
+              ],
+              onChanged: (v) =>
+                  setState(() => _nuevoImpuestoTipo = v ?? 'Impuesto'),
+            ),
+          ),
+          // Total (calculado)
+          Container(
+            width: 160,
+            padding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+              decoration: BoxDecoration(
+                color: AppTheme.surfaceDark.withOpacity(0.5),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                _calcularTotalNuevoConcepto(),
+                style: TextStyle(color: AppTheme.textSecondary, fontSize: 16),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+          // Botón agregar
+          Container(
+            width: 80,
+            padding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+            child: Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                color: AppTheme.primary,
+                shape: BoxShape.circle,
+              ),
+              child: IconButton(
+                icon: Icon(Icons.add, color: Colors.white, size: 28),
+                padding: EdgeInsets.zero,
+                onPressed: _agregarConcepto,
               ),
             ),
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildBottomSection() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Descripción
+        Expanded(
+          flex: 2,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Descripción',
+                style: TextStyle(
+                  color: AppTheme.textSecondary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              SizedBox(height: 12),
+              TextField(
+                controller: _descripcionController,
+                maxLines: 5,
+                style: TextStyle(color: AppTheme.textPrimary, fontSize: 15),
+                decoration: InputDecoration(
+                  hintText: '',
+                  hintStyle: TextStyle(color: AppTheme.textSecondary),
+                  filled: true,
+                  fillColor: AppTheme.surfaceDark,
+                  contentPadding: EdgeInsets.all(16),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(width: 32),
+
+        // Link Agregar Retenciones
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(height: 32),
+              TextButton(
+                onPressed: () {
+                  setState(() => _mostrarRetenciones = !_mostrarRetenciones);
+                },
+                child: Text(
+                  'Agregar Retenciones',
+                  style: TextStyle(
+                    color: AppTheme.primary,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              if (_mostrarRetenciones) ...[
+                SizedBox(height: 16),
+                _buildRetencionField('Retención', _retencionController),
+                SizedBox(height: 12),
+                _buildRetencionField('Reteiva', _reteivaController),
+                SizedBox(height: 12),
+                _buildRetencionField('Reteica', _reteicaController),
+              ],
+            ],
+          ),
+        ),
+        SizedBox(width: 32),
+
+        // Panel de resumen
+        Container(
+          width: 320,
+          child: Column(
+            children: [
+              _buildResumenRow('Subtotal', _subtotalGasto),
+              _buildResumenRow('Descuento', _descuentoGasto),
+              _buildResumenRow('Impuestos', _impuestosGasto),
+              SizedBox(height: 12),
+              Divider(color: AppTheme.textSecondary.withOpacity(0.3)),
+              _buildResumenRow('Total', _totalGasto, isTotal: true),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRetencionField(String label, TextEditingController controller) {
+    return Row(
+      children: [
+        SizedBox(
+          width: 90,
+          child: Text(
+            label,
+            style: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+          ),
+        ),
+        Expanded(
+          child: TextField(
+            controller: controller,
+            keyboardType: TextInputType.number,
+            style: TextStyle(color: AppTheme.textPrimary, fontSize: 15),
+            decoration: InputDecoration(
+              isDense: true,
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 14,
+              ),
+              suffixText: '%',
+              suffixStyle: TextStyle(color: AppTheme.textSecondary),
+              filled: true,
+              fillColor: AppTheme.surfaceDark,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(6),
+                borderSide: BorderSide.none,
+              ),
+            ),
+            onChanged: (_) => _calcularTotalesGasto(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildResumenRow(String label, double valor, {bool isTotal = false}) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: isTotal ? AppTheme.textPrimary : AppTheme.textSecondary,
+              fontSize: isTotal ? 18 : 16,
+              fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+          Container(
+            width: 140,
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: AppTheme.surfaceDark,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              '\$${valor.toStringAsFixed(0)}',
+              style: TextStyle(
+                color: isTotal ? AppTheme.primary : AppTheme.textPrimary,
+                fontSize: isTotal ? 18 : 16,
+                fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
+              ),
+              textAlign: TextAlign.right,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPayButton() {
+    return Align(
+      alignment: Alignment.centerRight,
+      child: SizedBox(
+        width: 320,
+        child: ElevatedButton(
+          onPressed: _guardandoGasto ? null : _saveGastoNuevo,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppTheme.primary,
+            padding: EdgeInsets.symmetric(vertical: 20),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+          child: Text(
+            _guardandoGasto ? 'Guardando...' : 'Pagar',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _calcularTotalNuevoConcepto() {
+    final valor = double.tryParse(_nuevoValorController.text) ?? 0;
+    double impuesto = 0;
+    if (_nuevoImpuestoTipo == 'IVA 19%') {
+      impuesto = valor * 0.19;
+    } else if (_nuevoImpuestoTipo == 'IVA 5%') {
+      impuesto = valor * 0.05;
+    }
+    return '\$${(valor + impuesto).toStringAsFixed(0)}';
+  }
+
+  void _agregarConcepto() {
+    if (_nuevoConceptoController.text.isEmpty) return;
+
+    final valor = double.tryParse(_nuevoValorController.text) ?? 0;
+    double tasa = 0;
+    double impuesto = 0;
+
+    if (_nuevoImpuestoTipo == 'IVA 19%') {
+      tasa = 19;
+      impuesto = valor * 0.19;
+    } else if (_nuevoImpuestoTipo == 'IVA 5%') {
+      tasa = 5;
+      impuesto = valor * 0.05;
+    }
+
+    setState(() {
+      _conceptosGasto.add({
+        'concepto': _nuevoConceptoController.text,
+        'valor': valor,
+        'descuento': 0.0,
+        'tasa': tasa,
+        'impuesto': impuesto,
+        'total': valor + impuesto,
+      });
+
+      _nuevoConceptoController.clear();
+      _nuevoValorController.clear();
+      _nuevoImpuestoTipo = 'Impuesto';
+
+      _calcularTotalesGasto();
+    });
+  }
+
+  void _calcularTotalesGasto() {
+    double subtotal = 0;
+    double descuento = 0;
+    double impuestos = 0;
+
+    for (var concepto in _conceptosGasto) {
+      subtotal += concepto['valor'] ?? 0;
+      descuento += concepto['descuento'] ?? 0;
+      impuestos += concepto['impuesto'] ?? 0;
+    }
+
+    setState(() {
+      _subtotalGasto = subtotal;
+      _descuentoGasto = descuento;
+      _impuestosGasto = impuestos;
+      _totalGasto = subtotal - descuento + impuestos;
+    });
+  }
+
+  Future<void> _saveGastoNuevo() async {
+    if (_conceptosGasto.isEmpty) {
+      _showError('Debe agregar al menos un concepto');
+      return;
+    }
+
+    if (_selectedTipoGastoIdNuevo == null) {
+      _showError('Debe seleccionar un tipo de gasto');
+      return;
+    }
+
+    // Verificar cuadre de caja
+    if (_selectedCuadreId == null && _cuadresDisponibles.isNotEmpty) {
+      _selectedCuadreId = _cuadresDisponibles.first.id;
+    }
+
+    if (_selectedCuadreId == null) {
+      _showError('No hay cuadre de caja disponible');
+      return;
+    }
+
+    if (_guardandoGasto) return;
+
+    setState(() {
+      _isLoading = true;
+      _guardandoGasto = true;
+    });
+
+    try {
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      final responsable = userProvider.userName ?? 'Usuario Desconocido';
+
+      // Obtener nombre del proveedor
+      String? proveedorNombre;
+      if (_selectedProveedorId != null) {
+        final proveedor = _proveedores
+            .where((p) => p.id == _selectedProveedorId)
+            .firstOrNull;
+        proveedorNombre = proveedor?.nombre;
+      }
+
+      // Crear el concepto combinando todos los conceptos
+      final conceptoCombinado = _conceptosGasto
+          .map((c) => c['concepto'])
+          .join(', ');
+
+      await _gastoService.createGasto(
+        cuadreCajaId: _selectedCuadreId!,
+        tipoGastoId: _selectedTipoGastoIdNuevo!,
+        concepto: conceptoCombinado,
+        monto: _totalGasto,
+        responsable: responsable,
+        fechaGasto: _selectedDate,
+        numeroRecibo: null,
+        numeroFactura: null,
+        proveedor: proveedorNombre,
+        formaPago: 'Efectivo',
+        subtotal: _subtotalGasto,
+        impuestos: _impuestosGasto,
+        pagadoDesdeCaja: true,
+      );
+
+      _showSuccess('Gasto creado exitosamente');
+      setState(() => _showForm = false);
+      await _loadGastos();
+    } catch (e) {
+      _showError('Error al guardar gasto: $e');
+    } finally {
+      setState(() {
+        _isLoading = false;
+        _guardandoGasto = false;
+      });
+    }
   }
 
   Widget _buildGastosList() {

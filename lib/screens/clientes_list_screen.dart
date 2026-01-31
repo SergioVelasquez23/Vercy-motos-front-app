@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:file_picker/file_picker.dart';
+import 'dart:typed_data';
+import 'dart:html' as html;
 import '../models/cliente.dart';
 import '../services/cliente_service.dart';
 import '../theme/app_theme.dart';
@@ -205,6 +209,26 @@ class _ClientesListScreenState extends State<ClientesListScreen> {
             style: TextStyle(fontSize: 14, color: Colors.grey[400]),
           ),
           Spacer(),
+          // Botón Carga Masiva
+          ElevatedButton.icon(
+            onPressed: _mostrarDialogoCargaMasiva,
+            icon: Icon(Icons.upload_file, color: Colors.white),
+            label: Text(
+              'Carga Masiva',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ),
+          SizedBox(width: 12),
           // Botón Nuevo Cliente
           ElevatedButton.icon(
             onPressed: () => _navegarAFormulario(null),
@@ -559,5 +583,496 @@ class _ClientesListScreenState extends State<ClientesListScreen> {
         );
       }
     }
+  }
+
+  // ============================================
+  // CARGA MASIVA DESDE EXCEL
+  // ============================================
+
+  void _mostrarDialogoCargaMasiva() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: AppTheme.cardBg,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(Icons.upload_file, color: Colors.green, size: 24),
+              ),
+              SizedBox(width: 12),
+              Text(
+                'Carga Masiva de Clientes',
+                style: TextStyle(color: Colors.white, fontSize: 18),
+              ),
+            ],
+          ),
+          content: Container(
+            width: 500,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Sube un archivo Excel (.xlsx o .xls) con los clientes a cargar.',
+                  style: TextStyle(fontSize: 14, color: AppTheme.textSecondary),
+                ),
+                SizedBox(height: 20),
+                Text(
+                  'Columnas requeridas:',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Container(
+                  padding: EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppTheme.surfaceDark,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.grey.shade700),
+                  ),
+                  child: Text(
+                    '• TIPOCLIENTE* (Persona Natural / Persona Jurídica)\n'
+                    '• TIPDOCUMENTO* (Cédula de ciudadanía, NIT, CE, etc.)\n'
+                    '• CEDULA* (Número de documento)\n'
+                    '• DIGITO VERIFICACION (Para NIT)\n'
+                    '• NOMBRE*\n'
+                    '• DPTO (Departamento)\n'
+                    '• CIUDAD\n'
+                    '• DIRECCION\n'
+                    '• TELEFONO\n'
+                    '• CORREO',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[400],
+                      height: 1.6,
+                    ),
+                  ),
+                ),
+                SizedBox(height: 12),
+                Text(
+                  'Columnas opcionales:',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Container(
+                  padding: EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppTheme.surfaceDark,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.grey.shade700),
+                  ),
+                  child: Text(
+                    '• MES CUMPLEAÑOS, DIA CUMPLEAÑOS\n'
+                    '• RESPONSABLE IVA (Sí/No)\n'
+                    '• ZONA, PLAZO, CUPO\n'
+                    '• VENDEDOR, OBSERVACIONES\n'
+                    '• BLOQUEADO (SI/NO)',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[400],
+                      height: 1.6,
+                    ),
+                  ),
+                ),
+                SizedBox(height: 16),
+                Container(
+                  padding: EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info_outline, color: Colors.orange, size: 20),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Los campos marcados con * son obligatorios',
+                          style: TextStyle(fontSize: 12, color: Colors.orange),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Cancelar', style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.pop(context);
+                _seleccionarYCargarArchivo();
+              },
+              icon: Icon(Icons.folder_open, color: Colors.white),
+              label: Text(
+                'Seleccionar Archivo',
+                style: TextStyle(color: Colors.white),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _seleccionarYCargarArchivo() async {
+    try {
+      print('🔍 Iniciando selección de archivo para clientes...');
+      print('🌐 ¿Es web? $kIsWeb');
+
+      if (kIsWeb) {
+        await _seleccionarArchivoWeb();
+      } else {
+        await _seleccionarArchivoDesktop();
+      }
+    } catch (e, stackTrace) {
+      print('❌ Error al seleccionar archivo: $e');
+      print('📍 StackTrace: $stackTrace');
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 5),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _seleccionarArchivoWeb() async {
+    print('🌐 Usando selector HTML para web...');
+
+    final html.FileUploadInputElement uploadInput =
+        html.FileUploadInputElement();
+    uploadInput.accept =
+        '.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel';
+    uploadInput.click();
+
+    await uploadInput.onChange.first;
+
+    final files = uploadInput.files;
+    if (files == null || files.isEmpty) {
+      print('⚠️ No se seleccionó ningún archivo');
+      return;
+    }
+
+    final file = files[0];
+    print('✅ Archivo seleccionado: ${file.name}');
+    print('   - Tamaño: ${file.size} bytes');
+
+    _mostrarDialogoCarga();
+
+    final reader = html.FileReader();
+    reader.readAsArrayBuffer(file);
+    await reader.onLoad.first;
+
+    final bytes = reader.result as Uint8List;
+    print('📤 Enviando archivo desde web (${bytes.length} bytes)');
+
+    await _cargarArchivoExcelBytes(bytes, file.name);
+  }
+
+  Future<void> _seleccionarArchivoDesktop() async {
+    print('💻 Usando FilePicker para desktop/mobile...');
+
+    FilePickerResult? result;
+
+    try {
+      result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['xlsx', 'xls'],
+        allowMultiple: false,
+        withReadStream: true,
+      );
+    } catch (pickerError) {
+      print('❌ Error en FilePicker: $pickerError');
+      throw Exception('Error al abrir selector de archivos: $pickerError');
+    }
+
+    if (result == null) {
+      print('⚠️ Selección de archivo cancelada por el usuario');
+      return;
+    }
+
+    if (result.files.isEmpty) {
+      print('⚠️ No se seleccionaron archivos');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('No se seleccionó ningún archivo'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+      return;
+    }
+
+    PlatformFile file = result.files.first;
+    print('✅ Archivo seleccionado: ${file.name}');
+    print('   - Tamaño: ${file.size} bytes');
+    print('   - Tiene path: ${file.path != null}');
+
+    if (file.path == null || file.path!.isEmpty) {
+      throw Exception('No se pudo obtener la ruta del archivo');
+    }
+
+    _mostrarDialogoCarga();
+
+    print('📤 Enviando archivo desde path: ${file.path}');
+    await _cargarArchivoExcelPath(file.path!);
+
+    if (mounted) {
+      Navigator.pop(context);
+    }
+  }
+
+  void _mostrarDialogoCarga() {
+    if (mounted) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => WillPopScope(
+          onWillPop: () async => false,
+          child: Center(
+            child: Card(
+              color: AppTheme.cardBg,
+              child: Padding(
+                padding: EdgeInsets.all(32),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(color: AppTheme.primary),
+                    SizedBox(height: 20),
+                    Text(
+                      'Cargando clientes...',
+                      style: TextStyle(color: Colors.white, fontSize: 16),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'Por favor espera, esto puede tardar unos segundos',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _cargarArchivoExcelBytes(
+    List<int> bytes,
+    String fileName,
+  ) async {
+    try {
+      final resultado = await _clienteService.cargarClientesMasivosBytes(
+        bytes,
+        fileName,
+      );
+
+      if (mounted) {
+        // Cerrar el diálogo de carga primero
+        Navigator.of(context).pop();
+
+        // Mostrar resultado
+        _mostrarResultadoCarga(resultado);
+        await _cargarClientes();
+      }
+    } catch (e) {
+      print('❌ Error al cargar archivo Excel: $e');
+      if (mounted) {
+        // Cerrar el diálogo de carga en caso de error
+        Navigator.of(context).pop();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al cargar clientes: $e'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 5),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _cargarArchivoExcelPath(String filePath) async {
+    try {
+      final resultado = await _clienteService.cargarClientesMasivosPath(
+        filePath,
+      );
+
+      if (mounted) {
+        // Cerrar el diálogo de carga primero
+        Navigator.of(context).pop();
+
+        // Mostrar resultado
+        _mostrarResultadoCarga(resultado);
+        await _cargarClientes();
+      }
+    } catch (e) {
+      print('❌ Error al cargar archivo Excel: $e');
+      if (mounted) {
+        // Cerrar el diálogo de carga en caso de error
+        Navigator.of(context).pop();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al cargar clientes: $e'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 5),
+          ),
+        );
+      }
+    }
+  }
+
+  void _mostrarResultadoCarga(Map<String, dynamic> resultado) {
+    final clientesCargados = resultado['clientesCargados'] ?? 0;
+    final errores = resultado['errores'] as List? ?? [];
+    final mensaje = resultado['message'] ?? 'Proceso completado';
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppTheme.cardBg,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(
+              errores.isEmpty ? Icons.check_circle : Icons.warning_amber,
+              color: errores.isEmpty ? Colors.green : Colors.orange,
+              size: 28,
+            ),
+            SizedBox(width: 12),
+            Text(
+              'Resultado de la Carga',
+              style: TextStyle(color: Colors.white, fontSize: 18),
+            ),
+          ],
+        ),
+        content: Container(
+          width: 400,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.green.withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.people, color: Colors.green, size: 32),
+                    SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '$clientesCargados',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green,
+                          ),
+                        ),
+                        Text(
+                          'clientes cargados exitosamente',
+                          style: TextStyle(fontSize: 12, color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              if (errores.isNotEmpty) ...[
+                SizedBox(height: 16),
+                Text(
+                  'Errores encontrados (${errores.length}):',
+                  style: TextStyle(
+                    color: Colors.orange,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Container(
+                  height: 150,
+                  padding: EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppTheme.surfaceDark,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                  ),
+                  child: ListView.builder(
+                    itemCount: errores.length > 10 ? 10 : errores.length,
+                    itemBuilder: (context, index) {
+                      return Padding(
+                        padding: EdgeInsets.only(bottom: 4),
+                        child: Text(
+                          '• ${errores[index]}',
+                          style: TextStyle(fontSize: 12, color: Colors.orange),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                if (errores.length > 10)
+                  Padding(
+                    padding: EdgeInsets.only(top: 8),
+                    child: Text(
+                      '... y ${errores.length - 10} errores más',
+                      style: TextStyle(fontSize: 11, color: Colors.grey),
+                    ),
+                  ),
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primary,
+              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            ),
+            child: Text('Aceptar', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
   }
 }

@@ -42,9 +42,8 @@ class InventarioService {
 
   // Obtener todos los movimientos de inventario
   Future<List<MovimientoInventario>> getMovimientosInventario() async {
-    if (kDebugMode) {
-      print('🔍 Obteniendo movimientos de inventario...');
-    }
+    print('🔍 Obteniendo movimientos de inventario...');
+    print('🌐 URL: ${_apiConfig.baseUrl}/$_baseEndpoint/movimientos');
 
     try {
       final response = await _apiService.getList<MovimientoInventario>(
@@ -52,21 +51,18 @@ class InventarioService {
         (json) => MovimientoInventario.fromJson(json),
       );
 
+      print('📡 Response success: ${response.success}');
+      print('📦 Movimientos count: ${response.data?.length ?? 0}');
+
       if (response.success && response.data != null) {
-        if (kDebugMode) {
-          print('✅ Movimientos obtenidos: ${response.data!.length}');
-        }
+        print('✅ Movimientos obtenidos: ${response.data!.length}');
         return response.data!;
       } else {
-        if (kDebugMode) {
-          print('⚠️ Error en respuesta: ${response.message}');
-        }
+        print('⚠️ Error en respuesta: ${response.message}');
         return [];
       }
     } catch (e) {
-      if (kDebugMode) {
-        print('❌ Error obteniendo movimientos: $e');
-      }
+      print('❌ Error obteniendo movimientos: $e');
       return [];
     }
   }
@@ -76,10 +72,9 @@ class InventarioService {
     MovimientoInventario movimiento,
   ) async {
     try {
-      if (kDebugMode) {
-        print('📤 POST Request to: ${_buildUrl(path: "movimientos")}');
-        print('📦 Request body: ${json.encode(movimiento.toJson())}');
-      }
+      // Siempre mostrar logs para debug
+      print('📤 POST Request to: ${_buildUrl(path: "movimientos")}');
+      print('📦 Request body: ${json.encode(movimiento.toJson())}');
 
       final response = await http
           .post(
@@ -89,25 +84,27 @@ class InventarioService {
           )
           .timeout(_timeout);
 
-      if (kDebugMode) {
-        print('📡 Response status: ${response.statusCode}');
-        print('📦 Response body: ${response.body}');
-      }
+      print('📡 Response status: ${response.statusCode}');
+      print('📦 Response body: ${response.body}');
 
-      if (response.statusCode == 201) {
+      // Aceptar 200 o 201 como éxito
+      if (response.statusCode == 201 || response.statusCode == 200) {
         final Map<String, dynamic> data = json.decode(response.body);
         if (data['success'] == true && data['data'] != null) {
           _inventarioActualizadoController.add(true);
           return MovimientoInventario.fromJson(data['data']);
         }
-        throw Exception('Formato de respuesta inválido');
+        // Si no tiene el formato esperado pero fue exitoso, crear uno básico
+        print(
+          '⚠️ Respuesta exitosa pero formato diferente, creando movimiento local',
+        );
+        return movimiento;
       }
 
+      print('❌ Error en respuesta: ${response.statusCode} - ${response.body}');
       throw _handleErrorResponse(response);
     } catch (e) {
-      if (kDebugMode) {
-        print('❌ Error: $e');
-      }
+      print('❌ Error al registrar movimiento: $e');
       throw Exception('Error al registrar movimiento: $e');
     }
   }

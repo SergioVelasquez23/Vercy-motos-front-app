@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import '../models/factura_compra.dart';
 import '../models/proveedor.dart';
 import '../models/producto.dart';
+import '../models/movimiento_inventario.dart';
 import '../services/factura_compra_service.dart';
 import '../services/proveedor_service.dart';
 import '../services/producto_service.dart';
+import '../services/inventario_service.dart';
 import '../theme/app_theme.dart';
 
 class FacturasComprasScreen extends StatefulWidget {
@@ -167,7 +169,8 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
         iconTheme: IconThemeData(color: AppTheme.textPrimary),
         leading: IconButton(
           icon: Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pushReplacementNamed(context, '/dashboard'),
+          onPressed: () =>
+              Navigator.pushReplacementNamed(context, '/dashboard'),
         ),
         actions: [
           IconButton(
@@ -226,11 +229,15 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
                   : null,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: AppTheme.textSecondary.withOpacity(0.3)),
+                borderSide: BorderSide(
+                  color: AppTheme.textSecondary.withOpacity(0.3),
+                ),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: AppTheme.textSecondary.withOpacity(0.3)),
+                borderSide: BorderSide(
+                  color: AppTheme.textSecondary.withOpacity(0.3),
+                ),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
@@ -264,7 +271,9 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
                                     _aplicarFiltros();
                                   });
                                 },
-                                selectedColor: AppTheme.primary.withOpacity(0.2),
+                                selectedColor: AppTheme.primary.withOpacity(
+                                  0.2,
+                                ),
                                 checkmarkColor: AppTheme.primary,
                                 labelStyle: TextStyle(
                                   color: _filtroEstado == estado
@@ -421,13 +430,19 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
                             ),
                             Text(
                               'NIT: ${factura.proveedorNit ?? 'No especificado'}',
-                              style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                              style: TextStyle(
+                                color: AppTheme.textSecondary,
+                                fontSize: 12,
+                              ),
                               overflow: TextOverflow.ellipsis,
                             ),
                             // Mostrar fecha de creación en lugar de fecha de factura para facilitar la verificación del orden
                             Text(
                               'Creado: ${_formatearFechaConHora(factura.fechaCreacion)} - Factura: ${_formatearFecha(factura.fechaFactura)}',
-                              style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                              style: TextStyle(
+                                color: AppTheme.textSecondary,
+                                fontSize: 12,
+                              ),
                             ),
                           ],
                         ),
@@ -592,7 +607,10 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppTheme.cardBg,
-        title: Text('Eliminar Factura', style: TextStyle(color: AppTheme.textPrimary)),
+        title: Text(
+          'Eliminar Factura',
+          style: TextStyle(color: AppTheme.textPrimary),
+        ),
         content: Text(
           '¿Estás seguro de que deseas eliminar la factura ${factura.numeroFactura}?\n\n'
           'Esta acción no se puede deshacer y afectará al inventario.',
@@ -601,7 +619,10 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: Text('Cancelar', style: TextStyle(color: AppTheme.textSecondary)),
+            child: Text(
+              'Cancelar',
+              style: TextStyle(color: AppTheme.textSecondary),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
@@ -660,7 +681,10 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
 }
 
 class CrearFacturaCompraScreen extends StatefulWidget {
-  const CrearFacturaCompraScreen({Key? key}) : super(key: key);
+  final FacturaCompra? facturaParaEditar;
+
+  const CrearFacturaCompraScreen({Key? key, this.facturaParaEditar})
+    : super(key: key);
 
   @override
   _CrearFacturaCompraScreenState createState() =>
@@ -672,19 +696,31 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
   final FacturaCompraService _facturaCompraService = FacturaCompraService();
   final ProveedorService _proveedorService = ProveedorService();
   final ProductoService _productoService = ProductoService();
+  final InventarioService _inventarioService = InventarioService();
 
   final _proveedorNitController = TextEditingController();
   final _proveedorNombreController = TextEditingController();
   final _descripcionController = TextEditingController();
-  
+
   // 💰 Controladores DIAN para retenciones
   final _porcentajeRetencionController = TextEditingController(text: '0');
   final _porcentajeReteIvaController = TextEditingController(text: '0');
   final _porcentajeReteIcaController = TextEditingController(text: '0');
-  
+
   // Descuento general
   final _descuentoGeneralValorController = TextEditingController(text: '0');
   String _tipoDescuentoGeneral = 'Porcentaje'; // 'Porcentaje' o 'Valor'
+
+  // Controladores para agregar producto
+  final _codigoProductoController = TextEditingController();
+  final _nombreProductoController = TextEditingController();
+  final _cantidadProductoController = TextEditingController();
+  final _valorUnitarioController = TextEditingController();
+  final _porcentajeImpuestoController = TextEditingController(text: '19');
+  final _porcentajeDescuentoController = TextEditingController(text: '0');
+  String _tipoImpuesto = 'IVA';
+  String _tipoDescuento = '%';
+  Producto? _productoSeleccionado;
 
   DateTime _fechaFactura = DateTime.now();
   DateTime _fechaVencimiento = DateTime.now().add(Duration(days: 30));
@@ -698,14 +734,40 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
   // Variable para controlar el timeout del botón guardar factura
   bool _guardandoFactura = false;
   String? _numeroFactura;
+  bool _modoEdicion = false;
 
+  // Estados de carga para productos y proveedores
+  bool _cargandoProductos = true;
+  bool _cargandoProveedores = true;
 
   @override
   void initState() {
     super.initState();
-    _generarNumeroFactura();
+    _modoEdicion = widget.facturaParaEditar != null;
+    if (_modoEdicion) {
+      _cargarDatosFacturaParaEditar();
+    } else {
+      _generarNumeroFactura();
+    }
     _cargarProductos();
     _cargarProveedores();
+  }
+
+  void _cargarDatosFacturaParaEditar() {
+    final factura = widget.facturaParaEditar!;
+    _numeroFactura = factura.numeroFactura;
+    _proveedorNombreController.text = factura.proveedorNombre;
+    _proveedorNitController.text = factura.proveedorNit ?? '';
+    _fechaFactura = factura.fechaFactura;
+    _fechaVencimiento =
+        factura.fechaVencimiento ?? DateTime.now().add(Duration(days: 30));
+    _pagadoDesdeCaja = factura.pagadoDesdeCaja;
+
+    // Cargar items
+    _items.clear();
+    _items.addAll(factura.items);
+
+    setState(() {});
   }
 
   @override
@@ -717,6 +779,12 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
     _porcentajeReteIvaController.dispose();
     _porcentajeReteIcaController.dispose();
     _descuentoGeneralValorController.dispose();
+    _codigoProductoController.dispose();
+    _nombreProductoController.dispose();
+    _cantidadProductoController.dispose();
+    _valorUnitarioController.dispose();
+    _porcentajeImpuestoController.dispose();
+    _porcentajeDescuentoController.dispose();
     super.dispose();
   }
 
@@ -802,23 +870,37 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
 
   Future<void> _cargarProductos() async {
     try {
+      setState(() => _cargandoProductos = true);
       final productos = await _productoService.getProductos();
-      setState(() {
-        _productos = productos;
-      });
+      if (mounted) {
+        setState(() {
+          _productos = productos;
+          _cargandoProductos = false;
+        });
+      }
     } catch (e) {
       print('Error al cargar productos: $e');
+      if (mounted) {
+        setState(() => _cargandoProductos = false);
+      }
     }
   }
 
   Future<void> _cargarProveedores() async {
     try {
+      setState(() => _cargandoProveedores = true);
       final proveedores = await _proveedorService.getProveedores();
-      setState(() {
-        _proveedores = proveedores;
-      });
+      if (mounted) {
+        setState(() {
+          _proveedores = proveedores;
+          _cargandoProveedores = false;
+        });
+      }
     } catch (e) {
       print('Error al cargar proveedores: $e');
+      if (mounted) {
+        setState(() => _cargandoProveedores = false);
+      }
     }
   }
 
@@ -828,12 +910,19 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
       backgroundColor: AppTheme.backgroundDark,
       appBar: AppBar(
         title: Text(
-          'Crear compra',
-          style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold),
+          _modoEdicion ? 'Editar compra' : 'Crear compra',
+          style: TextStyle(
+            color: AppTheme.textPrimary,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         backgroundColor: AppTheme.backgroundDark,
         elevation: 0,
         iconTheme: IconThemeData(color: AppTheme.textPrimary),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pushReplacementNamed(context, '/compras'),
+        ),
         actions: [
           // Botón Compras en borrador
           TextButton(
@@ -862,27 +951,1390 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
           ? Center(child: CircularProgressIndicator(color: AppTheme.primary))
           : Form(
               key: _formKey,
-              child: SingleChildScrollView(
-                padding: EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildInfoBasica(),
-                    SizedBox(height: 24),
-                    _buildFechas(),
-                    SizedBox(height: 24),
-                    _buildItems(),
-                    SizedBox(height: 24),
-                    _buildDescripcionYRetenciones(),
-                    SizedBox(height: 24),
-                    _buildResumen(),
-                    SizedBox(height: 24),
-                    _buildBotones(),
-                  ],
-                ),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final isWideScreen = constraints.maxWidth > 900;
+
+                  if (isWideScreen) {
+                    // Layout de dos columnas para pantallas grandes
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Columna izquierda - Formulario
+                        Expanded(
+                          flex: 3,
+                          child: SingleChildScrollView(
+                            padding: EdgeInsets.all(24),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildFechasYProveedor(),
+                                SizedBox(height: 24),
+                                _buildDatosProducto(),
+                                SizedBox(height: 24),
+                                _buildDescripcionYRetencionesCompacto(),
+                                SizedBox(height: 24),
+                                _buildBotones(),
+                              ],
+                            ),
+                          ),
+                        ),
+                        // Columna derecha - Resumen
+                        Container(
+                          width: 350,
+                          child: SingleChildScrollView(
+                            padding: EdgeInsets.all(24),
+                            child: _buildResumenLateral(),
+                          ),
+                        ),
+                      ],
+                    );
+                  } else {
+                    // Layout de una columna para móviles
+                    return SingleChildScrollView(
+                      padding: EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildFechasYProveedor(),
+                          SizedBox(height: 20),
+                          _buildDatosProducto(),
+                          SizedBox(height: 20),
+                          _buildDescripcionYRetencionesCompacto(),
+                          SizedBox(height: 20),
+                          _buildResumenLateral(),
+                          SizedBox(height: 20),
+                          _buildBotones(),
+                        ],
+                      ),
+                    );
+                  }
+                },
               ),
             ),
     );
+  }
+
+  // Nuevo: Fechas y Proveedor en formato compacto como en la imagen
+  Widget _buildFechasYProveedor() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Fila 1: Fecha y Vencimiento
+        Row(
+          children: [
+            // Fecha
+            Expanded(
+              child: Row(
+                children: [
+                  Text(
+                    'Fecha',
+                    style: TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 14,
+                    ),
+                  ),
+                  SizedBox(width: 16),
+                  Expanded(
+                    child: InkWell(
+                      onTap: () => _seleccionarFecha(context, true),
+                      child: Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppTheme.surfaceDark,
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(
+                            color: AppTheme.textSecondary.withOpacity(0.3),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              _formatearFechaISO(_fechaFactura),
+                              style: TextStyle(
+                                color: AppTheme.textPrimary,
+                                fontSize: 14,
+                              ),
+                            ),
+                            Icon(
+                              Icons.calendar_today,
+                              color: AppTheme.textSecondary,
+                              size: 18,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(width: 32),
+            // Vencimiento
+            Expanded(
+              child: Row(
+                children: [
+                  Text(
+                    'Vencimiento',
+                    style: TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 14,
+                    ),
+                  ),
+                  SizedBox(width: 16),
+                  Expanded(
+                    child: InkWell(
+                      onTap: () => _seleccionarFecha(context, false),
+                      child: Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppTheme.surfaceDark,
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(
+                            color: AppTheme.textSecondary.withOpacity(0.3),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              _formatearFechaISO(_fechaVencimiento),
+                              style: TextStyle(
+                                color: AppTheme.textPrimary,
+                                fontSize: 14,
+                              ),
+                            ),
+                            Icon(
+                              Icons.calendar_today,
+                              color: AppTheme.textSecondary,
+                              size: 18,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: 16),
+        // Fila 2: Proveedor y Factura
+        Row(
+          children: [
+            // Proveedor
+            Expanded(
+              child: Row(
+                children: [
+                  Text(
+                    'Proveedor',
+                    style: TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 14,
+                    ),
+                  ),
+                  SizedBox(width: 16),
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: AppTheme.surfaceDark,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(
+                          color: AppTheme.textSecondary.withOpacity(0.3),
+                        ),
+                      ),
+                      child: DropdownButtonFormField<Proveedor>(
+                        value: _proveedorSeleccionado,
+                        style: TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontSize: 14,
+                        ),
+                        decoration: InputDecoration(
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          border: InputBorder.none,
+                          hintText: 'Seleccionar proveedor',
+                          hintStyle: TextStyle(color: AppTheme.textSecondary),
+                        ),
+                        dropdownColor: AppTheme.cardBg,
+                        isExpanded: true,
+                        items: [
+                          DropdownMenuItem<Proveedor>(
+                            value: null,
+                            child: Text(
+                              'Proveedor general',
+                              style: TextStyle(color: AppTheme.textSecondary),
+                            ),
+                          ),
+                          ..._proveedores.map((proveedor) {
+                            return DropdownMenuItem<Proveedor>(
+                              value: proveedor,
+                              child: Text(
+                                proveedor.nombre,
+                                style: TextStyle(color: AppTheme.textPrimary),
+                              ),
+                            );
+                          }),
+                        ],
+                        onChanged: (Proveedor? valor) {
+                          setState(() {
+                            _proveedorSeleccionado = valor;
+                            if (valor != null) {
+                              _proveedorNitController.text =
+                                  valor.documento ?? '';
+                              _proveedorNombreController.text = valor.nombre;
+                            } else {
+                              _proveedorNitController.clear();
+                              _proveedorNombreController.clear();
+                            }
+                          });
+                        },
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(width: 32),
+            // Factura (número)
+            Expanded(
+              child: Row(
+                children: [
+                  Text(
+                    'Factura',
+                    style: TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 14,
+                    ),
+                  ),
+                  SizedBox(width: 16),
+                  Expanded(
+                    child: Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppTheme.surfaceDark,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(
+                          color: AppTheme.textSecondary.withOpacity(0.3),
+                        ),
+                      ),
+                      child: Text(
+                        _numeroFactura ?? 'Generando...',
+                        style: TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: 16),
+        // Toggle de Pago desde Caja (VISIBLE Y PROMINENTE)
+        Container(
+          padding: EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: _pagadoDesdeCaja
+                ? Colors.green.withOpacity(0.15)
+                : Colors.orange.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: _pagadoDesdeCaja
+                  ? Colors.green.withOpacity(0.5)
+                  : Colors.orange.withOpacity(0.3),
+              width: 2,
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                _pagadoDesdeCaja ? Icons.check_circle : Icons.warning_amber,
+                color: _pagadoDesdeCaja ? Colors.green : Colors.orange,
+                size: 28,
+              ),
+              SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Pagado desde Caja',
+                      style: TextStyle(
+                        color: _pagadoDesdeCaja ? Colors.green : Colors.orange,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      _pagadoDesdeCaja
+                          ? 'Esta compra se descontara del efectivo de la caja'
+                          : 'Esta compra NO afectara el flujo de caja del dia',
+                      style: TextStyle(
+                        color: _pagadoDesdeCaja
+                            ? Colors.green.shade300
+                            : Colors.orange.shade300,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Switch(
+                value: _pagadoDesdeCaja,
+                onChanged: (value) {
+                  setState(() {
+                    _pagadoDesdeCaja = value;
+                  });
+                },
+                activeColor: Colors.green,
+                activeTrackColor: Colors.green.withOpacity(0.3),
+                inactiveThumbColor: Colors.orange,
+                inactiveTrackColor: Colors.orange.withOpacity(0.3),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Nuevo: Sección Datos Producto como en la imagen
+  Widget _buildDatosProducto() {
+    // Calcular valor total del producto actual
+    final cantidad = double.tryParse(_cantidadProductoController.text) ?? 0;
+    final valorUnitario = double.tryParse(_valorUnitarioController.text) ?? 0;
+    final valorTotal = cantidad * valorUnitario;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Datos Producto',
+          style: TextStyle(
+            color: AppTheme.textPrimary,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        SizedBox(height: 12),
+        // Fila 1: Código de Barras
+        Container(
+          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: AppTheme.primary.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Row(
+            children: [
+              Text(
+                'Código de Barras',
+                style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+              ),
+              SizedBox(width: 16),
+              Expanded(
+                child: TextField(
+                  style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+                  decoration: InputDecoration(
+                    isDense: true,
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 8,
+                    ),
+                    hintText: 'Escanear o ingresar código',
+                    hintStyle: TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 13,
+                    ),
+                    filled: true,
+                    fillColor: AppTheme.surfaceDark,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(4),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                  onSubmitted: (value) {
+                    // Buscar producto por código de barras
+                    final producto = _productos
+                        .where((p) => p.id == value)
+                        .firstOrNull;
+                    if (producto != null) {
+                      setState(() {
+                        _productoSeleccionado = producto;
+                        _codigoProductoController.text = producto.id;
+                        _nombreProductoController.text = producto.nombre;
+                        _valorUnitarioController.text = producto.precio
+                            .toString();
+                      });
+                    }
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(height: 8),
+        // Fila 2: Código, Nombre, Cantidad, Valor unitario
+        Row(
+          children: [
+            _buildFieldLabel('Código', flex: 1),
+            _buildFieldLabel('Nombre producto', flex: 3),
+            _buildFieldLabel('Cantidad', flex: 1),
+            _buildFieldLabel('Valor unitario', flex: 1),
+          ],
+        ),
+        SizedBox(height: 4),
+        // Fila 3: Campos de entrada con Autocomplete para producto
+        Row(
+          children: [
+            // Código
+            Expanded(
+              flex: 1,
+              child: TextField(
+                controller: _codigoProductoController,
+                style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+                decoration: InputDecoration(
+                  isDense: true,
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 10,
+                  ),
+                  hintStyle: TextStyle(
+                    color: AppTheme.textSecondary,
+                    fontSize: 13,
+                  ),
+                  filled: true,
+                  fillColor: AppTheme.surfaceDark,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(4),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+                readOnly: true,
+              ),
+            ),
+            SizedBox(width: 8),
+            // Nombre Producto - Autocomplete con indicador de carga
+            Expanded(
+              flex: 3,
+              child: _cargandoProductos
+                  ? Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppTheme.surfaceDark,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppTheme.primary,
+                            ),
+                          ),
+                          SizedBox(width: 8),
+                          Text(
+                            'Cargando productos...',
+                            style: TextStyle(
+                              color: AppTheme.textSecondary,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : Autocomplete<Producto>(
+                      optionsBuilder: (TextEditingValue textEditingValue) {
+                        // No mostrar nada si está vacío (igual que facturación)
+                        if (textEditingValue.text.isEmpty) {
+                          return const Iterable<Producto>.empty();
+                        }
+                        // Requerir al menos 2 caracteres para buscar (más rápido)
+                        if (textEditingValue.text.length < 2) {
+                          return const Iterable<Producto>.empty();
+                        }
+                        // Buscar en productos
+                        return _productos
+                            .where((Producto producto) {
+                              return producto.nombre.toLowerCase().contains(
+                                    textEditingValue.text.toLowerCase(),
+                                  ) ||
+                                  producto.id.toLowerCase().contains(
+                                    textEditingValue.text.toLowerCase(),
+                                  );
+                            })
+                            .take(15);
+                      },
+                      displayStringForOption: (Producto producto) =>
+                          producto.nombre,
+                      onSelected: (Producto producto) {
+                        setState(() {
+                          _productoSeleccionado = producto;
+                          _codigoProductoController.text = producto.id;
+                          _nombreProductoController.text = producto.nombre;
+                          _valorUnitarioController.text = producto.precio
+                              .toString();
+                        });
+                      },
+                      fieldViewBuilder:
+                          (
+                            BuildContext context,
+                            TextEditingController textEditingController,
+                            FocusNode focusNode,
+                            VoidCallback onFieldSubmitted,
+                          ) {
+                            return TextField(
+                              controller: textEditingController,
+                              focusNode: focusNode,
+                              style: TextStyle(
+                                color: AppTheme.textPrimary,
+                                fontSize: 13,
+                              ),
+                              decoration: InputDecoration(
+                                isDense: true,
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 10,
+                                ),
+                                hintText: _productos.isEmpty
+                                    ? 'No hay productos disponibles'
+                                    : 'Escribe al menos 2 letras...',
+                                hintStyle: TextStyle(
+                                  color: AppTheme.textSecondary,
+                                  fontSize: 13,
+                                ),
+                                filled: true,
+                                fillColor: AppTheme.surfaceDark,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(4),
+                                  borderSide: BorderSide.none,
+                                ),
+                                suffixIcon: Icon(
+                                  Icons.arrow_drop_down,
+                                  color: AppTheme.textSecondary,
+                                  size: 20,
+                                ),
+                              ),
+                            );
+                          },
+                      optionsViewBuilder:
+                          (
+                            BuildContext context,
+                            AutocompleteOnSelected<Producto> onSelected,
+                            Iterable<Producto> options,
+                          ) {
+                            return Align(
+                              alignment: Alignment.topLeft,
+                              child: Material(
+                                elevation: 4.0,
+                                color: AppTheme.surfaceDark,
+                                borderRadius: BorderRadius.circular(8),
+                                child: Container(
+                                  constraints: BoxConstraints(
+                                    maxHeight: 300,
+                                    maxWidth: 400,
+                                  ),
+                                  child: ListView.builder(
+                                    padding: EdgeInsets.all(8.0),
+                                    itemCount: options.length,
+                                    shrinkWrap: true,
+                                    itemBuilder: (BuildContext context, int index) {
+                                      final Producto option = options.elementAt(
+                                        index,
+                                      );
+                                      return InkWell(
+                                        onTap: () => onSelected(option),
+                                        child: Container(
+                                          padding: EdgeInsets.all(12.0),
+                                          decoration: BoxDecoration(
+                                            border: Border(
+                                              bottom: BorderSide(
+                                                color: AppTheme.textSecondary
+                                                    .withOpacity(0.2),
+                                                width: 1,
+                                              ),
+                                            ),
+                                          ),
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                option.nombre,
+                                                style: TextStyle(
+                                                  color: AppTheme.textPrimary,
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                              SizedBox(height: 4),
+                                              Row(
+                                                children: [
+                                                  Text(
+                                                    'Código: ${option.id}',
+                                                    style: TextStyle(
+                                                      color: AppTheme
+                                                          .textSecondary,
+                                                      fontSize: 12,
+                                                    ),
+                                                  ),
+                                                  Spacer(),
+                                                  Text(
+                                                    '\$${option.precio.toStringAsFixed(0)}',
+                                                    style: TextStyle(
+                                                      color: AppTheme.primary,
+                                                      fontSize: 12,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                    ),
+            ),
+            SizedBox(width: 8),
+            // Cantidad
+            Expanded(
+              flex: 1,
+              child: TextField(
+                controller: _cantidadProductoController,
+                style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  isDense: true,
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 10,
+                  ),
+                  hintText: '0',
+                  hintStyle: TextStyle(
+                    color: AppTheme.textSecondary,
+                    fontSize: 13,
+                  ),
+                  filled: true,
+                  fillColor: AppTheme.surfaceDark,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(4),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+                onChanged: (_) => setState(() {}),
+              ),
+            ),
+            SizedBox(width: 8),
+            // Valor unitario
+            Expanded(
+              flex: 1,
+              child: TextField(
+                controller: _valorUnitarioController,
+                style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  isDense: true,
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 10,
+                  ),
+                  hintText: '\$0',
+                  hintStyle: TextStyle(
+                    color: AppTheme.textSecondary,
+                    fontSize: 13,
+                  ),
+                  filled: true,
+                  fillColor: AppTheme.surfaceDark,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(4),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+                onChanged: (_) => setState(() {}),
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: 8),
+        // Fila 4: Valor total, Tipo Imp, % Imp, Tipo %, % Descuento
+        Row(
+          children: [
+            _buildFieldLabel('Valor total', flex: 1),
+            _buildFieldLabel('', flex: 1), // Dropdown tipo impuesto
+            _buildFieldLabel('% Imp.', flex: 1),
+            _buildFieldLabel('', flex: 1), // Dropdown tipo descuento
+            _buildFieldLabel('% Descuento', flex: 1),
+            SizedBox(width: 60), // Espacio para botones
+          ],
+        ),
+        SizedBox(height: 4),
+        Row(
+          children: [
+            // Valor total calculado
+            Expanded(
+              flex: 1,
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                decoration: BoxDecoration(
+                  color: AppTheme.surfaceDark.withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  '\$${valorTotal.toStringAsFixed(0)}',
+                  style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+                ),
+              ),
+            ),
+            SizedBox(width: 8),
+            Expanded(
+              flex: 1,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: AppTheme.surfaceDark,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: DropdownButtonFormField<String>(
+                  value: _tipoImpuesto,
+                  style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+                  decoration: InputDecoration(
+                    isDense: true,
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 8,
+                    ),
+                    border: InputBorder.none,
+                  ),
+                  dropdownColor: AppTheme.cardBg,
+                  items: ['--', 'IVA', 'INC']
+                      .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                      .toList(),
+                  onChanged: (v) => setState(() => _tipoImpuesto = v ?? '--'),
+                ),
+              ),
+            ),
+            SizedBox(width: 8),
+            Expanded(
+              flex: 1,
+              child: TextField(
+                controller: _porcentajeImpuestoController,
+                style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  isDense: true,
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 10,
+                  ),
+                  hintText: '0',
+                  hintStyle: TextStyle(
+                    color: AppTheme.textSecondary,
+                    fontSize: 13,
+                  ),
+                  filled: true,
+                  fillColor: AppTheme.surfaceDark,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(4),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(width: 8),
+            Expanded(
+              flex: 1,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: AppTheme.surfaceDark,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: DropdownButtonFormField<String>(
+                  value: _tipoDescuento,
+                  style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+                  decoration: InputDecoration(
+                    isDense: true,
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 8,
+                    ),
+                    border: InputBorder.none,
+                  ),
+                  dropdownColor: AppTheme.cardBg,
+                  items: ['%', '\$']
+                      .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                      .toList(),
+                  onChanged: (v) => setState(() => _tipoDescuento = v ?? '%'),
+                ),
+              ),
+            ),
+            SizedBox(width: 8),
+            Expanded(
+              flex: 1,
+              child: TextField(
+                controller: _porcentajeDescuentoController,
+                style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  isDense: true,
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 10,
+                  ),
+                  hintText: '0',
+                  hintStyle: TextStyle(
+                    color: AppTheme.textSecondary,
+                    fontSize: 13,
+                  ),
+                  filled: true,
+                  fillColor: AppTheme.surfaceDark,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(4),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(width: 8),
+            // Botones + y -
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary,
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    icon: Icon(Icons.add, color: Colors.white, size: 16),
+                    padding: EdgeInsets.zero,
+                    onPressed: _agregarItemDesdeFormulario,
+                  ),
+                ),
+                SizedBox(width: 4),
+                Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary,
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    icon: Icon(Icons.remove, color: Colors.white, size: 16),
+                    padding: EdgeInsets.zero,
+                    onPressed: () {
+                      if (_items.isNotEmpty) {
+                        _eliminarItem(_items.length - 1);
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        SizedBox(height: 16),
+        // Lista de items agregados
+        if (_items.isNotEmpty) ...[
+          Container(
+            decoration: BoxDecoration(
+              border: Border.all(
+                color: AppTheme.textSecondary.withOpacity(0.3),
+              ),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Column(
+              children: [
+                // Header de la tabla
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppTheme.surfaceDark,
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(4),
+                      topRight: Radius.circular(4),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        flex: 2,
+                        child: Text(
+                          'Producto',
+                          style: TextStyle(
+                            color: AppTheme.textSecondary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: Text(
+                          'Cant.',
+                          style: TextStyle(
+                            color: AppTheme.textSecondary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: Text(
+                          'P. Unit',
+                          style: TextStyle(
+                            color: AppTheme.textSecondary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: Text(
+                          'Subtotal',
+                          style: TextStyle(
+                            color: AppTheme.textSecondary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 40),
+                    ],
+                  ),
+                ),
+                // Items
+                ..._items.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final item = entry.value;
+                  return Container(
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      border: Border(
+                        top: BorderSide(
+                          color: AppTheme.textSecondary.withOpacity(0.2),
+                        ),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          flex: 2,
+                          child: Text(
+                            item.ingredienteNombre,
+                            style: TextStyle(
+                              color: AppTheme.textPrimary,
+                              fontSize: 13,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Expanded(
+                          child: Text(
+                            '${item.cantidad} ${item.unidad}',
+                            style: TextStyle(
+                              color: AppTheme.textPrimary,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: Text(
+                            '\$${item.precioUnitario.toStringAsFixed(0)}',
+                            style: TextStyle(
+                              color: AppTheme.textPrimary,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: Text(
+                            '\$${item.subtotal.toStringAsFixed(0)}',
+                            style: TextStyle(
+                              color: AppTheme.primary,
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        SizedBox(
+                          width: 40,
+                          child: IconButton(
+                            icon: Icon(
+                              Icons.delete_outline,
+                              color: AppTheme.error,
+                              size: 18,
+                            ),
+                            padding: EdgeInsets.zero,
+                            onPressed: () => _eliminarItem(index),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildFieldLabel(String label, {int flex = 1}) {
+    return Expanded(
+      flex: flex,
+      child: Text(
+        label,
+        style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+      ),
+    );
+  }
+
+  Widget _buildTextField({int flex = 1, String? hint, bool enabled = true}) {
+    return Expanded(
+      flex: flex,
+      child: TextField(
+        enabled: enabled,
+        style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+        decoration: InputDecoration(
+          isDense: true,
+          contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+          hintText: hint,
+          hintStyle: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+          filled: true,
+          fillColor: enabled
+              ? AppTheme.surfaceDark
+              : AppTheme.surfaceDark.withOpacity(0.5),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(4),
+            borderSide: BorderSide.none,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Descripción y Retenciones lado a lado como en la imagen
+  Widget _buildDescripcionYRetencionesCompacto() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Descripción
+        Expanded(
+          flex: 2,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Descripción',
+                style: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+              ),
+              SizedBox(height: 8),
+              TextField(
+                controller: _descripcionController,
+                maxLines: 4,
+                style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+                decoration: InputDecoration(
+                  hintText: 'Descripción de la compra...',
+                  hintStyle: TextStyle(color: AppTheme.textSecondary),
+                  filled: true,
+                  fillColor: AppTheme.surfaceDark,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(4),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(width: 24),
+        // Retenciones
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildRetencionField('Retención', _porcentajeRetencionController),
+              SizedBox(height: 8),
+              _buildRetencionField('Reteiva', _porcentajeReteIvaController),
+              SizedBox(height: 8),
+              _buildRetencionField('Reteica', _porcentajeReteIcaController),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRetencionField(String label, TextEditingController controller) {
+    return Row(
+      children: [
+        SizedBox(
+          width: 80,
+          child: Text(
+            label,
+            style: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+          ),
+        ),
+        Expanded(
+          child: TextField(
+            controller: controller,
+            keyboardType: TextInputType.number,
+            style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+            decoration: InputDecoration(
+              isDense: true,
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 10,
+              ),
+              suffixText: '%',
+              suffixStyle: TextStyle(color: AppTheme.textSecondary),
+              filled: true,
+              fillColor: AppTheme.surfaceDark,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(4),
+                borderSide: BorderSide.none,
+              ),
+            ),
+            onChanged: (_) => setState(() {}),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Resumen lateral como en la imagen
+  Widget _buildResumenLateral() {
+    // Calcular totales
+    final subtotalItems = _items.fold<double>(
+      0,
+      (sum, item) => sum + item.subtotal,
+    );
+    final totalDescuentosItems = _items.fold<double>(
+      0,
+      (sum, item) => sum + item.valorDescuento,
+    );
+
+    final descuentoGeneralValor =
+        double.tryParse(_descuentoGeneralValorController.text) ?? 0;
+    double descuentoGeneralAplicado = 0;
+    if (_tipoDescuentoGeneral == 'Porcentaje') {
+      descuentoGeneralAplicado = subtotalItems * (descuentoGeneralValor / 100);
+    } else {
+      descuentoGeneralAplicado = descuentoGeneralValor;
+    }
+
+    final baseGravable =
+        subtotalItems - totalDescuentosItems - descuentoGeneralAplicado;
+    final totalImpuestosItems = _items.fold<double>(
+      0,
+      (sum, item) => sum + item.valorImpuesto,
+    );
+
+    final porcRetencion =
+        double.tryParse(_porcentajeRetencionController.text) ?? 0;
+    final porcReteIva = double.tryParse(_porcentajeReteIvaController.text) ?? 0;
+    final porcReteIca = double.tryParse(_porcentajeReteIcaController.text) ?? 0;
+
+    final valorRetencion = baseGravable * (porcRetencion / 100);
+    final valorReteIva = totalImpuestosItems * (porcReteIva / 100);
+    final valorReteIca = baseGravable * (porcReteIca / 100);
+
+    final totalFinal =
+        baseGravable +
+        totalImpuestosItems -
+        valorRetencion -
+        valorReteIva -
+        valorReteIca;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildResumenRowCompacto('Subtotal', subtotalItems),
+        _buildResumenRowCompacto(
+          'Dcto Producto',
+          totalDescuentosItems,
+          isNegative: true,
+        ),
+        // Dcto General con dropdown
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Dcto General',
+                style: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+              ),
+            ),
+            Container(
+              width: 70,
+              height: 32,
+              child: DropdownButtonFormField<String>(
+                value: _tipoDescuentoGeneral == 'Porcentaje'
+                    ? 'Valor'
+                    : 'Valor',
+                style: TextStyle(color: AppTheme.textPrimary, fontSize: 12),
+                decoration: InputDecoration(
+                  isDense: true,
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  filled: true,
+                  fillColor: AppTheme.surfaceDark,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(4),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+                dropdownColor: AppTheme.cardBg,
+                items: [
+                  DropdownMenuItem(value: 'Valor', child: Text('Valor')),
+                  DropdownMenuItem(value: '%', child: Text('%')),
+                ],
+                onChanged: (v) {
+                  setState(
+                    () => _tipoDescuentoGeneral = v == '%'
+                        ? 'Porcentaje'
+                        : 'Valor',
+                  );
+                },
+              ),
+            ),
+            SizedBox(width: 8),
+            Container(
+              width: 80,
+              height: 32,
+              child: TextField(
+                controller: _descuentoGeneralValorController,
+                keyboardType: TextInputType.number,
+                style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+                decoration: InputDecoration(
+                  isDense: true,
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 8,
+                  ),
+                  prefixText: '\$',
+                  prefixStyle: TextStyle(color: AppTheme.textSecondary),
+                  filled: true,
+                  fillColor: AppTheme.surfaceDark,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(4),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+                onChanged: (_) => setState(() {}),
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: 8),
+        _buildResumenRowCompacto('Impuesto', totalImpuestosItems),
+        _buildResumenRowCompacto('Retención', valorRetencion, isNegative: true),
+        _buildResumenRowCompacto('Reteiva', valorReteIva, isNegative: true),
+        _buildResumenRowCompacto('Reteica', valorReteIca, isNegative: true),
+        SizedBox(height: 8),
+        Divider(color: AppTheme.primary.withOpacity(0.3)),
+        SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'TOTAL',
+              style: TextStyle(
+                color: AppTheme.textPrimary,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppTheme.surfaceDark,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                '\$${totalFinal.toStringAsFixed(0)}',
+                style: TextStyle(
+                  color: AppTheme.primary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildResumenRowCompacto(
+    String label,
+    double valor, {
+    bool isNegative = false,
+  }) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+          ),
+          Container(
+            width: 120,
+            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppTheme.surfaceDark,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Text(
+              '${isNegative && valor > 0 ? "-" : ""}\$${valor.abs().toStringAsFixed(0)}',
+              style: TextStyle(
+                color: isNegative && valor > 0
+                    ? Colors.red[300]
+                    : AppTheme.textPrimary,
+                fontSize: 13,
+              ),
+              textAlign: TextAlign.right,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatearFechaISO(DateTime fecha) {
+    return '${fecha.year}-${fecha.month.toString().padLeft(2, '0')}-${fecha.day.toString().padLeft(2, '0')}';
   }
 
   Widget _buildInfoBasica() {
@@ -902,6 +2354,54 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
               ),
             ),
             SizedBox(height: 16),
+            // 💰 Switch de Pago desde Caja (más visible)
+            Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: _pagadoDesdeCaja
+                    ? Colors.green.withOpacity(0.15)
+                    : Colors.orange.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: _pagadoDesdeCaja
+                      ? Colors.green.withOpacity(0.5)
+                      : Colors.orange.withOpacity(0.3),
+                ),
+              ),
+              child: SwitchListTile(
+                title: Text(
+                  '💰 Pagado desde Caja',
+                  style: TextStyle(
+                    color: _pagadoDesdeCaja ? Colors.green : Colors.orange,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                subtitle: Text(
+                  _pagadoDesdeCaja
+                      ? '✅ Esta compra se descontará del efectivo de la caja'
+                      : '⚠️ Esta compra NO afectará el flujo de caja del día',
+                  style: TextStyle(
+                    color: _pagadoDesdeCaja
+                        ? Colors.green.shade300
+                        : Colors.orange.shade300,
+                    fontSize: 12,
+                  ),
+                ),
+                value: _pagadoDesdeCaja,
+                onChanged: (value) {
+                  setState(() {
+                    _pagadoDesdeCaja = value;
+                  });
+                },
+                activeColor: Colors.green,
+                activeTrackColor: Colors.green.withOpacity(0.3),
+                inactiveThumbColor: Colors.orange,
+                inactiveTrackColor: Colors.orange.withOpacity(0.3),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+            SizedBox(height: 16),
             TextFormField(
               style: TextStyle(color: AppTheme.textPrimary),
               decoration: InputDecoration(
@@ -909,7 +2409,9 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                 labelStyle: TextStyle(color: AppTheme.textSecondary),
                 border: OutlineInputBorder(),
                 enabledBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: AppTheme.textSecondary.withOpacity(0.3)),
+                  borderSide: BorderSide(
+                    color: AppTheme.textSecondary.withOpacity(0.3),
+                  ),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderSide: BorderSide(color: AppTheme.primary),
@@ -926,10 +2428,14 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                 labelText: 'Proveedor',
                 labelStyle: TextStyle(color: AppTheme.textSecondary),
                 hintText: 'Seleccionar proveedor',
-                hintStyle: TextStyle(color: AppTheme.textSecondary.withOpacity(0.7)),
+                hintStyle: TextStyle(
+                  color: AppTheme.textSecondary.withOpacity(0.7),
+                ),
                 border: OutlineInputBorder(),
                 enabledBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: AppTheme.textSecondary.withOpacity(0.3)),
+                  borderSide: BorderSide(
+                    color: AppTheme.textSecondary.withOpacity(0.3),
+                  ),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderSide: BorderSide(color: AppTheme.primary),
@@ -978,16 +2484,22 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                 hintText: _proveedorSeleccionado != null
                     ? 'Autocompletado desde proveedor seleccionado'
                     : 'Solo para proveedores personalizados',
-                hintStyle: TextStyle(color: AppTheme.textSecondary.withOpacity(0.7)),
+                hintStyle: TextStyle(
+                  color: AppTheme.textSecondary.withOpacity(0.7),
+                ),
                 border: OutlineInputBorder(),
                 enabledBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: AppTheme.textSecondary.withOpacity(0.3)),
+                  borderSide: BorderSide(
+                    color: AppTheme.textSecondary.withOpacity(0.3),
+                  ),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderSide: BorderSide(color: AppTheme.primary),
                 ),
                 disabledBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: AppTheme.textSecondary.withOpacity(0.1)),
+                  borderSide: BorderSide(
+                    color: AppTheme.textSecondary.withOpacity(0.1),
+                  ),
                 ),
               ),
             ),
@@ -1002,37 +2514,24 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                 hintText: _proveedorSeleccionado != null
                     ? 'Autocompletado desde proveedor seleccionado'
                     : 'Solo para proveedores personalizados',
-                hintStyle: TextStyle(color: AppTheme.textSecondary.withOpacity(0.7)),
+                hintStyle: TextStyle(
+                  color: AppTheme.textSecondary.withOpacity(0.7),
+                ),
                 border: OutlineInputBorder(),
                 enabledBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: AppTheme.textSecondary.withOpacity(0.3)),
+                  borderSide: BorderSide(
+                    color: AppTheme.textSecondary.withOpacity(0.3),
+                  ),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderSide: BorderSide(color: AppTheme.primary),
                 ),
                 disabledBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: AppTheme.textSecondary.withOpacity(0.1)),
+                  borderSide: BorderSide(
+                    color: AppTheme.textSecondary.withOpacity(0.1),
+                  ),
                 ),
               ),
-            ),
-            SizedBox(height: 16),
-            SwitchListTile(
-              title: Text(
-                'Pagado desde caja',
-                style: TextStyle(color: AppTheme.textPrimary),
-              ),
-              subtitle: Text(
-                'Marcar si esta compra afecta el flujo de caja del día',
-                style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
-              ),
-              value: _pagadoDesdeCaja,
-              onChanged: (value) {
-                setState(() {
-                  _pagadoDesdeCaja = value;
-                });
-              },
-              activeThumbColor: AppTheme.primary,
-              activeTrackColor: AppTheme.primary.withOpacity(0.3),
             ),
             SizedBox(height: 16),
             Divider(color: AppTheme.textSecondary.withOpacity(0.3)),
@@ -1065,7 +2564,10 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                       suffixText: '%',
                       suffixStyle: TextStyle(color: AppTheme.textSecondary),
                       helperText: '0.1% - 11%',
-                      helperStyle: TextStyle(color: AppTheme.textSecondary, fontSize: 10),
+                      helperStyle: TextStyle(
+                        color: AppTheme.textSecondary,
+                        fontSize: 10,
+                      ),
                       filled: true,
                       fillColor: Colors.grey[800],
                       border: OutlineInputBorder(
@@ -1087,7 +2589,10 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                       suffixText: '%',
                       suffixStyle: TextStyle(color: AppTheme.textSecondary),
                       helperText: '15% estándar',
-                      helperStyle: TextStyle(color: AppTheme.textSecondary, fontSize: 10),
+                      helperStyle: TextStyle(
+                        color: AppTheme.textSecondary,
+                        fontSize: 10,
+                      ),
                       filled: true,
                       fillColor: Colors.grey[800],
                       border: OutlineInputBorder(
@@ -1109,7 +2614,10 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                       suffixText: '%',
                       suffixStyle: TextStyle(color: AppTheme.textSecondary),
                       helperText: 'Varía por municipio',
-                      helperStyle: TextStyle(color: AppTheme.textSecondary, fontSize: 10),
+                      helperStyle: TextStyle(
+                        color: AppTheme.textSecondary,
+                        fontSize: 10,
+                      ),
                       filled: true,
                       fillColor: Colors.grey[800],
                       border: OutlineInputBorder(
@@ -1156,7 +2664,10 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                       _formatearFecha(_fechaFactura),
                       style: TextStyle(color: AppTheme.textSecondary),
                     ),
-                    leading: Icon(Icons.calendar_today, color: AppTheme.primary),
+                    leading: Icon(
+                      Icons.calendar_today,
+                      color: AppTheme.primary,
+                    ),
                     onTap: () => _seleccionarFecha(context, true),
                   ),
                 ),
@@ -1219,7 +2730,11 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                 child: Center(
                   child: Column(
                     children: [
-                      Icon(Icons.inventory_2, size: 48, color: AppTheme.textSecondary),
+                      Icon(
+                        Icons.inventory_2,
+                        size: 48,
+                        color: AppTheme.textSecondary,
+                      ),
                       SizedBox(height: 8),
                       Text(
                         'No hay items agregados',
@@ -1272,9 +2787,15 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
 
   Widget _buildResumen() {
     // Calcular totales DIAN
-    final subtotalItems = _items.fold<double>(0, (sum, item) => sum + item.subtotal);
-    final totalDescuentosItems = _items.fold<double>(0, (sum, item) => sum + item.valorDescuento);
-    
+    final subtotalItems = _items.fold<double>(
+      0,
+      (sum, item) => sum + item.subtotal,
+    );
+    final totalDescuentosItems = _items.fold<double>(
+      0,
+      (sum, item) => sum + item.valorDescuento,
+    );
+
     // Calcular descuento general
     final descuentoGeneralValor =
         double.tryParse(_descuentoGeneralValorController.text) ?? 0;
@@ -1287,18 +2808,22 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
 
     final baseGravable =
         subtotalItems - totalDescuentosItems - descuentoGeneralAplicado;
-    final totalImpuestosItems = _items.fold<double>(0, (sum, item) => sum + item.valorImpuesto);
-    
+    final totalImpuestosItems = _items.fold<double>(
+      0,
+      (sum, item) => sum + item.valorImpuesto,
+    );
+
     // Retenciones
-    final porcRetencion = double.tryParse(_porcentajeRetencionController.text) ?? 0;
+    final porcRetencion =
+        double.tryParse(_porcentajeRetencionController.text) ?? 0;
     final porcReteIva = double.tryParse(_porcentajeReteIvaController.text) ?? 0;
     final porcReteIca = double.tryParse(_porcentajeReteIcaController.text) ?? 0;
-    
+
     final valorRetencion = baseGravable * (porcRetencion / 100);
     final valorReteIva = totalImpuestosItems * (porcReteIva / 100);
     final valorReteIca = baseGravable * (porcReteIca / 100);
     final totalRetenciones = valorRetencion + valorReteIva + valorReteIca;
-    
+
     // Total final
     final totalFinal = baseGravable + totalImpuestosItems - totalRetenciones;
 
@@ -1411,7 +2936,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
               ],
             ),
             SizedBox(height: 8),
-            
+
             if (totalImpuestosItems > 0)
               _buildResumenRow('Impuesto:', totalImpuestosItems),
             // Retenciones
@@ -1456,7 +2981,11 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
     );
   }
 
-  Widget _buildResumenRow(String label, double valor, {bool isNegative = false}) {
+  Widget _buildResumenRow(
+    String label,
+    double valor, {
+    bool isNegative = false,
+  }) {
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -1730,6 +3259,91 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
     );
   }
 
+  // Método para agregar item desde el formulario inline
+  void _agregarItemDesdeFormulario() {
+    if (_productoSeleccionado == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Seleccione un producto'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    final cantidad = double.tryParse(_cantidadProductoController.text) ?? 0;
+    if (cantidad <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('La cantidad debe ser mayor a 0'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    final precioUnitario = double.tryParse(_valorUnitarioController.text) ?? 0;
+    if (precioUnitario <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('El valor unitario debe ser mayor a 0'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    final porcentajeImpuesto =
+        double.tryParse(_porcentajeImpuestoController.text) ?? 0;
+    final porcentajeDescuento =
+        double.tryParse(_porcentajeDescuentoController.text) ?? 0;
+
+    final subtotal = cantidad * precioUnitario;
+    final descuento = _tipoDescuento == '%'
+        ? subtotal * (porcentajeDescuento / 100)
+        : porcentajeDescuento;
+    final baseGravable = subtotal - descuento;
+    final impuesto = _tipoImpuesto != '--'
+        ? baseGravable * (porcentajeImpuesto / 100)
+        : 0.0;
+    final total = baseGravable + impuesto;
+
+    final item = ItemFacturaCompra(
+      ingredienteId: _productoSeleccionado!.id ?? '',
+      ingredienteNombre: _productoSeleccionado!.nombre,
+      cantidad: cantidad,
+      unidad: 'UND',
+      precioUnitario: precioUnitario,
+      subtotal: total,
+      valorImpuesto: impuesto,
+      valorDescuento: descuento,
+      porcentajeImpuesto: porcentajeImpuesto,
+      porcentajeDescuento: porcentajeDescuento,
+    );
+
+    setState(() {
+      _items.add(item);
+      // Limpiar los campos
+      _productoSeleccionado = null;
+      _codigoProductoController.clear();
+      _nombreProductoController.clear();
+      _cantidadProductoController.clear();
+      _valorUnitarioController.clear();
+      _porcentajeImpuestoController.text = '19';
+      _porcentajeDescuentoController.text = '0';
+      _tipoImpuesto = 'IVA';
+      _tipoDescuento = '%';
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Producto agregado'),
+        backgroundColor: Colors.green,
+        duration: Duration(seconds: 1),
+      ),
+    );
+  }
+
   void _eliminarItem(int index) {
     setState(() {
       _items.removeAt(index);
@@ -1822,6 +3436,12 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
       final List<ItemFacturaCompra> itemsVerificados = _items.map((item) {
         // Validar y corregir cualquier subtotal si fuera necesario
         double subtotalCalculado = item.cantidad * item.precioUnitario;
+        print('🔍 Verificando item: ${item.ingredienteNombre}');
+        print('   - Cantidad: ${item.cantidad}');
+        print('   - Precio Unitario: ${item.precioUnitario}');
+        print('   - Subtotal reportado: ${item.subtotal}');
+        print('   - Subtotal calculado: $subtotalCalculado');
+
         if (subtotalCalculado != item.subtotal) {
           print(
             '⚠️ Subtotal incorrecto en ${item.ingredienteNombre}: reportado ${item.subtotal}, calculado $subtotalCalculado',
@@ -1844,23 +3464,61 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
       }).toList();
 
       // Calcular totales DIAN
-      final subtotalItems = itemsVerificados.fold<double>(0, (sum, item) => sum + item.subtotal);
-      final totalDescuentosItems = itemsVerificados.fold<double>(0, (sum, item) => sum + item.valorDescuento);
+      final subtotalItems = itemsVerificados.fold<double>(
+        0,
+        (sum, item) => sum + item.subtotal,
+      );
+      final totalDescuentosItems = itemsVerificados.fold<double>(
+        0,
+        (sum, item) => sum + item.valorDescuento,
+      );
       final baseGravable = subtotalItems - totalDescuentosItems;
-      final totalImpuestosItems = itemsVerificados.fold<double>(0, (sum, item) => sum + item.valorImpuesto);
-      
+      final totalImpuestosItems = itemsVerificados.fold<double>(
+        0,
+        (sum, item) => sum + item.valorImpuesto,
+      );
+
+      print('📊 Cálculo de totales DIAN:');
+      print('   - Subtotal items: $subtotalItems');
+      print('   - Total descuentos: $totalDescuentosItems');
+      print('   - Base gravable: $baseGravable');
+      print('   - Total impuestos: $totalImpuestosItems');
+
       // Retenciones
-      final porcRetencion = double.tryParse(_porcentajeRetencionController.text) ?? 0;
-      final porcReteIva = double.tryParse(_porcentajeReteIvaController.text) ?? 0;
-      final porcReteIca = double.tryParse(_porcentajeReteIcaController.text) ?? 0;
-      
+      final porcRetencion =
+          double.tryParse(_porcentajeRetencionController.text) ?? 0;
+      final porcReteIva =
+          double.tryParse(_porcentajeReteIvaController.text) ?? 0;
+      final porcReteIca =
+          double.tryParse(_porcentajeReteIcaController.text) ?? 0;
+
       final valorRetencion = baseGravable * (porcRetencion / 100);
       final valorReteIva = totalImpuestosItems * (porcReteIva / 100);
       final valorReteIca = baseGravable * (porcReteIca / 100);
       final totalRetenciones = valorRetencion + valorReteIva + valorReteIca;
-      
+
       // Total final DIAN
-      final totalFinal = baseGravable + totalImpuestosItems - totalRetenciones;
+      double totalFinal = baseGravable + totalImpuestosItems - totalRetenciones;
+
+      print('📊 Cálculo de total final:');
+      print('   - Base gravable: $baseGravable');
+      print('   - + Impuestos: $totalImpuestosItems');
+      print('   - - Retenciones: $totalRetenciones');
+      print('   - = TOTAL FINAL: $totalFinal');
+
+      // Si el total es 0 pero hay items con subtotales, usar la suma directa de subtotales
+      if (totalFinal <= 0 && itemsVerificados.isNotEmpty) {
+        final sumaDirectaSubtotales = itemsVerificados.fold<double>(
+          0,
+          (sum, item) => sum + item.subtotal,
+        );
+        if (sumaDirectaSubtotales > 0) {
+          print(
+            '⚠️ Total calculado es 0 pero suma de subtotales es $sumaDirectaSubtotales. Usando suma directa.',
+          );
+          totalFinal = sumaDirectaSubtotales;
+        }
+      }
 
       final factura = FacturaCompra(
         numeroFactura: _numeroFactura ?? '',
@@ -1898,6 +3556,9 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
       );
       print('✅ Factura creada exitosamente: ${facturaCreada.id}');
 
+      // 📦 Registrar movimientos de inventario (entrada de stock)
+      await _registrarMovimientosInventarioCompra(facturaCreada);
+
       // Verificar si la factura creada tiene el total correcto
       if (facturaCreada.total <= 0 && total > 0) {
         print('⚠️ La factura se creó con total 0 pero debería ser $total');
@@ -1929,21 +3590,80 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
         );
       }
 
-      Navigator.pop(context);
+      // Pequeño delay para asegurar que el backend procesó la factura
+      await Future.delayed(Duration(milliseconds: 500));
+
+      // Navegar a la lista de compras
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, '/compras');
+      }
     } catch (e) {
       print('💥 Error en _guardarFactura (UI): $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al crear factura: $e'),
-          backgroundColor: Colors.red,
-          duration: Duration(seconds: 5),
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al crear factura: $e'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 5),
+          ),
+        );
+      }
     } finally {
-      setState(() {
-        _isLoading = false;
-        _guardandoFactura = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _guardandoFactura = false;
+        });
+      }
+    }
+  }
+
+  // 📦 Registrar movimientos de inventario cuando se crea una factura de compra
+  Future<void> _registrarMovimientosInventarioCompra(
+    FacturaCompra factura,
+  ) async {
+    try {
+      print(
+        '📦 Registrando movimientos de inventario para compra ${factura.numeroFactura}',
+      );
+
+      for (var item in factura.items) {
+        try {
+          final movimiento = MovimientoInventario(
+            inventarioId: item.ingredienteId,
+            productoId: item.ingredienteId,
+            productoNombre: item.ingredienteNombre,
+            tipoMovimiento: 'Entrada',
+            motivo: 'Compra - Factura ${factura.numeroFactura}',
+            cantidadAnterior: 0, // El backend calculará el stock anterior
+            cantidadMovimiento: item.cantidad,
+            cantidadNueva: 0, // El backend calculará el stock nuevo
+            responsable: 'Sistema',
+            referencia: 'FC-${factura.numeroFactura}',
+            observaciones: 'Compra a ${factura.proveedorNombre}',
+            costoUnitario: item.precioUnitario,
+            precioTotal: item.subtotal,
+            fecha: DateTime.now(),
+            facturaNo: factura.numeroFactura,
+            proveedor: factura.proveedorNombre,
+          );
+
+          await _inventarioService.registrarMovimiento(movimiento);
+          print(
+            '✅ Movimiento registrado para: ${item.ingredienteNombre} (+${item.cantidad})',
+          );
+        } catch (e) {
+          print(
+            '⚠️ Error al registrar movimiento para ${item.ingredienteNombre}: $e',
+          );
+          // Continuar con el siguiente item aunque haya error
+        }
+      }
+
+      print('✅ Todos los movimientos de inventario registrados para la compra');
+    } catch (e) {
+      print('❌ Error general al registrar movimientos de inventario: $e');
+      // No lanzar excepción para no interrumpir el flujo de la factura
     }
   }
 
@@ -1962,7 +3682,6 @@ class DetalleFacturaCompraScreen extends StatelessWidget {
     return factura.estado.toUpperCase() == 'PAGADA' || factura.pagadoDesdeCaja;
   }
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -1970,7 +3689,10 @@ class DetalleFacturaCompraScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text(
           'Detalle de Factura',
-          style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: AppTheme.textPrimary,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         backgroundColor: AppTheme.backgroundDark,
         elevation: 0,
@@ -2028,7 +3750,10 @@ class DetalleFacturaCompraScreen extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Estado:', style: TextStyle(color: AppTheme.textSecondary)),
+                Text(
+                  'Estado:',
+                  style: TextStyle(color: AppTheme.textSecondary),
+                ),
                 // Si está pagado desde caja, mostrar PAGADA independientemente del estado en la base de datos
                 // Usar el método auxiliar para determinar el estado visual
                 _buildEstadoChip(
@@ -2040,7 +3765,10 @@ class DetalleFacturaCompraScreen extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Pagado desde caja:', style: TextStyle(color: AppTheme.textSecondary)),
+                Text(
+                  'Pagado desde caja:',
+                  style: TextStyle(color: AppTheme.textSecondary),
+                ),
                 Row(
                   children: [
                     Icon(
@@ -2248,7 +3976,9 @@ class _DialogoAgregarItemState extends State<_DialogoAgregarItem> {
   final _cantidadController = TextEditingController();
   final _precioController = TextEditingController();
   final _totalController = TextEditingController();
-  final _porcentajeImpuestoController = TextEditingController(text: '19'); // IVA 19% por defecto
+  final _porcentajeImpuestoController = TextEditingController(
+    text: '19',
+  ); // IVA 19% por defecto
   final _porcentajeDescuentoController = TextEditingController(text: '0');
   String _searchText = '';
   bool _usarTotal = true;
@@ -2270,7 +4000,7 @@ class _DialogoAgregarItemState extends State<_DialogoAgregarItem> {
             _searchText.toLowerCase(),
           ) ||
           (producto.categoria?.nombre.toLowerCase().contains(
-            _searchText.toLowerCase(),
+                _searchText.toLowerCase(),
               ) ??
               false);
     }).toList();
@@ -2287,9 +4017,11 @@ class _DialogoAgregarItemState extends State<_DialogoAgregarItem> {
     }
   }
 
-  double get _porcentajeImpuesto => double.tryParse(_porcentajeImpuestoController.text) ?? 0;
-  double get _porcentajeDescuento => double.tryParse(_porcentajeDescuentoController.text) ?? 0;
-  
+  double get _porcentajeImpuesto =>
+      double.tryParse(_porcentajeImpuestoController.text) ?? 0;
+  double get _porcentajeDescuento =>
+      double.tryParse(_porcentajeDescuentoController.text) ?? 0;
+
   double get _valorDescuento => _subtotal * (_porcentajeDescuento / 100);
   double get _baseGravable => _subtotal - _valorDescuento;
   double get _valorImpuesto => _baseGravable * (_porcentajeImpuesto / 100);
@@ -2406,7 +4138,9 @@ class _DialogoAgregarItemState extends State<_DialogoAgregarItem> {
                               ),
                             ),
                             selected: isSelected,
-                            selectedTileColor: AppTheme.primary.withOpacity(0.1),
+                            selectedTileColor: AppTheme.primary.withOpacity(
+                              0.1,
+                            ),
                             onTap: () {
                               setState(() {
                                 _productoSeleccionado = producto;
@@ -2494,9 +4228,8 @@ class _DialogoAgregarItemState extends State<_DialogoAgregarItem> {
                                     });
                                   },
                                   activeColor: AppTheme.primary,
-                                  activeTrackColor: AppTheme.primary.withOpacity(
-                                    0.3,
-                                  ),
+                                  activeTrackColor: AppTheme.primary
+                                      .withOpacity(0.3),
                                 ),
                               ],
                             ),
@@ -2510,9 +4243,13 @@ class _DialogoAgregarItemState extends State<_DialogoAgregarItem> {
                               keyboardType: TextInputType.number,
                               decoration: InputDecoration(
                                 labelText: 'Cantidad',
-                                labelStyle: TextStyle(color: AppTheme.textSecondary),
+                                labelStyle: TextStyle(
+                                  color: AppTheme.textSecondary,
+                                ),
                                 suffixText: 'unidades',
-                                suffixStyle: TextStyle(color: AppTheme.textSecondary),
+                                suffixStyle: TextStyle(
+                                  color: AppTheme.textSecondary,
+                                ),
                                 enabledBorder: OutlineInputBorder(
                                   borderSide: BorderSide(
                                     color: Colors.grey[600]!,
@@ -2520,7 +4257,9 @@ class _DialogoAgregarItemState extends State<_DialogoAgregarItem> {
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 focusedBorder: OutlineInputBorder(
-                                  borderSide: BorderSide(color: AppTheme.primary),
+                                  borderSide: BorderSide(
+                                    color: AppTheme.primary,
+                                  ),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                               ),
@@ -2608,21 +4347,34 @@ class _DialogoAgregarItemState extends State<_DialogoAgregarItem> {
                                 Expanded(
                                   child: TextField(
                                     controller: _porcentajeImpuestoController,
-                                    style: TextStyle(color: AppTheme.textPrimary),
+                                    style: TextStyle(
+                                      color: AppTheme.textPrimary,
+                                    ),
                                     keyboardType: TextInputType.number,
                                     decoration: InputDecoration(
                                       labelText: '% IVA',
-                                      labelStyle: TextStyle(color: AppTheme.textSecondary),
+                                      labelStyle: TextStyle(
+                                        color: AppTheme.textSecondary,
+                                      ),
                                       suffixText: '%',
-                                      suffixStyle: TextStyle(color: AppTheme.textSecondary),
+                                      suffixStyle: TextStyle(
+                                        color: AppTheme.textSecondary,
+                                      ),
                                       helperText: '0%, 5%, 19%',
-                                      helperStyle: TextStyle(color: AppTheme.textSecondary, fontSize: 10),
+                                      helperStyle: TextStyle(
+                                        color: AppTheme.textSecondary,
+                                        fontSize: 10,
+                                      ),
                                       enabledBorder: OutlineInputBorder(
-                                        borderSide: BorderSide(color: Colors.grey[600]!),
+                                        borderSide: BorderSide(
+                                          color: Colors.grey[600]!,
+                                        ),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       focusedBorder: OutlineInputBorder(
-                                        borderSide: BorderSide(color: AppTheme.primary),
+                                        borderSide: BorderSide(
+                                          color: AppTheme.primary,
+                                        ),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                     ),
@@ -2634,19 +4386,29 @@ class _DialogoAgregarItemState extends State<_DialogoAgregarItem> {
                                 Expanded(
                                   child: TextField(
                                     controller: _porcentajeDescuentoController,
-                                    style: TextStyle(color: AppTheme.textPrimary),
+                                    style: TextStyle(
+                                      color: AppTheme.textPrimary,
+                                    ),
                                     keyboardType: TextInputType.number,
                                     decoration: InputDecoration(
                                       labelText: '% Descuento',
-                                      labelStyle: TextStyle(color: AppTheme.textSecondary),
+                                      labelStyle: TextStyle(
+                                        color: AppTheme.textSecondary,
+                                      ),
                                       suffixText: '%',
-                                      suffixStyle: TextStyle(color: AppTheme.textSecondary),
+                                      suffixStyle: TextStyle(
+                                        color: AppTheme.textSecondary,
+                                      ),
                                       enabledBorder: OutlineInputBorder(
-                                        borderSide: BorderSide(color: Colors.grey[600]!),
+                                        borderSide: BorderSide(
+                                          color: Colors.grey[600]!,
+                                        ),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       focusedBorder: OutlineInputBorder(
-                                        borderSide: BorderSide(color: AppTheme.primary),
+                                        borderSide: BorderSide(
+                                          color: AppTheme.primary,
+                                        ),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                     ),
@@ -2694,12 +4456,26 @@ class _DialogoAgregarItemState extends State<_DialogoAgregarItem> {
                                   // Subtotal base
                                   _buildDesgloseRow('Subtotal:', _subtotal),
                                   if (_valorDescuento > 0) ...[
-                                    _buildDesgloseRow('Descuento (${_porcentajeDescuento.toStringAsFixed(0)}%):', -_valorDescuento, isNegative: true),
-                                    _buildDesgloseRow('Base Gravable:', _baseGravable),
+                                    _buildDesgloseRow(
+                                      'Descuento (${_porcentajeDescuento.toStringAsFixed(0)}%):',
+                                      -_valorDescuento,
+                                      isNegative: true,
+                                    ),
+                                    _buildDesgloseRow(
+                                      'Base Gravable:',
+                                      _baseGravable,
+                                    ),
                                   ],
                                   if (_valorImpuesto > 0)
-                                    _buildDesgloseRow('IVA (${_porcentajeImpuesto.toStringAsFixed(0)}%):', _valorImpuesto),
-                                  Divider(color: AppTheme.textSecondary.withOpacity(0.3)),
+                                    _buildDesgloseRow(
+                                      'IVA (${_porcentajeImpuesto.toStringAsFixed(0)}%):',
+                                      _valorImpuesto,
+                                    ),
+                                  Divider(
+                                    color: AppTheme.textSecondary.withOpacity(
+                                      0.3,
+                                    ),
+                                  ),
                                   // Total final
                                   Row(
                                     mainAxisAlignment:
@@ -2781,7 +4557,11 @@ class _DialogoAgregarItemState extends State<_DialogoAgregarItem> {
     }
   }
 
-  Widget _buildDesgloseRow(String label, double valor, {bool isNegative = false}) {
+  Widget _buildDesgloseRow(
+    String label,
+    double valor, {
+    bool isNegative = false,
+  }) {
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 2),
       child: Row(

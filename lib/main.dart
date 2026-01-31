@@ -17,9 +17,11 @@ import 'screens/reportes_screen.dart';
 import 'screens/pedidos_screen_fusion.dart';
 import 'screens/configuracion_facturacion_screen.dart';
 import 'screens/gastos_screen.dart';
+import 'screens/tipos_gasto_screen.dart';
 import 'screens/ingresos_caja_screen.dart';
 import 'screens/facturas_compras_screen.dart';
 import 'screens/traslados_screen.dart';
+import 'screens/bodegas_screen.dart';
 import 'screens/historial_inventario_screen.dart';
 import 'screens/asesor_pedidos_screen.dart';
 import 'screens/admin_pedidos_asesor_screen.dart';
@@ -143,14 +145,16 @@ class MyApp extends StatelessWidget {
         '/productos': (context) => ProductosScreen(),
         '/productos-lista': (context) => ProductosListScreen(),
         '/traslados': (context) => TrasladosScreen(),
+        '/bodegas': (context) => BodegasScreen(),
         '/categorias': (context) => CategoriasScreen(),
         '/historial-inventario': (context) => HistorialInventarioScreen(),
         '/cuadre_caja': (context) => CuadreCajaScreen(),
         '/abrir_caja': (context) => AbrirCajaScreen(),
         '/cerrar_caja': (context) => CerrarCajaScreen(),
-        '/facturas-compras': (context) => FacturasComprasScreen(),
+        '/facturas-compras': (context) => CrearFacturaCompraScreen(),
         '/compras': (context) => ComprasListScreen(),
-        '/gastos': (context) => GastosScreen(),
+        '/gastos': (context) => GastosScreen(mostrarFormulario: true),
+        '/tipos-gasto': (context) => TiposGastoScreen(),
         '/gastos-lista': (context) => GastosListScreen(),
         '/proveedores': (context) => ProveedoresListScreen(),
         '/ingresos-caja': (context) => IngresosCajaScreen(),
