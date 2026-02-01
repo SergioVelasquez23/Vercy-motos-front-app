@@ -29,9 +29,6 @@ class ImageService {
           .get(Uri.parse(_apiConfig.endpoints.images.list), headers: _headers)
           .timeout(Duration(seconds: 10));
 
-      print('📋 Response status: ${response.statusCode}');
-      print('📋 Response body: ${response.body}');
-
       if (response.statusCode == 200) {
         final jsonData = json.decode(response.body);
 

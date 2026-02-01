@@ -2410,11 +2410,6 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     String codigoUsado = codigoLimpio;
 
     try {
-      print('🔍 Buscando producto por código de barras original: "$codigo"');
-      print(
-        '🧹 Código limpio: "$codigoLimpio" (longitud: ${codigoLimpio.length})',
-      );
-
       // 🚀 INTENTO 1: Buscar con el código completo
       producto = await _productoService.getProductoPorCodigoBarras(
         codigoLimpio,
@@ -2424,27 +2419,18 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       // intentar quitando el último dígito (el lector puede agregar un carácter extra)
       if (producto == null && codigoLimpio.length > 3) {
         final codigoSinUltimo = codigoLimpio.substring(0, codigoLimpio.length - 1);
-        print('⚠️ No encontrado con código completo, intentando sin último dígito...');
-        print('   Código sin último dígito: "$codigoSinUltimo"');
-        
         producto = await _productoService.getProductoPorCodigoBarras(
           codigoSinUltimo,
         );
         
         if (producto != null) {
           codigoUsado = codigoSinUltimo;
-          print('✅ ¡Encontrado sin el último dígito! El lector agregó: "${codigoLimpio[codigoLimpio.length - 1]}"');
         }
       }
 
       if (producto == null) {
         throw Exception('Producto no encontrado');
       }
-
-      print('✅ Producto encontrado: ${producto.nombre}');
-      print('   - Código: ${producto.codigo}');
-      print('   - Código de barras: ${producto.codigoBarras}');
-      print('   - Código usado para buscar: "$codigoUsado"');
 
       setState(() {
         _productoSeleccionado = producto;

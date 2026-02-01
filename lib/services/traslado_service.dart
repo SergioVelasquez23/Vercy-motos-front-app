@@ -194,4 +194,85 @@ class TrasladoService {
       rethrow;
     }
   }
+
+  // 🆕 Obtener stock de un producto específico
+  Future<Map<String, dynamic>> obtenerStockProducto(String productoId) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/producto/$productoId/stock'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        return decoded is Map<String, dynamic> ? decoded : {};
+      } else {
+        throw Exception('Error al obtener stock: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error en obtenerStockProducto: $e');
+      return {'cantidadBodega': 0, 'cantidadAlmacen': 0, 'cantidadTotal': 0};
+    }
+  }
+
+  // 🆕 Traslado rápido (sin aprobación)
+  Future<Map<String, dynamic>> trasladoRapido({
+    required String productoId,
+    required String origen, // "BODEGA" o "ALMACEN"
+    required String destino, // "BODEGA" o "ALMACEN"
+    required double cantidad,
+  }) async {
+    try {
+      final headers = await _getHeaders();
+      final body = json.encode({
+        'productoId': productoId,
+        'origen': origen,
+        'destino': destino,
+        'cantidad': cantidad,
+      });
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/traslado-rapido'),
+        headers: headers,
+        body: body,
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final decoded = json.decode(response.body);
+        return decoded is Map<String, dynamic> ? decoded : {};
+      } else {
+        final error = json.decode(response.body);
+        throw Exception(error['message'] ?? 'Error en traslado rápido');
+      }
+    } catch (e) {
+      print('Error en trasladoRapido: $e');
+      rethrow;
+    }
+  }
+
+  // 🆕 Completar traslado (marca como completado sin validar stock)
+  Future<void> completarTraslado({
+    required String trasladoId,
+    required String aprobador,
+  }) async {
+    try {
+      final headers = await _getHeaders();
+      final body = json.encode({'aprobador': aprobador});
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/$trasladoId/completar'),
+        headers: headers,
+        body: body,
+      );
+
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        final error = json.decode(response.body);
+        throw Exception(error['message'] ?? 'Error al completar traslado');
+      }
+    } catch (e) {
+      print('Error en completarTraslado: $e');
+      rethrow;
+    }
+  }
 }

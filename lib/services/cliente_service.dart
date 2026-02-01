@@ -23,8 +23,6 @@ class ClienteService {
         },
       );
 
-      print('📦 Response status (clientes): ${response.statusCode}');
-
       if (response.statusCode == 200) {
         print('📦 Response body length: ${response.body.length}');
         final dynamic responseData = json.decode(response.body);
@@ -325,11 +323,7 @@ class ClienteService {
         },
       );
 
-      print('📤 Response recibido, procesando...');
       var response = await http.Response.fromStream(streamedResponse);
-
-      print('📦 Response status (carga masiva): ${response.statusCode}');
-      print('📦 Response body: ${response.body}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
@@ -391,9 +385,6 @@ class ClienteService {
 
       var streamedResponse = await request.send();
       var response = await http.Response.fromStream(streamedResponse);
-
-      print('📦 Response status (carga masiva): ${response.statusCode}');
-      print('📦 Response body: ${response.body}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);

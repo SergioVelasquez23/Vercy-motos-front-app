@@ -18,12 +18,9 @@ void main() async {
 
 Future<void> debugProductos() async {
   try {
-    print('📦 Probando carga de productos...');
     final productoService = ProductoService();
     final productos = await productoService.getProductos(useProgressive: true);
-    print('✅ Productos cargados: ${productos.length}');
     if (productos.isNotEmpty) {
-      print('   - Primer producto: ${productos.first.nombre}');
     }
   } catch (e) {
     print('❌ Error cargando productos: $e');

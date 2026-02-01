@@ -84,9 +84,6 @@ class InventarioService {
           )
           .timeout(_timeout);
 
-      print('📡 Response status: ${response.statusCode}');
-      print('📦 Response body: ${response.body}');
-
       // Aceptar 200 o 201 como éxito
       if (response.statusCode == 201 || response.statusCode == 200) {
         final Map<String, dynamic> data = json.decode(response.body);
@@ -136,8 +133,6 @@ class InventarioService {
           .timeout(_timeout);
 
       if (kDebugMode) {
-        print('📡 Response status: ${response.statusCode}');
-        print('📦 Response body: ${response.body}');
       }
 
       if (response.statusCode == 200) {
@@ -173,7 +168,6 @@ class InventarioService {
           .timeout(_timeout);
 
       if (kDebugMode) {
-        print('📡 Response status: ${response.statusCode}');
       }
 
       if (response.statusCode == 200) {
@@ -203,8 +197,6 @@ class InventarioService {
           .timeout(_timeout);
 
       if (kDebugMode) {
-        print('📡 Response status: ${response.statusCode}');
-        print('📦 Response body: ${response.body}');
       }
 
       if (response.statusCode == 200) {
@@ -250,7 +242,6 @@ class InventarioService {
           .timeout(_timeout);
 
       if (kDebugMode) {
-        print('📡 Response status (ingredientes): ${response.statusCode}');
       }
 
       if (response.statusCode == 200) {
@@ -476,8 +467,6 @@ class InventarioService {
           .timeout(_timeout);
 
       if (kDebugMode) {
-        print('📡 Response status: ${response.statusCode}');
-        print('📦 Response body: ${response.body}');
       }
 
       if (response.statusCode == 200) {

@@ -96,7 +96,6 @@ class _ProductosScreenState extends State<ProductosScreen> {
           cacheProvider.ingredientes ?? [],
         );
         _productosCache = List<Producto>.from(cacheProvider.productos ?? []);
-        print('✅ Productos cargados desde cache: ${_productosCache.length}');
         _aplicarFiltrosYPaginacion();
         _isLoading = false;
       });
@@ -125,12 +124,8 @@ class _ProductosScreenState extends State<ProductosScreen> {
           cacheProvider.ingredientes ?? [],
         );
         _productosCache = List<Producto>.from(cacheProvider.productos ?? []);
-        print(
-          '✅ Productos cargados: ${_productosCache.length}',
-        );
         if (_productosCache.isEmpty) {
-          print('⚡ Los productos se están cargando con endpoint LIGERO...');
-          print('⏳ Tiempo estimado: 15-30 segundos');
+
         }
         _aplicarFiltrosYPaginacion();
         _isLoading = false;
@@ -197,7 +192,6 @@ class _ProductosScreenState extends State<ProductosScreen> {
     print(
       '🖼️ Productos visibles: ${_productosPaginados.length}',
     );
-    print('⚡ Las imágenes se cargarán individualmente (lazy loading)');
 
     // ⚠️ DESHABILITADO: Endpoint batch tiene problemas
     // Las imágenes se cargan individualmente con LazyImagenProducto

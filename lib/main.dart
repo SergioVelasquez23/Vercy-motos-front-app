@@ -68,7 +68,6 @@ class MyApp extends StatelessWidget {
           listen: false,
         );
         // 🔥 WARMUP: Inicializar cache y precargar productos en background
-        print('🔥 WARMUP: Iniciando precarga de datos...');
         await cacheProvider.initialize();
         // Precargar productos en background sin bloquear la UI
         cacheProvider.warmupProductos();

@@ -34,8 +34,6 @@ class DocumentoMesaService {
         body: json.encode(body),
       );
 
-      print('📦 Response status (crear documento): ${response.statusCode}');
-
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
         return DocumentoMesa.fromJson(data);
@@ -64,8 +62,6 @@ class DocumentoMesaService {
           'Accept': 'application/json',
         },
       );
-
-      print('📦 Response status (documentos mesa): ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final dynamic responseData = json.decode(response.body);
@@ -109,8 +105,6 @@ class DocumentoMesaService {
         },
       );
 
-      print('📦 Response status (documento): ${response.statusCode}');
-
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         return DocumentoMesa.fromJson(data);
@@ -147,8 +141,6 @@ class DocumentoMesaService {
         },
         body: json.encode(body),
       );
-
-      print('📦 Response status (agregar pedido): ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -189,8 +181,6 @@ class DocumentoMesaService {
         body: json.encode(body),
       );
 
-      print('📦 Response status (pagar documento): ${response.statusCode}');
-
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         return DocumentoMesa.fromJson(data);
@@ -217,8 +207,6 @@ class DocumentoMesaService {
           'Accept': 'application/json',
         },
       );
-
-      print('📦 Response status (eliminar): ${response.statusCode}');
 
       if (response.statusCode == 200) {
         return true;
@@ -251,8 +239,6 @@ class DocumentoMesaService {
           'Accept': 'application/json',
         },
       );
-
-      print('📦 Response status (pendientes): ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final dynamic responseData = json.decode(response.body);
@@ -297,8 +283,6 @@ class DocumentoMesaService {
         },
       );
 
-      print('📦 Response status (pagados): ${response.statusCode}');
-
       if (response.statusCode == 200) {
         final dynamic responseData = json.decode(response.body);
 
@@ -340,8 +324,6 @@ class DocumentoMesaService {
         },
       );
 
-      print('📦 Response status (resumen): ${response.statusCode}');
-
       if (response.statusCode == 200) {
         return json.decode(response.body) as Map<String, dynamic>;
       }
@@ -372,8 +354,6 @@ class DocumentoMesaService {
         },
       );
 
-      print('📦 Response status (verificar especial): ${response.statusCode}');
-
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         return data['esEspecial'] == true || data == true;
@@ -401,8 +381,6 @@ class DocumentoMesaService {
           'Accept': 'application/json',
         },
       );
-
-      print('📦 Response status (completos): ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final dynamic responseData = json.decode(response.body);
@@ -443,8 +421,6 @@ class DocumentoMesaService {
           'Accept': 'application/json',
         },
       );
-
-      print('📦 Response status (mesas): ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final dynamic responseData = json.decode(response.body);

@@ -204,12 +204,8 @@ class ProductoService {
             for (var producto in productos) {
               _productosCache[producto.id] = producto;
             }
-
-            print('✅ Productos cargados exitosamente: ${productos.length}');
             return productos;
           } else {
-            print('❌ Data no es una lista, es: ${data.runtimeType}');
-            print('📊 Data content: $data');
             return [];
           }
         } else {
@@ -243,7 +239,6 @@ class ProductoService {
 
   // Método de respaldo usando endpoint paginado
   Future<List<Producto>> _getProductosConPaginacionRespaldo() async {
-    print('🔄 MÉTODO DE RESPALDO: Usando endpoint paginado');
 
     final headers = await _getHeaders();
     final url =
@@ -670,8 +665,6 @@ class ProductoService {
               .toList();
 
           int endTime = DateTime.now().millisecondsSinceEpoch;
-          print('⚡ Endpoint paginado completado en: ${endTime - startTime}ms');
-          print('📦 Productos ligeros cargados: ${productos.length}');
 
           // Actualizar caché
           for (var producto in productos) {
@@ -703,14 +696,11 @@ class ProductoService {
     // ⚡ OPTIMIZADO: Cargar TODOS los productos de una vez (sin paginación)
     final url = '$baseUrl/api/productos/ligero?page=0&size=10000';
 
-    print('⚡ Usando endpoint LIGERO ultra-optimizado (TODOS): $url');
-
     try {
       final response = await _retryStrategy.execute(
         operation: () => http.get(Uri.parse(url), headers: headers),
         timeoutPerAttempt: _getFastTimeoutForEnvironment(),
         shouldRetry: (error) {
-          print('⚠️ Intento fallido con endpoint ligero: $error');
           return true;
         },
       );
@@ -721,9 +711,6 @@ class ProductoService {
         final responseData = json.decode(response.body);
         // ⚡ Usar fromJsonLigero para NO cargar imágenes
         final productos = _parseListResponseLigero(responseData);
-        print(
-          '✅ Productos ligeros cargados (SIN IMÁGENES): ${productos.length}',
-        );
 
         // Actualizar cache
         for (var producto in productos) {

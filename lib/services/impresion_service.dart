@@ -18,9 +18,6 @@ class ImpresionService {
         },
       );
 
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
-
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         print('✅ Resumen de pedido generado correctamente');
@@ -69,9 +66,6 @@ class ImpresionService {
         body: json.encode(datos),
       );
 
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
-
       if (response.statusCode == 201) {
         final data = json.decode(response.body);
         print('✅ Factura creada correctamente');
@@ -105,8 +99,6 @@ class ImpresionService {
           'Accept': 'application/json',
         },
       );
-
-      print('Response status: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);

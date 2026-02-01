@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../models/traslado.dart';
 import '../models/producto.dart';
 import '../models/bodega.dart';
@@ -9,6 +12,7 @@ import '../services/producto_service.dart';
 import '../services/bodega_service.dart';
 import '../providers/user_provider.dart';
 import '../theme/app_theme.dart';
+import '../config/api_config.dart';
 
 class TrasladosScreen extends StatefulWidget {
   const TrasladosScreen({super.key});
@@ -832,7 +836,7 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
           ElevatedButton.icon(
             onPressed: () async {
               Navigator.pop(context);
-              await _procesarTraslado(traslado.id!, 'ACEPTAR', aprobador);
+              await _aceptarTraslado(traslado, aprobador);
             },
             icon: Icon(Icons.check, size: 18),
             label: Text('Aceptar'),
@@ -880,6 +884,94 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
       _cargarDatos();
     } catch (e) {
       _mostrarError('Error al procesar traslado: $e');
+    }
+  }
+
+  // Aceptar traslado usando el endpoint de traslado rápido
+  Future<void> _aceptarTraslado(Traslado traslado, String aprobador) async {
+    try {
+      // Buscar el producto para obtener los valores actuales
+      final producto = _productos.firstWhere(
+        (p) => p.id == traslado.productoId,
+        orElse: () => throw Exception('Producto no encontrado'),
+      );
+
+      print('🔄 Ejecutando traslado:');
+      print('   Producto: ${producto.nombre} (${producto.id})');
+      print('   Stock actual ALMACEN: ${producto.almacen}');
+      print('   Stock actual BODEGA: ${producto.bodega}');
+      print('   Cantidad a trasladar: ${traslado.cantidad}');
+      print('   Origen: ${traslado.origenBodegaNombre}');
+      print('   Destino: ${traslado.destinoBodegaNombre}');
+
+      // Determinar si origen/destino son ALMACEN o BODEGA
+      final origenEsAlmacen =
+          traslado.origenBodegaNombre?.toUpperCase().contains('ALMACEN') ==
+          true;
+      final destinoEsAlmacen =
+          traslado.destinoBodegaNombre?.toUpperCase().contains('ALMACEN') ==
+          true;
+
+      // Calcular nuevos valores
+      int nuevoAlmacen = producto.almacen ?? 0;
+      int nuevoBodega = producto.bodega ?? 0;
+
+      if (origenEsAlmacen) {
+        nuevoAlmacen -= traslado.cantidad!.toInt();
+      } else {
+        nuevoBodega -= traslado.cantidad!.toInt();
+      }
+
+      if (destinoEsAlmacen) {
+        nuevoAlmacen += traslado.cantidad!.toInt();
+      } else {
+        nuevoBodega += traslado.cantidad!.toInt();
+      }
+
+      print('   Nuevo stock ALMACEN: $nuevoAlmacen');
+      print('   Nuevo stock BODEGA: $nuevoBodega');
+
+      // Actualizar producto directamente
+      final productoJson = producto.toJson();
+      productoJson['almacen'] = nuevoAlmacen;
+      productoJson['bodega'] = nuevoBodega;
+      productoJson['cantidadAlmacen'] = nuevoAlmacen;
+      productoJson['cantidadBodega'] = nuevoBodega;
+
+      // Hacer petición PUT con headers básicos
+      final storage = FlutterSecureStorage();
+      final token = await storage.read(key: 'jwt_token');
+      final headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        if (token != null) 'Authorization': 'Bearer $token',
+      };
+
+      final apiConfig = ApiConfig();
+      final response = await http.put(
+        Uri.parse('${apiConfig.baseUrl}/api/productos/${producto.id}'),
+        headers: headers,
+        body: json.encode(productoJson),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Error al actualizar producto');
+      }
+
+      // 🎯 Usar el nuevo endpoint /completar para marcar el traslado como completado
+      await _trasladoService.completarTraslado(
+        trasladoId: traslado.id!,
+        aprobador: aprobador,
+      );
+
+      print(
+        '✅ Traslado completado - Stock actualizado y estado cambiado a COMPLETADO',
+      );
+      _mostrarExito('Traslado aceptado y ejecutado correctamente');
+      _cargarDatos();
+    } catch (e) {
+      print('❌ Error: $e');
+      _mostrarError('Error al aceptar traslado: $e');
     }
   }
 
@@ -1118,10 +1210,6 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
   Producto? _productoSeleccionado;
   bool _isLoading = false;
   bool _cargandoBodegas = true;
-  
-  // Stock real del producto seleccionado en la bodega origen
-  double _stockDisponibleOrigen = 0.0;
-  bool _consultandoStock = false;
 
   final List<Map<String, dynamic>> _productosAgregados = [];
 
@@ -1166,33 +1254,36 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
     super.dispose();
   }
 
-  // Consultar stock real en la bodega origen
-  Future<void> _consultarStockEnOrigen() async {
+  // Obtener stock disponible según la bodega origen seleccionada
+  double _obtenerStockOrigen() {
     if (_productoSeleccionado == null || _origenSeleccionado == null) {
-      setState(() => _stockDisponibleOrigen = 0.0);
-      return;
+      return 0.0;
     }
 
-    setState(() => _consultandoStock = true);
-
-    try {
-      final stock = await _bodegaService.obtenerStockProductoEnBodega(
-        _origenSeleccionado!,
-        _productoSeleccionado!.id,
-      );
-
-      setState(() {
-        _stockDisponibleOrigen = stock;
-        _consultandoStock = false;
-      });
-
-      print('✅ Stock disponible en origen: $stock unidades');
-    } catch (e) {
-      print('❌ Error consultando stock: $e');
-      setState(() {
-        _stockDisponibleOrigen = 0.0;
-        _consultandoStock = false;
-      });
+    // Buscar la bodega seleccionada para determinar si es almacén o bodega
+    final bodega = _bodegas.firstWhere(
+      (b) => b.id == _origenSeleccionado,
+      orElse: () => Bodega(
+        id: _origenSeleccionado!,
+        nombre: _origenSeleccionado!,
+        activa: false,
+      ),
+    );
+    
+    print('🔍 Bodega origen: ${bodega.nombre} (${bodega.id})');
+    print('   Stock ALMACEN: ${_productoSeleccionado!.almacen}');
+    print('   Stock BODEGA: ${_productoSeleccionado!.bodega}');
+    
+    // Si el nombre contiene "ALMACEN" → usar producto.almacen
+    // Si no → usar producto.bodega (por defecto)
+    if (bodega.nombre.toUpperCase().contains('ALMACEN')) {
+      final stock = (_productoSeleccionado!.almacen ?? 0).toDouble();
+      print('   → Usando ALMACEN: $stock');
+      return stock;
+    } else {
+      final stock = (_productoSeleccionado!.bodega ?? 0).toDouble();
+      print('   → Usando BODEGA: $stock');
+      return stock;
     }
   }
 
@@ -1211,8 +1302,6 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
         _codigoController.text = producto.id ?? '';
         _nombreController.text = producto.nombre ?? '';
       });
-      // Consultar stock real en la bodega origen
-      _consultarStockEnOrigen();
     } else {
       _mostrarError('Producto no encontrado');
     }
@@ -1235,11 +1324,12 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
       return;
     }
 
-    // VALIDAR STOCK REAL EN BODEGA ORIGEN
-    if (cantidad > _stockDisponibleOrigen) {
+    // VALIDAR STOCK EN BODEGA ORIGEN
+    final stockDisponible = _obtenerStockOrigen();
+    if (cantidad > stockDisponible) {
       _mostrarError(
         'Stock insuficiente en bodega origen.\n'
-        'Disponible: $_stockDisponibleOrigen unidades\n'
+        'Disponible: $stockDisponible unidades\n'
         'Solicitado: $cantidad unidades',
       );
       return;
@@ -1406,8 +1496,6 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
               value: _origenSeleccionado,
               onChanged: (value) {
                 setState(() => _origenSeleccionado = value);
-                // Cuando cambia la bodega origen, reconsultar el stock
-                _consultarStockEnOrigen();
               },
             ),
           ),
@@ -1608,12 +1696,12 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
   }
 
   Widget _buildStockProductoSeleccionado() {
-    // Mostrar stock REAL de la bodega origen seleccionada
-    final stockOrigen = _origenSeleccionado != null ? _stockDisponibleOrigen : 0.0;
+    // Obtener stock de la bodega origen seleccionada
+    final stockOrigen = _obtenerStockOrigen();
     
-    // Los valores estáticos del modelo (ya no confiables)
-    final stockAlmacenLegacy = _productoSeleccionado!.almacen ?? 0;
-    final stockBodegaLegacy = _productoSeleccionado!.bodega ?? 0;
+    // Valores de almacen y bodega
+    final stockAlmacen = _productoSeleccionado!.almacen ?? 0;
+    final stockBodega = _productoSeleccionado!.bodega ?? 0;
     
     return Container(
       margin: EdgeInsets.only(top: 16),
@@ -1685,9 +1773,7 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
                             ),
                           ),
                           Text(
-                            _consultandoStock 
-                                ? 'Consultando...'
-                                : '$stockOrigen unidades',
+                            '$stockOrigen unidades',
                             style: TextStyle(
                               color: stockOrigen > 0 ? AppTheme.success : AppTheme.error,
                               fontSize: 18,
@@ -1698,15 +1784,6 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
                       ),
                     ],
                   ),
-                  if (_consultandoStock)
-                    SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation(AppTheme.primary),
-                      ),
-                    ),
                 ],
               ),
             ),
@@ -1738,26 +1815,24 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
             SizedBox(height: 12),
           ],
           
-          // Información adicional (valores legacy - solo informativos)
+          // Información adicional de stock por ubicación
           Row(
             children: [
               Expanded(
                 child: _buildStockInfoCard(
-                  'Total Almacén',
-                  stockAlmacenLegacy,
+                  'En Almacén',
+                  stockAlmacen,
                   Icons.store,
                   AppTheme.info,
-                  esLegacy: true,
                 ),
               ),
               SizedBox(width: 12),
               Expanded(
                 child: _buildStockInfoCard(
-                  'Total Bodega',
-                  stockBodegaLegacy,
+                  'En Bodega',
+                  stockBodega,
                   Icons.warehouse,
                   AppTheme.metal,
-                  esLegacy: true,
                 ),
               ),
             ],
@@ -1771,9 +1846,8 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
     String label,
     int cantidad,
     IconData icon,
-    Color color, {
-    bool esLegacy = false,
-  }) {
+    Color color,
+  ) {
     return Container(
       padding: EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -1800,15 +1874,6 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
               fontWeight: FontWeight.bold,
             ),
           ),
-          if (esLegacy)
-            Text(
-              '(aprox)',
-              style: TextStyle(
-                color: AppTheme.textMuted,
-                fontSize: 9,
-                fontStyle: FontStyle.italic,
-              ),
-            ),
         ],
       ),
     );
@@ -2113,8 +2178,6 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
                 _codigoController.text = producto.id;
                 _nombreController.text = producto.nombre;
               });
-              // Consultar stock real cuando se selecciona el producto
-              _consultarStockEnOrigen();
             },
           ),
         ),

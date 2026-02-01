@@ -27,8 +27,6 @@ class BodegaService {
       print('🏭 Obteniendo bodegas desde: $url');
       final response = await http.get(Uri.parse(url), headers: headers);
 
-      print('📦 Response status (bodegas): ${response.statusCode}');
-
       if (response.statusCode == 200) {
         final dynamic decoded = json.decode(response.body);
 
@@ -122,10 +120,6 @@ class BodegaService {
         headers: headers,
         body: body,
       );
-
-      print('📦 Response status (crear bodega): ${response.statusCode}');
-      print('📄 Response body: ${response.body}');
-
       if (response.statusCode == 200 || response.statusCode == 201) {
         final decoded = json.decode(response.body);
         final data = decoded is Map && decoded['data'] != null
@@ -183,8 +177,6 @@ class BodegaService {
         body: json.encode(bodyMap),
       );
 
-      print('📦 Response status (actualizar bodega): ${response.statusCode}');
-
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
         final data = decoded is Map && decoded['data'] != null
@@ -220,8 +212,6 @@ class BodegaService {
         headers: headers,
       );
 
-      print('📦 Response status (eliminar bodega): ${response.statusCode}');
-
       if (response.statusCode == 200 || response.statusCode == 204) {
         return true;
       }
@@ -256,17 +246,17 @@ class BodegaService {
     String productoId,
   ) async {
     try {
-      // Usar endpoint: GET /api/bodega/stock/producto/{itemId}
+      // Usar endpoint: GET /api/bodegas/stock/{tipoItem}/{itemId}
       final response = await http.get(
         Uri.parse(
-          '${_apiConfig.baseUrl}/api/bodega/stock/producto/$productoId',
+          '${_apiConfig.baseUrl}/api/bodegas/stock/producto/$productoId',
         ),
         headers: headers,
       );
 
       print('🔍 Consultando stock de producto $productoId en bodega $bodegaId');
       print(
-        '   URL: ${_apiConfig.baseUrl}/api/bodega/stock/producto/$productoId',
+        '   URL: ${_apiConfig.baseUrl}/api/bodegas/stock/producto/$productoId',
       );
       print('   Status: ${response.statusCode}');
 
@@ -318,7 +308,7 @@ class BodegaService {
     try {
       final response = await http.get(
         Uri.parse(
-          '${_apiConfig.baseUrl}/api/bodega/stock/producto/$productoId',
+          '${_apiConfig.baseUrl}/api/bodegas/stock/producto/$productoId',
         ),
         headers: headers,
       );

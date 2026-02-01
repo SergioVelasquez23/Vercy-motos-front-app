@@ -68,7 +68,6 @@ class DatosCacheProvider extends ChangeNotifier {
 
   // Inicializar el provider
   Future<void> initialize() async {
-    print('🚀 Inicializando DatosCacheProvider...');
     // Las categorías se cargarán bajo demanda cuando se necesiten
     // await _cargarCategorias(force: false, silent: false);
     _startPolling(); // ✅ Iniciar polling automático
@@ -76,12 +75,6 @@ class DatosCacheProvider extends ChangeNotifier {
 
   // 🔥 WARMUP: Precargar productos en background SIN IMÁGENES
   void warmupProductos() {
-    print('🔥 WARMUP: Carga ULTRA RÁPIDA de productos (SIN imágenes)...');
-    print('⚡ Endpoint: GET /api/productos/ligero?page=0&size=40');
-    print('⏳ Tiempo estimado: 5-15 segundos');
-    print(
-      '📝 Las imágenes se cargarán individualmente al mostrarse (lazy loading)',
-    );
     // Cargar productos en background sin esperar - USAR ENDPOINT LIGERO
     _cargarProductos(
       force: true,
@@ -121,10 +114,6 @@ class DatosCacheProvider extends ChangeNotifier {
     if (!_enablePolling) return;
 
     _pollingTimer?.cancel();
-
-    print(
-      '🔄 Iniciando polling automático cada $_pollingIntervalMinutes minutos',
-    );
 
     _pollingTimer = Timer.periodic(Duration(minutes: _pollingIntervalMinutes), (
       timer,
@@ -188,9 +177,7 @@ class DatosCacheProvider extends ChangeNotifier {
 
     try {
       if (useProgressive) {
-        print('🚀 Usando carga progresiva de productos...');
       } else {
-        print('⚡ Usando endpoint LIGERO para carga rápida...');
       }
       
       final productos = await _productoService.getProductos(
@@ -201,12 +188,8 @@ class DatosCacheProvider extends ChangeNotifier {
       _ultimaCargaProductos = DateTime.now();
 
       if (productos.isEmpty) {
-        print('⚠️ ALERTA: Se cargaron 0 productos desde el servidor');
-        print('🔍 Verificar conectividad y endpoints del backend');
       } else {
-        print(
-          '📦 Productos cargados: ${productos.length} (${force ? 'forzado' : 'caché expirado'}) ${silent ? '(silencioso)' : ''}',
-        );
+  
       }
     } catch (e) {
       print('❌ Error cargando productos con método progresivo: $e');
@@ -220,15 +203,9 @@ class DatosCacheProvider extends ChangeNotifier {
         _productos = productos;
         _ultimaCargaProductos = DateTime.now();
 
-        print(
-          '✅ Productos cargados con método tradicional: ${productos.length}',
-        );
       } catch (backupError) {
-        print('❌ Error también en método tradicional: $backupError');
         // Mantener productos existentes en caso de error total
-        print(
-          '🔄 Manteniendo productos existentes en caché: ${_productos?.length ?? 0}',
-        );
+
       }
     } finally {
       _isLoadingProductos = false;

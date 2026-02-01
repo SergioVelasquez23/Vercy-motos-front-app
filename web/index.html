@@ -28,22 +28,10 @@
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
   <link rel="apple-touch-icon" sizes="192x192" href="icons/Icon-192.png">
 
-  <!-- Precarga de fuentes locales Roboto -->
-  <style>
-    @font-face {
-      font-family: 'Roboto';
-      src: url('assets/assets/fonts/Roboto-Regular.ttf') format('truetype');
-      font-weight: normal;
-      font-style: normal;
-    }
-
-    @font-face {
-      font-family: 'Roboto';
-      src: url('assets/assets/fonts/Roboto-Bold.ttf') format('truetype');
-      font-weight: bold;
-      font-style: normal;
-    }
-  </style>
+  <!-- Google Fonts para Roboto -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
 
   <!-- Favicon optimizado -->
   <link rel="icon" type="image/png" sizes="32x32" href="icons/Icon-192.png" />
@@ -72,13 +60,28 @@
 
   <script>
     // The value below is injected by flutter build, do not touch.
-    var serviceWorkerVersion = "{{flutter_service_worker_version}}";
+      var serviceWorkerVersion = null;
   </script>
-  <!-- Este script añade el código de inicialización JS de Flutter -->
-  <script src="main.dart.js" defer></script>
+  <!-- This script adds the flutter initialization JS code -->
+  <script src="flutter.js" defer></script>
 </head>
 
 <body>
+  <script>
+    window.addEventListener('load', function (ev) {
+      // Download main.dart.js
+      _flutter.loader.loadEntrypoint({
+        serviceWorker: {
+          serviceWorkerVersion: serviceWorkerVersion,
+        },
+        onEntrypointLoaded: function (engineInitializer) {
+          engineInitializer.initializeEngine().then(function (appRunner) {
+            appRunner.runApp();
+          });
+        }
+      });
+    });
+  </script>
   <div id="loading">
     <style>
       body {

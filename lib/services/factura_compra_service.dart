@@ -13,11 +13,7 @@ class FacturaCompraService {
 
   Future<List<FacturaCompra>> getFacturasCompras() async {
     try {
-      print('🔍 Obteniendo facturas de compras...');
       final response = await http.get(Uri.parse(baseUrl), headers: headers);
-
-      print('📡 Response status: ${response.statusCode}');
-      print('📄 Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final responseBody = response.body;
@@ -106,9 +102,6 @@ class FacturaCompraService {
         headers: headers,
       );
 
-      print('📡 Factura response status: ${response.statusCode}');
-      print('📄 Factura response body: ${response.body}');
-
       if (response.statusCode == 200) {
         final responseBody = response.body;
         if (responseBody.isEmpty) {
@@ -182,14 +175,9 @@ class FacturaCompraService {
         Uri.parse('$baseUrl/numero-factura'),
         headers: headers,
       );
-
-      print('📡 Número factura response status: ${response.statusCode}');
-      print('📄 Número factura response body: ${response.body}');
-
       if (response.statusCode == 200) {
         final responseBody = response.body;
         if (responseBody.isEmpty) {
-          print('⚠️ Response body vacío para número de factura');
           throw Exception(
             'Respuesta vacía del servidor para número de factura',
           );
@@ -261,9 +249,6 @@ class FacturaCompraService {
         Uri.parse('$baseUrl/ingredientes'),
         headers: headers,
       );
-
-      print('📡 Ingredientes response status: ${response.statusCode}');
-      print('📄 Ingredientes response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final responseBody = response.body;
@@ -417,10 +402,7 @@ class FacturaCompraService {
         headers: headers,
         body: json.encode(facturaJson),
       );
-
-      print('📡 Crear factura response status: ${response.statusCode}');
-      print('📄 Crear factura response body: ${response.body}');
-
+      
       if (response.statusCode == 201 || response.statusCode == 200) {
         final responseBody = response.body;
         if (responseBody.isEmpty) {

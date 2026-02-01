@@ -26,12 +26,8 @@ flutter:
   assets:
     - assets/images/
     - assets/images/categorias/
-  fonts:
-    - family: Roboto
-      fonts:
-        - asset: assets/fonts/Roboto-Regular.ttf
-        - asset: assets/fonts/Roboto-Bold.ttf
-          weight: 700
+  # Fuentes: Se usan las fuentes del sistema o Google Fonts cargadas desde index.html
+  # No es necesario declarar fuentes Roboto locales
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions

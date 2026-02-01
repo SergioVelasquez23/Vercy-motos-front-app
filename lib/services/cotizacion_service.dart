@@ -19,9 +19,7 @@ class CotizacionService {
           'Accept': 'application/json',
         },
       );
-
-      print('📦 Response status (cotizaciones): ${response.statusCode}');
-      
+            
       if (response.statusCode == 200) {
         print('📦 Response body length: ${response.body.length}');
         final dynamic responseData = json.decode(response.body);

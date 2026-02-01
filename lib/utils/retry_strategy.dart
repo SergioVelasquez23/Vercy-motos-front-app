@@ -60,7 +60,6 @@ class RetryStrategy {
               currentTimeout = Duration(seconds: 60);
             }
           }
-          print('⏱️ Timeout para este intento: ${currentTimeout.inSeconds}s');
         }
 
         return await operation().timeout(currentTimeout);
@@ -163,13 +162,10 @@ class LocalRetryStrategy extends RetryStrategy {
 class RetryStrategyFactory {
   static RetryStrategy forEnvironment(String baseUrl) {
     if (baseUrl.contains('render.com')) {
-      print('🔄 Usando RenderRetryStrategy (optimizada para Render.com)');
       return RenderRetryStrategy();
     } else if (baseUrl.contains('localhost') || baseUrl.contains('127.0.0.1')) {
-      print('🔄 Usando LocalRetryStrategy (optimizada para desarrollo local)');
       return LocalRetryStrategy();
     } else {
-      print('🔄 Usando ProductionRetryStrategy (optimizada para producción)');
       return ProductionRetryStrategy();
     }
   }

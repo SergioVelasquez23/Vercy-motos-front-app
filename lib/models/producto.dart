@@ -332,12 +332,7 @@ class Producto {
   factory Producto.fromJsonLigero(Map<String, dynamic> json) {
     // 🔍 LOG TEMPORAL: Ver todas las llaves del JSON para diagnosticar codigoBarras
     if (json['nombre']?.toString().contains('PUFF') == true) {
-      print('🔍 DEBUG JSON para producto: ${json['nombre']}');
-      print('   Llaves disponibles: ${json.keys.toList()}');
-      print('   codigoBarras: ${json['codigoBarras']}');
-      print('   codigo_barras: ${json['codigo_barras']}');
-      print('   CODIGO_BARRAS: ${json['CODIGO_BARRAS']}');
-      print('   codigo: ${json['codigo']}');
+  
     }
     
     return Producto(
