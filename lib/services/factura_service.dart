@@ -69,7 +69,7 @@ class FacturaService {
 
       return _processFacturasResponse(response);
     } catch (e) {
-      print('❌ Error fetching facturas: $e');
+        
       return [];
     }
   }
@@ -85,7 +85,7 @@ class FacturaService {
 
       return _processFacturaResponse(response);
     } catch (e) {
-      print('❌ Error fetching factura: $e');
+        
       return null;
     }
   }
@@ -101,7 +101,7 @@ class FacturaService {
 
       return _processFacturaResponse(response);
     } catch (e) {
-      print('❌ Error fetching factura por número: $e');
+        
       return null;
     }
   }
@@ -117,7 +117,7 @@ class FacturaService {
 
       return _processFacturasResponse(response);
     } catch (e) {
-      print('❌ Error fetching facturas por NIT: $e');
+        
       return [];
     }
   }
@@ -133,7 +133,7 @@ class FacturaService {
 
       return _processFacturasResponse(response);
     } catch (e) {
-      print('❌ Error fetching facturas por teléfono: $e');
+        
       return [];
     }
   }
@@ -149,7 +149,7 @@ class FacturaService {
 
       return _processFacturasResponse(response);
     } catch (e) {
-      print('❌ Error fetching facturas pendientes: $e');
+        
       return [];
     }
   }
@@ -165,7 +165,7 @@ class FacturaService {
 
       return _processFacturasResponse(response);
     } catch (e) {
-      print('❌ Error fetching facturas del día: $e');
+        
       return [];
     }
   }
@@ -190,7 +190,7 @@ class FacturaService {
 
       return _processFacturasResponse(response);
     } catch (e) {
-      print('❌ Error fetching facturas por período: $e');
+        
       return [];
     }
   }
@@ -207,7 +207,7 @@ class FacturaService {
 
       return _processFacturaResponse(response);
     } catch (e) {
-      print('❌ Error creating factura: $e');
+        
       return null;
     }
   }
@@ -227,7 +227,7 @@ class FacturaService {
 
       return _processFacturaResponse(response);
     } catch (e) {
-      print('❌ Error creating factura desde pedido: $e');
+        
       return null;
     }
   }
@@ -244,7 +244,7 @@ class FacturaService {
 
       return _processFacturaResponse(response);
     } catch (e) {
-      print('❌ Error updating factura: $e');
+        
       return null;
     }
   }
@@ -260,7 +260,7 @@ class FacturaService {
 
       return _processFacturaResponse(response);
     } catch (e) {
-      print('❌ Error emitting factura: $e');
+        
       return null;
     }
   }
@@ -280,7 +280,7 @@ class FacturaService {
 
       return _processFacturaResponse(response);
     } catch (e) {
-      print('❌ Error paying factura: $e');
+        
       return null;
     }
   }
@@ -300,7 +300,7 @@ class FacturaService {
 
       return _processFacturaResponse(response);
     } catch (e) {
-      print('❌ Error cancelling factura: $e');
+        
       return null;
     }
   }
@@ -316,7 +316,7 @@ class FacturaService {
 
       return response.statusCode == 204 || response.statusCode == 200;
     } catch (e) {
-      print('❌ Error deleting factura: $e');
+        
       return false;
     }
   }
@@ -336,7 +336,7 @@ class FacturaService {
       }
       return null;
     } catch (e) {
-      print('❌ Error generating print summary: $e');
+        
       return null;
     }
   }
@@ -358,7 +358,7 @@ class FacturaService {
       }
       return null;
     } catch (e) {
-      print('❌ Error generating invoice print: $e');
+        
       return null;
     }
   }
@@ -378,7 +378,7 @@ class FacturaService {
       }
       return null;
     } catch (e) {
-      print('❌ Error fetching sales summary: $e');
+        
       return null;
     }
   }

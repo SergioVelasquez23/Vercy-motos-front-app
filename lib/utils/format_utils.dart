@@ -83,7 +83,7 @@ String _formatNumberManually(num value) {
     // Validar que el resultado sea un número válido
     final numStr = intValue.toString();
     if (!RegExp(r'^\d+$').hasMatch(numStr)) {
-      print('⚠️ FORMATO INVÁLIDO detectado: "$numStr", usando 0');
+        
       return '0';
     }
 
@@ -109,12 +109,12 @@ String _formatNumberManually(num value) {
     final reversed = buffer.toString().split('').reversed.join('');
     return isNegative ? '-$reversed' : reversed;
   } catch (e) {
-    print('❌ ERROR CRÍTICO en formateo manual: $e para valor: $value');
+      
     // Fallback absoluto: asegurar que siempre devuelva algo válido
     try {
       return value.truncate().abs().toString();
     } catch (e2) {
-      print('❌ FALLBACK CRÍTICO: $e2');
+        
       return '0'; // Último recurso
     }
   }
@@ -145,24 +145,24 @@ String formatCurrency(dynamic value) {
       if (RegExp(r'^[\$\-\d\.]+$').hasMatch(result)) {
         return result;
       } else {
-        print('🔴 CARACTERES INVÁLIDOS en resultado final: "$result"');
+          
         return '\$0';
       }
     } else {
-      print('🔴 FORMATO CORRUPTO detectado:');
+        
       print(
         '  - Valor original: $originalValue (${originalValue.runtimeType})',
       );
-      print('  - Resultado formateado: "$formatted"');
-      print('  - Patrón válido: ${validPattern.pattern}');
-      print('  - Usando fallback \$0');
+        
+        
+        
       return '\$0';
     }
   } catch (e, stackTrace) {
-    print('❌ ERROR CRÍTICO en formatCurrency:');
-    print('  - Valor: $value');
-    print('  - Error: $e');
-    print('  - Stack: $stackTrace');
+      
+      
+      
+      
     return '\$0'; // Fallback absoluto
   }
 }
@@ -170,7 +170,7 @@ String formatCurrency(dynamic value) {
 /// Limpiar cache de formateo (llamar después de operaciones que pueden corromper)
 void clearFormatCache() {
   _formatCache.clear();
-  print('🧹 Cache de formateo limpiado');
+    
 }
 
 /// Detectar y corregir automáticamente números corruptos
@@ -190,25 +190,25 @@ String _detectAndFixCorruption(String formatted, dynamic originalValue) {
   for (final pattern in corruptionPatterns) {
     if (pattern.hasMatch(formatted)) {
       isCorrupted = true;
-      print('🔴 CORRUPCIÓN DETECTADA en: "$formatted"');
-      print('  - Patrón: ${pattern.pattern}');
-      print('  - Valor original: $originalValue');
+        
+        
+        
       break;
     }
   }
 
   if (isCorrupted) {
-    print('🔧 REPARANDO número corrupto...');
+      
     clearFormatCache(); // Limpiar cache inmediatamente
 
     // Intentar reparar extrayendo solo números
     final cleanValue = formatted.replaceAll(RegExp(r'[^\d\.]'), '');
     if (cleanValue.isNotEmpty) {
       final repaired = formatNumberWithDots(double.tryParse(cleanValue) ?? 0);
-      print('✅ REPARADO: "$formatted" → "$repaired"');
+        
       return repaired;
     } else {
-      print('⚠️ No se pudo reparar, usando 0');
+        
       return '0';
     }
   }
@@ -228,7 +228,7 @@ String formatDate(DateTime dateTime) {
 
     return '$day/$month/$year $hour:$minute';
   } catch (e) {
-    print('❌ Error formateando fecha: $e');
+      
     return 'Fecha inválida';
   }
 }
@@ -243,7 +243,7 @@ String formatDateOnly(DateTime dateTime) {
 
     return '$day/$month/$year';
   } catch (e) {
-    print('❌ Error formateando fecha: $e');
+      
     return 'Fecha inválida';
   }
 }

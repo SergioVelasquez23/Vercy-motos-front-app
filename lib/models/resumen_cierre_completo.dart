@@ -144,9 +144,9 @@ class MovimientosEfectivoCompleto {
 
   factory MovimientosEfectivoCompleto.fromJson(Map<String, dynamic> json) {
     // Print the complete JSON for debugging
-    print('📋 MovimientosEfectivoCompleto.fromJson - Datos recibidos:');
+      
     json.forEach((key, value) {
-      print('  - $key: $value');
+        
     });
 
     double safeToDouble(dynamic value) {
@@ -189,7 +189,7 @@ class MovimientosEfectivoCompleto {
       ventasTrans = safeToDouble(json['totalTransferencia']);
     }
 
-    print('💵 MovimientosEfectivoCompleto - ventas efectivo: $ventasEf');
+      
     print(
       '💸 MovimientosEfectivoCompleto - ventas transferencia: $ventasTrans',
     );
@@ -445,9 +445,9 @@ class ResumenVentasCompleto {
 
   factory ResumenVentasCompleto.fromJson(Map<String, dynamic> json) {
     // Print the complete JSON for debugging
-    print('📋 ResumenVentasCompleto.fromJson - Datos recibidos:');
+      
     json.forEach((key, value) {
-      print('  - $key: $value');
+        
     });
 
     double safeToDouble(dynamic value) {

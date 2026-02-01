@@ -13,7 +13,7 @@ class CacheHelpers {
   }) async {
     final provider = Provider.of<DatosCacheProvider>(context, listen: false);
 
-    print('🔄 Actualizando caché después de operación crítica...');
+      
 
     if (refreshProductos) {
       await provider.forceRefreshProductos();

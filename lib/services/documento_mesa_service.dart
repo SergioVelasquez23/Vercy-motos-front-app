@@ -17,7 +17,7 @@ class DocumentoMesaService {
     required List<String> pedidosIds,
   }) async {
     try {
-      print('🌐 Creando documento para mesa: $mesaNombre');
+        
 
       final body = {
         'mesaNombre': mesaNombre,
@@ -39,10 +39,10 @@ class DocumentoMesaService {
         return DocumentoMesa.fromJson(data);
       }
 
-      print('❌ Error response: ${response.body}');
+        
       throw Exception('Error al crear documento: ${response.statusCode}');
     } catch (e) {
-      print('❌ Error en crearDocumento: $e');
+        
       rethrow;
     }
   }
@@ -53,7 +53,7 @@ class DocumentoMesaService {
     String mesaNombre,
   ) async {
     try {
-      print('🌐 Obteniendo documentos de mesa: $mesaNombre');
+        
 
       final response = await http.get(
         Uri.parse('$baseUrl/mesa/$mesaNombre'),
@@ -72,7 +72,7 @@ class DocumentoMesaService {
         } else if (responseData is Map && responseData['data'] != null) {
           data = responseData['data'];
         } else {
-          print('⚠️ Estructura inesperada: ${responseData.runtimeType}');
+            
           return [];
         }
 
@@ -83,10 +83,10 @@ class DocumentoMesaService {
         return [];
       }
 
-      print('❌ Error response: ${response.body}');
+        
       throw Exception('Error al obtener documentos: ${response.statusCode}');
     } catch (e) {
-      print('❌ Error en obtenerDocumentosPorMesa: $e');
+        
       rethrow;
     }
   }
@@ -95,7 +95,7 @@ class DocumentoMesaService {
   /// GET /api/documentos-mesa/{id}
   Future<DocumentoMesa?> obtenerDocumentoPorId(String id) async {
     try {
-      print('🌐 Obteniendo documento por ID: $id');
+        
 
       final response = await http.get(
         Uri.parse('$baseUrl/$id'),
@@ -114,10 +114,10 @@ class DocumentoMesaService {
         return null;
       }
 
-      print('❌ Error response: ${response.body}');
+        
       return null;
     } catch (e) {
-      print('❌ Error en obtenerDocumentoPorId: $e');
+        
       return null;
     }
   }
@@ -129,7 +129,7 @@ class DocumentoMesaService {
     required String pedidoId,
   }) async {
     try {
-      print('🌐 Agregando pedido $pedidoId al documento $documentoId');
+        
 
       final body = {'pedidoId': pedidoId};
 
@@ -147,10 +147,10 @@ class DocumentoMesaService {
         return DocumentoMesa.fromJson(data);
       }
 
-      print('❌ Error response: ${response.body}');
+        
       throw Exception('Error al agregar pedido: ${response.statusCode}');
     } catch (e) {
-      print('❌ Error en agregarPedido: $e');
+        
       rethrow;
     }
   }
@@ -164,7 +164,7 @@ class DocumentoMesaService {
     double propina = 0.0,
   }) async {
     try {
-      print('🌐 Pagando documento $documentoId');
+        
 
       final body = {
         'formaPago': formaPago,
@@ -186,10 +186,10 @@ class DocumentoMesaService {
         return DocumentoMesa.fromJson(data);
       }
 
-      print('❌ Error response: ${response.body}');
+        
       throw Exception('Error al pagar documento: ${response.statusCode}');
     } catch (e) {
-      print('❌ Error en pagarDocumento: $e');
+        
       rethrow;
     }
   }
@@ -198,7 +198,7 @@ class DocumentoMesaService {
   /// DELETE /api/documentos-mesa/{id}
   Future<bool> eliminarDocumento(String id) async {
     try {
-      print('🌐 Eliminando documento: $id');
+        
 
       final response = await http.delete(
         Uri.parse('$baseUrl/$id'),
@@ -216,10 +216,10 @@ class DocumentoMesaService {
         return false;
       }
 
-      print('❌ Error response: ${response.body}');
+        
       throw Exception('Error al eliminar documento: ${response.statusCode}');
     } catch (e) {
-      print('❌ Error en eliminarDocumento: $e');
+        
       rethrow;
     }
   }
@@ -230,7 +230,7 @@ class DocumentoMesaService {
     String mesaNombre,
   ) async {
     try {
-      print('🌐 Obteniendo documentos pendientes de mesa: $mesaNombre');
+        
 
       final response = await http.get(
         Uri.parse('$baseUrl/mesa/$mesaNombre/pendientes'),
@@ -259,10 +259,10 @@ class DocumentoMesaService {
         return [];
       }
 
-      print('❌ Error response: ${response.body}');
+        
       return [];
     } catch (e) {
-      print('❌ Error en obtenerDocumentosPendientes: $e');
+        
       return [];
     }
   }
@@ -273,7 +273,7 @@ class DocumentoMesaService {
     String mesaNombre,
   ) async {
     try {
-      print('🌐 Obteniendo documentos pagados de mesa: $mesaNombre');
+        
 
       final response = await http.get(
         Uri.parse('$baseUrl/mesa/$mesaNombre/pagados'),
@@ -302,10 +302,10 @@ class DocumentoMesaService {
         return [];
       }
 
-      print('❌ Error response: ${response.body}');
+        
       return [];
     } catch (e) {
-      print('❌ Error en obtenerDocumentosPagados: $e');
+        
       return [];
     }
   }
@@ -314,7 +314,7 @@ class DocumentoMesaService {
   /// GET /api/documentos-mesa/mesa/{mesaNombre}/resumen
   Future<Map<String, dynamic>?> obtenerResumenMesa(String mesaNombre) async {
     try {
-      print('🌐 Obteniendo resumen de mesa: $mesaNombre');
+        
 
       final response = await http.get(
         Uri.parse('$baseUrl/mesa/$mesaNombre/resumen'),
@@ -332,10 +332,10 @@ class DocumentoMesaService {
         return null;
       }
 
-      print('❌ Error response: ${response.body}');
+        
       return null;
     } catch (e) {
-      print('❌ Error en obtenerResumenMesa: $e');
+        
       return null;
     }
   }
@@ -344,7 +344,7 @@ class DocumentoMesaService {
   /// GET /api/documentos-mesa/verificar-mesa-especial/{mesaNombre}
   Future<bool> verificarMesaEspecial(String mesaNombre) async {
     try {
-      print('🌐 Verificando si mesa es especial: $mesaNombre');
+        
 
       final response = await http.get(
         Uri.parse('$baseUrl/verificar-mesa-especial/$mesaNombre'),
@@ -361,7 +361,7 @@ class DocumentoMesaService {
 
       return false;
     } catch (e) {
-      print('❌ Error en verificarMesaEspecial: $e');
+        
       return false;
     }
   }
@@ -372,7 +372,7 @@ class DocumentoMesaService {
     String mesaNombre,
   ) async {
     try {
-      print('🌐 Obteniendo documentos completos de mesa: $mesaNombre');
+        
 
       final response = await http.get(
         Uri.parse('$baseUrl/mesa/$mesaNombre/completos'),
@@ -401,10 +401,10 @@ class DocumentoMesaService {
         return [];
       }
 
-      print('❌ Error response: ${response.body}');
+        
       return [];
     } catch (e) {
-      print('❌ Error en obtenerDocumentosCompletos: $e');
+        
       return [];
     }
   }
@@ -412,7 +412,7 @@ class DocumentoMesaService {
   /// Obtener todas las mesas con documentos
   Future<List<String>> obtenerMesasConDocumentos() async {
     try {
-      print('🌐 Obteniendo mesas con documentos');
+        
 
       final response = await http.get(
         Uri.parse('$baseUrl/mesas'),
@@ -436,7 +436,7 @@ class DocumentoMesaService {
 
       return [];
     } catch (e) {
-      print('❌ Error en obtenerMesasConDocumentos: $e');
+        
       return [];
     }
   }

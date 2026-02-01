@@ -36,7 +36,7 @@ class DateTimeUtils {
           return DateTime.fromMillisecondsSinceEpoch(timestamp).toLocal();
         }
       } catch (e) {
-        print('⚠️ Error parsing timestamp: $value - $e');
+          
         return fallback;
       }
     }
@@ -61,13 +61,13 @@ class DateTimeUtils {
               return DateTime.parse('${datePart}T00:00:00.000');
             }
           } catch (e3) {
-            print('⚠️ Error parsing fecha string: $value - $e3');
+              
           }
         }
       }
     }
 
-    print('⚠️ No se pudo parsear fecha: $value (${value.runtimeType})');
+      
     return fallback;
   }
 
@@ -106,7 +106,7 @@ class DateTimeUtils {
     try {
       return dateTime.toIso8601String();
     } catch (e) {
-      print('⚠️ Error convirtiendo fecha a ISO: $dateTime - $e');
+        
       return DateTime.now().toIso8601String();
     }
   }
@@ -141,7 +141,7 @@ class DateTimeUtils {
           return '${localDateTime.day.toString().padLeft(2, '0')}/${localDateTime.month.toString().padLeft(2, '0')}/${localDateTime.year} ${localDateTime.hour.toString().padLeft(2, '0')}:${localDateTime.minute.toString().padLeft(2, '0')}';
       }
     } catch (e) {
-      print('⚠️ Error formateando fecha: $dateTime - $e');
+        
       return 'Error formato';
     }
   }

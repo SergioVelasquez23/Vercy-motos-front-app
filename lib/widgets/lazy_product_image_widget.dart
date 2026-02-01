@@ -108,7 +108,7 @@ class _LazyProductImageWidgetState extends State<LazyProductImageWidget> {
     if (mounted) {
       // Si imagenUrl es null, significa que el cache fue invalidado
       if (imagenUrl == null) {
-        print('🔄 Cache invalidado para ${widget.producto.id}, recargando...');
+          
         setState(() {
           _imagenUrl = null;
           _isLoading = false;

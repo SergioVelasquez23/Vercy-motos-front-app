@@ -18,12 +18,12 @@ class FacturaCompraService {
       if (response.statusCode == 200) {
         final responseBody = response.body;
         if (responseBody.isEmpty) {
-          print('⚠️ Response body vacío');
+            
           return [];
         }
 
         final dynamic jsonData = json.decode(responseBody);
-        print('📊 Tipo de datos recibidos: ${jsonData.runtimeType}');
+          
 
         List<dynamic> dataList;
 
@@ -44,17 +44,17 @@ class FacturaCompraService {
                 '✅ Respuesta tiene campo data con ${dataList.length} elementos',
               );
             } else {
-              print('❌ Campo data no es una lista: ${data.runtimeType}');
+                
               throw Exception('El campo data no contiene una lista válida');
             }
           } else {
-            print('❌ Respuesta no tiene campo data');
+              
             throw Exception(
               'Respuesta del servidor no tiene el formato esperado',
             );
           }
         } else {
-          print('❌ Tipo de respuesta no reconocido: ${jsonData.runtimeType}');
+            
           throw Exception('Formato de respuesta del servidor no válido');
         }
 
@@ -71,11 +71,11 @@ class FacturaCompraService {
               );
             }
           } catch (e) {
-            print('⚠️ Error al parsear factura $i: $e');
+              
           }
         }
 
-        print('✅ ${facturas.length} facturas procesadas exitosamente');
+          
 
         // Ordenar facturas por fecha descendente (más recientes primero)
         facturas.sort((a, b) => b.fechaCreacion.compareTo(a.fechaCreacion));
@@ -84,19 +84,19 @@ class FacturaCompraService {
       } else {
         final errorMessage =
             'Error al cargar facturas de compras: ${response.statusCode}';
-        print('❌ $errorMessage');
-        print('📄 Error body: ${response.body}');
+          
+          
         throw Exception(errorMessage);
       }
     } catch (e) {
-      print('💥 Error en getFacturasCompras: $e');
+        
       throw Exception('Error de conexión: $e');
     }
   }
 
   Future<FacturaCompra> getFacturaCompra(String id) async {
     try {
-      print('🔍 Obteniendo factura de compra: $id');
+        
       final response = await http.get(
         Uri.parse('$baseUrl/$id'),
         headers: headers,
@@ -131,7 +131,7 @@ class FacturaCompraService {
         );
       }
     } catch (e) {
-      print('💥 Error en getFacturaCompra: $e');
+        
       throw Exception('Error de conexión: $e');
     }
   }
@@ -168,8 +168,8 @@ class FacturaCompraService {
 
   Future<String> generarNumeroFactura() async {
     try {
-      print('🔢 Generando número de factura...');
-      print('🌐 URL: $baseUrl/numero-factura');
+        
+        
 
       final response = await http.get(
         Uri.parse('$baseUrl/numero-factura'),
@@ -184,7 +184,7 @@ class FacturaCompraService {
         }
 
         final dynamic jsonData = json.decode(responseBody);
-        print('📊 Tipo de respuesta número factura: ${jsonData.runtimeType}');
+          
 
         String numeroFactura = '';
 
@@ -193,7 +193,7 @@ class FacturaCompraService {
           if (jsonData.containsKey('success') && jsonData['success'] == false) {
             final errorMessage =
                 jsonData['message'] ?? 'Error desconocido al generar número';
-            print('❌ Error del servidor al generar número: $errorMessage');
+              
             throw Exception(errorMessage);
           }
 
@@ -213,8 +213,8 @@ class FacturaCompraService {
           }
 
           if (numeroFactura.isEmpty) {
-            print('❌ No se pudo extraer el número de factura de la respuesta');
-            print('📋 Claves disponibles: ${jsonData.keys.toList()}');
+              
+              
             throw Exception(
               'No se encontró número de factura en la respuesta del servidor',
             );
@@ -227,24 +227,24 @@ class FacturaCompraService {
           );
         }
 
-        print('✅ Número de factura generado: $numeroFactura');
+          
         return numeroFactura;
       } else {
         final errorMessage =
             'Error al generar número de factura: ${response.statusCode}';
-        print('❌ $errorMessage');
-        print('📄 Error body: ${response.body}');
+          
+          
         throw Exception(errorMessage);
       }
     } catch (e) {
-      print('💥 Error en generarNumeroFactura: $e');
+        
       throw Exception('Error de conexión: $e');
     }
   }
 
   Future<List<Ingrediente>> getIngredientesDisponibles() async {
     try {
-      print('🔍 Obteniendo ingredientes disponibles...');
+        
       final response = await http.get(
         Uri.parse('$baseUrl/ingredientes'),
         headers: headers,
@@ -253,12 +253,12 @@ class FacturaCompraService {
       if (response.statusCode == 200) {
         final responseBody = response.body;
         if (responseBody.isEmpty) {
-          print('⚠️ Response body vacío para ingredientes');
+            
           return [];
         }
 
         final dynamic jsonData = json.decode(responseBody);
-        print('📊 Tipo de datos de ingredientes: ${jsonData.runtimeType}');
+          
 
         List<dynamic> dataList;
 
@@ -287,7 +287,7 @@ class FacturaCompraService {
               );
             }
           } else {
-            print('❌ Ingredientes: Respuesta no tiene campo data');
+              
             throw Exception(
               'Respuesta de ingredientes no tiene el formato esperado',
             );
@@ -312,21 +312,21 @@ class FacturaCompraService {
               );
             }
           } catch (e) {
-            print('⚠️ Error al parsear ingrediente $i: $e');
+              
           }
         }
 
-        print('✅ ${ingredientes.length} ingredientes procesados exitosamente');
+          
         return ingredientes;
       } else {
         final errorMessage =
             'Error al cargar ingredientes: ${response.statusCode}';
-        print('❌ $errorMessage');
-        print('📄 Error body ingredientes: ${response.body}');
+          
+          
         throw Exception(errorMessage);
       }
     } catch (e) {
-      print('💥 Error en getIngredientesDisponibles: $e');
+        
       throw Exception('Error de conexión: $e');
     }
   }
@@ -339,9 +339,9 @@ class FacturaCompraService {
 
       // Verificar si hay items
       if (facturaCompra.items.isEmpty) {
-        print('⚠️ Advertencia: La factura no tiene items');
+          
       } else {
-        print('📋 Items de la factura:');
+          
         for (var i = 0; i < facturaCompra.items.length; i++) {
           final item = facturaCompra.items[i];
           print(
@@ -391,11 +391,11 @@ class FacturaCompraService {
         facturaJson['total'] = calculatedTotal;
       }
 
-      print('🔧 Creando factura de compra...');
-      print('💰 Total calculado: $calculatedTotal');
-      print('📦 Datos a enviar: ${json.encode(facturaJson)}');
-      print('🌐 URL: $baseUrl/crear');
-      print('📋 Headers: $headers');
+        
+        
+        
+        
+        
 
       final response = await http.post(
         Uri.parse('$baseUrl/crear'),
@@ -410,15 +410,15 @@ class FacturaCompraService {
         }
 
         final dynamic jsonData = json.decode(responseBody);
-        print('📊 Tipo de respuesta: ${jsonData.runtimeType}');
-        print('📄 Respuesta completa: $jsonData');
+          
+          
 
         if (jsonData is Map<String, dynamic>) {
           // Verificar si la respuesta indica éxito
           if (jsonData.containsKey('success') && jsonData['success'] == false) {
             final errorMessage =
                 jsonData['message'] ?? 'Error desconocido al crear factura';
-            print('❌ Error del servidor: $errorMessage');
+              
             throw Exception(errorMessage);
           }
 
@@ -428,7 +428,7 @@ class FacturaCompraService {
           // El backend devuelve la factura en el campo 'factura'
           if (jsonData.containsKey('factura') && jsonData['factura'] != null) {
             facturaData = jsonData['factura'];
-            print('✅ Datos de factura encontrados en campo factura');
+              
 
             // Validar que la factura tenga los items y el total correcto
             if (facturaData!['itemsIngredientes'] is List &&
@@ -457,7 +457,7 @@ class FacturaCompraService {
             }
           } else if (jsonData.containsKey('data') && jsonData['data'] != null) {
             facturaData = jsonData['data'];
-            print('✅ Datos de factura encontrados en campo data');
+              
           } else if (jsonData.containsKey('success') &&
               jsonData['success'] == true) {
             // Si hay success=true pero no data, puede que los datos estén en el nivel raíz
@@ -467,11 +467,11 @@ class FacturaCompraService {
             facturaData.remove(
               'numeroFactura',
             ); // El numero se incluye separado
-            print('✅ Datos de factura encontrados en nivel raíz');
+              
           } else {
             // Si no hay campo 'data' ni 'success', asumir que toda la respuesta son los datos
             facturaData = jsonData;
-            print('✅ Usando respuesta completa como datos de factura');
+              
           }
 
           if (facturaData == null || facturaData.isEmpty) {
@@ -480,8 +480,8 @@ class FacturaCompraService {
             );
           }
 
-          print('✅ Factura creada exitosamente');
-          print('📋 Datos de factura finales: $facturaData');
+            
+            
 
           // Crear objeto FacturaCompra con los items y total calculado explícitamente
           final facturaCreada = FacturaCompra.fromJson(facturaData);
@@ -525,15 +525,15 @@ class FacturaCompraService {
             errorMessage = errorBody['message'];
           }
         } catch (parseError) {
-          print('⚠️ No se pudo parsear el error del servidor: $parseError');
-          print('📄 Raw error response: ${response.body}');
+            
+            
         }
 
-        print('❌ $errorMessage');
+          
         throw Exception(errorMessage);
       }
     } catch (e) {
-      print('💥 Error en crearFacturaCompra: $e');
+        
       if (e is Exception) {
         rethrow;
       }
@@ -626,12 +626,12 @@ class FacturaCompraService {
       'tests': <String, dynamic>{},
     };
 
-    print('🔧 Iniciando pruebas de conectividad del backend...');
-    print('🌐 Base URL: $baseUrl');
+      
+      
 
     // Test 1: Probar endpoint de número de factura
     try {
-      print('📡 Test 1: Probando generación de número de factura...');
+        
       final numeroResponse = await http.get(
         Uri.parse('$baseUrl/numero-factura'),
         headers: headers,
@@ -643,19 +643,19 @@ class FacturaCompraService {
         'success': numeroResponse.statusCode == 200,
       };
 
-      print('✅ Test 1 completado: ${numeroResponse.statusCode}');
+        
     } catch (e) {
       result['tests']['numero_factura'] = {
         'status': 'ERROR',
         'error': e.toString(),
         'success': false,
       };
-      print('❌ Test 1 falló: $e');
+        
     }
 
     // Test 2: Probar endpoint de listado de facturas
     try {
-      print('📡 Test 2: Probando listado de facturas...');
+        
       final listResponse = await http.get(Uri.parse(baseUrl), headers: headers);
 
       result['tests']['list_facturas'] = {
@@ -664,19 +664,19 @@ class FacturaCompraService {
         'success': listResponse.statusCode == 200,
       };
 
-      print('✅ Test 2 completado: ${listResponse.statusCode}');
+        
     } catch (e) {
       result['tests']['list_facturas'] = {
         'status': 'ERROR',
         'error': e.toString(),
         'success': false,
       };
-      print('❌ Test 2 falló: $e');
+        
     }
 
     // Test 3: Probar endpoint de creación (con datos de prueba)
     try {
-      print('📡 Test 3: Probando endpoint de creación (sin enviar datos)...');
+        
       // Solo probamos la respuesta del endpoint sin datos válidos
       final createResponse = await http.post(
         Uri.parse('$baseUrl/crear'),
@@ -690,32 +690,32 @@ class FacturaCompraService {
         'reachable': true,
       };
 
-      print('✅ Test 3 completado: ${createResponse.statusCode}');
+        
     } catch (e) {
       result['tests']['create_endpoint'] = {
         'status': 'ERROR',
         'error': e.toString(),
         'reachable': false,
       };
-      print('❌ Test 3 falló: $e');
+        
     }
 
-    print('🔧 Pruebas de conectividad completadas');
+      
     return result;
   }
 
   /// Eliminar factura de compra (con reversión automática de stock y dinero)
   Future<Map<String, dynamic>> eliminarFacturaCompra(String id) async {
     try {
-      print('🗑️ Eliminando factura de compra: $id');
+        
 
       final response = await http.delete(
         Uri.parse('$baseUrl/$id'),
         headers: headers,
       );
 
-      print('🗑️ Status eliminación: ${response.statusCode}');
-      print('🗑️ Response body: ${response.body}');
+        
+        
 
       if (response.statusCode == 204 || response.statusCode == 200) {
         // El backend maneja automáticamente:
@@ -723,7 +723,7 @@ class FacturaCompraService {
         // - Reversión de dinero del cuadre de caja
         // - Registro en historial de ediciones
 
-        print('✅ Factura eliminada con reversión automática');
+          
 
         // Intentar parsear la respuesta para obtener detalles de la reversión
         Map<String, dynamic> result = {
@@ -775,7 +775,7 @@ class FacturaCompraService {
         throw Exception(errorMsg);
       }
     } catch (e) {
-      print('❌ Error eliminando factura de compra: $e');
+        
       throw Exception('Error de conexión: $e');
     }
   }
@@ -786,7 +786,7 @@ class FacturaCompraService {
     String motivoAnulacion,
   ) async {
     try {
-      print('🚫 Anulando factura de compra: $id');
+        
 
       final response = await http.patch(
         Uri.parse('$baseUrl/$id/anular'),
@@ -794,8 +794,8 @@ class FacturaCompraService {
         body: json.encode({'motivoAnulacion': motivoAnulacion}),
       );
 
-      print('🚫 Status anulación: ${response.statusCode}');
-      print('🚫 Response body: ${response.body}');
+        
+        
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
@@ -838,7 +838,7 @@ class FacturaCompraService {
           result['detallesReversion'] = responseData['detallesReversion'];
         }
 
-        print('✅ Factura anulada con reversión automática');
+          
         return result;
       } else {
         // Intentar obtener mensaje de error del backend
@@ -856,7 +856,7 @@ class FacturaCompraService {
         throw Exception(errorMsg);
       }
     } catch (e) {
-      print('❌ Error anulando factura: $e');
+        
       throw Exception('Error de conexión: $e');
     }
   }

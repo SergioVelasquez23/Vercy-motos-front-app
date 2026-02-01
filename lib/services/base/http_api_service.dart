@@ -52,9 +52,9 @@ class HttpApiService extends BaseApiService {
   }) async {
     // Log de la respuesta en modo debug
     if (ApiConfig.instance.isDevelopment) {
-      print('📡 HTTP ${response.request?.method} ${response.request?.url}');
-      print('📡 Status: ${response.statusCode}');
-      print('📡 Response: ${response.body}');
+        
+        
+        
     }
 
     // Manejar diferentes códigos de estado
@@ -145,7 +145,7 @@ class HttpApiService extends BaseApiService {
 
       // Log de la petición en modo debug
       if (ApiConfig.instance.isDevelopment) {
-        print('📡 GET $uri');
+          
       }
 
       final response = await http
@@ -172,8 +172,8 @@ class HttpApiService extends BaseApiService {
 
       // Log de la petición en modo debug
       if (ApiConfig.instance.isDevelopment) {
-        print('📡 POST $uri');
-        print('📡 Body: ${body != null ? json.encode(body) : 'null'}');
+          
+          
       }
 
       final response = await http
@@ -204,8 +204,8 @@ class HttpApiService extends BaseApiService {
 
       // Log de la petición en modo debug
       if (ApiConfig.instance.isDevelopment) {
-        print('📡 PUT $uri');
-        print('📡 Body: ${body != null ? json.encode(body) : 'null'}');
+          
+          
       }
 
       final response = await http
@@ -235,7 +235,7 @@ class HttpApiService extends BaseApiService {
 
       // Log de la petición en modo debug
       if (ApiConfig.instance.isDevelopment) {
-        print('📡 DELETE $uri');
+          
       }
 
       final response = await http

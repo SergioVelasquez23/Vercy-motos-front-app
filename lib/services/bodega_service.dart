@@ -24,7 +24,7 @@ class BodegaService {
         url += '?activa=true';
       }
 
-      print('🏭 Obteniendo bodegas desde: $url');
+        
       final response = await http.get(Uri.parse(url), headers: headers);
 
       if (response.statusCode == 200) {
@@ -45,13 +45,13 @@ class BodegaService {
           data = [];
         }
 
-        print('✅ Bodegas encontradas: ${data.length}');
+          
         return data.map((json) => Bodega.fromJson(json)).toList();
       }
 
       throw Exception('Error al obtener bodegas: ${response.statusCode}');
     } catch (e) {
-      print('❌ Error en obtenerBodegas: $e');
+        
       // Retornar lista por defecto en caso de error
       return _getBodegasDefault();
     }
@@ -81,7 +81,7 @@ class BodegaService {
 
       throw Exception('Error al obtener bodega: ${response.statusCode}');
     } catch (e) {
-      print('❌ Error en obtenerBodegaPorId: $e');
+        
       return null;
     }
   }
@@ -100,7 +100,7 @@ class BodegaService {
     bool activa = true,
   }) async {
     try {
-      print('📝 Creando bodega: $nombre');
+        
 
       final body = json.encode({
         'nombre': nombre,
@@ -139,7 +139,7 @@ class BodegaService {
         throw Exception('Error al crear bodega: ${response.statusCode}');
       }
     } catch (e) {
-      print('❌ Error en crearBodega: $e');
+        
       rethrow;
     }
   }
@@ -159,7 +159,7 @@ class BodegaService {
     bool? activa,
   }) async {
     try {
-      print('✏️ Actualizando bodega: $id');
+        
 
       final Map<String, dynamic> bodyMap = {};
       if (nombre != null) bodyMap['nombre'] = nombre;
@@ -195,7 +195,7 @@ class BodegaService {
         throw Exception('Error al actualizar bodega: ${response.statusCode}');
       }
     } catch (e) {
-      print('❌ Error en actualizarBodega: $e');
+        
       rethrow;
     }
   }
@@ -205,7 +205,7 @@ class BodegaService {
   // ====================================
   Future<bool> eliminarBodega(String id) async {
     try {
-      print('🗑️ Eliminando bodega: $id');
+        
 
       final response = await http.delete(
         Uri.parse('$baseUrl/$id'),
@@ -226,7 +226,7 @@ class BodegaService {
 
       throw Exception('Error al eliminar bodega: ${response.statusCode}');
     } catch (e) {
-      print('❌ Error en eliminarBodega: $e');
+        
       rethrow;
     }
   }
@@ -254,11 +254,11 @@ class BodegaService {
         headers: headers,
       );
 
-      print('🔍 Consultando stock de producto $productoId en bodega $bodegaId');
+        
       print(
         '   URL: ${_apiConfig.baseUrl}/api/bodegas/stock/producto/$productoId',
       );
-      print('   Status: ${response.statusCode}');
+        
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
@@ -268,7 +268,7 @@ class BodegaService {
 
         // data es una lista de StockBodegaDTO
         if (data is List) {
-          print('   Stocks encontrados en ${data.length} bodegas');
+            
 
           // Buscar el stock en la bodega específica
           for (var stock in data) {
@@ -276,25 +276,25 @@ class BodegaService {
             final stockCantidad =
                 (stock['stockActual'] ?? stock['cantidad'] ?? 0.0);
 
-            print('      - Bodega: $stockBodegaId = $stockCantidad unidades');
+              
 
             if (stockBodegaId == bodegaId) {
-              print('   ✅ Stock en bodega $bodegaId: $stockCantidad');
+                
               return (stockCantidad is int)
                   ? stockCantidad.toDouble()
                   : stockCantidad.toDouble();
             }
           }
 
-          print('   ⚠️ No se encontró stock para esta bodega, retornando 0');
+            
           return 0.0;
         }
       }
 
-      print('   ⚠️ Error al consultar stock: ${response.statusCode}');
+        
       return 0.0;
     } catch (e) {
-      print('❌ Error en obtenerStockProductoEnBodega: $e');
+        
       return 0.0;
     }
   }
@@ -333,7 +333,7 @@ class BodegaService {
                   ? cantidad.toDouble()
                   : cantidad.toDouble();
               stockPorBodega[bodegaId] = cantidadDouble;
-              print('   Stock en $bodegaNombre: $cantidadDouble');
+                
             }
           }
         }
@@ -343,7 +343,7 @@ class BodegaService {
 
       return {};
     } catch (e) {
-      print('❌ Error en obtenerStockProductoTodasBodegas: $e');
+        
       return {};
     }
   }
@@ -373,7 +373,7 @@ class BodegaService {
 
       return [];
     } catch (e) {
-      print('❌ Error en obtenerStockPorBodega: $e');
+        
       return [];
     }
   }

@@ -19,7 +19,7 @@ class KeepAliveService {
   /// Inicia el servicio de keep-alive
   void startKeepAlive() {
     if (_isActive) {
-      print('🔄 Keep-alive ya está activo');
+        
       return;
     }
 
@@ -40,14 +40,14 @@ class KeepAliveService {
   /// Detiene el servicio de keep-alive
   void stopKeepAlive() {
     if (!_isActive) {
-      print('⏹️ Keep-alive ya está inactivo');
+        
       return;
     }
 
     _pingTimer?.cancel();
     _pingTimer = null;
     _isActive = false;
-    print('⏹️ Keep-alive service detenido');
+      
   }
 
   /// Envía un ping al backend para mantenerlo activo
@@ -55,7 +55,7 @@ class KeepAliveService {
     try {
       final url = '${EndpointsConfig.baseUrl}/api/health';
 
-      print('📡 Enviando ping keep-alive a: $url');
+        
 
       final response = await http
           .get(
@@ -74,12 +74,12 @@ class KeepAliveService {
 
       if (response.statusCode == 200 || response.statusCode == 404) {
         // 200 = OK, 404 = endpoint no existe pero servidor responde
-        print('✅ Ping exitoso - Backend activo (${response.statusCode})');
+          
       } else {
-        print('⚠️ Ping respuesta inesperada: ${response.statusCode}');
+          
       }
     } catch (e) {
-      print('❌ Error en ping keep-alive: $e');
+        
       // No hacer nada más - el timer continuará intentando
     }
   }
@@ -97,7 +97,7 @@ class KeepAliveService {
 
   /// Fuerza un ping inmediato (útil para testing)
   Future<void> forcePing() async {
-    print('🔧 Forzando ping inmediato...');
+      
     await _sendPing();
   }
 }

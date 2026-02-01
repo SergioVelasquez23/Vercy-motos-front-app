@@ -18,7 +18,7 @@ class ResumenCierreCompletoService {
   /// Obtiene el resumen completo de cierre para un cuadre específico
   Future<ResumenCierreCompleto> getResumenCierre(String cuadreId) async {
     try {
-      print('� Obteniendo resumen de cierre para cuadre: $cuadreId');
+        
 
       final response = await http
           .get(
@@ -27,7 +27,7 @@ class ResumenCierreCompletoService {
           )
           .timeout(Duration(seconds: 30)); // Agregar timeout
 
-      print('� Response status: ${response.statusCode}');
+        
       print(
         '� Response body (primeros 500 chars): ${response.body.length > 500 ? response.body.substring(0, 500) + '...' : response.body}',
       );
@@ -37,23 +37,23 @@ class ResumenCierreCompletoService {
 
         // Verificar que la respuesta sea exitosa
         if (jsonData['success'] == true && jsonData['data'] != null) {
-          print('📊 Parseando datos del resumen...');
+            
 
           // Debug the sales data from API response
           var data = jsonData['data'];
           if (data != null && data is Map) {
             // 🔍 Debug: Verificar estructura de cuadre
-            print('🔍 Estado del cuadre: ${data['cuadreInfo']?['estado']}');
-            print('🔍 Cerrada: ${data['cuadreInfo']?['cerrada']}');
+              
+              
             
             var movimientos = data['movimientosEfectivo'];
             if (movimientos != null && movimientos is Map) {
-              print('💰 Datos de ventas en API response:');
-              print('  - ventasEfectivo: ${movimientos['ventasEfectivo']}');
+                
+                
               print(
                 '  - ventasTransferencia: ${movimientos['ventasTransferencia']}',
               );
-              print('  - efectivo (alternativo): ${movimientos['efectivo']}');
+                
               print(
                 '  - transferencia (alternativo): ${movimientos['transferencia']}',
               );
@@ -66,9 +66,9 @@ class ResumenCierreCompletoService {
               );
               if (data['resumenGastos']['detallesGastos'] != null) {
                 final detalles = data['resumenGastos']['detallesGastos'];
-                print('📋 Tipo detallesGastos: ${detalles.runtimeType}');
+                  
                 if (detalles is List && detalles.isNotEmpty) {
-                  print('🧾 Primer elemento: ${detalles.first}');
+                    
                   print(
                     '🧾 Tipo primer elemento: ${detalles.first.runtimeType}',
                   );
@@ -80,22 +80,22 @@ class ResumenCierreCompletoService {
           ResumenCierreCompleto resumen;
           try {
             resumen = ResumenCierreCompleto.fromJson(jsonData['data']);
-            print('✅ Resumen parseado correctamente');
+              
           } catch (parseError) {
-            print('❌ Error parseando resumen: $parseError');
-            print('📊 Datos que causaron el error: ${jsonData['data']}');
+              
+              
             rethrow;
           }
 
           // Obtener datos complementarios del cuadre completo
-          print('🔍 Obteniendo información completa del cuadre...');
+            
           try {
             final cuadreCompleto = await _obtenerCuadreCompleto(cuadreId);
             if (cuadreCompleto != null) {
               print(
                 '📊 Datos del cuadre completo obtenidos, integrando información...',
               );
-              print('🔍 Estructura de cuadreCompleto: ${cuadreCompleto.keys}');
+                
               if (cuadreCompleto['resumenGastos'] != null) {
                 print(
                   '💰 resumenGastos keys: ${cuadreCompleto['resumenGastos'].keys}',
@@ -103,9 +103,9 @@ class ResumenCierreCompletoService {
                 if (cuadreCompleto['resumenGastos']['detallesGastos'] != null) {
                   final detalles =
                       cuadreCompleto['resumenGastos']['detallesGastos'] as List;
-                  print('📋 Cantidad de gastos: ${detalles.length}');
+                    
                   if (detalles.isNotEmpty) {
-                    print('🧾 Primer gasto: ${detalles.first}');
+                      
                     print(
                       '🧾 Tipo del primer gasto: ${detalles.first.runtimeType}',
                     );
@@ -115,8 +115,8 @@ class ResumenCierreCompletoService {
               return _integrarDatosCuadreCompleto(resumen, cuadreCompleto);
             }
           } catch (e, stackTrace) {
-            print('⚠️ Error obteniendo cuadre completo: $e');
-            print('📚 Stack trace: $stackTrace');
+              
+              
           }
 
           print(
@@ -132,12 +132,12 @@ class ResumenCierreCompletoService {
         throw Exception('Error HTTP ${response.statusCode}: ${response.body}');
       }
     } on TimeoutException catch (e) {
-      print('⏰ Timeout al obtener resumen de cierre: $e');
+        
       throw Exception(
         'La solicitud tardó demasiado tiempo. Por favor, intenta nuevamente.',
       );
     } catch (e) {
-      print('❌ Error obteniendo resumen de cierre: $e');
+        
       rethrow;
     }
   }
@@ -152,7 +152,7 @@ class ResumenCierreCompletoService {
           )
           .timeout(Duration(seconds: 30));
 
-      print('📡 Respuesta cuadre completo - Status: ${response.statusCode}');
+        
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonData = json.decode(response.body);
@@ -165,7 +165,7 @@ class ResumenCierreCompletoService {
       }
       return null;
     } catch (e) {
-      print('❌ Error obteniendo cuadre completo: $e');
+        
       return null;
     }
   }
@@ -232,7 +232,7 @@ class ResumenCierreCompletoService {
         resumenVentas: resumen.resumenVentas,
       );
     } catch (e) {
-      print('❌ Error integrando datos del cuadre completo: $e');
+        
       return resumen; // Devolver el resumen original si hay error
     }
   }
@@ -250,7 +250,7 @@ class ResumenCierreCompletoService {
     try {
       return await getResumenCierre(cuadreId);
     } catch (e) {
-      print('⚠️ Error al obtener resumen de cierre (modo seguro): $e');
+        
       return null;
     }
   }

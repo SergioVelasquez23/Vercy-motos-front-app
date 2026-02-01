@@ -13,11 +13,11 @@ class NotificationService {
   void notificarCambioPedido(Pedido pedido) {
     // Validar que el pedido tenga datos válidos antes de notificar
     if (pedido.id.isEmpty) {
-      print('⚠️ Advertencia: Intentando notificar un pedido sin ID');
+        
       return;
     }
 
-    print('🔔 Notificando cambio de pedido - ID: ${pedido.id}');
+      
     _pedidoController.add(pedido);
   }
 

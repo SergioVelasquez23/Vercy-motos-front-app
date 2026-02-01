@@ -139,7 +139,7 @@ class _GastosScreenState extends State<GastosScreen> {
   Future<void> _loadTiposGasto() async {
     try {
       final tipos = await _gastoService.getAllTiposGasto();
-      print('GastosScreen - Tipos de gasto cargados: ${tipos.length}');
+        
       print(
         'GastosScreen - Tipos activos: ${tipos.where((t) => t.activo).length}',
       );
@@ -147,7 +147,7 @@ class _GastosScreenState extends State<GastosScreen> {
         setState(() => _tiposGasto = tipos.where((t) => t.activo).toList());
       }
     } catch (e) {
-      print('Error loading tipos gasto: $e');
+        
     }
   }
 
@@ -161,7 +161,7 @@ class _GastosScreenState extends State<GastosScreen> {
         });
       }
     } catch (e) {
-      print('Error loading cuadres: $e');
+        
     }
   }
 
@@ -172,7 +172,7 @@ class _GastosScreenState extends State<GastosScreen> {
         setState(() => _proveedores = proveedores);
       }
     } catch (e) {
-      print('Error loading proveedores: $e');
+        
     }
   }
 
@@ -244,7 +244,7 @@ class _GastosScreenState extends State<GastosScreen> {
 
     if (gasto != null) {
       // Editar gasto existente - cargar datos en los controladores
-      print('DEBUG: Cargando gasto para editar: ${gasto.proveedor}'); // DEBUG
+      // DEBUG
 
       _conceptoController.text = gasto.concepto;
       _montoController.text = gasto.monto.toString();
@@ -282,7 +282,7 @@ class _GastosScreenState extends State<GastosScreen> {
         _selectedProveedorId = proveedor?.id;
       }
 
-      print('DEBUG: Proveedor seleccionado: $_selectedProveedorId'); // DEBUG
+      // DEBUG
     } else {
       // Nuevo gasto - limpiar todo
       _clearForm();

@@ -81,7 +81,7 @@ class TrasladoService {
         throw Exception('Error al cargar traslados: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error en listarTraslados: $e');
+        
       return []; // Retornar lista vacía en caso de error para no romper la UI
     }
   }
@@ -106,7 +106,7 @@ class TrasladoService {
         throw Exception('Error al obtener traslado: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error en obtenerTraslado: $e');
+        
       rethrow;
     }
   }
@@ -150,7 +150,7 @@ class TrasladoService {
         throw Exception(error['message'] ?? 'Error al crear traslado');
       }
     } catch (e) {
-      print('Error en crearTraslado: $e');
+        
       rethrow;
     }
   }
@@ -190,7 +190,7 @@ class TrasladoService {
         throw Exception(error['message'] ?? 'Error al procesar traslado');
       }
     } catch (e) {
-      print('Error en procesarTraslado: $e');
+        
       rethrow;
     }
   }
@@ -211,7 +211,7 @@ class TrasladoService {
         throw Exception('Error al obtener stock: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error en obtenerStockProducto: $e');
+        
       return {'cantidadBodega': 0, 'cantidadAlmacen': 0, 'cantidadTotal': 0};
     }
   }
@@ -246,7 +246,7 @@ class TrasladoService {
         throw Exception(error['message'] ?? 'Error en traslado rápido');
       }
     } catch (e) {
-      print('Error en trasladoRapido: $e');
+        
       rethrow;
     }
   }
@@ -271,7 +271,7 @@ class TrasladoService {
         throw Exception(error['message'] ?? 'Error al completar traslado');
       }
     } catch (e) {
-      print('Error en completarTraslado: $e');
+        
       rethrow;
     }
   }

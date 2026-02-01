@@ -68,7 +68,7 @@ class ProductoCanceladoService {
         };
       }
     } catch (e) {
-      print('Error registrando cancelación: $e');
+        
       return {
         'success': false,
         'message': 'Error de conexión: $e',
@@ -133,7 +133,7 @@ class ProductoCanceladoService {
         };
       }
     } catch (e) {
-      print('Error obteniendo productos cancelados: $e');
+        
       return {
         'success': false,
         'message': 'Error de conexión: $e',
@@ -190,7 +190,7 @@ class ProductoCanceladoService {
         };
       }
     } catch (e) {
-      print('Error confirmando cancelación: $e');
+        
       return {
         'success': false,
         'message': 'Error de conexión: $e',
@@ -231,7 +231,7 @@ class ProductoCanceladoService {
         };
       }
     } catch (e) {
-      print('Error revirtiendo cancelación: $e');
+        
       return {
         'success': false,
         'message': 'Error de conexión: $e',
@@ -278,7 +278,7 @@ class ProductoCanceladoService {
         };
       }
     } catch (e) {
-      print('Error obteniendo estadísticas: $e');
+        
       return {
         'success': false,
         'message': 'Error de conexión: $e',

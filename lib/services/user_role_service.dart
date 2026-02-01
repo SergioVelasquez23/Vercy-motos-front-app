@@ -22,7 +22,7 @@ class UserRoleService {
         return await storage.read(key: 'jwt_token');
       }
     } catch (e) {
-      print('Error obteniendo token: $e');
+        
       return null;
     }
   }
@@ -52,7 +52,7 @@ class UserRoleService {
         );
       }
     } catch (e) {
-      print('Error en getUserRoles: $e');
+        
       throw Exception('Error de conexión: $e');
     }
   }
@@ -81,7 +81,7 @@ class UserRoleService {
         throw Exception('Error al obtener relación: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error en getUserRoleById: $e');
+        
       throw Exception('Error de conexión: $e');
     }
   }
@@ -110,7 +110,7 @@ class UserRoleService {
       }
       return null;
     } catch (e) {
-      print('Error en assignRoleToUser: $e');
+        
       throw Exception('Error al asignar rol: $e');
     }
   }
@@ -138,7 +138,7 @@ class UserRoleService {
         throw Exception('Error al actualizar relación: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error en updateUserRole: $e');
+        
       throw Exception('Error al actualizar relación: $e');
     }
   }
@@ -161,7 +161,7 @@ class UserRoleService {
 
       return response.statusCode == 204 || response.statusCode == 200;
     } catch (e) {
-      print('Error en deleteUserRole: $e');
+        
       throw Exception('Error al eliminar relación: $e');
     }
   }
@@ -191,7 +191,7 @@ class UserRoleService {
         );
       }
     } catch (e) {
-      print('Error en getRolesByUser: $e');
+        
       throw Exception('Error de conexión: $e');
     }
   }

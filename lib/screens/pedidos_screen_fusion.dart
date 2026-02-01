@@ -217,7 +217,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
           'INFO: Pedidos del período de caja: ${pedidosPorPeriodoCaja.length}',
         );
       } else {
-        print('AVISO: No hay caja activa - mostrando todas las estadísticas');
+          
         // Si no hay caja activa, mostrar solo pedidos pagados del día actual
         final hoy = DateTime.now();
         final inicioDelDia = DateTime(hoy.year, hoy.month, hoy.day);
@@ -245,12 +245,12 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
   /// 📦 NUEVO: Reversa el inventario de un pedido eliminado (operación inversa a descontar)
   /// Este método agrega de vuelta al inventario los ingredientes que se descontaron cuando se pagó el pedido
   Future<void> _reversarInventarioDelPedido(Pedido pedido) async {
-    print('📦 Iniciando reversión de inventario del pedido: ${pedido.id}');
+      
 
     try {
       // Obtener todos los items del inventario
       final inventario = await _inventarioService.getInventario();
-      print('   - Items en inventario disponible: ${inventario.length}');
+        
 
       int itemsRestaurados = 0;
 
@@ -268,7 +268,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
           continue;
         }
 
-        print('      - Ingredientes usados: ${itemPedido.ingredientesUsados.length}');
+          
 
         // Restaurar cada ingrediente al inventario
         for (var ingredienteId in itemPedido.ingredientesUsados) {
@@ -289,7 +289,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
           );
 
           if (itemInventario.id.isEmpty) {
-            print('      ⚠️ Ingrediente no encontrado en inventario: $ingredienteId');
+              
             continue;
           }
 
@@ -326,11 +326,11 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
         }
       }
 
-      print('✅ Reversión de inventario completada');
-      print('   - Items procesados: ${pedido.items.length}');
-      print('   - Ingredientes restaurados: $itemsRestaurados');
+        
+        
+        
     } catch (e) {
-      print('📦 ❌ ERROR GENERAL reversando inventario del pedido ${pedido.id}: $e');
+        
       // No lanzar el error para que no bloquee la eliminación del pedido
     }
   }
@@ -398,11 +398,11 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
   void _aplicarFiltros() {
     if (!mounted) return;
 
-    print('INFO: Aplicando filtros...');
-    print('INFO: Total de pedidos originales: ${_pedidos.length}');
-    print('INFO: Tipo filtro: $_tipoFiltro');
-    print('📈 Estado filtro: $_estadoFiltro');
-    print('🔎 Búsqueda: "${_busquedaController.text}"');
+      
+      
+      
+      
+      
     
     // 🔍 DEBUG: Analizar estados de los pedidos
     final analisisEstados = <String, int>{};
@@ -410,8 +410,8 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
       final key = 'Estado:${p.estado} | Pagado:${p.estaPagado} | PagadoPor:${p.pagadoPor != null && p.pagadoPor!.isNotEmpty}';
       analisisEstados[key] = (analisisEstados[key] ?? 0) + 1;
     }
-    print('🔍 ANÁLISIS DE ESTADOS:');
-    analisisEstados.forEach((k, v) => print('   $k => $v pedidos'));
+      
+    analisisEstados.forEach((k, v) => print('DEBUG Estado: $k -> $v pedidos'));
 
     List<Pedido> pedidosFiltrados = List.from(_pedidos);
 
@@ -482,9 +482,9 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
       
       // 🔍 DEBUG: Mostrar qué pedidos pasaron el filtro
       if (pedidosFiltrados.length <= 15) {
-        print('🔍 Pedidos que pasaron el filtro:');
+          
         for (var p in pedidosFiltrados) {
-          print('   - Mesa:${p.mesa} | Estado:${p.estado} | Pagado:${p.estaPagado} | PagadoPor:${p.pagadoPor ?? "null"}');
+            
         }
       }
     }
@@ -516,7 +516,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
       );
     }
 
-    print('EXITO: Pedidos filtrados finales: ${pedidosFiltrados.length}');
+      
 
     // Mantener orden cronológico inverso después del filtrado
     pedidosFiltrados.sort((a, b) => b.fecha.compareTo(a.fecha));
@@ -962,7 +962,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
           NotificationService().notificarCambioPedido(pedido);
         } catch (e) {
           fallidos++;
-          print('ERROR: Error eliminando pedido $pedidoId: $e');
+            
         }
       }
 
@@ -1030,7 +1030,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
           );
 
           // ✅ NUEVO: Reversar el inventario ANTES de eliminar el pedido
-          print('📦 Reversando inventario del pedido $pedidoId antes de eliminar...');
+            
           await _reversarInventarioDelPedido(pedido);
 
           // Eliminar el pedido (esto revierte el dinero automáticamente)
@@ -1044,7 +1044,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
           NotificationService().notificarCambioPedido(pedido);
         } catch (e) {
           fallidos++;
-          print('ERROR: Error eliminando pedido pagado $pedidoId: $e');
+            
         }
       }
 
@@ -1606,7 +1606,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
   Widget _buildPedidoCard(Pedido pedido) {
     // Filtrar pedidos sin total o con total 0 que no deberían mostrarse
     if (pedido.total <= 0 && pedido.items.isEmpty) {
-      print('AVISO: Pedido filtrado - Sin total ni items: ${pedido.id}');
+        
       return SizedBox.shrink(); // No mostrar este pedido
     }
 

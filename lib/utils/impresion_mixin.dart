@@ -22,14 +22,14 @@ mixin ImpresionMixin<T extends StatefulWidget> on State<T> {
   Future<Map<String, dynamic>?> prepararResumenPedido(String pedidoId,
   ) async {
     try {
-      print('🔍 Preparando resumen para pedido: $pedidoId');
+        
 
       // Obtener información del negocio
-      print('📄 Obteniendo información del negocio...');
+        
       NegocioInfo? negocioInfo;
       try {
         negocioInfo = await _negocioInfoService.getNegocioInfo();
-        print('✅ Información del negocio obtenida correctamente');
+          
       } catch (e) {
         print(
           '⚠️ Error obteniendo info del negocio, usando valores por defecto: $e',
@@ -54,7 +54,7 @@ mixin ImpresionMixin<T extends StatefulWidget> on State<T> {
 
       return resumen;
     } catch (e) {
-      print('❌ Error preparando resumen: $e');
+        
       return null;
     }
   }
@@ -182,7 +182,7 @@ mixin ImpresionMixin<T extends StatefulWidget> on State<T> {
       mostrarMensajeExito('Documento enviado a impresora');
 
       // Aquí se implementaría la lógica real de impresión
-      print('Contenido para imprimir:\n$contenido');
+        
     } catch (e) {
       Navigator.of(context).pop();
       mostrarMensajeError('Error al enviar a impresora: $e');
@@ -225,7 +225,7 @@ mixin ImpresionMixin<T extends StatefulWidget> on State<T> {
     Map<String, dynamic> resumen,
   ) async {
     try {
-      print('📄 Actualizando resumen con información del negocio...');
+        
 
       final negocioInfo = await _negocioInfoService.getNegocioInfo();
 
@@ -243,12 +243,12 @@ mixin ImpresionMixin<T extends StatefulWidget> on State<T> {
           resumen['nitNegocio'] = negocioInfo.nit ?? '';
         }
 
-        print('✅ Información del negocio actualizada en resumen');
+          
       } else {
-        print('⚠️ No se pudo obtener información del negocio');
+          
       }
     } catch (e) {
-      print('❌ Error actualizando información del negocio: $e');
+        
     }
 
     return resumen;

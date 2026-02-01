@@ -7,7 +7,7 @@ class PDFServiceWeb implements PDFServiceInterface {
     required Map<String, dynamic> resumen,
     bool esFactura = false,
   }) {
-    print('PDF generation not supported on mobile platform');
+      
   }
 
   @override
@@ -15,7 +15,7 @@ class PDFServiceWeb implements PDFServiceInterface {
     required Map<String, dynamic> resumen,
     bool esFactura = false,
   }) {
-    print('PDF print window not supported on mobile platform');
+      
   }
 
   @override
@@ -23,7 +23,7 @@ class PDFServiceWeb implements PDFServiceInterface {
     required Map<String, dynamic> resumen,
     bool esFactura = false,
   }) {
-    print('Text download not supported on mobile platform');
+      
   }
 
   @override
@@ -31,7 +31,7 @@ class PDFServiceWeb implements PDFServiceInterface {
     required Map<String, dynamic> resumen,
     bool esFactura = false,
   }) async {
-    print('Text sharing not supported on mobile platform');
+      
   }
 }
 
@@ -41,26 +41,26 @@ class PdfServiceWeb {
     dynamic mesa,
     List<dynamic> documentos,
   ) async {
-    print('Impresión de factura no disponible en móvil');
+      
   }
 
   static Future<void> imprimirFacturaConAutoPrint(
     dynamic mesa,
     List<dynamic> documentos,
   ) async {
-    print('Impresión automática de factura no disponible en móvil');
+      
   }
 
   static Future<void> imprimirComanda(dynamic pedido) async {
-    print('Impresión de comanda no disponible en móvil');
+      
   }
 
   static Future<void> imprimirCierreTransaccional(dynamic resumen) async {
-    print('Impresión de cierre transaccional no disponible en móvil');
+      
   }
 
   static Future<void> copiarContenidoAlPortapapeles(String contenido) async {
-    print('Copia al portapapeles no disponible en móvil');
+      
   }
 }
 

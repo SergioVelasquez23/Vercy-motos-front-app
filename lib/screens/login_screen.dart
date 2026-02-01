@@ -52,7 +52,7 @@ class _LoginScreenState extends State<LoginScreen> {
   void _startWakeUpSequence() {
     if (!mounted) return;
     if (_showWakeupOverlay) return;
-    print('⏳ Wake-up: iniciando pantalla de espera (5 minutos)');
+      
     setState(() {
       _showWakeupOverlay = true;
       _wakeupRemainingSeconds = 300;
@@ -81,7 +81,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _stopWakeUpSequence() {
-    print('⏹️ Wake-up: detenido');
+      
     _wakeupTicker?.cancel();
     _wakeupStepTimer?.cancel();
     _loginWatchdogTimer?.cancel();
@@ -93,32 +93,32 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _performWakeupStep() async {
-    print('🔁 Wake-up: intentando recarga completa (productos/pedidos)');
+      
 
     try {
       // Limpiar cache de productos para forzar descarga fresca
       try {
         _productoService.clearCache();
       } catch (e) {
-        print('⚠️ Error limpiando cache de productos: $e');
+          
       }
 
       // Intentar recargas (ignorar errores individuales, seguir con el flujo)
       try {
         await _productoService.getProductos(useProgressive: true);
-        print('✅ Wake-up: productos recargados con carga progresiva');
+          
       } catch (e) {
-        print('⚠️ Wake-up: fallo recargando productos: $e');
+          
       }
 
       try {
         await _pedidoService.getAllPedidos();
-        print('✅ Wake-up: pedidos recargados');
+          
       } catch (e) {
-        print('⚠️ Wake-up: fallo recargando pedidos: $e');
+          
       }
     } catch (e) {
-      print('❌ Wake-up internal error: $e');
+        
     }
   }
 
@@ -143,7 +143,7 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       }
     } catch (e) {
-      print('Error loading saved credentials: $e');
+        
     }
   }
 
@@ -153,7 +153,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       // Solo hacer auto-login si no hay token válido actualmente
       if (!userProvider.isAuthenticated) {
-        print('🔄 Intentando auto-login con credenciales guardadas...');
+          
 
         // Iniciar watchdog: si el login tarda más de 15s, arrancar pantalla de wake-up
         _loginWatchdogTimer?.cancel();
@@ -177,7 +177,7 @@ class _LoginScreenState extends State<LoginScreen> {
           final token = response['token'];
           await userProvider.setToken(token);
 
-          print('✅ Auto-login exitoso');
+            
 
           // Pre-cargar productos en background
           final cacheProvider = Provider.of<DatosCacheProvider>(
@@ -194,13 +194,13 @@ class _LoginScreenState extends State<LoginScreen> {
           setState(() {
             showCodeField = true;
           });
-          print('🔐 Auto-login requiere código 2FA');
+            
         } else {
-          print('⚠️ Auto-login falló - credenciales inválidas');
+            
         }
       }
     } catch (e) {
-      print('❌ Error en auto-login: $e');
+        
     }
   }
 
@@ -215,9 +215,9 @@ class _LoginScreenState extends State<LoginScreen> {
         value: passwordController.text,
       );
       await _secureStorage.write(key: 'remember_credentials', value: 'true');
-      print('✅ Credenciales guardadas exitosamente');
+        
     } catch (e) {
-      print('Error saving credentials: $e');
+        
     }
   }
 
@@ -226,9 +226,9 @@ class _LoginScreenState extends State<LoginScreen> {
       await _secureStorage.delete(key: 'saved_email');
       await _secureStorage.delete(key: 'saved_password');
       await _secureStorage.delete(key: 'remember_credentials');
-      print('🗑️ Credenciales eliminadas');
+        
     } catch (e) {
-      print('Error clearing credentials: $e');
+        
     }
   }
 
@@ -308,17 +308,17 @@ class _LoginScreenState extends State<LoginScreen> {
             await Future.delayed(Duration(milliseconds: 100));
             
             // Debug: imprimir roles del usuario
-            print('🔐 Roles del usuario: ${userProvider.roles}');
-            print('🔐 isOnlyAsesor: ${userProvider.isOnlyAsesor}');
+              
+              
 
             // Redirigir según el rol del usuario
             if (userProvider.isOnlyAsesor) {
               // Los asesores van directamente a su pantalla de pedidos
-              print('🔐 Redirigiendo a /asesor-pedidos');
+                
               Navigator.pushReplacementNamed(context, '/asesor-pedidos');
             } else {
               // Admins y otros roles van al dashboard
-              print('🔐 Redirigiendo a /dashboard');
+                
               Navigator.pushReplacementNamed(context, '/dashboard');
             }
           } catch (e) {

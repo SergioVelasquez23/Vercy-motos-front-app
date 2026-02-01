@@ -51,7 +51,7 @@ class ImagenProductoWidget extends StatelessWidget {
     // PRIORIDAD 1: Si es una imagen base64, mostrarla directamente (PERSISTENTE)
     if (imagenUrl.startsWith('data:image/')) {
       // ✅ COMENTADO: Log de imagen base64 removido
-      // print('🎨 Mostrando imagen base64 persistente');
+      //   
       return _buildImagenBase64(imagenUrl);
     }
     */
@@ -64,7 +64,7 @@ class ImagenProductoWidget extends StatelessWidget {
       if (imagenUrl.contains('vercy-motos-app-048m.onrender.com')) {
         return _buildImagenNetwork(imagenUrl);
       }
-      print('🌐 Intentando cargar imagen desde URL: $imagenUrl');
+        
       return _buildImagenNetwork(imagenUrl);
     }
 
@@ -78,7 +78,7 @@ class ImagenProductoWidget extends StatelessWidget {
         return _buildImagenBase64(validatedUrl);
       }
       
-      print('🏗️ URL construida del servidor: $validatedUrl');
+        
       return _buildImagenNetwork(validatedUrl);
     }
 
@@ -171,7 +171,7 @@ class ImagenProductoWidget extends StatelessWidget {
           errorBuilder: (context, error, stackTrace) {
             // Log más específico para debug
             final errorStr = error.toString();
-            print('❌ Error cargando imagen: $url - $errorStr');
+              
 
             // Si es un error del servidor (500, 404, etc.) mostrar ícono por defecto
             if (errorStr.contains('500') ||
@@ -179,7 +179,7 @@ class ImagenProductoWidget extends StatelessWidget {
                 errorStr.contains('EncodingError') ||
                 errorStr.contains('cannot be decoded') ||
                 errorStr.contains('HttpException')) {
-              print('🔄 Servidor con problemas, mostrando ícono por defecto');
+                
               return _buildIconoDefault();
             }
 

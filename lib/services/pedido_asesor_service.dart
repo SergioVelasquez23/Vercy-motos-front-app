@@ -45,7 +45,7 @@ class PedidoAsesorService {
         throw Exception(error['message'] ?? 'Error al crear pedido');
       }
     } catch (e) {
-      print('Error en crearPedido: $e');
+        
       rethrow;
     }
   }
@@ -112,7 +112,7 @@ class PedidoAsesorService {
         throw Exception(errorMsg);
       }
     } catch (e) {
-      print('Error en listarPedidos: $e');
+        
       return []; // Retornar lista vacía para no romper la UI
     }
   }
@@ -136,7 +136,7 @@ class PedidoAsesorService {
         throw Exception('Error al obtener pedido: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error en obtenerPedido: $e');
+        
       rethrow;
     }
   }
@@ -162,7 +162,7 @@ class PedidoAsesorService {
         throw Exception(error['message'] ?? 'Error al actualizar pedido');
       }
     } catch (e) {
-      print('Error en actualizarPedido: $e');
+        
       rethrow;
     }
   }
@@ -191,7 +191,7 @@ class PedidoAsesorService {
         throw Exception(error['message'] ?? 'Error al facturar pedido');
       }
     } catch (e) {
-      print('Error en marcarComoFacturado: $e');
+        
       rethrow;
     }
   }
@@ -216,7 +216,7 @@ class PedidoAsesorService {
         throw Exception(error['message'] ?? 'Error al cancelar pedido');
       }
     } catch (e) {
-      print('Error en cancelarPedido: $e');
+        
       rethrow;
     }
   }
@@ -235,7 +235,7 @@ class PedidoAsesorService {
         throw Exception(error['message'] ?? 'Error al eliminar pedido');
       }
     } catch (e) {
-      print('Error en eliminarPedido: $e');
+        
       rethrow;
     }
   }

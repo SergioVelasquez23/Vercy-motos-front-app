@@ -118,7 +118,7 @@ class UserProvider extends ChangeNotifier {
         // 🔥 WARMUP: Precargar productos en background
         cacheProvider.warmupProductos();
       } catch (e) {
-        print('⚠️ Error inicializando cache al autenticar: $e');
+          
       }
     } catch (e) {
       _roles = [];

@@ -36,7 +36,7 @@ class ConfiguracionFacturacionService {
     try {
       final headers = await _getHeaders();
 
-      print('📝 Guardando configuración de emisor...');
+        
 
       final response = await http.post(
         Uri.parse(
@@ -47,16 +47,16 @@ class ConfiguracionFacturacionService {
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        print('✅ Configuración de emisor guardada exitosamente');
+          
         _emisorCache = emisor;
         return true;
       } else {
-        print('❌ Error guardando emisor: ${response.statusCode}');
-        print('   Respuesta: ${response.body}');
+          
+          
         return false;
       }
     } catch (e) {
-      print('❌ Error de conexión guardando emisor: $e');
+        
       return false;
     }
   }
@@ -65,14 +65,14 @@ class ConfiguracionFacturacionService {
   Future<EmisorDian?> obtenerEmisor() async {
     // Devolver cache si existe
     if (_emisorCache != null) {
-      print('📦 Devolviendo emisor desde cache');
+        
       return _emisorCache;
     }
 
     try {
       final headers = await _getHeaders();
 
-      print('🔍 Obteniendo configuración de emisor...');
+        
 
       final response = await http.get(
         Uri.parse(
@@ -87,18 +87,18 @@ class ConfiguracionFacturacionService {
         if (responseData['success'] == true && responseData['data'] != null) {
           final emisorData = responseData['data']['data'];
           _emisorCache = EmisorDian.fromJson(emisorData);
-          print('✅ Configuración de emisor obtenida');
+            
           return _emisorCache;
         }
       } else if (response.statusCode == 404) {
-        print('ℹ️ No hay configuración de emisor guardada');
+          
         return null;
       } else {
-        print('❌ Error obteniendo emisor: ${response.statusCode}');
+          
         return null;
       }
     } catch (e) {
-      print('❌ Error de conexión obteniendo emisor: $e');
+        
     }
 
     return null;
@@ -109,7 +109,7 @@ class ConfiguracionFacturacionService {
     try {
       final headers = await _getHeaders();
 
-      print('📝 Guardando autorización DIAN...');
+        
 
       final response = await http.post(
         Uri.parse(
@@ -120,16 +120,16 @@ class ConfiguracionFacturacionService {
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        print('✅ Autorización DIAN guardada exitosamente');
+          
         _autorizacionCache = autorizacion;
         return true;
       } else {
-        print('❌ Error guardando autorización: ${response.statusCode}');
-        print('   Respuesta: ${response.body}');
+          
+          
         return false;
       }
     } catch (e) {
-      print('❌ Error de conexión guardando autorización: $e');
+        
       return false;
     }
   }
@@ -138,14 +138,14 @@ class ConfiguracionFacturacionService {
   Future<Map<String, dynamic>?> obtenerAutorizacion() async {
     // Devolver cache si existe
     if (_autorizacionCache != null) {
-      print('📦 Devolviendo autorización desde cache');
+        
       return _autorizacionCache;
     }
 
     try {
       final headers = await _getHeaders();
 
-      print('🔍 Obteniendo autorización DIAN...');
+        
 
       final response = await http.get(
         Uri.parse(
@@ -159,18 +159,18 @@ class ConfiguracionFacturacionService {
 
         if (responseData['success'] == true && responseData['data'] != null) {
           _autorizacionCache = responseData['data']['data'];
-          print('✅ Autorización DIAN obtenida');
+            
           return _autorizacionCache;
         }
       } else if (response.statusCode == 404) {
-        print('ℹ️ No hay autorización DIAN guardada');
+          
         return null;
       } else {
-        print('❌ Error obteniendo autorización: ${response.statusCode}');
+          
         return null;
       }
     } catch (e) {
-      print('❌ Error de conexión obteniendo autorización: $e');
+        
     }
 
     return null;
@@ -184,7 +184,7 @@ class ConfiguracionFacturacionService {
     try {
       final headers = await _getHeaders();
 
-      print('🔢 Obteniendo siguiente consecutivo...');
+        
 
       final response = await http.get(
         Uri.parse('${_endpoints.currentBaseUrl}/api/facturacion/consecutivo'),
@@ -194,14 +194,14 @@ class ConfiguracionFacturacionService {
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
         final consecutivo = responseData['numeroFactura'];
-        print('✅ Siguiente consecutivo: $consecutivo');
+          
         return consecutivo;
       } else {
-        print('❌ Error obteniendo consecutivo: ${response.statusCode}');
+          
         return null;
       }
     } catch (e) {
-      print('❌ Error de conexión obteniendo consecutivo: $e');
+        
     }
 
     return null;
@@ -212,7 +212,7 @@ class ConfiguracionFacturacionService {
     try {
       final headers = await _getHeaders();
 
-      print('🔢 Incrementando consecutivo...');
+        
 
       // Obtener prefijo si no se proporciona
       String prefijoFinal = prefijo ?? 'SETP';
@@ -230,14 +230,14 @@ class ConfiguracionFacturacionService {
       );
 
       if (response.statusCode == 200) {
-        print('✅ Consecutivo incrementado');
+          
         return true;
       } else {
-        print('❌ Error incrementando consecutivo: ${response.statusCode}');
+          
         return false;
       }
     } catch (e) {
-      print('❌ Error de conexión incrementando consecutivo: $e');
+        
       return false;
     }
   }
@@ -249,7 +249,7 @@ class ConfiguracionFacturacionService {
     try {
       final headers = await _getHeaders();
 
-      print('💾 Guardando factura electrónica...');
+        
 
       final response = await http.post(
         Uri.parse('${_endpoints.currentBaseUrl}/api/facturas-electronicas'),
@@ -258,16 +258,16 @@ class ConfiguracionFacturacionService {
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        print('✅ Factura guardada exitosamente');
+          
         final responseData = json.decode(response.body);
         return responseData['factura'];
       } else {
-        print('❌ Error guardando factura: ${response.statusCode}');
-        print('   Respuesta: ${response.body}');
+          
+          
         return null;
       }
     } catch (e) {
-      print('❌ Error de conexión guardando factura: $e');
+        
       return null;
     }
   }
@@ -298,7 +298,7 @@ class ConfiguracionFacturacionService {
         url += '?${queryParams.join('&')}';
       }
 
-      print('📋 Obteniendo facturas electrónicas...');
+        
 
       final response = await http.get(Uri.parse(url), headers: headers);
 
@@ -306,14 +306,14 @@ class ConfiguracionFacturacionService {
         final facturas = List<Map<String, dynamic>>.from(
           json.decode(response.body),
         );
-        print('✅ ${facturas.length} facturas obtenidas');
+          
         return facturas;
       } else {
-        print('❌ Error obteniendo facturas: ${response.statusCode}');
+          
         return [];
       }
     } catch (e) {
-      print('❌ Error de conexión obteniendo facturas: $e');
+        
     }
 
     return [];
@@ -324,7 +324,7 @@ class ConfiguracionFacturacionService {
     _emisorCache = null;
     _autorizacionCache = null;
     _configuracionDianCache = null;
-    print('🧹 Cache de configuración limpiado');
+      
   }
 
   // ===== MÉTODOS PARA CONFIGURACIÓN DIAN COMPLETA =====
@@ -334,7 +334,7 @@ class ConfiguracionFacturacionService {
     try {
       final headers = await _getHeaders();
 
-      print('📝 Guardando configuración completa DIAN...');
+        
 
       final response = await http.post(
         Uri.parse(
@@ -345,16 +345,16 @@ class ConfiguracionFacturacionService {
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        print('✅ Configuración DIAN guardada exitosamente');
+          
         _configuracionDianCache = config;
         return true;
       } else {
-        print('❌ Error guardando configuración DIAN: ${response.statusCode}');
-        print('   Respuesta: ${response.body}');
+          
+          
         return false;
       }
     } catch (e) {
-      print('❌ Error de conexión guardando configuración DIAN: $e');
+        
       return false;
     }
   }
@@ -363,14 +363,14 @@ class ConfiguracionFacturacionService {
   Future<ConfiguracionDian?> obtenerConfiguracionDian() async {
     // Devolver cache si existe
     if (_configuracionDianCache != null) {
-      print('📦 Devolviendo configuración DIAN desde cache');
+        
       return _configuracionDianCache;
     }
 
     try {
       final headers = await _getHeaders();
 
-      print('🔍 Obteniendo configuración DIAN...');
+        
 
       final response = await http.get(
         Uri.parse(
@@ -386,18 +386,18 @@ class ConfiguracionFacturacionService {
           final configData =
               responseData['data']['data'] ?? responseData['data'];
           _configuracionDianCache = ConfiguracionDian.fromJson(configData);
-          print('✅ Configuración DIAN obtenida');
+            
           return _configuracionDianCache;
         }
       } else if (response.statusCode == 404) {
-        print('ℹ️ No hay configuración DIAN guardada');
+          
         return null;
       } else {
-        print('❌ Error obteniendo configuración DIAN: ${response.statusCode}');
+          
         return null;
       }
     } catch (e) {
-      print('❌ Error de conexión obteniendo configuración DIAN: $e');
+        
     }
 
     return null;
@@ -408,7 +408,7 @@ class ConfiguracionFacturacionService {
     try {
       final headers = await _getHeaders();
 
-      print('🔢 Actualizando consecutivo actual...');
+        
 
       final response = await http.patch(
         Uri.parse(
@@ -419,7 +419,7 @@ class ConfiguracionFacturacionService {
       );
 
       if (response.statusCode == 200) {
-        print('✅ Consecutivo actualizado a: $nuevoConsecutivo');
+          
 
         // Actualizar el cache si existe
         if (_configuracionDianCache != null) {
@@ -430,11 +430,11 @@ class ConfiguracionFacturacionService {
 
         return true;
       } else {
-        print('❌ Error actualizando consecutivo: ${response.statusCode}');
+          
         return false;
       }
     } catch (e) {
-      print('❌ Error de conexión actualizando consecutivo: $e');
+        
       return false;
     }
   }

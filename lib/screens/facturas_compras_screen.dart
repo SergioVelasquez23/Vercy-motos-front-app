@@ -790,7 +790,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
 
   Future<void> _runDebugTests() async {
     try {
-      print('🔧 Ejecutando pruebas de debug desde UI...');
+        
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -801,7 +801,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
 
       final debugResult = await _facturaCompraService.debugBackendConnection();
 
-      print('📊 Resultado de pruebas de debug: $debugResult');
+        
 
       // Crear un mensaje resumido para mostrar al usuario
       final tests = debugResult['tests'] as Map<String, dynamic>;
@@ -826,7 +826,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
         ),
       );
     } catch (e) {
-      print('💥 Error en pruebas de debug: $e');
+        
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error en pruebas de debug: $e'),
@@ -839,21 +839,21 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
 
   Future<void> _generarNumeroFactura() async {
     try {
-      print('🎯 Iniciando generación de número de factura desde UI...');
+        
       setState(() {
         _numeroFactura = 'Generando...';
       });
 
       final numero = await _facturaCompraService.generarNumeroFactura();
-      print('🎯 Número de factura recibido en UI: $numero');
+        
 
       setState(() {
         _numeroFactura = numero;
       });
 
-      print('✅ Estado actualizado con número: $_numeroFactura');
+        
     } catch (e) {
-      print('💥 Error en _generarNumeroFactura (UI): $e');
+        
       setState(() {
         _numeroFactura = 'Error al generar';
       });
@@ -879,7 +879,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
         });
       }
     } catch (e) {
-      print('Error al cargar productos: $e');
+        
       if (mounted) {
         setState(() => _cargandoProductos = false);
       }
@@ -897,7 +897,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
         });
       }
     } catch (e) {
-      print('Error al cargar proveedores: $e');
+        
       if (mounted) {
         setState(() => _cargandoProveedores = false);
       }
@@ -3352,12 +3352,12 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
 
   Future<void> _guardarFactura() async {
     if (!_formKey.currentState!.validate()) {
-      print('❌ Formulario no válido');
+        
       return;
     }
 
     if (_items.isEmpty) {
-      print('❌ No hay items en la factura');
+        
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Debe agregar al menos un item'),
@@ -3370,9 +3370,9 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
     // 🚀 TIMEOUT: Verificar si ya está guardando
     if (_guardandoFactura) return;
 
-    print('🎯 Iniciando proceso de guardado de factura...');
-    print('🆔 Número de factura actual: $_numeroFactura');
-    print('📋 Cantidad de items: ${_items.length}');
+      
+      
+      
 
     setState(() {
       _isLoading = true;
@@ -3382,14 +3382,14 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
     try {
       // Calcular el total acumulando los subtotales de cada ítem
       final total = _items.fold<double>(0, (sum, item) => sum + item.subtotal);
-      print('💰 Total calculado: $total');
+        
 
       // Verificar que el número de factura no esté vacío o sea "Generando..."
       if (_numeroFactura == null ||
           _numeroFactura!.isEmpty ||
           _numeroFactura == 'Generando...' ||
           _numeroFactura == 'Error al generar') {
-        print('⚠️ Número de factura no válido: $_numeroFactura');
+          
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -3413,7 +3413,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
       // Verificar que todos los ítems tengan subtotales válidos
       bool itemsValidos = _items.every((item) => item.subtotal > 0);
       if (!itemsValidos) {
-        print('⚠️ Hay ítems con subtotales inválidos');
+          
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error: Algunos ítems tienen valores inválidos'),
@@ -3423,8 +3423,8 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
         return;
       }
 
-      print('✅ Total validado: $total');
-      print('📋 Items de la factura antes de crear:');
+        
+        
       for (var i = 0; i < _items.length; i++) {
         final item = _items[i];
         print(
@@ -3436,11 +3436,11 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
       final List<ItemFacturaCompra> itemsVerificados = _items.map((item) {
         // Validar y corregir cualquier subtotal si fuera necesario
         double subtotalCalculado = item.cantidad * item.precioUnitario;
-        print('🔍 Verificando item: ${item.ingredienteNombre}');
-        print('   - Cantidad: ${item.cantidad}');
-        print('   - Precio Unitario: ${item.precioUnitario}');
-        print('   - Subtotal reportado: ${item.subtotal}');
-        print('   - Subtotal calculado: $subtotalCalculado');
+          
+          
+          
+          
+          
 
         if (subtotalCalculado != item.subtotal) {
           print(
@@ -3478,11 +3478,11 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
         (sum, item) => sum + item.valorImpuesto,
       );
 
-      print('📊 Cálculo de totales DIAN:');
-      print('   - Subtotal items: $subtotalItems');
-      print('   - Total descuentos: $totalDescuentosItems');
-      print('   - Base gravable: $baseGravable');
-      print('   - Total impuestos: $totalImpuestosItems');
+        
+        
+        
+        
+        
 
       // Retenciones
       final porcRetencion =
@@ -3500,11 +3500,11 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
       // Total final DIAN
       double totalFinal = baseGravable + totalImpuestosItems - totalRetenciones;
 
-      print('📊 Cálculo de total final:');
-      print('   - Base gravable: $baseGravable');
-      print('   - + Impuestos: $totalImpuestosItems');
-      print('   - - Retenciones: $totalRetenciones');
-      print('   - = TOTAL FINAL: $totalFinal');
+        
+        
+        
+        
+        
 
       // Si el total es 0 pero hay items con subtotales, usar la suma directa de subtotales
       if (totalFinal <= 0 && itemsVerificados.isNotEmpty) {
@@ -3550,18 +3550,18 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
         valorReteIca: valorReteIca,
       );
 
-      print('🏪 Enviando factura al servicio...');
+        
       final facturaCreada = await _facturaCompraService.crearFacturaCompra(
         factura,
       );
-      print('✅ Factura creada exitosamente: ${facturaCreada.id}');
+        
 
       // 📦 Registrar movimientos de inventario (entrada de stock)
       await _registrarMovimientosInventarioCompra(facturaCreada);
 
       // Verificar si la factura creada tiene el total correcto
       if (facturaCreada.total <= 0 && total > 0) {
-        print('⚠️ La factura se creó con total 0 pero debería ser $total');
+          
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -3579,7 +3579,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
             '🔄 Se debería implementar un método para actualizar el total de la factura',
           );
         } catch (e) {
-          print('❌ Error al intentar actualizar el total: $e');
+            
         }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -3598,7 +3598,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
         Navigator.pushReplacementNamed(context, '/compras');
       }
     } catch (e) {
-      print('💥 Error en _guardarFactura (UI): $e');
+        
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -3660,9 +3660,9 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
         }
       }
 
-      print('✅ Todos los movimientos de inventario registrados para la compra');
+        
     } catch (e) {
-      print('❌ Error general al registrar movimientos de inventario: $e');
+        
       // No lanzar excepción para no interrumpir el flujo de la factura
     }
   }

@@ -81,7 +81,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
   /// Precarga los productos e ingredientes en segundo plano para mejorar
   /// la experiencia del usuario al navegar por la aplicación.
   Future<void> _precargarDatos() async {
-    print('🚀 Los datos se cargarán bajo demanda cuando sea necesario...');
+      
 
     try {
       // Actualizar la UI para marcar como completado
@@ -92,9 +92,9 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         });
       }
 
-      print('✅ Preparado para carga bajo demanda');
+        
     } catch (error) {
-      print('❌ Error en preparación: $error');
+        
 
       // Marcar como completado para que desaparezca el indicador
       if (mounted) {
@@ -291,7 +291,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         });
       }
     } catch (e) {
-      print('❌ Error cargando ingresos vs egresos: $e');
+        
       // En caso de error, usar datos vacíos para evitar crashes
       if (mounted) {
         setState(() {
@@ -593,10 +593,10 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
 
       // Solo usar corrección si hay diferencia significativa (más de $100)
       if ((totalCorregido - totalBackend).abs() > 100) {
-        print('💰 Dashboard usando total corregido para $periodo:');
-        print('   Backend: ${_formatNumber(totalBackend)}');
-        print('   Corregido: ${_formatNumber(totalCorregido)}');
-        print('   Diferencia: ${_formatNumber(totalCorregido - totalBackend)}');
+          
+          
+          
+          
         return totalCorregido;
       }
     }
@@ -607,7 +607,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
   /// Calcula los totales corregidos consultando pedidos reales
   Future<void> _calcularTotalesCorregidos() async {
     try {
-      print('🔧 Iniciando cálculo de totales corregidos...');
+        
 
       // Por ahora, mantener los valores del backend
       // En el futuro implementar lógica completa para obtener pedidos y recalcular
@@ -629,7 +629,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         '✅ Totales corregidos calculados (usando valores backend por ahora)',
       );
     } catch (e) {
-      print('❌ Error calculando totales corregidos: $e');
+        
       setState(() {
         _calculosCorregidos = false;
         _totalesCorregidos.clear();
@@ -734,7 +734,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
     // (Redirección automática comentada para permitir acceso al dashboard)
     /*
     if (userProvider.isOnlyMesero) {
-      print('🎯 Redirigiendo a mesero screen...');
+        
       WidgetsBinding.instance.addPostFrameCallback((_) {
         Navigator.pushReplacementNamed(context, '/mesero');
       });
@@ -2451,7 +2451,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
 
       return fechaStr.length > 5 ? fechaStr.substring(0, 5) : fechaStr;
     } catch (e) {
-      print('❌ Error extrayendo hora de fecha: $e');
+        
       return 'N/A';
     }
   }
@@ -2825,7 +2825,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
       final DateTime fechaDateTime = DateTime.parse(fecha);
       return '${fechaDateTime.day.toString().padLeft(2, '0')}/${fechaDateTime.month.toString().padLeft(2, '0')}';
     } catch (e) {
-      print('❌ Error parseando fecha: $fecha, error: $e');
+        
       return fecha.length > 5 ? fecha.substring(fecha.length - 5) : fecha;
     }
   }

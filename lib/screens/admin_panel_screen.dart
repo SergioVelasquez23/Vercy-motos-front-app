@@ -277,7 +277,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
       await _loadStats();
     } catch (e) {
       _showError('Error eliminando pedido: $e');
-      print('Error completo: $e');
+        
     } finally {
       setState(() => _isLoading = false);
     }

@@ -82,7 +82,7 @@ class ItemPedidoTestSuite {
           'Subtotal incorrecto: esperado $subtotalEsperado, obtenido $subtotalCalculado',
         );
       } catch (e) {
-        print('  ❌ Error en cálculo: $e');
+          
       }
     }
   }
@@ -112,7 +112,7 @@ class ItemPedidoTestSuite {
       assert(json['notas'] == 'Masa delgada');
       assert(json['ingredientesSeleccionados'].length == 3);
     } catch (e) {
-      print('  ❌ Error en serialización: $e');
+        
     }
   }
 
@@ -142,7 +142,7 @@ class ItemPedidoTestSuite {
       assert(item.notas == 'Sin crutones');
       assert(item.ingredientesSeleccionados.length == 3);
     } catch (e) {
-      print('  ❌ Error en deserialización: $e');
+        
     }
   }
 
@@ -188,7 +188,7 @@ class ItemPedidoTestSuite {
           'Subtotal incorrecto en formato ${i + 1}',
         );
       } catch (e) {
-        print('  ❌ Error en formato backend ${i + 1}: $e');
+          
       }
     }
   }
@@ -206,7 +206,7 @@ class ItemPedidoTestSuite {
       assert(itemValido.isValid);
       assert(itemValido.validationErrors.isEmpty);
     } catch (e) {
-      print('  ❌ Error en validación positiva: $e');
+        
     }
 
     // Test validaciones negativas
@@ -247,7 +247,7 @@ class ItemPedidoTestSuite {
       // Test getter deprecated
       assert(itemLegacy.precio == itemLegacy.precioUnitario);
     } catch (e) {
-      print('  ❌ Error en migración legacy: $e');
+        
     }
   }
 
@@ -289,7 +289,7 @@ class ItemPedidoTestSuite {
             itemReconstruido.ingredientesSeleccionados.length,
       );
     } catch (e) {
-      print('  ❌ Error en round-trip: $e');
+        
     }
   }
 }

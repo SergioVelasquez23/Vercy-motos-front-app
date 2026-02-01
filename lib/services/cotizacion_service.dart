@@ -11,7 +11,7 @@ class CotizacionService {
   /// Obtener todas las cotizaciones
   Future<List<Cotizacion>> obtenerCotizaciones() async {
     try {
-      print('🌐 Obteniendo cotizaciones desde: $baseUrl');
+        
       final response = await http.get(
         Uri.parse(baseUrl),
         headers: {
@@ -21,7 +21,7 @@ class CotizacionService {
       );
             
       if (response.statusCode == 200) {
-        print('📦 Response body length: ${response.body.length}');
+          
         final dynamic responseData = json.decode(response.body);
 
         // Manejar si viene como lista directa o dentro de un objeto
@@ -31,18 +31,18 @@ class CotizacionService {
         } else if (responseData is Map && responseData['data'] != null) {
           data = responseData['data'];
         } else {
-          print('⚠️ Estructura inesperada: ${responseData.runtimeType}');
+            
           throw Exception('Estructura de respuesta inesperada');
         }
 
-        print('✅ Cotizaciones encontradas: ${data.length}');
+          
         return data.map((json) => Cotizacion.fromJson(json)).toList();
       }
 
-      print('❌ Error response body: ${response.body}');
+        
       throw Exception('Error al obtener cotizaciones: ${response.statusCode}');
     } catch (e) {
-      print('❌ Error en obtenerCotizaciones: $e');
+        
       rethrow;
     }
   }
@@ -62,7 +62,7 @@ class CotizacionService {
 
       throw Exception('Error al obtener cotización: ${response.statusCode}');
     } catch (e) {
-      print('❌ Error en obtenerCotizacionPorId: $e');
+        
       return null;
     }
   }
@@ -85,7 +85,7 @@ class CotizacionService {
 
       throw Exception('Error al crear cotización: ${response.statusCode}');
     } catch (e) {
-      print('❌ Error en crearCotizacion: $e');
+        
       throw Exception('Error al crear cotización: $e');
     }
   }
@@ -111,7 +111,7 @@ class CotizacionService {
 
       throw Exception('Error al actualizar cotización: ${response.statusCode}');
     } catch (e) {
-      print('❌ Error en actualizarCotizacion: $e');
+        
       throw Exception('Error al actualizar cotización: $e');
     }
   }
@@ -122,7 +122,7 @@ class CotizacionService {
       final response = await http.delete(Uri.parse('$baseUrl/$id'));
       return response.statusCode == 200 || response.statusCode == 204;
     } catch (e) {
-      print('❌ Error en eliminarCotizacion: $e');
+        
       return false;
     }
   }
@@ -144,7 +144,7 @@ class CotizacionService {
 
       throw Exception('Error al calcular totales: ${response.statusCode}');
     } catch (e) {
-      print('❌ Error en calcularTotales: $e');
+        
       // Si falla el backend, calcular localmente
       cotizacion.calcularTotales();
       return {
@@ -170,7 +170,7 @@ class CotizacionService {
 
       throw Exception('Error al aceptar cotización: ${response.statusCode}');
     } catch (e) {
-      print('❌ Error en aceptarCotizacion: $e');
+        
       throw Exception('Error al aceptar cotización: $e');
     }
   }
@@ -186,7 +186,7 @@ class CotizacionService {
 
       throw Exception('Error al rechazar cotización: ${response.statusCode}');
     } catch (e) {
-      print('❌ Error en rechazarCotizacion: $e');
+        
       throw Exception('Error al rechazar cotización: $e');
     }
   }
@@ -206,7 +206,7 @@ class CotizacionService {
 
       throw Exception('Error al convertir cotización: ${response.statusCode}');
     } catch (e) {
-      print('❌ Error en convertirAFactura: $e');
+        
       throw Exception('Error al convertir cotización: $e');
     }
   }
@@ -225,7 +225,7 @@ class CotizacionService {
 
       return [];
     } catch (e) {
-      print('❌ Error en obtenerPorCliente: $e');
+        
       return [];
     }
   }
@@ -242,7 +242,7 @@ class CotizacionService {
 
       return [];
     } catch (e) {
-      print('❌ Error en obtenerPorEstado: $e');
+        
       return [];
     }
   }
@@ -283,7 +283,7 @@ class CotizacionService {
 
       throw Exception('Error al obtener estadísticas: ${response.statusCode}');
     } catch (e) {
-      print('❌ Error en obtenerEstadisticas: $e');
+        
       throw Exception('Error al obtener estadísticas: $e');
     }
   }
@@ -304,7 +304,7 @@ class CotizacionService {
 
       return [];
     } catch (e) {
-      print('❌ Error en buscarCotizaciones: $e');
+        
       return [];
     }
   }
@@ -329,7 +329,7 @@ class CotizacionService {
 
       return [];
     } catch (e) {
-      print('❌ Error en obtenerPorRangoFechas: $e');
+        
       return [];
     }
   }

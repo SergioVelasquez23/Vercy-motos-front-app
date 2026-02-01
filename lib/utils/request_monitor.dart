@@ -40,11 +40,11 @@ class RequestMonitor {
     await prefs.setInt(_requestCountKey, _requestCount);
 
     // Log detallado (opcional, solo para debugging)
-    print('📡 Request #$_requestCount: $method $endpoint');
+      
 
     // Mostrar resumen cada 100 requests
     if (_requestCount % 100 == 0) {
-      print('📊 Total requests hoy: $_requestCount');
+        
     }
   }
 
@@ -64,7 +64,7 @@ class RequestMonitor {
 
   // Resetear contador diario
   Future<void> _resetDailyCount() async {
-    print('🔄 Reseteando contador diario. Requests ayer: $_requestCount');
+      
 
     _requestCount = 0;
     _lastResetDate = DateTime.now();

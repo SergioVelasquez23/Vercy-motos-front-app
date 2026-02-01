@@ -537,9 +537,7 @@ class _DialogoPagoState extends State<DialogoPago> {
                 ],
                 // Debug: Verificar si agregadoPor tiene valor
                 () {
-                  print(
-                    '🐛 Debug - Item: ${item.productoNombre}, agregadoPor: ${item.agregadoPor}',
-                  );
+
                   return Container();
                 }(),
                 if (item.agregadoPor != null &&

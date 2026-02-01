@@ -26,42 +26,42 @@ class DebugConfig {
   /// FunciÃ³n helper para prints condicionales
   static void debugPrint(String message) {
     if (enableDebugPrints) {
-      // print(message);
+      //   
     }
   }
 
   /// FunciÃ³n helper para logs de API
   static void apiLog(String message) {
     if (enableApiLogs) {
-      // print('ðŸŒ API: $message');
+      //   
     }
   }
 
   /// FunciÃ³n helper para logs de imÃ¡genes
   static void imageLog(String message) {
     if (enableImageLogs) {
-      // print('ðŸ–¼ï¸ IMAGE: $message');
+      //   
     }
   }
 
   /// FunciÃ³n helper para logs de pedidos
   static void pedidoLog(String message) {
     if (enablePedidoLogs) {
-      // print('ðŸ“‹ PEDIDO: $message');
+      //   
     }
   }
 
   /// FunciÃ³n helper para logs de mesas
   static void mesaLog(String message) {
     if (enableMesaLogs) {
-      // print('ðŸª‘ MESA: $message');
+      //   
     }
   }
 
   /// FunciÃ³n helper para logs de pagos
   static void pagoLog(String message) {
     if (enablePagoLogs) {
-      // print('ðŸ’° PAGO: $message');
+      //   
     }
   }
 }

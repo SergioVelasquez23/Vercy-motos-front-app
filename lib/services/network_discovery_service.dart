@@ -32,31 +32,31 @@ class NetworkDiscoveryService {
   /// 5. Retorna la primera IP que responda correctamente
   Future<String?> discoverServerIp() async {
     try {
-      print('🔍 Iniciando detección automática de servidor...');
+        
 
       // 1. Verificar cache válido
       if (_isCacheValid()) {
-        print('✅ Usando IP desde cache: $_cachedServerIp');
+          
         return _cachedServerIp;
       }
 
       // 2. Obtener IP local del dispositivo
       final localIp = await _getLocalIp();
       if (localIp == null) {
-        print('❌ No se pudo obtener la IP local del dispositivo');
+          
         return null;
       }
 
-      print('INFO: IP local del dispositivo: $localIp');
+        
 
       // 3. Extraer segmento de red (ej: 192.168.1.x)
       final networkSegment = _extractNetworkSegment(localIp);
       if (networkSegment == null) {
-        print('❌ No se pudo extraer el segmento de red');
+          
         return null;
       }
 
-      print('🌐 Segmento de red: $networkSegment.x');
+        
 
       // 4. Buscar servidor en la red local
       final serverIp = await _scanNetworkForServer(networkSegment);
@@ -64,14 +64,14 @@ class NetworkDiscoveryService {
       if (serverIp != null) {
         _cachedServerIp = serverIp;
         _lastDiscoveryTime = DateTime.now();
-        print('🎯 Servidor encontrado en: $serverIp');
+          
         return serverIp;
       }
 
-      print('❌ No se encontró servidor en la red local');
+        
       return null;
     } catch (e) {
-      print('❌ Error en detección automática: $e');
+        
       return null;
     }
   }
@@ -85,14 +85,14 @@ class NetworkDiscoveryService {
     for (final port in _commonPorts) {
       final baseUrl = 'http://$ip:$port';
       if (await _testServerConnection(baseUrl)) {
-        print('✅ URL base confirmada: $baseUrl');
+          
         return baseUrl;
       }
     }
 
     // Si no funciona con puertos comunes, usar el primero por defecto
     final defaultUrl = 'http://$ip:${_commonPorts.first}';
-    print('⚠️ Usando URL por defecto: $defaultUrl');
+      
     return defaultUrl;
   }
 
@@ -121,7 +121,7 @@ class NetworkDiscoveryService {
       socket.destroy();
       return localIp;
     } catch (e) {
-      print('Error obteniendo IP local: $e');
+        
       return null;
     }
   }
@@ -135,7 +135,7 @@ class NetworkDiscoveryService {
 
   /// Escanea la red local buscando el servidor
   Future<String?> _scanNetworkForServer(String networkSegment) async {
-    print('🔍 Escaneando red $networkSegment.x...');
+      
 
     // Lista de IPs comunes donde suele estar el servidor
     final commonServerIps = [
@@ -149,14 +149,14 @@ class NetworkDiscoveryService {
 
     // Primero probar IPs comunes
     for (final ip in commonServerIps) {
-      print('🔍 Probando IP común: $ip');
+        
       if (await _testServerConnection('http://$ip:8081')) {
         return ip;
       }
     }
 
     // Si no funciona, escanear rango más amplio (pero limitado)
-    print('🔍 Escaneando rango extendido...');
+      
     for (int i = 1; i <= 254; i += 10) {
       // Saltos de 10 para ser más rápido
       final ip = '$networkSegment.$i';
@@ -192,7 +192,7 @@ class NetworkDiscoveryService {
 
           // Considerar válido si responde (aunque sea con error)
           if (response.statusCode < 500) {
-            print('✅ Servidor responde en: $endpoint');
+              
             return true;
           }
         } catch (e) {
@@ -221,7 +221,7 @@ class NetworkDiscoveryService {
   void clearCache() {
     _cachedServerIp = null;
     _lastDiscoveryTime = null;
-    print('🧹 Cache de servidor limpiado');
+      
   }
 
   /// Fuerza una nueva búsqueda ignorando el cache

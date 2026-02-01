@@ -183,7 +183,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
           _productosDisponibles = productos;
         });
       } catch (e) {
-        print('Error al cargar productos: $e');
+          
       }
     }
   }
@@ -195,7 +195,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
         _clientesDisponibles = clientes;
       });
     } catch (e) {
-      print('Error al cargar clientes: $e');
+        
     }
   }
 
@@ -2841,7 +2841,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                 userName,
               );
             } catch (e) {
-              print('Error al marcar pedido asesor como facturado: $e');
+                
             }
           }
 
@@ -2923,7 +2923,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
   // 📦 Registrar movimientos de inventario cuando se factura (venta)
   Future<void> _registrarMovimientosInventarioVenta(Pedido pedido) async {
     try {
-      print('📦 Registrando movimientos de inventario para venta ${pedido.id}');
+        
 
       for (var item in pedido.items) {
         try {
@@ -2958,9 +2958,9 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
         }
       }
 
-      print('✅ Todos los movimientos de inventario registrados para la venta');
+        
     } catch (e) {
-      print('❌ Error general al registrar movimientos de inventario: $e');
+        
       // No lanzar excepción para no interrumpir el flujo de la factura
     }
   }
@@ -3194,7 +3194,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       try {
         negocioInfo = await _negocioInfoService.getNegocioInfo();
       } catch (e) {
-        print('⚠️ Error obteniendo info del negocio: $e');
+          
       }
 
       // Preparar el resumen para el PDF
@@ -3252,7 +3252,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       try {
         negocioInfo = await _negocioInfoService.getNegocioInfo();
       } catch (e) {
-        print('⚠️ Error obteniendo info del negocio: $e');
+          
       }
 
       // Preparar el resumen para el PDF

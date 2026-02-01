@@ -16,9 +16,6 @@ String get kDynamicBackendUrl {
   // En flutter web, siempre usar el backend de producción para evitar problemas de CORS
   if (kIsWeb) {
     if (!_urlYaLogueada && kDebugMode) {
-      print(
-        '🌐 Flutter Web detectado - usando backend de producción: $kBackendUrl',
-      );
       _urlYaLogueada = true;
     }
     return kBackendUrl;
@@ -26,16 +23,13 @@ String get kDynamicBackendUrl {
 
   if (kDebugMode) {
     if (!_urlYaLogueada) {
-      print(
-        '🔧 Modo desarrollo detectado - usando backend local: $kLocalBackendUrl',
-      );
       _urlYaLogueada = true;
     }
     return kLocalBackendUrl;
   }
 
   if (!_urlYaLogueada) {
-    print('🚀 Modo producción - usando backend: $kBackendUrl');
+     ;
     _urlYaLogueada = true;
   }
   return kBackendUrl;

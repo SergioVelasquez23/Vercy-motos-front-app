@@ -17,7 +17,7 @@ class IngredienteProducto {
 
   factory IngredienteProducto.fromJson(Map<String, dynamic> json) {
     // ✅ COMENTADO: Log de parsing removido para reducir ruido
-    // print('🔍 Parsing IngredienteProducto from JSON: $json');
+    //   
 
     // El backend Java usa 'nombre' como campo principal
     String nombre = '';
@@ -39,7 +39,7 @@ class IngredienteProducto {
     }
 
     // ✅ COMENTADO: Log de nombre extraído removido para reducir ruido
-    // print('🔍 Nombre extraído: "$nombre"');
+    //   
 
     return IngredienteProducto(
       ingredienteId:

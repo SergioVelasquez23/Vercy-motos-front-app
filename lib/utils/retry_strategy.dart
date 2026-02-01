@@ -39,7 +39,7 @@ class RetryStrategy {
 
     while (true) {
       attempt++;
-      print('🔄 Intento $attempt de ${maxRetries + 1}');
+        
 
       try {
         if (timeoutPerAttempt != null) {
@@ -64,17 +64,17 @@ class RetryStrategy {
 
         return await operation().timeout(currentTimeout);
       } catch (error) {
-        print('❌ Error en intento $attempt: $error');
+          
 
         // Si es el último intento, lanzar el error
         if (attempt > maxRetries) {
-          print('🚫 Máximo de reintentos alcanzado');
+            
           rethrow;
         }
 
         // Verificar si deberíamos reintentar este error específico
         if (shouldRetry != null && !shouldRetry(error)) {
-          print('🚫 Error no recuperable, no se reintenta');
+            
           rethrow;
         }
 

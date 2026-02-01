@@ -14,14 +14,14 @@ class ResumenCierreService {
 
   Future<ResumenCierre> getResumenCierre(String cuadreId) async {
     try {
-      print('📊 Obteniendo resumen de cierre para cuadre: $cuadreId');
+        
 
       final response = await http
           .get(Uri.parse('$baseUrl/$cuadreId/resumen-cierre'), headers: headers)
           .timeout(Duration(seconds: 30));
 
-      print('📊 Response status: ${response.statusCode}');
-      print('📊 Response body: ${response.body}');
+        
+        
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonResponse = json.decode(response.body);
@@ -48,7 +48,7 @@ class ResumenCierreService {
           );
         }
 
-        print('📊 Parseando datos del resumen...');
+          
         return ResumenCierre.fromJson(jsonResponse['data']);
       } else {
         // Tratar de obtener el mensaje de error del response body
@@ -75,12 +75,12 @@ class ResumenCierreService {
         throw Exception('Error al obtener resumen de cierre: $errorMessage');
       }
     } on TimeoutException catch (e) {
-      print('⏰ Timeout al obtener resumen de cierre: $e');
+        
       throw Exception(
         'La solicitud tardó demasiado tiempo. Por favor, intenta nuevamente.',
       );
     } catch (e) {
-      print('❌ Error en getResumenCierre: $e');
+        
 
       // Si es el error específico de Java, intentar resumen manual
       if (e.toString().contains(
@@ -92,7 +92,7 @@ class ResumenCierreService {
         try {
           return await _generarResumenManual(cuadreId);
         } catch (manualError) {
-          print('❌ Error en resumen manual: $manualError');
+            
           // Si también falla el manual, lanzar el error original con mejor mensaje
           throw Exception(
             'Error del servidor: El sistema no puede generar el resumen debido a datos faltantes en la base de datos. '
@@ -118,7 +118,7 @@ class ResumenCierreService {
       );
       return response.statusCode == 200;
     } catch (e) {
-      print('❌ Error validando cuadre: $e');
+        
       return false;
     }
   }
@@ -136,7 +136,7 @@ class ResumenCierreService {
         return jsonResponse;
       }
     } catch (e) {
-      print('❌ Error obteniendo info del cuadre: $e');
+        
     }
     return null;
   }
@@ -144,7 +144,7 @@ class ResumenCierreService {
   // Método alternativo para obtener datos básicos sin el resumen complejo
   Future<Map<String, dynamic>?> getResumenBasico(String cuadreId) async {
     try {
-      print('📊 Intentando obtener resumen básico para cuadre: $cuadreId');
+        
 
       // Primero verificar que el cuadre existe
       final cuadreInfo = await getCuadreInfo(cuadreId);
@@ -152,10 +152,10 @@ class ResumenCierreService {
         throw Exception('No se pudo obtener información del cuadre');
       }
 
-      print('📊 Información del cuadre obtenida exitosamente');
+        
       return cuadreInfo;
     } catch (e) {
-      print('❌ Error en getResumenBasico: $e');
+        
       rethrow;
     }
   }
@@ -163,7 +163,7 @@ class ResumenCierreService {
   // Método para generar un resumen manual cuando el backend falla
   Future<ResumenCierre> _generarResumenManual(String cuadreId) async {
     try {
-      print('🔧 Generando resumen manual para cuadre: $cuadreId');
+        
 
       // Obtener información básica del cuadre
       final cuadreInfo = await getCuadreInfo(cuadreId);
@@ -190,7 +190,7 @@ class ResumenCierreService {
           '💳 Transferencias obtenidas del servicio: \$${transferenciasEsperadas.toStringAsFixed(2)}',
         );
       } catch (e) {
-        print('⚠️ Error al obtener transferencias, usando 0.0: $e');
+          
       }
 
       // Crear un resumen básico con los datos disponibles
@@ -281,7 +281,7 @@ class ResumenCierreService {
       );
       return ResumenCierre.fromJson(resumenData);
     } catch (e) {
-      print('❌ Error en generación manual: $e');
+        
       rethrow;
     }
   }

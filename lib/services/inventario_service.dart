@@ -42,8 +42,8 @@ class InventarioService {
 
   // Obtener todos los movimientos de inventario
   Future<List<MovimientoInventario>> getMovimientosInventario() async {
-    print('🔍 Obteniendo movimientos de inventario...');
-    print('🌐 URL: ${_apiConfig.baseUrl}/$_baseEndpoint/movimientos');
+      
+      
 
     try {
       final response = await _apiService.getList<MovimientoInventario>(
@@ -51,18 +51,18 @@ class InventarioService {
         (json) => MovimientoInventario.fromJson(json),
       );
 
-      print('📡 Response success: ${response.success}');
-      print('📦 Movimientos count: ${response.data?.length ?? 0}');
+        
+        
 
       if (response.success && response.data != null) {
-        print('✅ Movimientos obtenidos: ${response.data!.length}');
+          
         return response.data!;
       } else {
-        print('⚠️ Error en respuesta: ${response.message}');
+          
         return [];
       }
     } catch (e) {
-      print('❌ Error obteniendo movimientos: $e');
+        
       return [];
     }
   }
@@ -73,8 +73,8 @@ class InventarioService {
   ) async {
     try {
       // Siempre mostrar logs para debug
-      print('📤 POST Request to: ${_buildUrl(path: "movimientos")}');
-      print('📦 Request body: ${json.encode(movimiento.toJson())}');
+        
+        
 
       final response = await http
           .post(
@@ -98,10 +98,10 @@ class InventarioService {
         return movimiento;
       }
 
-      print('❌ Error en respuesta: ${response.statusCode} - ${response.body}');
+        
       throw _handleErrorResponse(response);
     } catch (e) {
-      print('❌ Error al registrar movimiento: $e');
+        
       throw Exception('Error al registrar movimiento: $e');
     }
   }
@@ -120,8 +120,8 @@ class InventarioService {
   ) async {
     try {
       if (kDebugMode) {
-        print('🔄 PUT Request to: ${_buildUrl(path: "movimientos/$id")}');
-        print('📦 Request body: ${json.encode(movimiento.toJson())}');
+          
+          
       }
 
       final response = await http
@@ -147,7 +147,7 @@ class InventarioService {
       throw _handleErrorResponse(response);
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Error: $e');
+          
       }
       throw Exception('Error al actualizar movimiento: $e');
     }
@@ -157,7 +157,7 @@ class InventarioService {
   Future<bool> deleteMovimiento(String id) async {
     try {
       if (kDebugMode) {
-        print('🗑️ DELETE Request to: ${_buildUrl(path: "movimientos/$id")}');
+          
       }
 
       final response = await http
@@ -178,7 +178,7 @@ class InventarioService {
       throw _handleErrorResponse(response);
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Error: $e');
+          
       }
       throw Exception('Error al eliminar movimiento: $e');
     }
@@ -187,7 +187,7 @@ class InventarioService {
   // Obtener inventario
   Future<List<Inventario>> getInventario() async {
     if (kDebugMode) {
-      print('🔍 GET Request to: ${_buildUrl()}');
+        
     }
 
     try {
@@ -221,7 +221,7 @@ class InventarioService {
       return await _getIngredientesComoInventario();
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Error: $e');
+          
       }
       throw Exception('Error al obtener inventario: $e');
     }
@@ -230,7 +230,7 @@ class InventarioService {
   // Método para obtener ingredientes y convertirlos a formato de inventario
   Future<List<Inventario>> _getIngredientesComoInventario() async {
     if (kDebugMode) {
-      print('🔄 Usando ingredientes como alternativa a inventario');
+        
     }
 
     try {
@@ -273,7 +273,7 @@ class InventarioService {
       return [];
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Error obteniendo ingredientes como inventario: $e');
+          
       }
       return [];
     }
@@ -283,8 +283,8 @@ class InventarioService {
   Future<Inventario> createIngrediente(Inventario ingrediente) async {
     try {
       if (kDebugMode) {
-        print('📤 POST Request to: ${_buildUrl()}');
-        print('📦 Request body: ${json.encode(ingrediente.toJson())}');
+          
+          
       }
 
       final response = await http
@@ -307,7 +307,7 @@ class InventarioService {
       throw _handleErrorResponse(response);
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Error: $e');
+          
       }
       throw Exception('Error al crear ingrediente: $e');
     }
@@ -320,8 +320,8 @@ class InventarioService {
   ) async {
     try {
       if (kDebugMode) {
-        print('🔄 PUT Request to: ${_buildUrl(path: id)}');
-        print('📦 Request body: ${json.encode(ingrediente.toJson())}');
+          
+          
       }
 
       final response = await http
@@ -344,7 +344,7 @@ class InventarioService {
       throw _handleErrorResponse(response);
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Error: $e');
+          
       }
       throw Exception('Error al actualizar ingrediente: $e');
     }
@@ -354,7 +354,7 @@ class InventarioService {
   Future<bool> deleteIngrediente(String id) async {
     try {
       if (kDebugMode) {
-        print('🗑️ DELETE Request to: ${_buildUrl(path: id)}');
+          
       }
 
       final response = await http
@@ -372,7 +372,7 @@ class InventarioService {
       throw _handleErrorResponse(response);
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Error: $e');
+          
       }
       throw Exception('Error al eliminar ingrediente: $e');
     }
@@ -390,7 +390,7 @@ class InventarioService {
   ) async {
     try {
       if (kDebugMode) {
-        print('🔍 Validando stock antes de crear pedido...');
+          
       }
 
       final Map<String, dynamic> requestBody = {
@@ -436,7 +436,7 @@ class InventarioService {
       };
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Error validando stock: $e');
+          
       }
       return {
         'stockSuficiente': false,
@@ -452,7 +452,7 @@ class InventarioService {
   ) async {
     try {
       if (kDebugMode) {
-        print('🔄 Procesando pedido para actualizar inventario: $pedidoId');
+          
         print(
           '📦 Body ingredientesPorItem: ${json.encode(ingredientesPorItem)}',
         );
@@ -479,7 +479,7 @@ class InventarioService {
               responseData['data']['alertas'] != null) {
             final alertas = responseData['data']['alertas'] as List;
             if (alertas.isNotEmpty && kDebugMode) {
-              print('⚠️ ALERTAS DE STOCK BAJO:');
+                
               for (var alerta in alertas) {
                 print(
                   '   - ${alerta['ingrediente']}: Stock actual ${alerta['stockActual']}, mínimo ${alerta['stockMinimo']}',
@@ -499,7 +499,7 @@ class InventarioService {
       throw _handleErrorResponse(response);
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Error procesando pedido para inventario: $e');
+          
       }
       // ✅ MEJORADO: Propagar error crítico de stock insuficiente
       if (e.toString().contains('stock insuficiente') ||
@@ -542,7 +542,7 @@ class InventarioService {
           .timeout(_timeout);
 
       if (kDebugMode) {
-        print('📡 Response status: ${response.statusCode}');
+          
       }
 
       if (response.statusCode == 200) {
@@ -553,7 +553,7 @@ class InventarioService {
       throw _handleErrorResponse(response);
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Error devolviendo ingredientes al inventario: $e');
+          
       }
       // No lanzamos una excepción porque no queremos interrumpir el flujo principal
       return false;
@@ -583,7 +583,7 @@ class InventarioService {
       return [];
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Error obteniendo ingredientes descontados: $e');
+          
       }
       return [];
     }
@@ -593,7 +593,7 @@ class InventarioService {
   Future<Map<String, dynamic>> limpiarMovimientosErroneos() async {
     try {
       if (kDebugMode) {
-        print('🧹 Limpiando movimientos erróneos...');
+          
       }
 
       final response = await http
@@ -604,8 +604,8 @@ class InventarioService {
           .timeout(_timeout);
 
       if (kDebugMode) {
-        print('📡 Response status: ${response.statusCode}');
-        print('📦 Response body: ${response.body}');
+          
+          
       }
 
       if (response.statusCode == 200) {
@@ -620,7 +620,7 @@ class InventarioService {
       throw _handleErrorResponse(response);
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Error limpiando movimientos: $e');
+          
       }
       throw Exception('Error al limpiar movimientos erróneos: $e');
     }
@@ -630,7 +630,7 @@ class InventarioService {
   Future<Map<String, dynamic>> sincronizarInventarioConIngredientes() async {
     try {
       if (kDebugMode) {
-        print('🔄 Sincronizando inventario con ingredientes...');
+          
       }
 
       final response = await http
@@ -641,8 +641,8 @@ class InventarioService {
           .timeout(_timeout);
 
       if (kDebugMode) {
-        print('📡 Response status: ${response.statusCode}');
-        print('📦 Response body: ${response.body}');
+          
+          
       }
 
       if (response.statusCode == 200) {
@@ -657,7 +657,7 @@ class InventarioService {
       throw _handleErrorResponse(response);
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Error sincronizando inventario: $e');
+          
       }
       throw Exception('Error al sincronizar inventario: $e');
     }

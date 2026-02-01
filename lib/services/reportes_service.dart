@@ -20,7 +20,7 @@ class ReportesService {
       );
 
       // Respuesta recibida - Success: ${response.isSuccess}
-      print('📦 Data: ${response.data != null ? 'Presente' : 'Null'}');
+        
 
       if (response.isSuccess && response.data != null) {
         final dashboardData = DashboardData.fromJson(response.data!);
@@ -41,17 +41,17 @@ class ReportesService {
           }
         }
 
-        print('🔍 CORRECCIÓN DE DASHBOARD:');
-        print('  - Total pedidos hoy: ${pedidosHoy.length}');
-        print('  - Ventas según servidor: \$${dashboardData.ventasHoy.total}');
-        print('  - Ventas corregidas: \$${totalVentasCorrectas}');
+          
+          
+          
+          
         print(
           '  - Diferencia: \$${totalVentasCorrectas - dashboardData.ventasHoy.total}',
         );
         print(
           '  - Pedidos pagados según servidor: ${dashboardData.ventasHoy.pedidosPagados}',
         );
-        print('  - Pedidos pagados corregidos: $pedidosRealmentePagados');
+          
 
         // ✅ DESACTIVADO: Ya no se corrigen los valores del servidor
         if ((totalVentasCorrectas - dashboardData.ventasHoy.total).abs() > 0) {
@@ -61,7 +61,7 @@ class ReportesService {
         }
 
         // ✅ SIEMPRE usar los datos originales del servidor
-        print('✅ Usando valores originales del servidor sin corrección');
+          
         return dashboardData;
       } else {
         print(
@@ -70,7 +70,7 @@ class ReportesService {
         return null;
       }
     } catch (e) {
-      print('❌ Error en getDashboard(): $e');
+        
       return null;
     }
   }
@@ -88,7 +88,7 @@ class ReportesService {
     if (response.isSuccess) {
       return response.data ?? [];
     } else {
-      print('⚠️ Error al obtener pedidos por hora: ${response.errorMessage}');
+        
       return [];
     }
   }
@@ -105,7 +105,7 @@ class ReportesService {
     if (response.isSuccess) {
       return response.data ?? [];
     } else {
-      print('⚠️ Error al obtener ventas por día: ${response.errorMessage}');
+        
       return [];
     }
   }
@@ -162,7 +162,7 @@ class ReportesService {
         return [];
       }
     } catch (e) {
-      print('❌ Excepción en getVentasPorCategoria: $e');
+        
       // Si el endpoint no existe aún, podemos devolver datos simulados temporales
       rethrow;
     }
@@ -178,10 +178,10 @@ class ReportesService {
     );
 
     if (response.isSuccess) {
-      print('✅ Cuadre de caja obtenido');
+        
       return response.data!;
     } else {
-      print('⚠️ Error al obtener cuadre de caja: ${response.errorMessage}');
+        
       return null;
     }
   }
@@ -202,10 +202,10 @@ class ReportesService {
         }, (json) => json);
 
     if (response.isSuccess) {
-      print('✅ Caja cerrada exitosamente');
+        
       return response.data!;
     } else {
-      print('⚠️ Error al cerrar caja: ${response.errorMessage}');
+        
       return null;
     }
   }
@@ -239,7 +239,7 @@ class ReportesService {
     if (response.isSuccess) {
       return response.data!;
     } else {
-      print('⚠️ Error al obtener alertas: ${response.errorMessage}');
+        
       return null;
     }
   }
@@ -262,15 +262,15 @@ class ReportesService {
       if (response.isSuccess) {
         return true;
       } else {
-        print('❌ Error al actualizar objetivo: ${response.errorMessage}');
-        print('⚠️ Usando almacenamiento local temporal');
+          
+          
         // Fallback: guardar localmente hasta que el servidor esté disponible
         await _guardarObjetivoLocal(periodo, nuevoObjetivo);
         return true;
       }
     } catch (e) {
-      print('❌ Excepción al actualizar objetivo: $e');
-      print('⚠️ Usando almacenamiento local temporal');
+        
+        
       // Fallback: guardar localmente
       await _guardarObjetivoLocal(periodo, nuevoObjetivo);
       return true;
@@ -290,11 +290,11 @@ class ReportesService {
       if (response.isSuccess) {
         return response.data ?? [];
       } else {
-        print('⚠️ Error al obtener últimos pedidos: ${response.errorMessage}');
+          
         return [];
       }
     } catch (e) {
-      print('❌ Excepción obteniendo últimos pedidos: $e');
+        
       return [];
     }
   }
@@ -318,7 +318,7 @@ class ReportesService {
         return [];
       }
     } catch (e) {
-      print('❌ Excepción obteniendo vendedores del mes: $e');
+        
       return [];
     }
   }
@@ -332,7 +332,7 @@ class ReportesService {
       );
       // Por ahora solo mostramos el mensaje
     } catch (e) {
-      print('❌ Error guardando objetivo local: $e');
+        
     }
   }
 }

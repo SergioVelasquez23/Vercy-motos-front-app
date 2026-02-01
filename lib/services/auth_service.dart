@@ -59,8 +59,8 @@ class AuthService {
     required UserProvider userProvider,
   }) async {
     try {
-      print('🔄 Intentando iniciar sesión en: $baseUrl');
-      print('INFO: Con credenciales: $email / [CONTRASEÑA OCULTA]');
+        
+        
 
       // Verificar conectividad antes de intentar login
       bool isConnected = await ConnectivityUtils.checkServerConnection(
@@ -75,8 +75,8 @@ class AuthService {
 
       // Mostrar información de red para depuración (solo en depuración)
       List<String> localIps = await ConnectivityUtils.getLocalIpAddresses();
-      print('📡 Direcciones IP locales: $localIps');
-      print('🌐 URL de login que se usará: $baseUrl');
+        
+        
 
       final response = await http.post(
         Uri.parse(baseUrl),
@@ -101,12 +101,12 @@ class AuthService {
           throw Exception('La respuesta no contiene el campo "token".');
         }
       } else {
-        print('❌ Error de inicio de sesión: ${response.statusCode}');
-        print('❌ Respuesta: ${response.body}');
+          
+          
         throw Exception('Error de inicio de sesión');
       }
     } catch (e) {
-      print('🚨 Error en iniciarSesion(): $e');
+        
 
       String errorMessage = 'Error al iniciar sesión';
 
@@ -153,22 +153,22 @@ class AuthService {
         if (data != null && data.containsKey('token')) {
           await saveToken(data['token']);
         } else {
-          print('⚠️ La respuesta no contiene un token');
+            
         }
 
         return data;
       } else if (response.statusCode == 401) {
-        print('❌ Error 401 - Usuario o contraseña incorrectos');
+          
         return {'error': 'Usuario o contraseña incorrectos', 'status': 401};
       } else {
-        print('❌ Error iniciarSesionWithResponse: ${response.body}');
+          
         return {
           'error': 'Error del servidor: ${response.statusCode}',
           'status': response.statusCode,
         };
       }
     } catch (e) {
-      print('❌ Excepción en iniciarSesionWithResponse(): $e');
+        
       return {'error': 'Error de conexión: $e', 'status': 0};
     }
   }
@@ -186,11 +186,11 @@ class AuthService {
             ? jsonDecode(response.body) as Map<String, dynamic>
             : null;
       } else {
-        print('Error al validar el código: ${response.body}');
+          
         return null;
       }
     } catch (e) {
-      print('Error en validarCodigo(): $e');
+        
       return null;
     }
   }
@@ -205,7 +205,7 @@ class AuthService {
         await storage.write(key: 'jwt_token', value: token);
       }
     } catch (e) {
-      print('❌ Error guardando token: $e');
+        
       rethrow; // Re-lanzar la excepción para manejarla en el nivel superior
     }
   }
@@ -217,7 +217,7 @@ class AuthService {
       try {
         final payload = JwtUtils.decodeToken(token);
       } catch (e) {
-        print('⚠️ Error decodificando token: $e');
+          
       }
 
       final response = await http.get(
@@ -240,7 +240,7 @@ class AuthService {
 
       return false;
     } catch (e) {
-      print('❌ Error verificando token: $e');
+        
       return false;
     }
   }

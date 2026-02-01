@@ -896,13 +896,13 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
         orElse: () => throw Exception('Producto no encontrado'),
       );
 
-      print('🔄 Ejecutando traslado:');
-      print('   Producto: ${producto.nombre} (${producto.id})');
-      print('   Stock actual ALMACEN: ${producto.almacen}');
-      print('   Stock actual BODEGA: ${producto.bodega}');
-      print('   Cantidad a trasladar: ${traslado.cantidad}');
-      print('   Origen: ${traslado.origenBodegaNombre}');
-      print('   Destino: ${traslado.destinoBodegaNombre}');
+        
+        
+        
+        
+        
+        
+        
 
       // Determinar si origen/destino son ALMACEN o BODEGA
       final origenEsAlmacen =
@@ -928,8 +928,8 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
         nuevoBodega += traslado.cantidad!.toInt();
       }
 
-      print('   Nuevo stock ALMACEN: $nuevoAlmacen');
-      print('   Nuevo stock BODEGA: $nuevoBodega');
+        
+        
 
       // Actualizar producto directamente
       final productoJson = producto.toJson();
@@ -970,7 +970,7 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
       _mostrarExito('Traslado aceptado y ejecutado correctamente');
       _cargarDatos();
     } catch (e) {
-      print('❌ Error: $e');
+        
       _mostrarError('Error al aceptar traslado: $e');
     }
   }
@@ -1231,7 +1231,7 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
         _cargandoBodegas = false;
       });
     } catch (e) {
-      print('Error cargando bodegas: $e');
+        
       // Fallback a bodegas por defecto
       setState(() {
         _bodegas = [
@@ -1270,19 +1270,19 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
       ),
     );
     
-    print('🔍 Bodega origen: ${bodega.nombre} (${bodega.id})');
-    print('   Stock ALMACEN: ${_productoSeleccionado!.almacen}');
-    print('   Stock BODEGA: ${_productoSeleccionado!.bodega}');
+      
+      
+      
     
     // Si el nombre contiene "ALMACEN" → usar producto.almacen
     // Si no → usar producto.bodega (por defecto)
     if (bodega.nombre.toUpperCase().contains('ALMACEN')) {
       final stock = (_productoSeleccionado!.almacen ?? 0).toDouble();
-      print('   → Usando ALMACEN: $stock');
+        
       return stock;
     } else {
       final stock = (_productoSeleccionado!.bodega ?? 0).toDouble();
-      print('   → Usando BODEGA: $stock');
+        
       return stock;
     }
   }

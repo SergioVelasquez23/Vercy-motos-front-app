@@ -24,7 +24,7 @@ class ProveedorService {
         return await storage.read(key: 'jwt_token');
       }
     } catch (e) {
-      print('Error obteniendo token: $e');
+        
       return null;
     }
   }
@@ -61,7 +61,7 @@ class ProveedorService {
               return data.map((json) => Proveedor.fromJson(json)).toList();
             }
           }
-          print('Error: Estructura de respuesta inesperada: $decodedData');
+            
           return [];
         }
 
@@ -78,7 +78,7 @@ class ProveedorService {
         throw Exception('Error al cargar proveedores: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error en getProveedores: $e');
+        
       throw Exception('Error de conexión: $e');
     }
   }
@@ -115,7 +115,7 @@ class ProveedorService {
               return data.map((json) => Proveedor.fromJson(json)).toList();
             }
           }
-          print('Error: Estructura de respuesta inesperada: $decodedData');
+            
           return [];
         }
 
@@ -132,7 +132,7 @@ class ProveedorService {
         throw Exception('Error al buscar proveedores: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error en buscarProveedores: $e');
+        
       throw Exception('Error de conexión: $e');
     }
   }
@@ -160,7 +160,7 @@ class ProveedorService {
         throw Exception('Error al crear proveedor: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error en crearProveedor: $e');
+        
       throw Exception('Error al crear proveedor: $e');
     }
   }
@@ -180,11 +180,11 @@ class ProveedorService {
         throw Exception('ID de proveedor inválido o vacío');
       }
 
-      print('🔄 Actualizando proveedor ID: "$cleanId"');
-      print('📡 URL: ${_endpoints.actualizar(cleanId)}');
+        
+        
 
       final jsonData = proveedor.toJsonCreate();
-      print('📋 Datos a enviar: $jsonData');
+        
 
       final response = await http.put(
         Uri.parse(_endpoints.actualizar(cleanId)),
@@ -195,8 +195,8 @@ class ProveedorService {
         body: json.encode(jsonData),
       );
 
-      print('📊 Status Code: ${response.statusCode}');
-      print('📄 Response Body: ${response.body}');
+        
+        
 
       if (response.statusCode == 200) {
         return Proveedor.fromJson(json.decode(response.body));
@@ -206,7 +206,7 @@ class ProveedorService {
         );
       }
     } catch (e) {
-      print('❌ Error en actualizarProveedor: $e');
+        
       throw Exception('Error al actualizar proveedor: $e');
     }
   }
@@ -229,7 +229,7 @@ class ProveedorService {
       print(
         '🔄 Cambiando estado del proveedor ID: "$cleanId" a activo: $activo',
       );
-      print('📡 URL: ${_endpoints.cambiarEstado(cleanId)}');
+        
 
       final response = await http.put(
         Uri.parse(_endpoints.cambiarEstado(cleanId)),
@@ -240,8 +240,8 @@ class ProveedorService {
         body: json.encode({'activo': activo}),
       );
 
-      print('📊 Status Code: ${response.statusCode}');
-      print('📄 Response Body: ${response.body}');
+        
+        
 
       bool success = response.statusCode == 200;
       print(
@@ -250,7 +250,7 @@ class ProveedorService {
 
       return success;
     } catch (e) {
-      print('❌ Error en cambiarEstadoProveedor: $e');
+        
       throw Exception('Error al cambiar estado del proveedor: $e');
     }
   }
@@ -286,7 +286,7 @@ class ProveedorService {
         );
       }
     } catch (e) {
-      print('Error en getProveedoresParaFacturas: $e');
+        
       throw Exception('Error de conexión: $e');
     }
   }

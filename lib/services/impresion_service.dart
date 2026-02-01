@@ -6,7 +6,7 @@ class ImpresionService {
   // Generar resumen de impresión para pedido
   Future<Map<String, dynamic>?> generarResumenPedido(String pedidoId) async {
     try {
-      print('📄 Generando resumen de impresión para pedido: $pedidoId');
+        
 
       final response = await http.get(
         Uri.parse(
@@ -20,17 +20,17 @@ class ImpresionService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        print('✅ Resumen de pedido generado correctamente');
+          
         return data;
       } else if (response.statusCode == 404) {
-        print('⚠️ Pedido no encontrado: $pedidoId');
+          
         return null;
       } else {
-        print('❌ Error del servidor: ${response.statusCode}');
+          
         throw Exception('Error del servidor: ${response.statusCode}');
       }
     } catch (e) {
-      print('❌ Error generando resumen de pedido: $e');
+        
       throw Exception('Error generando resumen: $e');
     }
   }
@@ -46,7 +46,7 @@ class ImpresionService {
     String medioPago = 'Efectivo',
   }) async {
     try {
-      print('🧾 Creando factura desde pedido: $pedidoId');
+        
 
       final Map<String, dynamic> datos = {
         'nit': nit ?? '22222222222',
@@ -68,17 +68,17 @@ class ImpresionService {
 
       if (response.statusCode == 201) {
         final data = json.decode(response.body);
-        print('✅ Factura creada correctamente');
+          
         return data;
       } else if (response.statusCode == 404) {
-        print('⚠️ Pedido no encontrado: $pedidoId');
+          
         return null;
       } else {
-        print('❌ Error del servidor: ${response.statusCode}');
+          
         throw Exception('Error del servidor: ${response.statusCode}');
       }
     } catch (e) {
-      print('❌ Error creando factura: $e');
+        
       throw Exception('Error creando factura: $e');
     }
   }
@@ -88,7 +88,7 @@ class ImpresionService {
     String facturaId,
   ) async {
     try {
-      print('📄 Obteniendo factura para impresión: $facturaId');
+        
 
       final response = await http.get(
         Uri.parse(
@@ -102,17 +102,17 @@ class ImpresionService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        print('✅ Factura obtenida correctamente');
+          
         return data;
       } else if (response.statusCode == 404) {
-        print('⚠️ Factura no encontrada: $facturaId');
+          
         return null;
       } else {
-        print('❌ Error del servidor: ${response.statusCode}');
+          
         throw Exception('Error del servidor: ${response.statusCode}');
       }
     } catch (e) {
-      print('❌ Error obteniendo factura: $e');
+        
       throw Exception('Error obteniendo factura: $e');
     }
   }
@@ -230,7 +230,7 @@ class ImpresionService {
       texto.writeln('       ¡GRACIAS POR SU VISITA!');
       texto.writeln('=====================================');
     } catch (e) {
-      print('❌ Error generando texto de impresión: $e');
+        
       return 'Error generando el documento de impresión';
     }
 
@@ -292,7 +292,7 @@ class ImpresionService {
 
       return resumenFormateado;
     } catch (e) {
-      print('❌ Error formateando resumen: $e');
+        
       return {
         'error': 'Error procesando la información',
         'total': 0.0,
@@ -385,7 +385,7 @@ class ImpresionService {
       }
     }
 
-    print('🧹 Resumen limpiado - IDs de MongoDB removidos');
+      
     return resumenLimpio;
   }
 }

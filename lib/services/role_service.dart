@@ -22,7 +22,7 @@ class RoleService {
         return await storage.read(key: 'jwt_token');
       }
     } catch (e) {
-      print('Error obteniendo token: $e');
+        
       return null;
     }
   }
@@ -50,7 +50,7 @@ class RoleService {
         throw Exception('Error al cargar roles: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error en getRoles: $e');
+        
       throw Exception('Error de conexión: $e');
     }
   }
@@ -79,7 +79,7 @@ class RoleService {
         throw Exception('Error al obtener rol: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error en getRoleById: $e');
+        
       throw Exception('Error de conexión: $e');
     }
   }
@@ -107,7 +107,7 @@ class RoleService {
         throw Exception('Error al crear rol: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error en createRole: $e');
+        
       throw Exception('Error al crear rol: $e');
     }
   }
@@ -135,7 +135,7 @@ class RoleService {
         throw Exception('Error al actualizar rol: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error en updateRole: $e');
+        
       throw Exception('Error al actualizar rol: $e');
     }
   }
@@ -158,7 +158,7 @@ class RoleService {
 
       return response.statusCode == 204 || response.statusCode == 200;
     } catch (e) {
-      print('Error en deleteRole: $e');
+        
       throw Exception('Error al eliminar rol: $e');
     }
   }

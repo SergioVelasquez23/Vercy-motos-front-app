@@ -89,7 +89,7 @@ class _ReportesScreenState extends State<ReportesScreen>
         });
       }
     } catch (e) {
-      print('❌ Error cargando datos de reportes: $e');
+        
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -136,7 +136,7 @@ class _ReportesScreenState extends State<ReportesScreen>
         });
       }
     } catch (e) {
-      print('❌ Error cargando ventas por día: $e');
+        
       rethrow;
     }
   }
@@ -151,7 +151,7 @@ class _ReportesScreenState extends State<ReportesScreen>
         });
       }
     } catch (e) {
-      print('❌ Error cargando top productos: $e');
+        
       rethrow;
     }
   }
@@ -170,8 +170,8 @@ class _ReportesScreenState extends State<ReportesScreen>
         }
         return;
       } catch (e) {
-        print('⚠️ Error al obtener ventas por categoría: $e');
-        print('⚠️ Usando datos de fallback temporales');
+          
+          
       }
 
       // Si el endpoint no está disponible, usamos datos temporales
@@ -189,7 +189,7 @@ class _ReportesScreenState extends State<ReportesScreen>
         });
       }
     } catch (e) {
-      print('❌ Error cargando ventas por categoría: $e');
+        
       rethrow;
     }
   }
@@ -207,7 +207,7 @@ class _ReportesScreenState extends State<ReportesScreen>
       try {
         valorInt = int.parse(valor.toString());
       } catch (e) {
-        print('❌ Error convirtiendo valor a entero: $valor');
+          
         return '\$0';
       }
     }
@@ -241,7 +241,7 @@ class _ReportesScreenState extends State<ReportesScreen>
       }
       return 'N/A';
     } catch (e) {
-      print('❌ Error formateando fecha: $fecha');
+        
       return 'N/A';
     }
   }
@@ -260,7 +260,7 @@ class _ReportesScreenState extends State<ReportesScreen>
     try {
       return double.parse(ventasValue.toString());
     } catch (e) {
-      print('❌ Error convirtiendo ventas a double: $ventasValue');
+        
       return 0.0;
     }
   }
@@ -928,7 +928,7 @@ class _ReportesScreenState extends State<ReportesScreen>
       try {
         return sum + int.parse(ventas.toString());
       } catch (e) {
-        print('❌ Error sumando ventas: $ventas');
+          
         return sum;
       }
     });
@@ -2507,7 +2507,7 @@ class _ReportesScreenState extends State<ReportesScreen>
         });
       }
     } catch (e) {
-      print('❌ Error cargando reporte de utilidad: $e');
+        
       if (mounted) {
         setState(() {
           _isLoading = false;

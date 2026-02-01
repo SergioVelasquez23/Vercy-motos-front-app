@@ -132,7 +132,6 @@ class Factura {
         try {
           return DateTime.parse(value);
         } catch (e) {
-          debugPrint('Error parsing date: $e');
           return null;
         }
       }

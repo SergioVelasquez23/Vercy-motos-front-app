@@ -745,8 +745,8 @@ class _ClientesListScreenState extends State<ClientesListScreen> {
 
   Future<void> _seleccionarYCargarArchivo() async {
     try {
-      print('🔍 Iniciando selección de archivo para clientes...');
-      print('🌐 ¿Es web? $kIsWeb');
+        
+        
 
       if (kIsWeb) {
         await _seleccionarArchivoWeb();
@@ -754,8 +754,8 @@ class _ClientesListScreenState extends State<ClientesListScreen> {
         await _seleccionarArchivoDesktop();
       }
     } catch (e, stackTrace) {
-      print('❌ Error al seleccionar archivo: $e');
-      print('📍 StackTrace: $stackTrace');
+        
+        
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -770,7 +770,7 @@ class _ClientesListScreenState extends State<ClientesListScreen> {
   }
 
   Future<void> _seleccionarArchivoWeb() async {
-    print('🌐 Usando selector HTML para web...');
+      
 
     final html.FileUploadInputElement uploadInput =
         html.FileUploadInputElement();
@@ -782,13 +782,13 @@ class _ClientesListScreenState extends State<ClientesListScreen> {
 
     final files = uploadInput.files;
     if (files == null || files.isEmpty) {
-      print('⚠️ No se seleccionó ningún archivo');
+        
       return;
     }
 
     final file = files[0];
-    print('✅ Archivo seleccionado: ${file.name}');
-    print('   - Tamaño: ${file.size} bytes');
+      
+      
 
     _mostrarDialogoCarga();
 
@@ -797,13 +797,13 @@ class _ClientesListScreenState extends State<ClientesListScreen> {
     await reader.onLoad.first;
 
     final bytes = reader.result as Uint8List;
-    print('📤 Enviando archivo desde web (${bytes.length} bytes)');
+      
 
     await _cargarArchivoExcelBytes(bytes, file.name);
   }
 
   Future<void> _seleccionarArchivoDesktop() async {
-    print('💻 Usando FilePicker para desktop/mobile...');
+      
 
     FilePickerResult? result;
 
@@ -815,17 +815,17 @@ class _ClientesListScreenState extends State<ClientesListScreen> {
         withReadStream: true,
       );
     } catch (pickerError) {
-      print('❌ Error en FilePicker: $pickerError');
+        
       throw Exception('Error al abrir selector de archivos: $pickerError');
     }
 
     if (result == null) {
-      print('⚠️ Selección de archivo cancelada por el usuario');
+        
       return;
     }
 
     if (result.files.isEmpty) {
-      print('⚠️ No se seleccionaron archivos');
+        
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -838,9 +838,9 @@ class _ClientesListScreenState extends State<ClientesListScreen> {
     }
 
     PlatformFile file = result.files.first;
-    print('✅ Archivo seleccionado: ${file.name}');
-    print('   - Tamaño: ${file.size} bytes');
-    print('   - Tiene path: ${file.path != null}');
+      
+      
+      
 
     if (file.path == null || file.path!.isEmpty) {
       throw Exception('No se pudo obtener la ruta del archivo');
@@ -848,7 +848,7 @@ class _ClientesListScreenState extends State<ClientesListScreen> {
 
     _mostrarDialogoCarga();
 
-    print('📤 Enviando archivo desde path: ${file.path}');
+      
     await _cargarArchivoExcelPath(file.path!);
 
     if (mounted) {
@@ -911,7 +911,7 @@ class _ClientesListScreenState extends State<ClientesListScreen> {
         await _cargarClientes();
       }
     } catch (e) {
-      print('❌ Error al cargar archivo Excel: $e');
+        
       if (mounted) {
         // Cerrar el diálogo de carga en caso de error
         Navigator.of(context).pop();
@@ -942,7 +942,7 @@ class _ClientesListScreenState extends State<ClientesListScreen> {
         await _cargarClientes();
       }
     } catch (e) {
-      print('❌ Error al cargar archivo Excel: $e');
+        
       if (mounted) {
         // Cerrar el diálogo de carga en caso de error
         Navigator.of(context).pop();

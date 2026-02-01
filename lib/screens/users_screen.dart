@@ -44,7 +44,7 @@ class _UsersScreenState extends State<UsersScreen> {
   Future<void> _cargarDatos() async {
     setState(() => _isLoading = true);
     try {
-      print('🔍 Iniciando carga de datos de usuarios y roles...');
+        
 
       // Cargar usuarios y roles en paralelo para ahorrar tiempo
       final futures = await Future.wait([
@@ -55,8 +55,8 @@ class _UsersScreenState extends State<UsersScreen> {
       final usersResult = futures[0] as List<User>;
       final rolesResult = futures[1] as List<Role>;
 
-      print('✅ Usuarios cargados: ${usersResult.length}');
-      print('✅ Roles cargados: ${rolesResult.length}');
+        
+        
 
       // Actualizar UI inicialmente con los usuarios y roles sin esperar a obtener todos los roles
       setState(() {
@@ -68,10 +68,10 @@ class _UsersScreenState extends State<UsersScreen> {
       // Obtener roles en segundo plano para no bloquear la UI
       _cargarRolesUsuariosEnSegundoPlano(usersResult);
 
-      print('🎉 Datos básicos cargados exitosamente');
+        
     } catch (e, stackTrace) {
-      print('💥 Error al cargar datos: $e');
-      print('📍 Stack trace: $stackTrace');
+        
+        
 
       setState(() => _isLoading = false);
       if (mounted) {
@@ -97,7 +97,7 @@ class _UsersScreenState extends State<UsersScreen> {
           final roles = await _userService.getRolesByUserId(user.id!);
           return MapEntry(user.id!, roles);
         } catch (e) {
-          print('Error obteniendo roles para usuario ${user.id}: $e');
+            
           return MapEntry(user.id!, <Role>[]);
         }
       });
@@ -116,7 +116,7 @@ class _UsersScreenState extends State<UsersScreen> {
               '📋 Usuario ${entry.key}: roles = ${entry.value.map((r) => r.nombre).join(", ")}',
             );
           } else {
-            print('📋 Usuario ${entry.key}: sin roles asignados');
+              
           }
         } else {
           print(
@@ -136,7 +136,7 @@ class _UsersScreenState extends State<UsersScreen> {
         '✅ Roles de usuarios cargados en segundo plano - Total usuarios: ${userRolesMap.length}',
       );
     } catch (e) {
-      print('💥 Error al cargar roles en segundo plano: $e');
+        
     }
   }
 
@@ -158,7 +158,7 @@ class _UsersScreenState extends State<UsersScreen> {
       while (intentos < maxIntentos) {
         try {
           intentos++;
-          print('   • Intento $intentos de $maxIntentos...');
+            
 
           roles = await _userService.getRolesByUserId(userId);
           print(
@@ -170,11 +170,11 @@ class _UsersScreenState extends State<UsersScreen> {
           }
 
           if (intentos < maxIntentos) {
-            print('   • No se obtuvieron roles, esperando 2 segundos...');
+              
             await Future.delayed(Duration(seconds: 2));
           }
         } catch (e) {
-          print('   • Error en intento $intentos: $e');
+            
           if (intentos < maxIntentos) {
             await Future.delayed(Duration(seconds: 2));
           }
@@ -182,7 +182,7 @@ class _UsersScreenState extends State<UsersScreen> {
       }
 
       // Actualizar siempre con la información del servidor (incluso si está vacía)
-      print('   • Actualizando roles en memoria con información del servidor');
+        
       if (mounted) {
         setState(() {
           _userRolesMap[userId] = roles;
@@ -193,7 +193,7 @@ class _UsersScreenState extends State<UsersScreen> {
         '✅ Roles finales para usuario $userId: ${_userRolesMap[userId]?.map((r) => r.nombre).join(", ")}',
       );
     } catch (e) {
-      print('💥 Error al actualizar roles del usuario $userId: $e');
+        
     }
   }
 
@@ -208,7 +208,7 @@ class _UsersScreenState extends State<UsersScreen> {
 
   @override
   Widget build(BuildContext context) {
-    print('🏗️ CONSTRUYENDO USERS SCREEN - Usuarios: ${_users.length}');
+      
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       body: Column(
@@ -244,7 +244,7 @@ class _UsersScreenState extends State<UsersScreen> {
                   onPressed: _isLoading
                       ? null
                       : () {
-                          print('INFO: BOTÓN REFRESCAR PRESIONADO!');
+                            
                           _cargarDatos();
                         },
                   icon: const Icon(
@@ -271,7 +271,7 @@ class _UsersScreenState extends State<UsersScreen> {
                 // Botón Nuevo
                 ElevatedButton.icon(
                   onPressed: () {
-                    print('INFO: BOTÓN NUEVO USUARIOS PRESIONADO!');
+                      
                     _mostrarDialogoUsuario();
                   },
                   icon: const Icon(Icons.add, color: Colors.white),
@@ -709,18 +709,18 @@ class _UsersScreenState extends State<UsersScreen> {
 
   Future<void> _cambiarRolUsuario(User user, String roleId) async {
     try {
-      print('🔄 Cambiando rol del usuario ${user.email} al rol $roleId');
+        
 
       // Eliminar todos los roles previos antes de asignar el nuevo
       final relacionesActuales = await _userRoleService.getRolesByUser(
         user.id!,
       );
-      print('📋 Roles actuales encontrados: ${relacionesActuales.length}');
+        
 
       // ✅ NUEVA LÓGICA: Eliminar roles uno por uno y verificar cada eliminación
       for (final relacion in relacionesActuales) {
         if (relacion.id != null) {
-          print('🗑️ Eliminando rol ${relacion.id}');
+            
           final eliminado = await _userRoleService.deleteUserRole(relacion.id!);
           print(
             eliminado
@@ -735,7 +735,7 @@ class _UsersScreenState extends State<UsersScreen> {
       }
 
       // Esperar más tiempo para asegurar la sincronización con la base de datos
-      print('⏳ Esperando sincronización de la base de datos...');
+        
       await Future.delayed(Duration(milliseconds: 1500));
 
       // Verificar que los roles fueron eliminados - intentar hasta 3 veces
@@ -750,7 +750,7 @@ class _UsersScreenState extends State<UsersScreen> {
         );
 
         if (verificacion.isNotEmpty && intentos < 3) {
-          print('⏳ Roles aún presentes, esperando más tiempo...');
+            
           await Future.delayed(Duration(milliseconds: 1000));
         }
       } while (verificacion.isNotEmpty && intentos < 3);
@@ -765,12 +765,12 @@ class _UsersScreenState extends State<UsersScreen> {
         // Continuar de todas maneras para asignar el nuevo rol
       }
 
-      print('➕ Asignando nuevo rol $roleId al usuario ${user.id}');
+        
       final resultado = await _userRoleService.assignRoleToUser(
         user.id!,
         roleId,
       );
-      print('✅ Rol asignado, resultado: $resultado');
+        
 
       // Esperar para que se procese la asignación
       await Future.delayed(Duration(milliseconds: 500));
@@ -786,7 +786,7 @@ class _UsersScreenState extends State<UsersScreen> {
           '⚠️ PROBLEMA: Se esperaba 1 rol pero se encontraron ${rolesFinales.length}',
         );
         for (var r in rolesFinales) {
-          print('   • Rol encontrado: ${r.id}');
+            
         }
       }
 
@@ -794,7 +794,7 @@ class _UsersScreenState extends State<UsersScreen> {
       final nuevoRol = _roles.firstWhere(
         (role) => role.id == roleId,
         orElse: () {
-          print('❌ No se encontró el rol con ID $roleId en la lista de roles');
+            
           throw Exception('Rol no encontrado en la lista local');
         },
       );
@@ -836,7 +836,7 @@ class _UsersScreenState extends State<UsersScreen> {
       });
 
       // También hacer una verificación inmediata para debug
-      print('🔍 Rol actualizado localmente. Estado actual en _userRolesMap:');
+        
       print(
         '   • Usuario ${user.email}: ${_userRolesMap[user.id!]?.map((r) => r.nombre).join(", ")}',
       );
@@ -881,10 +881,10 @@ class _UsersScreenState extends State<UsersScreen> {
 
     try {
       // Debug: Mostrar datos que se van a enviar
-      print('🔧 DEBUG - Datos a enviar:');
-      print('  - isEditing: $isEditing');
-      print('  - nombre: "$nombre"');
-      print('  - email: "$email"');
+        
+        
+        
+        
       print(
         '  - password: "${password.isEmpty ? "(vacío)" : "(tiene valor)"}"',
       );
@@ -898,7 +898,7 @@ class _UsersScreenState extends State<UsersScreen> {
         activo: true, // Por defecto activo
       );
 
-      print('INFO: Objeto User creado: ${newUser.toJsonCreate()}');
+        
 
       if (isEditing) {
         // Actualizar usuario existente

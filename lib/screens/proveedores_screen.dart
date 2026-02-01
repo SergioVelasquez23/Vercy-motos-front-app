@@ -399,7 +399,7 @@ class _ProveedoresScreenState extends State<ProveedoresScreen> {
                         }
                       }
                     } catch (e) {
-                      print('Error en operación de proveedor: $e');
+                        
                       if (mounted) {
                         // Cerrar indicador de carga si está abierto
                         Navigator.of(context).pop();
@@ -513,7 +513,7 @@ class _ProveedoresScreenState extends State<ProveedoresScreen> {
           }
         }
       } catch (e) {
-        print('Error eliminando proveedor: $e');
+          
         // Cerrar indicador de carga si está abierto
         if (mounted) {
           Navigator.of(context).pop();

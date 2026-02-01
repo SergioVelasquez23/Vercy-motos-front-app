@@ -23,8 +23,8 @@ class EstadisticasMensualesService {
         '$_baseUrl/reportes/exportar-mes?año=$anio&mes=$mes',
       );
 
-      print('INFO: Exportando estadísticas mensuales - $mes/$anio');
-      print('INFO: URL completa: $url');
+        
+        
 
       final response = await http
           .get(
@@ -37,15 +37,15 @@ class EstadisticasMensualesService {
           .timeout(
             const Duration(seconds: 120), // Aumentado de 30 a 120 segundos
             onTimeout: () {
-              print('ERROR: Timeout al exportar estadísticas mensuales');
+                
               throw Exception(
                 'El servidor tardó demasiado en responder. Intenta con un mes con menos datos.',
               );
             },
           );
 
-      print('INFO: Respuesta del servidor: ${response.statusCode}');
-      print('INFO: Longitud de respuesta: ${response.body.length} bytes');
+        
+        
 
       if (response.statusCode == 200) {
         final jsonData = json.decode(response.body);
@@ -80,7 +80,7 @@ class EstadisticasMensualesService {
     } on FormatException {
       throw Exception('Error en el formato de respuesta del servidor.');
     } catch (e) {
-      print('ERROR: Error en exportarEstadisticasMensuales: $e');
+        
       rethrow;
     }
   }

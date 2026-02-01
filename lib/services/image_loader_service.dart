@@ -75,7 +75,7 @@ class ImageLoaderService {
         .toList();
 
     if (productosNecesitanImagen.isEmpty) {
-      print('✅ Todas las imágenes ya están en cache');
+        
       return;
     }
 
@@ -105,14 +105,14 @@ class ImageLoaderService {
           _notificarListeners(producto.id, imagenUrl);
         }
       } catch (e) {
-        print('❌ Error cargando imagen de ${producto.id}: $e');
+          
       } finally {
         // Remover de lista de carga
         _cargandoImagenes.remove(producto.id);
       }
     }
 
-    print('✅ Lote completado: ${_imagenesCache.length} imágenes en cache');
+      
     */
   }
 
@@ -130,11 +130,11 @@ class ImageLoaderService {
 
     // Si ya está cargando, esperar
     if (_cargandoImagenes.contains(productoId)) {
-      print('⏳ Ya se está cargando la imagen de $productoId');
+        
       return null;
     }
 
-    print('🖼️ Cargando imagen individual: $productoId');
+      
     _cargandoImagenes.add(productoId);
 
     try {
@@ -151,7 +151,7 @@ class ImageLoaderService {
 
       return null;
     } catch (e) {
-      print('❌ Error cargando imagen: $e');
+        
       return null;
     } finally {
       _cargandoImagenes.remove(productoId);
@@ -201,7 +201,7 @@ class ImageLoaderService {
   /// Invalida la imagen en caché de un producto específico
   void invalidateProductImage(String productoId) {
     _imagenesCache.remove(productoId);
-    print('🗑️ Cache de imagen invalidado para producto: $productoId');
+      
 
     // ✅ Notificar a los listeners que el cache fue invalidado
     // Pasar null para indicar que deben recargar
@@ -213,7 +213,7 @@ class ImageLoaderService {
     _imagenesCache.clear();
     _cargandoImagenes.clear();
     _listeners.clear();
-    print('🧹 Cache de imágenes limpiado');
+      
   }
 
   /// Obtiene estadísticas del cache

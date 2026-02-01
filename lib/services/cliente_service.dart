@@ -14,7 +14,7 @@ class ClienteService {
   /// Obtener todos los clientes
   Future<List<Cliente>> obtenerClientes() async {
     try {
-      print('🌐 Obteniendo clientes desde: $baseUrl');
+        
       final response = await http.get(
         Uri.parse(baseUrl),
         headers: {
@@ -24,7 +24,7 @@ class ClienteService {
       );
 
       if (response.statusCode == 200) {
-        print('📦 Response body length: ${response.body.length}');
+          
         final dynamic responseData = json.decode(response.body);
 
         // Manejar si viene como lista directa o dentro de un objeto
@@ -34,18 +34,18 @@ class ClienteService {
         } else if (responseData is Map && responseData['data'] != null) {
           data = responseData['data'];
         } else {
-          print('⚠️ Estructura inesperada: ${responseData.runtimeType}');
+            
           throw Exception('Estructura de respuesta inesperada');
         }
 
-        print('✅ Clientes encontrados: ${data.length}');
+          
         return data.map((json) => Cliente.fromJson(json)).toList();
       }
 
-      print('❌ Error response body: ${response.body}');
+        
       throw Exception('Error al obtener clientes: ${response.statusCode}');
     } catch (e) {
-      print('❌ Error en obtenerClientes: $e');
+        
       rethrow;
     }
   }
@@ -65,7 +65,7 @@ class ClienteService {
 
       throw Exception('Error al obtener cliente: ${response.statusCode}');
     } catch (e) {
-      print('❌ Error en obtenerClientePorId: $e');
+        
       return null;
     }
   }
@@ -87,7 +87,7 @@ class ClienteService {
         'Error al obtener cliente por documento: ${response.statusCode}',
       );
     } catch (e) {
-      print('❌ Error en obtenerClientePorDocumento: $e');
+        
       return null;
     }
   }
@@ -107,7 +107,7 @@ class ClienteService {
 
       throw Exception('Error al crear cliente: ${response.statusCode}');
     } catch (e) {
-      print('❌ Error en crearCliente: $e');
+        
       throw Exception('Error al crear cliente: $e');
     }
   }
@@ -127,7 +127,7 @@ class ClienteService {
 
       throw Exception('Error al actualizar cliente: ${response.statusCode}');
     } catch (e) {
-      print('❌ Error en actualizarCliente: $e');
+        
       throw Exception('Error al actualizar cliente: $e');
     }
   }
@@ -138,7 +138,7 @@ class ClienteService {
       final response = await http.delete(Uri.parse('$baseUrl/$id'));
       return response.statusCode == 200 || response.statusCode == 204;
     } catch (e) {
-      print('❌ Error en eliminarCliente: $e');
+        
       return false;
     }
   }
@@ -159,7 +159,7 @@ class ClienteService {
 
       return [];
     } catch (e) {
-      print('❌ Error en buscarClientes: $e');
+        
       return [];
     }
   }
@@ -176,7 +176,7 @@ class ClienteService {
 
       return [];
     } catch (e) {
-      print('❌ Error en obtenerClientesActivos: $e');
+        
       return [];
     }
   }
@@ -193,7 +193,7 @@ class ClienteService {
 
       return [];
     } catch (e) {
-      print('❌ Error en obtenerClientesConSaldo: $e');
+        
       return [];
     }
   }
@@ -215,7 +215,7 @@ class ClienteService {
 
       throw Exception('Error al bloquear cliente: ${response.statusCode}');
     } catch (e) {
-      print('❌ Error en bloquearCliente: $e');
+        
       throw Exception('Error al bloquear cliente: $e');
     }
   }
@@ -231,7 +231,7 @@ class ClienteService {
 
       throw Exception('Error al activar cliente: ${response.statusCode}');
     } catch (e) {
-      print('❌ Error en activarCliente: $e');
+        
       throw Exception('Error al activar cliente: $e');
     }
   }
@@ -254,7 +254,7 @@ class ClienteService {
 
       throw Exception('Error al verificar cupo: ${response.statusCode}');
     } catch (e) {
-      print('❌ Error en verificarCupoCredito: $e');
+        
       throw Exception('Error al verificar cupo: $e');
     }
   }
@@ -270,7 +270,7 @@ class ClienteService {
 
       throw Exception('Error al obtener estadísticas: ${response.statusCode}');
     } catch (e) {
-      print('❌ Error en obtenerEstadisticas: $e');
+        
       throw Exception('Error al obtener estadísticas: $e');
     }
   }
@@ -285,9 +285,9 @@ class ClienteService {
     String fileName,
   ) async {
     try {
-      print('📤 Enviando archivo de clientes (${bytes.length} bytes)');
-      print('📤 URL: $baseUrl/carga-masiva');
-      print('📤 Filename: $fileName');
+        
+        
+        
 
       var request = http.MultipartRequest(
         'POST',
@@ -310,8 +310,8 @@ class ClienteService {
         ),
       );
 
-      print('📤 Campo multipart: file');
-      print('📤 Enviando request...');
+        
+        
 
       // Enviar con timeout extendido (5 minutos para archivos grandes)
       var streamedResponse = await request.send().timeout(
@@ -361,7 +361,7 @@ class ClienteService {
         throw Exception('Error al cargar clientes: ${response.statusCode}');
       }
     } catch (e) {
-      print('❌ Error en cargarClientesMasivosBytes: $e');
+        
       rethrow;
     }
   }
@@ -371,7 +371,7 @@ class ClienteService {
     String filePath,
   ) async {
     try {
-      print('📤 Enviando archivo de clientes desde: $filePath');
+        
 
       var request = http.MultipartRequest(
         'POST',
@@ -381,7 +381,7 @@ class ClienteService {
       // El backend espera el campo 'file' no 'archivo'
       request.files.add(await http.MultipartFile.fromPath('file', filePath));
 
-      print('📤 Campo multipart: file');
+        
 
       var streamedResponse = await request.send();
       var response = await http.Response.fromStream(streamedResponse);
@@ -421,7 +421,7 @@ class ClienteService {
         throw Exception('Error al cargar clientes: ${response.statusCode}');
       }
     } catch (e) {
-      print('❌ Error en cargarClientesMasivosPath: $e');
+        
       rethrow;
     }
   }

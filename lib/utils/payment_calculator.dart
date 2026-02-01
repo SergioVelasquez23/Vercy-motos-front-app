@@ -11,12 +11,12 @@ class PaymentCalculator {
     final totalConDescuento = subtotal - pedido.descuento;
     final totalFinal = totalConDescuento + pedido.propina;
 
-    print('💰 Calculando total real para pedido ${pedido.id}:');
-    print('  - Subtotal: \$${subtotal.toStringAsFixed(0)}');
-    print('  - Descuento: -\$${pedido.descuento.toStringAsFixed(0)}');
-    print('  - Total con descuento: \$${totalConDescuento.toStringAsFixed(0)}');
-    print('  - Propina: +\$${pedido.propina.toStringAsFixed(0)}');
-    print('  - TOTAL FINAL: \$${totalFinal.toStringAsFixed(0)}');
+      
+      
+      
+      
+      
+      
 
     return totalFinal;
   }
@@ -30,12 +30,12 @@ class PaymentCalculator {
     final totalConDescuento = totalBase - descuento;
     final totalFinal = totalConDescuento + propina;
 
-    print('💰 Calculando total real para detalle:');
-    print('  - Total base: \$${totalBase.toStringAsFixed(0)}');
-    print('  - Descuento: -\$${descuento.toStringAsFixed(0)}');
-    print('  - Total con descuento: \$${totalConDescuento.toStringAsFixed(0)}');
-    print('  - Propina: +\$${propina.toStringAsFixed(0)}');
-    print('  - TOTAL FINAL: \$${totalFinal.toStringAsFixed(0)}');
+      
+      
+      
+      
+      
+      
 
     return totalFinal;
   }
@@ -130,14 +130,14 @@ class PaymentCalculator {
 
   /// Debug: Imprime información detallada de un pedido para debugging
   static void debugPedido(Pedido pedido, String contexto) {
-    print('🔍 DEBUG PEDIDO [$contexto]:');
-    print('  - ID: ${pedido.id}');
-    print('  - Total base: ${formatearMoneda(pedido.total)}');
-    print('  - Descuento: ${formatearMoneda(pedido.descuento)}');
-    print('  - Propina: ${formatearMoneda(pedido.propina)}');
-    print('  - Total pagado: ${formatearMoneda(pedido.totalPagado)}');
-    print('  - Estado: ${pedido.estado}');
-    print('  - Está pagado: ${pedido.estaPagado}');
-    print('  - Total calculado: ${formatearMoneda(calcularTotalReal(pedido))}');
+      
+      
+      
+      
+      
+      
+      
+      
+      
   }
 }

@@ -199,13 +199,13 @@ class _ProductosScreenState extends State<ProductosScreen> {
     // _imageLoader
     //     .cargarImagenesLote(_productosPaginados)
     //     .then((_) {
-    //       print('✅ Imágenes cargadas exitosamente');
+    //         
     //       if (mounted) {
     //         setState(() {});
     //       }
     //     })
     //     .catchError((error) {
-    //       print('⚠️ Error cargando imágenes (no crítico): $error');
+    //         
     //     });
   }
 
@@ -959,7 +959,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                       try {
                         // Llamar al servicio para eliminar el producto
                         await _productoService.deleteProducto(producto.id);
-                        print('✅ Producto eliminado del backend');
+                          
 
                         // ✅ PRIMERO: Cerrar el diálogo
                         if (mounted) {
@@ -984,7 +984,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                         );
                         await cacheProvider.recargarDatos();
                       } catch (e) {
-                        print('❌ Error al eliminar producto: $e');
+                          
 
                         // Cerrar diálogo en caso de error
                         if (mounted) {
@@ -1015,13 +1015,13 @@ class _ProductosScreenState extends State<ProductosScreen> {
 
     // ✅ LOGS DE DEPURACIÓN
     if (isEditing) {
-      print('🔍 === EDITANDO PRODUCTO ===');
-      print('   ID: ${producto.id}');
-      print('   Nombre: "${producto.nombre}"');
-      print('   Precio: \$${producto.precio}');
-      print('   Costo: \$${producto.costo}');
-      print('   Categoría ID: ${producto.categoria?.id ?? "NULL"}');
-      print('   Categoría Nombre: ${producto.categoria?.nombre ?? "NULL"}');
+        
+        
+        
+        
+        
+        
+        
       print(
         '   Ingredientes Disponibles: ${producto.ingredientesDisponibles.length}',
       );
@@ -1031,15 +1031,15 @@ class _ProductosScreenState extends State<ProductosScreen> {
       print(
         '   Ingredientes Opcionales: ${producto.ingredientesOpcionales.length}',
       );
-      print('   TipoProducto: ${producto.tipoProducto}');
-      print('   TieneIngredientes: ${producto.tieneIngredientes}');
-      print('   Estado: ${producto.estado}');
-      print('   Descripción: "${producto.descripcion ?? ""}"');
-      print('   ImagenUrl: ${producto.imagenUrl ?? "NULL"}');
+        
+        
+        
+        
+        
 
-      print('\n📋 Categorías disponibles: ${_categorias.length}');
+        
       for (var cat in _categorias) {
-        print('   - ${cat.id}: ${cat.nombre}');
+          
       }
     }
 
@@ -1218,7 +1218,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
       }
     }
 
-    print('📌 selectedCategoriaId final: ${selectedCategoriaId ?? "NULL"}');
+      
     String? selectedImageUrl = isEditing ? producto.imagenUrl : null;
     // String? tempImagePath; // Ya no se usa
     List<String> ingredientesSeleccionados = isEditing
@@ -1236,25 +1236,25 @@ class _ProductosScreenState extends State<ProductosScreen> {
         : [];
 
     if (isEditing) {
-      print('📋 === INGREDIENTES INICIALES DEL PRODUCTO ===');
-      print('   📸 Imagen URL: ${producto.imagenUrl}');
-      print('   🔧 Tiene ingredientes: $tieneIngredientes');
-      print('   🔧 Tipo producto: $tipoProducto');
-      print('   🥘 Ingredientes requeridos: ${ingredientesRequeridos.length}');
+        
+        
+        
+        
+        
       for (var i = 0; i < ingredientesRequeridos.length; i++) {
         final ing = ingredientesRequeridos[i];
         print(
           '      ✓ [$i] ID: "${ing.ingredienteId}", Nombre: "${ing.ingredienteNombre}", Cantidad: ${ing.cantidadNecesaria}',
         );
       }
-      print('   🥘 Ingredientes opcionales: ${ingredientesOpcionales.length}');
+        
       for (var i = 0; i < ingredientesOpcionales.length; i++) {
         final ing = ingredientesOpcionales[i];
         print(
           '      ✓ [$i] ID: "${ing.ingredienteId}", Nombre: "${ing.ingredienteNombre}", Precio: \$${ing.precioAdicional}',
         );
       }
-      print('📋 === FIN INGREDIENTES INICIALES ===');
+        
     }
 
     showDialog(
@@ -1351,7 +1351,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                                     );
                                   }
                                 } catch (e) {
-                                  print('❌ Error subiendo imagen: $e');
+                                    
                                   if (mounted) {
                                     ScaffoldMessenger.of(
                                       context,
@@ -1369,7 +1369,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                                 }
                               }
                             } catch (e) {
-                              print('❌ Error subiendo imagen: $e');
+                                
                               if (mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
@@ -2510,7 +2510,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                     // Botón para gestionar ingredientes
                     ElevatedButton.icon(
                       onPressed: () async {
-                        print('🔍 Abriendo diálogo de ingredientes...');
+                          
                         print(
                           '   Requeridos actuales: ${ingredientesRequeridos.length}',
                         );
@@ -2525,7 +2525,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                         );
                         
                         if (resultado != null) {
-                          print('✅ Diálogo cerrado con cambios');
+                            
                           print(
                             '   Requeridos nuevos: ${resultado['requeridos']?.length ?? 0}',
                           );
@@ -2539,7 +2539,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                                 resultado['opcionales'] ?? [];
                           });
                         } else {
-                          print('❌ Diálogo cancelado sin cambios');
+                            
                         }
                       },
                       icon: Icon(Icons.add_circle_outline),
@@ -2897,11 +2897,11 @@ class _ProductosScreenState extends State<ProductosScreen> {
 
                             if (isEditing) {
                               // Actualizar producto existente
-                              print('🔍 === DATOS ANTES DE ACTUALIZAR ===');
-                              print('📦 Producto ID: ${producto.id}');
-                              print('📦 Nombre: ${nombreController.text}');
-                              print('📸 Imagen URL: $finalImageUrl');
-                              print('🔧 Tipo de producto: $tipoProducto');
+                                
+                                
+                                
+                                
+                                
                               print(
                                 '🔧 Tiene ingredientes: $tieneIngredientes',
                               );
@@ -3068,7 +3068,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                               await _productoService.updateProducto(
                                 updatedProducto,
                               );
-                              print('✅ Producto actualizado en el backend');
+                                
                               
                               // Invalidar caché de imagen para que se recargue
                               ImageLoaderService().invalidateProductImage(
@@ -3232,7 +3232,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                                         nuevoProducto.ingredientesDisponibles,
                                     descripcion: nuevoProducto.descripcion,
                                   );
-                              print('✅ Producto creado en el backend');
+                                
                             }
 
                             Navigator.of(context).pop();
@@ -3343,11 +3343,11 @@ class _ProductosScreenState extends State<ProductosScreen> {
             _ingredientesCacheTime,
             PerformanceConfig.ingredientesCacheDuration,
           )) {
-        print('📦 Usando cache de ingredientes para productos');
+          
         return _ingredientesCache!;
       }
 
-      print('🔄 Cargando ingredientes desde API...');
+        
       // Aquí deberías obtener los ingredientes desde el cache provider
       final cacheProvider = Provider.of<DatosCacheProvider>(
         context,
@@ -3359,13 +3359,13 @@ class _ProductosScreenState extends State<ProductosScreen> {
       _ingredientesCache = ingredientes;
       _ingredientesCacheTime = DateTime.now();
 
-      print('✅ Ingredientes cargados y en cache: ${ingredientes.length}');
+        
       return ingredientes;
     } catch (e) {
-      print('❌ Error cargando ingredientes: $e');
+        
       // Si hay error y tenemos cache, usar cache aunque haya expirado
       if (_ingredientesCache != null) {
-        print('🔄 Usando cache expirado como fallback');
+          
         return _ingredientesCache!;
       }
       return [];
@@ -3381,19 +3381,19 @@ class _ProductosScreenState extends State<ProductosScreen> {
     required List<IngredienteProducto> ingredientesRequeridos,
     required List<IngredienteProducto> ingredientesOpcionales,
   }) async {
-    print('🔍 _showIngredientesDialog llamado');
-    print('   Tipo producto: $tipoProducto');
+      
+      
     print(
       '   Ingredientes requeridos recibidos: ${ingredientesRequeridos.length}',
     );
     for (var i = 0; i < ingredientesRequeridos.length; i++) {
-      print('      [$i] ${ingredientesRequeridos[i].ingredienteNombre}');
+        
     }
     print(
       '   Ingredientes opcionales recibidos: ${ingredientesOpcionales.length}',
     );
     for (var i = 0; i < ingredientesOpcionales.length; i++) {
-      print('      [$i] ${ingredientesOpcionales[i].ingredienteNombre}');
+        
     }
     
     // Copias locales para editar
@@ -3872,7 +3872,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                             ),
                             keyboardType: TextInputType.number,
                             onChanged: (value) {
-                              print('🔍 CANTIDAD INGREDIENTE CHANGED: $value');
+                                
                               dialogSetState(
                                 () {},
                               ); // ✅ FIX: Usar dialogSetState para actualizar el botón
@@ -4026,8 +4026,8 @@ class _ProductosScreenState extends State<ProductosScreen> {
   // Método para seleccionar y cargar el archivo Excel
   Future<void> _seleccionarYCargarArchivo() async {
     try {
-      print('🔍 Iniciando selección de archivo...');
-      print('🌐 ¿Es web? $kIsWeb');
+        
+        
 
       if (kIsWeb) {
         // En web, usar HTML input file directamente
@@ -4037,8 +4037,8 @@ class _ProductosScreenState extends State<ProductosScreen> {
         await _seleccionarArchivoDesktop();
       }
     } catch (e, stackTrace) {
-      print('❌ Error al seleccionar archivo: $e');
-      print('📍 StackTrace: $stackTrace');
+        
+        
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -4059,7 +4059,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
 
   // Método específico para web usando HTML input
   Future<void> _seleccionarArchivoWeb() async {
-    print('🌐 Usando selector HTML para web...');
+      
 
     // Crear input file
     final html.FileUploadInputElement uploadInput =
@@ -4073,13 +4073,13 @@ class _ProductosScreenState extends State<ProductosScreen> {
 
     final files = uploadInput.files;
     if (files == null || files.isEmpty) {
-      print('⚠️ No se seleccionó ningún archivo');
+        
       return;
     }
 
     final file = files[0];
-    print('✅ Archivo seleccionado: ${file.name}');
-    print('   - Tamaño: ${file.size} bytes');
+      
+      
 
     // Mostrar diálogo de carga
     if (mounted) {
@@ -4118,7 +4118,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
     await reader.onLoad.first;
 
     final bytes = reader.result as Uint8List;
-    print('📤 Enviando archivo desde web (${bytes.length} bytes)');
+      
 
     // Enviar el archivo
     await _cargarArchivoExcelBytes(bytes, file.name);
@@ -4131,7 +4131,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
 
   // Método específico para desktop/mobile usando file_picker
   Future<void> _seleccionarArchivoDesktop() async {
-    print('💻 Usando FilePicker para desktop/mobile...');
+      
 
     FilePickerResult? result;
 
@@ -4143,19 +4143,19 @@ class _ProductosScreenState extends State<ProductosScreen> {
         withReadStream: true,
       );
     } catch (pickerError) {
-      print('❌ Error en FilePicker: $pickerError');
+        
       throw Exception('Error al abrir selector de archivos: $pickerError');
     }
 
     // Verificar si se canceló la selección
     if (result == null) {
-      print('⚠️ Selección de archivo cancelada por el usuario');
+        
       return;
     }
 
     // Verificar si hay archivos seleccionados
     if (result.files.isEmpty) {
-      print('⚠️ No se seleccionaron archivos');
+        
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -4168,9 +4168,9 @@ class _ProductosScreenState extends State<ProductosScreen> {
     }
 
     PlatformFile file = result.files.first;
-    print('✅ Archivo seleccionado: ${file.name}');
-    print('   - Tamaño: ${file.size} bytes');
-    print('   - Tiene path: ${file.path != null}');
+      
+      
+      
 
     if (file.path == null || file.path!.isEmpty) {
       throw Exception('No se pudo obtener la ruta del archivo');
@@ -4202,7 +4202,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
       );
     }
 
-    print('📤 Enviando archivo desde path: ${file.path}');
+      
     await _cargarArchivoExcel(file.path!);
 
     // Cerrar diálogo de carga
@@ -4250,7 +4250,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
         );
       }
     } catch (e) {
-      print('Error al cargar archivo Excel: $e');
+        
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -4297,7 +4297,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
         );
       }
     } catch (e) {
-      print('Error al cargar archivo Excel: $e');
+        
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -4855,7 +4855,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
         );
       }
     } catch (e) {
-      print('Error al generar código de barras: $e');
+        
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

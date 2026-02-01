@@ -295,7 +295,7 @@ class ExcelExportService {
 
       return filePath;
     } catch (e) {
-      print('❌ Error exportando Excel: $e');
+        
       return null;
     }
   }
@@ -315,7 +315,7 @@ class ExcelExportService {
           ..click();
         html.Url.revokeObjectUrl(url);
 
-        print('✅ Archivo Excel descargado en Web: $fileName');
+          
         return 'web_download:$fileName';
       }
 
@@ -351,10 +351,10 @@ class ExcelExportService {
       // Escribir archivo
       await file.writeAsBytes(fileBytes);
 
-      print('✅ Archivo Excel guardado en: $filePath');
+        
       return filePath;
     } catch (e) {
-      print('❌ Error guardando archivo: $e');
+        
       return null;
     }
   }
@@ -371,7 +371,7 @@ class ExcelExportService {
       );
       return true;
     } catch (e) {
-      print('❌ Error compartiendo Excel: $e');
+        
       return false;
     }
   }
@@ -508,7 +508,7 @@ class ExcelExportService {
           ..click();
         html.Url.revokeObjectUrl(url);
 
-        print('✅ Archivo Excel descargado en Web: $fileName');
+          
         return 'web_download:$fileName';
       }
 
@@ -530,10 +530,10 @@ class ExcelExportService {
       File file = File('${directory.path}/$fileName');
       await file.writeAsBytes(excelBytes);
 
-      print('✅ Archivo Excel generado: ${file.path}');
+        
       return file.path;
     } catch (e) {
-      print('❌ Error exportando estadísticas a Excel: $e');
+        
       return null;
     }
   }

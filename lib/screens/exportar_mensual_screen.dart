@@ -447,8 +447,8 @@ class _ExportarMensualScreenState extends State<ExportarMensualScreen> {
         _fechaSeleccionada.month,
       );
 
-      print('INFO: Datos recibidos exitosamente');
-      print('INFO: Claves en datos: ${datos.keys.toList()}');
+        
+        
 
       setState(() {
         _datosPreview = datos;
@@ -470,7 +470,7 @@ class _ExportarMensualScreenState extends State<ExportarMensualScreen> {
         );
       }
     } catch (e) {
-      print('ERROR: Error al cargar preview: $e');
+        
       
       if (mounted) {
         // Determinar mensaje de error específico

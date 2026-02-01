@@ -39,12 +39,12 @@ class DashboardHelper {
       }
     }
 
-    print('💰 DASHBOARD HELPER: Calculando total de ventas');
-    print('  - Total pedidos analizados: ${pedidos.length}');
-    print('  - Pedidos pagados detectados: $contadorPagados');
-    print('  - Pedidos activos: $pedidosActivos');
-    print('  - Total calculado: \$${total.toStringAsFixed(2)}');
-    print('  - Detalles pedidos pagados: $detallesPagados');
+      
+      
+      
+      
+      
+      
 
     return total;
   }

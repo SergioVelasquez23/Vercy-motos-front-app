@@ -56,7 +56,7 @@ class _TiposGastoScreenState extends State<TiposGastoScreen> {
       _showError(
         'Error al cargar tipos de gasto: ${e.toString().split(':').first}',
       );
-      print('Error detallado: $e');
+        
     } finally {
       setState(() => _isLoading = false);
     }
@@ -99,7 +99,7 @@ class _TiposGastoScreenState extends State<TiposGastoScreen> {
 
       _showSuccess('Tipos de gasto predeterminados creados exitosamente');
     } catch (e) {
-      print('Error creando tipos predeterminados: $e');
+        
     }
   }
 
@@ -253,7 +253,7 @@ class _TiposGastoScreenState extends State<TiposGastoScreen> {
           );
         } else {
           _showError('Error al eliminar: ${e.toString().split(':').first}');
-          print('Error detallado: $e');
+            
         }
       } finally {
         setState(() => _isLoading = false);

@@ -1862,10 +1862,10 @@ class _ResumenCierreDetalladoScreenState
     final totalVentasCorrectas = ventas.totalVentas;
 
     // 🐛 DEBUG: Imprimir valores para entender las discrepancias
-    print('🔍 DEBUGGING BALANCE FINAL:');
-    print('  - resumen.totalVentas: \$${resumen.totalVentas}');
-    print('  - ventas.totalVentas (CORRECTO): \$${ventas.totalVentas}');
-    print('  - movimientos.ventasEfectivo: \$${movimientos.ventasEfectivo}');
+      
+      
+      
+      
     print(
       '  - movimientos.ventasTransferencia: \$${movimientos.ventasTransferencia}',
     );

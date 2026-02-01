@@ -21,22 +21,22 @@ class ValidacionCajaUtil {
       final detalles = await obtenerDetallesEfectivo();
 
       if (detalles.totalEfectivoEnCaja < monto) {
-        print('⚠️ ADVERTENCIA: Efectivo insuficiente en caja');
+          
         print(
           '💰 Disponible: \$${detalles.totalEfectivoEnCaja.toStringAsFixed(2)}',
         );
-        print('💰 Requerido: \$${monto.toStringAsFixed(2)}');
+          
         print(
           'ℹ️ La operación puede continuar, pero la caja quedará en negativo.',
         );
       } else {
-        print('✅ Efectivo suficiente en caja');
+          
       }
 
       // Siempre retorna true para permitir que la operación continúe
       return true;
     } catch (e) {
-      print('❌ Error al validar efectivo disponible: $e');
+        
       // Aún en caso de error, permitir continuar
       return true;
     }
@@ -102,12 +102,12 @@ class ValidacionCajaUtil {
     }
 
     // Si no hay contexto, mostrar información en consola
-    print('⚠️ CONFIRMACIÓN DE OPERACIÓN');
-    print('📌 Tipo: $tipoOperacion');
-    print('📝 Detalle: $detalleOperacion');
-    print('💰 Efectivo actual: \$${efectivoActual.toStringAsFixed(2)}');
-    print('💰 Monto a utilizar: \$${monto.toStringAsFixed(2)}');
-    print('💰 Efectivo restante: \$${efectivoRestante.toStringAsFixed(2)}');
+      
+      
+      
+      
+      
+      
 
     // Por defecto retornamos true en modo consola
     return true;

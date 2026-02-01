@@ -35,8 +35,8 @@ class HistorialEdicionService {
         headers: headers,
       );
 
-      print('📊 Historial pedido response: ${response.statusCode}');
-      print('📊 Historial pedido body: ${response.body}');
+        
+        
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
@@ -62,7 +62,7 @@ class HistorialEdicionService {
         throw Exception('Error al obtener historial: ${response.statusCode}');
       }
     } catch (e) {
-      print('❌ Error obteniendo historial de ediciones: $e');
+        
       throw Exception('Error de conexión: $e');
     }
   }
@@ -76,7 +76,7 @@ class HistorialEdicionService {
         headers: headers,
       );
 
-      print('📊 Historial mesa response: ${response.statusCode}');
+        
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
@@ -103,7 +103,7 @@ class HistorialEdicionService {
         );
       }
     } catch (e) {
-      print('❌ Error obteniendo historial de mesa: $e');
+        
       throw Exception('Error de conexión: $e');
     }
   }
@@ -117,7 +117,7 @@ class HistorialEdicionService {
         headers: headers,
       );
 
-      print('📊 Historial usuario response: ${response.statusCode}');
+        
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
@@ -144,7 +144,7 @@ class HistorialEdicionService {
         );
       }
     } catch (e) {
-      print('❌ Error obteniendo historial de usuario: $e');
+        
       throw Exception('Error de conexión: $e');
     }
   }
@@ -158,7 +158,7 @@ class HistorialEdicionService {
         headers: headers,
       );
 
-      print('📊 Historial reciente response: ${response.statusCode}');
+        
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
@@ -185,7 +185,7 @@ class HistorialEdicionService {
         );
       }
     } catch (e) {
-      print('❌ Error obteniendo historial reciente: $e');
+        
       throw Exception('Error de conexión: $e');
     }
   }

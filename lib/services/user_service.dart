@@ -23,7 +23,7 @@ class UserService {
         return await storage.read(key: 'jwt_token');
       }
     } catch (e) {
-      print('Error obteniendo token: $e');
+        
       return null;
     }
   }
@@ -53,7 +53,7 @@ class UserService {
         throw Exception('Error al obtener roles V2: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error en getRolesByUserIdV2: $e');
+        
       throw Exception('Error de conexión: $e');
     }
   }
@@ -83,7 +83,7 @@ class UserService {
         throw Exception('Error al obtener roles: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error en getRolesByUserId: $e');
+        
       throw Exception('Error de conexión: $e');
     }
   }
@@ -123,7 +123,7 @@ class UserService {
         throw Exception('Error al cargar usuarios: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error en getUsers: $e');
+        
       throw Exception('Error de conexión: $e');
     }
   }
@@ -150,7 +150,7 @@ class UserService {
         throw Exception('Error al obtener usuario: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error en getUserById: $e');
+        
       throw Exception('Error de conexión: $e');
     }
   }
@@ -176,7 +176,7 @@ class UserService {
         throw Exception('Error al crear usuario: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error en createUser: $e');
+        
       throw Exception('Error al crear usuario: $e');
     }
   }
@@ -215,7 +215,7 @@ class UserService {
         throw Exception('Error al actualizar usuario: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error en updateUser: $e');
+        
       throw Exception('Error al actualizar usuario: $e');
     }
   }
@@ -236,7 +236,7 @@ class UserService {
       );
       return response.statusCode == 204 || response.statusCode == 200;
     } catch (e) {
-      print('Error en deleteUser: $e');
+        
       throw Exception('Error al eliminar usuario: $e');
     }
   }
@@ -261,7 +261,7 @@ class UserService {
         return null;
       }
     } catch (e) {
-      print('Error en getCurrentUserInfo: $e');
+        
       return null;
     }
   }

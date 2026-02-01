@@ -23,7 +23,7 @@ class ImageService {
   /// Lista todas las imágenes disponibles en el servidor
   Future<List<String>> listImages() async {
     try {
-      print('📋 Listando imágenes disponibles...');
+        
 
       final response = await http
           .get(Uri.parse(_apiConfig.endpoints.images.list), headers: _headers)
@@ -43,7 +43,7 @@ class ImageService {
               final uploadsFiles = (data['uploadsFiles'] as List)
                   .cast<String>();
               images.addAll(uploadsFiles);
-              print('📋 Archivos en uploads: ${uploadsFiles.length}');
+                
             }
 
             // Agregar archivos del directorio por defecto (si no están ya en uploads)
@@ -62,13 +62,13 @@ class ImageService {
           }
         }
 
-        print('✅ Total de imágenes encontradas: ${images.length}');
+          
         return images;
       } else {
         throw Exception('Error del servidor: ${response.statusCode}');
       }
     } catch (e) {
-      print('❌ Error listando imágenes: $e');
+        
       throw Exception('No se pudieron listar las imágenes: $e');
     }
   }
@@ -76,7 +76,7 @@ class ImageService {
   /// Verifica si una imagen específica existe
   Future<bool> checkImageExists(String filename) async {
     try {
-      print('🔍 Verificando imagen: $filename');
+        
 
       final response = await http
           .get(
@@ -85,7 +85,7 @@ class ImageService {
           )
           .timeout(Duration(seconds: 5));
 
-      print('🔍 Check response: ${response.statusCode}');
+        
 
       if (response.statusCode == 200) {
         final jsonData = json.decode(response.body);
@@ -100,7 +100,7 @@ class ImageService {
 
       return false;
     } catch (e) {
-      print('❌ Error verificando imagen: $e');
+        
       return false;
     }
   }
@@ -108,7 +108,7 @@ class ImageService {
   /// Sube una imagen al servidor
   Future<String> uploadImage(XFile image) async {
     try {
-      print('📤 Subiendo imagen: ${image.name}');
+        
 
       if (kIsWeb) {
         // Flutter Web: usar upload base64
@@ -118,7 +118,7 @@ class ImageService {
         return await _uploadImageMultipart(image);
       }
     } catch (e) {
-      print('❌ Error subiendo imagen: $e');
+        
       throw Exception('No se pudo subir la imagen: $e');
     }
   }
@@ -139,8 +139,8 @@ class ImageService {
         )
         .timeout(Duration(seconds: 30));
 
-    print('📤 Upload base64 response: ${response.statusCode}');
-    print('📤 Response body: ${response.body}');
+      
+      
 
     if (response.statusCode == 200) {
       final jsonData = json.decode(response.body);
@@ -154,7 +154,7 @@ class ImageService {
         filename = imageUrl.substring('/images/platos/'.length);
       }
 
-      print('✅ Imagen subida exitosamente (web): $filename');
+        
       return filename;
     } else {
       throw Exception(
@@ -179,13 +179,13 @@ class ImageService {
       ),
     );
 
-    print('📤 Sending multipart request to: $uri');
+      
 
     final streamResponse = await request.send().timeout(Duration(seconds: 30));
     final response = await http.Response.fromStream(streamResponse);
 
-    print('📤 Upload multipart response: ${response.statusCode}');
-    print('📤 Response body: ${response.body}');
+      
+      
 
     if (response.statusCode == 200) {
       final jsonData = json.decode(response.body);
@@ -199,7 +199,7 @@ class ImageService {
         filename = imageUrl.substring('/images/platos/'.length);
       }
 
-      print('✅ Imagen subida exitosamente (multipart): $filename');
+        
       return filename;
     } else {
       throw Exception(
@@ -219,12 +219,12 @@ class ImageService {
       );
 
       if (image != null) {
-        print('🖼️ Imagen seleccionada: ${image.name}');
+          
       }
 
       return image;
     } catch (e) {
-      print('❌ Error seleccionando imagen: $e');
+        
       throw Exception('No se pudo seleccionar la imagen: $e');
     }
   }
@@ -240,12 +240,12 @@ class ImageService {
       );
 
       if (image != null) {
-        print('📷 Imagen capturada: ${image.name}');
+          
       }
 
       return image;
     } catch (e) {
-      print('❌ Error capturando imagen: $e');
+        
       throw Exception('No se pudo capturar la imagen: $e');
     }
   }
@@ -253,7 +253,7 @@ class ImageService {
   /// Elimina una imagen del servidor
   Future<bool> deleteImage(String filename) async {
     try {
-      print('🗑️ Eliminando imagen: $filename');
+        
 
       final response = await http
           .delete(
@@ -262,17 +262,17 @@ class ImageService {
           )
           .timeout(Duration(seconds: 10));
 
-      print('🗑️ Delete response: ${response.statusCode}');
+        
 
       if (response.statusCode == 200) {
-        print('✅ Imagen eliminada exitosamente: $filename');
+          
         return true;
       } else {
-        print('❌ Error eliminando imagen: ${response.statusCode}');
+          
         return false;
       }
     } catch (e) {
-      print('❌ Error eliminando imagen: $e');
+        
       return false;
     }
   }
@@ -282,7 +282,7 @@ class ImageService {
     // Validar que el filename no esté vacío
     if (filename.trim().isEmpty) {
       // ✅ COMENTADO: Log de filename vacío removido
-      // print('⚠️ Filename vacío proporcionado a getImageUrl');
+      //   
       return '';
     }
 
@@ -290,15 +290,15 @@ class ImageService {
 
     // 🚫 RECHAZAR URLs blob (son temporales del navegador)
     if (cleanFilename.startsWith('blob:')) {
-      print('⚠️ URL blob detectada (temporal del navegador): $cleanFilename');
-      print('   Esta imagen debe ser re-subida al servidor');
+        
+        
       return ''; // Retornar vacío para que muestre placeholder
     }
 
     // 🎯 PRIORIDAD 1: Si es una data URL base64, retornarla directamente
     if (cleanFilename.startsWith('data:image/')) {
       // ✅ COMENTADO: Log de data URL removido
-      // print('✅ Data URL base64 detectada, retornando directamente');
+      //   
       return cleanFilename;
     }
 
@@ -315,7 +315,7 @@ class ImageService {
       // Validar que no termine en rutas incompletas
       if (cleanFilename.endsWith('/images/platos/') ||
           cleanFilename.endsWith('/images/platos')) {
-        print('⚠️ URL incompleta detectada: $cleanFilename');
+          
         return '';
       }
 
@@ -323,19 +323,19 @@ class ImageService {
       try {
         final uri = Uri.parse(cleanFilename);
         if (!uri.hasScheme || !uri.hasAuthority) {
-          print('⚠️ URL mal formada: $cleanFilename');
+            
           return '';
         }
 
         // Verificar que tenga una extensión de imagen válida
         if (!isValidImageFile(uri.path.split('/').last)) {
-          print('⚠️ URL no apunta a imagen válida: $cleanFilename');
+            
           return '';
         }
 
         return cleanFilename;
       } catch (e) {
-        print('❌ Error validando URL: $cleanFilename - $e');
+          
         return '';
       }
     }
@@ -345,14 +345,14 @@ class ImageService {
       // Validar que no sea solo el path sin archivo
       if (cleanFilename == '/images/platos/' ||
           cleanFilename == '/images/platos') {
-        print('⚠️ Path incompleto detectado: $cleanFilename');
+          
         return '';
       }
 
       // Validar que el archivo tenga extensión válida
       final fileName = cleanFilename.split('/').last;
       if (!isValidImageFile(fileName)) {
-        print('⚠️ Archivo sin extensión válida en path: $cleanFilename');
+          
         return '';
       }
 
@@ -362,13 +362,13 @@ class ImageService {
           : _apiConfig.baseUrl;
       
       final fullUrl = '$baseUrl$cleanFilename';
-      print('🔗 URL construida (con path): $fullUrl');
+        
       return fullUrl;
     }
 
     // Si es solo el nombre del archivo, validar que tenga extensión
     if (!cleanFilename.contains('.') || !isValidImageFile(cleanFilename)) {
-      print('⚠️ Filename inválido o sin extensión: $cleanFilename');
+        
       return '';
     }
 
@@ -378,7 +378,7 @@ class ImageService {
         : _apiConfig.baseUrl;
     
     final fullUrl = '$baseUrl/images/platos/$cleanFilename';
-    print('🔗 URL construida: $fullUrl');
+      
     return fullUrl;
   }
 
@@ -410,7 +410,7 @@ class ImageService {
   /// Obtiene información detallada del estado de las imágenes
   Future<Map<String, dynamic>> getImageStatus() async {
     try {
-      print('📊 Obteniendo estado de las imágenes...');
+        
 
       final response = await http
           .get(Uri.parse(_apiConfig.endpoints.images.list), headers: _headers)
@@ -418,13 +418,13 @@ class ImageService {
 
       if (response.statusCode == 200) {
         final jsonData = json.decode(response.body);
-        print('📊 Estado completo: $jsonData');
+          
         return jsonData;
       } else {
         throw Exception('Error del servidor: ${response.statusCode}');
       }
     } catch (e) {
-      print('❌ Error obteniendo estado: $e');
+        
       throw Exception('No se pudo obtener el estado de las imágenes: $e');
     }
   }
@@ -432,17 +432,17 @@ class ImageService {
   /// Verifica la conectividad con el backend
   Future<bool> testConnection() async {
     try {
-      print('🔗 Probando conexión con el backend...');
+        
 
       final response = await http
           .get(Uri.parse(_apiConfig.endpoints.images.list), headers: _headers)
           .timeout(Duration(seconds: 5));
 
       final isConnected = response.statusCode == 200;
-      print(isConnected ? '✅ Conexión exitosa' : '❌ Conexión fallida');
+        
       return isConnected;
     } catch (e) {
-      print('❌ Error de conexión: $e');
+        
       return false;
     }
   }
@@ -450,7 +450,7 @@ class ImageService {
   /// Sube el logo del negocio al servidor
   Future<String> uploadNegocioLogo(XFile image) async {
     try {
-      print('🏢 Subiendo logo del negocio: ${image.name}');
+        
 
       if (kIsWeb) {
         // Flutter Web: usar upload base64
@@ -460,7 +460,7 @@ class ImageService {
         return await _uploadNegocioLogoMultipart(image);
       }
     } catch (e) {
-      print('❌ Error subiendo logo del negocio: $e');
+        
       throw Exception('No se pudo subir el logo del negocio: $e');
     }
   }
@@ -481,15 +481,15 @@ class ImageService {
         )
         .timeout(Duration(seconds: 30));
 
-    print('🏢 Upload logo base64 response: ${response.statusCode}');
-    print('🏢 Response body: ${response.body}');
+      
+      
 
     if (response.statusCode == 200) {
       final jsonData = json.decode(response.body);
       // El backend retorna la información en el campo 'data'
       String logoUrl = jsonData['data'] as String;
 
-      print('✅ Logo del negocio subido exitosamente (web): $logoUrl');
+        
       return logoUrl;
     } else {
       throw Exception(
@@ -514,20 +514,20 @@ class ImageService {
       ),
     );
 
-    print('🏢 Sending logo multipart request to: $uri');
+      
 
     final streamResponse = await request.send().timeout(Duration(seconds: 30));
     final response = await http.Response.fromStream(streamResponse);
 
-    print('🏢 Upload logo multipart response: ${response.statusCode}');
-    print('🏢 Response body: ${response.body}');
+      
+      
 
     if (response.statusCode == 200) {
       final jsonData = json.decode(response.body);
       // El backend retorna la información en el campo 'data'
       String logoUrl = jsonData['data'] as String;
 
-      print('✅ Logo del negocio subido exitosamente (multipart): $logoUrl');
+        
       return logoUrl;
     } else {
       throw Exception(

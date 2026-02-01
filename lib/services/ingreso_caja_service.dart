@@ -34,7 +34,7 @@ class IngresoCajaService {
         headers: headers,
       );
 
-      print('💰 Obteniendo todos los ingresos - Status: ${resp.statusCode}');
+        
 
       if (resp.statusCode == 200) {
         final responseData = json.decode(resp.body);
@@ -55,7 +55,7 @@ class IngresoCajaService {
       }
       throw Exception('Error al obtener ingresos: ${resp.statusCode}');
     } catch (e) {
-      print('❌ Error obteniendo ingresos: $e');
+        
       throw Exception('Error de conexión: $e');
     }
   }
@@ -81,7 +81,7 @@ class IngresoCajaService {
         observaciones: ingreso.observaciones,
       );
 
-      print('💰 Registrando ingreso con cuadre: ${cuadreActivo?.id}');
+        
 
       final headers = await _getHeaders();
       final resp = await http.post(
@@ -90,8 +90,8 @@ class IngresoCajaService {
         body: json.encode(ingresoConCuadre.toJson()),
       );
 
-      print('💰 Registrando ingreso - Status: ${resp.statusCode}');
-      print('💰 Body: ${resp.body}');
+        
+        
 
       if (resp.statusCode == 200 || resp.statusCode == 201) {
         final responseData = json.decode(resp.body);
@@ -108,12 +108,12 @@ class IngresoCajaService {
           throw Exception('Formato de respuesta inválido');
         }
 
-        print('✅ Ingreso registrado exitosamente');
+          
         return IngresoCaja.fromJson(ingresoData);
       }
       throw Exception('Error al registrar ingreso: ${resp.statusCode}');
     } catch (e) {
-      print('❌ Error registrando ingreso: $e');
+        
       throw Exception('Error de conexión: $e');
     }
   }
@@ -126,15 +126,15 @@ class IngresoCajaService {
         headers: headers,
       );
 
-      print('💰 Eliminando ingreso $id - Status: ${resp.statusCode}');
+        
 
       if (resp.statusCode != 200 && resp.statusCode != 204) {
         throw Exception('Error al eliminar ingreso: ${resp.statusCode}');
       }
 
-      print('✅ Ingreso eliminado exitosamente');
+        
     } catch (e) {
-      print('❌ Error eliminando ingreso: $e');
+        
       throw Exception('Error de conexión: $e');
     }
   }
@@ -142,12 +142,12 @@ class IngresoCajaService {
   // Obtener ingresos por cuadre de caja - MÉTODO PRINCIPAL PARA LA NUEVA FUNCIONALIDAD
   Future<List<IngresoCaja>> obtenerPorCuadreCaja(String cuadreId) async {
     try {
-      print('IngresoCajaService - Obteniendo ingresos para cuadre: $cuadreId');
+        
       final resp = await http.get(
         Uri.parse('$_baseUrl/api/ingresos-caja/por-caja/$cuadreId'),
       );
 
-      print('IngresoCajaService - Response status: ${resp.statusCode}');
+        
 
       if (resp.statusCode == 200) {
         final List data = json.decode(resp.body);
@@ -156,16 +156,16 @@ class IngresoCajaService {
         // Ordenar por fecha descendente (más recientes primero)
         ingresos.sort((a, b) => b.fechaIngreso.compareTo(a.fechaIngreso));
 
-        print('IngresoCajaService - Ingresos encontrados: ${ingresos.length}');
+          
         return ingresos;
       } else {
-        print('IngresoCajaService - Error: ${resp.statusCode} - ${resp.body}');
+          
         throw Exception(
           'Error al obtener ingresos del cuadre: ${resp.statusCode}',
         );
       }
     } catch (e) {
-      print('IngresoCajaService - Exception: $e');
+        
       throw Exception('Error de conexión: $e');
     }
   }

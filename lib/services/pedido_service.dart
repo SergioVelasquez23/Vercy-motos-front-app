@@ -66,19 +66,19 @@ class PedidoService {
           // Actualizar el estado y guardar en caché
           pedidoActualizado.estado = nuevoEstado;
           _pedidosCache[pedidoId] = pedidoActualizado;
-          print('✅ Estado del pedido actualizado localmente desde servidor');
+            
         }
       } else {
         // Actualizar el pedido existente en caché
         pedido.estado = nuevoEstado;
         _pedidosCache[pedidoId] = pedido;
-        print('✅ Estado del pedido actualizado localmente desde caché');
+          
       }
 
       // Notificar el cambio para actualizar la UI
       _pedidoPagadoController.add(true);
     } catch (e) {
-      print('❌ Error al actualizar estado local del pedido: $e');
+        
     }
   }
 
@@ -101,14 +101,14 @@ class PedidoService {
       // Formateo manual SIEMPRE para evitar problemas de locale
       return _formatoManualFecha(fechaLocal);
     } catch (e) {
-      print('❌ Error crítico formateando fecha: $e');
-      print('❌ Fecha original: ${fecha.toString()}');
+        
+        
       // Fallback absoluto: usar fecha actual con formateo manual
       try {
         final fechaActual = DateTime.now().toLocal();
         return _formatoManualFecha(fechaActual);
       } catch (e2) {
-        print('❌ Fallback crítico en formateo de fecha: $e2');
+          
         // Último recurso: formato ISO básico hardcodeado
         final now = DateTime.now();
         return '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}T${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}';
@@ -133,14 +133,14 @@ class PedidoService {
       if (!RegExp(
         r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$',
       ).hasMatch(resultado)) {
-        print('⚠️ Formato de fecha inválido generado: $resultado');
+          
         // Fallback con valores predeterminados si algo salió mal
         return '${DateTime.now().year}-01-01T00:00:00';
       }
 
       return resultado;
     } catch (e) {
-      print('❌ Error en formateo manual: $e');
+        
       return '${DateTime.now().year}-01-01T00:00:00';
     }
   }
@@ -158,7 +158,7 @@ class PedidoService {
         return await storage.read(key: 'jwt_token');
       }
     } catch (e) {
-      print('Error obteniendo token: $e');
+        
       return null;
     }
   }
@@ -178,7 +178,7 @@ class PedidoService {
         } else if (responseData.containsKey('results')) {
           jsonList = responseData['results'];
         } else {
-          print('⚠️ Estructura de respuesta desconocida: ${responseData.keys}');
+            
           return [];
         }
       } else if (responseData is List) {
@@ -208,7 +208,7 @@ class PedidoService {
           print(
             '⚠️ Estado inconsistente en _parseListResponse: ID=${pedido.id}, estado=${pedido.estado}, pagadoPor=${pedido.pagadoPor}',
           );
-          print('✅ Corrigiendo estado a PAGADO automáticamente');
+            
           pedido.estado = EstadoPedido.pagado;
           pedidosFiltrados++;
         }
@@ -219,7 +219,7 @@ class PedidoService {
           print(
             '⚠️ Estado inconsistente en _parseListResponse: pedido tipo CORTESÍA pero estado=${pedido.estado}',
           );
-          print('✅ Corrigiendo estado a CORTESÍA automáticamente');
+            
           pedido.estado = EstadoPedido.cortesia;
         }
 
@@ -229,12 +229,12 @@ class PedidoService {
             print(
               '⚠️ Estado "pendiente" detectado con pagadoPor: ${pedido.pagadoPor}',
             );
-            print('✅ Corrigiendo estado a PAGADO automáticamente');
+              
             pedido.estado = EstadoPedido.pagado;
             pedidosFiltrados++;
           } else {
-            print('⚠️ Estado "pendiente" detectado sin pagadoPor');
-            print('✅ Corrigiendo estado a ACTIVO automáticamente');
+              
+              
             pedido.estado = EstadoPedido.activo;
             pedidosFiltrados++;
           }
@@ -242,12 +242,12 @@ class PedidoService {
 
         // Verificar inconsistencias adicionales para diagnóstico
         if (estadoOriginal != pedido.estado) {
-          print('📊 DIAGNÓSTICO VENTAS - Pedido ID: ${pedido.id}');
-          print('  - Estado original: $estadoOriginal');
-          print('  - Estado corregido: ${pedido.estado}');
-          print('  - estaPagado: $teoriaPagado');
-          print('  - pagadoPor: ${pedido.pagadoPor ?? "NULL"}');
-          print('  - formaPago: ${pedido.formaPago ?? "NULL"}');
+            
+            
+            
+            
+            
+            
           print(
             '  - fechaPago: ${pedido.fechaPago != null ? "PRESENTE" : "NULL"}',
           );
@@ -295,16 +295,16 @@ class PedidoService {
       }
 
       // Imprimir resumen para diagnóstico
-      print('📊 ANÁLISIS DE VENTAS - Total pedidos: ${pedidos.length}');
-      print('  - Pedidos realmente pagados (estaPagado): $pedidosPagados');
-      print('  - Pedidos con estado=PAGADO: $pedidosConEstadoPagado');
+        
+        
+        
       print(
         '  - Pedidos con pagadoPor pero sin estado PAGADO: $pedidosConPagadoPorSinEstadoPagado',
       );
-      print('  - Pedidos CORTESÍA: $pedidosCortesia');
-      print('  - Pedidos ACTIVOS: $pedidosActivos');
-      print('  - Pedidos CANCELADOS: $pedidosCancelados');
-      print('  - Pedidos con estados corregidos: $pedidosFiltrados');
+        
+        
+        
+        
 
       // Cargar productos para cada pedido
       for (var pedido in pedidos) {
@@ -313,7 +313,7 @@ class PedidoService {
 
       return pedidos;
     } catch (e) {
-      print('❌ Error parseando lista de pedidos: $e');
+        
       return [];
     }
   }
@@ -337,8 +337,8 @@ class PedidoService {
         headers: headers,
       );
 
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
+        
+        
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
@@ -347,7 +347,7 @@ class PedidoService {
         throw Exception('Error al obtener pedidos: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error completo: $e');
+        
       throw Exception('Error de conexión: $e');
     }
   }
@@ -365,7 +365,7 @@ class PedidoService {
       final String fechaHoy =
           "${hoy.year}-${hoy.month.toString().padLeft(2, '0')}-${hoy.day.toString().padLeft(2, '0')}";
 
-      print('🔍 Obteniendo pedidos de hoy: $fechaHoy');
+        
 
       // Intentar primero con el endpoint específico
       final response = await http.get(
@@ -373,13 +373,13 @@ class PedidoService {
         headers: headers,
       );
 
-      print('Response status: ${response.statusCode}');
+        
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
         return _parseListResponse(responseData);
       } else {
-        print('⚠️ Error al obtener pedidos de hoy: ${response.statusCode}');
+          
 
         // FALLBACK: Obtener todos los pedidos y filtrar por fecha
         print(
@@ -395,15 +395,15 @@ class PedidoService {
               pedido.fecha.isBefore(finHoy);
         }).toList();
 
-        print('✅ Pedidos filtrados de hoy: ${pedidosDeHoy.length}');
+          
         return pedidosDeHoy;
       }
     } catch (e) {
-      print('❌ Error obteniendo pedidos de hoy: $e');
+        
 
       // FALLBACK DE EMERGENCIA: Filtrar todos los pedidos
       try {
-        print('🆘 Fallback de emergencia...');
+          
         final hoy = DateTime.now();
         final todosPedidos = await getAllPedidos();
         final inicioHoy = DateTime(hoy.year, hoy.month, hoy.day);
@@ -414,10 +414,10 @@ class PedidoService {
               pedido.fecha.isBefore(finHoy);
         }).toList();
 
-        print('✅ Fallback - Pedidos de hoy: ${pedidosDeHoy.length}');
+          
         return pedidosDeHoy;
       } catch (fallbackError) {
-        print('❌ Error en fallback: $fallbackError');
+          
         return [];
       }
     }
@@ -475,14 +475,14 @@ class PedidoService {
   Future<Pedido> crearPedido(Pedido pedido) async {
     try {
       // VALIDACIÓN: Verificar que hay una caja pendiente antes de crear el pedido
-      print('🔍 Validando que hay una caja pendiente...');
+        
       final cajas = await _cuadreCajaService.getAllCuadres();
       final cajaActiva = cajas
           .where((c) => c.estado == 'pendiente')
           .firstOrNull;
 
       if (cajaActiva == null) {
-        print('❌ Caja cerrada - No se puede crear pedido');
+          
         throw Exception(
           'Debe abrir caja para continuar. Para registrar pedidos primero debe abrir la caja del día.',
         );
@@ -515,14 +515,14 @@ class PedidoService {
   Future<Pedido> createPedido(Pedido pedido) async {
     try {
       // VALIDACIÓN: Verificar que hay una caja pendiente antes de crear el pedido
-      print('🔍 Validando que hay una caja pendiente...');
+        
       final cajas = await _cuadreCajaService.getAllCuadres();
       final cajaActiva = cajas
           .where((c) => c.estado == 'pendiente')
           .firstOrNull;
 
       if (cajaActiva == null) {
-        print('❌ Caja cerrada - No se puede crear pedido');
+          
         throw Exception(
           'Debe abrir caja para continuar. Para registrar pedidos primero debe abrir la caja del día.',
         );
@@ -549,7 +549,7 @@ class PedidoService {
 
       // Debug: Imprimir el JSON que se va a enviar
       final pedidoJson = pedido.toJson();
-      print('📦 Creando pedido con datos: ${json.encode(pedidoJson)}');
+        
 
       final response = await http.post(
         Uri.parse('$baseUrl/api/pedidos'),
@@ -557,8 +557,8 @@ class PedidoService {
         body: json.encode(pedidoJson),
       );
 
-      print('Create pedido response: ${response.statusCode}');
-      print('Create pedido body: ${response.body}');
+        
+        
 
       if (response.statusCode == 201 || response.statusCode == 200) {
         final responseData = json.decode(response.body);
@@ -583,7 +583,7 @@ class PedidoService {
           );
 
           if (!validacion['stockSuficiente']) {
-            print('⚠️ Stock insuficiente detectado: ${validacion['mensaje']}');
+              
             // Continuar pero registrar la alerta
           }
 
@@ -604,7 +604,7 @@ class PedidoService {
               );
             }
           } catch (e) {
-            print('⚠️ Error al descontar ingredientes del inventario: $e');
+              
             // ✅ MEJORADO: Si es error crítico de stock, propagar
             if (e.toString().contains('stock insuficiente') ||
                 e.toString().contains('insufficient stock')) {
@@ -617,9 +617,9 @@ class PedidoService {
           // Notificar a la aplicación que se creó un pedido (listeners pueden recargar UI)
           try {
             _pedidoCompletadoController.add(true);
-            print('🔔 Evento: pedido creado -> notificados listeners');
+              
           } catch (e) {
-            print('⚠️ Error notificando pedido creado: $e');
+              
           }
 
           return pedidoCreado;
@@ -630,7 +630,7 @@ class PedidoService {
         throw Exception('Error al crear pedido: ${response.statusCode}');
       }
     } catch (e) {
-      print('❌ Error creando pedido: $e');
+        
       throw Exception('Error de conexión: $e');
     }
   }
@@ -669,8 +669,8 @@ class PedidoService {
         body: json.encode(pedidoJson),
       );
 
-      print('Update pedido response: ${response.statusCode}');
-      print('Update pedido body: ${response.body}');
+        
+        
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
@@ -693,16 +693,16 @@ class PedidoService {
               '✅ Inventario actualizado correctamente para pedido: ${pedidoActualizado.id}',
             );
           } catch (e) {
-            print('⚠️ Error al actualizar inventario: $e');
+              
             // No fallar la actualización del pedido, solo loggear el error
           }
 
           // Notificar a la aplicación que se actualizó un pedido
           try {
             _pedidoCompletadoController.add(true);
-            print('🔔 Evento: pedido actualizado -> notificados listeners');
+              
           } catch (e) {
-            print('⚠️ Error notificando pedido actualizado: $e');
+              
           }
 
           return pedidoActualizado;
@@ -713,7 +713,7 @@ class PedidoService {
         throw Exception('Error al actualizar pedido: ${response.statusCode}');
       }
     } catch (e) {
-      print('❌ Error actualizando pedido: $e');
+        
       throw Exception('Error de conexión: $e');
     }
   }
@@ -735,15 +735,15 @@ class PedidoService {
         headers: headers,
       );
 
-      print('🔧 Eliminando pedido $id - Status: ${response.statusCode}');
-      print('🔧 Response body: ${response.body}');
+        
+        
 
       if (response.statusCode == 204 || response.statusCode == 200) {
         // El backend maneja automáticamente:
         // - Reversión de dinero en caja si el pedido estaba pagado
         // - Limpieza de cache
         // - Registro en historial de ediciones
-        print('✅ Pedido eliminado con reversión automática de dinero');
+          
         return;
       } else {
         // Intentar obtener mensaje de error del backend
@@ -759,7 +759,7 @@ class PedidoService {
         throw Exception(errorMsg);
       }
     } catch (e) {
-      print('❌ Error eliminando pedido: $e');
+        
       throw Exception('Error de conexión: $e');
     }
   }
@@ -768,7 +768,7 @@ class PedidoService {
   // Esta función específicamente maneja pedidos pagados o con estado especial
   Future<void> eliminarPedidoForzado(String id) async {
     try {
-      print('🔧 ADMIN: Intentando eliminar pedido forzadamente: $id');
+        
 
       final headers = await _getHeaders();
 
@@ -778,17 +778,17 @@ class PedidoService {
         headers: headers,
       );
 
-      print('🔧 ADMIN: Respuesta del servidor: ${response.statusCode}');
-      print('🔧 ADMIN: Cuerpo de respuesta: ${response.body}');
+        
+        
 
       if (response.statusCode == 204 || response.statusCode == 200) {
-        print('✅ ADMIN: Pedido eliminado exitosamente');
+          
         return;
       }
 
       // Si el endpoint normal falla, intentar con endpoint específico de admin
       if (response.statusCode != 204) {
-        print('⚠️ ADMIN: Endpoint normal falló, intentando endpoint admin...');
+          
 
         final adminResponse = await http.delete(
           Uri.parse('$baseUrl/api/admin/pedidos/$id'),
@@ -798,11 +798,11 @@ class PedidoService {
         print(
           '🔧 ADMIN: Respuesta endpoint admin: ${adminResponse.statusCode}',
         );
-        print('🔧 ADMIN: Cuerpo respuesta admin: ${adminResponse.body}');
+          
 
         if (adminResponse.statusCode == 204 ||
             adminResponse.statusCode == 200) {
-          print('✅ ADMIN: Pedido eliminado via endpoint admin');
+            
           return;
         }
 
@@ -820,7 +820,7 @@ class PedidoService {
         throw Exception(errorMsg);
       }
     } catch (e) {
-      print('❌ ADMIN: Error eliminando pedido: $e');
+        
       throw Exception('Error de conexión: $e');
     }
   }
@@ -829,7 +829,7 @@ class PedidoService {
   /// Este método utiliza el endpoint especial que maneja la reversión de pagos
   Future<void> eliminarPedidoPagado(String id) async {
     try {
-      print('INFO: Eliminando pedido pagado: $id (con reversión de dinero)');
+        
 
       final headers = await _getHeaders();
       final response = await http.delete(
@@ -837,13 +837,13 @@ class PedidoService {
         headers: headers,
       );
 
-      print('INFO: Respuesta del servidor: ${response.statusCode}');
+        
       if (response.body.isNotEmpty) {
-        print('INFO: Cuerpo de respuesta: ${response.body}');
+          
       }
 
       if (response.statusCode == 200 || response.statusCode == 204) {
-        print('✅ Pedido pagado eliminado exitosamente con reversión de dinero');
+          
         return;
       }
 
@@ -865,7 +865,7 @@ class PedidoService {
 
       throw Exception(errorMsg);
     } catch (e) {
-      print('❌ Error eliminando pedido pagado: $e');
+        
       throw Exception('Error de conexión: $e');
     }
   }
@@ -988,20 +988,20 @@ class PedidoService {
       print(
         '🔍 getTotalVentas: Consultando ventas con parámetros: $queryParams',
       );
-      print('🔍 getTotalVentas: URL completa: ${uri.toString()}');
+        
 
       final response = await http.get(uri, headers: headers);
 
-      print('📊 getTotalVentas response status: ${response.statusCode}');
-      print('📊 getTotalVentas response body: ${response.body}');
+        
+        
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonData = json.decode(response.body);
-        print('📊 getTotalVentas parsed response: $jsonData');
+          
 
         if (jsonData['success'] == true) {
           if (jsonData['data'] == null) {
-            print('⚠️ getTotalVentas: data es null');
+              
             return 0.0;
           }
 
@@ -1013,10 +1013,10 @@ class PedidoService {
           }
 
           final total = jsonData['data']['total'];
-          print('📊 getTotalVentas total value: $total (${total.runtimeType})');
+            
 
           if (total == null) {
-            print('⚠️ getTotalVentas: El total es null');
+              
             return 0.0;
           }
 
@@ -1027,21 +1027,21 @@ class PedidoService {
             return 0.0;
           }
 
-          print('✅ getTotalVentas: Total calculado correctamente: $total');
+            
           return total.toDouble();
         } else {
-          print('⚠️ getTotalVentas: success es false: ${jsonData['message']}');
+            
           return 0.0;
         }
       } else {
         final errorData = json.decode(response.body);
         final errorMessage = errorData['message'] ?? 'Error desconocido';
-        print('❌ getTotalVentas: Error del servidor: $errorMessage');
+          
         return 0.0;
       }
     } catch (e, stackTrace) {
-      print('❌ getTotalVentas error: $e');
-      print('❌ getTotalVentas stack trace: $stackTrace');
+        
+        
       // En caso de error, retornamos 0 en lugar de propagar la excepción
       return 0.0;
     }
@@ -1056,8 +1056,8 @@ class PedidoService {
         headers: headers,
       );
 
-      print('getPedidoById response: ${response.statusCode}');
-      print('getPedidoById body: ${response.body}');
+        
+        
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
@@ -1082,7 +1082,7 @@ class PedidoService {
               print(
                 '⚠️ Estado inconsistente detectado: ID=${pedido.id}, estado=${pedido.estado}, pagadoPor=${pedido.pagadoPor}',
               );
-              print('✅ Corrigiendo estado a PAGADO automáticamente');
+                
               pedido.estado = EstadoPedido.pagado;
             }
 
@@ -1099,7 +1099,7 @@ class PedidoService {
                 print(
                   '⚠️ Estado inconsistente detectado: pedido tipo CORTESÍA pero estado=${pedido.estado}',
                 );
-                print('✅ Corrigiendo estado a CORTESÍA automáticamente');
+                  
                 pedido.estado = EstadoPedido.cortesia;
                 _estadoCorregidoCache[cacheKey] = now;
               }
@@ -1112,14 +1112,14 @@ class PedidoService {
           return pedido;
         }
 
-        print('⚠️ Formato de respuesta inesperado: $responseData');
+          
         return null;
       } else {
-        print('❌ Error al obtener pedido por ID: ${response.statusCode}');
+          
         return null;
       }
     } catch (e) {
-      print('❌ Exception in getPedidoById: $e');
+        
       return null;
     }
   }
@@ -1136,13 +1136,13 @@ class PedidoService {
       
       // 🔧 VALIDACIÓN: Verificar que el nombre no esté vacío
       if (nombreLimpio.isEmpty) {
-        print('❌ Error: Nombre de mesa vacío en getPedidosByMesa()');
+          
         throw Exception('El nombre de la mesa no puede estar vacío');
       }
       
       // Usar Uri.encodeComponent para manejar correctamente los espacios y caracteres especiales
       final encodedNombreMesa = Uri.encodeComponent(nombreLimpio);
-      print('🔍 Obteniendo pedidos para mesa: "$nombreLimpio" (encoded: "$encodedNombreMesa")');
+        
       
       final response = await http.get(
         Uri.parse('$baseUrl/api/pedidos/mesa/$encodedNombreMesa'),
@@ -1174,7 +1174,7 @@ class PedidoService {
                   print(
                     '⚠️ Estado inconsistente detectado (mesa ${nombreMesa}): ID=${pedido.id}, estado=${pedido.estado}, pagadoPor=${pedido.pagadoPor}',
                   );
-                  print('✅ Corrigiendo estado a PAGADO automáticamente');
+                    
                   pedido.estado = EstadoPedido.pagado;
                 }
 
@@ -1191,7 +1191,7 @@ class PedidoService {
                     print(
                       '⚠️ Estado inconsistente detectado: pedido tipo CORTESÍA pero estado=${pedido.estado}',
                     );
-                    print('✅ Corrigiendo estado a CORTESÍA automáticamente');
+                      
                     pedido.estado = EstadoPedido.cortesia;
                     _estadoCorregidoCache[cacheKey] = now;
                   }
@@ -1204,11 +1204,11 @@ class PedidoService {
                     print(
                       '⚠️ Estado "pendiente" detectado con pagadoPor: ${pedido.pagadoPor}',
                     );
-                    print('✅ Corrigiendo estado a PAGADO automáticamente');
+                      
                     pedido.estado = EstadoPedido.pagado;
                   } else {
-                    print('⚠️ Estado "pendiente" detectado sin pagadoPor');
-                    print('✅ Corrigiendo estado a ACTIVO automáticamente');
+                      
+                      
                     pedido.estado = EstadoPedido.activo;
                   }
                 }
@@ -1220,8 +1220,8 @@ class PedidoService {
 
                 return pedido;
               } catch (e) {
-                print('❌ Error parsing pedido: $e');
-                print('JSON causing error: $json');
+                  
+                  
                 return null;
               }
             })
@@ -1282,9 +1282,9 @@ class PedidoService {
 
           // Emitir evento cuando se paga el pedido
           if (nuevoEstado == EstadoPedido.pagado) {
-            print('🔔 PedidoService: Emitiendo evento de pedido completado');
+              
             _pedidoCompletadoController.add(true);
-            print('✅ PedidoService: Evento emitido exitosamente');
+              
           }
 
           print(
@@ -1299,7 +1299,7 @@ class PedidoService {
         throw Exception('Error del servidor: ${response.statusCode}');
       }
     } catch (e) {
-      print('❌ PedidoService: Error actualizando estado del pedido: $e');
+        
       throw Exception('No se pudo actualizar el estado del pedido: $e');
     }
   }
@@ -1336,7 +1336,7 @@ class PedidoService {
               );
             }
           } catch (e) {
-            print('❌ Error al cargar producto ${item.productoId}: $e');
+              
           }
         }
       }
@@ -1369,7 +1369,7 @@ class PedidoService {
               nombreProducto = nombreInfo;
             }
           } catch (e) {
-            print('❌ Error obteniendo nombre del producto: $e');
+              
           }
 
           // Crear un producto básico con la información disponible
@@ -1393,7 +1393,7 @@ class PedidoService {
         }
       }
     } catch (e) {
-      print('Error al cargar productos para el pedido: $e');
+        
     }
   }
 
@@ -1437,9 +1437,9 @@ class PedidoService {
         'notas': notas,
       };
 
-      print('🚫 Datos enviados al cancelar pedido:');
-      print('  - Pedido ID: $pedidoId');
-      print('  - Datos completos: ${json.encode(cancelarData)}');
+        
+        
+        
 
       final response = await http.put(
         Uri.parse('$baseUrl/api/pedidos/$pedidoId/pagar'),
@@ -1447,8 +1447,8 @@ class PedidoService {
         body: json.encode(cancelarData),
       );
 
-      print('Cancelar pedido response: ${response.statusCode}');
-      print('Cancelar pedido body: ${response.body}');
+        
+        
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
@@ -1457,7 +1457,7 @@ class PedidoService {
 
           // Notificar que se canceló un pedido
           _pedidoCompletadoController.add(true);
-          print('🔔 PedidoService: Notificación de cancelación enviada');
+            
 
           return pedidoCancelado;
         } else {
@@ -1467,7 +1467,7 @@ class PedidoService {
         throw Exception('Error al cancelar pedido: ${response.statusCode}');
       }
     } catch (e) {
-      print('❌ Error cancelando pedido: $e');
+        
       throw Exception('Error de conexión: $e');
     }
   }
@@ -1480,9 +1480,9 @@ class PedidoService {
     try {
       final headers = await _getHeaders();
 
-      print('🔄 Actualizando tipo de pedido:');
-      print('  - Pedido ID: $pedidoId');
-      print('  - Nuevo tipo: $nuevoTipo');
+        
+        
+        
 
       // PASO 1: Obtener el pedido actual completo
       final getPedidoResponse = await http.get(
@@ -1506,7 +1506,7 @@ class PedidoService {
       // El backend espera el tipo en mayúsculas (NORMAL, CORTESIA, INTERNO, etc.)
       pedidoCompleto['tipo'] = nuevoTipo.toJson().toUpperCase();
 
-      print('  - Datos completos a enviar: ${json.encode(pedidoCompleto)}');
+        
 
       // PASO 3: Actualizar el pedido completo con el nuevo tipo
       final response = await http.put(
@@ -1515,8 +1515,8 @@ class PedidoService {
         body: json.encode(pedidoCompleto),
       );
 
-      print('Actualizar tipo pedido response: ${response.statusCode}');
-      print('Actualizar tipo pedido body: ${response.body}');
+        
+        
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
@@ -1531,7 +1531,7 @@ class PedidoService {
         );
       }
     } catch (e) {
-      print('❌ Error actualizando tipo de pedido: $e');
+        
       throw Exception('No se pudo actualizar el tipo del pedido: $e');
     }
   }
@@ -1587,7 +1587,7 @@ class PedidoService {
         if (pagoMultiple || formaPago == 'mixto' || formaPago == 'multiple') {
           // Para pagos mixtos o múltiples, mantener 'mixto' que es el esperado por el backend
           pagarData['formaPago'] = 'mixto';
-          print('💳 Configurando pago como MIXTO (pago múltiple)');
+            
 
           // Nueva implementación para el nuevo tipo de pago múltiple
           if (pagoMultiple) {
@@ -1614,10 +1614,10 @@ class PedidoService {
 
             if (pagosMixtos.isNotEmpty) {
               pagarData['pagosMixtos'] = pagosMixtos;
-              print('💳 Pagos múltiples configurados: ${pagosMixtos.length}');
-              print('   • Efectivo: $montoEfectivo');
-              print('   • Tarjeta: $montoTarjeta');
-              print('   • Transferencia: $montoTransferencia');
+                
+                
+                
+                
             }
           }
           // Compatibilidad con el método anterior (pagos parciales)
@@ -1661,7 +1661,7 @@ class PedidoService {
             : null; // Enviar solo si es diferente de 0
 
         // Log adicional para forma de pago
-        print('💵 Forma de pago configurada: $formaPago');
+          
       }
 
       // Campos específicos para cortesías - Estructura simplificada
@@ -1713,12 +1713,12 @@ class PedidoService {
         }
         
         // 🔧 VALIDACIÓN CRÍTICA: Verificar estructura del payload
-        print('🔍 VALIDACIÓN CRÍTICA CONSUMO INTERNO:');
-        print('  - tipoConsumoInterno: ${pagarData['tipoConsumoInterno']}');
-        print('  - estado: ${pagarData['estado']}');
-        print('  - tipoPago: ${pagarData['tipoPago']}');
-        print('  - procesadoPor: ${pagarData['procesadoPor']}');
-        print('  - descuento: ${pagarData['descuento']}');
+          
+          
+          
+          
+          
+          
 
         // Verificar que no hay campos nulos críticos
         final camposCriticos = [
@@ -1729,50 +1729,50 @@ class PedidoService {
         ];
         for (String campo in camposCriticos) {
           if (!pagarData.containsKey(campo) || pagarData[campo] == null) {
-            print('❌ CAMPO CRÍTICO FALTANTE: $campo');
+              
             throw Exception(
               'Datos de consumo interno incompletos: falta $campo',
             );
           }
         }
 
-        print('✅ Validación de consumo interno completada');
+          
       }
 
-      print('INFO: Datos enviados al pagar pedido:');
-      print('  - Pedido ID: $pedidoId');
-      print('  - Tipo de pago: $tipoPago');
-      print('  - Forma de pago: $formaPago');
-      print('  - Propina: \$${propina.toStringAsFixed(0)}');
+        
+        
+        
+        
+        
       print(
         '  - Descuento: \$${descuento.toStringAsFixed(0)}',
       ); // ✅ NUEVO: Log de descuento
-      print('  - Es cortesía: $esCortesia');
-      print('  - Es consumo interno: $esConsumoInterno');
+        
+        
 
       // Asegurar que el estado está correctamente configurado en la solicitud
       if (tipoPago == 'pagado' && !pagarData.containsKey('estado')) {
         pagarData['estado'] = 'Pagado';
-        print('⚠️ Forzando estado=Pagado en la solicitud');
+          
       } else if (tipoPago == 'cortesia' && !pagarData.containsKey('estado')) {
         pagarData['estado'] = 'Cortesia';
-        print('⚠️ Forzando estado=Cortesia en la solicitud');
+          
       } else if (tipoPago == 'consumo_interno' &&
           !pagarData.containsKey('estado')) {
         pagarData['estado'] = 'Pagado'; // También se marca como pagado
-        print('⚠️ Forzando estado=Pagado para consumo interno en la solicitud');
+          
       }
 
-      print('  - Datos completos: ${json.encode(pagarData)}');
+        
       
       // 🔍 DEBUGGING ESPECÍFICO PARA DESCUENTO
-      print('🔍 DESCUENTO DEBUG:');
-      print('  - Parámetro descuento recibido: $descuento');
-      print('  - Descuento en pagarData: ${pagarData['descuento']}');
-      print('  - totalPagado parámetro: $totalPagado');
-      print('  - propina parámetro: $propina');
-      print('  - JSON del descuento: ${json.encode({'descuento': descuento})}');
-      print('  - JSON completo pagarData: ${json.encode(pagarData)}');
+        
+        
+        
+        
+        
+        
+        
       
       print(
         '🌐 ${kIsWeb ? "Flutter Web detectado" : "Flutter móvil detectado"} - usando backend de producción: $baseUrl',
@@ -1784,26 +1784,26 @@ class PedidoService {
         body: json.encode(pagarData),
       );
 
-      print('Pagar pedido response: ${response.statusCode}');
-      print('Pagar pedido body: ${response.body}');
+        
+        
       
       // 🔍 BACKEND RESPONSE DEBUG
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
         if (responseData['data'] != null) {
-          print('🔍 BACKEND RESPONSE DESCUENTO DEBUG:');
+            
           print(
             '  - Descuento en response: ${responseData['data']['descuento']}',
           );
-          print('  - Total en response: ${responseData['data']['total']}');
-          print('  - Propina en response: ${responseData['data']['propina']}');
+            
+            
           print(
             '  - totalPagado en response: ${responseData['data']['totalPagado']}',
           );
           print(
             '  - formaPago en response: ${responseData['data']['formaPago']}',
           );
-          print('🔍 RESPONSE COMPLETO: ${responseData['data']}');
+            
         }
       }
 
@@ -1816,11 +1816,11 @@ class PedidoService {
           if (tipoPago == 'pagado' &&
               pedidoPagado.estado != EstadoPedido.pagado) {
             pedidoPagado.estado = EstadoPedido.pagado;
-            print('⚠️ Estado del pedido corregido a PAGADO');
+              
           } else if (tipoPago == 'cortesia' &&
               pedidoPagado.estado != EstadoPedido.cortesia) {
             pedidoPagado.estado = EstadoPedido.cortesia;
-            print('⚠️ Estado del pedido corregido a CORTESÍA');
+              
           }
 
           // Actualizar la caché con el pedido pagado
@@ -1828,8 +1828,8 @@ class PedidoService {
 
           // Notificar que se pagó un pedido para actualizar el dashboard
           _pedidoPagadoController.add(true);
-          print('🔔 PedidoService: Notificación de pago enviada');
-          print('✅ PedidoService: Pago completado exitosamente');
+            
+            
 
           return pedidoPagado;
         } else {
@@ -1875,14 +1875,14 @@ class PedidoService {
         );
       }
     } catch (e) {
-      print('❌ Error pagando pedido: $e');
+        
 
       // Intento de reconciliación: tal vez el backend procesó el pago pero devolvió 500
       try {
-        print('🔎 Intentando reconciliar estado del pedido desde servidor...');
+          
         final pedidoVerificado = await getPedidoById(pedidoId);
         if (pedidoVerificado != null) {
-          print('🔎 Estado del pedido verificado: ${pedidoVerificado.estado}');
+            
 
           // Considerar éxito si el estado coincide con lo esperado
           final bool esExitoPorEstado =
@@ -1907,7 +1907,7 @@ class PedidoService {
           }
         }
       } catch (verifyErr) {
-        print('⚠️ Error durante reconciliación de pedido: $verifyErr');
+          
       }
 
       throw Exception('Error de conexión: $e');
@@ -1944,14 +1944,14 @@ class PedidoService {
           .where((id) => id.isNotEmpty)
           .toList();
 
-      print('🔍 Debug itemIds:');
+        
       for (int i = 0; i < itemsSeleccionados.length; i++) {
         final item = itemsSeleccionados[i];
         print(
           '  Item $i: id=${item.id}, productoId=${item.productoId}, nombre=${item.productoNombre}',
         );
       }
-      print('  ItemIds finales: $itemIds');
+        
 
       final Map<String, dynamic> pagoData = {
         'itemIds': itemIds,
@@ -1966,11 +1966,11 @@ class PedidoService {
         'montoTransferencia': montoTransferencia,
       };
 
-      print('INFO: Datos para pago parcial:');
-      print('  - Pedido ID: $pedidoId');
-      print('  - Items seleccionados: ${itemIds.length}');
-      print('  - Total calculado: ${totalSeleccionado + propina}');
-      print('  - Datos completos: ${json.encode(pagoData)}');
+        
+        
+        
+        
+        
 
       final response = await http.put(
         Uri.parse('$baseUrl/api/pedidos/$pedidoId/pagar-parcial'),
@@ -1978,16 +1978,16 @@ class PedidoService {
         body: json.encode(pagoData),
       );
 
-      print('Pago parcial response: ${response.statusCode}');
-      print('Pago parcial body: ${response.body}');
+        
+        
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
         if (responseData['success'] == true) {
           // Notificar que se procesó un pago
           _pedidoPagadoController.add(true);
-          print('🔔 PedidoService: Notificación de pago parcial enviada');
-          print('✅ PedidoService: Pago parcial completado exitosamente');
+            
+            
           return {
             'success': true,
             'pedidoActualizado': responseData['data']['pedidoActualizado'],
@@ -2009,7 +2009,7 @@ class PedidoService {
         );
       }
     } catch (e) {
-      print('❌ Error en pago parcial: $e');
+        
       throw Exception('Error de conexión: $e');
     }
   }
@@ -2027,7 +2027,7 @@ class PedidoService {
           .map((ingrediente) => IngredienteDevolucion.fromJson(ingrediente))
           .toList();
     } catch (e) {
-      print('❌ Error obteniendo ingredientes para devolución: $e');
+        
       throw Exception('Error al obtener ingredientes para devolución: $e');
     }
   }
@@ -2050,9 +2050,9 @@ class PedidoService {
         request.responsable,
       );
 
-      print('✅ Producto cancelado con ingredientes devueltos correctamente');
+        
     } catch (e) {
-      print('❌ Error cancelando producto con ingredientes: $e');
+        
       throw Exception('Error al cancelar producto con ingredientes: $e');
     }
   }
@@ -2072,9 +2072,9 @@ class PedidoService {
         requestData['nombrePedido'] = nombrePedido;
       }
 
-      print('🚚 Moviendo pedido $pedidoId a mesa: $nuevaMesa');
+        
       if (nombrePedido != null) {
-        print('  - Nombre del pedido: $nombrePedido');
+          
       }
 
       final response = await http.put(
@@ -2083,14 +2083,14 @@ class PedidoService {
         body: json.encode(requestData),
       );
 
-      print('Mover pedido response: ${response.statusCode}');
-      print('Mover pedido body: ${response.body}');
+        
+        
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
         if (responseData['success'] == true && responseData['data'] != null) {
           final pedidoMovido = Pedido.fromJson(responseData['data']);
-          print('✅ Pedido movido exitosamente a $nuevaMesa');
+            
           return pedidoMovido;
         } else {
           throw Exception('Formato de respuesta inválido');
@@ -2103,7 +2103,7 @@ class PedidoService {
         );
       }
     } catch (e) {
-      print('❌ Error moviendo pedido: $e');
+        
       throw Exception('Error moviendo pedido: $e');
     }
   }
@@ -2118,10 +2118,10 @@ class PedidoService {
     required String usuarioNombre,
   }) async {
     try {
-      print('🔄 Moviendo productos específicos...');
-      print('  - Pedido origen: $pedidoOrigenId');
-      print('  - Mesa destino: $mesaDestinoNombre');
-      print('  - Items a mover: ${itemsParaMover.length}');
+        
+        
+        
+        
 
       final token = await _getToken();
       if (token == null) {
@@ -2150,12 +2150,12 @@ class PedidoService {
         'productos': productosData, // Backend espera 'productos'
       };
 
-      print('🌐 LLAMADA API - MOVER PRODUCTOS ESPECÍFICOS:');
-      print('   • Endpoint: POST /api/pedidos/mover-productos-especificos');
-      print('   • Pedido ID: $pedidoOrigenId');
-      print('   • Mesa destino: $mesaDestinoNombre');
-      print('   • Productos a mover: ${productosData.length}');
-      print('📤 Enviando request: ${json.encode(requestData)}');
+        
+        
+        
+        
+        
+        
 
       final response = await http.post(
         Uri.parse('$baseUrl/api/pedidos/mover-productos-especificos'),
@@ -2166,8 +2166,8 @@ class PedidoService {
         body: json.encode(requestData),
       );
 
-      print('📥 Response status: ${response.statusCode}');
-      print('📥 Response body: ${response.body}');
+        
+        
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
@@ -2175,10 +2175,10 @@ class PedidoService {
         if (responseData['success'] == true) {
           final data = responseData['data'] ?? {};
 
-          print('✅ Productos movidos exitosamente');
-          print('  - Mesa destino: $mesaDestinoNombre');
-          print('  - Nueva orden creada: ${data['nuevoPedidoId'] != null}');
-          print('  - Nuevo pedido ID: ${data['nuevoPedidoId'] ?? 'N/A'}');
+            
+            
+            
+            
           print(
             '  - Items movidos: ${data['productosMovidos'] ?? itemsParaMover.length}',
           );
@@ -2210,7 +2210,7 @@ class PedidoService {
         );
       }
     } catch (e) {
-      print('❌ Error moviendo productos específicos: $e');
+        
       return {'success': false, 'message': 'Error al mover productos: $e'};
     }
   }
@@ -2221,7 +2221,7 @@ class PedidoService {
   /// Devuelve un mapa con 'success' (bool) y 'message' (String) indicando el resultado.
   Future<Map<String, dynamic>> eliminarTodosPedidosActivos() async {
     try {
-      print('🔧 ADMIN: Intentando eliminar todos los pedidos activos');
+        
 
       final headers = await _getHeaders();
 
@@ -2230,11 +2230,11 @@ class PedidoService {
         headers: headers,
       );
 
-      print('🔧 ADMIN: Respuesta del servidor: ${response.statusCode}');
-      print('🔧 ADMIN: Cuerpo de respuesta: ${response.body}');
+        
+        
 
       if (response.statusCode == 200 || response.statusCode == 204) {
-        print('✅ ADMIN: Todos los pedidos activos eliminados correctamente');
+          
 
         // Notificar que se han actualizado los pedidos
         _pedidoCompletadoController.add(true);
@@ -2259,14 +2259,14 @@ class PedidoService {
         // Si no se puede decodificar la respuesta, usar el mensaje por defecto
       }
 
-      print('❌ ADMIN: Error al eliminar pedidos activos: $errorMessage');
+        
       return {
         'success': false,
         'message': errorMessage,
         'statusCode': response.statusCode,
       };
     } catch (e) {
-      print('❌ ADMIN: Excepción al eliminar pedidos activos: $e');
+        
       return {
         'success': false,
         'message': 'Error al conectar con el servidor: $e',

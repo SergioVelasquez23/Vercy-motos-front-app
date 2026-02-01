@@ -168,14 +168,14 @@ class FacturaCompra {
     List<Map<String, dynamic>> itemsJsonList = [];
     if (items.isNotEmpty) {
       itemsJsonList = items.map((item) => item.toJson()).toList();
-      print('📦 Serializando ${items.length} items para enviar al servidor');
+        
       for (var i = 0; i < items.length; i++) {
         print(
           '📦 Item $i: ${items[i].ingredienteNombre} - ${items[i].cantidad} ${items[i].unidad} = ${items[i].subtotal}',
         );
       }
     } else {
-      print('⚠️ No hay items para serializar en la factura');
+        
     }
 
     // Calcular subtotal y impuestos de los items

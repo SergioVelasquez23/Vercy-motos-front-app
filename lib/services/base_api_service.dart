@@ -40,7 +40,7 @@ class BaseApiService {
       }
     } catch (e) {
       if (kDebugMode) {
-        print('⚠️ Error obteniendo token: $e');
+          
       }
       return null;
     }
@@ -108,7 +108,7 @@ class BaseApiService {
       final url = buildUrl(endpoint);
       
       if (kDebugMode) {
-        print('🔗 GET Request: $url');
+          
       }
 
       // Usar cliente seguro
@@ -119,7 +119,7 @@ class BaseApiService {
       return _handleResponse<T>(response, fromJson);
     } catch (e) {
       if (kDebugMode) {
-        print('❌ GET Error: $e');
+          
       }
       return ApiResponse<T>(
         success: false,
@@ -140,7 +140,7 @@ class BaseApiService {
       final url = buildUrl(endpoint);
       
       if (kDebugMode) {
-        print('📋 GET List Request: $url');
+          
       }
       
       final response = await _httpClient
@@ -159,7 +159,7 @@ class BaseApiService {
       }
     } catch (e) {
       if (kDebugMode) {
-        print('❌ GET List Error: $e');
+          
       }
       return ApiResponse<List<T>>(
         success: false,
@@ -181,8 +181,8 @@ class BaseApiService {
       final url = buildUrl(endpoint);
       
       if (kDebugMode) {
-        print('📝 POST Request: $url');
-        print('📝 POST Data: ${json.encode(data)}');
+          
+          
       }
 
       final response = await _httpClient
@@ -196,7 +196,7 @@ class BaseApiService {
       return _handleResponse<T>(response, fromJson);
     } catch (e) {
       if (kDebugMode) {
-        print('❌ POST Error: $e');
+          
       }
       return ApiResponse<T>(
         success: false,
@@ -218,8 +218,8 @@ class BaseApiService {
       final url = buildUrl(endpoint);
       
       if (kDebugMode) {
-        print('✏️ PUT Request: $url');
-        print('✏️ PUT Data: ${json.encode(data)}');
+          
+          
       }
 
       final response = await _httpClient
@@ -233,7 +233,7 @@ class BaseApiService {
       return _handleResponse<T>(response, fromJson);
     } catch (e) {
       if (kDebugMode) {
-        print('❌ PUT Error: $e');
+          
       }
       return ApiResponse<T>(
         success: false,
@@ -257,7 +257,7 @@ class BaseApiService {
       headers.addAll(securityHeaders);
       
       if (kDebugMode) {
-        print('🗑️ DELETE Request: $url');
+          
       }
 
       final response = await _httpClient
@@ -281,7 +281,7 @@ class BaseApiService {
       }
     } catch (e) {
       if (kDebugMode) {
-        print('❌ DELETE Error: $e');
+          
       }
       return ApiResponse<void>(
         success: false,

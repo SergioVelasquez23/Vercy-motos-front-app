@@ -110,7 +110,7 @@ class _ConfiguracionFacturacionScreenState
       _fechaInicioAutorizacion = auth['fechaInicioAutorizacion'];
       _fechaFinAutorizacion = auth['fechaFinAutorizacion'];
     } catch (e) {
-      print('No hay configuración previa: $e');
+        
     }
   }
 

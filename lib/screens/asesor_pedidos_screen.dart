@@ -87,7 +87,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
       try {
         categorias = await _productoService.getCategorias();
       } catch (e) {
-        print('Error al cargar categorías: $e');
+          
       }
 
       // Cargar clientes
@@ -95,7 +95,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
       try {
         clientes = await _clienteService.obtenerClientes();
       } catch (e) {
-        print('Error al cargar clientes: $e');
+          
       }
 
       setState(() {

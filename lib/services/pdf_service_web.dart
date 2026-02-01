@@ -233,7 +233,7 @@ class PDFServiceWeb implements PDFServiceInterface {
             window.onload = function() {
                 // Imprimir automáticamente
                 setTimeout(function() {
-                    window.print();
+                    window.  
                 }, 500);
             };
         </script>
@@ -267,7 +267,7 @@ class PDFServiceWeb implements PDFServiceInterface {
           html.Url.revokeObjectUrl(url);
         });
       } catch (e) {
-        print('Error abriendo ventana: $e');
+          
       }
     }
   }
@@ -290,7 +290,7 @@ class PDFServiceWeb implements PDFServiceInterface {
         '''window.onload = function() {
             // Esperar un momento y luego imprimir automáticamente
             setTimeout(function() {
-                window.print();
+                window.  
             }, 1000);''',
       );
 
@@ -306,7 +306,7 @@ class PDFServiceWeb implements PDFServiceInterface {
           html.Url.revokeObjectUrl(url);
         });
       } catch (e) {
-        print('Error generando PDF: $e');
+          
       }
     }
   }
@@ -437,7 +437,7 @@ ${DateTime.now().toString().split('.')[0]}
           return;
         }
       } catch (e) {
-        print('Web Share API no disponible: $e');
+          
       }
 
       // Fallback: copiar al portapapeles

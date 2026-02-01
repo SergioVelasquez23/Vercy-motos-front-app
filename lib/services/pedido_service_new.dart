@@ -77,11 +77,11 @@ class PedidoService {
 
       // 🔧 VALIDACIÓN: Verificar que el nombre no esté vacío
       if (nombreLimpio.isEmpty) {
-        print('❌ Error: Nombre de mesa vacío en getPedidosByMesa()');
+          
         throw Exception('El nombre de la mesa no puede estar vacío');
       }
       
-      print('🔍 Obteniendo pedidos para mesa: "$nombreLimpio"');
+        
 
       final data = await _apiService.get<dynamic>(
         '/api/pedidos/mesa/$nombreLimpio',
@@ -307,7 +307,7 @@ class PedidoService {
       );
     } catch (e) {
       // No fallar la operación principal si hay error en inventario
-      print('⚠️ Error al procesar inventario: $e');
+        
     }
   }
 
@@ -343,7 +343,7 @@ class PedidoService {
 
       return pedidos;
     } catch (e) {
-      print('❌ Error parseando lista de pedidos: $e');
+        
       return [];
     }
   }

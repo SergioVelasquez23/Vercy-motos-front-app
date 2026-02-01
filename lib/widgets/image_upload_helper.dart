@@ -28,12 +28,12 @@ class _ImageUploadHelperState extends State<ImageUploadHelper> {
   Future<void> _verificarEstadoServidor() async {
     try {
       final status = await _imageService.getImageStatus();
-      print('📊 Estado del servidor de imágenes:');
-      print('   - Total de archivos: ${status['data']['totalFiles']}');
-      print('   - Uploads existe: ${status['data']['uploadsExists']}');
-      print('   - Default existe: ${status['data']['defaultExists']}');
+        
+        
+        
+        
     } catch (e) {
-      print('❌ Error verificando estado del servidor: $e');
+        
     }
   }
 

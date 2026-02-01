@@ -33,8 +33,8 @@ class GastoService {
         headers: headers,
       );
 
-      print('GastoService - getAllGastos response: ${response.statusCode}');
-      print('GastoService - getAllGastos body: ${response.body}');
+        
+        
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
@@ -49,7 +49,7 @@ class GastoService {
         throw Exception('Error al obtener gastos: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error completo: $e');
+        
       throw Exception('Error de conexión: $e');
     }
   }
@@ -63,7 +63,7 @@ class GastoService {
         headers: headers,
       );
 
-      print('GastoService - getGastoById response: ${response.statusCode}');
+        
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
@@ -72,7 +72,7 @@ class GastoService {
         return null;
       }
     } catch (e) {
-      print('Error getting gasto by id: $e');
+        
       return null;
     }
   }
@@ -105,7 +105,7 @@ class GastoService {
         );
       }
     } catch (e) {
-      print('Error getting gastos by cuadre: $e');
+        
       throw Exception('Error de conexión: $e');
     }
   }
@@ -170,7 +170,7 @@ class GastoService {
         if (pagadoDesdeCaja != null) 'pagadoDesdeCaja': pagadoDesdeCaja,
       };
 
-      print('GastoService - createGasto body: ${json.encode(body)}');
+        
 
       final response = await http.post(
         Uri.parse('$baseUrl/api/gastos'),
@@ -178,8 +178,8 @@ class GastoService {
         body: json.encode(body),
       );
 
-      print('GastoService - createGasto response: ${response.statusCode}');
-      print('GastoService - createGasto response body: ${response.body}');
+        
+        
 
       if (response.statusCode == 201) {
         final responseData = json.decode(response.body);
@@ -190,7 +190,7 @@ class GastoService {
         throw Exception(error['message'] ?? 'Error al crear gasto');
       }
     } catch (e) {
-      print('Error completo al crear gasto: $e');
+        
       throw Exception('Error al crear gasto: ${e.toString()}');
     }
   }
@@ -268,10 +268,10 @@ class GastoService {
       final pagadoDesdeCaja = gastoInfo?.pagadoDesdeCaja ?? false;
       final monto = gastoInfo?.monto ?? 0.0;
 
-      print('🗑️ Eliminando gasto ID: $id');
-      print('💰 Pagado desde caja: $pagadoDesdeCaja');
+        
+        
       if (pagadoDesdeCaja) {
-        print('💰 Monto a revertir: \$${monto.toStringAsFixed(2)}');
+          
       }
 
       final response = await http.delete(
@@ -279,8 +279,8 @@ class GastoService {
         headers: headers,
       );
 
-      print('🗑️ Status eliminación: ${response.statusCode}');
-      print('🗑️ Response body: ${response.body}');
+        
+        
 
       if (response.statusCode == 200 || response.statusCode == 204) {
         // Preparar respuesta exitosa
@@ -312,7 +312,7 @@ class GastoService {
         }
 
         if (result['dineroRevertido'] == true) {
-          print('✅ Dinero revertido automáticamente al cuadre de caja');
+            
         }
 
         return result;
@@ -327,7 +327,7 @@ class GastoService {
         };
       }
     } catch (e) {
-      print('❌ Error eliminando gasto: $e');
+        
       return {
         'success': false,
         'message': 'Error de conexión: $e',
@@ -374,13 +374,13 @@ class GastoService {
         headers: headers,
       );
 
-      print('GastoService - getAllTiposGasto response: ${response.statusCode}');
+        
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
-        print('GastoService - getAllTiposGasto body: ${response.body}');
+          
         List<dynamic> jsonList = responseData['data'] ?? [];
-        print('GastoService - Tipos encontrados: ${jsonList.length}');
+          
         final tipos = jsonList.map((json) => TipoGasto.fromJson(json)).toList();
         print(
           'GastoService - Tipos parseados: ${tipos.map((t) => '${t.nombre} (activo: ${t.activo})').toList()}',
@@ -392,7 +392,7 @@ class GastoService {
         );
       }
     } catch (e) {
-      print('Error getting tipos gasto: $e');
+        
       throw Exception('Error de conexión: $e');
     }
   }
@@ -417,7 +417,7 @@ class GastoService {
         body: json.encode(body),
       );
 
-      print('GastoService - createTipoGasto response: ${response.statusCode}');
+        
 
       if (response.statusCode == 201) {
         final responseData = json.decode(response.body);
@@ -427,7 +427,7 @@ class GastoService {
         throw Exception(errorData['message'] ?? 'Error al crear tipo de gasto');
       }
     } catch (e) {
-      print('Error creating tipo gasto: $e');
+        
       throw Exception('Error de conexión: $e');
     }
   }
@@ -453,7 +453,7 @@ class GastoService {
         body: json.encode(body),
       );
 
-      print('GastoService - updateTipoGasto response: ${response.statusCode}');
+        
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
@@ -465,7 +465,7 @@ class GastoService {
         );
       }
     } catch (e) {
-      print('Error updating tipo gasto: $e');
+        
       throw Exception('Error de conexión: $e');
     }
   }
@@ -479,7 +479,7 @@ class GastoService {
         headers: headers,
       );
 
-      print('GastoService - deleteTipoGasto response: ${response.statusCode}');
+        
 
       if (response.statusCode == 200 || response.statusCode == 204) {
         return true;
@@ -490,7 +490,7 @@ class GastoService {
         );
       }
     } catch (e) {
-      print('Error deleting tipo gasto: $e');
+        
       throw Exception('Error de conexión: $e');
     }
   }

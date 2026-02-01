@@ -377,7 +377,7 @@ class ItemPedidoUnifiedFactory {
     try {
       return ItemPedidoUnified.fromJson(json);
     } catch (e) {
-      print('⚠️ Error creando ItemPedidoUnified desde JSON: $e');
+        
       return null;
     }
   }

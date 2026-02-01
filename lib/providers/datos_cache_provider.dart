@@ -102,10 +102,10 @@ class DatosCacheProvider extends ChangeNotifier {
       print(
         '✅ Todos los datos cargados exitosamente${silent ? ' (silencioso)' : ''}',
       );
-      print('   - Productos: ${_productos?.length ?? 0}');
-      print('   - Categorías: ${_categorias?.length ?? 0}');
+        
+        
     } catch (e) {
-      print('❌ Error cargando datos: $e');
+        
     }
   }
 
@@ -118,7 +118,7 @@ class DatosCacheProvider extends ChangeNotifier {
     _pollingTimer = Timer.periodic(Duration(minutes: _pollingIntervalMinutes), (
       timer,
     ) async {
-      print('🔄 Ejecutando polling automático...');
+        
 
       // Solo recargar productos si expiraron (SILENCIOSO para no interrumpir UI)
       if (productosExpired) {
@@ -133,25 +133,25 @@ class DatosCacheProvider extends ChangeNotifier {
 
   // ✅ NUEVO: Métodos públicos para control de caché
   Future<void> forceRefresh() async {
-    print('🔄 Forzando actualización completa de datos...');
+      
     await _cargarTodosLosDatos(force: true);
   }
 
   Future<void> forceRefreshProductos() async {
-    print('🔄 Forzando actualización de productos...');
+      
     await _cargarProductos(force: true);
   }
 
   void enableAutoRefresh() {
     _enablePolling = true;
     _startPolling();
-    print('✅ Auto-refresh habilitado');
+      
   }
 
   void disableAutoRefresh() {
     _enablePolling = false;
     _pollingTimer?.cancel();
-    print('⏸️ Auto-refresh deshabilitado');
+      
   }
 
   // Cargar productos (con cache inteligente)
@@ -165,7 +165,7 @@ class DatosCacheProvider extends ChangeNotifier {
   }) async {
     // ✅ NUEVO: Verificar si necesita actualización
     if (!force && !productosExpired && _productos != null) {
-      print('📦 Productos en caché válidos, usando caché local');
+        
       return;
     }
 
@@ -192,8 +192,8 @@ class DatosCacheProvider extends ChangeNotifier {
   
       }
     } catch (e) {
-      print('❌ Error cargando productos con método progresivo: $e');
-      print('🔄 Intentando método tradicional como respaldo...');
+        
+        
 
       try {
         // Respaldo: intentar método tradicional
@@ -221,7 +221,7 @@ class DatosCacheProvider extends ChangeNotifier {
   }) async {
     // ✅ NUEVO: Verificar si necesita actualización
     if (!force && !categoriasExpired && _categorias != null) {
-      print('🏷️ Categorías en caché válidas, usando caché local');
+        
       return;
     }
 
@@ -239,7 +239,7 @@ class DatosCacheProvider extends ChangeNotifier {
         '🏷️ Categorías cargadas: ${categorias.length} (${force ? 'forzado' : 'caché expirado'}) ${silent ? '(silencioso)' : ''}',
       );
     } catch (e) {
-      print('❌ Error cargando categorías: $e');
+        
     } finally {
       _isLoadingCategorias = false;
       // ✅ MEJORADO: Solo notificar si no es silencioso
@@ -249,7 +249,7 @@ class DatosCacheProvider extends ChangeNotifier {
 
   // Recargar datos manualmente
   Future<void> recargarDatos() async {
-    print('🔄 Recarga manual solicitada...');
+      
     await _cargarTodosLosDatos(
       force: true,
     ); // ✅ MEJORADO: Siempre forzar en recarga manual
@@ -257,7 +257,7 @@ class DatosCacheProvider extends ChangeNotifier {
 
   // Limpiar caché
   void limpiarCache() {
-    print('🗑️ Limpiando caché...');
+      
     _productos = null;
     _categorias = null;
     _ultimaCargaProductos = null;

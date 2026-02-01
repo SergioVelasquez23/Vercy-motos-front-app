@@ -22,7 +22,7 @@ class UserManagementService {
         throw Exception('Error al obtener usuarios: ${response.statusCode}');
       }
     } catch (e) {
-      print('❌ Error en getAllUsers: $e');
+        
       throw Exception('Error de conexión al obtener usuarios');
     }
   }
@@ -49,7 +49,7 @@ class UserManagementService {
         };
       }
     } catch (e) {
-      print('❌ Error en updateUserRole: $e');
+        
       return {'success': false, 'message': 'Error de conexión: $e'};
     }
   }
@@ -72,7 +72,7 @@ class UserManagementService {
         };
       }
     } catch (e) {
-      print('❌ Error en deleteUser: $e');
+        
       return {'success': false, 'message': 'Error de conexión: $e'};
     }
   }
@@ -104,7 +104,7 @@ class UserManagementService {
         };
       }
     } catch (e) {
-      print('❌ Error en toggleUserStatus: $e');
+        
       return {'success': false, 'message': 'Error de conexión: $e'};
     }
   }

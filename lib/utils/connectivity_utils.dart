@@ -15,7 +15,7 @@ class ConnectivityUtils {
       String host = uri.host;
       int port = uri.port > 0 ? uri.port : 80;
 
-      print('🌐 Comprobando conexión a $host:$port...');
+        
 
       // Comprobar si se puede establecer una conexión socket
       final socket = await Socket.connect(
@@ -25,10 +25,10 @@ class ConnectivityUtils {
       );
       socket.destroy();
 
-      print('✅ Conectado correctamente a $host:$port');
+        
       return true;
     } catch (e) {
-      print('❌ Error de conexión: $e');
+        
       return false;
     }
   }
@@ -54,7 +54,7 @@ class ConnectivityUtils {
 
       return addresses;
     } catch (e) {
-      print('❌ Error obteniendo IPs: $e');
+        
       return ['Error: $e'];
     }
   }

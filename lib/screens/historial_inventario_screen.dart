@@ -48,12 +48,12 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
     setState(() => _isLoading = true);
 
     try {
-      print('🔍 Cargando movimientos de inventario...');
+        
       final movimientos = await _inventarioService.getMovimientosInventario();
-      print('📦 Movimientos recibidos: ${movimientos.length}');
+        
 
       if (movimientos.isNotEmpty) {
-        print('📋 Primer movimiento: ${movimientos.first.toJson()}');
+          
       }
 
       setState(() {
@@ -65,7 +65,7 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
 
       _aplicarFiltros();
     } catch (e) {
-      print('❌ Error al cargar movimientos: $e');
+        
       setState(() {
         _error = 'Error al cargar movimientos: $e';
         _isLoading = false;
@@ -224,10 +224,10 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
   }
 
   void _aplicarFiltros() {
-    print('🔄 Aplicando filtros...');
-    print('📅 Fecha desde: $_fechaDesde');
-    print('📅 Fecha hasta: $_fechaHasta');
-    print('📋 Total movimientos antes de filtrar: ${_movimientos.length}');
+      
+      
+      
+      
     
     List<MovimientoInventario> filtrados = List.from(_movimientos);
 
@@ -238,7 +238,7 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
           fechaMovimiento.isBefore(_fechaHasta.add(Duration(days: 1)));
     }).toList();
     
-    print('📋 Después de filtrar por fechas: ${filtrados.length}');
+      
 
     // Filtro por producto
     if (_productoSeleccionado != 'Todos los productos') {

@@ -76,10 +76,10 @@ class _AbrirCajaScreenState extends State<AbrirCajaScreen> {
     }
 
     // 🔍 LOGGING: Debug para valor introducido por usuario
-    print('💰 Usuario abriendo caja:');
-    print('  - Caja seleccionada: ${_selectedCaja}');
-    print('  - Texto introducido: "${_montoInicialController.text}"');
-    print('  - Monto parseado: \$${montoInicial.toStringAsFixed(0)}');
+      
+      
+      
+      
 
     setState(() {
       _isLoading = true;

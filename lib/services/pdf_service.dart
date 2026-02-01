@@ -56,7 +56,7 @@ class PDFService {
       _fontRegular = pw.Font.helvetica();
       return _fontRegular!;
     } catch (e) {
-      print('⚠️ Error cargando fuente regular, usando fallback: $e');
+        
       return pw.Font.helvetica();
     }
   }
@@ -68,7 +68,7 @@ class PDFService {
       _fontBold = pw.Font.helveticaBold();
       return _fontBold!;
     } catch (e) {
-      print('⚠️ Error cargando fuente bold, usando fallback: $e');
+        
       return pw.Font.helveticaBold();
     }
   }
@@ -1284,7 +1284,7 @@ class PDFService {
         format: esFactura ? PdfPageFormat.letter : PdfPageFormat.roll80,
       );
     } catch (e) {
-      print('❌ Error en mostrarDialogoImpresion: $e');
+        
       rethrow;
     }
   }
@@ -1306,7 +1306,7 @@ class PDFService {
             '${esFactura ? 'Factura' : 'Resumen'}_${resumen['pedidoId'] ?? resumen['numero'] ?? DateTime.now().millisecondsSinceEpoch}.pdf',
       );
     } catch (e) {
-      print('❌ Error compartiendo PDF: $e');
+        
       rethrow;
     }
   }
@@ -1330,7 +1330,7 @@ class PDFService {
       await file.writeAsBytes(pdfBytes);
       return file;
     } catch (e) {
-      print('❌ Error guardando PDF: $e');
+        
       rethrow;
     }
   }
@@ -1360,7 +1360,7 @@ class PDFService {
         await mostrarDialogoImpresion(resumen: resumen, esFactura: esFactura);
       }
     } catch (e) {
-      print('❌ Error en impresión directa: $e');
+        
       rethrow;
     }
   }
@@ -1370,7 +1370,7 @@ class PDFService {
     try {
       return await Printing.listPrinters();
     } catch (e) {
-      print('❌ Error obteniendo impresoras: $e');
+        
       return [];
     }
   }
@@ -1388,7 +1388,7 @@ class PDFService {
         format: PdfPageFormat.letter,
       );
     } catch (e) {
-      print('❌ Error al imprimir factura: $e');
+        
       rethrow;
     }
   }
@@ -1416,14 +1416,14 @@ class PDFService {
         await _guardarYAbrirPDFWindows(pdfBytes, resumen, esFactura);
       }
     } catch (e) {
-      print('❌ Error en vista previa: $e');
+        
       // Si falla, intentar compartir el PDF como alternativa
       try {
         final pdfBytes = await generarResumenPedidoPDF(
           resumen: resumen,
           esFactura: esFactura,
         );
-        print('✅ PDF generado correctamente (${pdfBytes.length} bytes)');
+          
         
         // Intentar compartir como última opción
         await Printing.sharePdf(
@@ -1432,7 +1432,7 @@ class PDFService {
               '${esFactura ? 'Factura' : 'Resumen'}_${resumen['pedidoId'] ?? resumen['numero'] ?? DateTime.now().millisecondsSinceEpoch}.pdf',
         );
       } catch (e2) {
-        print('❌ Error generando/compartiendo PDF: $e2');
+          
         rethrow;
       }
     }
@@ -1454,10 +1454,10 @@ class PDFService {
       // Escribir el archivo
       await file.writeAsBytes(pdfBytes);
 
-      print('✅ PDF guardado en: ${file.path}');
-      print('INFO: Abrir manualmente el archivo desde: ${file.path}');
+        
+        
     } catch (e) {
-      print('❌ Error guardando PDF: $e');
+        
       rethrow;
     }
   }

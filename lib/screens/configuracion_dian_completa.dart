@@ -216,7 +216,7 @@ class _ConfiguracionDianCompletaState extends State<ConfiguracionDianCompleta>
         _notasController.text = config.notas ?? '';
       }
     } catch (e) {
-      print('Error cargando configuración: $e');
+        
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -392,7 +392,7 @@ class _ConfiguracionDianCompletaState extends State<ConfiguracionDianCompleta>
         throw Exception('Error al guardar la configuración');
       }
     } catch (e) {
-      print('Error guardando configuración: $e');
+        
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

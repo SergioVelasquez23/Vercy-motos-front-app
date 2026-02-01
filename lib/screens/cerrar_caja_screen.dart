@@ -93,7 +93,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
           duration: Duration(seconds: 4),
         ),
       );
-      print('❌ Error verificando estado de caja: $e');
+        
     } finally {
       setState(() {
         _isLoading = false;
@@ -124,8 +124,8 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
           _totalGastos = (cuadreCompleto['totalGastos'] ?? 0.0).toDouble();
 
           // Log important values for debugging
-          print('💰 Valores de ventas cargados:');
-          print('  - Ventas Efectivo desde cuadreCompleto: $_ventasEfectivo');
+            
+            
           print(
             '  - Transferencias desde cuadreCompleto: $_transferenciasEsperadas',
           );
@@ -228,7 +228,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
         return;
       } catch (e) {
         // Error específico del cuadre completo - usar método alternativo
-        print('❌ Error obteniendo cuadre completo: $e');
+          
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -288,7 +288,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
           if (ventasPorTipo.containsKey('domicilios') &&
               ventasPorTipo['domicilios'] != null) {
             _totalDomicilios = (ventasPorTipo['domicilios'] ?? 0.0).toDouble();
-            print('🏠 Domicilios actualizados: $_totalDomicilios');
+              
           }
 
           // Recalcular el efectivo esperado: ventas + domicilios - gastos
@@ -299,7 +299,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
         _calcularDiferencia();
       } catch (ventasError) {
         // Error en método de respaldo - manejar silenciosamente
-        print('❌ Error obteniendo ventas por tipo de pago: $ventasError');
+          
       }
     } catch (e) {
       String mensajeAmigable = _obtenerMensajeAmigable(e.toString());
@@ -319,7 +319,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
         ),
       );
 
-      print('❌ Error cargando efectivo esperado: $e');
+        
 
       // Intentar obtener contadores por separado si falló todo lo demás
       try {
@@ -330,7 +330,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
         });
       } catch (fallbackError) {
         // Error en fallback de emergencia - manejar silenciosamente
-        print('❌ Error obteniendo resumen de ventas de hoy: $fallbackError');
+          
       }
 
       // Usar el valor del cuadre actual como fallback final
@@ -347,7 +347,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
 
   Future<void> _cargarResumenCompleto(String cuadreId) async {
     try {
-      print('🔍 Cargando resumen completo para cuadre: $cuadreId');
+        
 
       // Agregar timeout específico para esta operación
       final resumenCompleto = await _resumenService
@@ -370,7 +370,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
         // Also sync the sales values between cuadreCompleto and resumenCompleto
         if (resumenCompleto.movimientosEfectivo.ventasEfectivo > 0 ||
             resumenCompleto.movimientosEfectivo.ventasTransferencia > 0) {
-          print('💰 Sincronizando valores de ventas del resumen completo');
+            
           print(
             '  - Ventas Efectivo: ${resumenCompleto.movimientosEfectivo.ventasEfectivo}',
           );
@@ -389,8 +389,8 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
           }
         }
       });
-      print('✅ Resumen completo cargado exitosamente');
-      print('💰 Efectivo esperado actualizado: ${_efectivoEsperado}');
+        
+        
       print(
         '📊 Datos de gastos: ${resumenCompleto.resumenGastos.detallesGastos.length} gastos',
       );
@@ -399,7 +399,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
       );
     } catch (e) {
       // Error cargando resumen completo - continuar con datos básicos
-      print('❌ Error cargando resumen completo: $e');
+        
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -479,7 +479,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
           duration: Duration(seconds: 4),
         ),
       );
-      print('❌ Error cerrando caja: $e');
+        
     } finally {
       setState(() {
         _isLoading = false;
@@ -769,7 +769,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
           _resumenCompletoData!.resumenVentas.ventasPorFormaPago['efectivo'] ??
           0.0;
       if (efectivoValue > 0) {
-        print('⚠️ Corrigiendo valor de ventas efectivo: $efectivoValue');
+          
         // Can't modify the object directly, but we can update the display values
         _ventasEfectivo = efectivoValue;
       }

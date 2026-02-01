@@ -64,7 +64,7 @@ class DeudaService {
         };
       }
     } catch (e) {
-      print('Error creando deuda: $e');
+        
       return {'success': false, 'message': 'Error de conexión: $e'};
     }
   }
@@ -116,7 +116,7 @@ class DeudaService {
         };
       }
     } catch (e) {
-      print('Error creando deuda manual: $e');
+        
       return {'success': false, 'message': 'Error de conexión: $e'};
     }
   }
@@ -175,7 +175,7 @@ class DeudaService {
         };
       }
     } catch (e) {
-      print('Error obteniendo deudas: $e');
+        
       return {
         'success': false,
         'message': 'Error de conexión: $e',
@@ -227,7 +227,7 @@ class DeudaService {
         };
       }
     } catch (e) {
-      print('Error registrando pago: $e');
+        
       return {'success': false, 'message': 'Error de conexión: $e'};
     }
   }
@@ -263,7 +263,7 @@ class DeudaService {
         };
       }
     } catch (e) {
-      print('Error obteniendo historial de pagos: $e');
+        
       return {
         'success': false,
         'message': 'Error de conexión: $e',
@@ -305,7 +305,7 @@ class DeudaService {
         };
       }
     } catch (e) {
-      print('Error cancelando deuda: $e');
+        
       return {'success': false, 'message': 'Error de conexión: $e'};
     }
   }
@@ -337,7 +337,7 @@ class DeudaService {
         };
       }
     } catch (e) {
-      print('Error obteniendo estadísticas: $e');
+        
       return {'success': false, 'message': 'Error de conexión: $e'};
     }
   }

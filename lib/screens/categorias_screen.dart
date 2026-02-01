@@ -405,7 +405,7 @@ class _CategoriasScreenState extends State<CategoriasScreen> {
                                 );
                               } else {
                                 finalImageUrl = tempImagePath;
-                                print('Usando ruta de imagen: $tempImagePath');
+                                  
                               }
                             }
                             if (isEditing) {
@@ -436,7 +436,7 @@ class _CategoriasScreenState extends State<CategoriasScreen> {
                             await _cargarDatos(); // Recargar datos después de guardar
 
                             // Los datos se actualizarán cuando las otras pantallas se recarguen
-                            print('✅ Categoría guardada correctamente');
+                              
 
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
