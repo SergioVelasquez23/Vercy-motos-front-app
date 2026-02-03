@@ -625,10 +625,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         _calculosCorregidos = true;
       });
 
-      print(
-        '✅ Totales corregidos calculados (usando valores backend por ahora)',
-      );
-    } catch (e) {
+             } catch (e) {
         
       setState(() {
         _calculosCorregidos = false;

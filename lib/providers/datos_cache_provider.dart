@@ -89,20 +89,14 @@ class DatosCacheProvider extends ChangeNotifier {
     bool force = false,
     bool silent = false,
   }) async {
-    print(
-      '📊 Cargando datos ${force ? 'forzados' : 'en caché'}${silent ? ' (silencioso)' : ''}...',
-    );
-
+       
     try {
       await Future.wait([
         _cargarProductos(force: force, silent: silent),
         _cargarCategorias(force: force, silent: silent),
       ]);
 
-      print(
-        '✅ Todos los datos cargados exitosamente${silent ? ' (silencioso)' : ''}',
-      );
-        
+                 
         
     } catch (e) {
         
@@ -235,9 +229,6 @@ class DatosCacheProvider extends ChangeNotifier {
       final categorias = await _productoService.getCategorias();
       _categorias = categorias;
       _ultimaCargaCategorias = DateTime.now(); // ✅ NUEVO: Actualizar timestamp
-      print(
-        '🏷️ Categorías cargadas: ${categorias.length} (${force ? 'forzado' : 'caché expirado'}) ${silent ? '(silencioso)' : ''}',
-      );
     } catch (e) {
         
     } finally {

@@ -41,10 +41,7 @@ String formatNumberWithDots(dynamic value) {
     }
     numValue = value;
   } else {
-    print(
-      '⚠️ ALERTA: Valor no numérico recibido: $value (${value.runtimeType})',
-    );
-    _formatCache[cacheKey] = '0';
+           _formatCache[cacheKey] = '0';
     return '0';
   }
 
@@ -150,10 +147,7 @@ String formatCurrency(dynamic value) {
       }
     } else {
         
-      print(
-        '  - Valor original: $originalValue (${originalValue.runtimeType})',
-      );
-        
+                 
         
         
       return '\$0';

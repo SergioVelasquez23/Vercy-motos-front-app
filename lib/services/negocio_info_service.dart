@@ -31,10 +31,7 @@ class NegocioInfoService {
           
         return null;
       } else {
-        print(
-          '❌ Error al obtener información del negocio: ${response.statusCode}',
-        );
-        throw Exception(
+                   throw Exception(
           'Error al obtener información del negocio: ${response.statusCode}',
         );
       }
@@ -76,10 +73,7 @@ class NegocioInfoService {
           
         return NegocioInfo.fromJson(data);
       } else {
-        print(
-          '❌ Error al guardar información del negocio: ${response.statusCode}',
-        );
-          
+                     
         throw Exception(
           'Error al guardar información del negocio: ${response.statusCode}',
         );
@@ -122,10 +116,7 @@ class NegocioInfoService {
       if (response.statusCode == 200 || response.statusCode == 204) {
           
       } else {
-        print(
-          '❌ Error al eliminar información del negocio: ${response.statusCode}',
-        );
-        throw Exception(
+                   throw Exception(
           'Error al eliminar información del negocio: ${response.statusCode}',
         );
       }

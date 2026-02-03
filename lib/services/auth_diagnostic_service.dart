@@ -62,10 +62,7 @@ class AuthDiagnosticService {
         // Procesar roles
         if (userInfo.containsKey('roles')) {
           final rolesData = userInfo['roles'];
-          print(
-            '🔍 Datos de roles recibidos: $rolesData (tipo: ${rolesData.runtimeType})',
-          );
-
+             
           List<String> roles = [];
 
           if (rolesData is List) {
@@ -84,9 +81,6 @@ class AuthDiagnosticService {
           // Actualizar roles en el provider
           await userProvider.actualizarRoles(roles);
             
-          print(
-            '👤 Es Admin: ${userProvider.isAdmin}, Es Mesero: ${userProvider.isMesero}',
-          );
           return true;
         } else {
             

@@ -255,10 +255,7 @@ class BodegaService {
       );
 
         
-      print(
-        '   URL: ${_apiConfig.baseUrl}/api/bodegas/stock/producto/$productoId',
-      );
-        
+                 
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);

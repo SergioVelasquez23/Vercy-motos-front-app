@@ -210,13 +210,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
               pedido.fecha.isAfter(cajaActiva.fechaApertura);
         }).toList();
 
-        print(
-          'INFO: Caja activa: ${cajaActiva.nombre} (${cajaActiva.fechaApertura})',
-        );
-        print(
-          'INFO: Pedidos del período de caja: ${pedidosPorPeriodoCaja.length}',
-        );
-      } else {
+                            } else {
           
         // Si no hay caja activa, mostrar solo pedidos pagados del día actual
         final hoy = DateTime.now();
@@ -256,16 +250,10 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
 
       // Iterar sobre todos los items del pedido
       for (var itemPedido in pedido.items) {
-        print(
-          '   🍽️ Item: ${itemPedido.productoNombre} x${itemPedido.cantidad}',
-        );
-
+           
         // Verificar que el item tenga ingredientes usados
         if (itemPedido.ingredientesUsados.isEmpty) {
-          print(
-            '      ℹ️ No tiene ingredientes para restaurar',
-          );
-          continue;
+                       continue;
         }
 
           
@@ -315,14 +303,8 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
           try {
             await _inventarioService.crearMovimientoInventario(movimiento);
             itemsRestaurados++;
-            print(
-              '      ✅ Restaurado: ${itemInventario.nombre} x $cantidadARestaurar',
-            );
-          } catch (e) {
-            print(
-              '      ❌ ERROR restaurando ${itemInventario.nombre}: $e',
-            );
-          }
+                         } catch (e) {
+                         }
         }
       }
 
@@ -412,17 +394,14 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
     }
       
     analisisEstados.forEach((k, v) => print('DEBUG Estado: $k -> $v pedidos'));
-
+    
     List<Pedido> pedidosFiltrados = List.from(_pedidos);
 
     // Filtrar pedidos vacíos o sin contenido válido
     pedidosFiltrados = pedidosFiltrados.where((pedido) {
       // Eliminar pedidos que parecen ser movimientos vacíos
       if (pedido.total <= 0 && pedido.items.isEmpty) {
-        print(
-          'AVISO: Pedido filtrado (vacío): ${pedido.id} - Mesa: ${pedido.mesa}',
-        );
-        return false;
+                   return false;
       }
       return true;
     }).toList();
@@ -433,10 +412,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
       pedidosFiltrados = pedidosFiltrados
           .where((pedido) => pedido.tipo == _tipoFiltro)
           .toList();
-      print(
-        'DEBUG: Después del filtro de tipo: ${pedidosFiltrados.length} (antes: $antes)',
-      );
-    }
+             }
     // Solo filtrar por estado si NO hay filtro de tipo específico
     else if (_estadoFiltro != null) {
       final antes = pedidosFiltrados.length;
@@ -476,10 +452,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
         // Para otros estados, verificar directamente
         return pedido.estado == _estadoFiltro;
       }).toList();
-      print(
-        'DEBUG: Después del filtro de estado: ${pedidosFiltrados.length} (antes: $antes)',
-      );
-      
+               
       // 🔍 DEBUG: Mostrar qué pedidos pasaron el filtro
       if (pedidosFiltrados.length <= 15) {
           
@@ -511,10 +484,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
         
         return idMatch || clienteMatch || meseroMatch || totalMatch;
       }).toList();
-      print(
-        'DEBUG: Después del filtro de búsqueda: ${pedidosFiltrados.length} (antes: $antes)',
-      );
-    }
+             }
 
       
 
@@ -954,10 +924,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
           
           await _pedidoService.eliminarPedido(pedidoId);
           exitosos++;
-          print(
-            'EXITO: Pedido $pedidoId eliminado exitosamente por $usuarioEliminacion',
-          );
-          
+                       
           // Notificar el cambio para que mesas_screen se actualice
           NotificationService().notificarCambioPedido(pedido);
         } catch (e) {
@@ -1036,10 +1003,7 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
           // Eliminar el pedido (esto revierte el dinero automáticamente)
           await _pedidoService.eliminarPedidoPagado(pedidoId);
           exitosos++;
-          print(
-            'EXITO: Pedido pagado $pedidoId eliminado exitosamente (con reversión de dinero e inventario) por $usuarioEliminacion',
-          );
-          
+                       
           // Notificar el cambio para que mesas_screen se actualice
           NotificationService().notificarCambioPedido(pedido);
         } catch (e) {

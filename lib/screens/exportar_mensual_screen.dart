@@ -438,10 +438,7 @@ class _ExportarMensualScreenState extends State<ExportarMensualScreen> {
     });
 
     try {
-      print(
-        'INFO: Iniciando carga de preview - ${_fechaSeleccionada.month}/${_fechaSeleccionada.year}',
-      );
-      
+               
       final datos = await _estadisticasService.exportarEstadisticasMensuales(
         _fechaSeleccionada.year,
         _fechaSeleccionada.month,

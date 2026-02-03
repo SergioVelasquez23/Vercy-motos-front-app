@@ -45,29 +45,17 @@ class ReportesService {
           
           
           
-        print(
-          '  - Diferencia: \$${totalVentasCorrectas - dashboardData.ventasHoy.total}',
-        );
-        print(
-          '  - Pedidos pagados según servidor: ${dashboardData.ventasHoy.pedidosPagados}',
-        );
-          
+                                
 
         // ✅ DESACTIVADO: Ya no se corrigen los valores del servidor
         if ((totalVentasCorrectas - dashboardData.ventasHoy.total).abs() > 0) {
-          print(
-            'ℹ️ Diferencia detectada, pero usando valores originales del servidor',
-          );
-        }
+                     }
 
         // ✅ SIEMPRE usar los datos originales del servidor
           
         return dashboardData;
       } else {
-        print(
-          '⚠️ Respuesta no exitosa o data null - Error: ${response.errorMessage}',
-        );
-        return null;
+                   return null;
       }
     } catch (e) {
         
@@ -122,10 +110,7 @@ class ReportesService {
     if (response.isSuccess) {
       return response.data ?? [];
     } else {
-      print(
-        '⚠️ Error al obtener ingresos vs egresos: ${response.errorMessage}',
-      );
-      return [];
+               return [];
     }
   }
 
@@ -156,10 +141,7 @@ class ReportesService {
       if (response.isSuccess) {
         return response.data ?? [];
       } else {
-        print(
-          '⚠️ Error al obtener ventas por categoría: ${response.errorMessage}',
-        );
-        return [];
+                   return [];
       }
     } catch (e) {
         
@@ -222,10 +204,7 @@ class ReportesService {
     if (response.isSuccess) {
       return response.data!;
     } else {
-      print(
-        '⚠️ Error al obtener historial de cuadres: ${response.errorMessage}',
-      );
-      return [];
+               return [];
     }
   }
 
@@ -247,10 +226,7 @@ class ReportesService {
   // Actualizar objetivo de ventas
   Future<bool> actualizarObjetivo(String periodo, double nuevoObjetivo) async {
     try {
-      print(
-        '🎯 Actualizando objetivo $periodo a \$${nuevoObjetivo.toStringAsFixed(0)}',
-      );
-
+         
       final requestData = {'periodo': periodo, 'objetivo': nuevoObjetivo};
 
       final response = await _apiService.put<Map<String, dynamic>>(
@@ -312,10 +288,7 @@ class ReportesService {
       if (response.isSuccess) {
         return response.data ?? [];
       } else {
-        print(
-          '⚠️ Error al obtener vendedores del mes: ${response.errorMessage}',
-        );
-        return [];
+                   return [];
       }
     } catch (e) {
         
@@ -327,10 +300,7 @@ class ReportesService {
   Future<void> _guardarObjetivoLocal(String periodo, double objetivo) async {
     try {
       // En una implementación real, usarías SharedPreferences o similar
-      print(
-        '💾 Guardando objetivo $periodo = \$${objetivo.toStringAsFixed(0)} localmente',
-      );
-      // Por ahora solo mostramos el mensaje
+               // Por ahora solo mostramos el mensaje
     } catch (e) {
         
     }

@@ -270,10 +270,7 @@ class _HistorialInventarioScreenState extends State<HistorialInventarioScreen> {
     // Ordenar por fecha descendente (más recientes primero)
     filtrados.sort((a, b) => b.fecha.compareTo(a.fecha));
     
-    print(
-      '📋 Total movimientos después de todos los filtros: ${filtrados.length}',
-    );
-
+       
     setState(() {
       _movimientosFiltrados = filtrados;
     });

@@ -94,10 +94,7 @@ class FacturaCompra {
     double finalTotal = jsonTotal > 0 ? jsonTotal : calculatedTotal;
 
     if (jsonTotal == 0 && calculatedTotal > 0) {
-      print(
-        '⚠️ Corrigiendo total en fromJson: JSON=$jsonTotal, Calculado=$calculatedTotal',
-      );
-    }
+             }
 
     return FacturaCompra(
       id: json['_id'] ?? '',
@@ -160,20 +157,14 @@ class FacturaCompra {
               ? calculatedTotalConImpuestos
               : calculatedTotal);
 
-    print(
-      '📊 toJson - Total del objeto: $total, Calculado: $calculatedTotal, Con impuestos: $calculatedTotalConImpuestos, Final: $finalTotal',
-    );
-
+       
     // Verificar que hay items y que no son nulos
     List<Map<String, dynamic>> itemsJsonList = [];
     if (items.isNotEmpty) {
       itemsJsonList = items.map((item) => item.toJson()).toList();
         
       for (var i = 0; i < items.length; i++) {
-        print(
-          '📦 Item $i: ${items[i].ingredienteNombre} - ${items[i].cantidad} ${items[i].unidad} = ${items[i].subtotal}',
-        );
-      }
+                 }
     } else {
         
     }

@@ -149,14 +149,48 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Título
-            Text(
-              'Lista productos',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
+            // Título y botones de acción
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Lista productos',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                Row(
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: _mostrarCargaMasivaProductos,
+                      icon: Icon(Icons.upload_file, color: Colors.white),
+                      label: Text(
+                        'Carga masiva',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.success,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                    SizedBox(width: 12),
+                    ElevatedButton.icon(
+                      onPressed: _crearNuevoProducto,
+                      icon: Icon(Icons.add, color: Colors.white),
+                      label: Text(
+                        'Nuevo Producto',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primary,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
             SizedBox(height: 24),
 
@@ -261,29 +295,6 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
               ),
             ),
           ),
-
-          Spacer(),
-
-          // Botón Movimientos
-          ElevatedButton.icon(
-            onPressed: () =>
-                Navigator.pushNamed(context, '/historial-inventario'),
-            icon: Icon(Icons.swap_horiz, color: Colors.white),
-            label: Text(
-              'Movimientos',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primary,
-              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-          ),
         ],
       ),
     );
@@ -369,7 +380,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
                   flex: 2,
                   align: TextAlign.center,
                 ),
-                _buildEncabezadoColumna('', flex: 1), // Acciones
+                _buildEncabezadoColumna('Acciones', flex: 2), // Acciones
               ],
             ),
           ),
@@ -563,24 +574,57 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
             ),
           ),
 
-          // Acciones (Ver)
+          // Acciones
           Expanded(
-            flex: 1,
-            child: Center(
-              child: Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: AppTheme.success,
-                  shape: BoxShape.circle,
+            flex: 2,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  margin: EdgeInsets.only(right: 4),
+                  decoration: BoxDecoration(
+                    color: AppTheme.success,
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    padding: EdgeInsets.zero,
+                    icon: Icon(Icons.visibility, color: Colors.white, size: 16),
+                    onPressed: () => _mostrarDetalleProducto(producto),
+                    tooltip: 'Ver detalles',
+                  ),
                 ),
-                child: IconButton(
-                  padding: EdgeInsets.zero,
-                  icon: Icon(Icons.visibility, color: Colors.white, size: 18),
-                  onPressed: () => _mostrarDetalleProducto(producto),
-                  tooltip: 'Ver detalles',
+                Container(
+                  width: 32,
+                  height: 32,
+                  margin: EdgeInsets.only(right: 4),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary,
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    padding: EdgeInsets.zero,
+                    icon: Icon(Icons.edit, color: Colors.white, size: 16),
+                    onPressed: () => _editarProducto(producto),
+                    tooltip: 'Editar producto',
+                  ),
                 ),
-              ),
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade600,
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    padding: EdgeInsets.zero,
+                    icon: Icon(Icons.delete, color: Colors.white, size: 16),
+                    onPressed: () => _eliminarProducto(producto),
+                    tooltip: 'Eliminar producto',
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -771,6 +815,1243 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  // Funciones para manejo de CRUD
+  void _crearNuevoProducto() {
+    _mostrarFormularioProductoCompleto();
+  }
+
+  void _editarProducto(Producto producto) {
+    _mostrarFormularioProductoCompleto(producto: producto);
+  }
+
+  void _mostrarFormularioProductoCompleto({Producto? producto}) {
+    final bool isEditing = producto != null;
+
+    // Controladores para el formulario - INFORMACIÓN BÁSICA
+    final nombreController = TextEditingController(
+      text: isEditing ? producto.nombre : '',
+    );
+    final descripcionController = TextEditingController(
+      text: isEditing ? (producto.descripcion ?? '') : '',
+    );
+    final codigoController = TextEditingController(
+      text: isEditing ? (producto.codigo ?? '') : '',
+    );
+    final codigoBarrasController = TextEditingController(
+      text: isEditing ? (producto.codigoBarras ?? '') : '',
+    );
+
+    // PRECIOS
+    final precioController = TextEditingController(
+      text: isEditing ? producto.precio.toString() : '',
+    );
+    final costoController = TextEditingController(
+      text: isEditing ? producto.costo.toString() : '',
+    );
+    final porcentajeImpuestoController = TextEditingController(
+      text: isEditing ? (producto.porcentajeImpuesto?.toString() ?? '') : '',
+    );
+
+    // PRECIOS OPCIONALES
+    final precioVentaOpc1Controller = TextEditingController(
+      text: isEditing ? (producto.precioVentaOpc1?.toString() ?? '') : '',
+    );
+    final precioVentaOpc2Controller = TextEditingController(
+      text: isEditing ? (producto.precioVentaOpc2?.toString() ?? '') : '',
+    );
+    final precioVentaOpc3Controller = TextEditingController(
+      text: isEditing ? (producto.precioVentaOpc3?.toString() ?? '') : '',
+    );
+
+    // CLASIFICACIÓN
+    final marcaController = TextEditingController(
+      text: isEditing ? (producto.marca ?? '') : '',
+    );
+    final tipoProductoNombreController = TextEditingController(
+      text: isEditing ? (producto.tipoProductoNombre ?? '') : '',
+    );
+    final lineaProductoNombreController = TextEditingController(
+      text: isEditing ? (producto.lineaProductoNombre ?? '') : '',
+    );
+    final claseProductoNombreController = TextEditingController(
+      text: isEditing ? (producto.claseProductoNombre ?? '') : '',
+    );
+
+    // PROVEEDOR
+    final nombreProveedorController = TextEditingController(
+      text: isEditing ? (producto.nombreProveedor ?? '') : '',
+    );
+    final nitProveedorController = TextEditingController(
+      text: isEditing ? (producto.nitProveedor ?? '') : '',
+    );
+
+    // INVENTARIO
+    final almacenController = TextEditingController(
+      text: isEditing ? (producto.almacen?.toString() ?? '0') : '0',
+    );
+    final bodegaController = TextEditingController(
+      text: isEditing ? (producto.bodega?.toString() ?? '0') : '0',
+    );
+    final inventarioBajoController = TextEditingController(
+      text: isEditing ? (producto.inventarioBajo?.toString() ?? '5') : '5',
+    );
+    final inventarioOptimoController = TextEditingController(
+      text: isEditing ? (producto.inventarioOptimo?.toString() ?? '20') : '20',
+    );
+
+    // UBICACIONES
+    final ubicacion1Controller = TextEditingController(
+      text: isEditing ? (producto.ubicacion1 ?? '') : '',
+    );
+    final ubicacion2Controller = TextEditingController(
+      text: isEditing ? (producto.ubicacion2 ?? '') : '',
+    );
+    final ubicacion3Controller = TextEditingController(
+      text: isEditing ? (producto.ubicacion3 ?? '') : '',
+    );
+    final ubicacion4Controller = TextEditingController(
+      text: isEditing ? (producto.ubicacion4 ?? '') : '',
+    );
+    final localizacionController = TextEditingController(
+      text: isEditing ? (producto.localizacion ?? '') : '',
+    );
+
+    // Estados para dropdowns
+    String? categoriaSeleccionada = isEditing ? producto.categoria?.id : null;
+    String tipoSeleccionado = isEditing
+        ? (producto.productoOServicio ?? 'PRODUCTO')
+        : 'PRODUCTO';
+    String controlInventarioSeleccionado = isEditing
+        ? (producto.controlInventario ?? 'SI')
+        : 'SI';
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              backgroundColor: AppTheme.cardBg,
+              title: Row(
+                children: [
+                  Icon(
+                    isEditing ? Icons.edit : Icons.add_box,
+                    color: AppTheme.primary,
+                  ),
+                  SizedBox(width: 12),
+                  Text(
+                    isEditing ? 'Editar Producto' : 'Nuevo Producto',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ],
+              ),
+              content: Container(
+                width: 800,
+                height: 600,
+                child: DefaultTabController(
+                  length: 4,
+                  child: Column(
+                    children: [
+                      TabBar(
+                        indicatorColor: AppTheme.primary,
+                        labelColor: AppTheme.primary,
+                        unselectedLabelColor: Colors.white70,
+                        tabs: [
+                          Tab(text: 'Básico'),
+                          Tab(text: 'Precios'),
+                          Tab(text: 'Clasificación'),
+                          Tab(text: 'Inventario'),
+                        ],
+                      ),
+                      Expanded(
+                        child: TabBarView(
+                          children: [
+                            // Tab 1: Información Básica
+                            _buildTabBasico(
+                              nombreController,
+                              descripcionController,
+                              codigoController,
+                              codigoBarrasController,
+                              tipoSeleccionado,
+                              categoriaSeleccionada,
+                              setState,
+                            ),
+                            // Tab 2: Precios
+                            _buildTabPrecios(
+                              precioController,
+                              costoController,
+                              porcentajeImpuestoController,
+                              precioVentaOpc1Controller,
+                              precioVentaOpc2Controller,
+                              precioVentaOpc3Controller,
+                            ),
+                            // Tab 3: Clasificación y Proveedor
+                            _buildTabClasificacion(
+                              marcaController,
+                              tipoProductoNombreController,
+                              lineaProductoNombreController,
+                              claseProductoNombreController,
+                              nombreProveedorController,
+                              nitProveedorController,
+                            ),
+                            // Tab 4: Inventario y Ubicaciones
+                            _buildTabInventario(
+                              almacenController,
+                              bodegaController,
+                              inventarioBajoController,
+                              inventarioOptimoController,
+                              ubicacion1Controller,
+                              ubicacion2Controller,
+                              ubicacion3Controller,
+                              ubicacion4Controller,
+                              localizacionController,
+                              controlInventarioSeleccionado,
+                              setState,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text('Cancelar', style: TextStyle(color: Colors.grey)),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    // Validación básica
+                    if (nombreController.text.trim().isEmpty ||
+                        precioController.text.trim().isEmpty ||
+                        costoController.text.trim().isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'Por favor completa todos los campos obligatorios (Nombre, Precio, Costo)',
+                          ),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                      return;
+                    }
+
+                    Navigator.pop(context);
+                    await _guardarProductoCompleto(
+                      producto: producto,
+                      // Información básica
+                      nombre: nombreController.text.trim(),
+                      descripcion: descripcionController.text.trim(),
+                      codigo: codigoController.text.trim(),
+                      codigoBarras: codigoBarrasController.text.trim(),
+                      tipo: tipoSeleccionado,
+                      // Precios
+                      precio: double.tryParse(precioController.text) ?? 0,
+                      costo: double.tryParse(costoController.text) ?? 0,
+                      porcentajeImpuesto: double.tryParse(
+                        porcentajeImpuestoController.text,
+                      ),
+                      precioVentaOpc1: double.tryParse(
+                        precioVentaOpc1Controller.text,
+                      ),
+                      precioVentaOpc2: double.tryParse(
+                        precioVentaOpc2Controller.text,
+                      ),
+                      precioVentaOpc3: double.tryParse(
+                        precioVentaOpc3Controller.text,
+                      ),
+                      // Clasificación
+                      categoriaId: categoriaSeleccionada,
+                      marca: marcaController.text.trim(),
+                      tipoProductoNombre: tipoProductoNombreController.text
+                          .trim(),
+                      lineaProductoNombre: lineaProductoNombreController.text
+                          .trim(),
+                      claseProductoNombre: claseProductoNombreController.text
+                          .trim(),
+                      // Proveedor
+                      nombreProveedor: nombreProveedorController.text.trim(),
+                      nitProveedor: nitProveedorController.text.trim(),
+                      // Inventario
+                      controlInventario: controlInventarioSeleccionado,
+                      inventarioBajo:
+                          int.tryParse(inventarioBajoController.text) ?? 5,
+                      inventarioOptimo:
+                          int.tryParse(inventarioOptimoController.text) ?? 20,
+                      almacen: int.tryParse(almacenController.text) ?? 0,
+                      bodega: int.tryParse(bodegaController.text) ?? 0,
+                      // Ubicaciones
+                      ubicacion1: ubicacion1Controller.text.trim(),
+                      ubicacion2: ubicacion2Controller.text.trim(),
+                      ubicacion3: ubicacion3Controller.text.trim(),
+                      ubicacion4: ubicacion4Controller.text.trim(),
+                      localizacion: localizacionController.text.trim(),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primary,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: Text(isEditing ? 'Actualizar' : 'Crear'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _mostrarFormularioProducto({Producto? producto}) {
+    final bool isEditing = producto != null;
+
+    // Controladores para el formulario
+    final nombreController = TextEditingController(
+      text: isEditing ? producto.nombre : '',
+    );
+    final descripcionController = TextEditingController(
+      text: isEditing ? (producto.descripcion ?? '') : '',
+    );
+    final codigoController = TextEditingController(
+      text: isEditing ? (producto.codigo ?? '') : '',
+    );
+    final precioController = TextEditingController(
+      text: isEditing ? producto.precio.toString() : '',
+    );
+    final costoController = TextEditingController(
+      text: isEditing ? producto.costo.toString() : '',
+    );
+
+    // Estado para categoría seleccionada
+    String? categoriaSeleccionada = isEditing ? producto.categoria?.id : null;
+    String tipoSeleccionado = isEditing
+        ? (producto.productoOServicio ?? 'PRODUCTO')
+        : 'PRODUCTO';
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              backgroundColor: AppTheme.cardBg,
+              title: Row(
+                children: [
+                  Icon(
+                    isEditing ? Icons.edit : Icons.add_box,
+                    color: AppTheme.primary,
+                  ),
+                  SizedBox(width: 12),
+                  Text(
+                    isEditing ? 'Editar Producto' : 'Nuevo Producto',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ],
+              ),
+              content: Container(
+                width: 500,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Tipo de producto
+                      DropdownButtonFormField<String>(
+                        value: tipoSeleccionado,
+                        dropdownColor: AppTheme.cardBg,
+                        style: TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          labelText: 'Tipo',
+                          labelStyle: TextStyle(color: Colors.white70),
+                          border: OutlineInputBorder(
+                            borderSide: BorderSide(color: Colors.grey),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderSide: BorderSide(color: Colors.grey),
+                          ),
+                        ),
+                        items: [
+                          DropdownMenuItem(
+                            value: 'PRODUCTO',
+                            child: Text('PRODUCTO'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'SERVICIO',
+                            child: Text('SERVICIO'),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          setState(
+                            () => tipoSeleccionado = value ?? 'PRODUCTO',
+                          );
+                        },
+                      ),
+                      SizedBox(height: 16),
+
+                      // Código
+                      TextField(
+                        controller: codigoController,
+                        style: TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          labelText: 'Código',
+                          labelStyle: TextStyle(color: Colors.white70),
+                          border: OutlineInputBorder(),
+                          enabledBorder: OutlineInputBorder(
+                            borderSide: BorderSide(color: Colors.grey),
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 16),
+
+                      // Nombre
+                      TextField(
+                        controller: nombreController,
+                        style: TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          labelText: 'Nombre *',
+                          labelStyle: TextStyle(color: Colors.white70),
+                          border: OutlineInputBorder(),
+                          enabledBorder: OutlineInputBorder(
+                            borderSide: BorderSide(color: Colors.grey),
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 16),
+
+                      // Descripción
+                      TextField(
+                        controller: descripcionController,
+                        style: TextStyle(color: Colors.white),
+                        maxLines: 3,
+                        decoration: InputDecoration(
+                          labelText: 'Descripción',
+                          labelStyle: TextStyle(color: Colors.white70),
+                          border: OutlineInputBorder(),
+                          enabledBorder: OutlineInputBorder(
+                            borderSide: BorderSide(color: Colors.grey),
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 16),
+
+                      // Categoría
+                      DropdownButtonFormField<String>(
+                        value: categoriaSeleccionada,
+                        dropdownColor: AppTheme.cardBg,
+                        style: TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          labelText: 'Categoría',
+                          labelStyle: TextStyle(color: Colors.white70),
+                          border: OutlineInputBorder(
+                            borderSide: BorderSide(color: Colors.grey),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderSide: BorderSide(color: Colors.grey),
+                          ),
+                        ),
+                        items: [
+                          DropdownMenuItem(
+                            value: null,
+                            child: Text('Sin categoría'),
+                          ),
+                          ..._categorias.map((categoria) {
+                            return DropdownMenuItem(
+                              value: categoria.id,
+                              child: Text(categoria.nombre),
+                            );
+                          }),
+                        ],
+                        onChanged: (value) {
+                          setState(() => categoriaSeleccionada = value);
+                        },
+                      ),
+                      SizedBox(height: 16),
+
+                      // Precios en fila
+                      Row(
+                        children: [
+                          // Costo
+                          Expanded(
+                            child: TextField(
+                              controller: costoController,
+                              style: TextStyle(color: Colors.white),
+                              keyboardType: TextInputType.number,
+                              decoration: InputDecoration(
+                                labelText: 'Costo *',
+                                labelStyle: TextStyle(color: Colors.white70),
+                                border: OutlineInputBorder(),
+                                enabledBorder: OutlineInputBorder(
+                                  borderSide: BorderSide(color: Colors.grey),
+                                ),
+                              ),
+                            ),
+                          ),
+                          SizedBox(width: 16),
+                          // Precio
+                          Expanded(
+                            child: TextField(
+                              controller: precioController,
+                              style: TextStyle(color: Colors.white),
+                              keyboardType: TextInputType.number,
+                              decoration: InputDecoration(
+                                labelText: 'Precio *',
+                                labelStyle: TextStyle(color: Colors.white70),
+                                border: OutlineInputBorder(),
+                                enabledBorder: OutlineInputBorder(
+                                  borderSide: BorderSide(color: Colors.grey),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text('Cancelar', style: TextStyle(color: Colors.grey)),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    // Validación básica
+                    if (nombreController.text.trim().isEmpty ||
+                        precioController.text.trim().isEmpty ||
+                        costoController.text.trim().isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'Por favor completa todos los campos obligatorios',
+                          ),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                      return;
+                    }
+
+                    Navigator.pop(context);
+                    await _guardarProducto(
+                      producto: producto,
+                      nombre: nombreController.text.trim(),
+                      descripcion: descripcionController.text.trim(),
+                      codigo: codigoController.text.trim(),
+                      precio: double.tryParse(precioController.text) ?? 0,
+                      costo: double.tryParse(costoController.text) ?? 0,
+                      categoriaId: categoriaSeleccionada,
+                      tipo: tipoSeleccionado,
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primary,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: Text(isEditing ? 'Actualizar' : 'Crear'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _guardarProducto({
+    Producto? producto,
+    required String nombre,
+    required String descripcion,
+    required String codigo,
+    required double precio,
+    required double costo,
+    String? categoriaId,
+    required String tipo,
+  }) async {
+    try {
+      final service = ProductoService();
+
+      // Encontrar la categoría seleccionada
+      Categoria? categoriaSeleccionada;
+      if (categoriaId != null) {
+        categoriaSeleccionada = _categorias.firstWhere(
+          (cat) => cat.id == categoriaId,
+          orElse: () => Categoria(id: categoriaId, nombre: 'Unknown'),
+        );
+      }
+
+      if (producto != null) {
+        // Editar producto existente
+        final productoActualizado = Producto(
+          id: producto.id,
+          nombre: nombre,
+          descripcion: descripcion.isNotEmpty ? descripcion : null,
+          codigo: codigo.isNotEmpty ? codigo : null,
+          precio: precio,
+          costo: costo,
+          categoria: categoriaSeleccionada,
+          productoOServicio: tipo,
+          almacen: producto.almacen,
+          bodega: producto.bodega,
+          inventarioBajo: producto.inventarioBajo,
+          inventarioOptimo: producto.inventarioOptimo,
+          impuestos: producto.impuestos,
+          utilidad: producto.utilidad,
+        );
+
+        await service.updateProducto(productoActualizado);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Producto actualizado correctamente'),
+            backgroundColor: AppTheme.success,
+          ),
+        );
+      } else {
+        // Crear nuevo producto
+        final nuevoProducto = Producto(
+          id: '', // El backend asignará el ID
+          nombre: nombre,
+          descripcion: descripcion.isNotEmpty ? descripcion : null,
+          codigo: codigo.isNotEmpty ? codigo : null,
+          precio: precio,
+          costo: costo,
+          categoria: categoriaSeleccionada,
+          productoOServicio: tipo,
+          almacen: 0,
+          bodega: 0,
+          inventarioBajo: 5,
+          inventarioOptimo: 20,
+          impuestos: 0,
+          utilidad: precio - costo, // Calcular utilidad como diferencia
+        );
+
+        await service.addProducto(nuevoProducto);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Producto creado correctamente'),
+            backgroundColor: AppTheme.success,
+          ),
+        );
+      }
+
+      _cargarDatos(); // Recargar la lista
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al guardar producto: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _eliminarProducto(Producto producto) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: AppTheme.cardBg,
+          title: Row(
+            children: [
+              Icon(Icons.warning, color: Colors.red),
+              SizedBox(width: 12),
+              Text(
+                'Confirmar eliminación',
+                style: TextStyle(color: Colors.white),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '¿Estás seguro de que deseas eliminar este producto?',
+                style: TextStyle(color: Colors.white),
+              ),
+              SizedBox(height: 12),
+              Container(
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppTheme.surfaceDark,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Producto: ${producto.nombre}',
+                      style: TextStyle(
+                        color: AppTheme.success,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    if (producto.codigo?.isNotEmpty ?? false)
+                      Text(
+                        'Código: ${producto.codigo}',
+                        style: TextStyle(color: Colors.grey.shade400),
+                      ),
+                  ],
+                ),
+              ),
+              SizedBox(height: 12),
+              Text(
+                'Esta acción no se puede deshacer.',
+                style: TextStyle(color: Colors.red.shade300),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Cancelar', style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.pop(context);
+                await _confirmarEliminacion(producto);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red.shade600,
+                foregroundColor: Colors.white,
+              ),
+              child: Text('Eliminar'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _confirmarEliminacion(Producto producto) async {
+    try {
+      final service = ProductoService();
+      await service.deleteProducto(producto.id!);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Producto eliminado correctamente'),
+          backgroundColor: AppTheme.success,
+        ),
+      );
+
+      _cargarDatos(); // Recargar la lista
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al eliminar producto: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _mostrarCargaMasivaProductos() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: AppTheme.cardBg,
+          title: Row(
+            children: [
+              Icon(Icons.upload_file, color: AppTheme.primary),
+              SizedBox(width: 12),
+              Text(
+                'Carga Masiva de Productos',
+                style: TextStyle(color: Colors.white),
+              ),
+            ],
+          ),
+          content: Container(
+            width: 400,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Selecciona un archivo Excel (.xlsx) con los datos de los productos.',
+                  style: TextStyle(color: Colors.white),
+                ),
+                SizedBox(height: 16),
+                Container(
+                  padding: EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppTheme.surfaceDark,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Formato requerido:',
+                        style: TextStyle(
+                          color: AppTheme.success,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        '• Código\n• Nombre\n• Descripción\n• Costo\n• Precio de venta\n• Categoría',
+                        style: TextStyle(color: Colors.grey.shade400),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Cancelar', style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.pop(context);
+                _seleccionarArchivoCargaMasiva();
+              },
+              icon: Icon(Icons.file_upload, color: Colors.white),
+              label: Text('Seleccionar archivo'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primary,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _seleccionarArchivoCargaMasiva() {
+    // TODO: Implementar selección de archivo y procesamiento
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Funcionalidad de carga masiva en desarrollo'),
+        backgroundColor: AppTheme.primary,
+      ),
+    );
+  }
+
+  // Nueva función para guardar producto con todos los campos
+  Future<void> _guardarProductoCompleto({
+    Producto? producto,
+    // Información básica
+    required String nombre,
+    required String descripcion,
+    required String codigo,
+    required String codigoBarras,
+    required String tipo,
+    // Precios
+    required double precio,
+    required double costo,
+    double? porcentajeImpuesto,
+    double? precioVentaOpc1,
+    double? precioVentaOpc2,
+    double? precioVentaOpc3,
+    // Clasificación
+    String? categoriaId,
+    required String marca,
+    required String tipoProductoNombre,
+    required String lineaProductoNombre,
+    required String claseProductoNombre,
+    // Proveedor
+    required String nombreProveedor,
+    required String nitProveedor,
+    // Inventario
+    required String controlInventario,
+    required int inventarioBajo,
+    required int inventarioOptimo,
+    required int almacen,
+    required int bodega,
+    // Ubicaciones
+    required String ubicacion1,
+    required String ubicacion2,
+    required String ubicacion3,
+    required String ubicacion4,
+    required String localizacion,
+  }) async {
+    try {
+      final service = ProductoService();
+
+      // Encontrar la categoría seleccionada
+      Categoria? categoriaSeleccionada;
+      if (categoriaId != null) {
+        categoriaSeleccionada = _categorias.firstWhere(
+          (cat) => cat.id == categoriaId,
+          orElse: () => Categoria(id: categoriaId, nombre: 'Unknown'),
+        );
+      }
+
+      if (producto != null) {
+        // Editar producto existente
+        final productoActualizado = Producto(
+          id: producto.id,
+          nombre: nombre,
+          descripcion: descripcion.isNotEmpty ? descripcion : null,
+          codigo: codigo.isNotEmpty ? codigo : null,
+          codigoBarras: codigoBarras.isNotEmpty ? codigoBarras : null,
+          precio: precio,
+          costo: costo,
+          categoria: categoriaSeleccionada,
+          productoOServicio: tipo,
+          porcentajeImpuesto: porcentajeImpuesto,
+          precioVentaOpc1: precioVentaOpc1,
+          precioVentaOpc2: precioVentaOpc2,
+          precioVentaOpc3: precioVentaOpc3,
+          marca: marca.isNotEmpty ? marca : null,
+          tipoProductoNombre: tipoProductoNombre.isNotEmpty
+              ? tipoProductoNombre
+              : null,
+          lineaProductoNombre: lineaProductoNombre.isNotEmpty
+              ? lineaProductoNombre
+              : null,
+          claseProductoNombre: claseProductoNombre.isNotEmpty
+              ? claseProductoNombre
+              : null,
+          nombreProveedor: nombreProveedor.isNotEmpty ? nombreProveedor : null,
+          nitProveedor: nitProveedor.isNotEmpty ? nitProveedor : null,
+          controlInventario: controlInventario,
+          inventarioBajo: inventarioBajo,
+          inventarioOptimo: inventarioOptimo,
+          almacen: almacen,
+          bodega: bodega,
+          ubicacion1: ubicacion1.isNotEmpty ? ubicacion1 : null,
+          ubicacion2: ubicacion2.isNotEmpty ? ubicacion2 : null,
+          ubicacion3: ubicacion3.isNotEmpty ? ubicacion3 : null,
+          ubicacion4: ubicacion4.isNotEmpty ? ubicacion4 : null,
+          localizacion: localizacion.isNotEmpty ? localizacion : null,
+          impuestos: producto.impuestos,
+          utilidad: precio - costo,
+        );
+
+        await service.updateProducto(productoActualizado);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Producto actualizado correctamente'),
+            backgroundColor: AppTheme.success,
+          ),
+        );
+      } else {
+        // Crear nuevo producto
+        final nuevoProducto = Producto(
+          id: '', // El backend asignará el ID
+          nombre: nombre,
+          descripcion: descripcion.isNotEmpty ? descripcion : null,
+          codigo: codigo.isNotEmpty ? codigo : null,
+          codigoBarras: codigoBarras.isNotEmpty ? codigoBarras : null,
+          precio: precio,
+          costo: costo,
+          categoria: categoriaSeleccionada,
+          productoOServicio: tipo,
+          porcentajeImpuesto: porcentajeImpuesto,
+          precioVentaOpc1: precioVentaOpc1,
+          precioVentaOpc2: precioVentaOpc2,
+          precioVentaOpc3: precioVentaOpc3,
+          marca: marca.isNotEmpty ? marca : null,
+          tipoProductoNombre: tipoProductoNombre.isNotEmpty
+              ? tipoProductoNombre
+              : null,
+          lineaProductoNombre: lineaProductoNombre.isNotEmpty
+              ? lineaProductoNombre
+              : null,
+          claseProductoNombre: claseProductoNombre.isNotEmpty
+              ? claseProductoNombre
+              : null,
+          nombreProveedor: nombreProveedor.isNotEmpty ? nombreProveedor : null,
+          nitProveedor: nitProveedor.isNotEmpty ? nitProveedor : null,
+          controlInventario: controlInventario,
+          inventarioBajo: inventarioBajo,
+          inventarioOptimo: inventarioOptimo,
+          almacen: almacen,
+          bodega: bodega,
+          ubicacion1: ubicacion1.isNotEmpty ? ubicacion1 : null,
+          ubicacion2: ubicacion2.isNotEmpty ? ubicacion2 : null,
+          ubicacion3: ubicacion3.isNotEmpty ? ubicacion3 : null,
+          ubicacion4: ubicacion4.isNotEmpty ? ubicacion4 : null,
+          localizacion: localizacion.isNotEmpty ? localizacion : null,
+          impuestos: 0,
+          utilidad: precio - costo,
+        );
+
+        await service.addProducto(nuevoProducto);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Producto creado correctamente'),
+            backgroundColor: AppTheme.success,
+          ),
+        );
+      }
+
+      _cargarDatos(); // Recargar la lista
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al guardar producto: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  // Funciones auxiliares para el formulario completo con tabs
+  Widget _buildTabBasico(TextEditingController nombreController, TextEditingController descripcionController, TextEditingController codigoController, TextEditingController codigoBarrasController, String tipoSeleccionado, String? categoriaSeleccionada, StateSetter setState) {
+    return Padding(
+      padding: EdgeInsets.all(16),
+      child: SingleChildScrollView(
+        child: Column(
+          children: [
+            Row(
+              children: [
+                // Tipo de producto
+                Expanded(
+                  child: _buildDropdown(
+                    'Tipo *',
+                    tipoSeleccionado,
+                    ['PRODUCTO', 'SERVICIO'],
+                    (value) => setState(() => tipoSeleccionado = value ?? 'PRODUCTO'),
+                  ),
+                ),
+                SizedBox(width: 16),
+                // Código
+                Expanded(
+                  child: _buildTextField('Código', codigoController),
+                ),
+              ],
+            ),
+            SizedBox(height: 16),
+            
+            // Código de barras
+            _buildTextField('Código de barras', codigoBarrasController),
+            SizedBox(height: 16),
+            
+            // Nombre (ancho completo)
+            _buildTextField('Nombre *', nombreController),
+            SizedBox(height: 16),
+
+            // Descripción (ancho completo, multilinea)
+            _buildTextField('Descripción', descripcionController, maxLines: 4),
+            SizedBox(height: 16),
+
+            // Categoría
+            _buildCategoriaDropdown(categoriaSeleccionada, (value) {
+              setState(() => categoriaSeleccionada = value);
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTabPrecios(TextEditingController precioController, TextEditingController costoController, TextEditingController porcentajeImpuestoController, TextEditingController precioVentaOpc1Controller, TextEditingController precioVentaOpc2Controller, TextEditingController precioVentaOpc3Controller) {
+    return Padding(
+      padding: EdgeInsets.all(16),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Precios Principales', style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, fontSize: 16)),
+            SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(child: _buildTextField('Costo *', costoController, isNumeric: true)),
+                SizedBox(width: 16),
+                Expanded(child: _buildTextField('Precio *', precioController, isNumeric: true)),
+                SizedBox(width: 16),
+                Expanded(child: _buildTextField('% Impuesto', porcentajeImpuestoController, isNumeric: true)),
+              ],
+            ),
+            SizedBox(height: 24),
+            
+            Text('Precios Opcionales', style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, fontSize: 16)),
+            SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(child: _buildTextField('Precio Opc. 1', precioVentaOpc1Controller, isNumeric: true)),
+                SizedBox(width: 16),
+                Expanded(child: _buildTextField('Precio Opc. 2', precioVentaOpc2Controller, isNumeric: true)),
+                SizedBox(width: 16),
+                Expanded(child: _buildTextField('Precio Opc. 3', precioVentaOpc3Controller, isNumeric: true)),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTabClasificacion(TextEditingController marcaController, TextEditingController tipoProductoNombreController, TextEditingController lineaProductoNombreController, TextEditingController claseProductoNombreController, TextEditingController nombreProveedorController, TextEditingController nitProveedorController) {
+    return Padding(
+      padding: EdgeInsets.all(16),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Clasificación', style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, fontSize: 16)),
+            SizedBox(height: 16),
+            _buildTextField('Marca', marcaController),
+            SizedBox(height: 16),
+            
+            Row(
+              children: [
+                Expanded(child: _buildTextField('Tipo Producto', tipoProductoNombreController)),
+                SizedBox(width: 16),
+                Expanded(child: _buildTextField('Línea Producto', lineaProductoNombreController)),
+              ],
+            ),
+            SizedBox(height: 16),
+            _buildTextField('Clase Producto', claseProductoNombreController),
+            SizedBox(height: 24),
+
+            Text('Proveedor', style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, fontSize: 16)),
+            SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(child: _buildTextField('Nombre Proveedor', nombreProveedorController)),
+                SizedBox(width: 16),
+                Expanded(child: _buildTextField('NIT Proveedor', nitProveedorController)),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTabInventario(TextEditingController almacenController, TextEditingController bodegaController, TextEditingController inventarioBajoController, TextEditingController inventarioOptimoController, TextEditingController ubicacion1Controller, TextEditingController ubicacion2Controller, TextEditingController ubicacion3Controller, TextEditingController ubicacion4Controller, TextEditingController localizacionController, String controlInventarioSeleccionado, StateSetter setState) {
+    return Padding(
+      padding: EdgeInsets.all(16),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Control de Inventario', style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, fontSize: 16)),
+            SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildDropdown(
+                    'Control Inventario',
+                    controlInventarioSeleccionado,
+                    ['SI', 'NO'],
+                    (value) => setState(() => controlInventarioSeleccionado = value ?? 'SI'),
+                  ),
+                ),
+                SizedBox(width: 16),
+                Expanded(child: _buildTextField('Inv. Bajo', inventarioBajoController, isNumeric: true)),
+                SizedBox(width: 16),
+                Expanded(child: _buildTextField('Inv. Óptimo', inventarioOptimoController, isNumeric: true)),
+              ],
+            ),
+            SizedBox(height: 16),
+            
+            Row(
+              children: [
+                Expanded(child: _buildTextField('Almacén', almacenController, isNumeric: true)),
+                SizedBox(width: 16),
+                Expanded(child: _buildTextField('Bodega', bodegaController, isNumeric: true)),
+              ],
+            ),
+            SizedBox(height: 24),
+
+            Text('Ubicaciones', style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, fontSize: 16)),
+            SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(child: _buildTextField('Ubicación 1', ubicacion1Controller)),
+                SizedBox(width: 16),
+                Expanded(child: _buildTextField('Ubicación 2', ubicacion2Controller)),
+              ],
+            ),
+            SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(child: _buildTextField('Ubicación 3', ubicacion3Controller)),
+                SizedBox(width: 16),
+                Expanded(child: _buildTextField('Ubicación 4', ubicacion4Controller)),
+              ],
+            ),
+            SizedBox(height: 16),
+            _buildTextField('Localización', localizacionController),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTextField(String label, TextEditingController controller, {int maxLines = 1, bool isNumeric = false}) {
+    return TextField(
+      controller: controller,
+      style: TextStyle(color: Colors.white),
+      maxLines: maxLines,
+      keyboardType: isNumeric ? TextInputType.number : TextInputType.text,
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: TextStyle(color: Colors.white70),
+        border: OutlineInputBorder(),
+        enabledBorder: OutlineInputBorder(
+          borderSide: BorderSide(color: Colors.grey),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderSide: BorderSide(color: AppTheme.primary),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDropdown(String label, String value, List<String> items, ValueChanged<String?> onChanged) {
+    return DropdownButtonFormField<String>(
+      value: value,
+      dropdownColor: AppTheme.cardBg,
+      style: TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: TextStyle(color: Colors.white70),
+        border: OutlineInputBorder(),
+        enabledBorder: OutlineInputBorder(
+          borderSide: BorderSide(color: Colors.grey),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderSide: BorderSide(color: AppTheme.primary),
+        ),
+      ),
+      items: items.map((item) => DropdownMenuItem(value: item, child: Text(item))).toList(),
+      onChanged: onChanged,
+    );
+  }
+
+  Widget _buildCategoriaDropdown(String? value, ValueChanged<String?> onChanged) {
+    return DropdownButtonFormField<String>(
+      value: value,
+      dropdownColor: AppTheme.cardBg,
+      style: TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        labelText: 'Categoría',
+        labelStyle: TextStyle(color: Colors.white70),
+        border: OutlineInputBorder(),
+        enabledBorder: OutlineInputBorder(
+          borderSide: BorderSide(color: Colors.grey),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderSide: BorderSide(color: AppTheme.primary),
+        ),
+      ),
+      items: [
+        DropdownMenuItem(value: null, child: Text('Sin categoría')),
+        ..._categorias.map((categoria) {
+          return DropdownMenuItem(
+            value: categoria.id,
+            child: Text(categoria.nombre),
+          );
+        }),
+      ],
+      onChanged: onChanged,
     );
   }
 }

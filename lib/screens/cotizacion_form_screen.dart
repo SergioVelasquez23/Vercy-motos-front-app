@@ -231,6 +231,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
                     SizedBox(height: 8),
                     TextField(
                       controller: _validezController,
+                      style: TextStyle(color: AppTheme.textPrimary),
                       decoration: InputDecoration(
                         border: OutlineInputBorder(),
                         contentPadding: EdgeInsets.symmetric(
@@ -352,6 +353,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
               SizedBox(height: 8),
               TextField(
                 controller: _descripcionController,
+                style: TextStyle(color: AppTheme.textPrimary),
                 decoration: InputDecoration(
                   border: OutlineInputBorder(),
                   contentPadding: EdgeInsets.symmetric(
@@ -397,6 +399,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
                 flex: 1,
                 child: TextField(
                   controller: _codigoProductoController,
+                  style: TextStyle(color: AppTheme.textPrimary),
                   decoration: InputDecoration(
                     labelText: 'Código',
                     border: OutlineInputBorder(),
@@ -546,6 +549,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
                 flex: 1,
                 child: TextField(
                   controller: _cantidadController,
+                  style: TextStyle(color: AppTheme.textPrimary),
                   decoration: InputDecoration(
                     labelText: 'Cantidad',
                     border: OutlineInputBorder(),
@@ -558,6 +562,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
                 flex: 1,
                 child: TextField(
                   controller: _precioController,
+                  style: TextStyle(color: AppTheme.textPrimary),
                   decoration: InputDecoration(
                     labelText: 'Precio',
                     prefixText: '\$',
@@ -591,6 +596,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
               Expanded(
                 child: TextField(
                   controller: _porcentajeImpuestoController,
+                  style: TextStyle(color: AppTheme.textPrimary),
                   decoration: InputDecoration(
                     labelText: '% Impuesto',
                     border: OutlineInputBorder(),
@@ -602,6 +608,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
               Expanded(
                 child: TextField(
                   controller: _porcentajeDescuentoController,
+                  style: TextStyle(color: AppTheme.textPrimary),
                   decoration: InputDecoration(
                     labelText: '% Descuento',
                     border: OutlineInputBorder(),

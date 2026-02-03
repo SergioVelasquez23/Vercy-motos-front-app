@@ -204,9 +204,6 @@ class CuadreCajaService {
       }
 
       final cajaActiva = cajasAbiertas.first;
-      print(
-        '✅ Caja activa encontrada: ${cajaActiva.id} - ${cajaActiva.nombre}',
-      );
       return cajaActiva;
     } catch (e) {
         
@@ -251,13 +248,7 @@ class CuadreCajaService {
                     0)
                 .toDouble();
 
-        print(
-          '💰 Efectivo esperado calculado: \$${efectivoEsperado.toStringAsFixed(2)}',
-        );
-        print(
-          '🏦 Transferencias esperadas: \$${transferenciasEsperadas.toStringAsFixed(2)}',
-        );
-
+                      
         return responseData['data'];
       } else {
           
@@ -322,23 +313,14 @@ class CuadreCajaService {
         // Procesar los datos según la estructura que venga del backend
         if (ventasData.containsKey('efectivo')) {
           efectivoEsperado = (ventasData['efectivo'] ?? 0).toDouble();
-          print(
-            '💰 Efectivo desde campo directo: \$${efectivoEsperado.toStringAsFixed(2)}',
-          );
         }
 
         if (ventasData.containsKey('transferencias')) {
           transferenciasEsperadas = (ventasData['transferencias'] ?? 0)
               .toDouble();
-          print(
-            '🏦 Transferencias desde campo directo: \$${transferenciasEsperadas.toStringAsFixed(2)}',
-          );
         } else if (ventasData.containsKey('transferencia')) {
           transferenciasEsperadas = (ventasData['transferencia'] ?? 0)
               .toDouble();
-          print(
-            '🏦 Transferencias desde campo alternativo: \$${transferenciasEsperadas.toStringAsFixed(2)}',
-          );
         }
 
         // Si vienen datos por tipo de pago, procesarlos
@@ -358,9 +340,6 @@ class CuadreCajaService {
                 tipo.contains('debito') ||
                 tipo.contains('tarjeta')) {
               transferenciasEsperadas += valor;
-              print(
-                '💳 Agregado a transferencias: \$${valor.toStringAsFixed(2)}',
-              );
             }
           });
         }
@@ -380,10 +359,7 @@ class CuadreCajaService {
                       .toString()
                       .toLowerCase();
 
-              print(
-                '🧾 Procesando pedido - Total: \$${total.toStringAsFixed(2)}, Tipo: $tipoPago',
-              );
-
+                 
               if (tipoPago.contains('efectivo') || tipoPago == 'cash') {
                 efectivoEsperado += total;
                   
@@ -391,15 +367,9 @@ class CuadreCajaService {
                   tipoPago.contains('debito') ||
                   tipoPago.contains('tarjeta')) {
                 transferenciasEsperadas += total;
-                print(
-                  '💳 Sumado a transferencias: \$${total.toStringAsFixed(2)}',
-                );
               } else {
                 // Por defecto, considerar como efectivo si no se especifica
                 efectivoEsperado += total;
-                print(
-                  '💵 Tipo desconocido, sumado a efectivo por defecto: \$${total.toStringAsFixed(2)}',
-                );
               }
             }
           }
@@ -408,13 +378,7 @@ class CuadreCajaService {
 
         
         
-      print(
-        '🏦 Transferencias total: \$${transferenciasEsperadas.toStringAsFixed(2)}',
-      );
-      print(
-        '📊 Gran total: \$${(efectivoEsperado + transferenciasEsperadas).toStringAsFixed(2)}',
-      );
-
+                  
       return {
         'efectivoEsperado': efectivoEsperado,
         'transferenciasEsperadas': transferenciasEsperadas,
@@ -483,18 +447,12 @@ class CuadreCajaService {
         // 🔍 LOGGING: Debug para respuesta del backend
           
           
-        print(
-          '  - Fondo Inicial RECIBIDO: \$${cuadreCreado.fondoInicial.toStringAsFixed(0)}',
-        );
-          
+                     
 
         if (cuadreCreado.fondoInicial != fondoInicial) {
             
             
-          print(
-            '   Recibido: \$${cuadreCreado.fondoInicial.toStringAsFixed(0)}',
-          );
-        }
+                     }
 
         return cuadreCreado;
       } else {
@@ -570,13 +528,7 @@ class CuadreCajaService {
 
           // Registrar detalles del proceso de limpieza
             
-          print(
-            '   - Pedidos en cache limpiados: ${detallesCierre['pedidosLimpiados'] ?? "N/A"}',
-          );
-          print(
-            '   - Mesas en cache limpiadas: ${detallesCierre['mesasLimpiadas'] ?? "N/A"}',
-          );
-            
+                                      
         }
 
         return CuadreCaja.fromJson(responseData['data']);
@@ -774,10 +726,7 @@ class CuadreCajaService {
           if (pedidoJson['pagosParciales'] != null &&
               pedidoJson['pagosParciales'] is List &&
               (pedidoJson['pagosParciales'] as List).isNotEmpty) {
-            print(
-              '💳 Procesando pagos parciales para pedido: ${pedidoJson['_id'] ?? pedidoJson['id']}',
-            );
-
+               
             // Si tiene pagos parciales, ignorar la forma de pago principal y procesar cada pago
             final pagosParciales = pedidoJson['pagosParciales'] as List;
 
@@ -827,10 +776,7 @@ class CuadreCajaService {
 
           
           
-        print(
-          '  - Transferencias: \$${totalTransferencias.toStringAsFixed(2)}',
-        );
-          
+                     
           
           
 
@@ -890,9 +836,6 @@ class CuadreCajaService {
 
   // Método para compatibilidad con código legacy - alias de getVentasPorCuadreActivo
   Future<Map<String, dynamic>> getVentasPorTipoPago() async {
-    print(
-      '🔄 getVentasPorTipoPago() - redirigiendo a getVentasPorCuadreActivo()',
-    );
     return await getVentasPorCuadreActivo();
   }
 

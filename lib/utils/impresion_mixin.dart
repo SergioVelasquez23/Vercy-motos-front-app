@@ -31,10 +31,7 @@ mixin ImpresionMixin<T extends StatefulWidget> on State<T> {
         negocioInfo = await _negocioInfoService.getNegocioInfo();
           
       } catch (e) {
-        print(
-          '⚠️ Error obteniendo info del negocio, usando valores por defecto: $e',
-        );
-      }
+                 }
 
       final resumen = await _impresionService.generarResumenPedido(pedidoId);
 

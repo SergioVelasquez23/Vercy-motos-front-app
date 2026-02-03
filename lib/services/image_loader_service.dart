@@ -82,10 +82,7 @@ class ImageLoaderService {
     // Limitar a 20 productos
     final productosLimitados = productosNecesitanImagen.take(20).toList();
 
-    print(
-      '🖼️ Cargando ${productosLimitados.length} imágenes individualmente...',
-    );
-
+       
     // ⚡ CAMBIO: Cargar cada imagen individualmente usando el endpoint correcto
     for (var producto in productosLimitados) {
       // Marcar como en progreso
@@ -182,10 +179,7 @@ class ImageLoaderService {
 
     final productosCercanos = todosProductos.sublist(inicio, fin);
 
-    print(
-      '🔄 Precargando imágenes cercanas: ${productosCercanos.length} productos',
-    );
-    await cargarImagenesLote(productosCercanos);
+           await cargarImagenesLote(productosCercanos);
     */
   }
 

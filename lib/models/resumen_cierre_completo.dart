@@ -190,10 +190,7 @@ class MovimientosEfectivoCompleto {
     }
 
       
-    print(
-      '💸 MovimientosEfectivoCompleto - ventas transferencia: $ventasTrans',
-    );
-
+       
     return MovimientosEfectivoCompleto(
       ingresosTransferencia: safeToDouble(json['ingresosTransferencia']),
       ingresosEfectivo: safeToDouble(json['ingresosEfectivo']),

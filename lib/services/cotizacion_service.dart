@@ -333,4 +333,27 @@ class CotizacionService {
       return [];
     }
   }
+
+  /// Generar PDF de cotización
+  Future<Map<String, dynamic>> generarPDF(String id) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/$id/pdf'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/pdf',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        // El backend debería retornar la URL del PDF o los bytes
+        final data = json.decode(response.body);
+        return data;
+      }
+
+      throw Exception('Error al generar PDF: ${response.statusCode}');
+    } catch (e) {
+      throw Exception('Error al generar PDF: $e');
+    }
+  }
 }

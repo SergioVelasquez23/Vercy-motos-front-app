@@ -55,9 +55,6 @@ class ImageService {
                   images.add(file);
                 }
               }
-              print(
-                '📋 Archivos en directorio por defecto: ${defaultFiles.length}',
-              );
             }
           }
         }

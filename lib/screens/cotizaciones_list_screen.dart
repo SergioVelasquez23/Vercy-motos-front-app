@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/cotizacion.dart';
 import '../services/cotizacion_service.dart';
+import '../services/pdf_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/vercy_sidebar_layout.dart';
 
@@ -11,6 +12,7 @@ class CotizacionesListScreen extends StatefulWidget {
 
 class _CotizacionesListScreenState extends State<CotizacionesListScreen> {
   final CotizacionService _cotizacionService = CotizacionService();
+  final PDFService _pdfService = PDFService();
   final TextEditingController _searchController = TextEditingController();
 
   List<Cotizacion> _cotizaciones = [];
@@ -423,6 +425,11 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
+        IconButton(
+          icon: Icon(Icons.picture_as_pdf, color: Colors.orange),
+          onPressed: () => _verPDF(cotizacion),
+          tooltip: 'Ver PDF',
+        ),
         if (cotizacion.estado == 'activa') ...[
           IconButton(
             icon: Icon(Icons.check_circle, color: Colors.green),
@@ -558,6 +565,110 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen> {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text('Función en desarrollo')));
+  }
+
+  Future<void> _verPDF(Cotizacion cotizacion) async {
+    try {
+      setState(() => _isLoading = true);
+
+      // Preparar datos del resumen para el PDF
+      final resumen = {
+        // Información del negocio
+        'negocioNombre': 'VERCY MOTOS',
+        'negocioNit': '1002378776-7',
+        'negocioTelefono': '',
+        'negocioDireccion': 'CALDAS',
+        'negocioCorreo': 'juandiegocaycedo1@gmail.com',
+
+        // Información del cliente
+        'clienteNombre': cotizacion.clienteNombre ?? cotizacion.clienteId,
+        'clienteDocumento': cotizacion.clienteId,
+        'clienteCiudad': 'MANIZALES',
+        'clienteTelefono': cotizacion.clienteTelefono ?? '',
+
+        // Información de la cotización
+        'numeroCotizacion':
+            cotizacion.numeroCotizacion ??
+            'CO-${cotizacion.id?.substring(0, 8)}',
+        'fechaCotizacion':
+            '${cotizacion.fecha.year}-${cotizacion.fecha.month.toString().padLeft(2, '0')}-${cotizacion.fecha.day.toString().padLeft(2, '0')}',
+        'fechaVence': cotizacion.fechaVencimiento != null
+            ? '${cotizacion.fechaVencimiento!.year}-${cotizacion.fechaVencimiento!.month.toString().padLeft(2, '0')}-${cotizacion.fechaVencimiento!.day.toString().padLeft(2, '0')}'
+            : '',
+
+        // Items - Convertir de ItemCotizacion a formato esperado
+        'items': cotizacion.items
+            .map(
+              (item) => {
+                'codigo': item.productoId,
+                'detalle': item.productoNombre ?? item.productoId,
+                'cantidad': item.cantidad,
+                'valorUnit': item.precioUnitario,
+                'dcto': item.porcentajeDescuento,
+                'valorDcto': item.valorDescuento,
+                'iva': item.porcentajeImpuesto,
+                'valorIVA': item.valorImpuesto,
+                'subtotal': item.subtotal,
+              },
+            )
+            .toList(),
+
+        // Totales
+        'subtotal': cotizacion.subtotal,
+        'totalIva': cotizacion.totalImpuestos,
+        'totalDescuentos': cotizacion.totalDescuentos,
+        'total': cotizacion.totalFinal,
+        'totalSinIva': cotizacion.subtotal - cotizacion.totalDescuentos,
+        'baseImp': cotizacion.subtotal - cotizacion.totalDescuentos,
+
+        // Detalles de retenciones
+        'retencion': cotizacion.valorRetencion,
+        'reteIVA': cotizacion.valorReteIVA,
+        'reteICA': cotizacion.valorReteICA,
+
+        // Cantidades
+        'cantidadArticulos': cotizacion.items.fold(
+          0,
+          (sum, item) => sum + item.cantidad,
+        ),
+        'cantidadProductos': cotizacion.items.length,
+
+        // Observaciones
+        'observaciones': cotizacion.descripcion ?? '',
+
+        // Tipo de documento
+        'tipoDocumento': 'COTIZACIÓN',
+      };
+
+      // Generar el PDF usando el servicio existente
+      await _pdfService.mostrarDialogoImpresion(
+        resumen: resumen,
+        esFactura: true,
+      );
+
+      setState(() => _isLoading = false);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.white),
+              SizedBox(width: 8),
+              Text('PDF de cotización generado correctamente'),
+            ],
+          ),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al generar PDF: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   Future<void> _confirmarEliminar(Cotizacion cotizacion) async {

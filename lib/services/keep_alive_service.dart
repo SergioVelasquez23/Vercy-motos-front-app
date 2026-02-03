@@ -24,10 +24,7 @@ class KeepAliveService {
     }
 
     _isActive = true;
-    print(
-      '🚀 Iniciando keep-alive service - ping cada ${_pingInterval.inMinutes} minutos',
-    );
-
+       
     // Hacer el primer ping inmediatamente
     _sendPing();
 

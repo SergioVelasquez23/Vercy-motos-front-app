@@ -282,10 +282,7 @@ class _CategoriasScreenState extends State<CategoriasScreen> {
                                         tempImagePath!,
                                         fit: BoxFit.cover,
                                         errorBuilder: (context, error, stackTrace) {
-                                          print(
-                                            'Error mostrando imagen: $error, URL: ${tempImagePath!.length > 50 ? '${tempImagePath!.substring(0, 50)}...' : tempImagePath}',
-                                          );
-                                          return Container(
+                                                                                       return Container(
                                             width: double.infinity,
                                             height: double.infinity,
                                             color: primary.withOpacity(0.1),
@@ -400,9 +397,6 @@ class _CategoriasScreenState extends State<CategoriasScreen> {
                               // Verificar si es una URL de datos (base64)
                               if (tempImagePath!.startsWith('data:')) {
                                 finalImageUrl = tempImagePath;
-                                print(
-                                  'Usando imagen base64, longitud: ${tempImagePath!.length}',
-                                );
                               } else {
                                 finalImageUrl = tempImagePath;
                                   

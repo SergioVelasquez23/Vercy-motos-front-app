@@ -21,6 +21,9 @@ class BaseApiService {
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
   static const Duration _defaultTimeout = Duration(seconds: 15);
 
+  /// Getter para acceso al cliente HTTP
+  http.Client get httpClient => _httpClient;
+
   /// Método para forzar una reconexión
   void resetConnection() {
     _httpClient.close();

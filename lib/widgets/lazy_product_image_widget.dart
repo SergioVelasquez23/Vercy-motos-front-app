@@ -74,10 +74,7 @@ class _LazyProductImageWidgetState extends State<LazyProductImageWidget> {
     // ✅ NUEVO: Si no hay en cache pero tenemos una URL cargada, 
     // significa que el cache fue invalidado, forzar recarga
     if (_imagenUrl != null && imagenCache == null) {
-      print(
-        '🔄 Cache invalidado para ${widget.producto.id}, recargando imagen...',
-      );
-      setState(() {
+               setState(() {
         _imagenUrl = null;
         _isLoading = true;
       });

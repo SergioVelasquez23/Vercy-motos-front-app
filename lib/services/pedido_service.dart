@@ -52,10 +52,7 @@ class PedidoService {
     EstadoPedido nuevoEstado,
   ) async {
     try {
-      print(
-        '🔄 Actualizando estado de pedido localmente: $pedidoId -> ${nuevoEstado.name}',
-      );
-
+         
       // Buscar el pedido en caché si existe
       Pedido? pedido = _pedidosCache[pedidoId];
 
@@ -91,10 +88,7 @@ class PedidoService {
 
       // Validar que la fecha esté en un rango razonable
       if (fechaLocal.year < 1900 || fechaLocal.year > 2100) {
-        print(
-          '⚠️ Fecha fuera de rango (${fechaLocal.year}), usando fecha actual',
-        );
-        final fechaActual = DateTime.now().toLocal();
+                   final fechaActual = DateTime.now().toLocal();
         return _formatoManualFecha(fechaActual);
       }
 
@@ -190,10 +184,7 @@ class PedidoService {
       }
 
       // Log detallado para depuración de reportes
-      print(
-        '🔍 REPORTE DETALLADO: Recibidos ${jsonList.length} pedidos del servidor',
-      );
-      int pedidosFiltrados = 0;
+               int pedidosFiltrados = 0;
 
       // Convertir JSON a objetos Pedido
       pedidos = jsonList.map((json) {
@@ -205,10 +196,7 @@ class PedidoService {
         if (pedido.estado == EstadoPedido.activo &&
             pedido.pagadoPor != null &&
             pedido.pagadoPor!.isNotEmpty) {
-          print(
-            '⚠️ Estado inconsistente en _parseListResponse: ID=${pedido.id}, estado=${pedido.estado}, pagadoPor=${pedido.pagadoPor}',
-          );
-            
+                         
           pedido.estado = EstadoPedido.pagado;
           pedidosFiltrados++;
         }
@@ -216,20 +204,14 @@ class PedidoService {
         // Verificar si el tipo es cortesía pero el estado no lo refleja
         if (pedido.tipo == TipoPedido.cortesia &&
             pedido.estado != EstadoPedido.cortesia) {
-          print(
-            '⚠️ Estado inconsistente en _parseListResponse: pedido tipo CORTESÍA pero estado=${pedido.estado}',
-          );
-            
+                         
           pedido.estado = EstadoPedido.cortesia;
         }
 
         // Si estado es "pendiente", convertirlo a activo o pagado según otros campos
         if (pedido.estado.toString().toLowerCase() == "pendiente") {
           if (pedido.pagadoPor != null && pedido.pagadoPor!.isNotEmpty) {
-            print(
-              '⚠️ Estado "pendiente" detectado con pagadoPor: ${pedido.pagadoPor}',
-            );
-              
+                             
             pedido.estado = EstadoPedido.pagado;
             pedidosFiltrados++;
           } else {
@@ -248,10 +230,7 @@ class PedidoService {
             
             
             
-          print(
-            '  - fechaPago: ${pedido.fechaPago != null ? "PRESENTE" : "NULL"}',
-          );
-        }
+                     }
 
         // Guardar en caché para acceso rápido
         if (pedido.id.isNotEmpty) {
@@ -298,10 +277,7 @@ class PedidoService {
         
         
         
-      print(
-        '  - Pedidos con pagadoPor pero sin estado PAGADO: $pedidosConPagadoPorSinEstadoPagado',
-      );
-        
+                 
         
         
         
@@ -382,10 +358,7 @@ class PedidoService {
           
 
         // FALLBACK: Obtener todos los pedidos y filtrar por fecha
-        print(
-          '🔄 Usando fallback: obteniendo todos los pedidos y filtrando...',
-        );
-
+           
         final todosPedidos = await getAllPedidos();
         final inicioHoy = DateTime(hoy.year, hoy.month, hoy.day);
         final finHoy = inicioHoy.add(Duration(days: 1));
@@ -490,10 +463,7 @@ class PedidoService {
 
       // Asignar cuadreId al pedido automáticamente
       pedido.cuadreId = cajaActiva.id;
-      print(
-        '✅ Pedido vinculado a cuadre: ${cajaActiva.id} - ${cajaActiva.nombre}',
-      );
-
+         
       final headers = await _getHeaders();
       final response = await http.post(
         Uri.parse('$baseUrl/api/pedidos'),
@@ -530,10 +500,7 @@ class PedidoService {
 
       // Asignar cuadreId al pedido automáticamente
       pedido.cuadreId = cajaActiva.id;
-      print(
-        '✅ Pedido vinculado a cuadre: ${cajaActiva.id} - ${cajaActiva.nombre}',
-      );
-
+         
       // Validar que los items del pedido sean válidos
       if (pedido.items.isEmpty) {
         throw Exception('El pedido debe tener al menos un item');
@@ -595,14 +562,8 @@ class PedidoService {
                   ingredientesPorItem,
                 );
             if (procesado) {
-              print(
-                '✅ Ingredientes descontados correctamente para pedido: ${pedidoCreado.id}',
-              );
-            } else {
-              print(
-                '⚠️ Advertencia: Pedido creado pero inventario no actualizado completamente',
-              );
-            }
+                             } else {
+                             }
           } catch (e) {
               
             // ✅ MEJORADO: Si es error crítico de stock, propagar
@@ -659,10 +620,7 @@ class PedidoService {
         pedidoJson['notas'] = "";
       }
 
-      print(
-        '🔄 Actualizando pedido ${pedido.id} con datos: ${json.encode(pedidoJson)}',
-      );
-
+         
       final response = await http.put(
         Uri.parse('$baseUrl/api/pedidos/${pedido.id}'),
         headers: headers,
@@ -689,10 +647,7 @@ class PedidoService {
               pedidoActualizado.id,
               ingredientesPorItem,
             );
-            print(
-              '✅ Inventario actualizado correctamente para pedido: ${pedidoActualizado.id}',
-            );
-          } catch (e) {
+                         } catch (e) {
               
             // No fallar la actualización del pedido, solo loggear el error
           }
@@ -795,10 +750,7 @@ class PedidoService {
           headers: headers,
         );
 
-        print(
-          '🔧 ADMIN: Respuesta endpoint admin: ${adminResponse.statusCode}',
-        );
-          
+                     
 
         if (adminResponse.statusCode == 204 ||
             adminResponse.statusCode == 200) {
@@ -985,10 +937,7 @@ class PedidoService {
         '$baseUrl/api/pedidos/total-ventas',
       ).replace(queryParameters: queryParams);
 
-      print(
-        '🔍 getTotalVentas: Consultando ventas con parámetros: $queryParams',
-      );
-        
+                 
 
       final response = await http.get(uri, headers: headers);
 
@@ -1006,10 +955,7 @@ class PedidoService {
           }
 
           if (jsonData['data'] is! Map) {
-            print(
-              '⚠️ getTotalVentas: data no es un objeto: ${jsonData['data']}',
-            );
-            return 0.0;
+                           return 0.0;
           }
 
           final total = jsonData['data']['total'];
@@ -1021,10 +967,7 @@ class PedidoService {
           }
 
           if (total is! num) {
-            print(
-              '⚠️ getTotalVentas: El total no es un número: $total (${total.runtimeType})',
-            );
-            return 0.0;
+                           return 0.0;
           }
 
             
@@ -1079,10 +1022,7 @@ class PedidoService {
             if (pedido.estado == EstadoPedido.activo &&
                 pedido.pagadoPor != null &&
                 pedido.pagadoPor!.isNotEmpty) {
-              print(
-                '⚠️ Estado inconsistente detectado: ID=${pedido.id}, estado=${pedido.estado}, pagadoPor=${pedido.pagadoPor}',
-              );
-                
+                                 
               pedido.estado = EstadoPedido.pagado;
             }
 
@@ -1096,10 +1036,7 @@ class PedidoService {
 
               if (lastCorrection == null ||
                   now.difference(lastCorrection).inSeconds > 30) {
-                print(
-                  '⚠️ Estado inconsistente detectado: pedido tipo CORTESÍA pero estado=${pedido.estado}',
-                );
-                  
+                                     
                 pedido.estado = EstadoPedido.cortesia;
                 _estadoCorregidoCache[cacheKey] = now;
               }
@@ -1171,10 +1108,7 @@ class PedidoService {
                 if (pedido.estado == EstadoPedido.activo &&
                     pedido.pagadoPor != null &&
                     pedido.pagadoPor!.isNotEmpty) {
-                  print(
-                    '⚠️ Estado inconsistente detectado (mesa ${nombreMesa}): ID=${pedido.id}, estado=${pedido.estado}, pagadoPor=${pedido.pagadoPor}',
-                  );
-                    
+                                         
                   pedido.estado = EstadoPedido.pagado;
                 }
 
@@ -1188,10 +1122,7 @@ class PedidoService {
 
                   if (lastCorrection == null ||
                       now.difference(lastCorrection).inSeconds > 30) {
-                    print(
-                      '⚠️ Estado inconsistente detectado: pedido tipo CORTESÍA pero estado=${pedido.estado}',
-                    );
-                      
+                                             
                     pedido.estado = EstadoPedido.cortesia;
                     _estadoCorregidoCache[cacheKey] = now;
                   }
@@ -1201,10 +1132,7 @@ class PedidoService {
                 if (pedido.estado.toString().toLowerCase() == "pendiente") {
                   if (pedido.pagadoPor != null &&
                       pedido.pagadoPor!.isNotEmpty) {
-                    print(
-                      '⚠️ Estado "pendiente" detectado con pagadoPor: ${pedido.pagadoPor}',
-                    );
-                      
+                                             
                     pedido.estado = EstadoPedido.pagado;
                   } else {
                       
@@ -1254,10 +1182,7 @@ class PedidoService {
     EstadoPedido nuevoEstado,
   ) async {
     try {
-      print(
-        '🎯 PedidoService: Actualizando estado del pedido - ID: $pedidoId a estado: $nuevoEstado',
-      );
-
+         
       final headers = await _getHeaders();
       final response = await http
           .put(
@@ -1268,13 +1193,7 @@ class PedidoService {
           )
           .timeout(const Duration(seconds: 10));
 
-      print(
-        '🎯 PedidoService: Update estado response - Status: ${response.statusCode}',
-      );
-      print(
-        '🎯 PedidoService: Update estado response - Body: ${response.body}',
-      );
-
+                  
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
         if (responseData['success'] == true && responseData['data'] != null) {
@@ -1287,10 +1206,7 @@ class PedidoService {
               
           }
 
-          print(
-            '🎯 PedidoService: Estado del pedido actualizado exitosamente - ID: ${pedidoActualizado.id}',
-          );
-
+             
           return pedidoActualizado;
         } else {
           throw Exception('Formato de respuesta inválido');
@@ -1634,18 +1550,12 @@ class PedidoService {
             }
 
             pagarData['pagosMixtos'] = pagosMixtos;
-            print(
-              '💳 Pagos mixtos configurados (modo anterior): ${pagosMixtos.length}',
-            );
-          }
+                         }
         } else if (formaPago != 'efectivo' &&
             formaPago != 'transferencia' &&
             formaPago != 'tarjeta' &&
             formaPago != 'otro') {
-          print(
-            '⚠️ Forma de pago en pagarPedido no reconocida: "$formaPago". Usando efectivo por defecto.',
-          );
-          formaPago = 'efectivo';
+                       formaPago = 'efectivo';
           pagarData['formaPago'] = formaPago;
         } else {
           pagarData['formaPago'] = formaPago;
@@ -1744,40 +1654,7 @@ class PedidoService {
         
         
         
-      print(
-        '  - Descuento: \$${descuento.toStringAsFixed(0)}',
-      ); // ✅ NUEVO: Log de descuento
-        
-        
-
-      // Asegurar que el estado está correctamente configurado en la solicitud
-      if (tipoPago == 'pagado' && !pagarData.containsKey('estado')) {
-        pagarData['estado'] = 'Pagado';
-          
-      } else if (tipoPago == 'cortesia' && !pagarData.containsKey('estado')) {
-        pagarData['estado'] = 'Cortesia';
-          
-      } else if (tipoPago == 'consumo_interno' &&
-          !pagarData.containsKey('estado')) {
-        pagarData['estado'] = 'Pagado'; // También se marca como pagado
-          
-      }
-
-        
-      
-      // 🔍 DEBUGGING ESPECÍFICO PARA DESCUENTO
-        
-        
-        
-        
-        
-        
-        
-      
-      print(
-        '🌐 ${kIsWeb ? "Flutter Web detectado" : "Flutter móvil detectado"} - usando backend de producción: $baseUrl',
-      );
-
+         
       final response = await http.put(
         Uri.parse('$baseUrl/api/pedidos/$pedidoId/pagar'),
         headers: headers,
@@ -1792,18 +1669,9 @@ class PedidoService {
         final responseData = json.decode(response.body);
         if (responseData['data'] != null) {
             
-          print(
-            '  - Descuento en response: ${responseData['data']['descuento']}',
-          );
+                         
             
-            
-          print(
-            '  - totalPagado en response: ${responseData['data']['totalPagado']}',
-          );
-          print(
-            '  - formaPago en response: ${responseData['data']['formaPago']}',
-          );
-            
+                                      
         }
       }
 
@@ -1833,18 +1701,12 @@ class PedidoService {
 
           return pedidoPagado;
         } else {
-          print(
-            '❌ PedidoService: Formato de respuesta inválido: ${response.body}',
-          );
-          throw Exception(
+                       throw Exception(
             'Formato de respuesta inválido: ${responseData['message'] ?? 'Sin mensaje'}',
           );
         }
       } else {
-        print(
-          '❌ PedidoService: Error HTTP ${response.statusCode}: ${response.body}',
-        );
-        
+                   
         // Decodificar respuesta de error
         Map<String, dynamic> errorData;
         try {
@@ -1859,10 +1721,7 @@ class PedidoService {
         if (errorMessage.contains('ListableBeanFactory must not be null')) {
           errorMessage =
               'Error interno del servidor (configuración Spring). Este es un problema del backend que debe ser corregido por el desarrollador del servidor.';
-          print(
-            '🔥 BACKEND ERROR: ListableBeanFactory issue detected - Server misconfiguration',
-          );
-        } else if (response.statusCode == 500) {
+                     } else if (response.statusCode == 500) {
           errorMessage = 'Error interno del servidor. $errorMessage';
         } else if (response.statusCode == 400) {
           errorMessage = 'Datos de pago inválidos. $errorMessage';
@@ -1893,10 +1752,7 @@ class PedidoService {
               (pedidoVerificado.estado == EstadoPedido.pagado);
 
           if (esExitoPorEstado) {
-            print(
-              '⚠️ Pago posiblemente procesado a pesar del error HTTP. Usando estado del servidor como éxito.',
-            );
-
+               
             // Actualizar caché y notificar listeners
             _pedidosCache[pedidoId] = pedidoVerificado;
             try {
@@ -1947,10 +1803,7 @@ class PedidoService {
         
       for (int i = 0; i < itemsSeleccionados.length; i++) {
         final item = itemsSeleccionados[i];
-        print(
-          '  Item $i: id=${item.id}, productoId=${item.productoId}, nombre=${item.productoNombre}',
-        );
-      }
+                 }
         
 
       final Map<String, dynamic> pagoData = {
@@ -2179,10 +2032,7 @@ class PedidoService {
             
             
             
-          print(
-            '  - Items movidos: ${data['productosMovidos'] ?? itemsParaMover.length}',
-          );
-
+             
           // Retornar la respuesta completa del backend con información adicional
           return {
             'success': true,

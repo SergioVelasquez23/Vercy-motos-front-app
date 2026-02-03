@@ -92,9 +92,6 @@ class InventarioService {
           return MovimientoInventario.fromJson(data['data']);
         }
         // Si no tiene el formato esperado pero fue exitoso, crear uno básico
-        print(
-          '⚠️ Respuesta exitosa pero formato diferente, creando movimiento local',
-        );
         return movimiento;
       }
 
@@ -427,9 +424,6 @@ class InventarioService {
       }
 
       // ✅ SILENCIOSO: Error de servidor, continuar sin mostrar diálogo molesto
-      print(
-        '⚠️ Error de servidor al validar stock (${response.statusCode}), continuando...',
-      );
       return {
         'stockSuficiente': true, // ✅ Cambiar a true para evitar diálogo
         'mensaje': 'Validación omitida por error de servidor',
@@ -453,10 +447,7 @@ class InventarioService {
     try {
       if (kDebugMode) {
           
-        print(
-          '📦 Body ingredientesPorItem: ${json.encode(ingredientesPorItem)}',
-        );
-      }
+                 }
 
       final response = await http
           .post(
@@ -481,10 +472,7 @@ class InventarioService {
             if (alertas.isNotEmpty && kDebugMode) {
                 
               for (var alerta in alertas) {
-                print(
-                  '   - ${alerta['ingrediente']}: Stock actual ${alerta['stockActual']}, mínimo ${alerta['stockMinimo']}',
-                );
-              }
+                                 }
             }
           }
 
@@ -520,10 +508,7 @@ class InventarioService {
   ) async {
     try {
       if (kDebugMode) {
-        print(
-          '🔄 Devolviendo ingredientes al inventario para pedido: $pedidoId, producto: $productoId',
-        );
-      }
+                 }
 
       final Map<String, dynamic> requestBody = {
         'pedidoId': pedidoId,

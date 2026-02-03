@@ -84,46 +84,22 @@ class _VercySidebarLayoutState extends State<VercySidebarLayout> {
   /// Header con logo Vercy Motos
   Widget _buildHeader(BuildContext context) {
     return Container(
-      padding: EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+      padding: EdgeInsets.symmetric(vertical: 16, horizontal: 16),
       decoration: BoxDecoration(gradient: AppTheme.primaryGradient),
-      child: Row(
-        children: [
-          // Logo o icono
-          Container(
-            width: 50,
-            height: 50,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(Icons.two_wheeler, color: AppTheme.primary, size: 32),
+      child: Center(
+        child: Container(
+          width: 200,
+          height: 80,
+          decoration: BoxDecoration(
+            color: Colors.black,
+            borderRadius: BorderRadius.circular(12),
           ),
-          SizedBox(width: 12),
-          // Texto del logo
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'VERCY',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 2,
-                ),
-              ),
-              Text(
-                'MOTOS',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  letterSpacing: 1.5,
-                ),
-              ),
-            ],
+          padding: EdgeInsets.all(8),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.asset('assets/images/logo.png', fit: BoxFit.contain),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -299,12 +275,38 @@ class _VercySidebarLayoutState extends State<VercySidebarLayout> {
               ),
             ],
           ),
-          _buildMenuItem(
+          _buildExpandableMenuItem(
             icon: Icons.account_balance_wallet,
             label: 'Cartera',
-            route: null, // Desactivado temporalmente
             isAdmin: true,
-            isDisabled: true,
+            subItems: [
+              _SubMenuItem(
+                icon: Icons.receipt_long,
+                label: 'Resumen',
+                route: '/cartera',
+              ),
+              _SubMenuItem(
+                icon: Icons.account_balance,
+                label: 'Cuentas por Cobrar',
+                route: '/cuentas-por-cobrar',
+              ),
+              _SubMenuItem(
+                icon: Icons.payment,
+                label: 'Cuentas por Pagar',
+                route: '/cuentas-por-pagar',
+              ),
+              _SubMenuItem(
+                icon: Icons.schedule,
+                label: 'Gastos Programados',
+                route: '/gastos-programados',
+              ),
+            ],
+          ),
+          _buildMenuItem(
+            icon: Icons.notifications_active,
+            label: 'Alertas',
+            route: '/alertas',
+            isAdmin: true,
           ),
           _buildExpandableMenuItem(
             icon: Icons.inventory,
@@ -315,21 +317,6 @@ class _VercySidebarLayoutState extends State<VercySidebarLayout> {
                 icon: Icons.list_alt,
                 label: 'Lista Productos',
                 route: '/productos-lista',
-              ),
-              _SubMenuItem(
-                icon: Icons.add_box,
-                label: 'Gestión Productos',
-                route: '/productos',
-              ),
-              _SubMenuItem(
-                icon: Icons.category,
-                label: 'Categorías',
-                route: '/categorias',
-              ),
-              _SubMenuItem(
-                icon: Icons.history,
-                label: 'Historial',
-                route: '/historial-inventario',
               ),
             ],
           ),

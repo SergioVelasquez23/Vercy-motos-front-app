@@ -223,10 +223,7 @@ class ItemPedidoTestSuite {
       try {
         casosInvalidos[i]();
       } catch (e) {
-        print(
-          '  ✅ Validación negativa ${i + 1} - OK (${e.toString().split(':').last.trim()})',
-        );
-      }
+                 }
     }
   }
 

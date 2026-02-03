@@ -86,9 +86,6 @@ class ResumenCierreService {
       if (e.toString().contains(
         'Cannot invoke "java.lang.Double.doubleValue()"',
       )) {
-        print(
-          '🔄 Detectado error Java en catch, intentando generar resumen manual...',
-        );
         try {
           return await _generarResumenManual(cuadreId);
         } catch (manualError) {
@@ -186,9 +183,6 @@ class ResumenCierreService {
                     0)
                 .toDouble();
 
-        print(
-          '💳 Transferencias obtenidas del servicio: \$${transferenciasEsperadas.toStringAsFixed(2)}',
-        );
       } catch (e) {
           
       }
@@ -276,9 +270,6 @@ class ResumenCierreService {
         },
       };
 
-      print(
-        '✅ Resumen manual generado exitosamente con transferencias: \$${transferenciasEsperadas.toStringAsFixed(2)}',
-      );
       return ResumenCierre.fromJson(resumenData);
     } catch (e) {
         

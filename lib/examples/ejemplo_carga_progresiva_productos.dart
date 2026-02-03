@@ -33,9 +33,6 @@ class EjemploCargaProgresiva {
 
       // Obtener todos los productos cargados hasta ahora
       final productosActuales = _productoService.productosActualmenteCargados;
-      print(
-        '\n🎯 Total de productos disponibles localmente: ${productosActuales.length}',
-      );
     } catch (e) {
         
     }
@@ -53,10 +50,7 @@ class EjemploCargaProgresiva {
               milliseconds: 300,
             ), // Pausa de 300ms entre páginas
             onProgressUpdate: (progreso) {
-              print(
-                '📈 Progreso: ${progreso['porcentaje']}% - ${progreso['totalCargados']}/${progreso['totalElementos']} productos',
-              );
-            },
+                             },
           );
 
         
@@ -75,10 +69,7 @@ class EjemploCargaProgresiva {
         pageSize: 50,
       );
 
-      print(
-        '📦 Primera página lista: ${resultado['productos'].length} productos',
-      );
-
+         
       // Mostrar productos de la primera página inmediatamente
       _mostrarProductos(resultado['productos']);
 
@@ -90,9 +81,6 @@ class EjemploCargaProgresiva {
 
       // Ver cuántos productos tenemos ahora
       final estado = _productoService.estadoPaginacion;
-      print(
-        '\n📊 Después de 2 segundos - Productos disponibles: ${estado['totalCargados']}',
-      );
     } catch (e) {
         
     }
@@ -126,9 +114,6 @@ class EjemploCargaProgresiva {
             _productoService.productosActualmenteCargados.first;
         final productoEncontrado = _productoService.buscarProductoEnCache(
           primerProducto.id,
-        );
-        print(
-          '🔍 Producto encontrado en cache: ${productoEncontrado?.nombre ?? 'No encontrado'}',
         );
       }
     } catch (e) {
@@ -170,9 +155,6 @@ class EjemploCargaProgresiva {
       if (!(_productoService.estadoPaginacion['isLoading'] as bool)) {
         await _productoService.cargarSiguientePaginaProductos();
         final estado = _productoService.estadoPaginacion;
-        print(
-          '🔄 Segundo plano: ${estado['totalCargados']} productos cargados',
-        );
       }
     }
       

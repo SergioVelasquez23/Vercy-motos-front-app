@@ -16,10 +16,7 @@ class DashboardHelper {
     List<Map<String, dynamic>> detallesPagados = [];
 
     for (var pedido in pedidos) {
-      print(
-        '📋 Analizando pedido ${pedido.id}: estaPagado=${pedido.estaPagado}, estado=${pedido.estado}, total=${pedido.total}, totalPagado=${pedido.totalPagado}',
-      );
-
+         
       if (pedido.estaPagado) {
         // Usar totalPagado si está disponible, de lo contrario usar total regular
         final montoVenta = pedido.totalPagado > 0

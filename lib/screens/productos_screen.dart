@@ -175,10 +175,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
       _productosPaginados = [];
     }
 
-    print(
-      '📊 Paginación: Página ${_paginaActual + 1}/$totalPaginas - Mostrando ${_productosPaginados.length} de $totalElementos productos',
-    );
-    
+           
     // 🖼️ NUEVO: Cargar imágenes de los productos visibles (en background, no bloquea)
     if (_productosPaginados.isNotEmpty) {
       _cargarImagenesVisibles();
@@ -189,10 +186,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
   void _cargarImagenesVisibles() {
     if (_productosPaginados.isEmpty) return;
     
-    print(
-      '🖼️ Productos visibles: ${_productosPaginados.length}',
-    );
-
+       
     // ⚠️ DESHABILITADO: Endpoint batch tiene problemas
     // Las imágenes se cargan individualmente con LazyImagenProducto
 
@@ -1022,16 +1016,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
         
         
         
-      print(
-        '   Ingredientes Disponibles: ${producto.ingredientesDisponibles.length}',
-      );
-      print(
-        '   Ingredientes Requeridos: ${producto.ingredientesRequeridos.length}',
-      );
-      print(
-        '   Ingredientes Opcionales: ${producto.ingredientesOpcionales.length}',
-      );
-        
+                                   
         
         
         
@@ -1202,20 +1187,11 @@ class _ProductosScreenState extends State<ProductosScreen> {
         final exists = _categorias.any((c) => c.id == producto.categoria!.id);
         if (exists) {
           selectedCategoriaId = producto.categoria!.id;
-          print(
-            '✅ Categoría seleccionada del objeto categoria: "$selectedCategoriaId"',
-          );
-        } else {
+                     } else {
           selectedCategoriaId = null;
-          print(
-            '⚠️ La categoría "${producto.categoria!.nombre}" (ID: ${producto.categoria!.id}) NO existe en la lista de ${_categorias.length} categorías disponibles',
-          );
-        }
+                     }
       } else {
-        print(
-          '⚠️ El producto NO tiene categoría asignada (producto.categoria es NULL)',
-        );
-      }
+                 }
     }
 
       
@@ -1243,17 +1219,11 @@ class _ProductosScreenState extends State<ProductosScreen> {
         
       for (var i = 0; i < ingredientesRequeridos.length; i++) {
         final ing = ingredientesRequeridos[i];
-        print(
-          '      ✓ [$i] ID: "${ing.ingredienteId}", Nombre: "${ing.ingredienteNombre}", Cantidad: ${ing.cantidadNecesaria}',
-        );
-      }
+                 }
         
       for (var i = 0; i < ingredientesOpcionales.length; i++) {
         final ing = ingredientesOpcionales[i];
-        print(
-          '      ✓ [$i] ID: "${ing.ingredienteId}", Nombre: "${ing.ingredienteNombre}", Precio: \$${ing.precioAdicional}',
-        );
-      }
+                 }
         
     }
 
@@ -1290,10 +1260,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                               }
 
                               if (pickedFile != null) {
-                                print(
-                                  '📸 Imagen seleccionada: ${pickedFile.name}',
-                                );
-
+                                   
                                 // Mostrar indicador de carga
                                 if (mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
@@ -1332,10 +1299,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                                     selectedImageUrl = filename;
                                   });
                                   
-                                  print(
-                                    '✅ Imagen subida. Nombre corto: $filename',
-                                  );
-
+                                     
                                   if (mounted) {
                                     ScaffoldMessenger.of(
                                       context,
@@ -2511,13 +2475,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                     ElevatedButton.icon(
                       onPressed: () async {
                           
-                        print(
-                          '   Requeridos actuales: ${ingredientesRequeridos.length}',
-                        );
-                        print(
-                          '   Opcionales actuales: ${ingredientesOpcionales.length}',
-                        );
-                        
+                                                                              
                         final resultado = await _showIngredientesDialog(
                           tipoProducto: tipoProducto,
                           ingredientesRequeridos: ingredientesRequeridos,
@@ -2526,13 +2484,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                         
                         if (resultado != null) {
                             
-                          print(
-                            '   Requeridos nuevos: ${resultado['requeridos']?.length ?? 0}',
-                          );
-                          print(
-                            '   Opcionales nuevos: ${resultado['opcionales']?.length ?? 0}',
-                          );
-                          setState(() {
+                                                                                    setState(() {
                             ingredientesRequeridos =
                                 resultado['requeridos'] ?? [];
                             ingredientesOpcionales =
@@ -2833,19 +2785,10 @@ class _ProductosScreenState extends State<ProductosScreen> {
                                 categoriaSeleccionada = _categorias.firstWhere(
                                   (c) => c.id == selectedCategoriaId,
                                 );
-                                print(
-                                  '✅ Categoría seleccionada: ${categoriaSeleccionada.nombre} (ID: ${categoriaSeleccionada.id})',
-                                );
-                              } catch (e) {
-                                print(
-                                  '❌ Error al buscar categoría con ID: $selectedCategoriaId - $e',
-                                );
-                              }
+                                                                 } catch (e) {
+                                                                 }
                             } else {
-                              print(
-                                '⚠️ No se ha seleccionado ninguna categoría',
-                              );
-                            }
+                                                             }
 
                             // Obtener imagen final
                             // Si estamos editando y no se cambió la imagen, preservar la original
@@ -2853,15 +2796,9 @@ class _ProductosScreenState extends State<ProductosScreen> {
                             if (isEditing && finalImageUrl == null) {
                               // Preservar la imagen original si no se seleccionó una nueva
                               finalImageUrl = producto.imagenUrl;
-                              print(
-                                '📸 Preservando imagen original: $finalImageUrl',
-                              );
-                            }
+                                                             }
 
-                            print(
-                              '📸 Imagen final que se guardará: $finalImageUrl',
-                            );
-                            
+                                                           
                             // Check if we have a category selected
                             if (selectedCategoriaId != null &&
                                 categoriaSeleccionada == null) {
@@ -2870,14 +2807,8 @@ class _ProductosScreenState extends State<ProductosScreen> {
                                 categoriaSeleccionada = _categorias.firstWhere(
                                   (c) => c.id == selectedCategoriaId,
                                 );
-                                print(
-                                  '✅ Encontrada la categoría para el producto: ${categoriaSeleccionada.nombre}',
-                                );
-                              } catch (e) {
-                                print(
-                                  '⚠️ No se pudo encontrar la categoría con ID: $selectedCategoriaId',
-                                );
-                                // Create a temporary category object with the ID and the name from the dropdown
+                                                                 } catch (e) {
+                                                                   // Create a temporary category object with the ID and the name from the dropdown
                                 final selectedCategoryName = _categorias
                                     .firstWhere(
                                       (c) => c.id == selectedCategoriaId,
@@ -2902,25 +2833,10 @@ class _ProductosScreenState extends State<ProductosScreen> {
                                 
                                 
                                 
-                              print(
-                                '🔧 Tiene ingredientes: $tieneIngredientes',
-                              );
-                              print(
-                                '🥘 Ingredientes requeridos: ${ingredientesRequeridos.length}',
-                              );
-                              for (var ing in ingredientesRequeridos) {
-                                print(
-                                  '   - ${ing.ingredienteNombre} (${ing.cantidadNecesaria})',
-                                );
-                              }
-                              print(
-                                '🥘 Ingredientes opcionales: ${ingredientesOpcionales.length}',
-                              );
-                              for (var ing in ingredientesOpcionales) {
-                                print(
-                                  '   - ${ing.ingredienteNombre} (${ing.cantidadNecesaria})',
-                                );
-                              }
+                                                                                                for (var ing in ingredientesRequeridos) {
+                                                                 }
+                                                               for (var ing in ingredientesOpcionales) {
+                                                                 }
                               
                               final updatedProducto = Producto(
                                 id: producto.id,
@@ -3057,13 +2973,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                               );
 
                               // Depuración para verificar los datos del producto antes de actualizar
-                              print(
-                                '🔍 Producto a actualizar: ${updatedProducto.nombre}',
-                              );
-                              print(
-                                '🔍 Categoria ID: ${updatedProducto.categoria?.id}',
-                              );
-
+                                                                  
                               // Llamar al servicio para actualizar el producto
                               await _productoService.updateProducto(
                                 updatedProducto,
@@ -3074,10 +2984,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                               ImageLoaderService().invalidateProductImage(
                                 producto.id,
                               );
-                              print(
-                                '🔄 Caché de imagen invalidado para ${producto.id}',
-                              );
-                            } else {
+                                                             } else {
                               // Crear nuevo producto
                               if (selectedCategoriaId == null) {
                                 throw Exception(
@@ -3383,16 +3290,10 @@ class _ProductosScreenState extends State<ProductosScreen> {
   }) async {
       
       
-    print(
-      '   Ingredientes requeridos recibidos: ${ingredientesRequeridos.length}',
-    );
-    for (var i = 0; i < ingredientesRequeridos.length; i++) {
+           for (var i = 0; i < ingredientesRequeridos.length; i++) {
         
     }
-    print(
-      '   Ingredientes opcionales recibidos: ${ingredientesOpcionales.length}',
-    );
-    for (var i = 0; i < ingredientesOpcionales.length; i++) {
+           for (var i = 0; i < ingredientesOpcionales.length; i++) {
         
     }
     

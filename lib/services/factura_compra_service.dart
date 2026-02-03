@@ -31,18 +31,12 @@ class FacturaCompraService {
         if (jsonData is List) {
           // Si el servidor devuelve directamente una lista
           dataList = jsonData;
-          print(
-            '✅ Respuesta es una lista directa con ${dataList.length} elementos',
-          );
-        } else if (jsonData is Map<String, dynamic>) {
+                     } else if (jsonData is Map<String, dynamic>) {
           // Si el servidor devuelve un objeto con campo 'data'
           if (jsonData.containsKey('data')) {
             final data = jsonData['data'];
             if (data is List) {
               dataList = data;
-              print(
-                '✅ Respuesta tiene campo data con ${dataList.length} elementos',
-              );
             } else {
                 
               throw Exception('El campo data no contiene una lista válida');
@@ -66,10 +60,7 @@ class FacturaCompraService {
             if (facturaJson is Map<String, dynamic>) {
               facturas.add(FacturaCompra.fromJson(facturaJson));
             } else {
-              print(
-                '⚠️ Elemento $i no es un Map válido: ${facturaJson.runtimeType}',
-              );
-            }
+                             }
           } catch (e) {
               
           }
@@ -266,22 +257,13 @@ class FacturaCompraService {
         if (jsonData is List) {
           // Si el servidor devuelve directamente una lista
           dataList = jsonData;
-          print(
-            '✅ Ingredientes: respuesta es una lista directa con ${dataList.length} elementos',
-          );
         } else if (jsonData is Map<String, dynamic>) {
           // Si el servidor devuelve un objeto con campo 'data'
           if (jsonData.containsKey('data')) {
             final data = jsonData['data'];
             if (data is List) {
               dataList = data;
-              print(
-                '✅ Ingredientes: respuesta tiene campo data con ${dataList.length} elementos',
-              );
-            } else {
-              print(
-                '❌ Ingredientes: Campo data no es una lista: ${data.runtimeType}',
-              );
+                             } else {
               throw Exception(
                 'El campo data de ingredientes no contiene una lista válida',
               );
@@ -293,9 +275,6 @@ class FacturaCompraService {
             );
           }
         } else {
-          print(
-            '❌ Ingredientes: Tipo de respuesta no reconocido: ${jsonData.runtimeType}',
-          );
           throw Exception('Formato de respuesta de ingredientes no válido');
         }
 
@@ -307,10 +286,7 @@ class FacturaCompraService {
             if (ingredienteJson is Map<String, dynamic>) {
               ingredientes.add(Ingrediente.fromJson(ingredienteJson));
             } else {
-              print(
-                '⚠️ Ingrediente $i no es un Map válido: ${ingredienteJson.runtimeType}',
-              );
-            }
+                             }
           } catch (e) {
               
           }
@@ -333,10 +309,7 @@ class FacturaCompraService {
 
   Future<FacturaCompra> crearFacturaCompra(FacturaCompra facturaCompra) async {
     try {
-      print(
-        '🏁 Iniciando creación de factura de compra con ${facturaCompra.items.length} items',
-      );
-
+         
       // Verificar si hay items
       if (facturaCompra.items.isEmpty) {
           
@@ -344,9 +317,6 @@ class FacturaCompraService {
           
         for (var i = 0; i < facturaCompra.items.length; i++) {
           final item = facturaCompra.items[i];
-          print(
-            '📝 Item $i: ${item.ingredienteNombre} - ${item.cantidad} ${item.unidad} x ${item.precioUnitario} = ${item.subtotal}',
-          );
         }
       }
 
@@ -362,9 +332,6 @@ class FacturaCompraService {
       // Verificar que los items estén presentes en el JSON
       var itemsIngredientes = facturaJson['itemsIngredientes'] as List<dynamic>;
       if (itemsIngredientes.isEmpty && facturaCompra.items.isNotEmpty) {
-        print(
-          '⚠️ Advertencia: itemsIngredientes está vacío en el JSON pero hay ${facturaCompra.items.length} items en el objeto',
-        );
         // Intentar reconstruir los items manualmente
         facturaJson['itemsIngredientes'] = facturaCompra.items
             .map(
@@ -385,9 +352,6 @@ class FacturaCompraService {
 
       // Verificar que el total está presente en el JSON
       if (facturaJson['total'] == 0 && calculatedTotal > 0) {
-        print(
-          '⚠️ Advertencia: El total en el JSON es 0 pero el calculado es $calculatedTotal',
-        );
         facturaJson['total'] = calculatedTotal;
       }
 
@@ -435,13 +399,7 @@ class FacturaCompraService {
                 (facturaData['itemsIngredientes'] as List).isEmpty &&
                 facturaJson.containsKey('itemsIngredientes') &&
                 (facturaJson['itemsIngredientes'] as List).isNotEmpty) {
-              print(
-                '⚠️ El servidor devolvió una factura sin items pero se enviaron items',
-              );
-              print(
-                '⚠️ Corrigiendo la factura devuelta con los datos enviados',
-              );
-
+                                  
               // Copiar los items enviados a la respuesta
               facturaData['itemsIngredientes'] =
                   facturaJson['itemsIngredientes'];
@@ -450,9 +408,6 @@ class FacturaCompraService {
 
             // Si el total es 0 pero calculamos uno diferente, corregirlo
             if (facturaData['total'] == 0.0 && calculatedTotal > 0) {
-              print(
-                '⚠️ El servidor devolvió total=0 pero calculamos $calculatedTotal',
-              );
               facturaData['total'] = calculatedTotal;
             }
           } else if (jsonData.containsKey('data') && jsonData['data'] != null) {
@@ -488,9 +443,6 @@ class FacturaCompraService {
 
           // Verificación final
           if (facturaCreada.total == 0 && calculatedTotal > 0) {
-            print(
-              '⚠️ Después de todo el proceso, el total sigue siendo 0. Usando constructor manual.',
-            );
             // Crear manualmente un nuevo objeto con el total correcto
             return FacturaCompra(
               id: facturaCreada.id,
@@ -753,10 +705,7 @@ class FacturaCompraService {
             }
           }
         } catch (parseError) {
-          print(
-            '⚠️ No se pudo parsear la respuesta de eliminación: $parseError',
-          );
-        }
+                     }
 
         return result;
       } else {

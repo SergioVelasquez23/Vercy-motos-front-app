@@ -89,8 +89,7 @@ class ProductoService {
     }
 
     if (_enableProductLogs) {
-      print('📋 Headers configurados: ${headers.keys.join(", ")}');
-    }
+             }
     
     return headers;
   }
@@ -135,9 +134,6 @@ class ProductoService {
     } else if (useProgressive) {
       // Si ya tenemos productos cargados progresivamente, devolverlos
       if (_paginationState.productos.isNotEmpty) {
-        print(
-          '✅ Devolviendo ${_paginationState.productos.length} productos ya cargados progresivamente',
-        );
         return productosActualmenteCargados;
       }
 
@@ -212,10 +208,7 @@ class ProductoService {
             return [];
           }
         } else {
-          print(
-            '❌ Respuesta del servidor con success=false: ${responseData['message']}',
-          );
-            
+                         
 
           // Respaldo: intentar con endpoint paginado
           return await _getProductosConPaginacionRespaldo();
@@ -459,9 +452,6 @@ class ProductoService {
         break;
       } catch (e) {
         retries++;
-        print(
-          '❌ Error iniciando carga progresiva (intento $retries/$maxRetries): $e',
-        );
         if (retries >= maxRetries) {
             
           rethrow;
@@ -482,13 +472,7 @@ class ProductoService {
           break;
         } catch (e) {
           retries++;
-          print(
-            '❌ Error cargando página ${_paginationState.currentPage + 1} (intento $retries/$maxRetries): $e',
-          );
           if (retries >= maxRetries) {
-            print(
-              '💥 Falló página después de $maxRetries intentos, continuando con siguientes páginas...',
-            );
             // No hacer rethrow para continuar con otras páginas
             break;
           }
@@ -521,9 +505,6 @@ class ProductoService {
       }
     }
 
-    print(
-      '✅ Carga automática completa: ${_paginationState.productos.length} productos cargados',
-    );
     return productosActualmenteCargados;
   }
 
@@ -609,10 +590,7 @@ class ProductoService {
           }
 
             
-          print(
-            '📦 Productos: ${productos.length} de ${data['totalElements']} totales',
-          );
-
+             
           return {
             'productos': productos,
             'page': data['page'],
@@ -800,9 +778,6 @@ class ProductoService {
         _productosCache[producto.id] = producto;
       }
 
-      print(
-        '✅ Productos cargados con endpoint optimizado: ${productos.length}',
-      );
       return productos;
     } else {
       // Intenta analizar el mensaje de error
@@ -899,10 +874,7 @@ class ProductoService {
           )
           .timeout(Duration(seconds: 300)); // Timeout aumentado para Render
 
-      print(
-        '📦 Crear producto con ingredientes response: ${response.statusCode}',
-      );
-        
+                 
 
       if (response.statusCode == 201) {
         final responseData = json.decode(response.body);
@@ -1232,9 +1204,6 @@ class ProductoService {
       if (response.statusCode == 200) {
         // Parsear la respuesta para verificar que se guardó correctamente
         final jsonData = json.decode(response.body);
-        print(
-          '✅ Imagen guardada como base64 en BD exitosamente: ${jsonData['success'] == true ? 'OK' : 'Error'}',
-        );
         // Retornar la data URL para uso inmediato
         return dataUrl;
       } else {
@@ -1318,10 +1287,7 @@ class ProductoService {
               // final uploadedUrl = await _uploadImageToServer(bytes, mimeType);
               // if (uploadedUrl != null) return uploadedUrl;
             } catch (uploadError) {
-              print(
-                'Error al intentar subir la imagen: $uploadError. Usando URL de datos local.',
-              );
-            }
+                             }
 
             return dataUrl;
           } catch (webError) {
@@ -1386,9 +1352,6 @@ class ProductoService {
     // Devolver desde cache si ya existe (incluye cache negativo: null)
     if (_productoByIdCache.containsKey(id)) {
       final cached = _productoByIdCache[id];
-      print(
-        '💾 [CACHE] HIT para ID "$id" - ${cached != null ? "PRODUCTO" : "NULL"}',
-      );
       return cached;
     }
 
@@ -1405,9 +1368,6 @@ class ProductoService {
       final res = await future;
       // Cachear el resultado (puede ser null si 404)
       _productoByIdCache[id] = res;
-      print(
-        '💾 [CACHE] SET para ID "$id" - ${res != null ? "PRODUCTO" : "NULL"}',
-      );
       return res;
     } finally {
       _inFlightGetProductoById.remove(id);
@@ -1454,9 +1414,6 @@ class ProductoService {
           return Producto.fromJson(responseData);
         }
       } else if (response.statusCode == 404) {
-        print(
-          '⚠️ Endpoint optimizado no encontrado para producto $id, usando endpoint básico',
-        );
         return await _getProductoBasico(id);
       }
 
@@ -1521,9 +1478,6 @@ class ProductoService {
       // Buscar posibles propiedades que contengan la lista de productos
       if (responseData.containsKey('productos')) {
         final productos = responseData['productos'];
-        print(
-          '📦 Encontrados productos en key "productos": ${productos is List ? productos.length : 'No es lista'}',
-        );
         if (productos is List) {
           return productos
               .map<Producto>((json) => Producto.fromJson(json))
@@ -1533,10 +1487,7 @@ class ProductoService {
 
       if (responseData.containsKey('data')) {
         final data = responseData['data'];
-        print(
-          '📦 Encontrados datos en key "data": ${data is List ? data.length : 'No es lista'}',
-        );
-        if (data is List) {
+                   if (data is List) {
           return data.map<Producto>((json) => Producto.fromJson(json)).toList();
         }
         
@@ -1544,42 +1495,27 @@ class ProductoService {
         if (data is Map<String, dynamic>) {
           // Buscar en "content" (formato paginado)
           if (data.containsKey('content') && data['content'] is List) {
-            print(
-              '📦 Encontrada lista en data.content: ${(data['content'] as List).length} productos',
-            );
             return (data['content'] as List)
                 .map<Producto>((json) => Producto.fromJson(json))
                 .toList();
           }
           // Buscar en "productos"
           if (data.containsKey('productos') && data['productos'] is List) {
-            print(
-              '📦 Encontrada lista en data.productos: ${(data['productos'] as List).length} productos',
-            );
             return (data['productos'] as List)
                 .map<Producto>((json) => Producto.fromJson(json))
                 .toList();
           }
           // Buscar en "items"
           if (data.containsKey('items') && data['items'] is List) {
-            print(
-              '📦 Encontrada lista en data.items: ${(data['items'] as List).length} productos',
-            );
             return (data['items'] as List)
                 .map<Producto>((json) => Producto.fromJson(json))
                 .toList();
           }
-          print(
-            '⚠️ data es Map pero no contiene lista reconocible. Keys: ${data.keys.toList()}',
-          );
         }
       }
 
       if (responseData.containsKey('results')) {
         final results = responseData['results'];
-        print(
-          '📦 Encontrados resultados en key "results": ${results is List ? results.length : 'No es lista'}',
-        );
         if (results is List) {
           return results
               .map<Producto>((json) => Producto.fromJson(json))
@@ -1591,9 +1527,6 @@ class ProductoService {
         
       throw Exception('No se encontró una lista de productos en la respuesta');
     } else if (responseData is List) {
-      print(
-        '📦 Respuesta es List directamente con ${responseData.length} elementos',
-      );
       return responseData
           .map<Producto>((json) => Producto.fromJson(json))
           .toList();
@@ -1616,15 +1549,9 @@ class ProductoService {
       if (responseData.containsKey('productos')) {
         final productos = responseData['productos'];
         if (productos is List) {
-          print(
-            '📦 Encontrados ${productos.length} productos en key "productos" (SIN IMÁGENES)',
-          );
           // 🔍 LOG TEMPORAL: Ver campos del primer producto
           if (productos.isNotEmpty) {
-            print(
-              '🔍 PRIMER PRODUCTO JSON KEYS: ${(productos[0] as Map).keys.toList()}',
-            );
-              
+                             
           }
           return productos
               .map<Producto>((json) => Producto.fromJsonLigero(json))
@@ -1635,15 +1562,9 @@ class ProductoService {
       if (responseData.containsKey('data')) {
         final data = responseData['data'];
         if (data is List) {
-          print(
-            '📦 Encontrados ${data.length} productos en data (SIN IMÁGENES)',
-          );
           // 🔍 LOG TEMPORAL: Ver campos del primer producto
           if (data.isNotEmpty) {
-            print(
-              '🔍 PRIMER PRODUCTO JSON KEYS: ${(data[0] as Map).keys.toList()}',
-            );
-              
+                             
           }
           return data
               .map<Producto>((json) => Producto.fromJsonLigero(json))
@@ -1655,9 +1576,6 @@ class ProductoService {
           // Buscar en "content" (formato paginado)
           if (data.containsKey('content') && data['content'] is List) {
             final content = data['content'] as List;
-            print(
-              '📦 Encontrados ${content.length} productos en data.content (SIN IMÁGENES)',
-            );
             return content
                 .map<Producto>((json) => Producto.fromJsonLigero(json))
                 .toList();
@@ -1665,9 +1583,6 @@ class ProductoService {
           // Buscar en "productos"
           if (data.containsKey('productos') && data['productos'] is List) {
             final productos = data['productos'] as List;
-            print(
-              '📦 Encontrados ${productos.length} productos en data.productos (SIN IMÁGENES)',
-            );
             return productos
                 .map<Producto>((json) => Producto.fromJsonLigero(json))
                 .toList();
@@ -1675,9 +1590,6 @@ class ProductoService {
           // Buscar en "items"
           if (data.containsKey('items') && data['items'] is List) {
             final items = data['items'] as List;
-            print(
-              '📦 Encontrados ${items.length} productos en data.items (SIN IMÁGENES)',
-            );
             return items
                 .map<Producto>((json) => Producto.fromJsonLigero(json))
                 .toList();
@@ -1688,9 +1600,6 @@ class ProductoService {
       if (responseData.containsKey('results')) {
         final results = responseData['results'];
         if (results is List) {
-          print(
-            '📦 Encontrados ${results.length} productos en results (SIN IMÁGENES)',
-          );
           return results
               .map<Producto>((json) => Producto.fromJsonLigero(json))
               .toList();
@@ -1700,9 +1609,6 @@ class ProductoService {
         
       throw Exception('No se encontró una lista de productos en la respuesta');
     } else if (responseData is List) {
-      print(
-        '📦 Respuesta es List con ${responseData.length} productos (SIN IMÁGENES)',
-      );
       return responseData
           .map<Producto>((json) => Producto.fromJsonLigero(json))
           .toList();
@@ -1828,10 +1734,7 @@ class ProductoService {
       
       
       
-    print(
-      '   - Peticiones por ID en curso: ${_inFlightGetProductoById.length}',
-    );
-  }
+         }
 
   // ========== MÉTODOS PARA PRODUCTOS COMBO ==========
 
@@ -1851,10 +1754,7 @@ class ProductoService {
           )
           .timeout(Duration(seconds: 300)); // Timeout aumentado para Railway
 
-      print(
-        '🥘 Obteniendo producto completo CON NOMBRES para ingredientes requeridos: $productoId',
-      );
-        
+                 
         
 
       if (response.statusCode == 200) {
@@ -1878,9 +1778,6 @@ class ProductoService {
           ingredientesJson = productoJson['ingredientesRequeridos'];
         }
 
-        print(
-          '🔍 TOTAL ingredientes requeridos encontrados: ${ingredientesJson.length}',
-        );
         for (int i = 0; i < ingredientesJson.length; i++) {
             
         }
@@ -1890,9 +1787,6 @@ class ProductoService {
         ) {
             
           final ingrediente = IngredienteProducto.fromJson(json);
-          print(
-            '🔍 INGREDIENTE REQUERIDO PROCESADO: nombre="${ingrediente.ingredienteNombre}", id="${ingrediente.ingredienteId}", precio=${ingrediente.precioAdicional}',
-          );
           return ingrediente;
         }).toList();
 
@@ -1902,9 +1796,6 @@ class ProductoService {
               ing.ingredienteNombre.isEmpty ||
               ing.ingredienteNombre == ing.ingredienteId,
         )) {
-          print(
-            '⚠️ Algunos ingredientes aún necesitan enriquecimiento, aplicando fallback...',
-          );
           return await _enriquecerIngredientesConNombres(ingredientesBasicos);
         }
 
@@ -1933,10 +1824,7 @@ class ProductoService {
           )
           .timeout(Duration(seconds: 300)); // Timeout aumentado para Railway
 
-      print(
-        '🥘 Obteniendo producto completo para ingredientes requeridos (BÁSICO): $productoId',
-      );
-        
+                 
         
 
       if (response.statusCode == 200) {
@@ -1960,9 +1848,6 @@ class ProductoService {
           ingredientesJson = productoJson['ingredientesRequeridos'];
         }
 
-        print(
-          '🔍 TOTAL ingredientes requeridos encontrados: ${ingredientesJson.length}',
-        );
         for (int i = 0; i < ingredientesJson.length; i++) {
             
         }
@@ -1972,9 +1857,6 @@ class ProductoService {
         ) {
             
           final ingrediente = IngredienteProducto.fromJson(json);
-          print(
-            '🔍 INGREDIENTE REQUERIDO PROCESADO: nombre="${ingrediente.ingredienteNombre}", id="${ingrediente.ingredienteId}", precio=${ingrediente.precioAdicional}',
-          );
           return ingrediente;
         }).toList();
 
@@ -2005,10 +1887,7 @@ class ProductoService {
           )
           .timeout(Duration(seconds: 300)); // Timeout aumentado para Railway
 
-      print(
-        '🥘 Obteniendo producto completo CON NOMBRES para ingredientes opcionales: $productoId',
-      );
-        
+                 
         
 
       if (response.statusCode == 200) {
@@ -2032,9 +1911,6 @@ class ProductoService {
           ingredientesJson = productoJson['ingredientesOpcionales'];
         }
 
-        print(
-          '🔍 TOTAL ingredientes opcionales encontrados: ${ingredientesJson.length}',
-        );
         for (int i = 0; i < ingredientesJson.length; i++) {
             
         }
@@ -2044,9 +1920,6 @@ class ProductoService {
         ) {
             
           final ingrediente = IngredienteProducto.fromJson(json);
-          print(
-            '🔍 INGREDIENTE OPCIONAL PROCESADO: nombre="${ingrediente.ingredienteNombre}", id="${ingrediente.ingredienteId}", precio=${ingrediente.precioAdicional}',
-          );
           return ingrediente;
         }).toList();
 
@@ -2056,9 +1929,6 @@ class ProductoService {
               ing.ingredienteNombre.isEmpty ||
               ing.ingredienteNombre == ing.ingredienteId,
         )) {
-          print(
-            '⚠️ Algunos ingredientes aún necesitan enriquecimiento, aplicando fallback...',
-          );
           return await _enriquecerIngredientesConNombres(ingredientesBasicos);
         }
 
@@ -2087,10 +1957,7 @@ class ProductoService {
           )
           .timeout(Duration(seconds: 300)); // Timeout aumentado para Railway
 
-      print(
-        '🥘 Obteniendo producto completo para ingredientes opcionales (BÁSICO): $productoId',
-      );
-        
+                 
         
 
       if (response.statusCode == 200) {
@@ -2114,9 +1981,6 @@ class ProductoService {
           ingredientesJson = productoJson['ingredientesOpcionales'];
         }
 
-        print(
-          '🔍 TOTAL ingredientes opcionales encontrados: ${ingredientesJson.length}',
-        );
         for (int i = 0; i < ingredientesJson.length; i++) {
             
         }
@@ -2126,9 +1990,6 @@ class ProductoService {
         ) {
             
           final ingrediente = IngredienteProducto.fromJson(json);
-          print(
-            '🔍 INGREDIENTE OPCIONAL PROCESADO: nombre="${ingrediente.ingredienteNombre}", id="${ingrediente.ingredienteId}", precio=${ingrediente.precioAdicional}',
-          );
           return ingrediente;
         }).toList();
 
@@ -2190,9 +2051,6 @@ class ProductoService {
           ingredientesRequeridos = await getIngredientesRequeridosCombo(
             producto.id,
           );
-          print(
-            '✅ Ingredientes requeridos cargados: ${ingredientesRequeridos.length}',
-          );
         } catch (e) {
             
         }
@@ -2201,9 +2059,6 @@ class ProductoService {
         try {
           ingredientesOpcionales = await getIngredientesOpcionalesCombo(
             producto.id,
-          );
-          print(
-            '✅ Ingredientes opcionales cargados: ${ingredientesOpcionales.length}',
           );
         } catch (e) {
             
@@ -2219,9 +2074,6 @@ class ProductoService {
       // Si no es combo, devolver el producto sin modificar
       return producto;
     } catch (e) {
-      print(
-        '❌ Error cargando ingredientes para producto ${producto.nombre}: $e',
-      );
       // En caso de error, devolver el producto original
       return producto;
     }
@@ -2234,32 +2086,20 @@ class ProductoService {
     List<IngredienteProducto> ingredientesEnriquecidos = [];
 
     for (var ingrediente in ingredientes) {
-      print(
-        '🔍 Procesando ingrediente: ID="${ingrediente.ingredienteId}", Nombre="${ingrediente.ingredienteNombre}"',
-      );
-
+         
       // Si el ingrediente ya tiene nombre válido (no es un ID), no necesita enriquecimiento
       if (ingrediente.ingredienteNombre.isNotEmpty &&
           !ingrediente.ingredienteNombre.startsWith('689') &&
           ingrediente.ingredienteNombre != ingrediente.ingredienteId) {
-        print(
-          '✅ Ingrediente ya tiene nombre válido: ${ingrediente.ingredienteNombre}',
-        );
         ingredientesEnriquecidos.add(ingrediente);
         continue;
       }
 
-      print(
-        '🔄 Ingrediente necesita enriquecimiento. Nombre actual: "${ingrediente.ingredienteNombre}"',
-      );
-
+         
       // Si solo tenemos el ID, cargar los datos completos del ingrediente
       if (ingrediente.ingredienteId.isNotEmpty) {
         try {
-          print(
-            '🔄 Cargando nombre para ingrediente ID: ${ingrediente.ingredienteId}',
-          );
-
+             
           final headers = await _getHeaders();
           final response = await http
               .get(
@@ -2274,10 +2114,7 @@ class ProductoService {
 
           if (response.statusCode == 200) {
             final responseData = json.decode(response.body);
-            print(
-              '📦 Respuesta raw del backend para ingrediente ${ingrediente.ingredienteId}: $responseData',
-            );
-
+               
             Map<String, dynamic> ingredienteJson;
 
             if (responseData is Map<String, dynamic>) {
@@ -2296,10 +2133,7 @@ class ProductoService {
                 ingredienteJson['nombre']?.toString() ??
                 'Ingrediente ${ingrediente.ingredienteId}';
 
-            print(
-              '✅ Nombre extraído: "$nombreIngrediente" para ID: ${ingrediente.ingredienteId}',
-            );
-
+               
             // Crear un nuevo ingrediente con el nombre correcto
             final ingredienteEnriquecido = IngredienteProducto(
               ingredienteId: ingrediente.ingredienteId,
@@ -2311,15 +2145,9 @@ class ProductoService {
 
             ingredientesEnriquecidos.add(ingredienteEnriquecido);
           } else {
-            print(
-              '⚠️ No se pudo cargar ingrediente ${ingrediente.ingredienteId}, usando ID como nombre',
-            );
             ingredientesEnriquecidos.add(ingrediente);
           }
         } catch (e) {
-          print(
-            '⚠️ Error cargando ingrediente ${ingrediente.ingredienteId}: $e',
-          );
           // En caso de error, usar el ingrediente original
           ingredientesEnriquecidos.add(ingrediente);
         }

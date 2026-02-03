@@ -3427,10 +3427,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
         
       for (var i = 0; i < _items.length; i++) {
         final item = _items[i];
-        print(
-          '📝 Item $i: ${item.ingredienteNombre} - ${item.cantidad} ${item.unidad} x ${item.precioUnitario} = ${item.subtotal}',
-        );
-      }
+                 }
 
       // Asegurarnos que los items tengan valores correctos
       final List<ItemFacturaCompra> itemsVerificados = _items.map((item) {
@@ -3443,9 +3440,6 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
           
 
         if (subtotalCalculado != item.subtotal) {
-          print(
-            '⚠️ Subtotal incorrecto en ${item.ingredienteNombre}: reportado ${item.subtotal}, calculado $subtotalCalculado',
-          );
           // Crear una nueva instancia con el subtotal correcto
           return ItemFacturaCompra(
             ingredienteId: item.ingredienteId,
@@ -3513,9 +3507,6 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
           (sum, item) => sum + item.subtotal,
         );
         if (sumaDirectaSubtotales > 0) {
-          print(
-            '⚠️ Total calculado es 0 pero suma de subtotales es $sumaDirectaSubtotales. Usando suma directa.',
-          );
           totalFinal = sumaDirectaSubtotales;
         }
       }
@@ -3575,9 +3566,6 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
         // Intentar actualizar la factura con el total correcto
         try {
           // Aquí podrías llamar a un método para actualizar la factura si existe
-          print(
-            '🔄 Se debería implementar un método para actualizar el total de la factura',
-          );
         } catch (e) {
             
         }
@@ -3623,10 +3611,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
     FacturaCompra factura,
   ) async {
     try {
-      print(
-        '📦 Registrando movimientos de inventario para compra ${factura.numeroFactura}',
-      );
-
+         
       for (var item in factura.items) {
         try {
           final movimiento = MovimientoInventario(
@@ -3649,13 +3634,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
           );
 
           await _inventarioService.registrarMovimiento(movimiento);
-          print(
-            '✅ Movimiento registrado para: ${item.ingredienteNombre} (+${item.cantidad})',
-          );
-        } catch (e) {
-          print(
-            '⚠️ Error al registrar movimiento para ${item.ingredienteNombre}: $e',
-          );
+                     } catch (e) {
           // Continuar con el siguiente item aunque haya error
         }
       }

@@ -140,9 +140,6 @@ class _GastosScreenState extends State<GastosScreen> {
     try {
       final tipos = await _gastoService.getAllTiposGasto();
         
-      print(
-        'GastosScreen - Tipos activos: ${tipos.where((t) => t.activo).length}',
-      );
       if (mounted) {
         setState(() => _tiposGasto = tipos.where((t) => t.activo).toList());
       }

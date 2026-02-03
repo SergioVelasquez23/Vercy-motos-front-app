@@ -41,7 +41,6 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
   final ClienteService _clienteService = ClienteService();
 
   // Controladores de formulario
-  final TextEditingController _idController = TextEditingController();
   final TextEditingController _clienteController = TextEditingController(
     text: 'CONSUMIDOR FINAL',
   );
@@ -86,7 +85,6 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
   String _metodoPago = 'efectivo';
   final List<Map<String, dynamic>> _metodosPago = [
     {'value': 'efectivo', 'label': 'Efectivo', 'icon': Icons.attach_money},
-    {'value': 'tarjeta', 'label': 'Tarjeta', 'icon': Icons.credit_card},
     {
       'value': 'transferencia',
       'label': 'Transferencia',
@@ -94,6 +92,13 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     },
     {'value': 'multiple', 'label': 'Múltiple', 'icon': Icons.payments},
   ];
+
+  // Controladores para pago múltiple
+  final TextEditingController _montoEfectivoController = TextEditingController(
+    text: '0',
+  );
+  final TextEditingController _montoTransferenciaController =
+      TextEditingController(text: '0');
 
   // Controladores de retenciones y AIU
   final TextEditingController _retencionController = TextEditingController(
@@ -201,7 +206,6 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
 
   @override
   void dispose() {
-    _idController.dispose();
     _clienteController.dispose();
     _codigoBarrasController.dispose();
     _codigoController.dispose();
@@ -210,6 +214,8 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     _valorUnitController.dispose();
     _porcentajeImpuestoController.dispose();
     _porcentajeDescuentoController.dispose();
+    _montoEfectivoController.dispose();
+    _montoTransferenciaController.dispose();
     _ordenCompraController.dispose();
     _ordenServicioController.dispose();
     _ordenPedidoController.dispose();
@@ -318,7 +324,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
-                        onPressed: () {},
+                        onPressed: _mostrarBorradores,
                         icon: Icon(Icons.drafts, size: 18),
                         label: Text(
                           'Facturas en borrador',
@@ -350,7 +356,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                     ),
                     Spacer(),
                     ElevatedButton.icon(
-                      onPressed: () {},
+                      onPressed: _mostrarBorradores,
                       icon: Icon(Icons.drafts),
                       label: Text(
                         'Facturas en borrador',
@@ -414,8 +420,6 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                   ],
                 ),
                 SizedBox(height: 12),
-                _buildFormField('ID', _buildIdField()),
-                SizedBox(height: 12),
                 _buildFormField('Cliente', _buildClienteField()),
               ] else ...[
                 // Diseño desktop - original
@@ -444,19 +448,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                   ],
                 ),
                 SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      flex: 2,
-                      child: _buildFormField('ID', _buildIdField()),
-                    ),
-                    SizedBox(width: 16),
-                    Expanded(
-                      flex: 4,
-                      child: _buildFormField('Cliente', _buildClienteField()),
-                    ),
-                  ],
-                ),
+                _buildFormField('Cliente', _buildClienteField()),
               ],
             ],
           ),
@@ -558,21 +550,6 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
           '${_fechaVencimiento.year}-${_fechaVencimiento.month.toString().padLeft(2, '0')}-${_fechaVencimiento.day.toString().padLeft(2, '0')}',
           style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
         ),
-      ),
-    );
-  }
-
-  Widget _buildIdField() {
-    return TextField(
-      controller: _idController,
-      style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
-      decoration: InputDecoration(
-        border: OutlineInputBorder(),
-        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-        filled: true,
-        fillColor: AppTheme.surfaceDark,
-        hintText: 'ID de factura',
-        hintStyle: TextStyle(color: AppTheme.textSecondary),
       ),
     );
   }
@@ -2500,13 +2477,15 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
 
   void _crearCliente() async {
     // Navegar al formulario de crear cliente
-    final resultado = await Navigator.pushNamed(context, '/cliente-form');
+    final resultado = await Navigator.pushNamed(context, '/clientes/form');
 
-    // Si se creó un cliente, actualizar el campo
+    // Si se creó un cliente, actualizar el campo y la lista
     if (resultado != null && resultado is Cliente) {
       setState(() {
         _clienteSeleccionado = resultado;
         _clienteController.text = resultado.nombreCompleto;
+        // Agregar el nuevo cliente a la lista
+        _clientesDisponibles.add(resultado);
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -2595,6 +2574,114 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
               );
             }).toList(),
           ),
+          // Campos para pago múltiple
+          if (_metodoPago == 'multiple') ...[
+            SizedBox(height: 20),
+            Divider(color: AppTheme.textMuted.withOpacity(0.3)),
+            SizedBox(height: 16),
+            Text(
+              'Distribución del pago',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.textPrimary,
+              ),
+            ),
+            SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Efectivo',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      TextField(
+                        controller: _montoEfectivoController,
+                        keyboardType: TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        style: TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontSize: 16,
+                        ),
+                        decoration: InputDecoration(
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 16,
+                          ),
+                          filled: true,
+                          fillColor: AppTheme.surfaceDark,
+                          prefixIcon: Icon(
+                            Icons.attach_money,
+                            color: AppTheme.primary,
+                          ),
+                          hintText: '0.00',
+                          hintStyle: TextStyle(color: AppTheme.textSecondary),
+                        ),
+                        onChanged: (value) {
+                          setState(() {});
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Transferencia',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      TextField(
+                        controller: _montoTransferenciaController,
+                        keyboardType: TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        style: TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontSize: 16,
+                        ),
+                        decoration: InputDecoration(
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 16,
+                          ),
+                          filled: true,
+                          fillColor: AppTheme.surfaceDark,
+                          prefixIcon: Icon(
+                            Icons.account_balance,
+                            color: AppTheme.primary,
+                          ),
+                          hintText: '0.00',
+                          hintStyle: TextStyle(color: AppTheme.textSecondary),
+                        ),
+                        onChanged: (value) {
+                          setState(() {});
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -2703,6 +2790,200 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     );
   }
 
+  // Cargar facturas en borrador
+  Future<void> _mostrarBorradores() async {
+    setState(() => _isLoading = true);
+
+    try {
+      // Obtener todos los pedidos activos de facturación
+      final pedidos = await PedidoService.getPedidos();
+      final borradores = pedidos
+          .where(
+            (p) => p.estado == EstadoPedido.activo && p.mesa == 'FACTURACION',
+          )
+          .toList();
+
+      setState(() => _isLoading = false);
+
+      if (borradores.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.info, color: Colors.white),
+                SizedBox(width: 8),
+                Text('No hay facturas en borrador'),
+              ],
+            ),
+            backgroundColor: Colors.blue,
+          ),
+        );
+        return;
+      }
+
+      // Mostrar diálogo con lista de borradores
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: AppTheme.cardBg,
+          title: Row(
+            children: [
+              Icon(Icons.drafts, color: AppTheme.primary),
+              SizedBox(width: 8),
+              Text(
+                'Facturas en borrador',
+                style: TextStyle(color: AppTheme.textPrimary),
+              ),
+            ],
+          ),
+          content: Container(
+            width: double.maxFinite,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: borradores.length,
+              itemBuilder: (context, index) {
+                final borrador = borradores[index];
+                return Card(
+                  color: AppTheme.surfaceDark,
+                  margin: EdgeInsets.only(bottom: 8),
+                  child: ListTile(
+                    leading: Icon(Icons.receipt, color: AppTheme.primary),
+                    title: Text(
+                      borrador.cliente ?? 'Sin cliente',
+                      style: TextStyle(color: AppTheme.textPrimary),
+                    ),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${borrador.items.length} productos - \$${borrador.total.toStringAsFixed(0)}',
+                          style: TextStyle(color: AppTheme.textSecondary),
+                        ),
+                        Text(
+                          '${borrador.fecha.day}/${borrador.fecha.month}/${borrador.fecha.year}',
+                          style: TextStyle(
+                            color: AppTheme.textMuted,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: Icon(Icons.edit, color: AppTheme.primary),
+                          onPressed: () {
+                            Navigator.pop(context);
+                            _cargarBorrador(borrador);
+                          },
+                          tooltip: 'Editar',
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.delete, color: Colors.red),
+                          onPressed: () async {
+                            final confirmar = await showDialog<bool>(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                backgroundColor: AppTheme.cardBg,
+                                title: Text(
+                                  '¿Eliminar borrador?',
+                                  style: TextStyle(color: AppTheme.textPrimary),
+                                ),
+                                content: Text(
+                                  '¿Está seguro de eliminar este borrador?',
+                                  style: TextStyle(
+                                    color: AppTheme.textSecondary,
+                                  ),
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.pop(context, false),
+                                    child: Text('Cancelar'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.pop(context, true),
+                                    child: Text(
+                                      'Eliminar',
+                                      style: TextStyle(color: Colors.red),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+
+                            if (confirmar == true) {
+                              try {
+                                await _pedidoService.eliminarPedido(
+                                  borrador.id,
+                                );
+                                Navigator.pop(context);
+                                _mostrarBorradores();
+                              } catch (e) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Error al eliminar: $e'),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              }
+                            }
+                          },
+                          tooltip: 'Eliminar',
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Cerrar'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al cargar borradores: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  // Cargar un borrador en el formulario
+  void _cargarBorrador(Pedido pedido) {
+    setState(() {
+      _items = List.from(pedido.items);
+      _clienteController.text = pedido.cliente ?? 'CONSUMIDOR FINAL';
+      _fechaFactura = pedido.fecha;
+      _fechaVencimiento =
+          pedido.fechaVencimiento ?? DateTime.now().add(Duration(days: 30));
+      _tipoFactura = pedido.tipoFactura ?? 'POS';
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(Icons.check_circle, color: Colors.white),
+            SizedBox(width: 8),
+            Text('Borrador cargado'),
+          ],
+        ),
+        backgroundColor: Colors.green,
+      ),
+    );
+  }
+
   // Guardar como borrador (pedido activo sin pagar)
   Future<void> _guardarComoBorrador() async {
     if (_items.isEmpty) {
@@ -2719,9 +3000,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       final total = subtotal;
 
       final pedido = Pedido(
-        id: _idController.text.isEmpty
-            ? 'temp-${DateTime.now().millisecondsSinceEpoch}'
-            : _idController.text,
+        id: 'temp-${DateTime.now().millisecondsSinceEpoch}',
         fecha: _fechaFactura,
         tipo: TipoPedido.normal,
         mesa:
@@ -2790,9 +3069,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
 
       // Crear el pedido primero
       final pedido = Pedido(
-        id: _idController.text.isEmpty
-            ? 'temp-${DateTime.now().millisecondsSinceEpoch}'
-            : _idController.text,
+        id: 'temp-${DateTime.now().millisecondsSinceEpoch}',
         fecha: _fechaFactura,
         tipo: TipoPedido.normal,
         mesa: 'FACTURACION',
@@ -2815,6 +3092,18 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       // Si viene de pedido asesor, procesar pago directamente sin diálogo
       if (widget.pedidoAsesor != null) {
         try {
+          // Calcular montos según método de pago
+          final montoEfectivo = _metodoPago == 'efectivo'
+              ? total
+              : (_metodoPago == 'multiple'
+                    ? double.tryParse(_montoEfectivoController.text) ?? 0.0
+                    : 0.0);
+          final montoTransferencia = _metodoPago == 'transferencia'
+              ? total
+              : (_metodoPago == 'multiple'
+                    ? double.tryParse(_montoTransferenciaController.text) ?? 0.0
+                    : 0.0);
+          
           // Procesar pago directo con método de pago seleccionado
           await _pedidoService.pagarPedido(
             pedidoCreado.id,
@@ -2824,10 +3113,10 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
             procesadoPor: userName,
             notas: 'Pago de pedido asesor',
             descuento: 0.0,
-            pagoMultiple: false,
-            montoEfectivo: _metodoPago == 'efectivo' ? total : 0.0,
-            montoTarjeta: _metodoPago == 'tarjeta' ? total : 0.0,
-            montoTransferencia: _metodoPago == 'transferencia' ? total : 0.0,
+            pagoMultiple: _metodoPago == 'multiple',
+            montoEfectivo: montoEfectivo,
+            montoTarjeta: 0.0,
+            montoTransferencia: montoTransferencia,
           );
 
           // 📦 Registrar movimientos de inventario (salida de stock)
@@ -2869,6 +3158,18 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       } else {
         // Para facturación normal, procesar pago directamente sin diálogo
         try {
+          // Calcular montos según método de pago
+          final montoEfectivo = _metodoPago == 'efectivo'
+              ? total
+              : (_metodoPago == 'multiple'
+                    ? double.tryParse(_montoEfectivoController.text) ?? 0.0
+                    : 0.0);
+          final montoTransferencia = _metodoPago == 'transferencia'
+              ? total
+              : (_metodoPago == 'multiple'
+                    ? double.tryParse(_montoTransferenciaController.text) ?? 0.0
+                    : 0.0);
+          
           // Procesar pago directo con método de pago seleccionado
           await _pedidoService.pagarPedido(
             pedidoCreado.id,
@@ -2878,10 +3179,10 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
             procesadoPor: userName,
             notas: 'Pago desde facturación',
             descuento: 0.0,
-            pagoMultiple: false,
-            montoEfectivo: _metodoPago == 'efectivo' ? total : 0.0,
-            montoTarjeta: _metodoPago == 'tarjeta' ? total : 0.0,
-            montoTransferencia: _metodoPago == 'transferencia' ? total : 0.0,
+            pagoMultiple: _metodoPago == 'multiple',
+            montoEfectivo: montoEfectivo,
+            montoTarjeta: 0.0,
+            montoTransferencia: montoTransferencia,
           );
 
           // 📦 Registrar movimientos de inventario (salida de stock)
@@ -2947,13 +3248,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
           );
 
           await _inventarioService.registrarMovimiento(movimiento);
-          print(
-            '✅ Movimiento registrado para: ${item.productoNombre} (-${item.cantidad})',
-          );
         } catch (e) {
-          print(
-            '⚠️ Error al registrar movimiento para ${item.productoNombre}: $e',
-          );
           // Continuar con el siguiente item aunque haya error
         }
       }
@@ -3364,11 +3659,12 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
   void _limpiarFormulario() {
     setState(() {
       _items.clear();
-      _idController.clear();
       _clienteController.text = 'CONSUMIDOR FINAL';
       _fechaFactura = DateTime.now();
       _fechaVencimiento = DateTime.now().add(Duration(days: 30));
       _metodoPago = 'efectivo';
+      _montoEfectivoController.text = '0';
+      _montoTransferenciaController.text = '0';
       _productoSeleccionado = null;
       _limpiarFormularioProducto();
     });

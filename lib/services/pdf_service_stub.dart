@@ -6,33 +6,25 @@ class PDFServiceWeb implements PDFServiceInterface {
   void generarYDescargarPDF({
     required Map<String, dynamic> resumen,
     bool esFactura = false,
-  }) {
-      
-  }
+  }) {}
 
   @override
   void abrirVentanaImpresion({
     required Map<String, dynamic> resumen,
     bool esFactura = false,
-  }) {
-      
-  }
+  }) {}
 
   @override
   void descargarComoTexto({
     required Map<String, dynamic> resumen,
     bool esFactura = false,
-  }) {
-      
-  }
+  }) {}
 
   @override
   Future<void> compartirTexto({
     required Map<String, dynamic> resumen,
     bool esFactura = false,
-  }) async {
-      
-  }
+  }) async {}
 }
 
 // Stub para pdf_service_web en plataformas móviles - compatibilidad hacia atrás
@@ -41,30 +33,13 @@ class PdfServiceWeb {
     dynamic mesa,
     List<dynamic> documentos,
   ) async {
-      
+    throw UnsupportedError('PDF printing not supported in this platform');
   }
 
-  static Future<void> imprimirFacturaConAutoPrint(
+  static Future<void> imprimirFacturaConAuto(
     dynamic mesa,
     List<dynamic> documentos,
   ) async {
-      
+    throw UnsupportedError('PDF printing not supported in this platform');
   }
-
-  static Future<void> imprimirComanda(dynamic pedido) async {
-      
-  }
-
-  static Future<void> imprimirCierreTransaccional(dynamic resumen) async {
-      
-  }
-
-  static Future<void> copiarContenidoAlPortapapeles(String contenido) async {
-      
-  }
-}
-
-// Factory function for conditional imports
-PDFServiceInterface createPDFService() {
-  return PDFServiceWeb();
 }

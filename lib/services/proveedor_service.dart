@@ -70,10 +70,7 @@ class ProveedorService {
           return decodedData.map((json) => Proveedor.fromJson(json)).toList();
         }
 
-        print(
-          'Error: Tipo de respuesta no soportado: ${decodedData.runtimeType}',
-        );
-        return [];
+                   return [];
       } else {
         throw Exception('Error al cargar proveedores: ${response.statusCode}');
       }
@@ -124,10 +121,7 @@ class ProveedorService {
           return decodedData.map((json) => Proveedor.fromJson(json)).toList();
         }
 
-        print(
-          'Error: Tipo de respuesta no soportado: ${decodedData.runtimeType}',
-        );
-        return [];
+                   return [];
       } else {
         throw Exception('Error al buscar proveedores: ${response.statusCode}');
       }
@@ -226,10 +220,7 @@ class ProveedorService {
         throw Exception('ID de proveedor inválido o vacío');
       }
 
-      print(
-        '🔄 Cambiando estado del proveedor ID: "$cleanId" a activo: $activo',
-      );
-        
+                 
 
       final response = await http.put(
         Uri.parse(_endpoints.cambiarEstado(cleanId)),
@@ -244,10 +235,7 @@ class ProveedorService {
         
 
       bool success = response.statusCode == 200;
-      print(
-        success ? '✅ Estado cambiado exitosamente' : '❌ Error cambiando estado',
-      );
-
+         
       return success;
     } catch (e) {
         

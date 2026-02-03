@@ -1866,13 +1866,7 @@ class _ResumenCierreDetalladoScreenState
       
       
       
-    print(
-      '  - movimientos.ventasTransferencia: \$${movimientos.ventasTransferencia}',
-    );
-    print(
-      '  - movimientos.totalIngresosCaja: \$${movimientos.totalIngresosCaja}',
-    );
-
+              
     // Calcular balance final con datos corregidos
     final ingresosTotales =
         movimientos.fondoInicial +

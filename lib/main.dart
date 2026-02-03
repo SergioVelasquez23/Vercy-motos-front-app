@@ -8,7 +8,6 @@ import 'screens/clientes_list_screen.dart';
 import 'screens/cliente_form_screen.dart';
 import 'screens/cotizaciones_list_screen.dart';
 import 'screens/cotizacion_form_screen.dart';
-import 'screens/productos_screen.dart';
 import 'screens/categorias_screen.dart';
 import 'screens/cuadre_caja_screen.dart';
 import 'screens/abrir_caja_screen.dart';
@@ -19,16 +18,20 @@ import 'screens/configuracion_facturacion_screen.dart';
 import 'screens/gastos_screen.dart';
 import 'screens/tipos_gasto_screen.dart';
 import 'screens/ingresos_caja_screen.dart';
-import 'screens/facturas_compras_screen.dart';
 import 'screens/traslados_screen.dart';
 import 'screens/bodegas_screen.dart';
-import 'screens/historial_inventario_screen.dart';
 import 'screens/asesor_pedidos_screen.dart';
 import 'screens/admin_pedidos_asesor_screen.dart';
 import 'screens/proveedores_list_screen.dart';
 import 'screens/compras_list_screen.dart';
 import 'screens/gastos_list_screen.dart';
 import 'screens/productos_list_screen.dart';
+import 'screens/productos_screen.dart';
+import 'screens/cartera_screen.dart';
+import 'screens/cuentas_por_cobrar_screen.dart';
+import 'screens/cuentas_por_pagar_screen.dart';
+import 'screens/gastos_programados_screen.dart';
+import 'screens/alertas_screen.dart';
 import 'models/cliente.dart';
 import 'models/cotizacion.dart';
 import 'providers/user_provider.dart';
@@ -141,21 +144,23 @@ class MyApp extends StatelessWidget {
               ModalRoute.of(context)?.settings.arguments as Cotizacion?;
           return CotizacionFormScreen(cotizacion: cotizacion);
         },
-        '/productos': (context) => ProductosScreen(),
         '/productos-lista': (context) => ProductosListScreen(),
+        '/productos': (context) => ProductosScreen(),
         '/traslados': (context) => TrasladosScreen(),
         '/bodegas': (context) => BodegasScreen(),
-        '/categorias': (context) => CategoriasScreen(),
-        '/historial-inventario': (context) => HistorialInventarioScreen(),
         '/cuadre_caja': (context) => CuadreCajaScreen(),
         '/abrir_caja': (context) => AbrirCajaScreen(),
         '/cerrar_caja': (context) => CerrarCajaScreen(),
-        '/facturas-compras': (context) => CrearFacturaCompraScreen(),
         '/compras': (context) => ComprasListScreen(),
         '/gastos': (context) => GastosScreen(mostrarFormulario: true),
         '/tipos-gasto': (context) => TiposGastoScreen(),
         '/gastos-lista': (context) => GastosListScreen(),
         '/proveedores': (context) => ProveedoresListScreen(),
+        '/cartera': (context) => const CarteraScreen(),
+        '/cuentas-por-cobrar': (context) => const CuentasPorCobrarScreen(),
+        '/cuentas-por-pagar': (context) => const CuentasPorPagarScreen(),
+        '/gastos-programados': (context) => const GastosProgramadosScreen(),
+        '/alertas': (context) => const AlertasScreen(),
         '/ingresos-caja': (context) => IngresosCajaScreen(),
         '/pedidos': (context) =>
             const PedidosScreenFusion(), // Pantalla fusionada

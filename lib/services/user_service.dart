@@ -189,25 +189,13 @@ class UserService {
         throw Exception('Token no encontrado');
       }
       final payload = user.toJsonUpdate();
-      print(
-        '🔧 DEBUG UserService.updateUser - URL: $baseUrl/api/users/${user.id}',
-      );
-      print(
-        '🔧 DEBUG UserService.updateUser - Payload: ${json.encode(payload)}',
-      );
-      final response = await http.put(
+                        final response = await http.put(
         Uri.parse('$baseUrl/api/users/${user.id}'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
         body: json.encode(payload),
-      );
-      print(
-        '🔧 DEBUG UserService.updateUser - Status Code: ${response.statusCode}',
-      );
-      print(
-        '🔧 DEBUG UserService.updateUser - Response Body: ${response.body}',
       );
       if (response.statusCode == 200) {
         return User.fromJson(json.decode(response.body));

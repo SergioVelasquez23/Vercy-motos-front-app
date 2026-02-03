@@ -36,10 +36,7 @@ class NetworkTestSuite {
           
 
         for (final interface in interfaces) {
-          print(
-            '  📡 ${interface.name}: ${interface.addresses.map((a) => a.address).join(', ')}',
-          );
-
+             
           // Identificar IPs privadas
           for (final addr in interface.addresses) {
             if (addr.address.startsWith('192.168.') ||
@@ -102,10 +99,7 @@ class NetworkTestSuite {
         
         
         
-      print(
-        '🔍 Auto-discovery: ${apiConfig.currentEnvironment.enableAutoDiscovery}',
-      );
-
+         
       // Mostrar información de debug
       final debugInfo = apiConfig.getDebugInfo();
         
@@ -189,10 +183,7 @@ class NetworkTestSuite {
       await networkService.discoverServerIp();
 
       // Verificar cache después de la detección
-      print(
-        'Estado del cache después de detección: ${networkService.hasValidCache}',
-      );
-
+         
       if (networkService.hasValidCache) {
           
 

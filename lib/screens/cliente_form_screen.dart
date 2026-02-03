@@ -646,8 +646,13 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
         fechaCreacion: widget.cliente?.fechaCreacion ?? DateTime.now(),
       );
 
+      Cliente clienteGuardado;
+      
       if (_esEdicion) {
-        await _clienteService.actualizarCliente(widget.cliente!.id!, cliente);
+        clienteGuardado = await _clienteService.actualizarCliente(
+          widget.cliente!.id!,
+          cliente,
+        );
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Cliente actualizado exitosamente'),
@@ -655,7 +660,7 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
           ),
         );
       } else {
-        await _clienteService.crearCliente(cliente);
+        clienteGuardado = await _clienteService.crearCliente(cliente);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Cliente creado exitosamente'),
@@ -664,7 +669,7 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
         );
       }
 
-      Navigator.pop(context, true);
+      Navigator.pop(context, clienteGuardado);
     } catch (e) {
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(

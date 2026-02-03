@@ -112,17 +112,11 @@ class _UsersScreenState extends State<UsersScreen> {
           userRolesMap[entry.key] = entry.value;
           // Log detallado de los roles cargados
           if (entry.value.isNotEmpty) {
-            print(
-              '📋 Usuario ${entry.key}: roles = ${entry.value.map((r) => r.nombre).join(", ")}',
-            );
-          } else {
+                         } else {
               
           }
         } else {
-          print(
-            '🔒 Usuario ${entry.key}: protegido de sobrescritura (cambio reciente)',
-          );
-        }
+                     }
       }
 
       // Actualizar el estado con los roles cargados
@@ -132,9 +126,6 @@ class _UsersScreenState extends State<UsersScreen> {
         });
       }
 
-      print(
-        '✅ Roles de usuarios cargados en segundo plano - Total usuarios: ${userRolesMap.length}',
-      );
     } catch (e) {
         
     }
@@ -143,13 +134,7 @@ class _UsersScreenState extends State<UsersScreen> {
   // Método para actualizar roles de un usuario específico
   Future<void> _actualizarRolesUsuarioEspecifico(String userId) async {
     try {
-      print(
-        '🔄 Actualizando roles específicamente para usuario $userId desde servidor',
-      );
-      print(
-        '   • Roles actuales en memoria: ${_userRolesMap[userId]?.map((r) => r.nombre).join(", ") ?? "ninguno"}',
-      );
-
+                  
       // Intentar múltiples veces con delay para asegurar sincronización
       List<Role> roles = [];
       int intentos = 0;
@@ -161,10 +146,7 @@ class _UsersScreenState extends State<UsersScreen> {
             
 
           roles = await _userService.getRolesByUserId(userId);
-          print(
-            '   • Roles obtenidos del servidor: ${roles.map((r) => r.nombre).join(", ")}',
-          );
-
+             
           if (roles.isNotEmpty) {
             break; // Éxito, salir del loop
           }
@@ -189,10 +171,7 @@ class _UsersScreenState extends State<UsersScreen> {
         });
       }
 
-      print(
-        '✅ Roles finales para usuario $userId: ${_userRolesMap[userId]?.map((r) => r.nombre).join(", ")}',
-      );
-    } catch (e) {
+             } catch (e) {
         
     }
   }
@@ -722,12 +701,7 @@ class _UsersScreenState extends State<UsersScreen> {
         if (relacion.id != null) {
             
           final eliminado = await _userRoleService.deleteUserRole(relacion.id!);
-          print(
-            eliminado
-                ? '✅ Rol eliminado correctamente'
-                : '❌ Error al eliminar rol',
-          );
-
+             
           if (!eliminado) {
             throw Exception('No se pudo eliminar el rol ${relacion.id}');
           }
@@ -745,10 +719,7 @@ class _UsersScreenState extends State<UsersScreen> {
       do {
         intentos++;
         verificacion = await _userRoleService.getRolesByUser(user.id!);
-        print(
-          '🔍 Verificación post-eliminación (intento $intentos): ${verificacion.length} roles restantes',
-        );
-
+           
         if (verificacion.isNotEmpty && intentos < 3) {
             
           await Future.delayed(Duration(milliseconds: 1000));
@@ -756,12 +727,6 @@ class _UsersScreenState extends State<UsersScreen> {
       } while (verificacion.isNotEmpty && intentos < 3);
 
       if (verificacion.isNotEmpty) {
-        print(
-          '⚠️ ADVERTENCIA: No se pudieron eliminar todos los roles después de 3 intentos',
-        );
-        print(
-          '   • Roles restantes: ${verificacion.map((r) => r.id ?? "sin-id").join(", ")}',
-        );
         // Continuar de todas maneras para asignar el nuevo rol
       }
 
@@ -777,14 +742,8 @@ class _UsersScreenState extends State<UsersScreen> {
 
       // Verificar que el nuevo rol se asignó correctamente
       final rolesFinales = await _userRoleService.getRolesByUser(user.id!);
-      print(
-        '🔍 Verificación post-asignación: ${rolesFinales.length} roles encontrados',
-      );
-
+         
       if (rolesFinales.length != 1) {
-        print(
-          '⚠️ PROBLEMA: Se esperaba 1 rol pero se encontraron ${rolesFinales.length}',
-        );
         for (var r in rolesFinales) {
             
         }
@@ -811,16 +770,10 @@ class _UsersScreenState extends State<UsersScreen> {
           setState(() {
             _usuariosConRolRecienCambiado.remove(user.id!);
           });
-          print(
-            '🔓 Protección de sobrescritura removida para usuario ${user.email}',
-          );
         }
       });
 
-      print(
-        '✅ Rol actualizado en memoria: ${nuevoRol.nombre} para usuario ${user.email}',
-      );
-
+         
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -837,9 +790,6 @@ class _UsersScreenState extends State<UsersScreen> {
 
       // También hacer una verificación inmediata para debug
         
-      print(
-        '   • Usuario ${user.email}: ${_userRolesMap[user.id!]?.map((r) => r.nombre).join(", ")}',
-      );
     } catch (e) {
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -885,10 +835,7 @@ class _UsersScreenState extends State<UsersScreen> {
         
         
         
-      print(
-        '  - password: "${password.isEmpty ? "(vacío)" : "(tiene valor)"}"',
-      );
-
+         
       // Crear el objeto usuario
       final newUser = User(
         id: user?.id,

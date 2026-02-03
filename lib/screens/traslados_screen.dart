@@ -964,10 +964,7 @@ class _TrasladosScreenState extends State<TrasladosScreen> {
         aprobador: aprobador,
       );
 
-      print(
-        '✅ Traslado completado - Stock actualizado y estado cambiado a COMPLETADO',
-      );
-      _mostrarExito('Traslado aceptado y ejecutado correctamente');
+               _mostrarExito('Traslado aceptado y ejecutado correctamente');
       _cargarDatos();
     } catch (e) {
         

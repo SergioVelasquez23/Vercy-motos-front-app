@@ -126,10 +126,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
           // Log important values for debugging
             
             
-          print(
-            '  - Transferencias desde cuadreCompleto: $_transferenciasEsperadas',
-          );
-        });
+                     });
 
         // Cargar datos del resumen completo si existe caja actual
         if (_cajaActual?.id != null) {
@@ -371,13 +368,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
         if (resumenCompleto.movimientosEfectivo.ventasEfectivo > 0 ||
             resumenCompleto.movimientosEfectivo.ventasTransferencia > 0) {
             
-          print(
-            '  - Ventas Efectivo: ${resumenCompleto.movimientosEfectivo.ventasEfectivo}',
-          );
-          print(
-            '  - Ventas Transferencia: ${resumenCompleto.movimientosEfectivo.ventasTransferencia}',
-          );
-
+                          
           // Update the values from _ventasEfectivo and _transferenciasEsperadas
           if (_ventasEfectivo == 0) {
             _ventasEfectivo =
@@ -391,13 +382,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
       });
         
         
-      print(
-        '📊 Datos de gastos: ${resumenCompleto.resumenGastos.detallesGastos.length} gastos',
-      );
-      print(
-        '📊 Datos de compras: ${resumenCompleto.resumenCompras.detallesComprasDesdeCaja.length} compras desde caja',
-      );
-    } catch (e) {
+                      } catch (e) {
       // Error cargando resumen completo - continuar con datos básicos
         
 
@@ -786,10 +771,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
               .ventasPorFormaPago['transferencia'] ??
           0.0;
       if (transferenciaValue > 0) {
-        print(
-          '⚠️ Corrigiendo valor de ventas transferencia: $transferenciaValue',
-        );
-        // Can't modify the object directly, but we can update the display values
+                   // Can't modify the object directly, but we can update the display values
         _transferenciasEsperadas = transferenciaValue;
       }
     }

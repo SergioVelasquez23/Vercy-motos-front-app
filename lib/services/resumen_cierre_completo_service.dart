@@ -28,10 +28,7 @@ class ResumenCierreCompletoService {
           .timeout(Duration(seconds: 30)); // Agregar timeout
 
         
-      print(
-        '� Response body (primeros 500 chars): ${response.body.length > 500 ? response.body.substring(0, 500) + '...' : response.body}',
-      );
-
+         
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonData = json.decode(response.body);
 
@@ -50,29 +47,17 @@ class ResumenCierreCompletoService {
             if (movimientos != null && movimientos is Map) {
                 
                 
-              print(
-                '  - ventasTransferencia: ${movimientos['ventasTransferencia']}',
-              );
-                
-              print(
-                '  - transferencia (alternativo): ${movimientos['transferencia']}',
-              );
-            }
+                                 
+                             }
             
             // 🔍 Debug: Verificar estructura de gastos
             if (data['resumenGastos'] != null) {
-              print(
-                '💰 Estructura resumenGastos: ${data['resumenGastos'].keys}',
-              );
               if (data['resumenGastos']['detallesGastos'] != null) {
                 final detalles = data['resumenGastos']['detallesGastos'];
                   
                 if (detalles is List && detalles.isNotEmpty) {
                     
-                  print(
-                    '🧾 Tipo primer elemento: ${detalles.first.runtimeType}',
-                  );
-                }
+                                     }
               }
             }
           }
@@ -92,24 +77,15 @@ class ResumenCierreCompletoService {
           try {
             final cuadreCompleto = await _obtenerCuadreCompleto(cuadreId);
             if (cuadreCompleto != null) {
-              print(
-                '📊 Datos del cuadre completo obtenidos, integrando información...',
-              );
-                
+                                 
               if (cuadreCompleto['resumenGastos'] != null) {
-                print(
-                  '💰 resumenGastos keys: ${cuadreCompleto['resumenGastos'].keys}',
-                );
                 if (cuadreCompleto['resumenGastos']['detallesGastos'] != null) {
                   final detalles =
                       cuadreCompleto['resumenGastos']['detallesGastos'] as List;
                     
                   if (detalles.isNotEmpty) {
                       
-                    print(
-                      '🧾 Tipo del primer gasto: ${detalles.first.runtimeType}',
-                    );
-                  }
+                                         }
                 }
               }
               return _integrarDatosCuadreCompleto(resumen, cuadreCompleto);
@@ -119,9 +95,6 @@ class ResumenCierreCompletoService {
               
           }
 
-          print(
-            '💰 Ingresos reales cargados: ${resumen.movimientosEfectivo.totalIngresosCaja}',
-          );
           return resumen;
         } else {
           throw Exception(
@@ -157,9 +130,6 @@ class ResumenCierreCompletoService {
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonData = json.decode(response.body);
         if (jsonData['success'] == true && jsonData['data'] != null) {
-          print(
-            '✅ Información completa del cuadre recibida: ${jsonData['data']}',
-          );
           return jsonData['data'];
         }
       }
@@ -183,10 +153,7 @@ class ResumenCierreCompletoService {
         cuadreCompleto['ventasTransferencias'],
       );
 
-      print(
-        '🔄 Integrando datos: ventasEfectivo=$ventasEfectivo, totalVentas=$totalVentas',
-      );
-
+         
       // Crear nuevos objetos con los datos corregidos
       final resumenFinalCorregido = ResumenFinalCompleto(
         totalGastos: resumen.resumenFinal.totalGastos,

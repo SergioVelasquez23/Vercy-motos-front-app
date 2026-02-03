@@ -22,13 +22,7 @@ class ValidacionCajaUtil {
 
       if (detalles.totalEfectivoEnCaja < monto) {
           
-        print(
-          '💰 Disponible: \$${detalles.totalEfectivoEnCaja.toStringAsFixed(2)}',
-        );
-          
-        print(
-          'ℹ️ La operación puede continuar, pero la caja quedará en negativo.',
-        );
+                     
       } else {
           
       }
