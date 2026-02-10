@@ -118,6 +118,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
 
   Cliente? _clienteSeleccionado;
   Producto? _productoSeleccionado;
+  String _origenSeleccionado = 'ALMACÉN'; // 📦 BODEGA o ALMACÉN
   List<ItemPedido> _items = [];
   List<Producto> _productosDisponibles = [];
   List<Cliente> _clientesDisponibles = [];
@@ -1480,7 +1481,11 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                             setState(() {
                               _productoSeleccionado = producto;
                               _nombreProductoController.text = producto.nombre;
-                              _codigoController.text = producto.id;
+                              _codigoController.text =
+                                  (producto.codigo != null &&
+                                      producto.codigo!.isNotEmpty)
+                                  ? producto.codigo!
+                                  : 'SIN CÓDIGO';
                               _valorUnitController.text = producto.precio
                                   .toString();
                             });
@@ -1689,6 +1694,154 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                           controller: TextEditingController(
                             text: _calcularValorTotal(),
                           ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 16),
+                  // 📦 MOSTRAR STOCK DISPONIBLE
+                  if (_productoSeleccionado != null)
+                    Container(
+                      padding: EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppTheme.surfaceDark,
+                        border: Border.all(
+                          color: AppTheme.primary.withOpacity(0.3),
+                          width: 1,
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Stock disponible: ${_productoSeleccionado!.nombre}',
+                            style: TextStyle(
+                              color: AppTheme.textPrimary,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Container(
+                                  padding: EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.primary.withOpacity(0.15),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      Text(
+                                        'ALMACÉN',
+                                        style: TextStyle(
+                                          color: AppTheme.primary,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      SizedBox(height: 4),
+                                      Text(
+                                        '${_productoSeleccionado!.almacen ?? 0}',
+                                        style: TextStyle(
+                                          color: AppTheme.primary,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              SizedBox(width: 12),
+                              Expanded(
+                                child: Container(
+                                  padding: EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.orange.withOpacity(0.15),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      Text(
+                                        'BODEGA',
+                                        style: TextStyle(
+                                          color: Colors.orange,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      SizedBox(height: 4),
+                                      Text(
+                                        '${_productoSeleccionado!.bodega ?? 0}',
+                                        style: TextStyle(
+                                          color: Colors.orange,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  SizedBox(height: 16),
+                  // 📦 Fila de selección de BODEGA/ALMACÉN
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 1,
+                        child: DropdownButtonFormField<String>(
+                          value: _origenSeleccionado,
+                          style: TextStyle(
+                            color: AppTheme.textPrimary,
+                            fontSize: 14,
+                          ),
+                          dropdownColor: AppTheme.surfaceDark,
+                          decoration: InputDecoration(
+                            labelText: 'Origen',
+                            labelStyle: TextStyle(
+                              color: AppTheme.textSecondary,
+                            ),
+                            hintText: 'Seleccionar...',
+                            border: OutlineInputBorder(),
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            filled: true,
+                            fillColor: AppTheme.surfaceDark,
+                            prefixIcon: Icon(
+                              Icons.warehouse,
+                              color: AppTheme.textSecondary,
+                            ),
+                          ),
+                          items: ['BODEGA', 'ALMACÉN']
+                              .map(
+                                (origen) => DropdownMenuItem(
+                                  value: origen,
+                                  child: Text(origen),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (value) => setState(
+                            () => _origenSeleccionado = value ?? 'ALMACÉN',
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 12),
+                      Text(
+                        'Selecciona de dónde vender',
+                        style: TextStyle(
+                          color: AppTheme.textSecondary,
+                          fontSize: 12,
+                          fontStyle: FontStyle.italic,
                         ),
                       ),
                     ],
@@ -1959,6 +2112,16 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                     ),
                   ),
                 ),
+                Expanded(
+                  flex: 1,
+                  child: Text(
+                    'Origen',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.textPrimary,
+                    ),
+                  ),
+                ),
                 SizedBox(width: 50),
               ],
             ),
@@ -2009,6 +2172,32 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           color: AppTheme.textPrimary,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 1,
+                      child: Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: item.origen == 'BODEGA'
+                              ? Colors.blue.withOpacity(0.2)
+                              : Colors.orange.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          item.origen,
+                          style: TextStyle(
+                            color: item.origen == 'BODEGA'
+                                ? Colors.blue
+                                : Colors.orange,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
                         ),
                       ),
                     ),
@@ -2332,6 +2521,31 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     }
 
     final cantidad = int.tryParse(_cantidadController.text) ?? 1;
+    
+    // 📦 VALIDAR STOCK EN EL ORIGEN SELECCIONADO
+    if (_productoSeleccionado != null) {
+      int stockDisponible = 0;
+
+      if (_origenSeleccionado.toUpperCase() == 'BODEGA') {
+        stockDisponible = _productoSeleccionado!.bodega ?? 0;
+      } else {
+        stockDisponible = _productoSeleccionado!.almacen ?? 0;
+      }
+
+      if (cantidad > stockDisponible) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '❌ Stock insuficiente en ${_origenSeleccionado}. Disponible: $stockDisponible, Solicitado: $cantidad',
+            ),
+            backgroundColor: Colors.red.shade700,
+            duration: Duration(seconds: 4),
+          ),
+        );
+        return;
+      }
+    }
+
     final precioUnitario = double.tryParse(_valorUnitController.text) ?? 0;
     final porcentajeImpuesto =
         double.tryParse(_porcentajeImpuestoController.text) ?? 0;
@@ -2349,6 +2563,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       productoNombre: _nombreProductoController.text,
       cantidad: cantidad,
       precioUnitario: precioUnitario,
+      origen: _origenSeleccionado, // 📦 Pasar el origen seleccionado
     );
 
     setState(() {
@@ -2371,6 +2586,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     _valorUnitController.clear();
     _porcentajeImpuestoController.text = '0';
     _porcentajeDescuentoController.text = '0';
+    _origenSeleccionado = 'ALMACÉN'; // 📦 Resetear a ALMACÉN por defecto
     _productoSeleccionado = null;
   }
 
@@ -2411,7 +2627,10 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
 
       setState(() {
         _productoSeleccionado = producto;
-        _codigoController.text = producto!.codigo ?? '';
+        _codigoController.text =
+            (producto!.codigo != null && producto.codigo!.isNotEmpty)
+            ? producto.codigo!
+            : 'SIN CÓDIGO';
         _nombreProductoController.text = producto.nombre;
         _valorUnitController.text = producto.precio.toString();
       });
@@ -3185,10 +3404,15 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
             montoTransferencia: montoTransferencia,
           );
 
-          // 📦 Registrar movimientos de inventario (salida de stock)
-          await _registrarMovimientosInventarioVenta(pedidoCreado);
+          // 📦 Registrar movimientos de inventario EN BACKGROUND (no esperar)
+          _registrarMovimientosInventarioVenta(
+            pedidoCreado,
+          ).then((_) {}).catchError((e) {});
 
           setState(() => _isLoading = false);
+
+          // Limpiar formulario INMEDIATAMENTE antes de mostrar diálogo
+          _limpiarFormulario();
 
           // Mostrar diálogo de éxito con opciones de impresión
           await _mostrarDialogoFacturaExitosa(
@@ -3198,8 +3422,6 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
             0.0,
             0.0,
           );
-
-          _limpiarFormulario();
         } catch (e) {
           setState(() => _isLoading = false);
           ScaffoldMessenger.of(context).showSnackBar(
@@ -3224,22 +3446,56 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
   // 📦 Registrar movimientos de inventario cuando se factura (venta)
   Future<void> _registrarMovimientosInventarioVenta(Pedido pedido) async {
     try {
-        
+      final productoService = ProductoService();
 
       for (var item in pedido.items) {
         try {
+          // 🔍 Obtener el producto completo para actualizar stock
+          final productoCompleto = await productoService.getProducto(
+            item.productoId,
+          );
+
+          if (productoCompleto == null) {
+            continue; // Saltar si no encuentra el producto
+          }
+
+          // 📍 Determinar el origen de la venta (BODEGA o ALMACÉN)
+          final origen = item.origen; // Los items ya son ItemPedido con origen
+
+          // 📊 Obtener stock anterior según el origen
+          double stockAnterior = 0;
+          double nuevoStock = 0;
+
+          if (origen.toUpperCase() == 'BODEGA') {
+            // Decrementar BODEGA
+            stockAnterior = (productoCompleto.bodega ?? 0).toDouble();
+            nuevoStock = (stockAnterior - item.cantidad).clamp(
+              0,
+              double.infinity,
+            );
+          } else {
+            // Decrementar ALMACÉN
+            stockAnterior = (productoCompleto.almacen ?? 0).toDouble();
+            nuevoStock = (stockAnterior - item.cantidad).clamp(
+              0,
+              double.infinity,
+            );
+          }
+
+          // 📋 Crear movimiento de inventario
           final movimiento = MovimientoInventario(
             inventarioId: item.productoId,
             productoId: item.productoId,
             productoNombre: item.productoNombre ?? 'Producto',
             tipoMovimiento: 'Salida',
-            motivo: 'Venta - Factura ${pedido.id}',
-            cantidadAnterior: 0, // El backend calculará el stock anterior
+            motivo: 'Venta - Factura ${pedido.id} (${origen})',
+            cantidadAnterior: stockAnterior,
             cantidadMovimiento: item.cantidad.toDouble(),
-            cantidadNueva: 0, // El backend calculará el stock nuevo
+            cantidadNueva: nuevoStock,
             responsable: pedido.mesero ?? 'Sistema',
             referencia: 'FV-${pedido.id}',
-            observaciones: 'Venta a ${pedido.cliente ?? 'CONSUMIDOR FINAL'}',
+            observaciones:
+                'Venta a ${pedido.cliente ?? 'CONSUMIDOR FINAL'} desde ${origen}',
             costoUnitario: item.precioUnitario,
             precioTotal: item.subtotal,
             fecha: DateTime.now(),
@@ -3247,16 +3503,33 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
             proveedor: null,
           );
 
+          // 📝 Registrar movimiento en inventario
           await _inventarioService.registrarMovimiento(movimiento);
+
+          // 🔄 ACTUALIZAR STOCK EN EL PRODUCTO
+          final productoActualizado = productoCompleto.copyWith(
+            bodega: origen.toUpperCase() == 'BODEGA'
+                ? nuevoStock.toInt()
+                : (productoCompleto.bodega ?? 0),
+            almacen: origen.toUpperCase() == 'ALMACÉN'
+                ? nuevoStock.toInt()
+                : (productoCompleto.almacen ?? 0),
+          );
+
+          // 💾 Guardar producto actualizado
+          await _productoService.updateProducto(productoActualizado);
+
+          print(
+            '✅ Stock actualizado: ${productoActualizado.nombre} - ${origen}: ${stockAnterior} → ${nuevoStock}',
+          );
         } catch (e) {
           // Continuar con el siguiente item aunque haya error
+          print('⚠️ Error registrando movimiento para ${item.productoId}: $e');
         }
       }
-
-        
     } catch (e) {
-        
       // No lanzar excepción para no interrumpir el flujo de la factura
+      print('⚠️ Error general en registro de movimientos: $e');
     }
   }
 
@@ -3388,7 +3661,9 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
             child: Text(
               'Cerrar sin imprimir',
               style: TextStyle(color: AppTheme.textSecondary),
@@ -3658,15 +3933,55 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
   // Limpiar formulario después de guardar
   void _limpiarFormulario() {
     setState(() {
+      // Limpiar items y cliente
       _items.clear();
       _clienteController.text = 'CONSUMIDOR FINAL';
+      
+      // Limpiar fechas
       _fechaFactura = DateTime.now();
       _fechaVencimiento = DateTime.now().add(Duration(days: 30));
+      
+      // Limpiar método de pago
       _metodoPago = 'efectivo';
       _montoEfectivoController.text = '0';
       _montoTransferenciaController.text = '0';
+      
+      // Limpiar datos extras
+      _ordenCompraController.clear();
+      _ordenServicioController.clear();
+      _ordenPedidoController.clear();
+      _vendedorController.clear();
+      _porcentajeDctoPagoController.clear();
+      _guiaController.clear();
+
+      // Limpiar retenciones y AIU
+      _retencionController.text = '0';
+      _reteIVAController.text = '0';
+      _reteICAController.text = '0';
+      _aiuController.text = '0';
+      _dctoGeneralController.text = '0';
+
+      // Resetear variables de estado
+      _fechaCompra = null;
+      _fechaDctoPago = null;
+      _listaPrecios = 'Detal';
+      _tipoFactura = 'POS';
+      _datosProductoExpanded = true;
+      _datosExtrasExpanded = false;
+      _retencionesExpanded = false;
+
+      // Limpiar producto seleccionado
       _productoSeleccionado = null;
-      _limpiarFormularioProducto();
+      _clienteSeleccionado = null;
+
+      // Limpiar todos los campos de producto
+      _codigoBarrasController.clear();
+      _codigoController.clear();
+      _nombreProductoController.clear();
+      _cantidadController.text = '1';
+      _valorUnitController.clear();
+      _porcentajeImpuestoController.text = '0';
+      _porcentajeDescuentoController.text = '0';
     });
   }
 

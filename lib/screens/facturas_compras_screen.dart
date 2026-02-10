@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/factura_compra.dart';
 import '../models/proveedor.dart';
 import '../models/producto.dart';
@@ -7,6 +8,7 @@ import '../services/factura_compra_service.dart';
 import '../services/proveedor_service.dart';
 import '../services/producto_service.dart';
 import '../services/inventario_service.dart';
+import '../providers/datos_cache_provider.dart';
 import '../theme/app_theme.dart';
 
 class FacturasComprasScreen extends StatefulWidget {
@@ -718,9 +720,14 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
   final _valorUnitarioController = TextEditingController();
   final _porcentajeImpuestoController = TextEditingController(text: '19');
   final _porcentajeDescuentoController = TextEditingController(text: '0');
+  
+  // Campo para guardar desde donde salió la compra (transferencia, sistecredito, etc)
+  final _origenCompraController = TextEditingController();
+  
   String _tipoImpuesto = 'IVA';
   String _tipoDescuento = '%';
   Producto? _productoSeleccionado;
+  String _destinoSeleccionado = 'ALMACÉN'; // 📦 BODEGA, ALMACÉN o PARTE Y PARTE
 
   DateTime _fechaFactura = DateTime.now();
   DateTime _fechaVencimiento = DateTime.now().add(Duration(days: 30));
@@ -762,6 +769,19 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
     _fechaVencimiento =
         factura.fechaVencimiento ?? DateTime.now().add(Duration(days: 30));
     _pagadoDesdeCaja = factura.pagadoDesdeCaja;
+    
+    // Cargar descripción y origen
+    if (factura.descripcion != null) {
+      if (factura.descripcion!.startsWith('Origen:')) {
+        // Extraer el origen de la descripción
+        _origenCompraController.text = factura.descripcion!.replaceFirst(
+          'Origen: ',
+          '',
+        );
+      } else {
+        _descripcionController.text = factura.descripcion!;
+      }
+    }
 
     // Cargar items
     _items.clear();
@@ -785,6 +805,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
     _valorUnitarioController.dispose();
     _porcentajeImpuestoController.dispose();
     _porcentajeDescuentoController.dispose();
+    _origenCompraController.dispose();
     super.dispose();
   }
 
@@ -870,16 +891,33 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
 
   Future<void> _cargarProductos() async {
     try {
-      setState(() => _cargandoProductos = true);
-      final productos = await _productoService.getProductos();
-      if (mounted) {
-        setState(() {
-          _productos = productos;
-          _cargandoProductos = false;
-        });
+      // Obtener productos desde el provider de cache primero
+      final cacheProvider = Provider.of<DatosCacheProvider>(
+        context,
+        listen: false,
+      );
+
+      if (cacheProvider.productos != null &&
+          cacheProvider.productos!.isNotEmpty) {
+        // Usar productos del cache (mucho más rápido)
+        if (mounted) {
+          setState(() {
+            _productos = cacheProvider.productos!;
+            _cargandoProductos = false;
+          });
+        }
+      } else {
+        // Si no hay productos en cache, cargarlos del servicio
+        setState(() => _cargandoProductos = true);
+        final productos = await _productoService.getProductos();
+        if (mounted) {
+          setState(() {
+            _productos = productos;
+            _cargandoProductos = false;
+          });
+        }
       }
     } catch (e) {
-        
       if (mounted) {
         setState(() => _cargandoProductos = false);
       }
@@ -1311,6 +1349,53 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
             ],
           ),
         ),
+        SizedBox(height: 16),
+        // Campo de Origen de Compra (solo se muestra cuando NO paga desde caja)
+        if (!_pagadoDesdeCaja)
+          Container(
+            padding: EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.blue.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.blue.withOpacity(0.3), width: 1),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Origen de la Compra',
+                  style: TextStyle(
+                    color: Colors.blue.shade300,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+                SizedBox(height: 8),
+                TextField(
+                  controller: _origenCompraController,
+                  style: TextStyle(color: AppTheme.textPrimary),
+                  decoration: InputDecoration(
+                    hintText:
+                        'Ej: Transferencia, Sistecredito, Efectivo en mano, etc.',
+                    hintStyle: TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 13,
+                    ),
+                    filled: true,
+                    fillColor: AppTheme.surfaceDark,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(4),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
       ],
     );
   }
@@ -1493,7 +1578,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                           _productoSeleccionado = producto;
                           _codigoProductoController.text = producto.id;
                           _nombreProductoController.text = producto.nombre;
-                          _valorUnitarioController.text = producto.precio
+                          _valorUnitarioController.text = producto.costo
                               .toString();
                         });
                       },
@@ -1822,6 +1907,68 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
               ),
             ),
             SizedBox(width: 8),
+            // 📦 MOSTRAR STOCK DISPONIBLE
+            if (_productoSeleccionado != null)
+              Container(
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppTheme.primary.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(
+                    color: AppTheme.primary.withOpacity(0.3),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      'Stock: ALM ${_productoSeleccionado!.almacen ?? 0}',
+                      style: TextStyle(
+                        color: AppTheme.primary,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      'BOD ${_productoSeleccionado!.bodega ?? 0}',
+                      style: TextStyle(
+                        color: Colors.orange,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            SizedBox(width: 8),
+            // 📦 Selector de DESTINO en compras
+            Expanded(
+              flex: 1,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: AppTheme.surfaceDark,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: DropdownButtonFormField<String>(
+                  value: _destinoSeleccionado,
+                  style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+                  decoration: InputDecoration(
+                    isDense: true,
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 8,
+                    ),
+                    border: InputBorder.none,
+                    hintText: 'Destino',
+                  ),
+                  dropdownColor: AppTheme.cardBg,
+                  items: ['BODEGA', 'ALMACÉN', 'PARTE Y PARTE']
+                      .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                      .toList(),
+                  onChanged: (v) => setState(() => _destinoSeleccionado = v ?? 'ALMACÉN'),
+                ),
+              ),
+            ),
+            SizedBox(width: 8),
             // Botones + y -
             Row(
               mainAxisSize: MainAxisSize.min,
@@ -1980,6 +2127,35 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                             style: TextStyle(
                               color: AppTheme.primary,
                               fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        // 📦 Mostrar destino
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: item.destino == 'BODEGA'
+                                ? Colors.blue.withOpacity(0.2)
+                                : item.destino == 'ALMACÉN'
+                                    ? Colors.orange.withOpacity(0.2)
+                                    : Colors.purple.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            item.destino.length > 8
+                                ? 'P. P.'
+                                : item.destino,
+                            style: TextStyle(
+                              color: item.destino == 'BODEGA'
+                                  ? Colors.blue
+                                  : item.destino == 'ALMACÉN'
+                                      ? Colors.orange
+                                      : Colors.purple,
+                              fontSize: 11,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -3319,6 +3495,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
       valorDescuento: descuento,
       porcentajeImpuesto: porcentajeImpuesto,
       porcentajeDescuento: porcentajeDescuento,
+      destino: _destinoSeleccionado, // 📦 Agregar destino
     );
 
     setState(() {
@@ -3333,6 +3510,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
       _porcentajeDescuentoController.text = '0';
       _tipoImpuesto = 'IVA';
       _tipoDescuento = '%';
+      _destinoSeleccionado = 'ALMACÉN'; // 📦 Resetear destino
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -3522,9 +3700,15 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
         fechaFactura: _fechaFactura,
         fechaVencimiento: _fechaVencimiento,
         total: totalFinal,
-        estado: 'PENDIENTE',
+        estado: _pagadoDesdeCaja ? 'PENDIENTE' : 'PROCESADA',
         pagadoDesdeCaja: _pagadoDesdeCaja,
         items: itemsVerificados,
+        // Guardar el origen de la compra si no paga desde caja
+        descripcion: !_pagadoDesdeCaja
+            ? 'Origen: ${_origenCompraController.text.isNotEmpty ? _origenCompraController.text : 'No especificado'}'
+            : _descripcionController.text.isNotEmpty
+            ? _descripcionController.text
+            : null,
         fechaCreacion: DateTime.now(),
         fechaActualizacion: DateTime.now(),
         // Campos DIAN
@@ -3549,6 +3733,9 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
 
       // 📦 Registrar movimientos de inventario (entrada de stock)
       await _registrarMovimientosInventarioCompra(facturaCreada);
+
+      // 💰 Actualizar el costo del producto con el último precio de compra
+      await _actualizarCostoProductos(facturaCreada);
 
       // Verificar si la factura creada tiene el total correcto
       if (facturaCreada.total <= 0 && total > 0) {
@@ -3611,21 +3798,89 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
     FacturaCompra factura,
   ) async {
     try {
-         
       for (var item in factura.items) {
         try {
+          // 🔍 Obtener el producto completo para actualizar stock
+          final productoCompleto = await _productoService.getProducto(
+            item.ingredienteId,
+          );
+
+          if (productoCompleto == null) {
+            continue; // Saltar si no encuentra el producto
+          }
+
+          // 📍 Determinar el destino de la compra
+          final destino = item.destino;
+
+          // 📊 Obtener stock anterior y calcular nuevo stock
+          double stockAnterior = 0;
+          double nuevoStock = 0;
+
+          if (destino.toUpperCase() == 'BODEGA') {
+            // Sumar a BODEGA
+            stockAnterior = (productoCompleto.bodega ?? 0).toDouble();
+            nuevoStock = stockAnterior + item.cantidad;
+          } else if (destino.toUpperCase() == 'PARTE Y PARTE') {
+            // Dividir entre ALMACÉN y BODEGA
+            final mitad = item.cantidad / 2;
+            final almacenAnterior = (productoCompleto.almacen ?? 0).toDouble();
+            final bodegaAnterior = (productoCompleto.bodega ?? 0).toDouble();
+            
+            // Actualizar ambos
+            final almacenNuevo = almacenAnterior + mitad;
+            final bodegaNuevo = bodegaAnterior + mitad;
+
+            // Crear movimiento con información de PARTE Y PARTE
+            final movimiento = MovimientoInventario(
+              inventarioId: item.ingredienteId,
+              productoId: item.ingredienteId,
+              productoNombre: item.ingredienteNombre,
+              tipoMovimiento: 'Entrada',
+              motivo: 'Compra - Factura ${factura.numeroFactura} (PARTE Y PARTE)',
+              cantidadAnterior: almacenAnterior + bodegaAnterior,
+              cantidadMovimiento: item.cantidad,
+              cantidadNueva: almacenNuevo + bodegaNuevo,
+              responsable: 'Sistema',
+              referencia: 'FC-${factura.numeroFactura}',
+              observaciones: 'Compra a ${factura.proveedorNombre} - Mitad almacén, mitad bodega',
+              costoUnitario: item.precioUnitario,
+              precioTotal: item.subtotal,
+              fecha: DateTime.now(),
+              facturaNo: factura.numeroFactura,
+              proveedor: factura.proveedorNombre,
+            );
+
+            await _inventarioService.registrarMovimiento(movimiento);
+
+            // Actualizar producto con nuevo stock
+            final productoActualizado = productoCompleto.copyWith(
+              almacen: almacenNuevo.toInt(),
+              bodega: bodegaNuevo.toInt(),
+            );
+
+            await _productoService.updateProducto(productoActualizado);
+
+            print('✅ Stock actualizado (PARTE Y PARTE): ${productoActualizado.nombre} - ALM: ${almacenAnterior} → ${almacenNuevo}, BOD: ${bodegaAnterior} → ${bodegaNuevo}');
+            continue;
+          } else {
+            // Por defecto ALMACÉN
+            stockAnterior = (productoCompleto.almacen ?? 0).toDouble();
+            nuevoStock = stockAnterior + item.cantidad;
+          }
+
+          // 📋 Crear movimiento de inventario
           final movimiento = MovimientoInventario(
             inventarioId: item.ingredienteId,
             productoId: item.ingredienteId,
             productoNombre: item.ingredienteNombre,
             tipoMovimiento: 'Entrada',
-            motivo: 'Compra - Factura ${factura.numeroFactura}',
-            cantidadAnterior: 0, // El backend calculará el stock anterior
+            motivo: 'Compra - Factura ${factura.numeroFactura} (${destino})',
+            cantidadAnterior: stockAnterior,
             cantidadMovimiento: item.cantidad,
-            cantidadNueva: 0, // El backend calculará el stock nuevo
+            cantidadNueva: nuevoStock,
             responsable: 'Sistema',
             referencia: 'FC-${factura.numeroFactura}',
-            observaciones: 'Compra a ${factura.proveedorNombre}',
+            observaciones: 'Compra a ${factura.proveedorNombre} en ${destino}',
             costoUnitario: item.precioUnitario,
             precioTotal: item.subtotal,
             fecha: DateTime.now(),
@@ -3633,15 +3888,60 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
             proveedor: factura.proveedorNombre,
           );
 
+          // 📝 Registrar movimiento en inventario
           await _inventarioService.registrarMovimiento(movimiento);
-                     } catch (e) {
+
+          // 🔄 ACTUALIZAR STOCK EN EL PRODUCTO
+          final productoActualizado = productoCompleto.copyWith(
+            bodega: destino.toUpperCase() == 'BODEGA'
+                ? nuevoStock.toInt()
+                : (productoCompleto.bodega ?? 0),
+            almacen: destino.toUpperCase() == 'ALMACÉN'
+                ? nuevoStock.toInt()
+                : (productoCompleto.almacen ?? 0),
+          );
+
+          // 💾 Guardar producto actualizado
+          await _productoService.updateProducto(productoActualizado);
+
+          print('✅ Stock actualizado: ${productoActualizado.nombre} - ${destino}: ${stockAnterior} → ${nuevoStock}');
+        } catch (e) {
+          // Continuar con el siguiente item aunque haya error
+          print('⚠️ Error registrando movimiento para ${item.ingredienteId}: $e');
+        }
+      }
+    } catch (e) {
+      // No lanzar excepción para no interrumpir el flujo de la factura
+      print('⚠️ Error general en registro de movimientos: $e');
+    }
+  }
+
+  // 💰 Actualizar el costo de los productos con el último precio de compra
+  Future<void> _actualizarCostoProductos(FacturaCompra factura) async {
+    try {
+      for (var item in factura.items) {
+        try {
+          // Buscar el producto en la lista de productos disponibles
+          Producto? producto;
+          try {
+            producto = _productos.firstWhere((p) => p.id == item.ingredienteId);
+          } catch (e) {
+            producto = null;
+          }
+
+          if (producto != null) {
+            // Actualizar el costo del producto con el precio de compra
+            // El backend manejará la actualización del modelo
+            await _productoService.actualizarCostoProducto(
+              item.ingredienteId,
+              item.precioUnitario,
+            );
+          }
+        } catch (e) {
           // Continuar con el siguiente item aunque haya error
         }
       }
-
-        
     } catch (e) {
-        
       // No lanzar excepción para no interrumpir el flujo de la factura
     }
   }

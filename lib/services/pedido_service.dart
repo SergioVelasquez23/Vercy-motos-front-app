@@ -538,42 +538,14 @@ class PedidoService {
               item.productoId: item.ingredientesSeleccionados,
           };
 
-          // ✅ CORREGIDO: Validar stock antes de procesar
-          final Map<String, int> cantidadPorProducto = {
-            for (var item in pedidoCreado.items) item.productoId: item.cantidad,
-          };
-
-          // Validar stock disponible antes de descontar
-          final validacion = await _inventarioService.validarStockAntesDePedido(
-            ingredientesPorItem,
-            cantidadPorProducto,
-          );
-
-          if (!validacion['stockSuficiente']) {
-              
-            // Continuar pero registrar la alerta
-          }
-
-          // Procesar descuento de ingredientes automáticamente
-          try {
-            final procesado = await _inventarioService
-                .procesarPedidoParaInventario(
-                  pedidoCreado.id,
-                  ingredientesPorItem,
-                );
-            if (procesado) {
-                             } else {
-                             }
-          } catch (e) {
-              
-            // ✅ MEJORADO: Si es error crítico de stock, propagar
-            if (e.toString().contains('stock insuficiente') ||
-                e.toString().contains('insufficient stock')) {
-              throw Exception(
-                'Pedido creado pero error crítico de inventario: $e',
-              );
-            }
-          }
+          // ✅ COMENTADO: Las validaciones de stock ahora se hacen en UI
+          // verificando directamente los atributos almacen y bodega del producto
+          // Por lo tanto estos endpoints ya no se necesitan
+          // final Map<String, int> cantidadPorProducto = {
+          //   for (var item in pedidoCreado.items) item.productoId: item.cantidad,
+          // };
+          // final validacion = await _inventarioService.validarStockAntesDePedido(...)
+          // await _inventarioService.procesarPedidoParaInventario(...)
 
           // Notificar a la aplicación que se creó un pedido (listeners pueden recargar UI)
           try {
@@ -641,16 +613,15 @@ class PedidoService {
               item.productoId: item.ingredientesSeleccionados,
           };
 
-          // Procesar cambios en ingredientes automáticamente
-          try {
-            await _inventarioService.procesarPedidoParaInventario(
-              pedidoActualizado.id,
-              ingredientesPorItem,
-            );
-                         } catch (e) {
-              
-            // No fallar la actualización del pedido, solo loggear el error
-          }
+          // ✅ COMENTADO: Las validaciones de stock ahora se hacen en UI
+          // try {
+          //   await _inventarioService.procesarPedidoParaInventario(
+          //     pedidoActualizado.id,
+          //     ingredientesPorItem,
+          //   );
+          // } catch (e) {
+          //   // No fallar la actualización del pedido, solo loggear el error
+          // }
 
           // Notificar a la aplicación que se actualizó un pedido
           try {
@@ -1867,48 +1838,42 @@ class PedidoService {
     }
   }
 
-  // Obtener ingredientes que pueden devolverse para un producto cancelado
-  Future<List<IngredienteDevolucion>> obtenerIngredientesParaDevolucion(
-    String pedidoId,
-    String productoId,
-  ) async {
-    try {
-      final ingredientes = await _inventarioService
-          .getIngredientesDescontadosParaProducto(pedidoId, productoId);
+  // ✅ COMENTADO: Este método no se usa porque getIngredientesDescontadosParaProducto está obsoleto
+  // Future<List<IngredienteDevolucion>> obtenerIngredientesParaDevolucion(
+  //   String pedidoId,
+  //   String productoId,
+  // ) async {
+  //   try {
+  //     final ingredientes = await _inventarioService
+  //         .getIngredientesDescontadosParaProducto(pedidoId, productoId);
+  //     return ingredientes
+  //         .map((ingrediente) => IngredienteDevolucion.fromJson(ingrediente))
+  //         .toList();
+  //   } catch (e) {
+  //     throw Exception('Error al obtener ingredientes para devolución: $e');
+  //   }
+  // }
 
-      return ingredientes
-          .map((ingrediente) => IngredienteDevolucion.fromJson(ingrediente))
-          .toList();
-    } catch (e) {
-        
-      throw Exception('Error al obtener ingredientes para devolución: $e');
-    }
-  }
-
-  // Cancelar producto con selección de ingredientes
-  Future<void> cancelarProductoConIngredientes(
-    CancelarProductoRequest request,
-  ) async {
-    try {
-      final ingredientesADevolver = request.ingredientes
-          .where((ingrediente) => ingrediente.devolver)
-          .map((ingrediente) => ingrediente.toJson())
-          .toList();
-
-      await _inventarioService.devolverIngredientesAlInventario(
-        request.pedidoId,
-        request.productoId,
-        ingredientesADevolver,
-        request.motivo,
-        request.responsable,
-      );
-
-        
-    } catch (e) {
-        
-      throw Exception('Error al cancelar producto con ingredientes: $e');
-    }
-  }
+  // ✅ COMENTADO: Este método no se usa porque devolverIngredientesAlInventario está obsoleto
+  // Future<void> cancelarProductoConIngredientes(
+  //   CancelarProductoRequest request,
+  // ) async {
+  //   try {
+  //     final ingredientesADevolver = request.ingredientes
+  //         .where((ingrediente) => ingrediente.devolver)
+  //         .map((ingrediente) => ingrediente.toJson())
+  //         .toList();
+  //     await _inventarioService.devolverIngredientesAlInventario(
+  //       request.pedidoId,
+  //       request.productoId,
+  //       ingredientesADevolver,
+  //       request.motivo,
+  //       request.responsable,
+  //     );
+  //   } catch (e) {
+  //     throw Exception('Error al cancelar producto con ingredientes: $e');
+  //   }
+  // }
 
   // Mover un pedido de una mesa a otra
   Future<Pedido> moverPedidoAMesa(

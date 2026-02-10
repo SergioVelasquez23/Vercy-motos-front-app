@@ -117,7 +117,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final userProvider = Provider.of<UserProvider>(context, listen: false);
 
-      // Solo cargar datos si el usuario es admin
+      // Cargar datos solo si el usuario es admin
       if (userProvider.isAdmin) {
         _cargarDatos();
 
@@ -139,6 +139,11 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
           if (mounted) {
             setState(() {});
           }
+        });
+      } else if (userProvider.isAsesor) {
+        // Para asesores, no cargar datos del dashboard, solo marcar como completado
+        setState(() {
+          _isLoading = false;
         });
       }
     });
@@ -767,7 +772,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                 // Indicador de precarga de datos
                 _buildPrecargaIndicator(),
                 Expanded(
-                  child: userProvider.isAdmin || userProvider.isSuperAdmin
+                  child: (userProvider.isAdmin || userProvider.isSuperAdmin || userProvider.isAsesor)
                       ? (_isLoading
                             ? Center(
                                 child: CircularProgressIndicator(
@@ -785,44 +790,46 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                                   ),
                                   child: Column(
                                     children: [
-                                      // Cards de estadísticas principales
-                                      _buildStatsCards(context),
-                                      SizedBox(height: AppTheme.spacingXLarge),
+                                      // Solo mostrar datos de admin si es admin
+                                      if (userProvider.isAdmin || userProvider.isSuperAdmin) ...[
+                                        // Cards de estadísticas principales
+                                        _buildStatsCards(context),
+                                        SizedBox(height: AppTheme.spacingXLarge),
 
-                                      // Gráfico de ventas por día
-                                      _buildVentasPorDiaChart(context),
-                                      SizedBox(height: AppTheme.spacingXLarge),
+                                        // Gráfico de ventas por día
+                                        _buildVentasPorDiaChart(context),
+                                        SizedBox(height: AppTheme.spacingXLarge),
 
-                                      // Gráficos en fila o columna según el dispositivo
-                                      context.isMobile
-                                          ? Column(
-                                              children: [
-                                                _buildIngresosVsEgresosChart(
-                                                  context,
+                                        // Gráficos en fila o columna según el dispositivo
+                                        context.isMobile
+                                            ? Column(
+                                                children: [
+                                                  _buildIngresosVsEgresosChart(
+                                                    context,
+                                                  ),
+                                                  SizedBox(
+                                                    height: AppTheme.spacingLarge,
+                                                  ),
+                                                  _buildTopProductosChart(
+                                                    context,
+                                                  ),
+                                                ],
+                                              )
+                                            : Row(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                Expanded(
+                                                  child:
+                                                      _buildIngresosVsEgresosChart(
+                                                        context,
+                                                      ),
                                                 ),
                                                 SizedBox(
-                                                  height: AppTheme.spacingLarge,
+                                                  width: AppTheme.spacingXLarge,
                                                 ),
-                                                _buildTopProductosChart(
-                                                  context,
-                                                ),
-                                              ],
-                                            )
-                                          : Row(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                              Expanded(
-                                                child:
-                                                    _buildIngresosVsEgresosChart(
-                                                      context,
-                                                    ),
-                                              ),
-                                              SizedBox(
-                                                width: AppTheme.spacingXLarge,
-                                              ),
-                                              Expanded(
-                                                child: _buildTopProductosChart(
+                                                Expanded(
+                                                  child: _buildTopProductosChart(
                                                   context,
                                                 ),
                                               ),
@@ -864,7 +871,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                                           ),
                                     SizedBox(height: AppTheme.spacingXLarge),
                                   ],
-                                ),
+              ]),
                               ),
                             ))
                     : Center(

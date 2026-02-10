@@ -4,6 +4,7 @@ import 'screens/login_screen.dart';
 import 'screens/dashboard_screen_v2.dart';
 import 'screens/facturacion_screen.dart';
 import 'screens/facturas_list_screen.dart';
+import 'screens/facturas_compras_screen.dart';
 import 'screens/clientes_list_screen.dart';
 import 'screens/cliente_form_screen.dart';
 import 'screens/cotizaciones_list_screen.dart';
@@ -152,6 +153,7 @@ class MyApp extends StatelessWidget {
         '/abrir_caja': (context) => AbrirCajaScreen(),
         '/cerrar_caja': (context) => CerrarCajaScreen(),
         '/compras': (context) => ComprasListScreen(),
+        '/facturas-compras': (context) => CrearFacturaCompraScreen(),
         '/gastos': (context) => GastosScreen(mostrarFormulario: true),
         '/tipos-gasto': (context) => TiposGastoScreen(),
         '/gastos-lista': (context) => GastosListScreen(),

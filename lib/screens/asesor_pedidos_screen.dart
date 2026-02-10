@@ -309,8 +309,9 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
       appBar: AppBar(
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: Colors.white),
-          tooltip: 'Volver',
-          onPressed: () => Navigator.pop(context),
+          tooltip: 'Volver al dashboard',
+          onPressed: () =>
+              Navigator.pushReplacementNamed(context, '/dashboard'),
         ),
         title: Row(
           children: [

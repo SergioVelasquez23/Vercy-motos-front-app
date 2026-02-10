@@ -256,6 +256,27 @@ class DatosCacheProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// ⚡ ULTRA RÁPIDO: Carga inicial optimizada (solo productos sin imágenes)
+  Future<void> initializeRapido() async {
+    _isLoadingProductos = true;
+    notifyListeners();
+
+    try {
+      // Cargar solo productos sin imágenes (10x más rápido)
+      final productos = await _productoService.obtenerProductosParaTraslados();
+      _productos = productos;
+      _ultimaCargaProductos = DateTime.now();
+
+      // Categorías se cargan en background si es necesario
+      _cargarCategorias(silent: true);
+      _startPolling();
+    } catch (e) {
+    } finally {
+      _isLoadingProductos = false;
+      notifyListeners();
+    }
+  }
+
   @override
   void dispose() {
     _pollingTimer?.cancel();

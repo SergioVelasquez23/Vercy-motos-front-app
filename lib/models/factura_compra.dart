@@ -237,6 +237,9 @@ class ItemFacturaCompra {
   final double valorImpuesto;
   final double porcentajeDescuento;
   final double valorDescuento;
+  
+  // 📦 DESTINO EN COMPRAS
+  final String destino; // "BODEGA", "ALMACÉN" o "PARTE Y PARTE"
 
   ItemFacturaCompra({
     required this.ingredienteId,
@@ -249,6 +252,7 @@ class ItemFacturaCompra {
     this.valorImpuesto = 0.0,
     this.porcentajeDescuento = 0.0,
     this.valorDescuento = 0.0,
+    this.destino = "ALMACÉN",
   });
 
   factory ItemFacturaCompra.fromJson(Map<String, dynamic> json) {
@@ -263,6 +267,7 @@ class ItemFacturaCompra {
       valorImpuesto: (json['valorImpuesto'] ?? 0).toDouble(),
       porcentajeDescuento: (json['porcentajeDescuento'] ?? 0).toDouble(),
       valorDescuento: (json['valorDescuento'] ?? 0).toDouble(),
+      destino: (json['destino'] ?? 'ALMACÉN').toString(),
     );
   }
 
@@ -297,6 +302,8 @@ class ItemFacturaCompra {
       'valorImpuesto': valorImpuesto,
       'porcentajeDescuento': porcentajeDescuento,
       'valorDescuento': valorDescuento,
+      // 📦 Destino en compras
+      'destino': destino,
     };
   }
 }

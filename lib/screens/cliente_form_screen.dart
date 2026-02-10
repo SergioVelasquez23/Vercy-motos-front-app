@@ -55,6 +55,9 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
     super.initState();
     _esEdicion = widget.cliente != null;
 
+    // Inicializar tipo de persona como "natural" por defecto
+    _tipoPersonaController.text = 'natural';
+
     if (_esEdicion) {
       _cargarDatosCliente();
     }
@@ -233,9 +236,13 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
       icono: Icons.badge,
       children: [
         DropdownButtonFormField<String>(
-          value: _tipoPersonaController.text.isEmpty
+          value:
+              _tipoPersonaController.text.isEmpty ||
+                  _tipoPersonaController.text == 'Persona Natural'
               ? 'natural'
-              : _tipoPersonaController.text,
+              : (_tipoPersonaController.text == 'Persona Jurídica'
+                    ? 'juridica'
+                    : _tipoPersonaController.text),
           decoration: InputDecoration(
             labelText: 'Tipo de Persona *',
             border: OutlineInputBorder(),
@@ -247,9 +254,17 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
               child: Text('Persona Jurídica'),
             ),
           ],
-          onChanged: (value) =>
-              setState(() => _tipoPersonaController.text = value!),
-          validator: (value) => value == null ? 'Campo requerido' : null,
+          onChanged: (value) {
+            if (value != null) {
+              setState(() => _tipoPersonaController.text = value);
+            }
+          },
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'Campo requerido';
+            }
+            return null;
+          },
         ),
         SizedBox(height: 16),
         DropdownButtonFormField<String>(
@@ -267,9 +282,13 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
             DropdownMenuItem(value: 'TI', child: Text('Tarjeta de Identidad')),
             DropdownMenuItem(value: 'PAS', child: Text('Pasaporte')),
           ],
-          onChanged: (value) =>
-              setState(() => _tipoIdentificacionController.text = value!),
-          validator: (value) => value == null ? 'Campo requerido' : null,
+          onChanged: (value) {
+            if (value != null) {
+              setState(() => _tipoIdentificacionController.text = value);
+            }
+          },
+          validator: (value) =>
+              value == null || value.isEmpty ? 'Campo requerido' : null,
         ),
         SizedBox(height: 16),
         Row(

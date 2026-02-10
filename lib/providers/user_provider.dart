@@ -29,7 +29,13 @@ class UserProvider extends ChangeNotifier {
   bool get isSuperAdmin => _roles.contains('SUPERADMIN');
   bool get isAdmin => _roles.contains('ADMIN') || _roles.contains('SUPERADMIN');
   bool get isMesero => _roles.contains('MESERO');
-  bool get isAsesor => _roles.contains('ASESOR');
+  bool get isAsesor {
+    // Hacer búsqueda case-insensitive para compatibilidad
+    final hasAsesor = _roles.any((role) => role.toUpperCase() == 'ASESOR');
+    print('🔍 DEBUG: Roles del usuario: $_roles');
+    print('🔍 DEBUG: ¿Es asesor? $hasAsesor');
+    return hasAsesor;
+  }
 
   // Método para verificar si es únicamente mesero (sin otros roles administrativos)
   bool get isOnlyMesero =>

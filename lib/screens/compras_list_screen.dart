@@ -656,7 +656,9 @@ class _ComprasListScreenState extends State<ComprasListScreen> {
     final estado =
         compra.pagadoDesdeCaja || compra.estado.toUpperCase() == 'PAGADA'
         ? 'Completa'
-        : 'Pendiente';
+        : (compra.estado.toUpperCase() == 'PROCESADA'
+              ? 'Procesada'
+              : 'Pendiente');
 
     // ID corto para mostrar
     String numeroCompra = 'OC${(index + 1).toString().padLeft(3, '0')}';

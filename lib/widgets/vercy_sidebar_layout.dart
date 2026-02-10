@@ -196,18 +196,42 @@ class _VercySidebarLayoutState extends State<VercySidebarLayout> {
     return ListView(
       padding: EdgeInsets.symmetric(vertical: 8),
       children: [
-        // Menú para Asesores (solo pueden crear pedidos)
-        if (userProvider.isOnlyAsesor) ...[
+        // Menú para Asesores (si tiene rol ASESOR, sin importar si también es ADMIN)
+        if (userProvider.isAsesor) ...[
           _buildMenuItem(
             icon: Icons.shopping_cart,
             label: 'Crear Pedido',
             route: '/asesor-pedidos',
             isAdmin: false,
           ),
+          _buildMenuItem(
+            icon: Icons.request_quote,
+            label: 'Cotización',
+            route: '/cotizaciones',
+            isAdmin: false,
+          ),
+          _buildMenuItem(
+            icon: Icons.people,
+            label: 'Clientes',
+            route: '/clientes',
+            isAdmin: false,
+          ),
+          _buildMenuItem(
+            icon: Icons.description,
+            label: 'Documentos',
+            route: '/facturas-lista',
+            isAdmin: false,
+          ),
+          _buildMenuItem(
+            icon: Icons.notifications_active,
+            label: 'Alertas',
+            route: '/alertas',
+            isAdmin: false,
+          ),
         ],
 
-        // Menú para Admins y SuperAdmins
-        if (!userProvider.isOnlyAsesor) ...[
+        // Menú para Admins y SuperAdmins (solo si NO es asesor)
+        if (!userProvider.isAsesor) ...[
           _buildMenuItem(
             icon: Icons.receipt,
             label: 'Facturar',
@@ -320,12 +344,12 @@ class _VercySidebarLayoutState extends State<VercySidebarLayout> {
               ),
             ],
           ),
-          _buildMenuItem(
-            icon: Icons.local_shipping,
-            label: 'Traslados',
-            route: '/traslados',
-            isAdmin: true,
-          ),
+          // _buildMenuItem(
+          //   icon: Icons.local_shipping,
+          //   label: 'Traslados',
+          //   route: '/traslados',
+          //   isAdmin: true,
+          // ),
           _buildMenuItem(
             icon: Icons.tune,
             label: 'Ajuste',

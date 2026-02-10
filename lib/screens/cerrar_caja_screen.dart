@@ -1061,10 +1061,104 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
                       'Medio: ${compra.medioPago}',
                       style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
                     ),
+                    if (compra.observaciones.isNotEmpty) ...[
+                      SizedBox(height: 4),
+                      Text(
+                        'Obs: ${compra.observaciones}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.blue.shade300,
+                        ),
+                      ),
+                    ],
                     if (compra.fecha != null) ...[
                       Text(
                         'Fecha: ${_formatearFecha(compra.fecha!)}',
                         style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ],
+          if (compras.detallesComprasNoDesdeCaja.isNotEmpty) ...[
+            SizedBox(height: 16),
+            Text(
+              'Compras NO Pagadas desde Caja:',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Colors.blue.shade300,
+              ),
+            ),
+            SizedBox(height: 8),
+            ...compras.detallesComprasNoDesdeCaja.map(
+              (compra) => Container(
+                margin: EdgeInsets.only(bottom: 8),
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          compra.numero,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue.shade300,
+                          ),
+                        ),
+                        Text(
+                          formatCurrency(compra.total),
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue.shade300,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Text(
+                      'Proveedor: ${compra.proveedor}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                    if (compra.observaciones.isNotEmpty) ...[
+                      SizedBox(height: 4),
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          '${compra.observaciones}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.blue.shade200,
+                          ),
+                        ),
+                      ),
+                    ],
+                    if (compra.fecha != null) ...[
+                      SizedBox(height: 4),
+                      Text(
+                        'Fecha: ${_formatearFecha(compra.fecha!)}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.textSecondary,
+                        ),
                       ),
                     ],
                   ],

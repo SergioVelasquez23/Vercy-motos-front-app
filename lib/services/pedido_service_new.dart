@@ -301,10 +301,11 @@ class PedidoService {
           item.productoId: item.ingredientesSeleccionados,
       };
 
-      await _inventarioService.procesarPedidoParaInventario(
-        pedido.id,
-        ingredientesPorItem,
-      );
+      // ✅ COMENTADO: Las validaciones de stock ahora se hacen en UI
+      // await _inventarioService.procesarPedidoParaInventario(
+      //   pedido.id,
+      //   ingredientesPorItem,
+      // );
     } catch (e) {
       // No fallar la operación principal si hay error en inventario
         

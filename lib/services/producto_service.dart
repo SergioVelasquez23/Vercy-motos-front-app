@@ -902,9 +902,47 @@ class ProductoService {
     try {
       final headers = await _getHeaders();
 
-      // Convertir el producto a JSON para enviarlo al backend
-      final productoJson = producto.toJson();
-        
+      // Crear un payload minimalista con solo los campos esenciales
+      final Map<String, dynamic> productoJson = {
+        'nombre': producto.nombre,
+        'precio': producto.precio,
+        'costo': producto.costo,
+        'estado': producto.estado,
+        'descripcion': producto.descripcion,
+        'codigo': producto.codigo,
+        'codigoBarras': producto.codigoBarras,
+        'marca': producto.marca,
+        'localizacion': producto.localizacion,
+        'controlInventario': producto.controlInventario,
+        'inventarioBajo': producto.inventarioBajo,
+        'inventarioOptimo': producto.inventarioOptimo,
+      };
+      
+      // Agregar campos opcionales solo si no son null
+      if (producto.categoria?.id != null) {
+        productoJson['categoriaId'] = producto.categoria!.id;
+      }
+      if (producto.imagenUrl != null) {
+        productoJson['imagenUrl'] = producto.imagenUrl;
+      }
+      if (producto.impuestos != null && producto.impuestos! > 0) {
+        productoJson['impuestos'] = producto.impuestos;
+      }
+      if (producto.porcentajeImpuesto != null) {
+        productoJson['porcentajeImpuesto'] = producto.porcentajeImpuesto;
+      }
+      if (producto.nombreProveedor != null) {
+        productoJson['nombreProveedor'] = producto.nombreProveedor;
+      }
+      if (producto.nitProveedor != null) {
+        productoJson['nitProveedor'] = producto.nitProveedor;
+      }
+      if (producto.almacen != null && producto.almacen! > 0) {
+        productoJson['almacen'] = producto.almacen;
+      }
+      if (producto.bodega != null && producto.bodega! > 0) {
+        productoJson['bodega'] = producto.bodega;
+      }
 
       final response = await http
           .put(
@@ -923,6 +961,30 @@ class ProductoService {
     } catch (e) {
         
       throw Exception('No se pudo actualizar el producto: $e');
+    }
+  }
+
+  // 💰 Actualizar solo el costo del producto (último precio de compra)
+  Future<void> actualizarCostoProducto(
+    String productoId,
+    double nuevoCosto,
+  ) async {
+    try {
+      final headers = await _getHeaders();
+
+      final response = await http
+          .patch(
+            Uri.parse('$baseUrl/api/productos/$productoId/costo'),
+            headers: headers,
+            body: json.encode({'costo': nuevoCosto}),
+          )
+          .timeout(Duration(seconds: 300));
+
+      if (response.statusCode != 200 && response.statusCode != 204) {
+        throw Exception('Error al actualizar costo: ${response.statusCode}');
+      }
+    } catch (e) {
+      // No lanzar excepción para no interrumpir el flujo de la compra
     }
   }
 
@@ -2184,5 +2246,29 @@ class ProductoService {
           .toList();
     }
     throw Exception('Formato de respuesta no válido');
+  }
+
+  /// ⚡ OPTIMIZADO PARA TRASLADOS: Carga solo productos necesarios sin imágenes
+  /// Usado por TrasladosScreen para carga ultra-rápida
+  Future<List<Producto>> obtenerProductosParaTraslados() async {
+    final headers = await _getHeaders();
+    // 🚀 Endpoint ligero sin imágenes - ideal para listas
+    final url = '$baseUrl/api/productos/ligero?page=0&size=10000';
+
+    try {
+      final response = await http
+          .get(Uri.parse(url), headers: headers)
+          .timeout(Duration(seconds: 20));
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        return _parseListResponseLigero(responseData);
+      } else {
+        return await _getProductosBasico();
+      }
+    } catch (e) {
+      // Fallback a básico
+      return await _getProductosBasico();
+    }
   }
 }

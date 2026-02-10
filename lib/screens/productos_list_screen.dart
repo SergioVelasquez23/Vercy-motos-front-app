@@ -45,8 +45,14 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
   Future<void> _cargarDatos() async {
     setState(() => _isLoading = true);
     try {
-      final productos = await _productoService.getProductos();
-      final categorias = await _productoService.getCategorias();
+      // ⚡ OPTIMIZACIÓN: Cargar en paralelo + sin imágenes
+      final results = await Future.wait([
+        _productoService.obtenerProductosParaTraslados(), // ⚡ Sin imágenes
+        _productoService.getCategorias(),
+      ], eagerError: true);
+
+      final productos = results[0] as List<Producto>;
+      final categorias = results[1] as List<Categoria>;
 
       setState(() {
         _productos = productos;
@@ -447,7 +453,10 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
     final colorEstado = _getColorEstado(estadoInventario);
 
     // Código para mostrar
-    String codigoMostrar = producto.codigo ?? producto.id;
+    String codigoMostrar =
+        (producto.codigo != null && producto.codigo!.isNotEmpty)
+        ? producto.codigo!
+        : 'SIN CÓDIGO';
     if (codigoMostrar.length > 12) {
       codigoMostrar = codigoMostrar.substring(0, 12);
     }
@@ -657,7 +666,12 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildDetalleItem('Código', producto.codigo ?? producto.id),
+                _buildDetalleItem(
+                  'Código',
+                  (producto.codigo != null && producto.codigo!.isNotEmpty)
+                      ? producto.codigo!
+                      : 'SIN CÓDIGO',
+                ),
                 _buildDetalleItem('Nombre', producto.nombre),
                 _buildDetalleItem(
                   'Precio Venta',
@@ -824,7 +838,50 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
   }
 
   void _editarProducto(Producto producto) {
-    _mostrarFormularioProductoCompleto(producto: producto);
+    // Cargar el producto completo del servidor antes de editar
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              ),
+            ),
+            SizedBox(width: 12),
+            Text('Cargando producto...'),
+          ],
+        ),
+        backgroundColor: Colors.blue,
+        duration: Duration(seconds: 10),
+      ),
+    );
+
+    _productoService
+        .getProducto(producto.id)
+        .then((productoCompleto) {
+          if (productoCompleto != null) {
+            ScaffoldMessenger.of(context).clearSnackBars();
+            _mostrarFormularioProductoCompleto(producto: productoCompleto);
+          } else {
+            ScaffoldMessenger.of(context).clearSnackBars();
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('No se pudo cargar el producto'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        })
+        .catchError((e) {
+          ScaffoldMessenger.of(context).clearSnackBars();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+          );
+        });
   }
 
   void _mostrarFormularioProductoCompleto({Producto? producto}) {
@@ -838,7 +895,11 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
       text: isEditing ? (producto.descripcion ?? '') : '',
     );
     final codigoController = TextEditingController(
-      text: isEditing ? (producto.codigo ?? '') : '',
+      text: isEditing
+          ? ((producto.codigo != null && producto.codigo!.isNotEmpty)
+                ? producto.codigo!
+                : '')
+          : '',
     );
     final codigoBarrasController = TextEditingController(
       text: isEditing ? (producto.codigoBarras ?? '') : '',

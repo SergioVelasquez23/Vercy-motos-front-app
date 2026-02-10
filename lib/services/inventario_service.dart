@@ -42,27 +42,18 @@ class InventarioService {
 
   // Obtener todos los movimientos de inventario
   Future<List<MovimientoInventario>> getMovimientosInventario() async {
-      
-      
-
     try {
       final response = await _apiService.getList<MovimientoInventario>(
         '$_baseEndpoint/movimientos',
         (json) => MovimientoInventario.fromJson(json),
       );
 
-        
-        
-
       if (response.success && response.data != null) {
-          
         return response.data!;
       } else {
-          
         return [];
       }
     } catch (e) {
-        
       return [];
     }
   }
@@ -73,8 +64,6 @@ class InventarioService {
   ) async {
     try {
       // Siempre mostrar logs para debug
-        
-        
 
       final response = await http
           .post(
@@ -95,10 +84,8 @@ class InventarioService {
         return movimiento;
       }
 
-        
       throw _handleErrorResponse(response);
     } catch (e) {
-        
       throw Exception('Error al registrar movimiento: $e');
     }
   }
@@ -116,10 +103,7 @@ class InventarioService {
     MovimientoInventario movimiento,
   ) async {
     try {
-      if (kDebugMode) {
-          
-          
-      }
+      if (kDebugMode) {}
 
       final response = await http
           .put(
@@ -129,8 +113,7 @@ class InventarioService {
           )
           .timeout(_timeout);
 
-      if (kDebugMode) {
-      }
+      if (kDebugMode) {}
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = json.decode(response.body);
@@ -143,9 +126,7 @@ class InventarioService {
 
       throw _handleErrorResponse(response);
     } catch (e) {
-      if (kDebugMode) {
-          
-      }
+      if (kDebugMode) {}
       throw Exception('Error al actualizar movimiento: $e');
     }
   }
@@ -153,9 +134,7 @@ class InventarioService {
   // Eliminar un movimiento de inventario
   Future<bool> deleteMovimiento(String id) async {
     try {
-      if (kDebugMode) {
-          
-      }
+      if (kDebugMode) {}
 
       final response = await http
           .delete(
@@ -164,8 +143,7 @@ class InventarioService {
           )
           .timeout(_timeout);
 
-      if (kDebugMode) {
-      }
+      if (kDebugMode) {}
 
       if (response.statusCode == 200) {
         _inventarioActualizadoController.add(true);
@@ -174,18 +152,14 @@ class InventarioService {
 
       throw _handleErrorResponse(response);
     } catch (e) {
-      if (kDebugMode) {
-          
-      }
+      if (kDebugMode) {}
       throw Exception('Error al eliminar movimiento: $e');
     }
   }
 
   // Obtener inventario
   Future<List<Inventario>> getInventario() async {
-    if (kDebugMode) {
-        
-    }
+    if (kDebugMode) {}
 
     try {
       // Primero intentar obtener el inventario normal
@@ -193,8 +167,7 @@ class InventarioService {
           .get(Uri.parse(_buildUrl()), headers: _apiConfig.getSecureHeaders())
           .timeout(_timeout);
 
-      if (kDebugMode) {
-      }
+      if (kDebugMode) {}
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = json.decode(response.body);
@@ -217,18 +190,14 @@ class InventarioService {
       // Si hay un error, intentar obtener ingredientes
       return await _getIngredientesComoInventario();
     } catch (e) {
-      if (kDebugMode) {
-          
-      }
+      if (kDebugMode) {}
       throw Exception('Error al obtener inventario: $e');
     }
   }
 
   // Método para obtener ingredientes y convertirlos a formato de inventario
   Future<List<Inventario>> _getIngredientesComoInventario() async {
-    if (kDebugMode) {
-        
-    }
+    if (kDebugMode) {}
 
     try {
       final response = await http
@@ -238,8 +207,7 @@ class InventarioService {
           )
           .timeout(_timeout);
 
-      if (kDebugMode) {
-      }
+      if (kDebugMode) {}
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = json.decode(response.body);
@@ -269,9 +237,7 @@ class InventarioService {
       // Si todo falla, devolver lista vacía
       return [];
     } catch (e) {
-      if (kDebugMode) {
-          
-      }
+      if (kDebugMode) {}
       return [];
     }
   }
@@ -279,10 +245,7 @@ class InventarioService {
   // Crear ingrediente
   Future<Inventario> createIngrediente(Inventario ingrediente) async {
     try {
-      if (kDebugMode) {
-          
-          
-      }
+      if (kDebugMode) {}
 
       final response = await http
           .post(
@@ -303,9 +266,7 @@ class InventarioService {
 
       throw _handleErrorResponse(response);
     } catch (e) {
-      if (kDebugMode) {
-          
-      }
+      if (kDebugMode) {}
       throw Exception('Error al crear ingrediente: $e');
     }
   }
@@ -316,10 +277,7 @@ class InventarioService {
     Inventario ingrediente,
   ) async {
     try {
-      if (kDebugMode) {
-          
-          
-      }
+      if (kDebugMode) {}
 
       final response = await http
           .put(
@@ -340,9 +298,7 @@ class InventarioService {
 
       throw _handleErrorResponse(response);
     } catch (e) {
-      if (kDebugMode) {
-          
-      }
+      if (kDebugMode) {}
       throw Exception('Error al actualizar ingrediente: $e');
     }
   }
@@ -350,9 +306,7 @@ class InventarioService {
   // Eliminar ingrediente
   Future<bool> deleteIngrediente(String id) async {
     try {
-      if (kDebugMode) {
-          
-      }
+      if (kDebugMode) {}
 
       final response = await http
           .delete(
@@ -368,9 +322,7 @@ class InventarioService {
 
       throw _handleErrorResponse(response);
     } catch (e) {
-      if (kDebugMode) {
-          
-      }
+      if (kDebugMode) {}
       throw Exception('Error al eliminar ingrediente: $e');
     }
   }
@@ -380,271 +332,194 @@ class InventarioService {
     _inventarioActualizadoController.close();
   }
 
-  // ✅ CORREGIDO: Validar stock ANTES de procesar el pedido
-  Future<Map<String, dynamic>> validarStockAntesDePedido(
-    Map<String, List<String>> ingredientesPorItem,
-    Map<String, int> cantidadPorProducto,
-  ) async {
-    try {
-      if (kDebugMode) {
-          
-      }
+  // ✅ COMENTADO: Este método ya no se usa
+  // Las validaciones de stock ahora se hacen en la UI verificando
+  // directamente los atributos almacen y bodega del producto
+  //
+  // Future<Map<String, dynamic>> validarStockAntesDePedido(
+  //   Map<String, List<String>> ingredientesPorItem,
+  //   Map<String, int> cantidadPorProducto,
+  // ) async {
+  //   try {
+  //     if (kDebugMode) {
+  //
+  //     }
+  //
+  //     final Map<String, dynamic> requestBody = {
+  //       'ingredientesPorItem': ingredientesPorItem,
+  //       'cantidadPorProducto': cantidadPorProducto,
+  //       'validarSolo': true, // Solo validar, no descontar
+  //     };
+  //
+  //     final response = await http
+  //         .post(
+  //           Uri.parse(_buildUrl(path: "validar-stock-pedido")),
+  //           headers: _apiConfig.getSecureHeaders(),
+  //           body: json.encode(requestBody),
+  //         )
+  //         .timeout(_timeout);
+  //
+  //     if (response.statusCode == 200) {
+  //       final data = json.decode(response.body);
+  //       if (data['success'] == true) {
+  //         return {
+  //           'stockSuficiente': true,
+  //           'ingredientesValidados':
+  //               data['data']['ingredientesValidados'] ?? [],
+  //           'alertas': data['data']['alertas'] ?? [],
+  //         };
+  //       } else {
+  //         return {
+  //           'stockSuficiente': false,
+  //           'mensaje': data['message'] ?? 'Stock insuficiente',
+  //           'ingredientesFaltantes':
+  //               data['data']['ingredientesFaltantes'] ?? [],
+  //         };
+  //       }
+  //     }
+  //
+  //     // ✅ SILENCIOSO: Error de servidor, continuar sin mostrar diálogo molesto
+  //     return {
+  //       'stockSuficiente': true, // ✅ Cambiar a true para evitar diálogo
+  //       'mensaje': 'Validación omitida por error de servidor',
+  //     };
+  //   } catch (e) {
+  //     if (kDebugMode) {
+  //
+  //     }
+  //     return {
+  //       'stockSuficiente': false,
+  //       'mensaje': 'Error de conexión al validar stock: $e',
+  //     };
+  //   }
+  // }
 
-      final Map<String, dynamic> requestBody = {
-        'ingredientesPorItem': ingredientesPorItem,
-        'cantidadPorProducto': cantidadPorProducto,
-        'validarSolo': true, // Solo validar, no descontar
-      };
+  // ✅ COMENTADO: Este método ya no se usa
+  // Las validaciones de stock y movimientos ahora se hacen en la UI
+  // y registramos movimientos directamente con registrarMovimiento()
+  //
+  // Future<bool> procesarPedidoParaInventario(
+  //   String pedidoId,
+  //   Map<String, List<String>> ingredientesPorItem,
+  // ) async {
+  //   try {
+  //     if (kDebugMode) {
+  //
+  //                  }
+  //     final response = await http
+  //         .post(
+  //           Uri.parse(_buildUrl(path: "procesar-pedido/$pedidoId")),
+  //           headers: _apiConfig.getSecureHeaders(),
+  //           body: json.encode(ingredientesPorItem),
+  //         )
+  //         .timeout(_timeout);
+  //     if (kDebugMode) {
+  //     }
+  //     if (response.statusCode == 200) {
+  //       final responseData = json.decode(response.body);
+  //       if (responseData['success'] == true) {
+  //         _inventarioActualizadoController.add(true);
+  //         if (responseData['data'] != null &&
+  //             responseData['data']['alertas'] != null) {
+  //           final alertas = responseData['data']['alertas'] as List;
+  //           if (alertas.isNotEmpty && kDebugMode) {
+  //             for (var alerta in alertas) {
+  //             }
+  //           }
+  //         }
+  //         return true;
+  //       } else {
+  //         throw Exception(
+  //           responseData['message'] ?? 'Error procesando inventario',
+  //         );
+  //       }
+  //     }
+  //     throw _handleErrorResponse(response);
+  //   } catch (e) {
+  //     if (kDebugMode) {
+  //     }
+  //     if (e.toString().contains('stock insuficiente') ||
+  //         e.toString().contains('insufficient stock')) {
+  //       rethrow;
+  //     }
+  //     return false;
+  //   }
+  // }
 
-      final response = await http
-          .post(
-            Uri.parse(_buildUrl(path: "validar-stock-pedido")),
-            headers: _apiConfig.getSecureHeaders(),
-            body: json.encode(requestBody),
-          )
-          .timeout(_timeout);
+  // ✅ COMENTADO: Este método no se necesita porque usa endpoints obsoletos
+  // Los endpoints /devolver-ingredientes y /ingredientes-descontados no existen en el backend
+  // Future<bool> devolverIngredientesAlInventario(
+  //   String pedidoId,
+  //   String productoId,
+  //   List<Map<String, dynamic>> ingredientes,
+  //   String motivo,
+  //   String responsable,
+  // ) async {
+  //   try {
+  //     if (kDebugMode) {
+  //                  }
+  //     final Map<String, dynamic> requestBody = {
+  //       'pedidoId': pedidoId,
+  //       'productoId': productoId,
+  //       'ingredientes': ingredientes,
+  //       'motivo': motivo,
+  //       'responsable': responsable,
+  //     };
+  //     final response = await http
+  //         .post(
+  //           Uri.parse(_buildUrl(path: "devolver-ingredientes")),
+  //           headers: _apiConfig.getSecureHeaders(),
+  //           body: json.encode(requestBody),
+  //         )
+  //         .timeout(_timeout);
+  //     if (kDebugMode) {
+  //
+  //     }
+  //     if (response.statusCode == 200) {
+  //       _inventarioActualizadoController.add(true);
+  //       return true;
+  //     }
+  //     throw _handleErrorResponse(response);
+  //   } catch (e) {
+  //     if (kDebugMode) {
+  //
+  //     }
+  //     return false;
+  //   }
+  // }
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['success'] == true) {
-          return {
-            'stockSuficiente': true,
-            'ingredientesValidados':
-                data['data']['ingredientesValidados'] ?? [],
-            'alertas': data['data']['alertas'] ?? [],
-          };
-        } else {
-          return {
-            'stockSuficiente': false,
-            'mensaje': data['message'] ?? 'Stock insuficiente',
-            'ingredientesFaltantes':
-                data['data']['ingredientesFaltantes'] ?? [],
-          };
-        }
-      }
+  // ✅ COMENTADO: Este método no se necesita porque usa un endpoint obsoleto
+  // El endpoint /ingredientes-descontados no existe en el backend
+  // Future<List<Map<String, dynamic>>> getIngredientesDescontadosParaProducto(
+  //   String pedidoId,
+  //   String productoId,
+  // ) async {
+  //   try {
+  //     final uri = Uri.parse(
+  //       '${_apiConfig.baseUrl}/api/inventario/ingredientes-descontados?pedidoId=$pedidoId&productoId=$productoId',
+  //     );
+  //     final response = await http
+  //         .get(uri, headers: _apiConfig.getSecureHeaders())
+  //         .timeout(_timeout);
+  //     if (response.statusCode == 200) {
+  //       final data = json.decode(response.body);
+  //       if (data['success'] == true && data['data'] != null) {
+  //         final List<dynamic> ingredientes = data['data'];
+  //         return ingredientes.cast<Map<String, dynamic>>();
+  //       }
+  //     }
+  //     return [];
+  //   } catch (e) {
+  //     if (kDebugMode) {
+  //
+  //     }
+  //     return [];
+  //   }
+  // }
 
-      // ✅ SILENCIOSO: Error de servidor, continuar sin mostrar diálogo molesto
-      return {
-        'stockSuficiente': true, // ✅ Cambiar a true para evitar diálogo
-        'mensaje': 'Validación omitida por error de servidor',
-      };
-    } catch (e) {
-      if (kDebugMode) {
-          
-      }
-      return {
-        'stockSuficiente': false,
-        'mensaje': 'Error de conexión al validar stock: $e',
-      };
-    }
-  }
+  // ✅ COMENTADO: Este método de limpieza de movimientos erróneos no se necesita
+  // El endpoint /movimientos/limpiar-errores no existe en el backend
 
-  // ✅ MEJORADO: Procesa un pedido para actualizar el inventario con validaciones
-  Future<bool> procesarPedidoParaInventario(
-    String pedidoId,
-    Map<String, List<String>> ingredientesPorItem,
-  ) async {
-    try {
-      if (kDebugMode) {
-          
-                 }
-
-      final response = await http
-          .post(
-            Uri.parse(_buildUrl(path: "procesar-pedido/$pedidoId")),
-            headers: _apiConfig.getSecureHeaders(),
-            body: json.encode(ingredientesPorItem),
-          )
-          .timeout(_timeout);
-
-      if (kDebugMode) {
-      }
-
-      if (response.statusCode == 200) {
-        final responseData = json.decode(response.body);
-        if (responseData['success'] == true) {
-          _inventarioActualizadoController.add(true);
-
-          // ✅ NUEVO: Verificar si hay alertas de stock bajo
-          if (responseData['data'] != null &&
-              responseData['data']['alertas'] != null) {
-            final alertas = responseData['data']['alertas'] as List;
-            if (alertas.isNotEmpty && kDebugMode) {
-                
-              for (var alerta in alertas) {
-                                 }
-            }
-          }
-
-          return true;
-        } else {
-          throw Exception(
-            responseData['message'] ?? 'Error procesando inventario',
-          );
-        }
-      }
-
-      throw _handleErrorResponse(response);
-    } catch (e) {
-      if (kDebugMode) {
-          
-      }
-      // ✅ MEJORADO: Propagar error crítico de stock insuficiente
-      if (e.toString().contains('stock insuficiente') ||
-          e.toString().contains('insufficient stock')) {
-        rethrow; // Propagar errores críticos de stock
-      }
-      return false;
-    }
-  }
-
-  // Devuelve ingredientes al inventario (usado en cancelación de pedidos)
-  Future<bool> devolverIngredientesAlInventario(
-    String pedidoId,
-    String productoId,
-    List<Map<String, dynamic>> ingredientes,
-    String motivo,
-    String responsable,
-  ) async {
-    try {
-      if (kDebugMode) {
-                 }
-
-      final Map<String, dynamic> requestBody = {
-        'pedidoId': pedidoId,
-        'productoId': productoId,
-        'ingredientes': ingredientes,
-        'motivo': motivo,
-        'responsable': responsable,
-      };
-
-      final response = await http
-          .post(
-            Uri.parse(_buildUrl(path: "devolver-ingredientes")),
-            headers: _apiConfig.getSecureHeaders(),
-            body: json.encode(requestBody),
-          )
-          .timeout(_timeout);
-
-      if (kDebugMode) {
-          
-      }
-
-      if (response.statusCode == 200) {
-        _inventarioActualizadoController.add(true);
-        return true;
-      }
-
-      throw _handleErrorResponse(response);
-    } catch (e) {
-      if (kDebugMode) {
-          
-      }
-      // No lanzamos una excepción porque no queremos interrumpir el flujo principal
-      return false;
-    }
-  }
-
-  // Obtener ingredientes descontados para un producto de un pedido
-  Future<List<Map<String, dynamic>>> getIngredientesDescontadosParaProducto(
-    String pedidoId,
-    String productoId,
-  ) async {
-    try {
-      final uri = Uri.parse(
-        '${_apiConfig.baseUrl}/api/inventario/ingredientes-descontados?pedidoId=$pedidoId&productoId=$productoId',
-      );
-      final response = await http
-          .get(uri, headers: _apiConfig.getSecureHeaders())
-          .timeout(_timeout);
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['success'] == true && data['data'] != null) {
-          final List<dynamic> ingredientes = data['data'];
-          return ingredientes.cast<Map<String, dynamic>>();
-        }
-      }
-      return [];
-    } catch (e) {
-      if (kDebugMode) {
-          
-      }
-      return [];
-    }
-  }
-
-  // ✅ NUEVO: Limpiar movimientos erróneos
-  Future<Map<String, dynamic>> limpiarMovimientosErroneos() async {
-    try {
-      if (kDebugMode) {
-          
-      }
-
-      final response = await http
-          .delete(
-            Uri.parse(_buildUrl(path: 'movimientos/limpiar-errores')),
-            headers: _apiConfig.getSecureHeaders(),
-          )
-          .timeout(_timeout);
-
-      if (kDebugMode) {
-          
-          
-      }
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> data = json.decode(response.body);
-        if (data['success'] == true && data['data'] != null) {
-          _inventarioActualizadoController.add(true);
-          return data['data'];
-        }
-        throw Exception('Formato de respuesta inválido');
-      }
-
-      throw _handleErrorResponse(response);
-    } catch (e) {
-      if (kDebugMode) {
-          
-      }
-      throw Exception('Error al limpiar movimientos erróneos: $e');
-    }
-  }
-
-  // ✅ NUEVO: Sincronizar inventario con ingredientes
-  Future<Map<String, dynamic>> sincronizarInventarioConIngredientes() async {
-    try {
-      if (kDebugMode) {
-          
-      }
-
-      final response = await http
-          .post(
-            Uri.parse(_buildUrl(path: 'sincronizar-con-ingredientes')),
-            headers: _apiConfig.getSecureHeaders(),
-          )
-          .timeout(_timeout);
-
-      if (kDebugMode) {
-          
-          
-      }
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> data = json.decode(response.body);
-        if (data['success'] == true && data['data'] != null) {
-          _inventarioActualizadoController.add(true);
-          return data['data'];
-        }
-        throw Exception('Formato de respuesta inválido');
-      }
-
-      throw _handleErrorResponse(response);
-    } catch (e) {
-      if (kDebugMode) {
-          
-      }
-      throw Exception('Error al sincronizar inventario: $e');
-    }
-  }
+  // ✅ COMENTADO: Este método de sincronización de inventario no se necesita
+  // El endpoint /sincronizar-con-ingredientes no existe en el backend
 }

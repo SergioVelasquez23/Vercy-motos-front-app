@@ -21,6 +21,9 @@ import 'item_pedido_unified.dart';
 /// Esta versión extiende ItemPedidoUnified para mantener compatibilidad
 /// con código existente mientras usa la nueva arquitectura unificada.
 class ItemPedido extends ItemPedidoUnified {
+  // 📦 INFORMACIÓN DE ORIGEN/DESTINO PARA INVENTARIO
+  final String origen; // "BODEGA" o "ALMACÉN" - dónde se vende el producto
+
   // 🏗️ CONSTRUCTOR PRINCIPAL (Compatible con versión anterior)
   const ItemPedido({
     super.id,
@@ -33,6 +36,7 @@ class ItemPedido extends ItemPedidoUnified {
     super.ingredientesUsados = const [],
     super.agregadoPor,
     super.fechaAgregado,
+    this.origen = "ALMACÉN", // Por defecto ALMACÉN
   });
 
   // 🏗️ CONSTRUCTOR DE COMPATIBILIDAD (para código legacy)
@@ -46,6 +50,7 @@ class ItemPedido extends ItemPedidoUnified {
     super.productoNombre,
     super.agregadoPor,
     super.fechaAgregado,
+    this.origen = "ALMACÉN",
   }) : super(precioUnitario: precio);
 
   // 🔄 FACTORY FROM JSON (Compatible con múltiples formatos)
@@ -73,6 +78,7 @@ class ItemPedido extends ItemPedidoUnified {
       fechaAgregado: json['fechaAgregado'] != null
           ? DateTime.tryParse(json['fechaAgregado'].toString())
           : null,
+      origen: (json['origen'] ?? 'ALMACÉN').toString(),
     );
   }
 
@@ -84,6 +90,7 @@ class ItemPedido extends ItemPedidoUnified {
     // Agregar campos adicionales para compatibilidad legacy
     baseJson.addAll({
       'precio': precioUnitario, // Alias para compatibilidad
+      'origen': origen, // Campo de origen/destino
     });
 
     return baseJson;
