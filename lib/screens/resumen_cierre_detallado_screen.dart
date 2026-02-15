@@ -205,19 +205,28 @@ class _ResumenCierreDetalladoScreenState
           // Para pagos mixtos, desagregar por método
           final desglose = _obtenerDesglosePagos(pedido);
           for (final entry in desglose.entries) {
-            totalesPorMetodo[entry.key] =
-                (totalesPorMetodo[entry.key] ?? 0) + entry.value;
+            // Normalizar clave a mayúscula inicial
+            final metodoNormalizado = _normalizarMetodoPago(entry.key);
+            totalesPorMetodo[metodoNormalizado] =
+                (totalesPorMetodo[metodoNormalizado] ?? 0) + entry.value;
           }
         } else {
           // Para pagos únicos, usar método directo
           final metodo = _getFormaPago(pedido);
+          final metodoNormalizado = _normalizarMetodoPago(metodo);
           final total = _getTotalPedido(pedido);
-          totalesPorMetodo[metodo] = (totalesPorMetodo[metodo] ?? 0) + total;
+          totalesPorMetodo[metodoNormalizado] = (totalesPorMetodo[metodoNormalizado] ?? 0) + total;
         }
       }
     }
 
     return totalesPorMetodo;
+  }
+  
+  /// Normaliza el método de pago a mayúscula inicial
+  String _normalizarMetodoPago(String metodo) {
+    if (metodo.isEmpty) return metodo;
+    return metodo[0].toUpperCase() + metodo.substring(1).toLowerCase();
   }
 
   @override
@@ -1105,7 +1114,7 @@ class _ResumenCierreDetalladoScreenState
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Ventas por Forma de Pago:',
+                            '💳 Ventas por Forma de Pago:',
                             style: TextStyle(
                               color: textDark,
                               fontWeight: FontWeight.w500,
@@ -1113,46 +1122,79 @@ class _ResumenCierreDetalladoScreenState
                             ),
                           ),
                           SizedBox(height: 4),
-                          ...ventas.ventasPorFormaPago.entries.map(
-                            (entry) => Padding(
+                          // Usar el mismo cálculo que los totales de arriba para consistencia
+                          ...[
+                            'Efectivo',
+                            'Transferencia', 
+                            'Tarjeta',
+                            'Sistecredito',
+                            'Datafono'
+                          ].map((metodo) {
+                            final valor = _recalcularTotalesPorMetodoPago()[metodo] ?? 0.0;
+                            return Padding(
                               padding: EdgeInsets.only(bottom: 10),
                               child: _buildInfoRow(
-                                entry.key,
-                                formatCurrency(entry.value),
+                                metodo,
+                                formatCurrency(valor),
                               ),
+                            );
+                          }),
+                        ],
+                      ),
+                    ),
+                    SizedBox(width: 28),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '🔢 Cantidad por Forma de Pago:',
+                            style: TextStyle(
+                              color: textDark,
+                              fontWeight: FontWeight.w500,
+                              fontSize: 13,
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          // Mostrar TODAS las cantidades por método de pago siempre
+                          Padding(
+                            padding: EdgeInsets.only(bottom: 10),
+                            child: _buildInfoRow(
+                              'Efectivo',
+                              (ventas.cantidadPorFormaPago['Efectivo'] ?? 0).toString(),
+                            ),
+                          ),
+                          Padding(
+                            padding: EdgeInsets.only(bottom: 10),
+                            child: _buildInfoRow(
+                              'Transferencia',
+                              (ventas.cantidadPorFormaPago['Transferencia'] ?? 0).toString(),
+                            ),
+                          ),
+                          Padding(
+                            padding: EdgeInsets.only(bottom: 10),
+                            child: _buildInfoRow(
+                              'Tarjeta',
+                              (ventas.cantidadPorFormaPago['Tarjeta'] ?? 0).toString(),
+                            ),
+                          ),
+                          Padding(
+                            padding: EdgeInsets.only(bottom: 10),
+                            child: _buildInfoRow(
+                              'Sistecredito',
+                              (ventas.cantidadPorFormaPago['Sistecredito'] ?? 0).toString(),
+                            ),
+                          ),
+                          Padding(
+                            padding: EdgeInsets.only(bottom: 10),
+                            child: _buildInfoRow(
+                              'Datafono',
+                              (ventas.cantidadPorFormaPago['Datafono'] ?? 0).toString(),
                             ),
                           ),
                         ],
                       ),
                     ),
-                    if (ventas.cantidadPorFormaPago.isNotEmpty) ...[
-                      SizedBox(width: 28),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Cantidad por Forma de Pago:',
-                              style: TextStyle(
-                                color: textDark,
-                                fontWeight: FontWeight.w500,
-                                fontSize: 13,
-                              ),
-                            ),
-                            SizedBox(height: 4),
-                            ...ventas.cantidadPorFormaPago.entries.map(
-                              (entry) => Padding(
-                                padding: EdgeInsets.only(bottom: 10),
-                                child: _buildInfoRow(
-                                  entry.key,
-                                  entry.value.toString(),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
                   ],
                 ),
               ],

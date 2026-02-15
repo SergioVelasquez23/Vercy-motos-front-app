@@ -160,6 +160,14 @@ class AuthService {
       } else if (response.statusCode == 401) {
           
         return {'error': 'Usuario o contraseña incorrectos', 'status': 401};
+      } else if (response.statusCode == 403) {
+        // Autorización pendiente
+        return {
+          'error':
+              'Tu cuenta aún no ha sido autorizada por un administrador. Por favor espera confirmación.',
+          'status': 403,
+          'authorizationPending': true,
+        };
       } else {
           
         return {

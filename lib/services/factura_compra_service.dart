@@ -345,6 +345,10 @@ class FacturaCompraService {
                 'subtotal': item.subtotal,
                 'descontable': true,
                 'observaciones': '',
+                // 📦 Campos de destino
+                'destino': item.destino,
+                'cantidadAlmacen': item.cantidadAlmacen,
+                'cantidadBodega': item.cantidadBodega,
               },
             )
             .toList();

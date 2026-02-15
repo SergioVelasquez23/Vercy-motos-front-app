@@ -1,4 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:excel/excel.dart' hide Border;
+import 'dart:typed_data';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
+import 'package:barcode/barcode.dart';
+import 'package:intl/intl.dart';
 import '../models/producto.dart';
 import '../models/categoria.dart';
 import '../services/producto_service.dart';
@@ -53,6 +61,13 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
 
       final productos = results[0] as List<Producto>;
       final categorias = results[1] as List<Categoria>;
+
+      // 🔍 LOG: Verificar valores de inventario recibidos del endpoint /ligero
+      print('📦 Productos cargados: ${productos.length}');
+      for (var i = 0; i < productos.length && i < 5; i++) {
+        final p = productos[i];
+        print('   - ${p.nombre}: Almacén=${p.almacen}, Bodega=${p.bodega}');
+      }
 
       setState(() {
         _productos = productos;
@@ -170,14 +185,29 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
                 Row(
                   children: [
                     ElevatedButton.icon(
-                      onPressed: _mostrarCargaMasivaProductos,
+                      onPressed: () =>
+                          _mostrarCargaMasivaProductos(tipo: 'bodega'),
                       icon: Icon(Icons.upload_file, color: Colors.white),
                       label: Text(
-                        'Carga masiva',
+                        'Carga - Bodega',
                         style: TextStyle(color: Colors.white),
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.success,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                    ElevatedButton.icon(
+                      onPressed: () =>
+                          _mostrarCargaMasivaProductos(tipo: 'almacen'),
+                      icon: Icon(Icons.upload_file, color: Colors.white),
+                      label: Text(
+                        'Carga - Almacén',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.info,
                         foregroundColor: Colors.white,
                       ),
                     ),
@@ -622,6 +652,22 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
                 Container(
                   width: 32,
                   height: 32,
+                  margin: EdgeInsets.only(right: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade600,
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    padding: EdgeInsets.zero,
+                    icon: Icon(Icons.qr_code, color: Colors.white, size: 16),
+                    onPressed: () =>
+                        _mostrarDialogoImprimirCodigoBarras(producto),
+                    tooltip: 'Imprimir código de barras',
+                  ),
+                ),
+                Container(
+                  width: 32,
+                  height: 32,
                   decoration: BoxDecoration(
                     color: Colors.red.shade600,
                     shape: BoxShape.circle,
@@ -991,9 +1037,9 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
 
     showDialog(
       context: context,
-      builder: (BuildContext context) {
+      builder: (BuildContext dialogContext) {
         return StatefulBuilder(
-          builder: (context, setState) {
+          builder: (context, setDialogState) {
             return AlertDialog(
               backgroundColor: AppTheme.cardBg,
               title: Row(
@@ -1038,7 +1084,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
                               codigoBarrasController,
                               tipoSeleccionado,
                               categoriaSeleccionada,
-                              setState,
+                              setDialogState,
                             ),
                             // Tab 2: Precios
                             _buildTabPrecios(
@@ -1070,7 +1116,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
                               ubicacion4Controller,
                               localizacionController,
                               controlInventarioSeleccionado,
-                              setState,
+                              setDialogState,
                             ),
                           ],
                         ),
@@ -1195,9 +1241,9 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
 
     showDialog(
       context: context,
-      builder: (BuildContext context) {
+      builder: (BuildContext dialogContext) {
         return StatefulBuilder(
-          builder: (context, setState) {
+          builder: (context, setDialogState) {
             return AlertDialog(
               backgroundColor: AppTheme.cardBg,
               title: Row(
@@ -1245,7 +1291,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
                           ),
                         ],
                         onChanged: (value) {
-                          setState(
+                          setDialogState(
                             () => tipoSeleccionado = value ?? 'PRODUCTO',
                           );
                         },
@@ -1326,7 +1372,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
                           }),
                         ],
                         onChanged: (value) {
-                          setState(() => categoriaSeleccionada = value);
+                          setDialogState(() => categoriaSeleccionada = value);
                         },
                       ),
                       SizedBox(height: 16),
@@ -1611,7 +1657,13 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
     }
   }
 
-  void _mostrarCargaMasivaProductos() {
+  void _mostrarCargaMasivaProductos({required String tipo}) {
+    final esBodega = tipo == 'bodega';
+    final titulo = esBodega
+        ? 'Carga Masiva - Bodega'
+        : 'Carga Masiva - Almacén';
+    final ultimaColumna = esBodega ? 'BODEGA' : 'ALMACEN';
+    
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -1622,47 +1674,88 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
               Icon(Icons.upload_file, color: AppTheme.primary),
               SizedBox(width: 12),
               Text(
-                'Carga Masiva de Productos',
+                titulo,
                 style: TextStyle(color: Colors.white),
               ),
             ],
           ),
           content: Container(
-            width: 400,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Selecciona un archivo Excel (.xlsx) con los datos de los productos.',
-                  style: TextStyle(color: Colors.white),
-                ),
-                SizedBox(height: 16),
-                Container(
-                  padding: EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppTheme.surfaceDark,
-                    borderRadius: BorderRadius.circular(8),
+            width: 500,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Selecciona un archivo Excel (.xlsx) con los datos de los productos.\nÚltima columna: $ultimaColumna',
+                    style: TextStyle(color: Colors.white),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Formato requerido:',
-                        style: TextStyle(
-                          color: AppTheme.success,
-                          fontWeight: FontWeight.bold,
+                  SizedBox(height: 16),
+                  Container(
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppTheme.surfaceDark,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Columnas requeridas (en orden):',
+                          style: TextStyle(
+                            color: AppTheme.success,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
-                      SizedBox(height: 8),
-                      Text(
-                        '• Código\n• Nombre\n• Descripción\n• Costo\n• Precio de venta\n• Categoría',
-                        style: TextStyle(color: Colors.grey.shade400),
-                      ),
-                    ],
+                        SizedBox(height: 8),
+                        Text(
+                          '1. CODIGO*\n'
+                          '2. NOMBRE*\n'
+                          '3. CANTIDAD\n'
+                          '4. UNIDAD MEDIDA\n'
+                          '5. PRECIO UNITARIO\n'
+                          '6. COSTO PROMEDIO UNITARIO\n'
+                          '7. COSTO TOTAL\n'
+                          '8. OPORTUNIDAD DE GANANCIA\n'
+                          '9. % UTILIDAD\n'
+                          '10. TIPO IMPUESTO\n'
+                          '11. PORCENTAJE IMPUESTO\n'
+                          '12. TIPO LINEA\n'
+                          '13. CLASE\n'
+                          '14. SUBCLASE\n'
+                          '15. ILIMITADO\n'
+                          '16. INVENTARIO BAJO\n'
+                          '17. INVENTARIO OPTIMO\n'
+                          '18. MARCA\n'
+                          '19. PROVEEDOR\n'
+                          '20. ESTADO\n'
+                          '21. ESTADO INV\n'
+                          '22. LISTA PRECIO 1\n'
+                          '23. LISTA PRECIO 2\n'
+                          '24. LISTA PRECIO 3\n'
+                          '25. LISTA PRECIO 4\n'
+                          '26. LISTA PRECIO 5\n'
+                          '27. COD. BARRAS\n'
+                          '28. $ultimaColumna*',
+                          style: TextStyle(
+                            color: Colors.grey.shade400,
+                            fontSize: 11,
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          '* Campos obligatorios',
+                          style: TextStyle(
+                            color: Colors.orange.shade400,
+                            fontSize: 11,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           actions: [
@@ -1673,12 +1766,24 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
             ElevatedButton.icon(
               onPressed: () {
                 Navigator.pop(context);
-                _seleccionarArchivoCargaMasiva();
+                _seleccionarArchivoCargaMasiva(tipo: tipo, diagnosticar: true);
+              },
+              icon: Icon(Icons.search, color: Colors.white),
+              label: Text('Diagnosticar'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
+              ),
+            ),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.pop(context);
+                _seleccionarArchivoCargaMasiva(tipo: tipo);
               },
               icon: Icon(Icons.file_upload, color: Colors.white),
-              label: Text('Seleccionar archivo'),
+              label: Text('Cargar Excel'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primary,
+                backgroundColor: AppTheme.success,
                 foregroundColor: Colors.white,
               ),
             ),
@@ -1688,14 +1793,431 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
     );
   }
 
-  void _seleccionarArchivoCargaMasiva() {
-    // TODO: Implementar selección de archivo y procesamiento
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Funcionalidad de carga masiva en desarrollo'),
-        backgroundColor: AppTheme.primary,
-      ),
-    );
+  Future<void> _seleccionarArchivoCargaMasiva({
+    required String tipo,
+    bool diagnosticar = false,
+  }) async {
+    try {
+      // Seleccionar archivo Excel
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['xlsx', 'xls'],
+        withData: true,
+      );
+
+      if (result != null && result.files.isNotEmpty) {
+        final bytes = result.files.first.bytes;
+        if (bytes != null) {
+          if (diagnosticar) {
+            await _diagnosticarExcel(bytes, tipo: tipo);
+          } else {
+            await _procesarArchivoExcel(bytes, tipo: tipo);
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al seleccionar archivo: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _diagnosticarExcel(
+    Uint8List bytes, {
+    required String tipo,
+  }) async {
+    try {
+      // Mostrar diálogo de progreso
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (c) => AlertDialog(
+          backgroundColor: AppTheme.cardBg,
+          content: Row(
+            children: [
+              CircularProgressIndicator(color: AppTheme.primary),
+              SizedBox(width: 16),
+              Text(
+                'Analizando archivo Excel...',
+                style: TextStyle(color: Colors.white),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      // Enviar archivo al backend para diagnóstico
+      final resultado = await _productoService.diagnosticarExcel(
+        bytes.toList(),
+      );
+
+      // Cerrar diálogo de progreso
+      if (mounted) Navigator.pop(context);
+
+      // Mostrar resultados del diagnóstico
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (c) => AlertDialog(
+            backgroundColor: AppTheme.cardBg,
+            title: Text(
+              'Diagnóstico del Excel',
+              style: TextStyle(color: Colors.white),
+            ),
+            content: Container(
+              width: 500,
+              constraints: BoxConstraints(maxHeight: 400),
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Resumen
+                    Container(
+                      padding: EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppTheme.surfaceDark,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Resumen del archivo:',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            'Total columnas: ${resultado['totalColumnas']}',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                          Text(
+                            'Total filas: ${resultado['totalFilas']}',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                          SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Icon(
+                                resultado['tieneColumnaNombre'] == true
+                                    ? Icons.check_circle
+                                    : Icons.error,
+                                color: resultado['tieneColumnaNombre'] == true
+                                    ? Colors.green
+                                    : Colors.red,
+                                size: 16,
+                              ),
+                              SizedBox(width: 4),
+                              Text(
+                                'Columna NOMBRE: ${resultado['tieneColumnaNombre'] == true ? "✓ Detectada" : "✗ No detectada"}',
+                                style: TextStyle(
+                                  color: resultado['tieneColumnaNombre'] == true
+                                      ? Colors.green
+                                      : Colors.red,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Row(
+                            children: [
+                              Icon(
+                                resultado['tieneColumnaPrecio'] == true
+                                    ? Icons.check_circle
+                                    : Icons.error,
+                                color: resultado['tieneColumnaPrecio'] == true
+                                    ? Colors.green
+                                    : Colors.red,
+                                size: 16,
+                              ),
+                              SizedBox(width: 4),
+                              Text(
+                                'Columna PRECIO: ${resultado['tieneColumnaPrecio'] == true ? "✓ Detectada" : "✗ No detectada"}',
+                                style: TextStyle(
+                                  color: resultado['tieneColumnaPrecio'] == true
+                                      ? Colors.green
+                                      : Colors.red,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(height: 16),
+
+                    // Columnas detectadas
+                    Text(
+                      'Columnas detectadas:',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    Container(
+                      constraints: BoxConstraints(maxHeight: 200),
+                      child: SingleChildScrollView(
+                        child: Column(
+                          children:
+                              (resultado['columnas'] as List<dynamic>?)
+                                  ?.map(
+                                    (col) => Padding(
+                                      padding: EdgeInsets.only(bottom: 4),
+                                      child: Row(
+                                        children: [
+                                          Container(
+                                            width: 30,
+                                            child: Text(
+                                              '${col['indice']}:',
+                                              style: TextStyle(
+                                                color: Colors.grey,
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                          ),
+                                          Expanded(
+                                            child: Text(
+                                              '${col['original']}',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                          ),
+                                          if (col['normalizado'] !=
+                                              col['original'])
+                                            Expanded(
+                                              child: Text(
+                                                '→ ${col['normalizado']}',
+                                                style: TextStyle(
+                                                  color: Colors.grey.shade400,
+                                                  fontSize: 11,
+                                                  fontStyle: FontStyle.italic,
+                                                ),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                  )
+                                  ?.toList() ??
+                              [],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(c),
+                child: Text(
+                  'Cerrar',
+                  style: TextStyle(color: AppTheme.primary),
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      // Cerrar diálogo de progreso si está abierto
+      if (mounted && Navigator.canPop(context)) {
+        Navigator.pop(context);
+      }
+
+      print('Error al diagnosticar archivo Excel: $e');
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (c) => AlertDialog(
+            backgroundColor: AppTheme.cardBg,
+            title: Text(
+              'Error en diagnóstico',
+              style: TextStyle(color: Colors.red),
+            ),
+            content: Text(
+              'Error al analizar el archivo:\n$e',
+              style: TextStyle(color: Colors.white),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(c),
+                child: Text(
+                  'Cerrar',
+                  style: TextStyle(color: AppTheme.primary),
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _procesarArchivoExcel(
+    Uint8List bytes, {
+    required String tipo,
+  }) async {
+    try {
+      // Mostrar diálogo de progreso
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (c) => AlertDialog(
+          backgroundColor: AppTheme.cardBg,
+          content: Row(
+            children: [
+              CircularProgressIndicator(color: AppTheme.primary),
+              SizedBox(width: 16),
+              Text(
+                'Procesando archivo Excel...',
+                style: TextStyle(color: Colors.white),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      // Enviar archivo al backend
+      final resultado = await _productoService.cargaMasivaProductos(
+        bytes.toList(),
+        tipo: tipo,
+      );
+
+      // Cerrar diálogo de progreso
+      if (mounted) Navigator.pop(context);
+
+      // Recargar lista
+      await _cargarDatos();
+
+      // Extraer datos del resultado
+      final creados = resultado['productosCreados'] ?? 0;
+      final actualizados = resultado['productosActualizados'] ?? 0;
+      final errores = resultado['errores'] as List<dynamic>? ?? [];
+
+      // Mostrar resumen
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (c) => AlertDialog(
+            backgroundColor: AppTheme.cardBg,
+            title: Text(
+              'Carga Completada',
+              style: TextStyle(color: Colors.white),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Productos creados: $creados',
+                  style: TextStyle(color: AppTheme.success, fontSize: 16),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'Productos actualizados: $actualizados',
+                  style: TextStyle(color: Colors.blue, fontSize: 16),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'Errores: ${errores.length}',
+                  style: TextStyle(color: Colors.red, fontSize: 16),
+                ),
+                if (errores.isNotEmpty) ...[
+                  SizedBox(height: 16),
+                  Text(
+                    'Detalles de errores:',
+                    style: TextStyle(
+                      color: Colors.red,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Container(
+                    constraints: BoxConstraints(maxHeight: 200),
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: errores
+                            .take(10)
+                            .map(
+                              (e) => Padding(
+                                padding: EdgeInsets.only(bottom: 4),
+                                child: Text(
+                                  '• $e',
+                                  style: TextStyle(
+                                    color: Colors.grey.shade400,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                            )
+                            .toList(),
+                      ),
+                    ),
+                  ),
+                  if (errores.length > 10)
+                    Text(
+                      '... y ${errores.length - 10} más',
+                      style: TextStyle(
+                        color: Colors.grey.shade400,
+                        fontSize: 12,
+                      ),
+                    ),
+                ],
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(c),
+                child: Text(
+                  'Cerrar',
+                  style: TextStyle(color: AppTheme.primary),
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      // Cerrar diálogo de progreso si está abierto
+      if (mounted && Navigator.canPop(context)) {
+        Navigator.pop(context);
+      }
+
+      print('Error al procesar archivo Excel: $e');
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (c) => AlertDialog(
+            backgroundColor: AppTheme.cardBg,
+            title: Text('Error', style: TextStyle(color: Colors.red)),
+            content: Text(
+              'Error al procesar el archivo:\n$e',
+              style: TextStyle(color: Colors.white),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(c),
+                child: Text(
+                  'Cerrar',
+                  style: TextStyle(color: AppTheme.primary),
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+    }
   }
 
   // Nueva función para guardar producto con todos los campos
@@ -1840,7 +2362,16 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
           utilidad: precio - costo,
         );
 
-        await service.addProducto(nuevoProducto);
+        final productoCreado = await service.addProducto(nuevoProducto);
+
+        // ✅ NUEVO: Agregar el producto a la lista local sin esperar recargar cache
+        if (mounted) {
+          setState(() {
+            // Agregar al inicio con el ID asignado por el backend
+            _productos.insert(0, productoCreado);
+            _aplicarFiltros();
+          });
+        }
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -1850,7 +2381,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
         );
       }
 
-      _cargarDatos(); // Recargar la lista
+      // ⚡ OPTIMIZADO: Ya no recargar todo, el producto ya está en la lista local
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -2113,6 +2644,649 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
         }),
       ],
       onChanged: onChanged,
+    );
+  }
+
+  // ==================== IMPRESIÓN DE CÓDIGOS DE BARRAS ====================
+
+  void _mostrarDialogoImprimirCodigoBarras(Producto producto) {
+    bool incluirFecha = true;
+    bool incluirCodigo = true;
+    bool incluirPrecio = true;
+    int cantidad = 1;
+    final cantidadController = TextEditingController(text: '1');
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: AppTheme.cardBg,
+          title: Text(
+            'Imprimir código de barras',
+            style: TextStyle(color: Colors.white),
+          ),
+          content: Container(
+            width: 400,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Nombre del producto
+                Container(
+                  padding: EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppTheme.surfaceDark,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.grey.shade700),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Producto:',
+                        style: TextStyle(
+                          color: Colors.grey.shade400,
+                          fontSize: 12,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        producto.nombre,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(height: 20),
+
+                // Opciones de impresión
+                Text(
+                  'Opciones de impresión:',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(height: 12),
+
+                // Checkbox: Incluir fecha
+                CheckboxListTile(
+                  title: Text(
+                    'Incluir fecha',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  value: incluirFecha,
+                  activeColor: AppTheme.primary,
+                  checkColor: Colors.white,
+                  onChanged: (value) {
+                    setDialogState(() {
+                      incluirFecha = value ?? false;
+                    });
+                  },
+                  contentPadding: EdgeInsets.zero,
+                ),
+
+                // Checkbox: Incluir código
+                CheckboxListTile(
+                  title: Text(
+                    'Incluir código del producto',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  value: incluirCodigo,
+                  activeColor: AppTheme.primary,
+                  checkColor: Colors.white,
+                  onChanged: (value) {
+                    setDialogState(() {
+                      incluirCodigo = value ?? false;
+                    });
+                  },
+                  contentPadding: EdgeInsets.zero,
+                ),
+
+                // Checkbox: Incluir precio
+                CheckboxListTile(
+                  title: Text(
+                    'Incluir precio',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  value: incluirPrecio,
+                  activeColor: AppTheme.primary,
+                  checkColor: Colors.white,
+                  onChanged: (value) {
+                    setDialogState(() {
+                      incluirPrecio = value ?? false;
+                    });
+                  },
+                  contentPadding: EdgeInsets.zero,
+                ),
+
+                SizedBox(height: 12),
+
+                // Campo de cantidad
+                TextField(
+                  controller: cantidadController,
+                  keyboardType: TextInputType.number,
+                  style: TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: 'Cantidad de códigos a imprimir',
+                    labelStyle: TextStyle(color: Colors.white70),
+                    hintText: 'Ej: 2',
+                    hintStyle: TextStyle(color: Colors.grey.shade600),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.grey.shade700),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: AppTheme.primary),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  onChanged: (value) {
+                    cantidad = int.tryParse(value) ?? 1;
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Cancelar', style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.pop(context);
+                _generarPDFCodigoBarras(
+                  producto,
+                  incluirFecha: incluirFecha,
+                  incluirCodigo: incluirCodigo,
+                  incluirPrecio: incluirPrecio,
+                  cantidad: cantidad,
+                );
+              },
+              icon: Icon(Icons.print, color: Colors.white),
+              label: Text('Imprimir', style: TextStyle(color: Colors.white)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _generarPDFCodigoBarras(
+    Producto producto, {
+    required bool incluirFecha,
+    required bool incluirCodigo,
+    required bool incluirPrecio,
+    required int cantidad,
+  }) async {
+    try {
+      final pdf = pw.Document();
+
+      // Si el producto no tiene codigoBarras, obtener el producto completo
+      String? codigoBarras = producto.codigoBarras;
+
+      // DEBUG inicial
+      print('🔍 DEBUG CODIGO BARRAS:');
+      print('  - producto.codigoBarras: ${producto.codigoBarras}');
+      print('  - producto.codigo: ${producto.codigo}');
+      print('  - producto.id: ${producto.id}');
+      print('  - producto.nombre: ${producto.nombre}');
+
+      if (codigoBarras == null || codigoBarras.isEmpty) {
+        print('⏳ Obteniendo producto completo para código de barras...');
+
+        try {
+          // Obtener producto completo desde el backend
+          final productoCompleto = await _productoService.getProducto(
+            producto.id,
+          );
+
+          print('📦 Producto completo obtenido:');
+          print('  - productoCompleto: ${productoCompleto != null}');
+          if (productoCompleto != null) {
+            print(
+              '  - productoCompleto.codigoBarras: ${productoCompleto.codigoBarras}',
+            );
+          }
+
+          if (productoCompleto != null &&
+              productoCompleto.codigoBarras != null &&
+              productoCompleto.codigoBarras!.isNotEmpty) {
+            codigoBarras = productoCompleto.codigoBarras;
+            print('✅ Código de barras obtenido: $codigoBarras');
+          } else {
+            print('❌ El producto completo tampoco tiene código de barras');
+          }
+        } catch (e) {
+          print('❌ Error obteniendo producto completo: $e');
+        }
+      }
+
+      print('🔍 CODIGO DE BARRAS FINAL: $codigoBarras');
+
+      if (codigoBarras == null || codigoBarras.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Error: El producto no tiene código de barras asignado',
+              ),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+        return;
+      }
+
+      // Formato para impresora térmica Honeywell PC42E-T
+      // Papel de 10cm de ancho, etiquetas de 3cm x 2.5cm
+      const double cmToPt = 28.35; // 1cm = 28.35 puntos
+      final double anchoHoja = 10 * cmToPt; // 10cm = 283.5pt
+      final double altoEtiqueta = 2.5 * cmToPt; // 2.5cm = 70.875pt
+      final int filasNecesarias = (cantidad / 3).ceil();
+      final double altoHoja =
+          (altoEtiqueta * filasNecesarias) + 15; // Alto dinámico
+
+      final formatoPagina = PdfPageFormat(
+        anchoHoja,
+        altoHoja,
+        marginTop: 5,
+        marginBottom: 0,
+        marginLeft: 0,
+        marginRight: 0,
+      );
+
+      // Crear etiquetas (máximo 3 por fila)
+      final etiquetas = <pw.Widget>[];
+      for (int i = 0; i < cantidad; i++) {
+        etiquetas.add(
+          _crearEtiquetaCodigoBarras(
+            producto: producto,
+            codigoBarras: codigoBarras,
+            incluirFecha: incluirFecha,
+            incluirCodigo: incluirCodigo,
+            incluirPrecio: incluirPrecio,
+          ),
+        );
+      }
+
+      // Agrupar en filas de 3 etiquetas (3cm cada una = 9cm + márgenes)
+      final filas = <pw.Widget>[];
+      for (int i = 0; i < etiquetas.length; i += 3) {
+        final etiquetasFila = <pw.Widget>[];
+
+        // Agregar hasta 3 etiquetas por fila
+        for (int j = 0; j < 3 && (i + j) < etiquetas.length; j++) {
+          etiquetasFila.add(etiquetas[i + j]);
+        }
+
+        filas.add(
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.start,
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: etiquetasFila,
+          ),
+        );
+      }
+
+      // Usar Page simple en lugar de MultiPage para evitar problemas de spanning
+      pdf.addPage(
+        pw.Page(
+          pageFormat: formatoPagina,
+          build: (context) => pw.Column(
+            mainAxisAlignment: pw.MainAxisAlignment.start,
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: filas,
+          ),
+        ),
+      );
+
+      // Opciones de impresión mejoradas para mejor detección de impresoras
+      await _mostrarOpcionesImpresion(pdf, producto);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('PDF generado correctamente'),
+            backgroundColor: AppTheme.success,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error al generar PDF: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al generar PDF: $e'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _mostrarOpcionesImpresion(
+    pw.Document pdf,
+    Producto producto,
+  ) async {
+    final fileName = 'codigo_barras_${producto.codigo ?? producto.id}.pdf';
+
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      builder: (c) => AlertDialog(
+        backgroundColor: AppTheme.cardBg,
+        title: Text(
+          'Seleccionar método de impresión',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: Text(
+          'Elige el método que mejor funcione con tu impresora:',
+          style: TextStyle(color: Colors.grey.shade300),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(c),
+            child: Text('Cancelar', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton.icon(
+            onPressed: () async {
+              Navigator.pop(c);
+              await _imprimirConDialogoSistema(pdf, fileName);
+            },
+            icon: Icon(Icons.system_update_alt, color: Colors.white),
+            label: Text(
+              'Diálogo del sistema',
+              style: TextStyle(color: Colors.white),
+            ),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
+          ),
+          ElevatedButton.icon(
+            onPressed: () async {
+              Navigator.pop(c);
+              await _imprimirConVistaPrevia(pdf, fileName);
+            },
+            icon: Icon(Icons.preview, color: Colors.white),
+            label: Text('Vista previa', style: TextStyle(color: Colors.white)),
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary),
+          ),
+          ElevatedButton.icon(
+            onPressed: () async {
+              Navigator.pop(c);
+              await _imprimirDirecto(pdf, fileName);
+            },
+            icon: Icon(Icons.print, color: Colors.white),
+            label: Text(
+              'Impresión directa',
+              style: TextStyle(color: Colors.white),
+            ),
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.success),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _imprimirConDialogoSistema(
+    pw.Document pdf,
+    String fileName,
+  ) async {
+    try {
+      // Usar el diálogo del sistema operativo (mejor compatibilidad con impresoras)
+      await Printing.sharePdf(bytes: await pdf.save(), filename: fileName);
+
+      if (mounted) {
+        _mostrarMensajeExito('Se abrió el diálogo del sistema para imprimir');
+      }
+    } catch (e) {
+      print('Error en impresión con diálogo del sistema: $e');
+      _mostrarMensajeError('Error al abrir diálogo del sistema: $e');
+    }
+  }
+
+  Future<void> _imprimirConVistaPrevia(pw.Document pdf, String fileName) async {
+    try {
+      // Vista previa con mejor configuración para impresoras
+      await Printing.layoutPdf(
+        onLayout: (format) async => pdf.save(),
+        name: fileName,
+        format: PdfPageFormat.letter, // Formato vertical para evitar rotación
+        usePrinterSettings: true,
+      );
+
+      if (mounted) {
+        _mostrarMensajeExito('Vista previa generada correctamente');
+      }
+    } catch (e) {
+      print('Error en vista previa: $e');
+      _mostrarMensajeError('Error en vista previa: $e');
+    }
+  }
+
+  Future<void> _imprimirDirecto(pw.Document pdf, String fileName) async {
+    try {
+      // Intento de impresión directa sin vista previa
+      final printers = await Printing.listPrinters();
+
+      if (printers.isNotEmpty) {
+        // Mostrar lista de impresoras disponibles
+        _mostrarSelectorImpresoras(printers, pdf, fileName);
+      } else {
+        // Si no detecta impresoras, usar método alternativo
+        await Printing.directPrintPdf(
+          printer: Printer(url: ''),
+          onLayout: (format) async => pdf.save(),
+          name: fileName,
+          format: PdfPageFormat.letter, // Formato vertical para evitar rotación
+        );
+
+        if (mounted) {
+          _mostrarMensajeExito('Enviado a la impresora predeterminada');
+        }
+      }
+    } catch (e) {
+      print('Error en impresión directa: $e');
+      _mostrarMensajeError(
+        'Error en impresión directa: $e\nIntenta con "Vista previa"',
+      );
+    }
+  }
+
+  void _mostrarSelectorImpresoras(
+    List<Printer> printers,
+    pw.Document pdf,
+    String fileName,
+  ) {
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      builder: (c) => AlertDialog(
+        backgroundColor: AppTheme.cardBg,
+        title: Text(
+          'Seleccionar impresora',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: Container(
+          width: 300,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Impresoras detectadas:',
+                style: TextStyle(color: Colors.grey.shade300),
+              ),
+              SizedBox(height: 10),
+              ...printers
+                  .map(
+                    (printer) => ListTile(
+                      leading: Icon(Icons.print, color: Colors.white),
+                      title: Text(
+                        printer.name,
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      subtitle: printer.location != null
+                          ? Text(
+                              printer.location!,
+                              style: TextStyle(color: Colors.grey.shade400),
+                            )
+                          : null,
+                      onTap: () async {
+                        Navigator.pop(c);
+                        await _imprimirEnImpresora(printer, pdf, fileName);
+                      },
+                    ),
+                  )
+                  .toList(),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(c),
+            child: Text('Cancelar', style: TextStyle(color: Colors.grey)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _imprimirEnImpresora(
+    Printer printer,
+    pw.Document pdf,
+    String fileName,
+  ) async {
+    try {
+      await Printing.directPrintPdf(
+        printer: printer,
+        onLayout: (format) async => pdf.save(),
+        name: fileName,
+        format: PdfPageFormat.letter, // Formato vertical para evitar rotación
+      );
+
+      if (mounted) {
+        _mostrarMensajeExito('Impreso en: ${printer.name}');
+      }
+    } catch (e) {
+      print('Error imprimiendo en ${printer.name}: $e');
+      _mostrarMensajeError('Error imprimiendo en ${printer.name}: $e');
+    }
+  }
+
+  void _mostrarMensajeExito(String mensaje) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(mensaje),
+        backgroundColor: AppTheme.success,
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
+  void _mostrarMensajeError(String mensaje) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(mensaje),
+        backgroundColor: Colors.red,
+        duration: Duration(seconds: 4),
+      ),
+    );
+  }
+
+  pw.Widget _crearEtiquetaCodigoBarras({
+    required Producto producto,
+    required String codigoBarras,
+    required bool incluirFecha,
+    required bool incluirCodigo,
+    required bool incluirPrecio,
+  }) {
+    // Dimensiones: 3cm x 2.5cm = 85pt x 71pt
+    const double cmToPt = 28.35;
+    const double anchoEtiqueta = 3 * cmToPt; // 85pt
+    const double altoEtiqueta = 2.5 * cmToPt; // 71pt
+
+    return pw.Container(
+      width: anchoEtiqueta,
+      height: altoEtiqueta,
+      padding: pw.EdgeInsets.symmetric(horizontal: 2, vertical: 1),
+      child: pw.Column(
+        mainAxisAlignment: pw.MainAxisAlignment.center,
+        crossAxisAlignment: pw.CrossAxisAlignment.center,
+        children: [
+          // Nombre del producto (compacto)
+          pw.Text(
+            producto.nombre.toUpperCase(),
+            textAlign: pw.TextAlign.center,
+            style: pw.TextStyle(
+              fontSize: 5,
+              fontWeight: pw.FontWeight.bold,
+              color: PdfColors.black,
+            ),
+            maxLines: 1,
+          ),
+
+          // Precio y fecha en la misma línea
+          if (incluirPrecio || incluirFecha)
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.center,
+              children: [
+                if (incluirPrecio)
+                  pw.Text(
+                    '\$${producto.precio.toStringAsFixed(0)}',
+                    style: pw.TextStyle(
+                      fontSize: 5,
+                      fontWeight: pw.FontWeight.bold,
+                      color: PdfColors.black,
+                    ),
+                  ),
+                if (incluirPrecio && incluirFecha) pw.SizedBox(width: 3),
+                if (incluirFecha)
+                  pw.Text(
+                    DateFormat('dd/MM/yy').format(DateTime.now()),
+                    style: pw.TextStyle(fontSize: 5, color: PdfColors.black),
+                  ),
+              ],
+            ),
+
+          pw.SizedBox(height: 1),
+
+          // Código de barras - Code128 soporta todos los caracteres
+          pw.BarcodeWidget(
+            barcode: Barcode.code128(),
+            data: codigoBarras,
+            width: anchoEtiqueta - 10,
+            height: 28,
+            drawText: false,
+            color: PdfColors.black,
+          ),
+
+          // Código debajo del código de barras
+          if (incluirCodigo)
+            pw.Text(
+              codigoBarras,
+              textAlign: pw.TextAlign.center,
+              style: pw.TextStyle(fontSize: 5, color: PdfColors.black),
+            ),
+        ],
+      ),
     );
   }
 }

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/factura_compra.dart';
 import '../models/proveedor.dart';
@@ -10,6 +10,7 @@ import '../services/producto_service.dart';
 import '../services/inventario_service.dart';
 import '../providers/datos_cache_provider.dart';
 import '../theme/app_theme.dart';
+import '../utils/busqueda_productos_utils.dart';
 
 class FacturasComprasScreen extends StatefulWidget {
   const FacturasComprasScreen({super.key});
@@ -720,6 +721,9 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
   final _valorUnitarioController = TextEditingController();
   final _porcentajeImpuestoController = TextEditingController(text: '19');
   final _porcentajeDescuentoController = TextEditingController(text: '0');
+  // 📦 Controladores para PARTE Y PARTE
+  final _cantidadAlmacenController = TextEditingController();
+  final _cantidadBodegaController = TextEditingController();
   
   // Campo para guardar desde donde salió la compra (transferencia, sistecredito, etc)
   final _origenCompraController = TextEditingController();
@@ -806,6 +810,8 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
     _porcentajeImpuestoController.dispose();
     _porcentajeDescuentoController.dispose();
     _origenCompraController.dispose();
+    _cantidadAlmacenController.dispose();
+    _cantidadBodegaController.dispose();
     super.dispose();
   }
 
@@ -1488,31 +1494,152 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
         // Fila 3: Campos de entrada con Autocomplete para producto
         Row(
           children: [
-            // Código
+            // Código - Autocomplete para buscar por código
             Expanded(
               flex: 1,
-              child: TextField(
-                controller: _codigoProductoController,
-                style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
-                decoration: InputDecoration(
-                  isDense: true,
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 10,
-                  ),
-                  hintStyle: TextStyle(
-                    color: AppTheme.textSecondary,
-                    fontSize: 13,
-                  ),
-                  filled: true,
-                  fillColor: AppTheme.surfaceDark,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(4),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-                readOnly: true,
-              ),
+              child: _cargandoProductos
+                  ? Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppTheme.surfaceDark,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppTheme.primary,
+                            ),
+                          ),
+                          SizedBox(width: 8),
+                          Text(
+                            'Cargando...',
+                            style: TextStyle(
+                              color: AppTheme.textSecondary,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : Autocomplete<Producto>(
+                      optionsBuilder: (TextEditingValue textEditingValue) {
+                        if (textEditingValue.text.isEmpty) {
+                          return const Iterable<Producto>.empty();
+                        }
+                        // Buscar por código - sin requisito de mínimo 2 caracteres
+                        final texto = textEditingValue.text.toLowerCase();
+                        return _productos
+                            .where((p) {
+                              final cod = (p.codigo ?? '').toLowerCase();
+                              return cod.contains(texto) || cod.startsWith(texto);
+                            })
+                            .take(15);
+                      },
+                      displayStringForOption: (Producto producto) =>
+                          (producto.codigo?.isNotEmpty ?? false) 
+                              ? producto.codigo!
+                              : producto.id,
+                      onSelected: (Producto producto) {
+                        setState(() {
+                          _productoSeleccionado = producto;
+                          _codigoProductoController.text = (producto.codigo?.isNotEmpty ?? false)
+                              ? producto.codigo!
+                              : producto.id;
+                          _nombreProductoController.text = producto.nombre;
+                          _valorUnitarioController.text = producto.costo
+                              .toString();
+                        });
+                      },
+                      fieldViewBuilder:
+                          (
+                            BuildContext context,
+                            TextEditingController textEditingController,
+                            FocusNode focusNode,
+                            VoidCallback onFieldSubmitted,
+                          ) {
+                            // Sincronizar con el controlador principal
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              textEditingController.text = _codigoProductoController.text;
+                            });
+                            return TextField(
+                              controller: textEditingController,
+                              focusNode: focusNode,
+                              style: TextStyle(
+                                color: AppTheme.textPrimary,
+                                fontSize: 13,
+                              ),
+                              decoration: InputDecoration(
+                                isDense: true,
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 10,
+                                ),
+                                hintText: 'Código...',
+                                hintStyle: TextStyle(
+                                  color: AppTheme.textSecondary,
+                                  fontSize: 13,
+                                ),
+                                filled: true,
+                                fillColor: AppTheme.surfaceDark,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(4),
+                                  borderSide: BorderSide.none,
+                                ),
+                              ),
+                            );
+                          },
+                      optionsViewBuilder:
+                          (
+                            BuildContext context,
+                            AutocompleteOnSelected<Producto> onSelected,
+                            Iterable<Producto> options,
+                          ) {
+                            return Align(
+                              alignment: Alignment.topLeft,
+                              child: Material(
+                                elevation: 4.0,
+                                color: AppTheme.surfaceDark,
+                                borderRadius: BorderRadius.circular(8),
+                                child: Container(
+                                  constraints: BoxConstraints(
+                                    maxHeight: 250,
+                                    maxWidth: 150,
+                                  ),
+                                  child: ListView.builder(
+                                    padding: EdgeInsets.all(8.0),
+                                    itemCount: options.length,
+                                    shrinkWrap: true,
+                                    itemBuilder: (BuildContext context, int index) {
+                                      final Producto option = options.elementAt(index);
+                                      return InkWell(
+                                        onTap: () => onSelected(option),
+                                        child: Padding(
+                                          padding: EdgeInsets.all(8.0),
+                                          child: Text(
+                                            (option.codigo?.isNotEmpty ?? false)
+                                                ? option.codigo!
+                                                : option.id,
+                                            style: TextStyle(
+                                              color: AppTheme.textPrimary,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                    ),
             ),
             SizedBox(width: 8),
             // Nombre Producto - Autocomplete con indicador de carga
@@ -1560,23 +1687,20 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                           return const Iterable<Producto>.empty();
                         }
                         // Buscar en productos
-                        return _productos
-                            .where((Producto producto) {
-                              return producto.nombre.toLowerCase().contains(
-                                    textEditingValue.text.toLowerCase(),
-                                  ) ||
-                                  producto.id.toLowerCase().contains(
-                                    textEditingValue.text.toLowerCase(),
-                                  );
-                            })
-                            .take(15);
+                        return filtrarYOrdenarProductos(
+                          _productos,
+                          textEditingValue.text,
+                          limite: 15,
+                        );
                       },
                       displayStringForOption: (Producto producto) =>
                           producto.nombre,
                       onSelected: (Producto producto) {
                         setState(() {
                           _productoSeleccionado = producto;
-                          _codigoProductoController.text = producto.id;
+                          _codigoProductoController.text = (producto.codigo?.isNotEmpty ?? false)
+                              ? producto.codigo!
+                              : producto.id;
                           _nombreProductoController.text = producto.nombre;
                           _valorUnitarioController.text = producto.costo
                               .toString();
@@ -2008,6 +2132,103 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
             ),
           ],
         ),
+        // 📦 Campos adicionales para PARTE Y PARTE
+        if (_destinoSeleccionado == 'PARTE Y PARTE') ...[
+          SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: AppTheme.surfaceDark,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: TextFormField(
+                    controller: _cantidadAlmacenController,
+                    style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+                    keyboardType: TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    decoration: InputDecoration(
+                      isDense: true,
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 10,
+                      ),
+                      border: InputBorder.none,
+                      hintText: 'Cant. Almacén',
+                      hintStyle: TextStyle(
+                        color: AppTheme.textSecondary,
+                        fontSize: 12,
+                      ),
+                      prefixIcon: Icon(
+                        Icons.store,
+                        color: Colors.blue,
+                        size: 16,
+                      ),
+                    ),
+                    onChanged: (value) {
+                      // Auto-calcular cantidad bodega
+                      final total =
+                          double.tryParse(_cantidadProductoController.text) ??
+                          0;
+                      final almacen = double.tryParse(value) ?? 0;
+                      if (almacen <= total) {
+                        _cantidadBodegaController.text = (total - almacen)
+                            .toString();
+                      }
+                    },
+                  ),
+                ),
+              ),
+              SizedBox(width: 8),
+              Expanded(
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: AppTheme.surfaceDark,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: TextFormField(
+                    controller: _cantidadBodegaController,
+                    style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+                    keyboardType: TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    decoration: InputDecoration(
+                      isDense: true,
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 10,
+                      ),
+                      border: InputBorder.none,
+                      hintText: 'Cant. Bodega',
+                      hintStyle: TextStyle(
+                        color: AppTheme.textSecondary,
+                        fontSize: 12,
+                      ),
+                      prefixIcon: Icon(
+                        Icons.warehouse,
+                        color: Colors.orange,
+                        size: 16,
+                      ),
+                    ),
+                    onChanged: (value) {
+                      // Auto-calcular cantidad almacén
+                      final total =
+                          double.tryParse(_cantidadProductoController.text) ??
+                          0;
+                      final bodega = double.tryParse(value) ?? 0;
+                      if (bodega <= total) {
+                        _cantidadAlmacenController.text = (total - bodega)
+                            .toString();
+                      }
+                    },
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
         SizedBox(height: 16),
         // Lista de items agregados
         if (_items.isNotEmpty) ...[
@@ -2132,31 +2353,49 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                           ),
                         ),
                         // 📦 Mostrar destino
-                        Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: item.destino == 'BODEGA'
-                                ? Colors.blue.withOpacity(0.2)
-                                : item.destino == 'ALMACÉN'
-                                    ? Colors.orange.withOpacity(0.2)
-                                    : Colors.purple.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            item.destino.length > 8
-                                ? 'P. P.'
-                                : item.destino,
-                            style: TextStyle(
+                        Tooltip(
+                          message: item.destino == 'PARTE Y PARTE'
+                              ? 'Almacén: ${item.cantidadAlmacen.toStringAsFixed(0)}\nBodega: ${item.cantidadBodega.toStringAsFixed(0)}'
+                              : item.destino,
+                          child: Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
                               color: item.destino == 'BODEGA'
-                                  ? Colors.blue
+                                  ? Colors.blue.withOpacity(0.2)
                                   : item.destino == 'ALMACÉN'
-                                      ? Colors.orange
-                                      : Colors.purple,
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
+                                  ? Colors.orange.withOpacity(0.2)
+                                  : Colors.purple.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  item.destino.length > 8
+                                      ? 'P. P.'
+                                      : item.destino,
+                                  style: TextStyle(
+                                    color: item.destino == 'BODEGA'
+                                        ? Colors.blue
+                                        : item.destino == 'ALMACÉN'
+                                        ? Colors.orange
+                                        : Colors.purple,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                if (item.destino == 'PARTE Y PARTE')
+                                  Text(
+                                    'A:${item.cantidadAlmacen.toStringAsFixed(0)} B:${item.cantidadBodega.toStringAsFixed(0)}',
+                                    style: TextStyle(
+                                      color: Colors.purple,
+                                      fontSize: 9,
+                                    ),
+                                  ),
+                              ],
                             ),
                           ),
                         ),
@@ -3458,6 +3697,38 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
       return;
     }
 
+    // 📦 Validar PARTE Y PARTE
+    double cantidadAlmacen = 0;
+    double cantidadBodega = 0;
+    if (_destinoSeleccionado == 'PARTE Y PARTE') {
+      cantidadAlmacen = double.tryParse(_cantidadAlmacenController.text) ?? 0;
+      cantidadBodega = double.tryParse(_cantidadBodegaController.text) ?? 0;
+
+      if (cantidadAlmacen <= 0 && cantidadBodega <= 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ingrese las cantidades para Almacén y Bodega'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+
+      final sumaCantidades = cantidadAlmacen + cantidadBodega;
+      if ((sumaCantidades - cantidad).abs() > 0.01) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'La suma de Almacén ($cantidadAlmacen) + Bodega ($cantidadBodega) debe ser igual a la cantidad total ($cantidad)',
+            ),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 3),
+          ),
+        );
+        return;
+      }
+    }
+
     final precioUnitario = double.tryParse(_valorUnitarioController.text) ?? 0;
     if (precioUnitario <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -3496,6 +3767,8 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
       porcentajeImpuesto: porcentajeImpuesto,
       porcentajeDescuento: porcentajeDescuento,
       destino: _destinoSeleccionado, // 📦 Agregar destino
+      cantidadAlmacen: cantidadAlmacen, // 📦 Cantidad para almacén
+      cantidadBodega: cantidadBodega, // 📦 Cantidad para bodega
     );
 
     setState(() {
@@ -3511,6 +3784,8 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
       _tipoImpuesto = 'IVA';
       _tipoDescuento = '%';
       _destinoSeleccionado = 'ALMACÉN'; // 📦 Resetear destino
+      _cantidadAlmacenController.clear(); // 📦 Limpiar cantidad almacén
+      _cantidadBodegaController.clear(); // 📦 Limpiar cantidad bodega
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -3630,6 +3905,9 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
             valorImpuesto: item.valorImpuesto,
             porcentajeDescuento: item.porcentajeDescuento,
             valorDescuento: item.valorDescuento,
+            destino: item.destino, // 📦 Preservar destino
+            cantidadAlmacen: item.cantidadAlmacen, // 📦 Preservar cantidad almacén
+            cantidadBodega: item.cantidadBodega, // 📦 Preservar cantidad bodega
           );
         }
         return item;
@@ -3734,7 +4012,19 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
       // 📦 Registrar movimientos de inventario (entrada de stock)
       await _registrarMovimientosInventarioCompra(facturaCreada);
 
-      // 💰 Actualizar el costo del producto con el último precio de compra
+      // � Refrescar cache de productos para actualizar UI automáticamente
+      try {
+        final cacheProvider = Provider.of<DatosCacheProvider>(
+          context,
+          listen: false,
+        );
+        await cacheProvider.forceRefreshProductos();
+        print('✅ Cache de productos actualizado después de la compra');
+      } catch (e) {
+        print('⚠️ Error refrescando cache (no crítico): $e');
+      }
+
+      // �💰 Actualizar el costo del producto con el último precio de compra
       await _actualizarCostoProductos(facturaCreada);
 
       // Verificar si la factura creada tiene el total correcto
@@ -3806,8 +4096,18 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
           );
 
           if (productoCompleto == null) {
+            print('⚠️ Producto no encontrado: ${item.ingredienteId}');
             continue; // Saltar si no encuentra el producto
           }
+
+          // 🔍 LOG: Ver producto obtenido del backend
+          print('📥 Producto obtenido: ${productoCompleto.nombre}');
+          print('   - ID: ${productoCompleto.id}');
+          print('   - Almacén actual: ${productoCompleto.almacen}');
+          print('   - Bodega actual: ${productoCompleto.bodega}');
+          print('   - Destino item: ${item.destino}');
+          print('   - cantidadAlmacen item: ${item.cantidadAlmacen}');
+          print('   - cantidadBodega item: ${item.cantidadBodega}');
 
           // 📍 Determinar el destino de la compra
           final destino = item.destino;
@@ -3815,20 +4115,33 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
           // 📊 Obtener stock anterior y calcular nuevo stock
           double stockAnterior = 0;
           double nuevoStock = 0;
+          
+          // ✅ Obtener valores actuales de AMBAS ubicaciones (convertir null a 0)
+          double almacenActual = (productoCompleto.almacen ?? 0).toDouble();
+          double bodegaActual = (productoCompleto.bodega ?? 0).toDouble();
 
           if (destino.toUpperCase() == 'BODEGA') {
             // Sumar a BODEGA
-            stockAnterior = (productoCompleto.bodega ?? 0).toDouble();
+            stockAnterior = bodegaActual;
             nuevoStock = stockAnterior + item.cantidad;
+            bodegaActual = nuevoStock; // Actualizar bodega solamente
           } else if (destino.toUpperCase() == 'PARTE Y PARTE') {
-            // Dividir entre ALMACÉN y BODEGA
-            final mitad = item.cantidad / 2;
-            final almacenAnterior = (productoCompleto.almacen ?? 0).toDouble();
-            final bodegaAnterior = (productoCompleto.bodega ?? 0).toDouble();
+            // 📦 Usar cantidades específicas para ALMACÉN y BODEGA
+            final cantidadParaAlmacen = item.cantidadAlmacen > 0 
+                ? item.cantidadAlmacen 
+                : item.cantidad / 2; // Fallback a mitad si no hay valor
+            final cantidadParaBodega = item.cantidadBodega > 0 
+                ? item.cantidadBodega 
+                : item.cantidad / 2; // Fallback a mitad si no hay valor
             
-            // Actualizar ambos
-            final almacenNuevo = almacenAnterior + mitad;
-            final bodegaNuevo = bodegaAnterior + mitad;
+            final almacenAnterior = almacenActual;
+            final bodegaAnterior = bodegaActual;
+            
+            // Actualizar ambos con las cantidades especificadas
+            almacenActual = almacenAnterior + cantidadParaAlmacen;
+            bodegaActual = bodegaAnterior + cantidadParaBodega;
+            
+            print('📦 PARTE Y PARTE: ${item.ingredienteNombre} - Almacén: +$cantidadParaAlmacen, Bodega: +$cantidadParaBodega');
 
             // Crear movimiento con información de PARTE Y PARTE
             final movimiento = MovimientoInventario(
@@ -3839,10 +4152,10 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
               motivo: 'Compra - Factura ${factura.numeroFactura} (PARTE Y PARTE)',
               cantidadAnterior: almacenAnterior + bodegaAnterior,
               cantidadMovimiento: item.cantidad,
-              cantidadNueva: almacenNuevo + bodegaNuevo,
+              cantidadNueva: almacenActual + bodegaActual,
               responsable: 'Sistema',
               referencia: 'FC-${factura.numeroFactura}',
-              observaciones: 'Compra a ${factura.proveedorNombre} - Mitad almacén, mitad bodega',
+              observaciones: 'Compra a ${factura.proveedorNombre} - Almacén: +${cantidadParaAlmacen.toStringAsFixed(0)}, Bodega: +${cantidadParaBodega.toStringAsFixed(0)}',
               costoUnitario: item.precioUnitario,
               precioTotal: item.subtotal,
               fecha: DateTime.now(),
@@ -3850,22 +4163,42 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
               proveedor: factura.proveedorNombre,
             );
 
-            await _inventarioService.registrarMovimiento(movimiento);
+            // 📝 Intentar registrar movimiento (pero NO bloquear actualización)
+            try {
+              await _inventarioService.registrarMovimiento(movimiento);
+              print(
+                '📝 Movimiento (PARTE Y PARTE) registrado: ${item.ingredienteNombre}',
+              );
+            } catch (movError) {
+              print(
+                '⚠️ Error registrando movimiento PARTE Y PARTE (NO crítico): $movError',
+              );
+              // NO relanzar - continuar con actualización de stock
+            }
 
-            // Actualizar producto con nuevo stock
+            // Actualizar producto con nuevo stock (CRÍTICO)
             final productoActualizado = productoCompleto.copyWith(
-              almacen: almacenNuevo.toInt(),
-              bodega: bodegaNuevo.toInt(),
+              almacen: almacenActual.toInt(),
+              bodega: bodegaActual.toInt(),
             );
 
-            await _productoService.updateProducto(productoActualizado);
-
-            print('✅ Stock actualizado (PARTE Y PARTE): ${productoActualizado.nombre} - ALM: ${almacenAnterior} → ${almacenNuevo}, BOD: ${bodegaAnterior} → ${bodegaNuevo}');
+            try {
+              await _productoService.updateProducto(productoActualizado);
+              print(
+                '✅ Stock actualizado (PARTE Y PARTE): ${productoActualizado.nombre} - ALM: ${almacenAnterior.toInt()} → ${almacenActual.toInt()}, BOD: ${bodegaAnterior.toInt()} → ${bodegaActual.toInt()}',
+              );
+            } catch (updateError) {
+              print(
+                '❌ ERROR CRÍTICO actualizando (PARTE Y PARTE): $updateError - Producto: ${productoActualizado.nombre}',
+              );
+              rethrow;
+            }
             continue;
           } else {
             // Por defecto ALMACÉN
-            stockAnterior = (productoCompleto.almacen ?? 0).toDouble();
+            stockAnterior = almacenActual;
             nuevoStock = stockAnterior + item.cantidad;
+            almacenActual = nuevoStock; // Actualizar almacén solamente
           }
 
           // 📋 Crear movimiento de inventario
@@ -3888,23 +4221,39 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
             proveedor: factura.proveedorNombre,
           );
 
-          // 📝 Registrar movimiento en inventario
-          await _inventarioService.registrarMovimiento(movimiento);
+          // 📝 Intentar registrar movimiento (pero NO bloquear actualización de stock)
+          try {
+            await _inventarioService.registrarMovimiento(movimiento);
+            print(
+              '📝 Movimiento de inventario registrado: ${item.ingredienteNombre}',
+            );
+          } catch (movError) {
+            print('⚠️ Error registrando movimiento (NO crítico): $movError');
+            // NO relanzar - continuar con actualización de stock
+          }
 
-          // 🔄 ACTUALIZAR STOCK EN EL PRODUCTO
+          // 🔄 ACTUALIZAR STOCK EN EL PRODUCTO - Enviar AMBOS valores
           final productoActualizado = productoCompleto.copyWith(
-            bodega: destino.toUpperCase() == 'BODEGA'
-                ? nuevoStock.toInt()
-                : (productoCompleto.bodega ?? 0),
-            almacen: destino.toUpperCase() == 'ALMACÉN'
-                ? nuevoStock.toInt()
-                : (productoCompleto.almacen ?? 0),
+            almacen: almacenActual.toInt(),
+            bodega: bodegaActual.toInt(),
           );
 
-          // 💾 Guardar producto actualizado
-          await _productoService.updateProducto(productoActualizado);
+          print(
+            '📤 Enviando actualización compra: ${productoActualizado.nombre} - Almacén: ${almacenActual.toInt()}, Bodega: ${bodegaActual.toInt()}',
+          );
 
-          print('✅ Stock actualizado: ${productoActualizado.nombre} - ${destino}: ${stockAnterior} → ${nuevoStock}');
+          // 💾 Guardar producto actualizado (CRÍTICO - debe ejecutarse siempre)
+          try {
+            await _productoService.updateProducto(productoActualizado);
+            print(
+              '✅ Stock actualizado: ${productoActualizado.nombre} - ${destino}: ${stockAnterior.toInt()} → ${nuevoStock.toInt()}',
+            );
+          } catch (updateError) {
+            print(
+              '❌ ERROR CRÍTICO actualizando producto: $updateError - Producto: ${productoActualizado.nombre}',
+            );
+            rethrow;
+          }
         } catch (e) {
           // Continuar con el siguiente item aunque haya error
           print('⚠️ Error registrando movimiento para ${item.ingredienteId}: $e');
@@ -4893,3 +5242,4 @@ class _DialogoAgregarItemState extends State<_DialogoAgregarItem> {
     Navigator.pop(context);
   }
 }
+

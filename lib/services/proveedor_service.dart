@@ -121,7 +121,7 @@ class ProveedorService {
           return decodedData.map((json) => Proveedor.fromJson(json)).toList();
         }
 
-                   return [];
+                  return [];
       } else {
         throw Exception('Error al buscar proveedores: ${response.statusCode}');
       }
@@ -276,6 +276,71 @@ class ProveedorService {
     } catch (e) {
         
       throw Exception('Error de conexión: $e');
+    }
+  }
+
+  // ============================================
+  // 📤 CARGA MASIVA DE PROVEEDORES (EXCEL)
+  // ============================================
+  /// Cargar proveedores masivamente desde Excel (igual que productos)
+  Future<Map<String, dynamic>> cargaMasivaProveedores(
+    List<int> excelBytes,
+  ) async {
+    try {
+      final token = await _getToken();
+      if (token == null) {
+        throw Exception('Token no encontrado');
+      }
+
+      final headers = {'Authorization': 'Bearer $token'};
+
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl/api/proveedores/cargar-desde-excel'),
+      );
+
+      request.headers.addAll(headers);
+
+      // Agregar el archivo Excel
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'archivo', // Campo que espera el backend
+          excelBytes,
+          filename: 'proveedores.xlsx',
+        ),
+      );
+
+      print('📤 Enviando archivo Excel de proveedores al backend...');
+
+      final streamedResponse = await request.send().timeout(
+        Duration(seconds: 180),
+      );
+      final response = await http.Response.fromStream(streamedResponse);
+
+      print('📥 Respuesta recibida: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+
+        // Extraer datos según la estructura del backend
+        final data = responseData['data'] ?? responseData;
+
+        print('✅ Carga masiva de proveedores completada');
+        print('   Creados: ${data['proveedoresCreados']}');
+        print('   Actualizados: ${data['proveedoresActualizados']}');
+        print('   Errores: ${data['errores']?.length ?? 0}');
+
+        return data;
+      } else {
+        print('❌ Error del servidor: ${response.statusCode}');
+        print('   Respuesta: ${response.body}');
+        throw Exception(
+          'Error del servidor: ${response.statusCode} - ${response.body}',
+        );
+      }
+    } catch (e) {
+      print('❌ Error en carga masiva de proveedores: $e');
+      throw Exception('No se pudo procesar la carga masiva: $e');
     }
   }
 }

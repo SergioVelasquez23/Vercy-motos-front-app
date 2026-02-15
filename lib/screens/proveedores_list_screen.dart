@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
+import 'dart:typed_data';
 import '../models/proveedor.dart';
 import '../services/proveedor_service.dart';
 import '../theme/app_theme.dart';
@@ -169,6 +171,27 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen> {
             ),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.primary,
+              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ),
+          SizedBox(width: 12),
+
+          // Botón Carga Masiva ✅ NUEVO
+          ElevatedButton.icon(
+            onPressed: () => _mostrarDialogoCargaMasiva(),
+            icon: Icon(Icons.file_upload, color: Colors.white),
+            label: Text(
+              'Carga Masiva',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.success,
               padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
@@ -1049,5 +1072,255 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen> {
         );
       }
     }
+  }
+
+  // ============================================
+  // 📦 CARGA MASIVA - IGUAL QUE PRODUCTOS
+  // ============================================
+  void _mostrarDialogoCargaMasiva() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: AppTheme.cardBg,
+          title: Row(
+            children: [
+              Icon(Icons.upload_file, color: AppTheme.primary),
+              SizedBox(width: 12),
+              Text(
+                'Carga Masiva de Proveedores',
+                style: TextStyle(color: Colors.white),
+              ),
+            ],
+          ),
+          content: Container(
+            width: 400,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Selecciona un archivo Excel (.xlsx) con los datos de los proveedores.',
+                  style: TextStyle(color: Colors.white),
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'Columnas requeridas:',
+                  style: TextStyle(
+                    color: Colors.grey.shade300,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Container(
+                  padding: EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppTheme.surfaceDark,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    '• nombre\n• documento\n• email\n• telefono\n• direccion',
+                    style: TextStyle(
+                      color: Colors.grey.shade400,
+                      fontSize: 11,
+                      fontFamily: 'monospace',
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                'Cancelar',
+                style: TextStyle(color: AppTheme.textSecondary),
+              ),
+            ),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.pop(context);
+                _seleccionarArchivoCargaMasiva();
+              },
+              icon: Icon(Icons.folder_open),
+              label: Text('Elegir archivo'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.success,
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _seleccionarArchivoCargaMasiva() async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['xlsx', 'xls'],
+        withData: true,
+      );
+
+      if (result != null && result.files.isNotEmpty) {
+        final bytes = result.files.first.bytes;
+        if (bytes == null)
+          throw Exception('No se pudo obtener los bytes del archivo');
+
+        await _procesarArchivoExcel(bytes);
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al seleccionar archivo: $e'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 5),
+        ),
+      );
+    }
+  }
+
+  Future<void> _procesarArchivoExcel(Uint8List bytes) async {
+    try {
+      // Mostrar diálogo de progreso
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (c) => AlertDialog(
+          backgroundColor: AppTheme.cardBg,
+          content: Row(
+            children: [
+              CircularProgressIndicator(color: AppTheme.primary),
+              SizedBox(width: 16),
+              Text(
+                'Procesando archivo Excel...',
+                style: TextStyle(color: Colors.white),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      // Enviar archivo al backend
+      final resultado = await _proveedorService.cargaMasivaProveedores(
+        bytes.toList(),
+      );
+
+      // Cerrar diálogo de progreso
+      if (mounted) Navigator.pop(context);
+
+      // Recargar lista
+      await _cargarProveedores();
+
+      // Mostrar resultado
+      if (mounted) {
+        _mostrarResultadoCarga(resultado);
+      }
+    } catch (e) {
+      if (mounted) Navigator.pop(context);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al procesar archivo: $e'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 5),
+        ),
+      );
+    }
+  }
+
+  void _mostrarResultadoCarga(Map<String, dynamic> resultado) {
+    final proveedoresCreados = resultado['proveedoresCreados'] ?? 0;
+    final proveedoresActualizados = resultado['proveedoresActualizados'] ?? 0;
+    final errores = resultado['errores'] as List? ?? [];
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppTheme.cardBg,
+        title: Row(
+          children: [
+            Icon(
+              errores.isEmpty ? Icons.check_circle : Icons.warning,
+              color: errores.isEmpty ? AppTheme.success : Colors.orange,
+            ),
+            SizedBox(width: 8),
+            Text(
+              'Resultado de la carga',
+              style: TextStyle(color: Colors.white),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildResumenCarga('Creados', proveedoresCreados),
+            SizedBox(height: 8),
+            _buildResumenCarga('Actualizados', proveedoresActualizados),
+            if (errores.isNotEmpty) ...[
+              SizedBox(height: 12),
+              Text(
+                'Errores (${errores.length}):',
+                style: TextStyle(
+                  color: Colors.orange,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                ),
+              ),
+              SizedBox(height: 8),
+              Container(
+                constraints: BoxConstraints(maxHeight: 150),
+                decoration: BoxDecoration(
+                  color: AppTheme.surfaceDark,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: SingleChildScrollView(
+                  child: Text(
+                    errores.map((e) => '• ${e['mensaje'] ?? e}').join('\n'),
+                    style: TextStyle(color: Colors.grey.shade300, fontSize: 11),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cerrar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildResumenCarga(String label, int cantidad) {
+    return Row(
+      children: [
+        Text(
+          '$label:',
+          style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+        ),
+        SizedBox(width: 8),
+        Container(
+          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          decoration: BoxDecoration(
+            color: AppTheme.primary.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Text(
+            cantidad.toString(),
+            style: TextStyle(
+              color: AppTheme.primary,
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+            ),
+          ),
+        ),
+      ],
+    );
   }
 }

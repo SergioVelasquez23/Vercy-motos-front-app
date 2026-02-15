@@ -46,6 +46,12 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
       TextEditingController();
   final TextEditingController _montoTransferenciasController =
       TextEditingController();
+  final TextEditingController _montoTarjetaController =
+      TextEditingController();
+  final TextEditingController _montoSistereditoController =
+      TextEditingController();
+  final TextEditingController _montoDatafonoController =
+      TextEditingController();
   final TextEditingController _ingresoEfectivoController =
       TextEditingController();
   final TextEditingController _notasController = TextEditingController();
@@ -89,6 +95,9 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
     _montoAperturaController.dispose();
     _montoEfectivoController.dispose();
     _montoTransferenciasController.dispose();
+    _montoTarjetaController.dispose();
+    _montoSistereditoController.dispose();
+    _montoDatafonoController.dispose();
     _ingresoEfectivoController.dispose();
     _notasController.dispose();
     super.dispose();
@@ -156,6 +165,9 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
             .ingresosEfectivo
             .toStringAsFixed(2);
         _montoTransferenciasController.text = '0.00'; // Por ahora solo efectivo
+        _montoTarjetaController.text = '0.00';
+        _montoSistereditoController.text = '0.00';
+        _montoDatafonoController.text = '0.00';
       });
 
       // Ingresos reales cargados silenciosamente
@@ -1648,6 +1660,126 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                           children: [
                             Padding(
                               padding: const EdgeInsets.all(8.0),
+                              child: Text("Tarjeta"),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: TextFormField(
+                                controller: _montoTarjetaController,
+                                keyboardType: TextInputType.number,
+                                decoration: InputDecoration(
+                                  isDense: true,
+                                  contentPadding: EdgeInsets.symmetric(
+                                    vertical: 8,
+                                    horizontal: 8,
+                                  ),
+                                  border: OutlineInputBorder(),
+                                ),
+                                onChanged: (_) => _actualizarTotales(),
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.all(4.0),
+                              child: Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Icon(
+                                  Icons.payment,
+                                  color: Colors.blue,
+                                  size: 20,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        TableRow(
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Text("Sistecredito"),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: TextFormField(
+                                controller: _montoSistereditoController,
+                                keyboardType: TextInputType.number,
+                                decoration: InputDecoration(
+                                  isDense: true,
+                                  contentPadding: EdgeInsets.symmetric(
+                                    vertical: 8,
+                                    horizontal: 8,
+                                  ),
+                                  border: OutlineInputBorder(),
+                                ),
+                                onChanged: (_) => _actualizarTotales(),
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.all(4.0),
+                              child: Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  color: Colors.orange.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Icon(
+                                  Icons.card_giftcard,
+                                  color: Colors.orange,
+                                  size: 20,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        TableRow(
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Text("Datafono"),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: TextFormField(
+                                controller: _montoDatafonoController,
+                                keyboardType: TextInputType.number,
+                                decoration: InputDecoration(
+                                  isDense: true,
+                                  contentPadding: EdgeInsets.symmetric(
+                                    vertical: 8,
+                                    horizontal: 8,
+                                  ),
+                                  border: OutlineInputBorder(),
+                                ),
+                                onChanged: (_) => _actualizarTotales(),
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.all(4.0),
+                              child: Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  color: Colors.green.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Icon(
+                                  Icons.contactless,
+                                  color: Colors.green,
+                                  size: 20,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        TableRow(
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.all(8.0),
                               child: Text(
                                 "Total Declarado",
                                 style: TextStyle(
@@ -2191,6 +2323,120 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
           ),
           SizedBox(height: 20),
 
+          // 📊 NUEVA SECCIÓN: TOTALES POR MÉTODO DE PAGO
+          Card(
+            elevation: 4,
+            color: cardBg,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Padding(
+              padding: EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "💳 Totales por Método de Pago",
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: textDark,
+                    ),
+                  ),
+                  SizedBox(height: 16),
+                  FutureBuilder<Map<String, dynamic>>(
+                    future: _cuadreCajaService.getCuadreCompleto(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return Center(child: CircularProgressIndicator(color: primary));
+                      }
+                      
+                      if (snapshot.hasError || !snapshot.hasData) {
+                        return Container(
+                          padding: EdgeInsets.all(16),
+                          child: Text(
+                            "Error al obtener datos de métodos de pago",
+                            style: TextStyle(color: Colors.red),
+                          ),
+                        );
+                      }
+
+                      final data = snapshot.data!;
+                      // 📊 Leer datos del backend (viene en detalleVentas)
+                      final detalleVentas = data['detalleVentas'] ?? {};
+                      
+                      // 🔧 SIEMPRE mostrar TODOS los métodos, aunque el backend no los envíe
+                      final efectivo = (detalleVentas['Efectivo'] ?? detalleVentas['efectivo'] ?? 0.0).toDouble();
+                      final transferencia = (detalleVentas['Transferencia'] ?? detalleVentas['transferencia'] ?? 0.0).toDouble();
+                      final tarjeta = (detalleVentas['Tarjeta'] ?? detalleVentas['tarjeta'] ?? 0.0).toDouble();
+                      final sistecredito = (detalleVentas['Sistecredito'] ?? detalleVentas['sistecredito'] ?? 0.0).toDouble();
+                      final datafono = (detalleVentas['Datafono'] ?? detalleVentas['datafono'] ?? 0.0).toDouble();
+                      
+                      return Column(
+                        children: [
+                          _buildMetodoPagoRow("💵 Efectivo", efectivo, Colors.green),
+                          _buildMetodoPagoRow("🏦 Transferencia", transferencia, Colors.blue),
+                          _buildMetodoPagoRow("💳 Tarjeta", tarjeta, Colors.orange),
+                          _buildMetodoPagoRow("🎁 Sistecredito", sistecredito, Colors.purple),
+                          _buildMetodoPagoRow("📱 Datafono", datafono, Colors.teal),
+                          Divider(color: Colors.grey.withOpacity(0.3)),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                "TOTAL GENERAL:",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: primary,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              Text(
+                                formatCurrency(efectivo + transferencia + tarjeta + sistecredito + datafono),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: primary,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ],
+                          ),
+                          // 🔍 DEBUG: Mostrar datos raw del backend
+                          if (data['debug'] == true || efectivo > 0) ...[
+                            SizedBox(height: 8),
+                            ExpansionTile(
+                              title: Text(
+                                "🔍 Datos del backend",
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[400],
+                                ),
+                              ),
+                              children: [
+                                Padding(
+                                  padding: EdgeInsets.all(8.0),
+                                  child: Text(
+                                    "detalleVentas: $detalleVentas",
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: Colors.grey[500],
+                                      fontFamily: 'monospace',
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ],
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          SizedBox(height: 20),
+
           // Cerrar caja
           Card(
             elevation: 4,
@@ -2246,6 +2492,46 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                 }
               },
               child: Text("Guardar cambios"),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 🎨 Helper widget para mostrar filas de métodos de pago  
+  Widget _buildMetodoPagoRow(String metodo, double monto, Color color) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: color,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              SizedBox(width: 8),
+              Text(
+                metodo,
+                style: TextStyle(
+                  color: textDark,
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+          Text(
+            formatCurrency(monto),
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: color,
+              fontSize: 14,
             ),
           ),
         ],

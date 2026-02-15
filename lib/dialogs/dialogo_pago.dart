@@ -34,6 +34,8 @@ class _DialogoPagoState extends State<DialogoPago> {
   late TextEditingController montoEfectivoController;
   late TextEditingController montoTarjetaController;
   late TextEditingController montoTransferenciaController;
+  late TextEditingController montoSistereditoController;
+  late TextEditingController montoDatafonoController;
 
   // ✅ NUEVO: Controladores para información del cliente
   late TextEditingController clienteNombreController;
@@ -74,6 +76,10 @@ class _DialogoPagoState extends State<DialogoPago> {
     montoEfectivoController = TextEditingController();
     montoTarjetaController = TextEditingController();
     montoTransferenciaController = TextEditingController();
+    montoSistereditoController = TextEditingController();
+    montoDatafonoController = TextEditingController();
+    montoSistereditoController = TextEditingController();
+    montoDatafonoController = TextEditingController();
 
     // ✅ NUEVO: Inicializar controladores cliente
     clienteNombreController = TextEditingController();
@@ -116,6 +122,10 @@ class _DialogoPagoState extends State<DialogoPago> {
     montoEfectivoController.dispose();
     montoTarjetaController.dispose();
     montoTransferenciaController.dispose();
+    montoSistereditoController.dispose();
+    montoDatafonoController.dispose();
+    montoSistereditoController.dispose();
+    montoDatafonoController.dispose();
 
     // ✅ NUEVO: Dispose controladores cliente
     clienteNombreController.dispose();
@@ -183,7 +193,13 @@ class _DialogoPagoState extends State<DialogoPago> {
     final transferencia = montoTransferenciaController.text.isNotEmpty
         ? double.tryParse(montoTransferenciaController.text) ?? 0.0
         : 0.0;
-    return efectivo + tarjeta + transferencia;
+    final sistecredito = montoSistereditoController.text.isNotEmpty
+        ? double.tryParse(montoSistereditoController.text) ?? 0.0
+        : 0.0;
+    final datafono = montoDatafonoController.text.isNotEmpty
+        ? double.tryParse(montoDatafonoController.text) ?? 0.0
+        : 0.0;
+    return efectivo + tarjeta + transferencia + sistecredito + datafono;
   }
 
   double get cambio {
@@ -265,6 +281,36 @@ class _DialogoPagoState extends State<DialogoPago> {
             PagoParcial(
               monto: montoTransferencia,
               formaPago: 'transferencia',
+              fecha: now,
+              procesadoPor: nombreUsuario,
+            ),
+          );
+        }
+      }
+
+      if (montoSistereditoController.text.isNotEmpty) {
+        final montoSistecredito =
+            double.tryParse(montoSistereditoController.text) ?? 0.0;
+        if (montoSistecredito > 0) {
+          pagosParciales.add(
+            PagoParcial(
+              monto: montoSistecredito,
+              formaPago: 'sistecredito',
+              fecha: now,
+              procesadoPor: nombreUsuario,
+            ),
+          );
+        }
+      }
+
+      if (montoDatafonoController.text.isNotEmpty) {
+        final montoDatafono =
+            double.tryParse(montoDatafonoController.text) ?? 0.0;
+        if (montoDatafono > 0) {
+          pagosParciales.add(
+            PagoParcial(
+              monto: montoDatafono,
+              formaPago: 'datafono',
               fecha: now,
               procesadoPor: nombreUsuario,
             ),
@@ -1411,6 +1457,8 @@ class _DialogoPagoState extends State<DialogoPago> {
                       montoEfectivoController.clear();
                       montoTarjetaController.clear();
                       montoTransferenciaController.clear();
+                      montoSistereditoController.clear();
+                      montoDatafonoController.clear();
                     }
                   });
                 },
@@ -1449,6 +1497,75 @@ class _DialogoPagoState extends State<DialogoPago> {
                       Icons.account_balance,
                       color: AppTheme.primary,
                     ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: AppTheme.primary.withOpacity(0.3),
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: AppTheme.primary, width: 2),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 12),
+                TextField(
+                  controller: montoTarjetaController,
+                  keyboardType: TextInputType.number,
+                  style: TextStyle(color: AppTheme.textPrimary, fontSize: 16),
+                  decoration: InputDecoration(
+                    labelText: 'Tarjeta',
+                    labelStyle: TextStyle(color: AppTheme.textSecondary),
+                    prefixIcon: Icon(
+                      Icons.credit_card,
+                      color: AppTheme.primary,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: AppTheme.primary.withOpacity(0.3),
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: AppTheme.primary, width: 2),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 12),
+                TextField(
+                  controller: montoSistereditoController,
+                  keyboardType: TextInputType.number,
+                  style: TextStyle(color: AppTheme.textPrimary, fontSize: 16),
+                  decoration: InputDecoration(
+                    labelText: 'SISTECredito',
+                    labelStyle: TextStyle(color: AppTheme.textSecondary),
+                    prefixIcon: Icon(
+                      Icons.account_balance_wallet,
+                      color: AppTheme.primary,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: AppTheme.primary.withOpacity(0.3),
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: AppTheme.primary, width: 2),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 12),
+                TextField(
+                  controller: montoDatafonoController,
+                  keyboardType: TextInputType.number,
+                  style: TextStyle(color: AppTheme.textPrimary, fontSize: 16),
+                  decoration: InputDecoration(
+                    labelText: 'DataFono',
+                    labelStyle: TextStyle(color: AppTheme.textSecondary),
+                    prefixIcon: Icon(Icons.payment, color: AppTheme.primary),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(
@@ -1575,7 +1692,7 @@ class _DialogoPagoState extends State<DialogoPago> {
 
     // ✅ SINCRONIZADO: Usar itemsParaPagar del getter
     final resultado = {
-      'medioPago': medioPago,
+      'medioPago': pagoMultiple ? 'mixto' : medioPago, // ✅ CORRECCIÓN: Usar 'mixto' para pagos múltiples
       'incluyePropina': incluyePropina,
       'descuentoPorcentaje': descuentoPorcentajeController.text,
       'descuentoValor': descuentoValorController.text,
@@ -1585,6 +1702,8 @@ class _DialogoPagoState extends State<DialogoPago> {
       'montoEfectivo': montoEfectivoController.text,
       'montoTarjeta': montoTarjetaController.text,
       'montoTransferencia': montoTransferenciaController.text,
+      'montoSistecredito': montoSistereditoController.text,
+      'montoDatafono': montoDatafonoController.text,
       'productosSeleccionados': itemsParaPagar, // ✅ Usar getter sincronizado
       'totalCalculado': totalConPropina, // ✅ Usar getter sincronizado
       'subtotalSeleccionado': totalSeleccionado, // ✅ Usar getter sincronizado
@@ -1619,7 +1738,19 @@ class _DialogoPagoState extends State<DialogoPago> {
         ? double.tryParse(montoTransferenciaController.text) ?? 0.0
         : 0.0;
 
-    return montoEfectivo + montoTarjeta + montoTransferencia;
+    final montoSistecredito = montoSistereditoController.text.isNotEmpty
+        ? double.tryParse(montoSistereditoController.text) ?? 0.0
+        : 0.0;
+
+    final montoDatafono = montoDatafonoController.text.isNotEmpty
+        ? double.tryParse(montoDatafonoController.text) ?? 0.0
+        : 0.0;
+
+    return montoEfectivo +
+        montoTarjeta +
+        montoTransferencia +
+        montoSistecredito +
+        montoDatafono;
   }
 
   // Generar los pagos parciales según los montos ingresados

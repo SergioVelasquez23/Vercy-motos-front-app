@@ -867,4 +867,48 @@ class CuadreCajaService {
       throw Exception('Error de conexión: $e');
     }
   }
+
+  // 📊 Obtener resumen de cierre completo con totales por método de pago
+  Future<Map<String, dynamic>> getResumenCierreCompleto(String cuadreId) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/cuadres-caja/$cuadreId/resumen-cierre'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        return responseData['data'];
+      } else {
+        throw Exception(
+          'Error al obtener resumen de cierre: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      throw Exception('Error de conexión: $e');
+    }
+  }
+
+  // 📊 Obtener informe temporal de cuadre de caja (sin guardar)
+  Future<Map<String, dynamic>> getInformeCuadreTemp() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/reportes/cuadre-caja'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        return responseData;
+      } else {
+        throw Exception(
+          'Error al obtener informe de cuadre: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      throw Exception('Error de conexión: $e');
+    }
+  }
 }

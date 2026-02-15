@@ -490,7 +490,7 @@ class _IngresoCajaFormState extends State<_IngresoCajaForm> {
                 SizedBox(height: 16),
                 DropdownButtonFormField<String>(
                   value: formaPago,
-                  items: ['Efectivo', 'Transferencia', 'Otro']
+                  items: ['Efectivo', 'Transferencia', 'Tarjeta', 'Sistecredito', 'Datafono', 'Otro']
                       .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                       .toList(),
                   onChanged: (v) => setState(() => formaPago = v!),

@@ -653,12 +653,19 @@ class _ComprasListScreenState extends State<ComprasListScreen> {
         ? compra.total
         : 0.0;
     final porPagar = compra.total - pagado;
-    final estado =
-        compra.pagadoDesdeCaja || compra.estado.toUpperCase() == 'PAGADA'
-        ? 'Completa'
-        : (compra.estado.toUpperCase() == 'PROCESADA'
-              ? 'Procesada'
-              : 'Pendiente');
+    // Determinar estado
+    String estado;
+    if (compra.pagadoDesdeCaja || compra.estado.toUpperCase() == 'PAGADA') {
+      estado = 'Completa';
+    } else if (!compra.pagadoDesdeCaja && compra.estado.toUpperCase() != 'PENDIENTE') {
+      // Si no salió desde caja pero tiene otro estado, mostrar ese estado
+      estado = compra.estado.toUpperCase() == 'PROCESADA' ? 'Procesada' : 'Hecha';
+    } else if (!compra.pagadoDesdeCaja) {
+      // Si no salió desde caja y es pendiente, mostrar como Procesada
+      estado = 'Procesada';
+    } else {
+      estado = 'Pendiente';
+    }
 
     // ID corto para mostrar
     String numeroCompra = 'OC${(index + 1).toString().padLeft(3, '0')}';

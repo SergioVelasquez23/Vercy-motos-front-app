@@ -108,4 +108,73 @@ class UserManagementService {
       return {'success': false, 'message': 'Error de conexión: $e'};
     }
   }
+
+  /// Obtiene usuarios pendientes de autorización
+  Future<List<Map<String, dynamic>>> getUsersPendientesAutorizacion() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/api/users/pendientes-autorizacion'),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final List<dynamic> usersJson = data['users'] ?? data;
+        return usersJson.cast<Map<String, dynamic>>();
+      } else {
+        throw Exception(
+          'Error al obtener usuarios pendientes: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      throw Exception('Error de conexión: $e');
+    }
+  }
+
+  /// Autoriza un usuario para acceder a la plataforma
+  Future<Map<String, dynamic>> autorizarUsuario(String userId) async {
+    try {
+      final response = await http.put(
+        Uri.parse('$_baseUrl/api/users/$userId/autorizar'),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        return {'success': true, 'message': 'Usuario autorizado correctamente'};
+      } else {
+        final data = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': data['message'] ?? 'Error al autorizar el usuario',
+        };
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Error de conexión: $e'};
+    }
+  }
+
+  /// Deniega/revoca autorización de un usuario
+  Future<Map<String, dynamic>> negarUsuario(String userId) async {
+    try {
+      final response = await http.put(
+        Uri.parse('$_baseUrl/api/users/$userId/denegar'),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        return {
+          'success': true,
+          'message': 'Autorización revocada correctamente',
+        };
+      } else {
+        final data = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': data['message'] ?? 'Error al revocar autorización',
+        };
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Error de conexión: $e'};
+    }
+  }
 }

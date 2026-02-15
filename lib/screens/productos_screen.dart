@@ -3144,22 +3144,13 @@ class _ProductosScreenState extends State<ProductosScreen> {
 
                             Navigator.of(context).pop();
 
-                            // Recargar datos después de crear/actualizar
+                            // Recargar caché en background para mantener sincronizado
                             final cacheProvider =
                                 Provider.of<DatosCacheProvider>(
                                   context,
                                   listen: false,
                                 );
                             await cacheProvider.recargarDatos();
-
-                            // Actualizar lista local con copia para evitar modificación concurrente
-                            if (mounted) {
-                              setState(() {
-                                _productosCache = List.from(
-                                  cacheProvider.productos ?? [],
-                                );
-                              });
-                            }
 
                             if (mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(

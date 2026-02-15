@@ -240,6 +240,9 @@ class ItemFacturaCompra {
   
   // 📦 DESTINO EN COMPRAS
   final String destino; // "BODEGA", "ALMACÉN" o "PARTE Y PARTE"
+  final double
+  cantidadAlmacen; // Cantidad para almacén (solo para PARTE Y PARTE)
+  final double cantidadBodega; // Cantidad para bodega (solo para PARTE Y PARTE)
 
   ItemFacturaCompra({
     required this.ingredienteId,
@@ -253,6 +256,8 @@ class ItemFacturaCompra {
     this.porcentajeDescuento = 0.0,
     this.valorDescuento = 0.0,
     this.destino = "ALMACÉN",
+    this.cantidadAlmacen = 0.0,
+    this.cantidadBodega = 0.0,
   });
 
   factory ItemFacturaCompra.fromJson(Map<String, dynamic> json) {
@@ -267,8 +272,31 @@ class ItemFacturaCompra {
       valorImpuesto: (json['valorImpuesto'] ?? 0).toDouble(),
       porcentajeDescuento: (json['porcentajeDescuento'] ?? 0).toDouble(),
       valorDescuento: (json['valorDescuento'] ?? 0).toDouble(),
-      destino: (json['destino'] ?? 'ALMACÉN').toString(),
+      // 📦 Inferir destino: si cantidadAlmacen Y cantidadBodega > 0, es PARTE Y PARTE
+      destino: _inferirDestino(json),
+      cantidadAlmacen: (json['cantidadAlmacen'] ?? 0).toDouble(),
+      cantidadBodega: (json['cantidadBodega'] ?? 0).toDouble(),
     );
+  }
+
+  // 📦 Método para inferir el destino basado en cantidades
+  static String _inferirDestino(Map<String, dynamic> json) {
+    final cantAlmacen = (json['cantidadAlmacen'] ?? 0).toDouble();
+    final cantBodega = (json['cantidadBodega'] ?? 0).toDouble();
+    final destinoGuardado = json['destino']?.toString();
+
+    // Si hay destino guardado y no es el default, usarlo
+    if (destinoGuardado != null && destinoGuardado.isNotEmpty) {
+      return destinoGuardado;
+    }
+
+    // Inferir basado en cantidades
+    if (cantAlmacen > 0 && cantBodega > 0) {
+      return 'PARTE Y PARTE';
+    } else if (cantBodega > 0 && cantAlmacen == 0) {
+      return 'BODEGA';
+    }
+    return 'ALMACÉN';
   }
 
   Map<String, dynamic> toJson() {
@@ -304,6 +332,8 @@ class ItemFacturaCompra {
       'valorDescuento': valorDescuento,
       // 📦 Destino en compras
       'destino': destino,
+      'cantidadAlmacen': cantidadAlmacen,
+      'cantidadBodega': cantidadBodega,
     };
   }
 }

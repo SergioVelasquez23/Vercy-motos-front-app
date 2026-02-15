@@ -6,6 +6,52 @@ import 'base_api_service.dart';
 
 /// Servicio para gestión de alertas y notificaciones
 class AlertasService {
+
+    // === INTEGRACIÓN TELEGRAM ===
+    static const String _telegramApiUrl = 'https://api.telegram.org/bot';
+    static const String _telegramToken = '8539029528:AAFjyVd941iMgpIbqEbwN6VLWEZi_m4p53U'; // Reemplaza por tu token real
+    static const String _telegramChatId = '6535645414'; // Reemplaza por tu chat_id real
+
+    /// Envía un mensaje de texto a Telegram
+    Future<http.Response> sendTelegramMessage(String message) async {
+      final url = Uri.parse('$_telegramApiUrl$_telegramToken/sendMessage');
+      final response = await http.post(
+        url,
+        body: {
+          'chat_id': _telegramChatId,
+          'text': message,
+        },
+      );
+      return response;
+    }
+
+    /// Envía una foto a Telegram
+    Future<http.Response> sendTelegramPhoto(String photoUrl, {String? caption}) async {
+      final url = Uri.parse('$_telegramApiUrl$_telegramToken/sendPhoto');
+      final response = await http.post(
+        url,
+        body: {
+          'chat_id': _telegramChatId,
+          'photo': photoUrl,
+          if (caption != null) 'caption': caption,
+        },
+      );
+      return response;
+    }
+
+    /// Envía un documento a Telegram
+    Future<http.Response> sendTelegramDocument(String documentUrl, {String? caption}) async {
+      final url = Uri.parse('$_telegramApiUrl$_telegramToken/sendDocument');
+      final response = await http.post(
+        url,
+        body: {
+          'chat_id': _telegramChatId,
+          'document': documentUrl,
+          if (caption != null) 'caption': caption,
+        },
+      );
+      return response;
+    }
   static final AlertasService _instance = AlertasService._internal();
   factory AlertasService() => _instance;
   AlertasService._internal();

@@ -1222,28 +1222,32 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
             ),
           ),
           SizedBox(height: 8),
+          // Mostrar TODOS los métodos de pago siempre (buscar en mayúscula y minúscula)
           _buildInfoRow(
             'Ventas Efectivo:',
-            formatCurrency(ventas.ventasPorFormaPago['efectivo'] ?? 0),
+            formatCurrency((ventas.ventasPorFormaPago['Efectivo'] ?? ventas.ventasPorFormaPago['efectivo']) ?? 0),
             valueColor: AppTheme.success,
           ),
           _buildInfoRow(
             'Ventas Transferencia:',
-            formatCurrency(ventas.ventasPorFormaPago['transferencia'] ?? 0),
+            formatCurrency((ventas.ventasPorFormaPago['Transferencia'] ?? ventas.ventasPorFormaPago['transferencia']) ?? 0),
             valueColor: AppTheme.primary,
           ),
-          if ((ventas.ventasPorFormaPago['tarjeta'] ?? 0) > 0)
-            _buildInfoRow(
-              'Ventas Tarjeta:',
-              formatCurrency(ventas.ventasPorFormaPago['tarjeta'] ?? 0),
-              valueColor: AppTheme.warning,
-            ),
-          if ((ventas.ventasPorFormaPago['mixto'] ?? 0) > 0)
-            _buildInfoRow(
-              'Ventas Mixtas:',
-              formatCurrency(ventas.ventasPorFormaPago['mixto'] ?? 0),
-              valueColor: AppTheme.secondary,
-            ),
+          _buildInfoRow(
+            'Ventas Tarjeta:',
+            formatCurrency((ventas.ventasPorFormaPago['Tarjeta'] ?? ventas.ventasPorFormaPago['tarjeta']) ?? 0),
+            valueColor: AppTheme.warning,
+          ),
+          _buildInfoRow(
+            'Ventas Sistecredito:',
+            formatCurrency((ventas.ventasPorFormaPago['Sistecredito'] ?? ventas.ventasPorFormaPago['sistecredito']) ?? 0),
+            valueColor: Colors.purple,
+          ),
+          _buildInfoRow(
+            'Ventas Datafono:',
+            formatCurrency((ventas.ventasPorFormaPago['Datafono'] ?? ventas.ventasPorFormaPago['datafono']) ?? 0),
+            valueColor: Colors.teal,
+          ),
 
           // Display Ingresos Caja
           Divider(color: Colors.grey.withOpacity(0.3), height: 24),
@@ -1283,28 +1287,32 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
             ),
           ),
           SizedBox(height: 8),
+          // Mostrar TODAS las cantidades por método de pago siempre (buscar en mayúscula y minúscula)
           _buildInfoRow(
             'Pedidos en Efectivo:',
-            ventas.cantidadPorFormaPago['efectivo']?.toString() ?? "0",
+            ((ventas.cantidadPorFormaPago['Efectivo'] ?? ventas.cantidadPorFormaPago['efectivo']) ?? 0).toString(),
             valueColor: AppTheme.success,
           ),
           _buildInfoRow(
             'Pedidos por Transferencia:',
-            ventas.cantidadPorFormaPago['transferencia']?.toString() ?? "0",
+            ((ventas.cantidadPorFormaPago['Transferencia'] ?? ventas.cantidadPorFormaPago['transferencia']) ?? 0).toString(),
             valueColor: AppTheme.primary,
           ),
-          if ((ventas.cantidadPorFormaPago['tarjeta'] ?? 0) > 0)
-            _buildInfoRow(
-              'Pedidos con Tarjeta:',
-              ventas.cantidadPorFormaPago['tarjeta']?.toString() ?? "0",
-              valueColor: AppTheme.warning,
-            ),
-          if ((ventas.cantidadPorFormaPago['mixto'] ?? 0) > 0)
-            _buildInfoRow(
-              'Pedidos con Pago Mixto:',
-              ventas.cantidadPorFormaPago['mixto']?.toString() ?? "0",
-              valueColor: AppTheme.secondary,
-            ),
+          _buildInfoRow(
+            'Pedidos con Tarjeta:',
+            ((ventas.cantidadPorFormaPago['Tarjeta'] ?? ventas.cantidadPorFormaPago['tarjeta']) ?? 0).toString(),
+            valueColor: AppTheme.warning,
+          ),
+          _buildInfoRow(
+            'Pedidos Sistecredito:',
+            ((ventas.cantidadPorFormaPago['Sistecredito'] ?? ventas.cantidadPorFormaPago['sistecredito']) ?? 0).toString(),
+            valueColor: Colors.purple,
+          ),
+          _buildInfoRow(
+            'Pedidos Datafono:',
+            ((ventas.cantidadPorFormaPago['Datafono'] ?? ventas.cantidadPorFormaPago['datafono']) ?? 0).toString(),
+            valueColor: Colors.teal,
+          ),
 
           // Add a summary of today's sales instead of individual orders
           SizedBox(height: 16),

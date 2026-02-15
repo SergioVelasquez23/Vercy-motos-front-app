@@ -18,6 +18,13 @@ class CuadreCaja {
   final String? urlComprobanteDiario;
   final String? urlInventario;
   final double totalIngresos; // Nuevo campo para el total de ingresos
+  
+  // 📊 TOTALES POR MÉTODO DE PAGO
+  final double totalEfectivo;
+  final double totalTransferencia;
+  final double totalTarjeta;
+  final double totalSistecredito;
+  final double totalDatafono;
 
   CuadreCaja({
     this.id,
@@ -39,6 +46,12 @@ class CuadreCaja {
     this.urlComprobanteDiario,
     this.urlInventario,
     this.totalIngresos = 0.0, // Valor por defecto
+    // 📊 TOTALES POR MÉTODO DE PAGO
+    this.totalEfectivo = 0.0,
+    this.totalTransferencia = 0.0,
+    this.totalTarjeta = 0.0,
+    this.totalSistecredito = 0.0,
+    this.totalDatafono = 0.0,
   });
 
   factory CuadreCaja.fromJson(Map<String, dynamic> json) {
@@ -66,6 +79,12 @@ class CuadreCaja {
       urlComprobanteDiario: json['urlComprobanteDiario'],
       urlInventario: json['urlInventario'],
       totalIngresos: (json['totalIngresos'] ?? 0).toDouble(),
+      // 📊 TOTALES POR MÉTODO DE PAGO
+      totalEfectivo: (json['totalEfectivo'] ?? 0).toDouble(),
+      totalTransferencia: (json['totalTransferencia'] ?? 0).toDouble(),
+      totalTarjeta: (json['totalTarjeta'] ?? 0).toDouble(),
+      totalSistecredito: (json['totalSistecredito'] ?? 0).toDouble(),
+      totalDatafono: (json['totalDatafono'] ?? 0).toDouble(),
     );
   }
 
@@ -92,6 +111,12 @@ class CuadreCaja {
         'urlComprobanteDiario': urlComprobanteDiario,
       if (urlInventario != null) 'urlInventario': urlInventario,
       'totalIngresos': totalIngresos,
+      // 📊 TOTALES POR MÉTODO DE PAGO
+      'totalEfectivo': totalEfectivo,
+      'totalTransferencia': totalTransferencia,
+      'totalTarjeta': totalTarjeta,
+      'totalSistecredito': totalSistecredito,
+      'totalDatafono': totalDatafono,
     };
   }
 
@@ -115,6 +140,12 @@ class CuadreCaja {
     String? urlComprobanteDiario,
     String? urlInventario,
     double? totalIngresos,
+    // 📊 TOTALES POR MÉTODO DE PAGO
+    double? totalEfectivo,
+    double? totalTransferencia,
+    double? totalTarjeta,
+    double? totalSistecredito,
+    double? totalDatafono,
   }) {
     return CuadreCaja(
       id: id ?? this.id,
@@ -136,6 +167,12 @@ class CuadreCaja {
       urlComprobanteDiario: urlComprobanteDiario ?? this.urlComprobanteDiario,
       urlInventario: urlInventario ?? this.urlInventario,
       totalIngresos: totalIngresos ?? this.totalIngresos,
+      // 📊 TOTALES POR MÉTODO DE PAGO
+      totalEfectivo: totalEfectivo ?? this.totalEfectivo,
+      totalTransferencia: totalTransferencia ?? this.totalTransferencia,
+      totalTarjeta: totalTarjeta ?? this.totalTarjeta,
+      totalSistecredito: totalSistecredito ?? this.totalSistecredito,
+      totalDatafono: totalDatafono ?? this.totalDatafono,
     );
   }
 

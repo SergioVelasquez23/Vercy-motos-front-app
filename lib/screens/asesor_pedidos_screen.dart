@@ -11,6 +11,7 @@ import '../services/cliente_service.dart';
 import '../providers/user_provider.dart';
 import '../providers/datos_cache_provider.dart';
 import '../theme/app_theme.dart';
+import '../utils/busqueda_productos_utils.dart';
 
 class AsesorPedidosScreen extends StatefulWidget {
   const AsesorPedidosScreen({super.key});
@@ -116,8 +117,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
     setState(() {
       _productosFiltrados = _productos.where((producto) {
         final coincideBusqueda =
-            producto.nombre.toLowerCase().contains(busqueda) ||
-            (producto.codigo?.toLowerCase().contains(busqueda) ?? false);
+            busquedaInteligente(producto, busqueda);
         
         final coincideCategoria =
             _categoriaSeleccionada == null ||
@@ -154,28 +154,49 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
     });
   }
 
-  void _agregarAlCarrito(Producto producto) {
+  void _agregarAlCarrito(Producto producto) async {
     final cantidad = int.tryParse(_cantidadController.text) ?? 1;
+    
+    // � DEBUG: Ver valores de stock del producto
+    print('🔍 DEBUG agregar al carrito:');
+    print('   - Producto: ${producto.nombre}');
+    print('   - Bodega: ${producto.bodega}');
+    print('   - Almacén: ${producto.almacen}');
+    
+    // 📦 Mostrar diálogo para elegir de dónde descontar
+    final origen = await _mostrarDialogoSeleccionarOrigen(
+      context,
+      producto,
+      cantidad,
+    );
+    
+    print('   - Origen seleccionado: $origen');
+
+    if (origen == null) return; // Usuario canceló
     
     setState(() {
       final index = _carrito.indexWhere(
-        (item) => item.productoId == producto.id,
+        (item) => item.productoId == producto.id && item.origen == origen,
       );
 
       if (index >= 0) {
+        // Ya existe un item con el mismo producto y origen, incrementar cantidad
         _carrito[index] = ItemPedido(
           productoId: _carrito[index].productoId,
           productoNombre: _carrito[index].productoNombre ?? 'Producto',
           cantidad: _carrito[index].cantidad + cantidad,
           precioUnitario: _carrito[index].precioUnitario,
+          origen: origen,
         );
       } else {
+        // Agregar nuevo item con el origen especificado
         _carrito.add(
           ItemPedido(
             productoId: producto.id!,
             productoNombre: producto.nombre,
             cantidad: cantidad,
             precioUnitario: producto.precio,
+            origen: origen,
           ),
         );
       }
@@ -187,7 +208,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('${producto.nombre} agregado al pedido'),
+        content: Text('${producto.nombre} agregado desde $origen'),
         backgroundColor: AppTheme.success,
         duration: Duration(seconds: 1),
       ),
@@ -207,6 +228,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
         productoNombre: item.productoNombre ?? 'Producto',
         cantidad: nuevaCantidad,
         precioUnitario: item.precioUnitario,
+        origen: item.origen, // ✅ Preservar el origen seleccionado
       );
       _calcularTotales();
     });
@@ -679,17 +701,54 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
                 fontSize: 14,
               ),
             ),
-            // Cantidad disponible
-            if (producto.cantidad > 0)
-              Text(
-                'Disp: ${producto.cantidad}',
-                style: TextStyle(
-                  color: producto.cantidad > 0
-                      ? AppTheme.success
-                      : AppTheme.error,
-                  fontSize: 10,
+            // 📦 Stock por ubicación (Bodega y Almacén)
+            SizedBox(height: 4),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Bodega
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: (producto.bodega ?? 0) > 0
+                        ? AppTheme.success.withOpacity(0.2)
+                        : AppTheme.error.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    'B: ${producto.bodega ?? 0}',
+                    style: TextStyle(
+                      color: (producto.bodega ?? 0) > 0
+                          ? AppTheme.success
+                          : AppTheme.error,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
-              ),
+                SizedBox(width: 4),
+                // Almacén
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: (producto.almacen ?? 0) > 0
+                        ? AppTheme.success.withOpacity(0.2)
+                        : AppTheme.error.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    'A: ${producto.almacen ?? 0}',
+                    style: TextStyle(
+                      color: (producto.almacen ?? 0) > 0
+                          ? AppTheme.success
+                          : AppTheme.error,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       ),
@@ -1213,14 +1272,41 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  item.productoNombre ?? 'Producto',
-                  style: TextStyle(
-                    color: AppTheme.textPrimary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        item.productoNombre ?? 'Producto',
+                        style: TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    SizedBox(width: 4),
+                    // 📦 Badge de origen
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: item.origen == 'BODEGA'
+                            ? AppTheme.primary.withOpacity(0.2)
+                            : AppTheme.success.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        item.origen == 'BODEGA' ? 'B' : 'A',
+                        style: TextStyle(
+                          color: item.origen == 'BODEGA'
+                              ? AppTheme.primary
+                              : AppTheme.success,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 SizedBox(height: 4),
                 Text(
@@ -1305,6 +1391,142 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
   void _mostrarExito(String mensaje) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(mensaje), backgroundColor: AppTheme.success),
+    );
+  }
+
+  // 📦 Mostrar diálogo para elegir de dónde descontar (Bodega o Almacén)
+  Future<String?> _mostrarDialogoSeleccionarOrigen(
+    BuildContext context,
+    Producto producto,
+    int cantidad,
+  ) async {
+    final bodegaDisponible = producto.bodega ?? 0;
+    final almacenDisponible = producto.almacen ?? 0;
+    
+    // 🔍 DEBUG
+    print('🔍 _mostrarDialogoSeleccionarOrigen:');
+    print('   - bodegaDisponible: $bodegaDisponible');
+    print('   - almacenDisponible: $almacenDisponible');
+
+    // 🔧 VALIDACIÓN COMENTADA TEMPORALMENTE: Permitir descuento incluso si bodega/almacén
+    // muestran 0 mientras se arregla el problema de los números en carga ligera
+    // if (bodegaDisponible <= 0 && almacenDisponible <= 0) {
+    //   print('   ❌ Sin stock en ninguna ubicación');
+    //   _mostrarError('⚠️ Sin stock disponible en bodega ni almacén');
+    //   return null;
+    // }
+
+    // 🔧 VALIDACIÓN COMENTADA TEMPORALMENTE: Permitir descuento de bodega incluso si no hay stock
+    // if (bodegaDisponible > 0 && almacenDisponible <= 0) {
+    //   print('   ✅ Solo hay stock en BODEGA, seleccionando automáticamente');
+    //   if (cantidad > bodegaDisponible) {
+    //     _mostrarError(
+    //       '⚠️ Stock insuficiente en bodega. Disponible: $bodegaDisponible',
+    //     );
+    //     return null;
+    //   }
+    //   return 'BODEGA';
+    // }
+
+    // 🔧 VALIDACIÓN COMENTADA TEMPORALMENTE: Permitir descuento de almacén incluso si no hay stock
+    // if (almacenDisponible > 0 && bodegaDisponible <= 0) {
+    //   print('   ✅ Solo hay stock en ALMACÉN, seleccionando automáticamente');
+    //   if (cantidad > almacenDisponible) {
+    //     _mostrarError(
+    //       '⚠️ Stock insuficiente en almacén. Disponible: $almacenDisponible',
+    //     );
+    //     return null;
+    //   }
+    //   return 'ALMACÉN';
+    // }
+    
+    print('   📋 Hay stock en ambas ubicaciones, mostrando diálogo');
+
+    // Si hay stock en ambas ubicaciones, mostrar diálogo para elegir
+    return await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppTheme.cardBg,
+        title: Row(
+          children: [
+            Icon(Icons.warehouse, color: AppTheme.primary),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                '¿De dónde descontar?',
+                style: TextStyle(color: AppTheme.textPrimary),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              producto.nombre,
+              style: TextStyle(
+                color: AppTheme.textPrimary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Cantidad solicitada: $cantidad',
+              style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+            ),
+            SizedBox(height: 16),
+            // Opción Bodega
+            // 🔧 TEMPORAL: Permitir descuento sin validar stock
+            ElevatedButton.icon(
+              onPressed: () => Navigator.pop(context, 'BODEGA'),
+              icon: Icon(Icons.store),
+              label: Text(
+                'BODEGA (Disponible: $bodegaDisponible)',
+                style: TextStyle(fontSize: 14),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primary,
+                foregroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(vertical: 12),
+                alignment: Alignment.centerLeft,
+              ),
+            ),
+            SizedBox(height: 8),
+            // Opción Almacén
+            // 🔧 TEMPORAL: Permitir descuento sin validar stock
+            ElevatedButton.icon(
+              onPressed: () => Navigator.pop(context, 'ALMACÉN'),
+              icon: Icon(Icons.inventory_2),
+              label: Text(
+                'ALMACÉN (Disponible: $almacenDisponible)',
+                style: TextStyle(fontSize: 14),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.success,
+                foregroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(vertical: 12),
+                alignment: Alignment.centerLeft,
+              ),
+            ),
+            if (cantidad > bodegaDisponible && cantidad > almacenDisponible)
+              Padding(
+                padding: EdgeInsets.only(top: 12),
+                child: Text(
+                  '⚠️ Stock insuficiente en ambas ubicaciones',
+                  style: TextStyle(color: AppTheme.error, fontSize: 12),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, null),
+            child: Text('CANCELAR'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -2022,15 +2244,42 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  item.productoNombre ?? 'Producto',
-                  style: TextStyle(
-                    color: AppTheme.textPrimary,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        item.productoNombre ?? 'Producto',
+                        style: TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    SizedBox(width: 4),
+                    // 📦 Badge de origen
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: item.origen == 'BODEGA'
+                            ? AppTheme.primary.withOpacity(0.2)
+                            : AppTheme.success.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        item.origen == 'BODEGA' ? 'B' : 'A',
+                        style: TextStyle(
+                          color: item.origen == 'BODEGA'
+                              ? AppTheme.primary
+                              : AppTheme.success,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 SizedBox(height: 2),
                 Text(

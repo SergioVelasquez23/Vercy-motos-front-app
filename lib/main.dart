@@ -33,6 +33,7 @@ import 'screens/cuentas_por_cobrar_screen.dart';
 import 'screens/cuentas_por_pagar_screen.dart';
 import 'screens/gastos_programados_screen.dart';
 import 'screens/alertas_screen.dart';
+import 'screens/autorizaciones_screen.dart';
 import 'models/cliente.dart';
 import 'models/cotizacion.dart';
 import 'providers/user_provider.dart';
@@ -163,6 +164,7 @@ class MyApp extends StatelessWidget {
         '/cuentas-por-pagar': (context) => const CuentasPorPagarScreen(),
         '/gastos-programados': (context) => const GastosProgramadosScreen(),
         '/alertas': (context) => const AlertasScreen(),
+        '/autorizaciones': (context) => const AutorizacionesScreen(),
         '/ingresos-caja': (context) => IngresosCajaScreen(),
         '/pedidos': (context) =>
             const PedidosScreenFusion(), // Pantalla fusionada

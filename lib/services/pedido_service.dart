@@ -1444,6 +1444,8 @@ class PedidoService {
     double montoEfectivo = 0.0,
     double montoTarjeta = 0.0,
     double montoTransferencia = 0.0,
+    double montoSistecredito = 0.0, // ✅ AGREGADO: Soporte para Sistecredito
+    double montoDatafono = 0.0, // ✅ AGREGADO: Soporte para Datafono
   }) async {
     // Declarar tipoPago aquí para que sea accesible tanto en el try como en el catch
     String tipoPago = 'pagado';
@@ -1499,6 +1501,22 @@ class PedidoService {
               });
             }
 
+            // ✅ AGREGADO: Soporte para Sistecredito
+            if (montoSistecredito > 0) {
+              pagosMixtos.add({
+                'formaPago': 'sistecredito',
+                'monto': montoSistecredito,
+              });
+            }
+
+            // ✅ AGREGADO: Soporte para Datafono
+            if (montoDatafono > 0) {
+              pagosMixtos.add({
+                'formaPago': 'datafono',
+                'monto': montoDatafono,
+              });
+            }
+
             if (pagosMixtos.isNotEmpty) {
               pagarData['pagosMixtos'] = pagosMixtos;
                 
@@ -1525,11 +1543,13 @@ class PedidoService {
         } else if (formaPago != 'efectivo' &&
             formaPago != 'transferencia' &&
             formaPago != 'tarjeta' &&
+            formaPago != 'sistecredito' && // ✅ AGREGADO: Validar sistecredito
+            formaPago != 'datafono' && // ✅ AGREGADO: Validar datafono
             formaPago != 'otro') {
-                       formaPago = 'efectivo';
+                       formaPago = 'efectivo'; // Solo convierte a efectivo si no es ninguno de los válidos
           pagarData['formaPago'] = formaPago;
         } else {
-          pagarData['formaPago'] = formaPago;
+          pagarData['formaPago'] = formaPago; // ✅ Usa el método de pago tal cual
         }
 
         pagarData['propina'] = propina;

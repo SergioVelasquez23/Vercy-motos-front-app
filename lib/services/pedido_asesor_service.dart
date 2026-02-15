@@ -28,10 +28,27 @@ class PedidoAsesorService {
   Future<PedidoAsesor> crearPedido(PedidoAsesor pedido) async {
     try {
       final headers = await _getHeaders();
+      
+      final pedidoJson = pedido.toJson();
+
+      // Guardar los orígenes originales (workaround backend)
+      final origenesOriginales = <String, String>{};
+      for (var item in pedidoJson['items']) {
+        final productoId = item['productoId'].toString();
+        origenesOriginales[productoId] = item['origen'].toString();
+      }
+
+      // 🔍 DEBUG: Ver qué se envía al backend
+      print('📤 Creando pedido asesor:');
+      print('   Items: ${pedidoJson['items'].length}');
+      for (var item in pedidoJson['items']) {
+        print('   - ${item['productoNombre']}: origen = ${item['origen']}');
+      }
+      
       final response = await http.post(
         Uri.parse(baseUrl),
         headers: headers,
-        body: json.encode(pedido.toJson()),
+        body: json.encode(pedidoJson),
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
@@ -39,6 +56,29 @@ class PedidoAsesorService {
         final data = decoded is Map && decoded['data'] != null 
             ? decoded['data'] 
             : decoded;
+        
+        // 🔍 DEBUG: Ver qué devuelve el backend
+        print('📥 Respuesta del backend al crear pedido:');
+        if (data is Map && data['items'] != null) {
+          print('   Items recibidos: ${(data['items'] as List).length}');
+
+          // WORKAROUND: Restaurar orígenes si el backend los perdió
+          for (var item in data['items']) {
+            final productoId = item['productoId'].toString();
+            print(
+              '   - ${item['productoNombre']}: origen = ${item['origen'] ?? 'NULL'}',
+            );
+
+            if (item['origen'] == null &&
+                origenesOriginales.containsKey(productoId)) {
+              item['origen'] = origenesOriginales[productoId];
+              print(
+                '   ⚠️ Restaurado origen desde frontend: ${item['origen']}',
+              );
+            }
+          }
+        }
+        
         return PedidoAsesor.fromJson(data);
       } else {
         final error = json.decode(response.body);
@@ -76,6 +116,12 @@ class PedidoAsesorService {
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
 
+        // 🔍 DEBUG: Ver estructura de respuesta
+        print('🔍 Respuesta del backend (pedidos asesores):');
+        if (decoded is Map && decoded['data'] != null) {
+          print('   Estructura con data wrapper');
+        }
+
         // Manejar diferentes estructuras de respuesta
         List<dynamic> data;
         if (decoded is List) {
@@ -99,7 +145,24 @@ class PedidoAsesorService {
           data = [];
         }
         
-        return data.map((json) => PedidoAsesor.fromJson(json)).toList();
+        // 🔍 DEBUG: Ver items en la lista de pedidos
+        print('📥 Recibidos ${data.length} pedidos del backend');
+
+        final pedidos = data.map((pedidoJson) {
+          final pedido = PedidoAsesor.fromJson(pedidoJson);
+
+          // Log de los items del primer pedido para debug
+          if (data.indexOf(pedidoJson) == 0 && pedido.items.isNotEmpty) {
+            print('   Primer pedido - Items:');
+            for (var item in pedido.items) {
+              print('     - ${item.productoNombre}: origen = ${item.origen}');
+            }
+          }
+
+          return pedido;
+        }).toList();
+
+        return pedidos;
       } else {
         // Intentar obtener el mensaje de error del backend
         String errorMsg = 'Error al cargar pedidos: ${response.statusCode}';
@@ -131,6 +194,17 @@ class PedidoAsesorService {
         final data = decoded is Map && decoded['data'] != null
             ? decoded['data']
             : decoded;
+        
+        // 🔍 DEBUG: Ver qué devuelve el backend para pedido individual
+        print('📥 Pedido obtenido (ID: $id):');
+        if (data is Map && data['items'] != null) {
+          for (var item in data['items']) {
+            print(
+              '   - ${item['productoNombre']}: origen = ${item['origen'] ?? 'NULL (usará default ALMACÉN)'}',
+            );
+          }
+        }
+        
         return PedidoAsesor.fromJson(data);
       } else {
         throw Exception('Error al obtener pedido: ${response.statusCode}');

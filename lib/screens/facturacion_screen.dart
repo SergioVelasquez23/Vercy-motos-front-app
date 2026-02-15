@@ -20,6 +20,7 @@ import '../providers/user_provider.dart';
 import '../providers/datos_cache_provider.dart';
 import '../widgets/vercy_sidebar_layout.dart';
 import '../dialogs/dialogo_pago.dart';
+import '../utils/busqueda_productos_utils.dart';
 
 class FacturacionScreen extends StatefulWidget {
   final PedidoAsesor? pedidoAsesor;
@@ -45,6 +46,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     text: 'CONSUMIDOR FINAL',
   );
   final TextEditingController _codigoBarrasController = TextEditingController();
+  
   final TextEditingController _codigoController = TextEditingController();
   final TextEditingController _nombreProductoController =
       TextEditingController();
@@ -90,6 +92,8 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       'label': 'Transferencia',
       'icon': Icons.account_balance,
     },
+    {'value': 'tarjeta', 'label': 'Tarjeta', 'icon': Icons.credit_card},
+    {'value': 'sistecredito', 'label': 'Sistecredito', 'icon': Icons.card_giftcard},
     {'value': 'multiple', 'label': 'Múltiple', 'icon': Icons.payments},
   ];
 
@@ -99,6 +103,14 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
   );
   final TextEditingController _montoTransferenciaController =
       TextEditingController(text: '0');
+  final TextEditingController _montoTarjetaController = TextEditingController(
+    text: '0',
+  );
+  final TextEditingController _montoSistereditoController =
+      TextEditingController(text: '0');
+  final TextEditingController _montoDatafonoController = TextEditingController(
+    text: '0',
+  );
 
   // Controladores de retenciones y AIU
   final TextEditingController _retencionController = TextEditingController(
@@ -129,13 +141,20 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
   void initState() {
     super.initState();
     _cargarProductos();
-    _cargarClientes();
     
-    // Si se pasó un pedido de asesor, precargar los datos
+    // Si se pasó un pedido de asesor, cargar clientes primero
     if (widget.pedidoAsesor != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _precargarDatosPedidoAsesor();
-      });
+      _inicializarConPedidoAsesor();
+    } else {
+      _cargarClientes();
+    }
+  }
+
+  // Inicializar con pedido asesor - cargar clientes primero
+  Future<void> _inicializarConPedidoAsesor() async {
+    await _cargarClientes(); // Esperar a que se carguen los clientes
+    if (mounted) {
+      _precargarDatosPedidoAsesor(); // Luego precargar datos del pedido
     }
   }
 
@@ -146,8 +165,38 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       // Precargar nombre del cliente
       _clienteController.text = pedido.clienteNombre;
 
+      // 🔍 Buscar el cliente en la lista de clientes disponibles
+      if (pedido.clienteId != null && _clientesDisponibles.isNotEmpty) {
+        try {
+          _clienteSeleccionado = _clientesDisponibles.firstWhere(
+            (cliente) => cliente.id == pedido.clienteId,
+            orElse: () => Cliente(
+              id: '',
+              tipoPersona: 'Persona Natural',
+              tipoIdentificacion: 'CC',
+              numeroIdentificacion: '',
+              nombres: pedido.clienteNombre,
+            ),
+          );
+          print(
+            '✅ Cliente seleccionado: ${_clienteSeleccionado?.nombreCompleto}',
+          );
+        } catch (e) {
+          print('⚠️ Error buscando cliente: $e');
+        }
+      } else {
+        print(
+          '⚠️ No se pudo buscar cliente - clienteId: ${pedido.clienteId}, clientes disponibles: ${_clientesDisponibles.length}',
+        );
+      }
+
       // Precargar items
       _items = List.from(pedido.items);
+
+      // 🔍 DEBUG: Verificar origen de cada item
+      for (var item in _items) {
+        print('📦 Item: ${item.productoNombre} - Origen: ${item.origen}');
+      }
 
       // Recalcular totales
       _calcularTotal();
@@ -181,6 +230,14 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       setState(() {
         _productosDisponibles = cacheProvider.productos!;
       });
+      
+      // 🔍 DEBUG: Verificar productos con código
+      final conCodigo = _productosDisponibles
+          .where((p) => p.codigo != null && p.codigo!.isNotEmpty)
+          .length;
+      print(
+        '📦 Productos cargados: ${_productosDisponibles.length}, con código: $conCodigo',
+      );
     } else {
       // Si no hay productos en cache, cargarlos
       try {
@@ -188,6 +245,14 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
         setState(() {
           _productosDisponibles = productos;
         });
+        
+        // 🔍 DEBUG: Verificar productos con código
+        final conCodigo = _productosDisponibles
+            .where((p) => p.codigo != null && p.codigo!.isNotEmpty)
+            .length;
+        print(
+          '📦 Productos cargados: ${_productosDisponibles.length}, con código: $conCodigo',
+        );
       } catch (e) {
           
       }
@@ -217,6 +282,9 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     _porcentajeDescuentoController.dispose();
     _montoEfectivoController.dispose();
     _montoTransferenciaController.dispose();
+    _montoTarjetaController.dispose();
+    _montoSistereditoController.dispose();
+    _montoDatafonoController.dispose();
     _ordenCompraController.dispose();
     _ordenServicioController.dispose();
     _ordenPedidoController.dispose();
@@ -228,6 +296,8 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     _reteICAController.dispose();
     _aiuController.dispose();
     _dctoGeneralController.dispose();
+    // ✅ LIMPIAR CONTROLADORES DE AUTOCOMPLETE
+
     super.dispose();
   }
 
@@ -1432,25 +1502,116 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                     children: [
                       Expanded(
                         flex: 1,
-                        child: TextField(
-                          controller: _codigoController,
-                          style: TextStyle(
-                            color: AppTheme.textPrimary,
-                            fontSize: 14,
-                          ),
-                          decoration: InputDecoration(
-                            labelText: 'Código',
-                            labelStyle: TextStyle(
-                              color: AppTheme.textSecondary,
-                            ),
-                            border: OutlineInputBorder(),
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 8,
-                            ),
-                            filled: true,
-                            fillColor: AppTheme.surfaceDark,
-                          ),
+                        child: Autocomplete<Producto>(
+                          optionsBuilder: (TextEditingValue textEditingValue) {
+                            if (textEditingValue.text.isEmpty) {
+                              return const Iterable<Producto>.empty();
+                            }
+                            // Buscar por código - sin requisito de mínimo 2 caracteres
+                            final texto = textEditingValue.text.toLowerCase();
+                            return _productosDisponibles
+                                .where((p) {
+                                  final cod = (p.codigo ?? '').toLowerCase();
+                                  return cod.contains(texto) || cod.startsWith(texto);
+                                })
+                                .take(15);
+                          },
+                          displayStringForOption: (Producto producto) =>
+                              (producto.codigo?.isNotEmpty ?? false) 
+                                  ? producto.codigo!
+                                  : producto.id,
+                          onSelected: (Producto producto) {
+                            setState(() {
+                              _productoSeleccionado = producto;
+                              _codigoController.text = (producto.codigo?.isNotEmpty ?? false)
+                                  ? producto.codigo!
+                                  : producto.id;
+                              _nombreProductoController.text = producto.nombre;
+                              _valorUnitController.text = producto.precio.toString();
+                            });
+                          },
+                          fieldViewBuilder:
+                              (
+                                BuildContext context,
+                                TextEditingController textEditingController,
+                                FocusNode focusNode,
+                                VoidCallback onFieldSubmitted,
+                              ) {
+                                // Sincronizar con el controlador principal
+                                WidgetsBinding.instance.addPostFrameCallback((_) {
+                                  textEditingController.text = _codigoController.text;
+                                });
+                                return TextField(
+                                  controller: textEditingController,
+                                  focusNode: focusNode,
+                                  style: TextStyle(
+                                    color: AppTheme.textPrimary,
+                                    fontSize: 13,
+                                  ),
+                                  decoration: InputDecoration(
+                                    isDense: true,
+                                    contentPadding: EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 10,
+                                    ),
+                                    hintText: 'Código...',
+                                    hintStyle: TextStyle(
+                                      color: AppTheme.textSecondary,
+                                      fontSize: 13,
+                                    ),
+                                    filled: true,
+                                    fillColor: AppTheme.surfaceDark,
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(4),
+                                      borderSide: BorderSide.none,
+                                    ),
+                                  ),
+                                );
+                              },
+                          optionsViewBuilder:
+                              (
+                                BuildContext context,
+                                AutocompleteOnSelected<Producto> onSelected,
+                                Iterable<Producto> options,
+                              ) {
+                                return Align(
+                                  alignment: Alignment.topLeft,
+                                  child: Material(
+                                    elevation: 4.0,
+                                    color: AppTheme.surfaceDark,
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: Container(
+                                      constraints: BoxConstraints(
+                                        maxHeight: 250,
+                                        maxWidth: 150,
+                                      ),
+                                      child: ListView.builder(
+                                        padding: EdgeInsets.all(8.0),
+                                        itemCount: options.length,
+                                        shrinkWrap: true,
+                                        itemBuilder: (BuildContext context, int index) {
+                                          final Producto option = options.elementAt(index);
+                                          return InkWell(
+                                            onTap: () => onSelected(option),
+                                            child: Padding(
+                                              padding: EdgeInsets.all(8.0),
+                                              child: Text(
+                                                (option.codigo?.isNotEmpty ?? false)
+                                                    ? option.codigo!
+                                                    : option.id,
+                                                style: TextStyle(
+                                                  color: AppTheme.textPrimary,
+                                                  fontSize: 12,
+                                                ),
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
                         ),
                       ),
                       SizedBox(width: 12),
@@ -1464,30 +1625,22 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                             if (textEditingValue.text.length < 2) {
                               return const Iterable<Producto>.empty();
                             }
-                            return _productosDisponibles
-                                .where((Producto producto) {
-                                  return producto.nombre.toLowerCase().contains(
-                                        textEditingValue.text.toLowerCase(),
-                                      ) ||
-                                      producto.id.toLowerCase().contains(
-                                        textEditingValue.text.toLowerCase(),
-                                      );
-                                })
-                                .take(15);
+                            return filtrarYOrdenarProductos(
+                              _productosDisponibles,
+                              textEditingValue.text,
+                              limite: 15,
+                            );
                           },
                           displayStringForOption: (Producto producto) =>
                               producto.nombre,
                           onSelected: (Producto producto) {
                             setState(() {
                               _productoSeleccionado = producto;
-                              _nombreProductoController.text = producto.nombre;
-                              _codigoController.text =
-                                  (producto.codigo != null &&
-                                      producto.codigo!.isNotEmpty)
+                              _codigoController.text = (producto.codigo?.isNotEmpty ?? false)
                                   ? producto.codigo!
-                                  : 'SIN CÓDIGO';
-                              _valorUnitController.text = producto.precio
-                                  .toString();
+                                  : producto.id;
+                              _nombreProductoController.text = producto.nombre;
+                              _valorUnitController.text = producto.precio.toString();
                             });
                           },
                           fieldViewBuilder:
@@ -1502,27 +1655,31 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                                   focusNode: focusNode,
                                   style: TextStyle(
                                     color: AppTheme.textPrimary,
-                                    fontSize: 14,
+                                    fontSize: 13,
                                   ),
                                   decoration: InputDecoration(
-                                    labelText: 'Nombre producto',
-                                    labelStyle: TextStyle(
-                                      color: AppTheme.textSecondary,
-                                    ),
-                                    border: OutlineInputBorder(),
+                                    isDense: true,
                                     contentPadding: EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 8,
+                                      horizontal: 8,
+                                      vertical: 10,
+                                    ),
+                                    hintText: _productosDisponibles.isEmpty
+                                        ? 'No hay productos disponibles'
+                                        : 'Escribe al menos 2 letras...',
+                                    hintStyle: TextStyle(
+                                      color: AppTheme.textSecondary,
+                                      fontSize: 13,
                                     ),
                                     filled: true,
                                     fillColor: AppTheme.surfaceDark,
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(4),
+                                      borderSide: BorderSide.none,
+                                    ),
                                     suffixIcon: Icon(
                                       Icons.arrow_drop_down,
                                       color: AppTheme.textSecondary,
-                                    ),
-                                    hintText: 'Escribe al menos 2 letras...',
-                                    hintStyle: TextStyle(
-                                      color: AppTheme.textSecondary,
+                                      size: 20,
                                     ),
                                   ),
                                 );
@@ -1549,19 +1706,17 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                                         itemCount: options.length,
                                         shrinkWrap: true,
                                         itemBuilder: (BuildContext context, int index) {
-                                          final Producto option = options
-                                              .elementAt(index);
+                                          final Producto option = options.elementAt(
+                                            index,
+                                          );
                                           return InkWell(
-                                            onTap: () {
-                                              onSelected(option);
-                                            },
+                                            onTap: () => onSelected(option),
                                             child: Container(
                                               padding: EdgeInsets.all(12.0),
                                               decoration: BoxDecoration(
                                                 border: Border(
                                                   bottom: BorderSide(
-                                                    color: AppTheme
-                                                        .textSecondary
+                                                    color: AppTheme.textSecondary
                                                         .withOpacity(0.2),
                                                     width: 1,
                                                   ),
@@ -1574,36 +1729,29 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                                                   Text(
                                                     option.nombre,
                                                     style: TextStyle(
-                                                      color:
-                                                          AppTheme.textPrimary,
+                                                      color: AppTheme.textPrimary,
                                                       fontSize: 14,
-                                                      fontWeight:
-                                                          FontWeight.w500,
+                                                      fontWeight: FontWeight.w500,
                                                     ),
                                                   ),
                                                   SizedBox(height: 4),
-                                                  Row(
-                                                    children: [
-                                                      Text(
-                                                        'Código: ${option.id}',
-                                                        style: TextStyle(
-                                                          color: AppTheme
-                                                              .textSecondary,
-                                                          fontSize: 12,
-                                                        ),
-                                                      ),
-                                                      Spacer(),
-                                                      Text(
-                                                        '\$${option.precio.toStringAsFixed(0)}',
-                                                        style: TextStyle(
-                                                          color:
-                                                              AppTheme.primary,
-                                                          fontSize: 12,
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                        ),
-                                                      ),
-                                                    ],
+                                                  Text(
+                                                    (option.codigo?.isNotEmpty ?? false)
+                                                        ? 'Código: ${option.codigo}'
+                                                        : 'Código: ${option.id}',
+                                                    style: TextStyle(
+                                                      color: AppTheme.textSecondary,
+                                                      fontSize: 12,
+                                                    ),
+                                                  ),
+                                                  SizedBox(height: 4),
+                                                  Text(
+                                                    '\$${option.precio.toStringAsFixed(0)}',
+                                                    style: TextStyle(
+                                                      color: AppTheme.primary,
+                                                      fontSize: 12,
+                                                      fontWeight: FontWeight.bold,
+                                                    ),
                                                   ),
                                                 ],
                                               ),
@@ -2522,29 +2670,30 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
 
     final cantidad = int.tryParse(_cantidadController.text) ?? 1;
     
-    // 📦 VALIDAR STOCK EN EL ORIGEN SELECCIONADO
-    if (_productoSeleccionado != null) {
-      int stockDisponible = 0;
-
-      if (_origenSeleccionado.toUpperCase() == 'BODEGA') {
-        stockDisponible = _productoSeleccionado!.bodega ?? 0;
-      } else {
-        stockDisponible = _productoSeleccionado!.almacen ?? 0;
-      }
-
-      if (cantidad > stockDisponible) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '❌ Stock insuficiente en ${_origenSeleccionado}. Disponible: $stockDisponible, Solicitado: $cantidad',
-            ),
-            backgroundColor: Colors.red.shade700,
-            duration: Duration(seconds: 4),
-          ),
-        );
-        return;
-      }
-    }
+    // 📦 VALIDACIÓN COMENTADA TEMPORALMENTE: Permitir facturación sin validar stock
+    // Esto se debe a que la carga ligera está retornando 0 en bodega/almacén
+    // if (_productoSeleccionado != null) {
+    //   int stockDisponible = 0;
+    //
+    //   if (_origenSeleccionado.toUpperCase() == 'BODEGA') {
+    //     stockDisponible = _productoSeleccionado!.bodega ?? 0;
+    //   } else {
+    //     stockDisponible = _productoSeleccionado!.almacen ?? 0;
+    //   }
+    //
+    //   if (cantidad > stockDisponible) {
+    //     ScaffoldMessenger.of(context).showSnackBar(
+    //       SnackBar(
+    //         content: Text(
+    //           '❌ Stock insuficiente en ${_origenSeleccionado}. Disponible: $stockDisponible, Solicitado: $cantidad',
+    //         ),
+    //         backgroundColor: Colors.red.shade700,
+    //         duration: Duration(seconds: 4),
+    //       ),
+    //     );
+    //     return;
+    //   }
+    // }
 
     final precioUnitario = double.tryParse(_valorUnitController.text) ?? 0;
     final porcentajeImpuesto =
@@ -2886,6 +3035,100 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                           fillColor: AppTheme.surfaceDark,
                           prefixIcon: Icon(
                             Icons.account_balance,
+                            color: AppTheme.primary,
+                          ),
+                          hintText: '0.00',
+                          hintStyle: TextStyle(color: AppTheme.textSecondary),
+                        ),
+                        onChanged: (value) {
+                          setState(() {});
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Tarjeta',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      TextField(
+                        controller: _montoTarjetaController,
+                        keyboardType: TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        style: TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontSize: 16,
+                        ),
+                        decoration: InputDecoration(
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 16,
+                          ),
+                          filled: true,
+                          fillColor: AppTheme.surfaceDark,
+                          prefixIcon: Icon(
+                            Icons.credit_card,
+                            color: AppTheme.primary,
+                          ),
+                          hintText: '0.00',
+                          hintStyle: TextStyle(color: AppTheme.textSecondary),
+                        ),
+                        onChanged: (value) {
+                          setState(() {});
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Sistecredito',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      TextField(
+                        controller: _montoSistereditoController,
+                        keyboardType: TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        style: TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontSize: 16,
+                        ),
+                        decoration: InputDecoration(
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 16,
+                          ),
+                          filled: true,
+                          fillColor: AppTheme.surfaceDark,
+                          prefixIcon: Icon(
+                            Icons.card_giftcard,
                             color: AppTheme.primary,
                           ),
                           hintText: '0.00',
@@ -3322,49 +3565,76 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
               : (_metodoPago == 'multiple'
                     ? double.tryParse(_montoTransferenciaController.text) ?? 0.0
                     : 0.0);
+          final montoTarjeta = _metodoPago == 'tarjeta'
+              ? total
+              : (_metodoPago == 'multiple'
+                    ? double.tryParse(_montoTarjetaController.text) ?? 0.0
+                    : 0.0);
+          final montoSistecredito = _metodoPago == 'sistecredito'
+              ? total
+              : (_metodoPago == 'multiple'
+                    ? double.tryParse(_montoSistereditoController.text) ?? 0.0
+                    : 0.0);
+          final montoDatafono = _metodoPago == 'datafono' ? total : 0.0;
           
-          // Procesar pago directo con método de pago seleccionado
-          await _pedidoService.pagarPedido(
-            pedidoCreado.id,
-            formaPago: _metodoPago,
-            propina: 0.0,
-            totalPagado: total,
-            procesadoPor: userName,
-            notas: 'Pago de pedido asesor',
-            descuento: 0.0,
-            pagoMultiple: _metodoPago == 'multiple',
-            montoEfectivo: montoEfectivo,
-            montoTarjeta: 0.0,
-            montoTransferencia: montoTransferencia,
-          );
-
-          // 📦 Registrar movimientos de inventario (salida de stock)
-          await _registrarMovimientosInventarioVenta(pedidoCreado);
-
-          // Marcar pedido asesor como facturado
-          if (widget.pedidoAsesor!.id != null) {
-            try {
-              await _pedidoAsesorService.marcarComoFacturado(
-                widget.pedidoAsesor!.id!,
-                userName,
-              );
-            } catch (e) {
-                
-            }
-          }
-
+          // ✅ GUARDAR método de pago ANTES de limpiar
+          final metodoPagoUsado = _metodoPago;
+          
+          // ✅ LIMPIAR INMEDIATAMENTE PRIMERO
+          _limpiarFormulario();
           setState(() => _isLoading = false);
 
-          // Mostrar mensaje de éxito
+          // Mostrar mensaje de éxito inmediatamente
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Pedido procesado exitosamente'),
+              content: Text('✅ Procesando pago...'),
               backgroundColor: Colors.green,
             ),
           );
 
-          _limpiarFormulario();
-          Navigator.of(context).pop(); // Regresar a lista de pedidos
+          // 🚀 TODO EN BACKGROUND - NO BLOQUEAR UI
+          Future.microtask(() async {
+            try {
+              // Procesar pago en background
+              await _pedidoService.pagarPedido(
+                pedidoCreado.id,
+                formaPago: metodoPagoUsado,
+                propina: 0.0,
+                totalPagado: total,
+                procesadoPor: userName,
+                notas: 'Pago de pedido asesor',
+                descuento: 0.0,
+                pagoMultiple: metodoPagoUsado == 'multiple',
+                montoEfectivo: montoEfectivo,
+                montoTarjeta: montoTarjeta,
+                montoTransferencia: montoTransferencia,
+                montoSistecredito: montoSistecredito,
+                montoDatafono: montoDatafono,
+              );
+
+              // Registrar movimientos de inventario
+              _registrarMovimientosInventarioVentaEnBackground(
+                pedidoCreado,
+                itemsOriginales: _items,
+              );
+
+              // Marcar pedido asesor como facturado
+              if (widget.pedidoAsesor!.id != null) {
+                await _pedidoAsesorService.marcarComoFacturado(
+                  widget.pedidoAsesor!.id!,
+                  userName,
+                );
+              }
+
+              // Refrescar cache
+              _refrescarCacheEnBackground();
+            } catch (e) {
+              // Si hay error, mostrar notificación silenciosa
+              print('Error en background: $e');
+            }
+          });
+
+          Navigator.of(context).pop(); // Regresar inmediatamente
         } catch (e) {
           setState(() => _isLoading = false);
           ScaffoldMessenger.of(context).showSnackBar(
@@ -3388,36 +3658,71 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
               : (_metodoPago == 'multiple'
                     ? double.tryParse(_montoTransferenciaController.text) ?? 0.0
                     : 0.0);
+          final montoTarjeta = _metodoPago == 'tarjeta'
+              ? total
+              : (_metodoPago == 'multiple'
+                    ? double.tryParse(_montoTarjetaController.text) ?? 0.0
+                    : 0.0);
+          final montoSistecredito = _metodoPago == 'sistecredito'
+              ? total
+              : (_metodoPago == 'multiple'
+                    ? double.tryParse(_montoSistereditoController.text) ?? 0.0
+                    : 0.0);
+          final montoDatafono = _metodoPago == 'datafono' ? total : 0.0;
           
-          // Procesar pago directo con método de pago seleccionado
-          await _pedidoService.pagarPedido(
-            pedidoCreado.id,
-            formaPago: _metodoPago,
-            propina: 0.0,
-            totalPagado: total,
-            procesadoPor: userName,
-            notas: 'Pago desde facturación',
-            descuento: 0.0,
-            pagoMultiple: _metodoPago == 'multiple',
-            montoEfectivo: montoEfectivo,
-            montoTarjeta: 0.0,
-            montoTransferencia: montoTransferencia,
-          );
-
-          // 📦 Registrar movimientos de inventario EN BACKGROUND (no esperar)
-          _registrarMovimientosInventarioVenta(
-            pedidoCreado,
-          ).then((_) {}).catchError((e) {});
-
+          // ✅ GUARDAR método de pago ANTES de limpiar
+          final metodoPagoUsado = _metodoPago;
+          
+          // ✅ LIMPIAR INMEDIATAMENTE PRIMERO
+          _limpiarFormulario();
           setState(() => _isLoading = false);
 
-          // Limpiar formulario INMEDIATAMENTE antes de mostrar diálogo
-          _limpiarFormulario();
+          // Mostrar mensaje de éxito inmediatamente
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('✅ Factura creada exitosamente'),
+              backgroundColor: Colors.green,
+            ),
+          );
 
-          // Mostrar diálogo de éxito con opciones de impresión
-          await _mostrarDialogoFacturaExitosa(
+          // 🚀 TODO EN BACKGROUND - NO BLOQUEAR UI
+          Future.microtask(() async {
+            try {
+              // Procesar pago en background
+              await _pedidoService.pagarPedido(
+                pedidoCreado.id,
+                formaPago: metodoPagoUsado,
+                propina: 0.0,
+                totalPagado: total,
+                procesadoPor: userName,
+                notas: 'Pago desde facturación',
+                descuento: 0.0,
+                pagoMultiple: metodoPagoUsado == 'multiple',
+                montoEfectivo: montoEfectivo,
+                montoTarjeta: montoTarjeta,
+                montoTransferencia: montoTransferencia,
+                montoSistecredito: montoSistecredito,
+                montoDatafono: montoDatafono,
+              );
+
+              // Registrar movimientos de inventario
+              _registrarMovimientosInventarioVentaEnBackground(
+                pedidoCreado,
+                itemsOriginales: _items,
+              );
+
+              // Refrescar cache
+              _refrescarCacheEnBackground();
+            } catch (e) {
+              // Si hay error, mostrar notificación silenciosa
+              print('Error en background: $e');
+            }
+          });
+
+          // Mostrar diálogo de éxito con opciones de impresión (NO ESPERAR)
+          _mostrarDialogoFacturaExitosa(
             pedidoCreado,
-            _metodoPago,
+            metodoPagoUsado, // ✅ Usar el método guardado antes de limpiar
             total,
             0.0,
             0.0,
@@ -3444,93 +3749,209 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
   }
 
   // 📦 Registrar movimientos de inventario cuando se factura (venta)
-  Future<void> _registrarMovimientosInventarioVenta(Pedido pedido) async {
+  // itemsOriginales: Si se proveen, usa estos items en lugar de los del pedido (para preservar origen)
+  Future<void> _registrarMovimientosInventarioVenta(
+    Pedido pedido, {
+    List<ItemPedido>? itemsOriginales,
+  }) async {
     try {
       final productoService = ProductoService();
+      
+      // ✅ USAR items originales si se proveen (tienen el campo origen correcto)
+      // El backend puede no guardar/devolver el campo origen, así que usamos los originales
+      final itemsParaProcesar = itemsOriginales ?? pedido.items;
+      
+      print('📦 Procesando ${itemsParaProcesar.length} items para movimientos de inventario');
 
-      for (var item in pedido.items) {
-        try {
-          // 🔍 Obtener el producto completo para actualizar stock
-          final productoCompleto = await productoService.getProducto(
-            item.productoId,
-          );
-
-          if (productoCompleto == null) {
-            continue; // Saltar si no encuentra el producto
-          }
-
-          // 📍 Determinar el origen de la venta (BODEGA o ALMACÉN)
-          final origen = item.origen; // Los items ya son ItemPedido con origen
-
-          // 📊 Obtener stock anterior según el origen
-          double stockAnterior = 0;
-          double nuevoStock = 0;
-
-          if (origen.toUpperCase() == 'BODEGA') {
-            // Decrementar BODEGA
-            stockAnterior = (productoCompleto.bodega ?? 0).toDouble();
-            nuevoStock = (stockAnterior - item.cantidad).clamp(
-              0,
-              double.infinity,
+      // ⚡ OPTIMIZACIÓN: Procesar todos los productos en paralelo
+      await Future.wait(
+        itemsParaProcesar.map((item) async {
+          try {
+            // 🔍 Obtener el producto completo para actualizar stock
+            final productoCompleto = await productoService.getProducto(
+              item.productoId,
             );
-          } else {
-            // Decrementar ALMACÉN
-            stockAnterior = (productoCompleto.almacen ?? 0).toDouble();
-            nuevoStock = (stockAnterior - item.cantidad).clamp(
-              0,
-              double.infinity,
+
+            if (productoCompleto == null) return;
+
+            // 📍 Determinar el origen de la venta (BODEGA o ALMACÉN)
+            final origen = item.origen;
+            print(
+              '🏬 Procesando ${item.productoNombre}: Origen = "$origen" (B:${productoCompleto.bodega}, A:${productoCompleto.almacen})',
             );
+
+            // 📊 Obtener stock anterior según el origen
+            double stockAnterior = 0;
+            double nuevoStock = 0;
+
+            // ✅ Obtener valores actuales de AMBAS ubicaciones
+            double almacenActual = (productoCompleto.almacen ?? 0).toDouble();
+            double bodegaActual = (productoCompleto.bodega ?? 0).toDouble();
+
+            if (origen.toUpperCase() == 'BODEGA') {
+              stockAnterior = bodegaActual;
+              nuevoStock = (stockAnterior - item.cantidad).clamp(
+                0,
+                double.infinity,
+              );
+              bodegaActual = nuevoStock;
+            } else {
+              stockAnterior = almacenActual;
+              nuevoStock = (stockAnterior - item.cantidad).clamp(
+                0,
+                double.infinity,
+              );
+              almacenActual = nuevoStock;
+            }
+
+            // 📋 Crear movimiento de inventario
+            final movimiento = MovimientoInventario(
+              inventarioId: item.productoId,
+              productoId: item.productoId,
+              productoNombre: item.productoNombre ?? 'Producto',
+              tipoMovimiento: 'Salida',
+              motivo: 'Venta - Factura ${pedido.id} (${origen})',
+              cantidadAnterior: stockAnterior,
+              cantidadMovimiento: item.cantidad.toDouble(),
+              cantidadNueva: nuevoStock,
+              responsable: pedido.mesero ?? 'Sistema',
+              referencia: 'FV-${pedido.id}',
+              observaciones:
+                  'Venta a ${pedido.cliente ?? 'CONSUMIDOR FINAL'} desde ${origen}',
+              costoUnitario: item.precioUnitario,
+              precioTotal: item.subtotal,
+              fecha: DateTime.now(),
+              facturaNo: pedido.id,
+              proveedor: null,
+            );
+
+            // 📝 Intentar registrar movimiento (no bloqueante)
+            _inventarioService.registrarMovimiento(movimiento).catchError((e) {
+              print('⚠️ Error movimiento: $e');
+            });
+
+            // 🔄 ACTUALIZAR STOCK EN EL PRODUCTO
+            final productoActualizado = productoCompleto.copyWith(
+              almacen: almacenActual.toInt(),
+              bodega: bodegaActual.toInt(),
+            );
+
+            print(
+              '💾 Guardando ${item.productoNombre}: B:${bodegaActual.toInt()}, A:${almacenActual.toInt()}',
+            );
+
+            // 💾 Guardar producto actualizado (CRÍTICO)
+            await _productoService.updateProducto(productoActualizado);
+          } catch (e) {
+            print('⚠️ Error item ${item.productoId}: $e');
           }
-
-          // 📋 Crear movimiento de inventario
-          final movimiento = MovimientoInventario(
-            inventarioId: item.productoId,
-            productoId: item.productoId,
-            productoNombre: item.productoNombre ?? 'Producto',
-            tipoMovimiento: 'Salida',
-            motivo: 'Venta - Factura ${pedido.id} (${origen})',
-            cantidadAnterior: stockAnterior,
-            cantidadMovimiento: item.cantidad.toDouble(),
-            cantidadNueva: nuevoStock,
-            responsable: pedido.mesero ?? 'Sistema',
-            referencia: 'FV-${pedido.id}',
-            observaciones:
-                'Venta a ${pedido.cliente ?? 'CONSUMIDOR FINAL'} desde ${origen}',
-            costoUnitario: item.precioUnitario,
-            precioTotal: item.subtotal,
-            fecha: DateTime.now(),
-            facturaNo: pedido.id,
-            proveedor: null,
-          );
-
-          // 📝 Registrar movimiento en inventario
-          await _inventarioService.registrarMovimiento(movimiento);
-
-          // 🔄 ACTUALIZAR STOCK EN EL PRODUCTO
-          final productoActualizado = productoCompleto.copyWith(
-            bodega: origen.toUpperCase() == 'BODEGA'
-                ? nuevoStock.toInt()
-                : (productoCompleto.bodega ?? 0),
-            almacen: origen.toUpperCase() == 'ALMACÉN'
-                ? nuevoStock.toInt()
-                : (productoCompleto.almacen ?? 0),
-          );
-
-          // 💾 Guardar producto actualizado
-          await _productoService.updateProducto(productoActualizado);
-
-          print(
-            '✅ Stock actualizado: ${productoActualizado.nombre} - ${origen}: ${stockAnterior} → ${nuevoStock}',
-          );
-        } catch (e) {
-          // Continuar con el siguiente item aunque haya error
-          print('⚠️ Error registrando movimiento para ${item.productoId}: $e');
-        }
-      }
+        }),
+      );
     } catch (e) {
-      // No lanzar excepción para no interrumpir el flujo de la factura
-      print('⚠️ Error general en registro de movimientos: $e');
+      print('⚠️ Error general movimientos: $e');
     }
+  }
+
+  // 🧹 Versión no-blocking que se ejecuta en background sin esperar
+  void _registrarMovimientosInventarioVentaEnBackground(
+    Pedido pedido, {
+    List<ItemPedido>? itemsOriginales,
+  }) {
+    // Ejecutar en microtask para no bloquear la UI
+    Future.microtask(() async {
+      try {
+        final productoService = ProductoService();
+        final itemsParaProcesar = itemsOriginales ?? pedido.items;
+        
+        print('📦 [BG] Procesando ${itemsParaProcesar.length} items para inventario');
+
+        // Procesar todos en paralelo sin bloquear
+        await Future.wait(
+          itemsParaProcesar.map((item) async {
+            try {
+              final productoCompleto = await productoService.getProducto(
+                item.productoId,
+              );
+
+              if (productoCompleto == null) return;
+
+              final origen = item.origen;
+              double almacenActual = (productoCompleto.almacen ?? 0).toDouble();
+              double bodegaActual = (productoCompleto.bodega ?? 0).toDouble();
+              double stockAnterior = 0;
+              double nuevoStock = 0;
+
+              if (origen.toUpperCase() == 'BODEGA') {
+                stockAnterior = bodegaActual;
+                nuevoStock = (stockAnterior - item.cantidad).clamp(0, double.infinity);
+                bodegaActual = nuevoStock;
+              } else {
+                stockAnterior = almacenActual;
+                nuevoStock = (stockAnterior - item.cantidad).clamp(0, double.infinity);
+                almacenActual = nuevoStock;
+              }
+
+              // Crear movimiento
+              final movimiento = MovimientoInventario(
+                inventarioId: item.productoId,
+                productoId: item.productoId,
+                productoNombre: item.productoNombre ?? 'Producto',
+                tipoMovimiento: 'Salida',
+                motivo: 'Venta - Factura ${pedido.id} (${origen})',
+                cantidadAnterior: stockAnterior,
+                cantidadMovimiento: item.cantidad.toDouble(),
+                cantidadNueva: nuevoStock,
+                responsable: pedido.mesero ?? 'Sistema',
+                referencia: 'FV-${pedido.id}',
+                observaciones: 'Venta a ${pedido.cliente ?? 'CONSUMIDOR FINAL'} desde ${origen}',
+                costoUnitario: item.precioUnitario,
+                precioTotal: item.subtotal,
+                fecha: DateTime.now(),
+                facturaNo: pedido.id,
+                proveedor: null,
+              );
+
+              // Registrar movimiento (no bloquear)
+              _inventarioService.registrarMovimiento(movimiento).catchError((e) {
+                print('⚠️ [BG] Error mov: $e');
+              });
+
+              // Actualizar stock
+              final productoActualizado = productoCompleto.copyWith(
+                almacen: almacenActual.toInt(),
+                bodega: bodegaActual.toInt(),
+              );
+
+              await _productoService.updateProducto(productoActualizado);
+              print('✅ [BG] ${item.productoNombre} actualizado');
+            } catch (e) {
+              print('⚠️ [BG] Error item: $e');
+            }
+          }),
+          eagerError: false, // No fallar si alguno falla
+        );
+        
+        print('✅ [BG] Inventario actualizado completamente');
+      } catch (e) {
+        print('⚠️ [BG] Error general: $e');
+      }
+    });
+  }
+
+  // 🔄 Refrescar cache en segundo plano
+  void _refrescarCacheEnBackground() {
+    Future.microtask(() async {
+      try {
+        final cacheProvider = Provider.of<DatosCacheProvider>(
+          context,
+          listen: false,
+        );
+        await cacheProvider.forceRefreshProductos();
+        if (mounted) await _cargarProductos();
+      } catch (e) {
+        // Ignorar errores no críticos
+      }
+    });
   }
 
   // Mostrar diálogo de factura exitosa con opciones de impresión
@@ -3728,6 +4149,8 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       case 'efectivo': return 'Efectivo';
       case 'tarjeta': return 'Tarjeta';
       case 'transferencia': return 'Transferencia';
+      case 'sistecredito': return 'Sistecredito';
+      case 'datafono': return 'Datafono';
       case 'mixto': return 'Pago Mixto';
       case 'multiple': return 'Pago Múltiple';
       default: return formaPago;
@@ -3941,10 +4364,13 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       _fechaFactura = DateTime.now();
       _fechaVencimiento = DateTime.now().add(Duration(days: 30));
       
-      // Limpiar método de pago
+      // Limpiar método de pago Y TODOS LOS MONTOS MÚLTIPLES
       _metodoPago = 'efectivo';
       _montoEfectivoController.text = '0';
       _montoTransferenciaController.text = '0';
+      _montoTarjetaController.text = '0';
+      _montoSistereditoController.text = '0';
+      _montoDatafonoController.text = '0';
       
       // Limpiar datos extras
       _ordenCompraController.clear();
@@ -3974,14 +4400,24 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       _productoSeleccionado = null;
       _clienteSeleccionado = null;
 
-      // Limpiar todos los campos de producto
+      // Limpiar todos los campos de producto (INCLUYENDO AUTOCOMPLETE)
       _codigoBarrasController.clear();
       _codigoController.clear();
       _nombreProductoController.clear();
+      
+      // ✅ FORZAR LIMPIEZA DE AUTOCOMPLETES
+      // Esto fuerza a los Autocompletes a resetearse completamente
+      _productoSeleccionado = null;
+      _clienteSeleccionado = null;
+      
       _cantidadController.text = '1';
       _valorUnitController.clear();
       _porcentajeImpuestoController.text = '0';
       _porcentajeDescuentoController.text = '0';
+      _origenSeleccionado = 'ALMACÉN'; // 📦 Resetear a ALMACÉN por defecto
+      
+      // ✅ ASEGURAR QUE CLIENTE VUELVA A CONSUMIDOR FINAL
+      _clienteController.text = 'CONSUMIDOR FINAL';
     });
   }
 

@@ -8,6 +8,7 @@ import '../models/producto.dart';
 import '../models/categoria.dart';
 import '../config/api_config.dart';
 import '../utils/retry_strategy.dart';
+import 'alertas_service.dart';
 
 /// Flag para habilitar/deshabilitar logs detallados de productos
 /// En producción web esto debe ser false para evitar spam en consola
@@ -674,8 +675,8 @@ class ProductoService {
   // ⚡ NUEVO: Endpoint ligero optimizado como primera opción
   Future<List<Producto>> _getProductosLigero() async {
     final headers = await _getHeaders();
-    // ⚡ OPTIMIZADO: Cargar TODOS los productos de una vez (sin paginación)
-    final url = '$baseUrl/api/productos/ligero?page=0&size=10000';
+    // ⚡ OPTIMIZADO: Cargar TODOS los productos con inventario (bodega y almacén)
+    final url = '$baseUrl/api/productos?page=0&size=10000';
 
     try {
       final response = await _retryStrategy.execute(
@@ -713,7 +714,7 @@ class ProductoService {
   Future<List<Producto>> _getProductosBasico() async {
     final headers = await _getHeaders();
     // ⚡ OPTIMIZADO: Cargar TODOS los productos sin paginación
-    final url = '$baseUrl/api/productos/ligero?page=0&size=10000';
+    final url = '$baseUrl/api/productos?page=0&size=10000';
 
       
 
@@ -897,9 +898,150 @@ class ProductoService {
     }
   }
 
+  // Carga masiva de productos desde Excel
+  Future<Map<String, dynamic>> cargaMasivaProductos(
+    List<int> excelBytes, {
+    required String tipo, // 'bodega' o 'almacen'
+  }) async {
+    try {
+      final headers = await _getHeaders();
+      // Remover Content-Type: application/json para multipart/form-data
+      headers.remove('Content-Type');
+
+      // Determinar el endpoint según el tipo
+      final endpoint = tipo == 'bodega'
+          ? '/carga-masiva'
+          : '/carga-masiva-almacen';
+
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl/api/productos$endpoint'),
+      );
+
+      // Agregar headers de autenticación
+      request.headers.addAll(headers);
+
+      // Agregar el archivo Excel
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'archivo', // Cambiar de 'file' a 'archivo' según el backend
+          excelBytes,
+          filename: 'productos_$tipo.xlsx',
+        ),
+      );
+
+      print(
+        '📤 Enviando archivo Excel al backend para carga masiva ($tipo)...',
+      );
+
+      final streamedResponse = await request.send().timeout(
+        Duration(seconds: 180),
+      );
+      final response = await http.Response.fromStream(streamedResponse);
+
+      print('📥 Respuesta recibida: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+
+        // Extraer datos según la estructura del backend
+        final data = responseData['data'] ?? responseData;
+
+        print('✅ Carga masiva ($tipo) completada');
+        print('   Creados: ${data['productosCreados']}');
+        print('   Actualizados: ${data['productosActualizados']}');
+        print('   Errores: ${data['errores']?.length ?? 0}');
+
+        return data;
+      } else {
+        print('❌ Error del servidor: ${response.statusCode}');
+        print('   Respuesta: ${response.body}');
+        throw Exception(
+          'Error del servidor: ${response.statusCode} - ${response.body}',
+        );
+      }
+    } catch (e) {
+      print('❌ Error en carga masiva: $e');
+      throw Exception('No se pudo procesar la carga masiva: $e');
+    }
+  }
+
+  // Diagnóstico de columnas Excel
+  Future<Map<String, dynamic>> diagnosticarExcel(List<int> excelBytes) async {
+    try {
+      final headers = await _getHeaders();
+      headers.remove('Content-Type');
+
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl/api/productos/diagnostico-excel'),
+      );
+
+      request.headers.addAll(headers);
+
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'archivo',
+          excelBytes,
+          filename: 'diagnostico.xlsx',
+        ),
+      );
+
+      print('🔍 Enviando archivo Excel para diagnóstico...');
+
+      final streamedResponse = await request.send().timeout(
+        Duration(seconds: 60),
+      );
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        final data = responseData['data'] ?? responseData;
+
+        print('✅ Diagnóstico completado');
+        print('   Total columnas: ${data['totalColumnas']}');
+        print('   Total filas: ${data['totalFilas']}');
+        print('   Columnas detectadas: ${data['columnasNormalizadas']}');
+
+        return data;
+      } else {
+        throw Exception(
+          'Error en diagnóstico: ${response.statusCode} - ${response.body}',
+        );
+      }
+    } catch (e) {
+      print('❌ Error en diagnóstico: $e');
+      throw Exception('No se pudo diagnosticar el archivo: $e');
+    }
+  }
+
   // Actualizar producto
   Future<Producto> updateProducto(Producto producto) async {
     try {
+      // Verificar si la cantidad en bodega es baja y notificar por Telegram
+      const int kStockBajoUmbral =
+          10; // O importar desde constants.dart si ya está
+      if (producto.bodega != null && producto.bodega! <= kStockBajoUmbral) {
+        // Puedes personalizar los datos de contacto aquí
+        final alertasService = AlertasService();
+        final mensaje =
+            '⚠️ Alerta: El producto "${producto.nombre}" tiene stock bajo en bodega (${producto.bodega}).';
+        // Notificación por Telegram
+        alertasService.sendTelegramMessage(mensaje);
+        // Si quieres usar WhatsApp/email, puedes llamar enviarAlertaStock también:
+        // alertasService.enviarAlertaStock(
+        //   whatsapp: '573001112233',
+        //   email: 'alertas@tucorreo.com',
+        //   producto: producto.nombre,
+        //   stockActual: producto.bodega!,
+        //   stockMinimo: kStockBajoUmbral,
+        // );
+      }
+      // ✅ Validar que el producto tenga un ID válido
+      if (producto.id.isEmpty) {
+        throw Exception('No se puede actualizar un producto sin ID');
+      }
+      
       final headers = await _getHeaders();
 
       // Crear un payload minimalista con solo los campos esenciales
@@ -937,12 +1079,20 @@ class ProductoService {
       if (producto.nitProveedor != null) {
         productoJson['nitProveedor'] = producto.nitProveedor;
       }
-      if (producto.almacen != null && producto.almacen! > 0) {
-        productoJson['almacen'] = producto.almacen;
+      // ✅ ENVIAR CON LOS NOMBRES CORRECTOS QUE EL BACKEND ESPERA
+      if (producto.almacen != null) {
+        productoJson['cantidadAlmacen'] =
+            producto.almacen; // ✅ Correcto: cantidadAlmacen
       }
-      if (producto.bodega != null && producto.bodega! > 0) {
-        productoJson['bodega'] = producto.bodega;
+      if (producto.bodega != null) {
+        productoJson['cantidadBodega'] =
+            producto.bodega; // ✅ Correcto: cantidadBodega
       }
+
+      // 🔍 LOG: Ver exactamente qué se envía al backend
+      print('📤 PUT /api/productos/${producto.id}');
+      print('   - cantidadAlmacen enviado: ${productoJson['cantidadAlmacen']}');
+      print('   - cantidadBodega enviado: ${productoJson['cantidadBodega']}');
 
       final response = await http
           .put(
@@ -952,11 +1102,32 @@ class ProductoService {
           )
           .timeout(Duration(seconds: 300)); // Timeout aumentado para Render
 
+      // 🔍 LOG: Ver respuesta del backend
+      print('   - Response status: ${response.statusCode}');
+
       if (response.statusCode == 200) {
           
-        return Producto.fromJson(json.decode(response.body));
+        final responseBody = json.decode(response.body);
+
+        // 🛠️ WORKAROUND: Si el backend devuelve null, usar los valores enviados
+        if (responseBody['cantidadAlmacen'] == null &&
+            producto.almacen != null) {
+          responseBody['cantidadAlmacen'] = producto.almacen;
+        }
+        if (responseBody['cantidadBodega'] == null && producto.bodega != null) {
+          responseBody['cantidadBodega'] = producto.bodega;
+        }
+
+        final productoActualizado = Producto.fromJson(responseBody);
+
+        // ✅ CRÍTICO: Actualizar el cache con los valores corregidos
+        _productoByIdCache[producto.id] = productoActualizado;
+
+        return productoActualizado;
       } else {
-        throw Exception('Error del servidor: ${response.statusCode}');
+        throw Exception(
+          'Error del servidor: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
         
@@ -969,22 +1140,33 @@ class ProductoService {
     String productoId,
     double nuevoCosto,
   ) async {
+    // ✅ Validar que el ID no esté vacío
+    if (productoId.isEmpty) {
+      print('⚠️ No se puede actualizar costo: ID de producto vacío');
+      return;
+    }
+    
     try {
       final headers = await _getHeaders();
 
+      // 📦 Usar PUT normal con solo el campo costo
+      // El backend actualizará solo los campos enviados
       final response = await http
-          .patch(
-            Uri.parse('$baseUrl/api/productos/$productoId/costo'),
+          .put(
+            Uri.parse('$baseUrl/api/productos/$productoId'),
             headers: headers,
             body: json.encode({'costo': nuevoCosto}),
           )
           .timeout(Duration(seconds: 300));
 
       if (response.statusCode != 200 && response.statusCode != 204) {
-        throw Exception('Error al actualizar costo: ${response.statusCode}');
+        print('⚠️ Error al actualizar costo: ${response.statusCode}');
+      } else {
+        print('✅ Costo actualizado para producto $productoId: \$$nuevoCosto');
       }
     } catch (e) {
       // No lanzar excepción para no interrumpir el flujo de la compra
+      print('⚠️ No se pudo actualizar costo (no crítico): $e');
     }
   }
 
@@ -1467,13 +1649,24 @@ class ProductoService {
         final responseData = json.decode(response.body);
           
         if (responseData is Map<String, dynamic>) {
+          Map<String, dynamic> productoData;
             
           if (responseData.containsKey('data')) {
-              
-            return Producto.fromJson(responseData['data']);
+            productoData = responseData['data'];
+          } else {
+            productoData = responseData;
+          }
+
+          // 🛠️ WORKAROUND CRÍTICO: Si cantidadAlmacen/Bodega son null, loggear advertencia
+          // MongoDB tiene los valores correctos, pero backend los serializa como null
+          if (productoData['cantidadAlmacen'] == null ||
+              productoData['cantidadBodega'] == null) {
+            // Por ahora, confiar en el cache. Si no hay cache, usar 0
+            productoData['cantidadAlmacen'] ??= 0;
+            productoData['cantidadBodega'] ??= 0;
           }
             
-          return Producto.fromJson(responseData);
+          return Producto.fromJson(productoData);
         }
       } else if (response.statusCode == 404) {
         return await _getProductoBasico(id);
@@ -1510,15 +1703,24 @@ class ProductoService {
         final responseData = json.decode(response.body);
           
         if (responseData is Map<String, dynamic>) {
+          Map<String, dynamic> productoData;
             
           // Si la respuesta está envuelta en una estructura data
           if (responseData.containsKey('data')) {
-              
-            return Producto.fromJson(responseData['data']);
+            productoData = responseData['data'];
+          } else {
+            // Si la respuesta es directamente el producto
+            productoData = responseData;
           }
-          // Si la respuesta es directamente el producto
+
+          // 🛠️ WORKAROUND: Aplicar el mismo fix para cantidadAlmacen/Bodega null
+          if (productoData['cantidadAlmacen'] == null ||
+              productoData['cantidadBodega'] == null) {
+            productoData['cantidadAlmacen'] ??= 0;
+            productoData['cantidadBodega'] ??= 0;
+          }
             
-          return Producto.fromJson(responseData);
+          return Producto.fromJson(productoData);
         }
       } else if (response.statusCode == 404) {
         return null;
@@ -1602,18 +1804,31 @@ class ProductoService {
 
   // ⚡ NUEVO: Método auxiliar para parsear productos LIGEROS (sin imágenes)
   List<Producto> _parseListResponseLigero(dynamic responseData) {
-      
+    print('🔍 _parseListResponseLigero: Analizando respuesta...');
 
     if (responseData is Map<String, dynamic>) {
-        
+      print('   - Respuesta es Map con keys: ${responseData.keys.toList()}');
 
       // Buscar posibles propiedades que contengan la lista de productos
       if (responseData.containsKey('productos')) {
         final productos = responseData['productos'];
         if (productos is List) {
-          // 🔍 LOG TEMPORAL: Ver campos del primer producto
+          // 🔍 LOG: Ver campos del primer producto
           if (productos.isNotEmpty) {
-                             
+            final primerProducto = productos[0] as Map<String, dynamic>;
+            print('   - Primer producto keys: ${primerProducto.keys.toList()}');
+            print(
+              '   - Tiene cantidadAlmacen: ${primerProducto.containsKey('cantidadAlmacen')}',
+            );
+            print(
+              '   - Tiene cantidadBodega: ${primerProducto.containsKey('cantidadBodega')}',
+            );
+            print(
+              '   - cantidadAlmacen value: ${primerProducto['cantidadAlmacen']}',
+            );
+            print(
+              '   - cantidadBodega value: ${primerProducto['cantidadBodega']}',
+            );
           }
           return productos
               .map<Producto>((json) => Producto.fromJsonLigero(json))
@@ -1624,9 +1839,16 @@ class ProductoService {
       if (responseData.containsKey('data')) {
         final data = responseData['data'];
         if (data is List) {
-          // 🔍 LOG TEMPORAL: Ver campos del primer producto
+          // 🔍 LOG: Ver campos del primer producto
           if (data.isNotEmpty) {
-                             
+            final primerProducto = data[0] as Map<String, dynamic>;
+            print('   - Primer producto keys: ${primerProducto.keys.toList()}');
+            print(
+              '   - Tiene cantidadAlmacen: ${primerProducto.containsKey('cantidadAlmacen')}',
+            );
+            print(
+              '   - Tiene cantidadBodega: ${primerProducto.containsKey('cantidadBodega')}',
+            );
           }
           return data
               .map<Producto>((json) => Producto.fromJsonLigero(json))
@@ -2255,10 +2477,14 @@ class ProductoService {
     // 🚀 Endpoint ligero sin imágenes - ideal para listas
     final url = '$baseUrl/api/productos/ligero?page=0&size=10000';
 
+    print('🔍 Llamando endpoint: $url');
+
     try {
       final response = await http
           .get(Uri.parse(url), headers: headers)
           .timeout(Duration(seconds: 20));
+
+      print('   - Response status: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);

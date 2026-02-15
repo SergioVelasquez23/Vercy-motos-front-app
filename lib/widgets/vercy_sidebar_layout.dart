@@ -344,6 +344,12 @@ class _VercySidebarLayoutState extends State<VercySidebarLayout> {
               ),
             ],
           ),
+          _buildMenuItem(
+            icon: Icons.verified_user,
+            label: 'Autorizaciones',
+            route: '/autorizaciones',
+            isAdmin: true,
+          ),
           // _buildMenuItem(
           //   icon: Icons.local_shipping,
           //   label: 'Traslados',

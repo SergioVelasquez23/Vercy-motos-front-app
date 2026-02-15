@@ -249,6 +249,13 @@ class Producto {
   };
 
   factory Producto.fromJson(Map<String, dynamic> json) {
+    // DEBUG TEMPORAL: Ver si viene codigoBarras del backend
+    if (json['codigoBarras'] != null) {
+      print(
+        '🏷️ fromJson - codigoBarras encontrado: ${json['codigoBarras']} para ${json['nombre']}',
+      );
+    }
+    
     return Producto(
       id: json['_id']?.toString() ?? json['id']?.toString() ?? '',
       nombre: json['nombre']?.toString() ?? '',
@@ -315,8 +322,9 @@ class Producto {
       precioVentaOpc3: (json['precioVentaOpc3'] as num?)?.toDouble(),
       precioVentaOpc4: (json['precioVentaOpc4'] as num?)?.toDouble(),
       precioVentaOpc5: (json['precioVentaOpc5'] as num?)?.toDouble(),
-      almacen: json['almacen'] as int?,
-      bodega: json['bodega'] as int?,
+      // ✅ CRÍTICO: Backend envía cantidadAlmacen/cantidadBodega, pero frontend usa almacen/bodega
+      almacen: json['cantidadAlmacen'] as int? ?? json['almacen'] as int?,
+      bodega: json['cantidadBodega'] as int? ?? json['bodega'] as int?,
       ubicacion1: json['ubicacion1']?.toString(),
       ubicacion2: json['ubicacion2']?.toString(),
       ubicacion3: json['ubicacion3']?.toString(),
@@ -330,9 +338,27 @@ class Producto {
 
   // Método ligero para cargas rápidas - solo campos esenciales del endpoint paginado
   factory Producto.fromJsonLigero(Map<String, dynamic> json) {
-    // 🔍 LOG TEMPORAL: Ver todas las llaves del JSON para diagnosticar codigoBarras
-    if (json['nombre']?.toString().contains('PUFF') == true) {
-  
+    // 🔍 LOG: Ver campos de inventario que llegan del endpoint /ligero
+    final nombre = json['nombre']?.toString() ?? '';
+    
+    // 🔍 BUSCAR CANTIDAD ALMACÉN: intentar múltiples nombres de campos
+    final cantAlmacen = _obtenerValor(json, [
+      'cantidadAlmacen',
+      'cantidad almacen',
+      'almacen',
+    ]);
+    final cantBodega = _obtenerValor(json, [
+      'cantidadBodega',
+      'cantidad bodega',
+      'bodega',
+    ]);
+
+    // Solo loguear los primeros 3 productos para no saturar la consola
+    if (nombre.contains('CARBURADOR') || nombre.contains('PUFF')) {
+      print('📦 fromJsonLigero: $nombre');
+      print('   - cantidadAlmacen: $cantAlmacen');
+      print('   - cantidadBodega: $cantBodega');
+      print('   - JSON keys: ${json.keys.toList()}');
     }
     
     return Producto(
@@ -363,12 +389,14 @@ class Producto {
       ingredientesOpcionales: [], // No vienen en el endpoint ligero
       ingredientesSeleccionadosCombo: [],
       // Campos de inventario - IMPORTANTES para mostrar stock
-      // El endpoint /ligero usa cantidadAlmacen y cantidadBodega (agregación MongoDB)
-      almacen: json['cantidadAlmacen'] as int? ?? json['almacen'] as int?,
-      bodega: json['cantidadBodega'] as int? ?? json['bodega'] as int?,
-      inventarioBajo: json['inventarioBajo'] as int?,
-      inventarioOptimo: json['inventarioOptimo'] as int?,
+      // 🔧 FIX: Convertir correctamente números que vienen como string/double
+      almacen: _parseIntFromAny(cantAlmacen),
+      bodega: _parseIntFromAny(cantBodega),
+      inventarioBajo: _parseIntFromAny(json['inventarioBajo']),
+      inventarioOptimo: _parseIntFromAny(json['inventarioOptimo']),
       codigoBarras: json['codigoBarras']?.toString(),
+      // ✅ FIX: Agregar campo codigo que faltaba
+      codigo: json['codigo']?.toString(),
     );
   }
 
@@ -477,5 +505,53 @@ class Producto {
       localizacionUbi3: localizacionUbi3 ?? this.localizacionUbi3,
       localizacionUbi4: localizacionUbi4 ?? this.localizacionUbi4,
     );
+  }
+
+  // 🔧 HELPER: Convertir valores de cualquier tipo a int
+  // Maneja: int, double, String, null
+  static int? _parseIntFromAny(dynamic value) {
+    if (value == null) return null;
+
+    // Si ya es int, devolver
+    if (value is int) return value;
+
+    // Si es double, convertir a int
+    if (value is double) return value.toInt();
+
+    // Si es num, convertir a int
+    if (value is num) return value.toInt();
+
+    // Si es String, parsear
+    if (value is String) {
+      try {
+        // Primero intentar como int
+        return int.parse(value);
+      } catch (_) {
+        try {
+          // Si falla, intentar como double y convertir a int
+          return double.parse(value).toInt();
+        } catch (_) {
+          return null;
+        }
+      }
+    }
+    return null;
+  }
+
+  // 🔧 HELPER: Buscar valor en JSON usando múltiples nombres de campos posibles
+  // Útil para manejar desajustes entre nombres de campos en backend
+  static dynamic _obtenerValor(
+    Map<String, dynamic> json,
+    List<String> posiblesCampos,
+  ) {
+    for (final campo in posiblesCampos) {
+      if (json.containsKey(campo)) {
+        final valor = json[campo];
+        if (valor != null) {
+          return valor;
+        }
+      }
+    }
+    return null;
   }
 }

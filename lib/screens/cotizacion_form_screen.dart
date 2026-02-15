@@ -9,6 +9,7 @@ import '../services/cliente_service.dart';
 import '../services/producto_service.dart';
 import '../providers/datos_cache_provider.dart';
 import '../theme/app_theme.dart';
+import '../utils/busqueda_productos_utils.dart';
 
 class CotizacionFormScreen extends StatefulWidget {
   final Cotizacion? cotizacion;
@@ -417,16 +418,11 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
                     if (textEditingValue.text.length < 2) {
                       return const Iterable<Producto>.empty();
                     }
-                    return _productosDisponibles
-                        .where((Producto producto) {
-                          return producto.nombre.toLowerCase().contains(
-                                textEditingValue.text.toLowerCase(),
-                              ) ||
-                              producto.id.toLowerCase().contains(
-                                textEditingValue.text.toLowerCase(),
-                              );
-                        })
-                        .take(15);
+                    return filtrarYOrdenarProductos(
+                      _productosDisponibles,
+                      textEditingValue.text,
+                      limite: 15,
+                    );
                   },
                   displayStringForOption: (Producto producto) =>
                       producto.nombre,
