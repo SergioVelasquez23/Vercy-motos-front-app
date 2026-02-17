@@ -222,12 +222,6 @@ class _VercySidebarLayoutState extends State<VercySidebarLayout> {
             route: '/facturas-lista',
             isAdmin: false,
           ),
-          _buildMenuItem(
-            icon: Icons.notifications_active,
-            label: 'Alertas',
-            route: '/alertas',
-            isAdmin: false,
-          ),
         ],
 
         // Menú para Admins y SuperAdmins (solo si NO es asesor)
@@ -326,12 +320,6 @@ class _VercySidebarLayoutState extends State<VercySidebarLayout> {
               ),
             ],
           ),
-          _buildMenuItem(
-            icon: Icons.notifications_active,
-            label: 'Alertas',
-            route: '/alertas',
-            isAdmin: true,
-          ),
           _buildExpandableMenuItem(
             icon: Icons.inventory,
             label: 'Inventario',
@@ -344,25 +332,12 @@ class _VercySidebarLayoutState extends State<VercySidebarLayout> {
               ),
             ],
           ),
-          _buildMenuItem(
-            icon: Icons.verified_user,
-            label: 'Autorizaciones',
-            route: '/autorizaciones',
-            isAdmin: true,
-          ),
           // _buildMenuItem(
           //   icon: Icons.local_shipping,
           //   label: 'Traslados',
           //   route: '/traslados',
           //   isAdmin: true,
           // ),
-          _buildMenuItem(
-            icon: Icons.tune,
-            label: 'Ajuste',
-            route: null, // Desactivado temporalmente
-            isAdmin: true,
-            isDisabled: true,
-          ),
           _buildMenuItem(
             icon: Icons.attach_money,
             label: 'Caja',

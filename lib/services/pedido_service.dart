@@ -30,6 +30,10 @@ class PedidoService {
 
   // ✅ NUEVO: Cache para evitar correcciones de estado en bucle
   final Map<String, DateTime> _estadoCorregidoCache = {};
+  
+  // ✅ CACHE: CuadreId activo para evitar llamar getAllCuadres() cada vez
+  String? _cuadreIdActivo;
+  DateTime? _cuadreIdCacheTime;
 
   final InventarioService _inventarioService = InventarioService();
   final CuadreCajaService _cuadreCajaService = CuadreCajaService();
@@ -155,6 +159,45 @@ class PedidoService {
         
       return null;
     }
+  }
+
+  /// Obtener cuadreId activo con caché (válido por 5 minutos)
+  /// Esto evita llamar a getAllCuadres() en cada creación de pedido
+  Future<String?> _getCuadreIdActivo() async {
+    try {
+      // Si hay caché válido (menos de 5 minutos), usarlo
+      if (_cuadreIdActivo != null && _cuadreIdCacheTime != null) {
+        final diferencia = DateTime.now().difference(_cuadreIdCacheTime!);
+        if (diferencia.inMinutes < 5) {
+          return _cuadreIdActivo;
+        }
+      }
+
+      // ⚡ OPTIMIZADO: Usar getCajaActiva() en lugar de getAllCuadres()
+      // Endpoint optimizado: /api/cuadres-caja/abiertas (solo cajas activas, no todo el histórico)
+      final cajaActiva = await _cuadreCajaService.getCajaActiva();
+
+      if (cajaActiva != null) {
+        // Guardar en caché
+        _cuadreIdActivo = cajaActiva.id;
+        _cuadreIdCacheTime = DateTime.now();
+        return _cuadreIdActivo;
+      }
+
+      // Limpiar caché si no hay caja activa
+      _cuadreIdActivo = null;
+      _cuadreIdCacheTime = null;
+      return null;
+    } catch (e) {
+      print('⚠️ Error obteniendo cuadreId activo: $e');
+      return null;
+    }
+  }
+
+  /// Limpiar caché de cuadreId (llamar cuando se cierre la caja)
+  void limpiarCacheCuadreId() {
+    _cuadreIdActivo = null;
+    _cuadreIdCacheTime = null;
   }
 
   // Función auxiliar para parsear respuestas de lista de pedidos
@@ -304,10 +347,12 @@ class PedidoService {
     };
   }
 
-  // Obtener todos los pedidos
+  // Obtener todos los pedidos (últimos 7 días por defecto - optimizado backend)
+  // Para traer TODOS los pedidos históricos, usar getAllPedidosHistoricos()
   Future<List<Pedido>> getAllPedidos() async {
     try {
       final headers = await _getHeaders();
+      // Por defecto el backend ahora solo trae pedidos de los últimos 7 días
       final response = await http.get(
         Uri.parse('$baseUrl/api/pedidos'),
         headers: headers,
@@ -324,6 +369,50 @@ class PedidoService {
       }
     } catch (e) {
         
+      throw Exception('Error de conexión: $e');
+    }
+  }
+
+  /// Obtener todos los pedidos históricos (sin filtro de fecha)
+  /// ⚠️ ADVERTENCIA: Puede ser muy lento si hay miles de pedidos
+  /// Solo usar cuando realmente se necesite todo el historial
+  Future<List<Pedido>> getAllPedidosHistoricos() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/pedidos?todos=true'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        return _parseListResponse(responseData);
+      } else {
+        throw Exception(
+          'Error al obtener pedidos históricos: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      throw Exception('Error de conexión: $e');
+    }
+  }
+
+  /// Obtener pedidos de los últimos N días
+  Future<List<Pedido>> getPedidosUltimosDias(int dias) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/pedidos?dias=$dias'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        return _parseListResponse(responseData);
+      } else {
+        throw Exception('Error al obtener pedidos: ${response.statusCode}');
+      }
+    } catch (e) {
       throw Exception('Error de conexión: $e');
     }
   }
@@ -444,32 +533,84 @@ class PedidoService {
     }
   }
 
+  /// Obtener pedidos activos de una mesa específica (optimizado)
+  /// Usa el endpoint /api/pedidos/mesa/{mesa}/activos para mayor eficiencia
+  Future<List<Pedido>> getPedidosActivosMesa(String mesa) async {
+    try {
+      final headers = await _getHeaders();
+
+      // Intentar primero con el endpoint específico optimizado
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl/api/pedidos/mesa/$mesa/activos'),
+            headers: headers,
+          )
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        return _parseListResponse(responseData);
+      } else if (response.statusCode == 404) {
+        // Si el endpoint no existe, usar filtro por estado activo
+        final pedidosActivos = await getPedidosByEstado(EstadoPedido.activo);
+        return pedidosActivos.where((p) => p.mesa == mesa).toList();
+      } else {
+        throw Exception(
+          'Error al obtener pedidos activos de mesa: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      // Fallback: obtener pedidos activos y filtrar
+      try {
+        final pedidosActivos = await getPedidosByEstado(EstadoPedido.activo);
+        return pedidosActivos.where((p) => p.mesa == mesa).toList();
+      } catch (fallbackError) {
+        throw Exception('Error de conexión: $e');
+      }
+    }
+  }
+
+  /// Obtiene todos los pedidos marcados como DEUDA (mesa='DEUDA' y estado=activo)
+  /// Estos son pedidos creados desde facturación que quedaron sin pagar
+  Future<List<Pedido>> getPedidosDeuda() async {
+    try {
+      // Obtener todos los pedidos activos
+      final pedidosActivos = await getPedidosByEstado(EstadoPedido.activo);
+
+      // Filtrar solo los que tienen mesa='DEUDA'
+      final deudas = pedidosActivos.where((p) => p.mesa == 'DEUDA').toList();
+
+      // Ordenar por fecha (más recientes primero)
+      deudas.sort((a, b) => b.fecha.compareTo(a.fecha));
+
+      return deudas;
+    } catch (e) {
+      throw Exception('Error al obtener deudas: $e');
+    }
+  }
+
   // Crear nuevo pedido (método legacy - ahora usa validación de caja)
   Future<Pedido> crearPedido(Pedido pedido) async {
     try {
-      // VALIDACIÓN: Verificar que hay una caja pendiente antes de crear el pedido
-        
-      final cajas = await _cuadreCajaService.getAllCuadres();
-      final cajaActiva = cajas
-          .where((c) => c.estado == 'pendiente')
-          .firstOrNull;
+      // ⚡ VALIDACIÓN OPTIMIZADA: Usar caché de cuadreId para no llamar getAllCuadres() cada vez
+      final cuadreIdActivo = await _getCuadreIdActivo();
 
-      if (cajaActiva == null) {
-          
+      if (cuadreIdActivo == null) {
         throw Exception(
           'Debe abrir caja para continuar. Para registrar pedidos primero debe abrir la caja del día.',
         );
       }
 
       // Asignar cuadreId al pedido automáticamente
-      pedido.cuadreId = cajaActiva.id;
+      pedido.cuadreId = cuadreIdActivo;
          
       final headers = await _getHeaders();
       final response = await http.post(
         Uri.parse('$baseUrl/api/pedidos'),
         headers: headers,
         body: json.encode(pedido.toJson()),
-      );
+          )
+          .timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 201) {
         return Pedido.fromJson(json.decode(response.body));
@@ -484,22 +625,17 @@ class PedidoService {
   // Crear un nuevo pedido
   Future<Pedido> createPedido(Pedido pedido) async {
     try {
-      // VALIDACIÓN: Verificar que hay una caja pendiente antes de crear el pedido
-        
-      final cajas = await _cuadreCajaService.getAllCuadres();
-      final cajaActiva = cajas
-          .where((c) => c.estado == 'pendiente')
-          .firstOrNull;
+      // ⚡ VALIDACIÓN OPTIMIZADA: Usar caché de cuadreId para no llamar getAllCuadres() cada vez
+      final cuadreIdActivo = await _getCuadreIdActivo();
 
-      if (cajaActiva == null) {
-          
+      if (cuadreIdActivo == null) {
         throw Exception(
           'Debe abrir caja para continuar. Para registrar pedidos primero debe abrir la caja del día.',
         );
       }
 
       // Asignar cuadreId al pedido automáticamente
-      pedido.cuadreId = cajaActiva.id;
+      pedido.cuadreId = cuadreIdActivo;
          
       // Validar que los items del pedido sean válidos
       if (pedido.items.isEmpty) {
@@ -522,7 +658,8 @@ class PedidoService {
         Uri.parse('$baseUrl/api/pedidos'),
         headers: headers,
         body: json.encode(pedidoJson),
-      );
+          )
+          .timeout(const Duration(seconds: 30));
 
         
         

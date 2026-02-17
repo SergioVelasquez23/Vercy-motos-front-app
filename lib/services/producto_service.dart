@@ -1139,6 +1139,9 @@ class ProductoService {
   Future<void> actualizarCostoProducto(
     String productoId,
     double nuevoCosto,
+    {
+    double? precioActual,
+  }
   ) async {
     // ✅ Validar que el ID no esté vacío
     if (productoId.isEmpty) {
@@ -1149,13 +1152,40 @@ class ProductoService {
     try {
       final headers = await _getHeaders();
 
-      // 📦 Usar PUT normal con solo el campo costo
-      // El backend actualizará solo los campos enviados
+      // 1️⃣ Primero obtener el producto completo del servidor
+      final getResponse = await http
+          .get(
+            Uri.parse('$baseUrl/api/productos/$productoId'),
+            headers: headers,
+          )
+          .timeout(Duration(seconds: 300));
+
+      if (getResponse.statusCode != 200) {
+        print(
+          '⚠️ No se pudo obtener producto para actualizar costo: ${getResponse.statusCode}',
+        );
+        return;
+      }
+
+      // 2️⃣ Parsear el producto existente
+      final productoData = json.decode(getResponse.body);
+      final Map<String, dynamic> productoJson =
+          productoData is Map<String, dynamic>
+          ? (productoData['data'] ?? productoData)
+          : productoData;
+
+      // 3️⃣ Actualizar solo los campos de costo y precio
+      productoJson['costo'] = nuevoCosto;
+      if (precioActual != null && precioActual > 0) {
+        productoJson['precio'] = precioActual;
+      }
+
+      // 4️⃣ Enviar el producto completo con PUT (backend no soporta PATCH)
       final response = await http
           .put(
             Uri.parse('$baseUrl/api/productos/$productoId'),
             headers: headers,
-            body: json.encode({'costo': nuevoCosto}),
+            body: json.encode(productoJson),
           )
           .timeout(Duration(seconds: 300));
 

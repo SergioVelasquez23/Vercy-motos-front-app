@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/cuenta_por_cobrar.dart';
+import '../models/pedido.dart';
+import '../models/api_response.dart';
 import '../services/cartera_service.dart';
+import '../services/pedido_service.dart';
 import '../utils/currency_utils.dart';
 import '../widgets/vercy_sidebar_layout.dart';
-import '../dialogs/dialogo_confirmacion.dart';
 
 class CuentasPorCobrarScreen extends StatefulWidget {
   const CuentasPorCobrarScreen({Key? key}) : super(key: key);
@@ -15,9 +17,11 @@ class CuentasPorCobrarScreen extends StatefulWidget {
 
 class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
   final CarteraService _carteraService = CarteraService();
+  final PedidoService _pedidoService = PedidoService();
 
   List<CuentaPorCobrar> cuentas = [];
   List<CuentaPorCobrar> cuentasFiltradas = [];
+  List<Pedido> deudas = []; // ✅ Deudas de facturación
   bool isLoading = true;
   String? error;
   EstadoCuenta? filtroEstado;
@@ -44,16 +48,26 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
     });
 
     try {
-      final response = await _carteraService.getCuentasPorCobrar();
-      if (response.isSuccess) {
+      // Cargar cuentas tradicionales y deudas de facturación en paralelo
+      final results = await Future.wait([
+        _carteraService.getCuentasPorCobrar(),
+        _pedidoService.getPedidosDeuda(),
+      ]);
+
+      final cuentasResponse = results[0] as ApiResponse<List<CuentaPorCobrar>>;
+      final deudasList = results[1] as List<Pedido>;
+
+      if (cuentasResponse.isSuccess) {
         setState(() {
-          cuentas = response.data ?? [];
+          cuentas = cuentasResponse.data ?? [];
+          deudas = deudasList;
           _aplicarFiltros();
           isLoading = false;
         });
       } else {
         setState(() {
-          error = response.message;
+          error = cuentasResponse.message;
+          deudas = deudasList; // Cargar deudas aunque fallen las cuentas
           isLoading = false;
         });
       }
@@ -99,18 +113,24 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
     final result = await showDialog<double>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Registrar Abono - ${cuenta.clienteNombre}'),
+        backgroundColor: Colors.white,
+        title: Text(
+          'Registrar Abono - ${cuenta.clienteNombre}',
+          style: TextStyle(color: Colors.black87),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               'Saldo pendiente: ${CurrencyUtils.format(cuenta.saldoPendiente)}',
+              style: TextStyle(color: Colors.black87),
             ),
             const SizedBox(height: 16),
             TextField(
               controller: montoController,
               keyboardType: TextInputType.number,
+              style: TextStyle(color: Colors.black87),
               decoration: const InputDecoration(
                 labelText: 'Monto del abono',
                 prefixText: '\$ ',
@@ -312,7 +332,7 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
   }
 
   Widget _buildCuentasList() {
-    if (cuentasFiltradas.isEmpty) {
+    if (cuentasFiltradas.isEmpty && deudas.isEmpty) {
       return const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -323,7 +343,7 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
               color: Colors.grey,
             ),
             SizedBox(height: 16),
-            Text('No se encontraron cuentas por cobrar'),
+            Text('No se encontraron cuentas por cobrar ni deudas'),
           ],
         ),
       );
@@ -333,24 +353,74 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
       onRefresh: _cargarCuentas,
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
-        itemCount: cuentasFiltradas.length + 1,
+        itemCount:
+            1 +
+            (deudas.isNotEmpty ? 1 : 0) +
+            deudas.length +
+            (cuentasFiltradas.isNotEmpty ? 1 : 0) +
+            cuentasFiltradas.length,
         itemBuilder: (context, index) {
-          if (index == 0) {
+          int currentIndex = index;
+
+          // 1. Header de resumen
+          if (currentIndex == 0) {
             return _buildResumenHeader();
           }
+          currentIndex--;
 
-          final cuenta = cuentasFiltradas[index - 1];
-          return _buildCuentaCard(cuenta);
+          // 2. Sección de Deudas de Facturación
+          if (deudas.isNotEmpty) {
+            if (currentIndex == 0) {
+              return _buildSeccionHeader(
+                'Deudas de Facturación',
+                deudas.length,
+                Icons.sticky_note_2,
+                Colors.orange,
+              );
+            }
+            currentIndex--;
+
+            if (currentIndex < deudas.length) {
+              return _buildDeudaCard(deudas[currentIndex]);
+            }
+            currentIndex -= deudas.length;
+          }
+
+          // 3. Sección de Cuentas por Cobrar tradicionales
+          if (cuentasFiltradas.isNotEmpty) {
+            if (currentIndex == 0) {
+              return _buildSeccionHeader(
+                'Cuentas por Cobrar',
+                cuentasFiltradas.length,
+                Icons.receipt_long,
+                Colors.blue,
+              );
+            }
+            currentIndex--;
+
+            if (currentIndex < cuentasFiltradas.length) {
+              return _buildCuentaCard(cuentasFiltradas[currentIndex]);
+            }
+          }
+
+          return const SizedBox.shrink();
         },
       ),
     );
   }
 
   Widget _buildResumenHeader() {
-    final total = cuentasFiltradas.fold<double>(
+    final totalCuentas = cuentasFiltradas.fold<double>(
       0,
       (sum, cuenta) => sum + cuenta.saldoPendiente,
     );
+
+    final totalDeudas = deudas.fold<double>(
+      0,
+      (sum, deuda) => sum + deuda.total,
+    );
+
+    final total = totalCuentas + totalDeudas;
 
     final vencidas = cuentasFiltradas.where((c) => c.estaVencida).length;
     final proximasVencer = cuentasFiltradas
@@ -383,7 +453,7 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
                 ),
                 _buildResumenItem(
                   'Cuentas',
-                  '${cuentasFiltradas.length}',
+                  '${cuentasFiltradas.length + deudas.length}',
                   Icons.receipt,
                   Colors.blue,
                 ),
@@ -484,7 +554,7 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: estadoColor?.withOpacity(0.1),
+                    color: estadoColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
@@ -618,5 +688,482 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildSeccionHeader(
+    String titulo,
+    int cantidad,
+    IconData icono,
+    Color color,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 16, bottom: 8),
+      child: Row(
+        children: [
+          Icon(icono, color: color, size: 24),
+          const SizedBox(width: 8),
+          Text(
+            titulo,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: color.withOpacity(0.3)),
+            ),
+            child: Text(
+              '$cantidad',
+              style: TextStyle(
+                color: color,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDeudaCard(Pedido deuda) {
+    final diasDesdeCreacion = DateTime.now().difference(deuda.fecha).inDays;
+    final bool esReciente = diasDesdeCreacion <= 3;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.orange.withOpacity(0.3), width: 1),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header con cliente y badge de deuda
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.person, size: 16, color: Colors.grey[600]),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              deuda.cliente ?? 'Sin cliente',
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.bold),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Pedido #${deuda.id.substring(0, 8)}',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.orange.withOpacity(0.4)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.sticky_note_2_outlined,
+                        size: 14,
+                        color: Colors.orange[700],
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'DEUDA',
+                        style: TextStyle(
+                          color: Colors.orange[700],
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 12),
+
+            // Información de fecha y productos
+            Row(
+              children: [
+                Icon(Icons.calendar_today, size: 14, color: Colors.grey[600]),
+                const SizedBox(width: 4),
+                Text(
+                  DateFormat('dd/MM/yyyy HH:mm').format(deuda.fecha),
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(width: 12),
+                Icon(Icons.shopping_cart, size: 14, color: Colors.grey[600]),
+                const SizedBox(width: 4),
+                Text(
+                  '${deuda.items.length} item(s)',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                if (esReciente) ...[
+                  const SizedBox(width: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      'NUEVA',
+                      style: TextStyle(
+                        color: Colors.green[700],
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+
+            const SizedBox(height: 12),
+
+            // Total de la deuda
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.orange.withOpacity(0.2)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Total Adeudado:',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.grey[700],
+                    ),
+                  ),
+                  Text(
+                    CurrencyUtils.format(deuda.total),
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.orange[700],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            if (deuda.notas != null && deuda.notas!.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.note, size: 14, color: Colors.grey[600]),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        deuda.notas!,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[700],
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
+            const SizedBox(height: 12),
+
+            // Botones de acción
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton.icon(
+                  onPressed: () => _verDetalleDeuda(deuda),
+                  icon: const Icon(Icons.visibility_outlined),
+                  label: const Text('Ver Detalle'),
+                  style: TextButton.styleFrom(foregroundColor: Colors.blue),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton.icon(
+                  onPressed: () => _pagarDeuda(deuda),
+                  icon: const Icon(Icons.payment),
+                  label: const Text('Pagar'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _verDetalleDeuda(Pedido deuda) async {
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        title: Row(
+          children: [
+            Icon(Icons.sticky_note_2, color: Colors.orange),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Detalle de Deuda',
+                style: TextStyle(color: Colors.black87),
+              ),
+            ),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildDetalleRow('Cliente:', deuda.cliente ?? 'Sin cliente'),
+              _buildDetalleRow(
+                'Fecha:',
+                DateFormat('dd/MM/yyyy HH:mm').format(deuda.fecha),
+              ),
+              _buildDetalleRow('Pedido:', '#${deuda.id.substring(0, 8)}'),
+              const SizedBox(height: 12),
+              const Divider(),
+              const SizedBox(height: 12),
+              Text(
+                'Productos:',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 8),
+              ...deuda.items.map(
+                (item) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '${item.cantidad}x ${item.productoNombre}',
+                          style: TextStyle(color: Colors.black87),
+                        ),
+                      ),
+                      Text(
+                        CurrencyUtils.format(item.subtotal),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w500,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const Divider(),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'TOTAL:',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  Text(
+                    CurrencyUtils.format(deuda.total),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                      color: Colors.orange[700],
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cerrar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetalleRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 80,
+            child: Text(
+              label,
+              style: TextStyle(
+                fontWeight: FontWeight.w500,
+                color: Colors.grey[700],
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(value, style: TextStyle(color: Colors.black87)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _pagarDeuda(Pedido deuda) async {
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        title: Row(
+          children: [
+            Icon(Icons.payment, color: Colors.green),
+            const SizedBox(width: 8),
+            Text('Confirmar Pago', style: TextStyle(color: Colors.black87)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '¿Confirma el pago de esta deuda?',
+              style: TextStyle(color: Colors.black87),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.green.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.green.withOpacity(0.3)),
+              ),
+              child: Column(
+                children: [
+                  Text(
+                    'Cliente: ${deuda.cliente ?? "Sin cliente"}',
+                    style: TextStyle(color: Colors.black87),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Total: ${CurrencyUtils.format(deuda.total)}',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green[700],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Confirmar Pago'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmar != true) return;
+
+    try {
+      setState(() => isLoading = true);
+
+      // Actualizar el pedido a estado pagado
+      deuda.estado = EstadoPedido.pagado;
+      await _pedidoService.updatePedido(deuda);
+
+      setState(() => isLoading = false);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.white),
+              const SizedBox(width: 8),
+              Expanded(child: Text('Deuda pagada exitosamente')),
+            ],
+          ),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+      // Recargar las listas
+      await _cargarCuentas();
+    } catch (e) {
+      setState(() => isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al procesar el pago: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 }

@@ -4278,13 +4278,27 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
             producto = null;
           }
 
+          // Log del valor que se va a enviar
+          print(
+            '[ACTUALIZAR COSTO] Producto: "+item.ingredienteNombre+" (ID: ' +
+                item.ingredienteId +
+                ") - Costo a enviar: " +
+                item.precioUnitario.toString(),
+          );
+
           if (producto != null) {
-            // Actualizar el costo del producto con el precio de compra
-            // El backend manejará la actualización del modelo
-            await _productoService.actualizarCostoProducto(
-              item.ingredienteId,
-              item.precioUnitario,
-            );
+            // Validar que el costo sea mayor a 0 antes de actualizar
+            if (item.precioUnitario > 0) {
+              await _productoService.actualizarCostoProducto(
+                item.ingredienteId,
+                item.precioUnitario,
+                precioActual: producto.precio,
+              );
+            } else {
+              print(
+                '[ACTUALIZAR COSTO] ❌ No se actualiza porque el costo es <= 0',
+              );
+            }
           }
         } catch (e) {
           // Continuar con el siguiente item aunque haya error

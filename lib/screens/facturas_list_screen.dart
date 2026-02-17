@@ -43,22 +43,24 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
       // Cargar facturas tradicionales
       final facturas = await _facturaService.getFacturas();
       
-      // Cargar pedidos pagados (incluye los de FACTURACION)
-      final todosLosPedidos = await _pedidoService.getAllPedidos();
-      final pedidosPagados = todosLosPedidos
+      // ⚡ OPTIMIZADO: Cargar solo pedidos pagados en lugar de todos los pedidos
+      final pedidosPagados = await _pedidoService.getPedidosByEstado(
+        EstadoPedido.pagado,
+      );
+
+      // Filtrar solo los de tipo POS o mesa FACTURACION
+      final pedidosFacturacion = pedidosPagados
           .where(
-            (p) =>
-                p.estado == EstadoPedido.pagado &&
-                (p.tipoFactura == 'POS' || p.mesa == 'FACTURACION'),
+            (p) => p.tipoFactura == 'POS' || p.mesa == 'FACTURACION',
           )
           .toList();
 
       // Ordenar por fecha descendente
-      pedidosPagados.sort((a, b) => b.fecha.compareTo(a.fecha));
+      pedidosFacturacion.sort((a, b) => b.fecha.compareTo(a.fecha));
       
       setState(() {
         _facturas = facturas;
-        _pedidosPagados = pedidosPagados;
+        _pedidosPagados = pedidosFacturacion;
         _aplicarFiltros();
       });
     } catch (e) {

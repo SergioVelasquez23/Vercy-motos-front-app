@@ -136,6 +136,9 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
   List<Cliente> _clientesDisponibles = [];
 
   bool _isLoading = false;
+  
+  // ✅ Key para forzar reconstrucción de Autocompletes al limpiar formulario
+  int _autocompleteResetKey = 0;
 
   @override
   void initState() {
@@ -630,6 +633,9 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       children: [
         Expanded(
           child: Autocomplete<Cliente>(
+            key: ValueKey(
+              'cliente_$_autocompleteResetKey',
+            ), // ✅ Fuerza reconstrucción al limpiar
             optionsBuilder: (TextEditingValue textEditingValue) {
               if (textEditingValue.text.isEmpty) {
                 return _clientesDisponibles.take(10);
@@ -1503,6 +1509,9 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                       Expanded(
                         flex: 1,
                         child: Autocomplete<Producto>(
+                          key: ValueKey(
+                            'codigo_$_autocompleteResetKey',
+                          ), // ✅ Fuerza reconstrucción al limpiar
                           optionsBuilder: (TextEditingValue textEditingValue) {
                             if (textEditingValue.text.isEmpty) {
                               return const Iterable<Producto>.empty();
@@ -1618,6 +1627,9 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                       Expanded(
                         flex: 3,
                         child: Autocomplete<Producto>(
+                          key: ValueKey(
+                            'nombre_$_autocompleteResetKey',
+                          ), // ✅ Fuerza reconstrucción al limpiar
                           optionsBuilder: (TextEditingValue textEditingValue) {
                             if (textEditingValue.text.isEmpty) {
                               return const Iterable<Producto>.empty();
@@ -3196,48 +3208,74 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
           SizedBox(height: 20),
 
           // Botones de acción
-          Row(
+          Column(
             children: [
-              // Guardar como borrador
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: _isLoading ? null : _guardarComoBorrador,
-                  icon: Icon(Icons.drafts),
-                  label: Text('Guardar Borrador'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppTheme.textPrimary,
-                    side: BorderSide(color: AppTheme.textMuted),
-                    padding: EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+              // Primera fila: Borrador y Pagar
+              Row(
+                children: [
+                  // Guardar como borrador
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _isLoading ? null : _guardarComoBorrador,
+                      icon: Icon(Icons.drafts),
+                      label: Text('Guardar Borrador'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppTheme.textPrimary,
+                        side: BorderSide(color: AppTheme.textMuted),
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
                     ),
                   ),
-                ),
-              ),
-              SizedBox(width: 16),
+                  SizedBox(width: 16),
 
-              // Guardar y Pagar
-              Expanded(
-                flex: 2,
-                child: ElevatedButton.icon(
-                  onPressed: _isLoading ? null : _guardarYPagar,
-                  icon: _isLoading
-                      ? SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : Icon(Icons.check_circle),
+                  // Guardar y Pagar
+                  Expanded(
+                    flex: 2,
+                    child: ElevatedButton.icon(
+                      onPressed: _isLoading ? null : _guardarYPagar,
+                      icon: _isLoading
+                          ? SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : Icon(Icons.check_circle),
+                      label: Text(
+                        'Guardar y Pagar',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.success,
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 12),
+              // Segunda fila: Dejar como Deuda
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _isLoading ? null : _guardarComoDeuda,
+                  icon: Icon(Icons.sticky_note_2_outlined, color: Colors.orange),
                   label: Text(
-                    'Guardar y Pagar',
+                    'Dejar como Deuda',
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                   ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.success,
-                    foregroundColor: Colors.white,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.orange,
+                    side: BorderSide(color: Colors.orange, width: 2),
                     padding: EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
@@ -3257,13 +3295,11 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // Obtener todos los pedidos activos de facturación
-      final pedidos = await PedidoService.getPedidos();
-      final borradores = pedidos
-          .where(
-            (p) => p.estado == EstadoPedido.activo && p.mesa == 'FACTURACION',
-          )
-          .toList();
+      // ⚡ OPTIMIZADO: Usar endpoint específico para pedidos activos de FACTURACION
+      // En lugar de traer TODOS los pedidos históricos
+      final borradores = await _pedidoService.getPedidosActivosMesa(
+        'FACTURACION',
+      );
 
       setState(() => _isLoading = false);
 
@@ -3511,6 +3547,211 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     }
   }
 
+  /// Guardar como deuda - crea un pedido activo sin pagar que queda registrado como deuda
+  Future<void> _guardarComoDeuda() async {
+    if (_items.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Agregue al menos un producto')));
+      return;
+    }
+
+    // Validar que haya un cliente diferente a CONSUMIDOR FINAL
+    if (_clienteController.text.trim().toUpperCase() == 'CONSUMIDOR FINAL' ||
+        _clienteController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.warning, color: Colors.white),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text('Para dejar como deuda debe seleccionar un cliente específico'),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.orange,
+          duration: Duration(seconds: 4),
+        ),
+      );
+      return;
+    }
+
+    // Confirmar con el usuario
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        title: Row(
+          children: [
+            Icon(Icons.sticky_note_2_outlined, color: Colors.orange),
+            SizedBox(width: 8),
+            Text(
+              'Confirmar Deuda',
+              style: TextStyle(color: Colors.black87),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '¿Desea registrar esta venta como deuda?',
+              style: TextStyle(
+                color: Colors.black87,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: 16),
+            Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.orange.shade200),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildDeudaInfoRow('Cliente:', _clienteController.text),
+                  SizedBox(height: 8),
+                  _buildDeudaInfoRow(
+                    'Total:',
+                    '\$${_items.fold(0.0, (sum, item) => sum + item.subtotal).toStringAsFixed(0)}',
+                  ),
+                  SizedBox(height: 8),
+                  _buildDeudaInfoRow(
+                    'Productos:',
+                    '${_items.length} item(s)',
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: 12),
+            Text(
+              'Esta deuda quedará pendiente de pago y aparecerá en la sección de Cartera.',
+              style: TextStyle(
+                color: Colors.black54,
+                fontSize: 13,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancelar'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () => Navigator.pop(context, true),
+            icon: Icon(Icons.check),
+            label: Text('Confirmar Deuda'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.orange,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmar != true) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      final subtotal = _items.fold(0.0, (sum, item) => sum + item.subtotal);
+      final total = subtotal;
+      final userName =
+          Provider.of<UserProvider>(context, listen: false).userName ??
+          'Sistema';
+
+      // Crear pedido como DEUDA (quedará activo, sin pagar)
+      final pedido = Pedido(
+        id: 'temp-${DateTime.now().millisecondsSinceEpoch}',
+        fecha: _fechaFactura,
+        tipo: TipoPedido.normal,
+        mesa: 'DEUDA', // ✅ Identificador especial para deudas
+        cliente: _clienteController.text,
+        mesero: userName,
+        items: _items,
+        total: total,
+        estado: EstadoPedido.activo, // ✅ Queda activo (sin pagar)
+        tipoFactura: _tipoFactura,
+        fechaVencimiento: _fechaVencimiento,
+        subtotal: subtotal,
+        totalImpuestos: 0.0,
+        totalDescuentos: 0.0,
+        totalFinal: total,
+        notas: 'DEUDA - Registrada el ${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}',
+      );
+
+      final pedidoCreado = await _pedidoService.createPedido(pedido);
+
+      setState(() => _isLoading = false);
+
+      // Mostrar mensaje de éxito
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.white),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Deuda registrada exitosamente para ${_clienteController.text}',
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.orange,
+          duration: Duration(seconds: 4),
+          action: SnackBarAction(
+            label: 'Ver en Cartera',
+            textColor: Colors.white,
+            onPressed: () {
+              Navigator.pushNamed(context, '/cuentas-por-cobrar');
+            },
+          ),
+        ),
+      );
+
+      _limpiarFormulario();
+    } catch (e) {
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al guardar deuda: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Widget _buildDeudaInfoRow(String label, String value) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: Colors.black87,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            color: Colors.black87,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
+    );
+  }
+
   // Guardar y pagar - abre el diálogo de pago
   Future<void> _guardarYPagar() async {
     if (_items.isEmpty) {
@@ -3523,11 +3764,37 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     setState(() => _isLoading = true);
 
     try {
+      // 🚀 GUARDAR TODOS LOS DATOS NECESARIOS ANTES DE LIMPIAR
       final subtotal = _items.fold(0.0, (sum, item) => sum + item.subtotal);
       final total = subtotal;
       final userName =
           Provider.of<UserProvider>(context, listen: false).userName ??
           'Sistema';
+      final itemsOriginales = List<ItemPedido>.from(
+        _items,
+      ); // ✅ Copia antes de limpiar
+      final metodoPagoUsado = _metodoPago;
+      final montoEfectivo = _metodoPago == 'efectivo'
+          ? total
+          : (_metodoPago == 'multiple'
+                ? double.tryParse(_montoEfectivoController.text) ?? 0.0
+                : 0.0);
+      final montoTransferencia = _metodoPago == 'transferencia'
+          ? total
+          : (_metodoPago == 'multiple'
+                ? double.tryParse(_montoTransferenciaController.text) ?? 0.0
+                : 0.0);
+      final montoTarjeta = _metodoPago == 'tarjeta'
+          ? total
+          : (_metodoPago == 'multiple'
+                ? double.tryParse(_montoTarjetaController.text) ?? 0.0
+                : 0.0);
+      final montoSistecredito = _metodoPago == 'sistecredito'
+          ? total
+          : (_metodoPago == 'multiple'
+                ? double.tryParse(_montoSistereditoController.text) ?? 0.0
+                : 0.0);
+      final montoDatafono = _metodoPago == 'datafono' ? total : 0.0;
 
       // Crear el pedido primero
       final pedido = Pedido(
@@ -3537,7 +3804,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
         mesa: 'FACTURACION',
         cliente: _clienteController.text,
         mesero: userName,
-        items: _items,
+        items: itemsOriginales,
         total: total,
         estado: EstadoPedido.activo,
         tipoFactura: _tipoFactura,
@@ -3551,191 +3818,83 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       // Guardar el pedido
       final pedidoCreado = await _pedidoService.createPedido(pedido);
 
-      // Si viene de pedido asesor, procesar pago directamente sin diálogo
-      if (widget.pedidoAsesor != null) {
+      // ✅ LIMPIAR INMEDIATAMENTE Y LIBERAR UI
+      _limpiarFormulario();
+      setState(() => _isLoading = false);
+
+      // Mostrar mensaje de éxito inmediatamente
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('✅ Factura creada exitosamente'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+
+      // Mostrar mensaje de éxito inmediatamente
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('✅ Factura creada exitosamente'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+
+      // 🚀 TODO EL PROCESAMIENTO EN BACKGROUND - NO BLOQUEAR UI
+      Future.microtask(() async {
         try {
-          // Calcular montos según método de pago
-          final montoEfectivo = _metodoPago == 'efectivo'
-              ? total
-              : (_metodoPago == 'multiple'
-                    ? double.tryParse(_montoEfectivoController.text) ?? 0.0
-                    : 0.0);
-          final montoTransferencia = _metodoPago == 'transferencia'
-              ? total
-              : (_metodoPago == 'multiple'
-                    ? double.tryParse(_montoTransferenciaController.text) ?? 0.0
-                    : 0.0);
-          final montoTarjeta = _metodoPago == 'tarjeta'
-              ? total
-              : (_metodoPago == 'multiple'
-                    ? double.tryParse(_montoTarjetaController.text) ?? 0.0
-                    : 0.0);
-          final montoSistecredito = _metodoPago == 'sistecredito'
-              ? total
-              : (_metodoPago == 'multiple'
-                    ? double.tryParse(_montoSistereditoController.text) ?? 0.0
-                    : 0.0);
-          final montoDatafono = _metodoPago == 'datafono' ? total : 0.0;
-          
-          // ✅ GUARDAR método de pago ANTES de limpiar
-          final metodoPagoUsado = _metodoPago;
-          
-          // ✅ LIMPIAR INMEDIATAMENTE PRIMERO
-          _limpiarFormulario();
-          setState(() => _isLoading = false);
-
-          // Mostrar mensaje de éxito inmediatamente
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('✅ Procesando pago...'),
-              backgroundColor: Colors.green,
-            ),
+          // Procesar pago
+          await _pedidoService.pagarPedido(
+            pedidoCreado.id,
+            formaPago: metodoPagoUsado,
+            propina: 0.0,
+            totalPagado: total,
+            procesadoPor: userName,
+            notas: widget.pedidoAsesor != null
+                ? 'Pago de pedido asesor'
+                : 'Pago desde facturación',
+            descuento: 0.0,
+            pagoMultiple: metodoPagoUsado == 'multiple',
+            montoEfectivo: montoEfectivo,
+            montoTarjeta: montoTarjeta,
+            montoTransferencia: montoTransferencia,
+            montoSistecredito: montoSistecredito,
+            montoDatafono: montoDatafono,
           );
 
-          // 🚀 TODO EN BACKGROUND - NO BLOQUEAR UI
-          Future.microtask(() async {
-            try {
-              // Procesar pago en background
-              await _pedidoService.pagarPedido(
-                pedidoCreado.id,
-                formaPago: metodoPagoUsado,
-                propina: 0.0,
-                totalPagado: total,
-                procesadoPor: userName,
-                notas: 'Pago de pedido asesor',
-                descuento: 0.0,
-                pagoMultiple: metodoPagoUsado == 'multiple',
-                montoEfectivo: montoEfectivo,
-                montoTarjeta: montoTarjeta,
-                montoTransferencia: montoTransferencia,
-                montoSistecredito: montoSistecredito,
-                montoDatafono: montoDatafono,
-              );
-
-              // Registrar movimientos de inventario
-              _registrarMovimientosInventarioVentaEnBackground(
-                pedidoCreado,
-                itemsOriginales: _items,
-              );
-
-              // Marcar pedido asesor como facturado
-              if (widget.pedidoAsesor!.id != null) {
-                await _pedidoAsesorService.marcarComoFacturado(
-                  widget.pedidoAsesor!.id!,
-                  userName,
-                );
-              }
-
-              // Refrescar cache
-              _refrescarCacheEnBackground();
-            } catch (e) {
-              // Si hay error, mostrar notificación silenciosa
-              print('Error en background: $e');
-            }
-          });
-
-          Navigator.of(context).pop(); // Regresar inmediatamente
-        } catch (e) {
-          setState(() => _isLoading = false);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Error al procesar pago: $e'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      } else {
-        // Para facturación normal, procesar pago directamente sin diálogo
-        try {
-          // Calcular montos según método de pago
-          final montoEfectivo = _metodoPago == 'efectivo'
-              ? total
-              : (_metodoPago == 'multiple'
-                    ? double.tryParse(_montoEfectivoController.text) ?? 0.0
-                    : 0.0);
-          final montoTransferencia = _metodoPago == 'transferencia'
-              ? total
-              : (_metodoPago == 'multiple'
-                    ? double.tryParse(_montoTransferenciaController.text) ?? 0.0
-                    : 0.0);
-          final montoTarjeta = _metodoPago == 'tarjeta'
-              ? total
-              : (_metodoPago == 'multiple'
-                    ? double.tryParse(_montoTarjetaController.text) ?? 0.0
-                    : 0.0);
-          final montoSistecredito = _metodoPago == 'sistecredito'
-              ? total
-              : (_metodoPago == 'multiple'
-                    ? double.tryParse(_montoSistereditoController.text) ?? 0.0
-                    : 0.0);
-          final montoDatafono = _metodoPago == 'datafono' ? total : 0.0;
-          
-          // ✅ GUARDAR método de pago ANTES de limpiar
-          final metodoPagoUsado = _metodoPago;
-          
-          // ✅ LIMPIAR INMEDIATAMENTE PRIMERO
-          _limpiarFormulario();
-          setState(() => _isLoading = false);
-
-          // Mostrar mensaje de éxito inmediatamente
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('✅ Factura creada exitosamente'),
-              backgroundColor: Colors.green,
-            ),
-          );
-
-          // 🚀 TODO EN BACKGROUND - NO BLOQUEAR UI
-          Future.microtask(() async {
-            try {
-              // Procesar pago en background
-              await _pedidoService.pagarPedido(
-                pedidoCreado.id,
-                formaPago: metodoPagoUsado,
-                propina: 0.0,
-                totalPagado: total,
-                procesadoPor: userName,
-                notas: 'Pago desde facturación',
-                descuento: 0.0,
-                pagoMultiple: metodoPagoUsado == 'multiple',
-                montoEfectivo: montoEfectivo,
-                montoTarjeta: montoTarjeta,
-                montoTransferencia: montoTransferencia,
-                montoSistecredito: montoSistecredito,
-                montoDatafono: montoDatafono,
-              );
-
-              // Registrar movimientos de inventario
-              _registrarMovimientosInventarioVentaEnBackground(
-                pedidoCreado,
-                itemsOriginales: _items,
-              );
-
-              // Refrescar cache
-              _refrescarCacheEnBackground();
-            } catch (e) {
-              // Si hay error, mostrar notificación silenciosa
-              print('Error en background: $e');
-            }
-          });
-
-          // Mostrar diálogo de éxito con opciones de impresión (NO ESPERAR)
-          _mostrarDialogoFacturaExitosa(
+          // Registrar movimientos de inventario
+          _registrarMovimientosInventarioVentaEnBackground(
             pedidoCreado,
-            metodoPagoUsado, // ✅ Usar el método guardado antes de limpiar
-            total,
-            0.0,
-            0.0,
+            itemsOriginales: itemsOriginales,
           );
+
+          // Si viene de pedido asesor, marcarlo como facturado
+          if (widget.pedidoAsesor?.id != null) {
+            await _pedidoAsesorService.marcarComoFacturado(
+              widget.pedidoAsesor!.id!,
+              userName,
+            );
+          }
+
+          // Refrescar cache
+          _refrescarCacheEnBackground();
         } catch (e) {
-          setState(() => _isLoading = false);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Error al procesar pago: $e'),
-              backgroundColor: Colors.red,
-            ),
-          );
+          print('⚠️ Error en procesamiento background: $e');
         }
+      });
+
+      // Si viene de pedido asesor, regresar inmediatamente
+      if (widget.pedidoAsesor != null) {
+        Navigator.of(context).pop();
+      } else {
+        // Mostrar diálogo de éxito con opciones de impresión (opcional, sin bloquear)
+        _mostrarDialogoFacturaExitosa(
+          pedidoCreado,
+          metodoPagoUsado,
+          total,
+          0.0,
+          0.0,
+        );
       }
     } catch (e) {
       setState(() => _isLoading = false);
@@ -4400,15 +4559,10 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       _productoSeleccionado = null;
       _clienteSeleccionado = null;
 
-      // Limpiar todos los campos de producto (INCLUYENDO AUTOCOMPLETE)
+      // Limpiar todos los campos de producto
       _codigoBarrasController.clear();
       _codigoController.clear();
       _nombreProductoController.clear();
-      
-      // ✅ FORZAR LIMPIEZA DE AUTOCOMPLETES
-      // Esto fuerza a los Autocompletes a resetearse completamente
-      _productoSeleccionado = null;
-      _clienteSeleccionado = null;
       
       _cantidadController.text = '1';
       _valorUnitController.clear();
@@ -4418,6 +4572,9 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       
       // ✅ ASEGURAR QUE CLIENTE VUELVA A CONSUMIDOR FINAL
       _clienteController.text = 'CONSUMIDOR FINAL';
+      
+      // ✅ Incrementar key para forzar reconstrucción de Autocompletes
+      _autocompleteResetKey++;
     });
   }
 

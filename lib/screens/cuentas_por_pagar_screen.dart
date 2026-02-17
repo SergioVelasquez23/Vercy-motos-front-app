@@ -700,7 +700,11 @@ class __FormularioCuentaPorPagarState extends State<_FormularioCuentaPorPagar> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Nueva Cuenta por Pagar'),
+      backgroundColor: Colors.white,
+      title: const Text(
+        'Nueva Cuenta por Pagar',
+        style: TextStyle(color: Colors.black87),
+      ),
       content: SizedBox(
         width: double.maxFinite,
         child: SingleChildScrollView(
@@ -711,6 +715,7 @@ class __FormularioCuentaPorPagarState extends State<_FormularioCuentaPorPagar> {
               children: [
                 TextFormField(
                   controller: _proveedorController,
+                  style: TextStyle(color: Colors.black87),
                   decoration: const InputDecoration(
                     labelText: 'Proveedor',
                     border: OutlineInputBorder(),
@@ -722,6 +727,7 @@ class __FormularioCuentaPorPagarState extends State<_FormularioCuentaPorPagar> {
 
                 TextFormField(
                   controller: _facturaController,
+                  style: TextStyle(color: Colors.black87),
                   decoration: const InputDecoration(
                     labelText: 'Número de Factura',
                     border: OutlineInputBorder(),
@@ -734,6 +740,7 @@ class __FormularioCuentaPorPagarState extends State<_FormularioCuentaPorPagar> {
                 TextFormField(
                   controller: _montoController,
                   keyboardType: TextInputType.number,
+                  style: TextStyle(color: Colors.black87),
                   decoration: const InputDecoration(
                     labelText: 'Monto Total',
                     prefixText: '\$ ',
@@ -751,6 +758,7 @@ class __FormularioCuentaPorPagarState extends State<_FormularioCuentaPorPagar> {
                 TextFormField(
                   controller: _diasVencimientoController,
                   keyboardType: TextInputType.number,
+                  style: TextStyle(color: Colors.black87),
                   decoration: const InputDecoration(
                     labelText: 'Días para vencimiento',
                     border: OutlineInputBorder(),
@@ -764,7 +772,10 @@ class __FormularioCuentaPorPagarState extends State<_FormularioCuentaPorPagar> {
                 const SizedBox(height: 12),
 
                 CheckboxListTile(
-                  title: const Text('Tiene descuento por pronto pago'),
+                  title: const Text(
+                    'Tiene descuento por pronto pago',
+                    style: TextStyle(color: Colors.black87),
+                  ),
                   value: tieneDescuento,
                   onChanged: (value) {
                     setState(() {
@@ -781,6 +792,7 @@ class __FormularioCuentaPorPagarState extends State<_FormularioCuentaPorPagar> {
                         child: TextFormField(
                           controller: _porcentajeDescuentoController,
                           keyboardType: TextInputType.number,
+                          style: TextStyle(color: Colors.black87),
                           decoration: const InputDecoration(
                             labelText: 'Porcentaje descuento',
                             suffixText: '%',
@@ -804,6 +816,7 @@ class __FormularioCuentaPorPagarState extends State<_FormularioCuentaPorPagar> {
                         child: TextFormField(
                           controller: _diasDescuentoController,
                           keyboardType: TextInputType.number,
+                          style: TextStyle(color: Colors.black87),
                           decoration: const InputDecoration(
                             labelText: 'Días descuento',
                             border: OutlineInputBorder(),
