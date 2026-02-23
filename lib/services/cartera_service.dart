@@ -6,6 +6,7 @@ import '../models/gasto_programado.dart';
 import '../models/resumen_cartera.dart';
 import '../models/api_response.dart';
 import 'base_api_service.dart';
+import 'alertas_service.dart';
 
 /// Servicio para gestión de cartera (cuentas por cobrar, por pagar y gastos programados)
 class CarteraService {
@@ -14,6 +15,7 @@ class CarteraService {
   CarteraService._internal();
 
   final BaseApiService _baseApiService = BaseApiService();
+  final AlertasService _alertasService = AlertasService();
 
   static const String _baseEndpoint = '/cartera';
 
@@ -245,7 +247,7 @@ class CarteraService {
           .post(
             Uri.parse(url),
             headers: headers,
-            body: json.encode(cuenta.toJson()),
+            body: json.encode(cuenta.toCreateJson()),
           )
           .timeout(const Duration(seconds: 30));
 
@@ -281,11 +283,23 @@ class CarteraService {
     required String cuentaId,
     required double montoPago,
     required String observaciones,
+    String? numeroFactura,
+    String? proveedorNombre,
   }) async {
     try {
-      final String url = _baseApiService.buildUrl(
-        '$_baseEndpoint/cuentas-por-pagar/$cuentaId/pago',
-      );
+      // Endpoint explícito sin variables para mayor claridad
+      final String endpoint = '/cartera/cuentas-por-pagar/$cuentaId/pago';
+      final String url = _baseApiService.buildUrl(endpoint);
+
+      print('\n💰 [SERVICIO] registrarPagoCuentaPorPagar()');
+      print('📤 Enviando request al backend:');
+      print('   🌐 URL: $url');
+      print('   🆔 cuentaId: $cuentaId');
+      print('   💵 montoPago: $montoPago');
+      print('   📝 observaciones: $observaciones');
+      print('   🏢 proveedor (si se pasó): $proveedorNombre');
+      print('   📄 numeroFactura (si se pasó): $numeroFactura');
+
       final Map<String, String> headers = await _baseApiService.getHeaders();
 
       final Map<String, dynamic> body = {
@@ -294,11 +308,65 @@ class CarteraService {
         'fecha_pago': DateTime.now().toIso8601String(),
       };
 
+      print('   📦 Body JSON: ${json.encode(body)}');
+
       final http.Response response = await _baseApiService.httpClient
           .post(Uri.parse(url), headers: headers, body: json.encode(body))
           .timeout(const Duration(seconds: 30));
 
+      print('\n📥 [SERVICIO] Respuesta del backend:');
+      print('   ✅ Status Code: ${response.statusCode}');
+      print('   📄 Response Body: ${response.body}');
+
       if (response.statusCode == 200 || response.statusCode == 201) {
+        try {
+          print(
+            '\n🔍 [AUTO-ALERTA] Analizando respuesta para enviar alerta automática...',
+          );
+
+          // Parsear respuesta del backend para obtener datos de la cuenta
+          final Map<String, dynamic> responseData = json.decode(response.body);
+          final Map<String, dynamic>? cuenta =
+              responseData['cuenta'] as Map<String, dynamic>?;
+
+          if (cuenta != null) {
+            print('📊 [AUTO-ALERTA] Datos de la cuenta en respuesta:');
+            print('   ${json.encode(cuenta)}');
+
+            final String? facturaBackend = cuenta['numeroFactura'] as String?;
+            final String? proveedorBackend =
+                cuenta['proveedorNombre'] as String?;
+
+            // Usar datos pasados por parámetro o extraer del backend
+            final String numFactura = numeroFactura ?? facturaBackend ?? 'S/N';
+            final String nomProveedor =
+                proveedorNombre ?? proveedorBackend ?? 'Proveedor General';
+            final double montoTotal =
+                cuenta['montoTotal'] as double? ?? montoPago;
+
+            print('📤 [AUTO-ALERTA] Enviando alerta de cuenta pagada:');
+            print('   🏢 Proveedor: $nomProveedor');
+            print('   📄 Número Factura: $numFactura');
+            print('   💰 Monto Total: $montoTotal');
+
+            // Enviar alerta de cuenta pagada en segundo plano
+            _alertasService.enviarAlertaCuentaPagada(
+              proveedor: nomProveedor,
+              numeroFactura: numFactura,
+              montoTotal: montoTotal,
+              cuentaId: cuentaId,
+            );
+
+            print('✅ [AUTO-ALERTA] Alerta enviada correctamente\n');
+          } else {
+            print(
+              '⚠️ [AUTO-ALERTA] No hay datos de cuenta en la respuesta, no se envía alerta\n',
+            );
+          }
+        } catch (e) {
+          print('❌ [AUTO-ALERTA] Error al procesar/enviar alerta: $e\n');
+        }
+        
         return ApiResponse<String>(
           success: true,
           data: 'Pago registrado exitosamente',
@@ -314,6 +382,7 @@ class CarteraService {
         timestamp: DateTime.now().toIso8601String(),
       );
     } catch (e) {
+      print('❌ Error registrando pago: $e');
       return ApiResponse<String>(
         success: false,
         data: null,
@@ -526,5 +595,270 @@ class CarteraService {
         timestamp: DateTime.now().toIso8601String(),
       );
     }
+  }
+
+  // ============================================================
+  // === CUENTAS POR PAGAR RECURRENTES ===
+  // ============================================================
+
+  /// Registra un pago en una cuenta recurrente.
+  /// NO elimina la cuenta; actualiza ultimoPago, totalPagosRealizados,
+  /// y calcula el próximo vencimiento.
+  Future<ApiResponse<String>> registrarPagoRecurrente({
+    required String cuentaId,
+    required double montoPago,
+    required String observaciones,
+  }) async {
+    try {
+      final String url = _baseApiService.buildUrl(
+        '$_baseEndpoint/cuentas-por-pagar/$cuentaId/pago',
+      );
+      final Map<String, String> headers = await _baseApiService.getHeaders();
+
+      final Map<String, dynamic> body = {
+        'monto_pago': montoPago,
+        'observaciones': observaciones,
+        'fecha_pago': DateTime.now().toIso8601String(),
+        'es_pago_recurrente': true,
+      };
+
+      final http.Response response = await _baseApiService.httpClient
+          .post(Uri.parse(url), headers: headers, body: json.encode(body))
+          .timeout(const Duration(seconds: 60));
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        // Enviar alerta de pago registrado por Telegram
+        _enviarAlertaPagoCxP(montoPago, observaciones);
+        return ApiResponse<String>(
+          success: true,
+          data: 'Pago registrado exitosamente',
+          message:
+              'Pago registrado. La cuenta se renovará para el próximo periodo.',
+          timestamp: DateTime.now().toIso8601String(),
+        );
+      }
+
+      return ApiResponse<String>(
+        success: false,
+        data: null,
+        message: 'Error ${response.statusCode}: ${response.body}',
+        timestamp: DateTime.now().toIso8601String(),
+      );
+    } catch (e) {
+      return ApiResponse<String>(
+        success: false,
+        data: null,
+        message: 'Error de conectividad: $e',
+        timestamp: DateTime.now().toIso8601String(),
+      );
+    }
+  }
+
+  /// Actualiza una cuenta por pagar existente
+  Future<ApiResponse<CuentaPorPagar>> actualizarCuentaPorPagar(
+    String cuentaId,
+    CuentaPorPagar cuenta,
+  ) async {
+    try {
+      final String url = _baseApiService.buildUrl(
+        '$_baseEndpoint/cuentas-por-pagar/$cuentaId',
+      );
+      final Map<String, String> headers = await _baseApiService.getHeaders();
+
+      final http.Response response = await _baseApiService.httpClient
+          .put(
+            Uri.parse(url),
+            headers: headers,
+            body: json.encode(cuenta.toJson()),
+          )
+          .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        final CuentaPorPagar cuentaActualizada = CuentaPorPagar.fromJson(data);
+        return ApiResponse<CuentaPorPagar>(
+          success: true,
+          data: cuentaActualizada,
+          message: 'Cuenta por pagar actualizada exitosamente',
+          timestamp: DateTime.now().toIso8601String(),
+        );
+      }
+
+      return ApiResponse<CuentaPorPagar>(
+        success: false,
+        data: null,
+        message: 'Error ${response.statusCode}: ${response.body}',
+        timestamp: DateTime.now().toIso8601String(),
+      );
+    } catch (e) {
+      return ApiResponse<CuentaPorPagar>(
+        success: false,
+        data: null,
+        message: 'Error de conectividad: $e',
+        timestamp: DateTime.now().toIso8601String(),
+      );
+    }
+  }
+
+  /// Desactiva una cuenta recurrente (no la elimina)
+  Future<ApiResponse<String>> desactivarCuentaPorPagar(String cuentaId) async {
+    try {
+      final String url = _baseApiService.buildUrl(
+        '$_baseEndpoint/cuentas-por-pagar/$cuentaId/desactivar',
+      );
+      final Map<String, String> headers = await _baseApiService.getHeaders();
+
+      final http.Response response = await _baseApiService.httpClient
+          .put(Uri.parse(url), headers: headers)
+          .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        return ApiResponse<String>(
+          success: true,
+          data: 'Cuenta desactivada',
+          message: 'La cuenta ha sido desactivada (no eliminada)',
+          timestamp: DateTime.now().toIso8601String(),
+        );
+      }
+
+      return ApiResponse<String>(
+        success: false,
+        data: null,
+        message: 'Error ${response.statusCode}: ${response.body}',
+        timestamp: DateTime.now().toIso8601String(),
+      );
+    } catch (e) {
+      return ApiResponse<String>(
+        success: false,
+        data: null,
+        message: 'Error de conectividad: $e',
+        timestamp: DateTime.now().toIso8601String(),
+      );
+    }
+  }
+
+  // ============================================================
+  // === ALERTAS TELEGRAM PARA CUENTAS POR PAGAR ===
+  // ============================================================
+
+  /// Revisa todas las CxP y envía alertas Telegram por las próximas a vencer
+  Future<void> verificarAlertasCxP() async {
+    try {
+      final response = await getCuentasPorPagar();
+      if (!response.isSuccess || response.data == null) return;
+
+      for (final cuenta in response.data!) {
+        if (!cuenta.activa) continue;
+
+        // Alerta: próxima a vencer (5 días o menos)
+        if (cuenta.requiereAtencionPronto && !cuenta.alertaEnviada) {
+          await enviarAlertaCxPProximaVencer(cuenta);
+        }
+
+        // Alerta: vencida sin pagar
+        if (cuenta.estaVencidaSinPagar) {
+          await enviarAlertaCxPVencida(cuenta);
+        }
+
+        // Alerta: descuento próximo a perderse
+        if (cuenta.proximoAPerderDescuento) {
+          await enviarAlertaCxPDescuentoRiesgo(cuenta);
+        }
+      }
+    } catch (e) {
+      print('Error verificando alertas CxP: $e');
+    }
+  }
+
+  /// Envía alerta Telegram cuando una CxP está próxima a vencer
+  Future<void> enviarAlertaCxPProximaVencer(CuentaPorPagar cuenta) async {
+    try {
+      print('\n🔔 [SERVICIO] enviarAlertaCxPProximaVencer()');
+      print('📦 Payload que se enviará:');
+      print('   📄 numeroFactura: ${cuenta.numeroFactura}');
+      print('   💰 monto: ${cuenta.montoTotal}');
+      print('   📅 diasRestantes: ${cuenta.diasRestantes}');
+      print('   🆔 cuentaId: ${cuenta.id}');
+      print('   🏢 proveedor: ${cuenta.proveedorNombre}');
+
+      await _alertasService.enviarAlertaCxPProximaVencer(
+        numeroFactura: cuenta.numeroFactura,
+        monto: cuenta.montoTotal,
+        diasRestantes: cuenta.diasRestantes,
+        cuentaId: cuenta.id,
+      );
+
+      print('✅ [SERVICIO] Alerta PRÓXIMA A VENCER enviada correctamente\n');
+    } catch (e) {
+      print('❌ [SERVICIO] Error al enviar alerta próxima vencer: $e\n');
+    }
+  }
+
+  /// Envía alerta Telegram cuando una CxP está vencida
+  Future<void> enviarAlertaCxPVencida(CuentaPorPagar cuenta) async {
+    try {
+      print('\n🚨 [SERVICIO] enviarAlertaCxPVencida()');
+      print('📦 Payload que se enviará:');
+      print('   📄 numeroFactura: ${cuenta.numeroFactura}');
+      print('   💸 montoVencido: ${cuenta.saldoPendiente}');
+      print('   ⏰ diasVencida: ${cuenta.diasRestantes.abs()}');
+      print('   🆔 cuentaId: ${cuenta.id}');
+      print('   🏢 proveedor: ${cuenta.proveedorNombre}');
+
+      await _alertasService.enviarAlertaCxPVencida(
+        numeroFactura: cuenta.numeroFactura,
+        montoVencido: cuenta.saldoPendiente,
+        diasVencida: cuenta.diasRestantes.abs(),
+        cuentaId: cuenta.id,
+      );
+
+      print('✅ [SERVICIO] Alerta VENCIDA enviada correctamente\n');
+    } catch (e) {
+      print('❌ [SERVICIO] Error al enviar alerta vencida: $e\n');
+    }
+  }
+
+  /// Envía alerta Telegram cuando un descuento está próximo a perderse
+  Future<void> enviarAlertaCxPDescuentoRiesgo(CuentaPorPagar cuenta) async {
+    try {
+      print('\n💸 [SERVICIO] enviarAlertaCxPDescuentoRiesgo()');
+      print('📦 Payload que se enviará:');
+      print('   📄 numeroFactura: ${cuenta.numeroFactura}');
+      print('   💰 montoSinDescuento: ${cuenta.montoTotal}');
+      print('   🎁 montoConDescuento: ${cuenta.montoConDescuento}');
+      print('   💵 ahorro: ${cuenta.montoDescuento}');
+      print('   ⏳ diasRestantes: ${cuenta.diasParaPerderDescuento}');
+      print('   🆔 cuentaId: ${cuenta.id}');
+      print('   🏢 proveedor: ${cuenta.proveedorNombre}');
+
+      await _alertasService.enviarAlertaDescuentoProximoVencer(
+        numeroFactura: cuenta.numeroFactura,
+        montoSinDescuento: cuenta.montoTotal,
+        montoConDescuento: cuenta.montoConDescuento,
+        ahorro: cuenta.montoDescuento,
+        diasRestantes: cuenta.diasParaPerderDescuento,
+        cuentaId: cuenta.id,
+      );
+
+      print('✅ [SERVICIO] Alerta DESCUENTO EN RIESGO enviada correctamente\n');
+    } catch (e) {
+      print('❌ [SERVICIO] Error al enviar alerta descuento riesgo: $e\n');
+    }
+  }
+
+  /// Envía alerta Telegram en segundo plano al registrar un pago
+  void _enviarAlertaPagoCxP(double monto, String observaciones) {
+    Future.microtask(() async {
+      try {
+        // Este método se puede usar cuando tenemos los detalles de la cuenta
+        // Por ahora es un placeholder, necesitarías pasar más datos
+        // await _alertasService.enviarAlertaAbonoRealizado(
+        //   proveedor: '',
+        //   numeroFactura: '',
+        //   montoAbono: monto,
+        //   saldoPendiente: 0,
+        // );
+      } catch (_) {}
+    });
   }
 }

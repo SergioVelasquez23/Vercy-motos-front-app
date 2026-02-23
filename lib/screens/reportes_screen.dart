@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../services/reportes_service.dart';
+import '../services/cliente_service.dart';
+import '../services/producto_service.dart';
+import '../models/cliente.dart';
+import '../models/producto.dart';
 
 class ReportesScreen extends StatefulWidget {
   final int initialReportIndex;
@@ -34,6 +38,12 @@ class _ReportesScreenState extends State<ReportesScreen>
   bool _isLoading = false;
   String? _errorMessage;
   final ReportesService _reportesService = ReportesService();
+  final ClienteService _clienteService = ClienteService();
+  final ProductoService _productoService = ProductoService();
+
+  // Listas de clientes y productos
+  List<Cliente> _clientes = [];
+  List<Producto> _productos = [];
 
   // Datos para los gráficos (ya no simulados)
   List<Map<String, dynamic>> _ventasPorDia = [];
@@ -52,8 +62,51 @@ class _ReportesScreenState extends State<ReportesScreen>
     // Agregar listener para cargar datos cuando cambia la pestaña
     _tabController.addListener(_handleTabChange);
 
-    // Cargar datos iniciales
+    // Cargar datos iniciales (clientes, productos y reportes)
+    _cargarDatosIniciales();
+  }
+
+  Future<void> _cargarDatosIniciales() async {
+    // Cargar clientes y productos primero
+    await Future.wait([_cargarClientes(), _cargarProductos()]);
+
+    // Luego cargar datos de reportes
     _cargarDatos();
+  }
+
+  Future<void> _cargarClientes() async {
+    try {
+      final clientes = await _clienteService.obtenerClientes();
+      if (mounted) {
+        setState(() {
+          _clientes = clientes;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Error al cargar clientes: ${e.toString()}';
+        });
+      }
+    }
+  }
+
+  Future<void> _cargarProductos() async {
+    try {
+      final productos = await _productoService
+          .getProductosLigeroParaDesplegables();
+      if (mounted) {
+        setState(() {
+          _productos = productos;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Error al cargar productos: ${e.toString()}';
+        });
+      }
+    }
   }
 
   void _handleTabChange() {
@@ -655,6 +708,180 @@ class _ReportesScreenState extends State<ReportesScreen>
                 ],
               ),
             ],
+            SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: Autocomplete<Producto>(
+                    displayStringForOption: (Producto p) => p.nombre,
+                    optionsBuilder: (TextEditingValue textEditingValue) {
+                      if (textEditingValue.text.isEmpty) {
+                        return _productos;
+                      }
+                      return _productos.where((Producto p) {
+                        return p.nombre
+                            .toLowerCase()
+                            .contains(textEditingValue.text.toLowerCase());
+                      });
+                    },
+                    onSelected: (Producto seleccionado) {
+                      setState(() {
+                        _selectedProducto = seleccionado.id;
+                      });
+                    },
+                    fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+                      return TextField(
+                        controller: controller,
+                        focusNode: focusNode,
+                        style: TextStyle(color: textDark),
+                        decoration: InputDecoration(
+                          labelText: 'Producto',
+                          labelStyle: TextStyle(color: textLight),
+                          hintText: 'Buscar producto...',
+                          hintStyle: TextStyle(color: textLight),
+                          border: OutlineInputBorder(),
+                          focusedBorder: OutlineInputBorder(
+                            borderSide: BorderSide(color: primary),
+                          ),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 12,
+                          ),
+                          prefixIcon: Icon(Icons.search, color: textLight),
+                          suffixIcon: controller.text.isNotEmpty
+                              ? IconButton(
+                                  icon: Icon(Icons.clear, color: textLight),
+                                  onPressed: () {
+                                    controller.clear();
+                                    setState(() {
+                                      _selectedProducto = null;
+                                    });
+                                  },
+                                )
+                              : null,
+                        ),
+                      );
+                    },
+                    optionsViewBuilder: (context, onSelected, options) {
+                      return Align(
+                        alignment: Alignment.topLeft,
+                        child: Material(
+                          elevation: 4,
+                          color: cardBg,
+                          borderRadius: BorderRadius.circular(8),
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(maxHeight: 250),
+                            child: ListView.builder(
+                              padding: EdgeInsets.zero,
+                              shrinkWrap: true,
+                              itemCount: options.length,
+                              itemBuilder: (context, index) {
+                                final producto = options.elementAt(index);
+                                return ListTile(
+                                  title: Text(
+                                    producto.nombre,
+                                    style: TextStyle(color: textDark),
+                                  ),
+                                  hoverColor: primary.withOpacity(0.1),
+                                  onTap: () => onSelected(producto),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                SizedBox(width: 16),
+                Expanded(
+                  child: Autocomplete<Cliente>(
+                    displayStringForOption: (Cliente c) => c.nombreCompleto,
+                    optionsBuilder: (TextEditingValue textEditingValue) {
+                      if (textEditingValue.text.isEmpty) {
+                        return _clientes;
+                      }
+                      return _clientes.where((Cliente c) {
+                        return c.nombreCompleto
+                            .toLowerCase()
+                            .contains(textEditingValue.text.toLowerCase());
+                      });
+                    },
+                    onSelected: (Cliente seleccionado) {
+                      setState(() {
+                        _selectedCliente = seleccionado.id;
+                      });
+                    },
+                    fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+                      return TextField(
+                        controller: controller,
+                        focusNode: focusNode,
+                        style: TextStyle(color: textDark),
+                        decoration: InputDecoration(
+                          labelText: 'Cliente',
+                          labelStyle: TextStyle(color: textLight),
+                          hintText: 'Buscar cliente...',
+                          hintStyle: TextStyle(color: textLight),
+                          border: OutlineInputBorder(),
+                          focusedBorder: OutlineInputBorder(
+                            borderSide: BorderSide(color: primary),
+                          ),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 12,
+                          ),
+                          prefixIcon: Icon(Icons.search, color: textLight),
+                          suffixIcon: controller.text.isNotEmpty
+                              ? IconButton(
+                                  icon: Icon(Icons.clear, color: textLight),
+                                  onPressed: () {
+                                    controller.clear();
+                                    setState(() {
+                                      _selectedCliente = null;
+                                    });
+                                  },
+                                )
+                              : null,
+                        ),
+                      );
+                    },
+                    optionsViewBuilder: (context, onSelected, options) {
+                      return Align(
+                        alignment: Alignment.topLeft,
+                        child: Material(
+                          elevation: 4,
+                          color: cardBg,
+                          borderRadius: BorderRadius.circular(8),
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(maxHeight: 250),
+                            child: ListView.builder(
+                              padding: EdgeInsets.zero,
+                              shrinkWrap: true,
+                              itemCount: options.length,
+                              itemBuilder: (context, index) {
+                                final cliente = options.elementAt(index);
+                                return ListTile(
+                                  title: Text(
+                                    cliente.nombreCompleto,
+                                    style: TextStyle(color: textDark),
+                                  ),
+                                  subtitle: Text(
+                                    cliente.numeroIdentificacion,
+                                    style: TextStyle(color: textLight, fontSize: 12),
+                                  ),
+                                  hoverColor: primary.withOpacity(0.1),
+                                  onTap: () => onSelected(cliente),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
             if (_mostrarFiltrosAvanzados) ...[
               SizedBox(height: 16),
               Row(
@@ -688,87 +915,6 @@ class _ReportesScreenState extends State<ReportesScreen>
                             'Bebidas',
                             'Entradas',
                             'Postres',
-                          ].map<DropdownMenuItem<String>>((String value) {
-                            return DropdownMenuItem<String>(
-                              value: value,
-                              child: Text(value),
-                            );
-                          }).toList(),
-                    ),
-                  ),
-                  SizedBox(width: 16),
-                  Expanded(
-                    child: DropdownButtonFormField<String>(
-                      decoration: InputDecoration(
-                        labelText: 'Producto',
-                        labelStyle: TextStyle(color: textLight),
-                        border: OutlineInputBorder(),
-                        focusedBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: primary),
-                        ),
-                        contentPadding: EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 12,
-                        ),
-                      ),
-                      style: TextStyle(color: textDark),
-                      dropdownColor: cardBg,
-                      initialValue: _selectedProducto,
-                      hint: Text('Todos', style: TextStyle(color: textLight)),
-                      onChanged: (String? value) {
-                        setState(() {
-                          _selectedProducto = value;
-                        });
-                      },
-                      items:
-                          <String>[
-                            'Ejecutivo (Res a la plancha)',
-                            'Asado Mixto',
-                            'Coca Cola',
-                            'Pechuga a la plancha',
-                            'Patacón',
-                          ].map<DropdownMenuItem<String>>((String value) {
-                            return DropdownMenuItem<String>(
-                              value: value,
-                              child: Text(value),
-                            );
-                          }).toList(),
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: DropdownButtonFormField<String>(
-                      decoration: InputDecoration(
-                        labelText: 'Cliente',
-                        labelStyle: TextStyle(color: textLight),
-                        border: OutlineInputBorder(),
-                        focusedBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: primary),
-                        ),
-                        contentPadding: EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 12,
-                        ),
-                      ),
-                      style: TextStyle(color: textDark),
-                      dropdownColor: cardBg,
-                      initialValue: _selectedCliente,
-                      hint: Text('Todos', style: TextStyle(color: textLight)),
-                      onChanged: (String? value) {
-                        setState(() {
-                          _selectedCliente = value;
-                        });
-                      },
-                      items:
-                          <String>[
-                            'Cliente A',
-                            'Cliente B',
-                            'Cliente C',
-                            'Cliente D',
                           ].map<DropdownMenuItem<String>>((String value) {
                             return DropdownMenuItem<String>(
                               value: value,

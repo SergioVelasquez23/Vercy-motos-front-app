@@ -145,12 +145,24 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     super.initState();
     _cargarProductos();
     
+    // 🔥 Pre-warm: despertar backend de Render y pre-cachear cuadreId
+    _preCalentarBackend();
+    
     // Si se pasó un pedido de asesor, cargar clientes primero
     if (widget.pedidoAsesor != null) {
       _inicializarConPedidoAsesor();
     } else {
       _cargarClientes();
     }
+  }
+
+  /// 🔥 Pre-calentar el backend: hacer un GET liviano para despertar Render
+  /// y pre-cachear el cuadreId activo para que createPedido no tenga que esperar
+  Future<void> _preCalentarBackend() async {
+    try {
+      // Esto pre-cachea el cuadreId en PedidoService (evita llamada extra al crear pedido)
+      _pedidoService.preCachearCuadreId();
+    } catch (_) {}
   }
 
   // Inicializar con pedido asesor - cargar clientes primero
@@ -222,11 +234,14 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
   }
 
   Future<void> _cargarProductos() async {
+    print('🔄 _cargarProductos() iniciado');
     // Obtener productos desde el provider en lugar de cargarlos nuevamente
     final cacheProvider = Provider.of<DatosCacheProvider>(
       context,
       listen: false,
     );
+
+    print('🔍 Cache provider productos: ${cacheProvider.productos?.length ?? 0}');
 
     if (cacheProvider.productos != null &&
         cacheProvider.productos!.isNotEmpty) {
@@ -239,10 +254,11 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
           .where((p) => p.codigo != null && p.codigo!.isNotEmpty)
           .length;
       print(
-        '📦 Productos cargados: ${_productosDisponibles.length}, con código: $conCodigo',
+        '📦 Productos cargados desde cache: ${_productosDisponibles.length}, con código: $conCodigo',
       );
     } else {
       // Si no hay productos en cache, cargarlos
+      print('⚠️ No hay productos en cache, cargando desde API...');
       try {
         final productos = await _productoService.getProductos();
         setState(() {
@@ -254,10 +270,10 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
             .where((p) => p.codigo != null && p.codigo!.isNotEmpty)
             .length;
         print(
-          '📦 Productos cargados: ${_productosDisponibles.length}, con código: $conCodigo',
+          '📦 Productos cargados desde API: ${_productosDisponibles.length}, con código: $conCodigo',
         );
       } catch (e) {
-          
+        print('❌ Error cargando productos: $e');  
       }
     }
   }
@@ -1637,6 +1653,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                             if (textEditingValue.text.length < 2) {
                               return const Iterable<Producto>.empty();
                             }
+                            print('🔍 Autocomplete nombre - _productosDisponibles.length: ${_productosDisponibles.length}');
                             return filtrarYOrdenarProductos(
                               _productosDisponibles,
                               textEditingValue.text,
@@ -2680,32 +2697,91 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       return;
     }
 
+    // ⚠️ REQUERIR PRODUCTO SELECCIONADO: Para validar stock correctamente
+    if (_productoSeleccionado == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Debe seleccionar un producto de la lista para agregarlo al carrito'),
+          backgroundColor: Colors.orange.shade700,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
     final cantidad = int.tryParse(_cantidadController.text) ?? 1;
     
-    // 📦 VALIDACIÓN COMENTADA TEMPORALMENTE: Permitir facturación sin validar stock
-    // Esto se debe a que la carga ligera está retornando 0 en bodega/almacén
-    // if (_productoSeleccionado != null) {
-    //   int stockDisponible = 0;
-    //
-    //   if (_origenSeleccionado.toUpperCase() == 'BODEGA') {
-    //     stockDisponible = _productoSeleccionado!.bodega ?? 0;
-    //   } else {
-    //     stockDisponible = _productoSeleccionado!.almacen ?? 0;
-    //   }
-    //
-    //   if (cantidad > stockDisponible) {
-    //     ScaffoldMessenger.of(context).showSnackBar(
-    //       SnackBar(
-    //         content: Text(
-    //           '❌ Stock insuficiente en ${_origenSeleccionado}. Disponible: $stockDisponible, Solicitado: $cantidad',
-    //         ),
-    //         backgroundColor: Colors.red.shade700,
-    //         duration: Duration(seconds: 4),
-    //       ),
-    //     );
-    //     return;
-    //   }
-    // }
+    // 📦 VALIDACIÓN DE STOCK: No permitir agregar si no hay inventario
+    // No aplica para servicios (tipoItem == 'servicio')
+    final tipoItem = _productoSeleccionado!.productoOServicio?.toLowerCase() ?? 'producto';
+    final esServicio = tipoItem == 'servicio';
+    
+    // 🔍 LOG para debugging
+    print('🛒 Agregando producto al carrito:');
+    print('   - Nombre: ${_productoSeleccionado!.nombre}');
+    print('   - Tipo: $tipoItem');
+    print('   - Es servicio: $esServicio');
+    print('   - Control inventario: ${_productoSeleccionado!.controlInventario}');
+    print('   - Stock almacén: ${_productoSeleccionado!.almacen}');
+    print('   - Stock bodega: ${_productoSeleccionado!.bodega}');
+    print('   - Origen seleccionado: $_origenSeleccionado');
+    print('   - Cantidad solicitada: $cantidad');
+    
+    // ⚠️ VALIDACIÓN DE STOCK: Aplicar a TODOS LOS PRODUCTOS (excepto servicios)
+    // No importa el valor de controlInventario - si es producto, debe validar stock en el origen seleccionado
+    if (!esServicio) {
+      final stockAlmacen = _productoSeleccionado!.almacen ?? 0;
+      final stockBodega = _productoSeleccionado!.bodega ?? 0;
+
+      // Validar stock del ORIGEN SELECCIONADO únicamente
+      int stockDisponible = 0;
+      if (_origenSeleccionado.toUpperCase() == 'BODEGA') {
+        stockDisponible = stockBodega;
+      } else if (_origenSeleccionado.toUpperCase() == 'ALMACÉN' || _origenSeleccionado.toUpperCase() == 'ALMACEN') {
+        stockDisponible = stockAlmacen;
+      }
+
+      print('   - Stock disponible en $_origenSeleccionado: $stockDisponible');
+
+      // Validación 1: Si no hay stock en el origen seleccionado, NO PERMITIR agregar
+      if (stockDisponible <= 0) {
+        print('   ❌ BLOQUEADO: No hay stock en $_origenSeleccionado');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '❌ No hay stock en $_origenSeleccionado para "${_productoSeleccionado!.nombre}"\n'
+              'Stock en ALMACÉN: $stockAlmacen\n'
+              'Stock en BODEGA: $stockBodega\n\n'
+              'Cambia el origen o selecciona otro producto.',
+            ),
+            backgroundColor: Colors.red.shade700,
+            duration: Duration(seconds: 5),
+          ),
+        );
+        return;
+      }
+
+      // Validación 2: Si la cantidad solicitada es mayor al stock disponible, NO PERMITIR
+      if (cantidad > stockDisponible) {
+        print('   ❌ BLOQUEADO: Cantidad solicitada ($cantidad) > stock disponible ($stockDisponible)');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '❌ Stock insuficiente en $_origenSeleccionado\n'
+              'Disponible: $stockDisponible\n'
+              'Solicitado: $cantidad',
+            ),
+            backgroundColor: Colors.red.shade700,
+            duration: Duration(seconds: 5),
+          ),
+        );
+        return;
+      }
+      
+      print('   ✅ Validación pasada: Stock suficiente en $_origenSeleccionado');
+    } else {
+      print('   ℹ️  Es servicio - sin validación de stock');
+    } // fin if (!esServicio)
 
     final precioUnitario = double.tryParse(_valorUnitController.text) ?? 0;
     final porcentajeImpuesto =
@@ -3659,75 +3735,110 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
 
     if (confirmar != true) return;
 
-    setState(() => _isLoading = true);
+    // 🚀 CAPTURAR DATOS ANTES DE LIMPIAR
+    final subtotal = _items.fold(0.0, (sum, item) => sum + item.subtotal);
+    final total = subtotal;
+    final userName =
+        Provider.of<UserProvider>(context, listen: false).userName ?? 'Sistema';
+    final itemsOriginales = List<ItemPedido>.from(_items);
+    final clienteTexto = _clienteController.text;
+    final tipoFacturaCapturado = _tipoFactura;
+    final fechaFacturaCapturada = _fechaFactura;
+    final fechaVencimientoCapturada = _fechaVencimiento;
 
-    try {
-      final subtotal = _items.fold(0.0, (sum, item) => sum + item.subtotal);
-      final total = subtotal;
-      final userName =
-          Provider.of<UserProvider>(context, listen: false).userName ??
-          'Sistema';
+    // ✅ LIMPIAR FORMULARIO Y LIBERAR UI INMEDIATAMENTE
+    _limpiarFormulario();
 
-      // Crear pedido como DEUDA (quedará activo, sin pagar)
-      final pedido = Pedido(
-        id: 'temp-${DateTime.now().millisecondsSinceEpoch}',
-        fecha: _fechaFactura,
-        tipo: TipoPedido.normal,
-        mesa: 'DEUDA', // ✅ Identificador especial para deudas
-        cliente: _clienteController.text,
-        mesero: userName,
-        items: _items,
-        total: total,
-        estado: EstadoPedido.activo, // ✅ Queda activo (sin pagar)
-        tipoFactura: _tipoFactura,
-        fechaVencimiento: _fechaVencimiento,
-        subtotal: subtotal,
-        totalImpuestos: 0.0,
-        totalDescuentos: 0.0,
-        totalFinal: total,
-        notas: 'DEUDA - Registrada el ${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}',
-      );
-
-      final pedidoCreado = await _pedidoService.createPedido(pedido);
-
-      setState(() => _isLoading = false);
-
-      // Mostrar mensaje de éxito
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              Icon(Icons.check_circle, color: Colors.white),
-              SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Deuda registrada exitosamente para ${_clienteController.text}',
-                ),
+    // Mostrar mensaje de éxito inmediato (optimista)
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white,
               ),
-            ],
-          ),
-          backgroundColor: Colors.orange,
-          duration: Duration(seconds: 4),
-          action: SnackBarAction(
-            label: 'Ver en Cartera',
-            textColor: Colors.white,
-            onPressed: () {
-              Navigator.pushNamed(context, '/cuentas-por-cobrar');
-            },
-          ),
+            ),
+            SizedBox(width: 12),
+            Expanded(child: Text('Registrando deuda para $clienteTexto...')),
+          ],
         ),
-      );
+        backgroundColor: Colors.orange,
+        duration: Duration(seconds: 10),
+      ),
+    );
 
-      _limpiarFormulario();
-    } catch (e) {
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al guardar deuda: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
+    // 🚀 ENVIAR AL BACKEND EN BACKGROUND - NO BLOQUEAR UI
+    Future.microtask(() async {
+      try {
+        final pedido = Pedido(
+          id: 'temp-${DateTime.now().millisecondsSinceEpoch}',
+          fecha: fechaFacturaCapturada,
+          tipo: TipoPedido.normal,
+          mesa: 'DEUDA',
+          cliente: clienteTexto,
+          mesero: userName,
+          items: itemsOriginales,
+          total: total,
+          estado: EstadoPedido.activo,
+          tipoFactura: tipoFacturaCapturado,
+          fechaVencimiento: fechaVencimientoCapturada,
+          subtotal: subtotal,
+          totalImpuestos: 0.0,
+          totalDescuentos: 0.0,
+          totalFinal: total,
+          notas:
+              'DEUDA - Registrada el ${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}',
+        );
+
+        await _pedidoService.createPedido(pedido);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.white),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '✅ Deuda registrada exitosamente para $clienteTexto',
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 4),
+              action: SnackBarAction(
+                label: 'Ver en Cartera',
+                textColor: Colors.white,
+                onPressed: () {
+                  Navigator.pushNamed(context, '/cuentas-por-cobrar');
+                },
+              ),
+            ),
+          );
+        }
+      } catch (e) {
+        print('⚠️ Error al registrar deuda en background: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                '❌ Error al registrar deuda: Verifica tu conexión e intenta de nuevo',
+              ),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 6),
+            ),
+          );
+        }
+      }
+    });
   }
 
   Widget _buildDeudaInfoRow(String label, String value) {
@@ -3774,6 +3885,10 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
         _items,
       ); // ✅ Copia antes de limpiar
       final metodoPagoUsado = _metodoPago;
+      final clienteTexto = _clienteController.text;
+      final tipoFacturaCapturado = _tipoFactura;
+      final fechaFacturaCapturada = _fechaFactura;
+      final fechaVencimientoCapturada = _fechaVencimiento;
       final montoEfectivo = _metodoPago == 'efectivo'
           ? total
           : (_metodoPago == 'multiple'
@@ -3795,62 +3910,119 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                 ? double.tryParse(_montoSistereditoController.text) ?? 0.0
                 : 0.0);
       final montoDatafono = _metodoPago == 'datafono' ? total : 0.0;
+      final esPedidoAsesor = widget.pedidoAsesor != null;
+      final pedidoAsesorId = widget.pedidoAsesor?.id;
 
-      // Crear el pedido primero
-      final pedido = Pedido(
-        id: 'temp-${DateTime.now().millisecondsSinceEpoch}',
-        fecha: _fechaFactura,
-        tipo: TipoPedido.normal,
-        mesa: 'FACTURACION',
-        cliente: _clienteController.text,
-        mesero: userName,
-        items: itemsOriginales,
-        total: total,
-        estado: EstadoPedido.activo,
-        tipoFactura: _tipoFactura,
-        fechaVencimiento: _fechaVencimiento,
-        subtotal: subtotal,
-        totalImpuestos: 0.0,
-        totalDescuentos: 0.0,
-        totalFinal: total,
-      );
+      // ✅ CAPTURAR CLIENTE SELECCIONADO ANTES DE LIMPIAR (para el PDF)
+      Cliente? clienteCapturado = _clienteSeleccionado;
 
-      // Guardar el pedido
-      final pedidoCreado = await _pedidoService.createPedido(pedido);
+      // Si no hay cliente seleccionado pero hay texto en el campo, buscar al cliente
+      if (clienteCapturado == null &&
+          clienteTexto != 'CONSUMIDOR FINAL' &&
+          clienteTexto.isNotEmpty) {
+        print(
+          '⚠️ Cliente no seleccionado del dropdown, buscando en API: "$clienteTexto"',
+        );
+        try {
+          final resultados = await _clienteService.buscarClientes(clienteTexto);
+          if (resultados.isNotEmpty) {
+            // Buscar coincidencia exacta primero
+            final exacto = resultados.where(
+              (c) =>
+                  c.nombreCompleto.toLowerCase() == clienteTexto.toLowerCase(),
+            );
+            clienteCapturado = exacto.isNotEmpty
+                ? exacto.first
+                : resultados.first;
+            print('✅ Cliente encontrado: ${clienteCapturado.nombreCompleto}');
+          } else {
+            print('❌ No se encontró cliente con ese nombre');
+          }
+        } catch (e) {
+          print('❌ Error buscando cliente: $e');
+        }
+      }
 
-      // ✅ LIMPIAR INMEDIATAMENTE Y LIBERAR UI
+      // ✅ LIMPIAR INMEDIATAMENTE Y LIBERAR UI - NO ESPERAR AL BACKEND
       _limpiarFormulario();
       setState(() => _isLoading = false);
 
-      // Mostrar mensaje de éxito inmediatamente
+      // Mostrar indicador de progreso no bloqueante
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('✅ Factura creada exitosamente'),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 2),
+          content: Row(
+            children: [
+              SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              ),
+              SizedBox(width: 12),
+              Text('Procesando factura...'),
+            ],
+          ),
+          backgroundColor: Colors.blue,
+          duration: Duration(seconds: 30),
         ),
       );
 
-      // Mostrar mensaje de éxito inmediatamente
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('✅ Factura creada exitosamente'),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 2),
-        ),
-      );
+      // Si viene de pedido asesor, regresar inmediatamente
+      if (esPedidoAsesor) {
+        Navigator.of(context).pop();
+      }
 
-      // 🚀 TODO EL PROCESAMIENTO EN BACKGROUND - NO BLOQUEAR UI
+      // 🚀 TODO EN BACKGROUND - Crear pedido + pagar + inventario
       Future.microtask(() async {
         try {
+          // Preparar datos completos del cliente para guardar
+          Map<String, dynamic>? datosAdicionales;
+          if (clienteCapturado != null) {
+            datosAdicionales = {
+              'clienteNombreCompleto': clienteCapturado.nombreCompleto,
+              'clienteNit':
+                  '${clienteCapturado.tipoIdentificacion} ${clienteCapturado.numeroIdentificacion}${clienteCapturado.digitoVerificacion != null ? "-${clienteCapturado.digitoVerificacion}" : ""}',
+              'clienteDireccion': clienteCapturado.direccion,
+              'clienteTelefono': clienteCapturado.telefono,
+              'clienteCorreo': clienteCapturado.correo,
+              'clienteDepartamento': clienteCapturado.departamento,
+              'clienteCiudad': clienteCapturado.ciudad,
+              'clienteTipoId': clienteCapturado.tipoIdentificacion,
+            };
+          }
+
+          // Crear el pedido
+          final pedido = Pedido(
+            id: 'temp-${DateTime.now().millisecondsSinceEpoch}',
+            fecha: fechaFacturaCapturada,
+            tipo: TipoPedido.normal,
+            mesa: 'FACTURACION',
+            cliente: clienteTexto,
+            mesero: userName,
+            items: itemsOriginales,
+            total: total,
+            estado: EstadoPedido.activo,
+            tipoFactura: tipoFacturaCapturado,
+            fechaVencimiento: fechaVencimientoCapturada,
+            subtotal: subtotal,
+            totalImpuestos: 0.0,
+            totalDescuentos: 0.0,
+            totalFinal: total,
+            datosAdicionales: datosAdicionales,
+          );
+
+          final pedidoCreado = await _pedidoService.createPedido(pedido);
+
           // Procesar pago
-          await _pedidoService.pagarPedido(
+          final pedidoPagado = await _pedidoService.pagarPedido(
             pedidoCreado.id,
             formaPago: metodoPagoUsado,
             propina: 0.0,
             totalPagado: total,
             procesadoPor: userName,
-            notas: widget.pedidoAsesor != null
+            notas: esPedidoAsesor
                 ? 'Pago de pedido asesor'
                 : 'Pago desde facturación',
             descuento: 0.0,
@@ -3862,46 +4034,260 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
             montoDatafono: montoDatafono,
           );
 
+          // 🔧 CRÍTICO: Asegurar que los datos del cliente estén guardados
+          // Si el backend no devolvió los datosAdicionales, actualizamos el pedido
+          if (datosAdicionales != null &&
+              pedidoPagado.datosAdicionales == null) {
+            try {
+              print('⚠️ Actualizando pedido con datos del cliente...');
+              pedidoPagado.datosAdicionales = datosAdicionales;
+              await _pedidoService.updatePedido(pedidoPagado);
+              print('✅ Datos del cliente guardados correctamente');
+            } catch (e) {
+              print('❌ Error al actualizar datos del cliente: $e');
+            }
+          }
+
           // Registrar movimientos de inventario
           _registrarMovimientosInventarioVentaEnBackground(
-            pedidoCreado,
+            pedidoPagado,
             itemsOriginales: itemsOriginales,
           );
 
           // Si viene de pedido asesor, marcarlo como facturado
-          if (widget.pedidoAsesor?.id != null) {
+          if (pedidoAsesorId != null) {
             await _pedidoAsesorService.marcarComoFacturado(
-              widget.pedidoAsesor!.id!,
+              pedidoAsesorId,
               userName,
             );
           }
 
           // Refrescar cache
           _refrescarCacheEnBackground();
+
+          // Mostrar diálogo de factura exitosa con opciones de PDF/Imprimir
+          if (mounted) {
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+            // Obtener info del negocio para el PDF
+            NegocioInfo? negocioInfo;
+            try {
+              negocioInfo = await _negocioInfoService.getNegocioInfo();
+            } catch (e) {
+              // Ignorar error
+            }
+
+            // Buscar datos completos del cliente desde la API
+            Cliente? clienteCompleto = clienteCapturado;
+            if (clienteCompleto == null &&
+                clienteTexto != 'CONSUMIDOR FINAL' &&
+                clienteTexto.isNotEmpty) {
+              try {
+                final resultados = await _clienteService.buscarClientes(
+                  clienteTexto,
+                );
+                if (resultados.isNotEmpty) clienteCompleto = resultados.first;
+              } catch (e) {
+                print('⚠️ Error buscando cliente para PDF: $e');
+              }
+            }
+
+            // Preparar resumen con datos completos del cliente
+            final resumen = _prepararResumenFactura(
+              pedidoPagado,
+              metodoPagoUsado,
+              total,
+              0.0,
+              0.0,
+              negocioInfo,
+              clienteData: clienteCompleto,
+            );
+
+            // Mostrar diálogo con opciones de PDF/Imprimir
+            await showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (dialogContext) => AlertDialog(
+                backgroundColor: AppTheme.cardBg,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                title: Row(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppTheme.success.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        Icons.check_circle,
+                        color: AppTheme.success,
+                        size: 32,
+                      ),
+                    ),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '¡Factura Pagada!',
+                            style: TextStyle(
+                              color: AppTheme.success,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 20,
+                            ),
+                          ),
+                          Text(
+                            'Total: \$${total.toStringAsFixed(0)}',
+                            style: TextStyle(
+                              color: AppTheme.textSecondary,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '¿Qué desea hacer con la factura?',
+                      style: TextStyle(
+                        color: AppTheme.textPrimary,
+                        fontSize: 14,
+                      ),
+                    ),
+                    SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: InkWell(
+                            onTap: () async {
+                              Navigator.of(dialogContext).pop();
+                              await _pdfService.mostrarVistaPrevia(
+                                resumen: resumen,
+                                esFactura: true,
+                              );
+                            },
+                            borderRadius: BorderRadius.circular(8),
+                            child: Container(
+                              padding: EdgeInsets.symmetric(
+                                vertical: 16,
+                                horizontal: 12,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.red.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: Colors.red.withOpacity(0.3),
+                                ),
+                              ),
+                              child: Column(
+                                children: [
+                                  Icon(
+                                    Icons.picture_as_pdf,
+                                    color: Colors.red,
+                                    size: 28,
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    'Ver PDF',
+                                    style: TextStyle(
+                                      color: Colors.red,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: InkWell(
+                            onTap: () async {
+                              Navigator.of(dialogContext).pop();
+                              await _pdfService.mostrarDialogoImpresion(
+                                resumen: resumen,
+                                esFactura: true,
+                              );
+                            },
+                            borderRadius: BorderRadius.circular(8),
+                            child: Container(
+                              padding: EdgeInsets.symmetric(
+                                vertical: 16,
+                                horizontal: 12,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppTheme.primary.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: AppTheme.primary.withOpacity(0.3),
+                                ),
+                              ),
+                              child: Column(
+                                children: [
+                                  Icon(
+                                    Icons.print,
+                                    color: AppTheme.primary,
+                                    size: 28,
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    'Imprimir',
+                                    style: TextStyle(
+                                      color: AppTheme.primary,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(dialogContext).pop(),
+                    child: Text(
+                      'Cerrar sin imprimir',
+                      style: TextStyle(color: AppTheme.textSecondary),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
         } catch (e) {
           print('⚠️ Error en procesamiento background: $e');
+          if (mounted) {
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  '❌ Error al procesar factura. Verifica en el listado de pedidos.',
+                ),
+                backgroundColor: Colors.red,
+                duration: Duration(seconds: 6),
+              ),
+            );
+          }
         }
       });
-
-      // Si viene de pedido asesor, regresar inmediatamente
-      if (widget.pedidoAsesor != null) {
-        Navigator.of(context).pop();
-      } else {
-        // Mostrar diálogo de éxito con opciones de impresión (opcional, sin bloquear)
-        _mostrarDialogoFacturaExitosa(
-          pedidoCreado,
-          metodoPagoUsado,
-          total,
-          0.0,
-          0.0,
-        );
-      }
     } catch (e) {
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error al crear pedido: $e'),
+          content: Text('Error: $e'),
           backgroundColor: Colors.red,
+          duration: Duration(seconds: 5),
         ),
       );
     }
@@ -4439,8 +4825,11 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     double totalPagado,
     double descuento,
     double propina,
-    NegocioInfo? negocioInfo,
-  ) {
+    NegocioInfo? negocioInfo, {
+    Cliente? clienteData,
+  }) {
+    // Usar clienteData pasado como parámetro, o _clienteSeleccionado como fallback
+    final cliente = clienteData ?? _clienteSeleccionado;
     final now = DateTime.now();
     final fechaFormateada = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
     final horaFormateada = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}';
@@ -4467,10 +4856,18 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
           : fechaFormateada,
 
       // Información del cliente
-      'cliente': pedido.cliente ?? 'CONSUMIDOR FINAL',
-      'clienteNit': '222222222-2', // Default para consumidor final
-      'clienteDireccion': '',
-      'clienteTelefono': '',
+      'cliente': cliente != null
+          ? cliente.nombreCompleto
+          : (pedido.cliente ?? 'CONSUMIDOR FINAL'),
+      'clienteNit': cliente != null
+          ? '${cliente.tipoIdentificacion} ${cliente.numeroIdentificacion}${cliente.digitoVerificacion != null ? "-${cliente.digitoVerificacion}" : ""}'
+          : '222222222-2',
+      'clienteDireccion': cliente?.direccion ?? '',
+      'clienteTelefono': cliente?.telefono ?? '',
+      'clienteCorreo': cliente?.correo ?? '',
+      'clienteDepartamento': cliente?.departamento ?? '',
+      'clienteCiudad': cliente?.ciudad ?? '',
+      'clienteTipoId': cliente?.tipoIdentificacion ?? 'CC',
 
       // Información del vendedor
       'mesero': pedido.mesero ?? 'Sistema',

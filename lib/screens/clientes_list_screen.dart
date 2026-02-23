@@ -548,8 +548,10 @@ class _ClientesListScreenState extends State<ClientesListScreen> {
     final confirmar = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Confirmar eliminación'),
-        content: Text('¿Está seguro de eliminar a ${cliente.nombreCompleto}?'),
+        title: Text('Confirmar deshabilitación'),
+        content: Text(
+          '¿Está seguro de deshabilitar a ${cliente.nombreCompleto}? El cliente quedará inactivo pero no se eliminará de la base de datos.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -557,7 +559,7 @@ class _ClientesListScreenState extends State<ClientesListScreen> {
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            child: Text('Eliminar'),
+            child: Text('Deshabilitar'),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
           ),
         ],
@@ -569,7 +571,7 @@ class _ClientesListScreenState extends State<ClientesListScreen> {
         await _clienteService.eliminarCliente(cliente.id!);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Cliente eliminado'),
+            content: Text('Cliente deshabilitado exitosamente'),
             backgroundColor: Colors.green,
           ),
         );
@@ -577,7 +579,7 @@ class _ClientesListScreenState extends State<ClientesListScreen> {
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error al eliminar: $e'),
+            content: Text('Error al deshabilitar: $e'),
             backgroundColor: Colors.red,
           ),
         );

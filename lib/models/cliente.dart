@@ -92,8 +92,10 @@ class Cliente {
 
   // Getter: nombre completo o razón social
   String get nombreCompleto {
-    if (tipoPersona == "Persona Natural") {
-      return "${nombres ?? ''} ${apellidos ?? ''}".trim();
+    final tipo = tipoPersona.toLowerCase();
+    if (tipo == "persona natural" || tipo == "natural") {
+      final nombre = "${nombres ?? ''} ${apellidos ?? ''}".trim();
+      return nombre.isNotEmpty ? nombre : razonSocial ?? numeroIdentificacion;
     }
     return razonSocial ?? numeroIdentificacion;
   }

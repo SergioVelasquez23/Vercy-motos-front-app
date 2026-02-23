@@ -332,6 +332,18 @@ class _VercySidebarLayoutState extends State<VercySidebarLayout> {
               ),
             ],
           ),
+          _buildExpandableMenuItem(
+            icon: Icons.bar_chart,
+            label: 'Informes',
+            isAdmin: true,
+            subItems: [
+              _SubMenuItem(
+                icon: Icons.assessment,
+                label: 'Ventas Productos',
+                route: '/informes/productos',
+              ),
+            ],
+          ),
           // _buildMenuItem(
           //   icon: Icons.local_shipping,
           //   label: 'Traslados',
@@ -342,6 +354,12 @@ class _VercySidebarLayoutState extends State<VercySidebarLayout> {
             icon: Icons.attach_money,
             label: 'Caja',
             route: '/cuadre_caja',
+            isAdmin: true,
+          ),
+          _buildMenuItem(
+            icon: Icons.delete_sweep,
+            label: 'Eliminar Pedidos',
+            route: '/eliminar-pedidos',
             isAdmin: true,
           ),
         ],

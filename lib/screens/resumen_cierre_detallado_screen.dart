@@ -324,7 +324,7 @@ class _ResumenCierreDetalladoScreenState
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('PDF generado exitosamente'),
-          backgroundColor: Colors.green,
+          backgroundColor: AppTheme.success,
           duration: Duration(seconds: 2),
         ),
       );
@@ -334,7 +334,7 @@ class _ResumenCierreDetalladoScreenState
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error al generar PDF: ${e.toString()}'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppTheme.error,
           duration: Duration(seconds: 3),
         ),
       );
@@ -373,11 +373,11 @@ class _ResumenCierreDetalladoScreenState
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.error, color: Colors.red, size: 64),
+              Icon(Icons.error, color: AppTheme.error, size: 64),
               SizedBox(height: 16),
               Text(
                 _errorMessage!,
-                style: TextStyle(color: Colors.red, fontSize: 16),
+                style: TextStyle(color: AppTheme.error, fontSize: 16),
                 textAlign: TextAlign.center,
               ),
               SizedBox(height: 16),
@@ -563,8 +563,8 @@ class _ResumenCierreDetalladoScreenState
                           'Estado',
                           info.estado,
                           valueColor: info.estado == 'pendiente'
-                              ? Colors.orange
-                              : Colors.green,
+                              ? AppTheme.warning
+                              : AppTheme.success,
                         ),
                         SizedBox(height: 10),
                         _buildInfoRow(
@@ -602,8 +602,8 @@ class _ResumenCierreDetalladoScreenState
                                 'Estado',
                                 info.estado,
                                 valueColor: info.estado == 'pendiente'
-                                    ? Colors.orange
-                                    : Colors.green,
+                                    ? AppTheme.warning
+                                    : AppTheme.success,
                               ),
                             ],
                           ),
@@ -837,8 +837,8 @@ class _ResumenCierreDetalladoScreenState
                 'Utilidad Bruta',
                 formatCurrency(resumen.utilidadBruta),
                 valueColor: resumen.utilidadBruta >= 0
-                    ? Colors.green
-                    : Colors.red,
+                    ? AppTheme.success
+                    : AppTheme.error,
               ),
 
               // 💰 NUEVO: Totales corregidos por método de pago
@@ -848,14 +848,14 @@ class _ResumenCierreDetalladoScreenState
                 children: [
                   Icon(
                     Icons.account_balance_wallet,
-                    color: Colors.blue,
+                    color: primary,
                     size: 16,
                   ),
                   SizedBox(width: 8),
                   Text(
                     'Totales por Método de Pago (con pagos mixtos desagregados):',
                     style: TextStyle(
-                      color: Colors.blue,
+                      color: primary,
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                     ),
@@ -899,7 +899,7 @@ class _ResumenCierreDetalladoScreenState
                           Text(
                             formatCurrency(entry.value),
                             style: TextStyle(
-                              color: Colors.blue,
+                              color: primary,
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
                             ),
@@ -1421,7 +1421,7 @@ class _ResumenCierreDetalladoScreenState
               _buildInfoRow(
                 'Total (con facturas)',
                 formatCurrency(gastos.totalGastosIncluyendoFacturas),
-                valueColor: Colors.red,
+                valueColor: AppTheme.error,
               ),
               if (gastos.gastosPorTipo.isNotEmpty) ...[
                 SizedBox(height: 16),
@@ -1535,7 +1535,7 @@ class _ResumenCierreDetalladoScreenState
                     Text(
                       formatCurrency(gasto.monto),
                       style: TextStyle(
-                        color: Colors.red,
+                        color: AppTheme.error,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -1559,7 +1559,7 @@ class _ResumenCierreDetalladoScreenState
                 Text(
                   'Pagado desde Caja: ${gasto.pagadoDesdeCaja ? "Sí" : "No"}',
                   style: TextStyle(
-                    color: gasto.pagadoDesdeCaja ? Colors.red : textLight,
+                    color: gasto.pagadoDesdeCaja ? AppTheme.error : textLight,
                     fontSize: 12,
                   ),
                 ),
@@ -1589,7 +1589,7 @@ class _ResumenCierreDetalladoScreenState
                     child: _buildInfoRow(
                       'Total Ingresos',
                       formatCurrency(movimientos.totalIngresosCaja),
-                      valueColor: Colors.green,
+                      valueColor: AppTheme.success,
                     ),
                   ),
                 ],
@@ -1637,7 +1637,7 @@ class _ResumenCierreDetalladoScreenState
                           child: _buildInfoRow(
                             entry.key,
                             formatCurrency(entry.value),
-                            valueColor: Colors.green,
+                            valueColor: AppTheme.success,
                           ),
                         ),
                       )
@@ -1655,6 +1655,16 @@ class _ResumenCierreDetalladoScreenState
     final ventas = _resumen!.resumenVentas;
     if (ventas.detallesPedidos.isEmpty) return Container();
 
+    // Agrupar pedidos por usuario/mesero
+    Map<String, List<dynamic>> pedidosPorUsuario = {};
+    for (var pedido in ventas.detallesPedidos) {
+      String mesero = pedido.pagadoPor ?? pedido.mesero ?? 'Sin usuario';
+      if (!pedidosPorUsuario.containsKey(mesero)) {
+        pedidosPorUsuario[mesero] = [];
+      }
+      pedidosPorUsuario[mesero]!.add(pedido);
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1668,8 +1678,76 @@ class _ResumenCierreDetalladoScreenState
           ),
         ),
         SizedBox(height: 8),
-        ...ventas.detallesPedidos.map(
-          (pedido) => Container(
+        
+        // Mostrar pedidos agrupados por usuario
+        ...pedidosPorUsuario.entries.map((entry) {
+          final mesero = entry.key;
+          final pedidos = entry.value;
+          final totalUsuario = pedidos.fold<double>(
+            0.0,
+            (sum, pedido) =>
+                sum +
+                PaymentCalculator.calcularTotalRealDetalle(
+                  pedido.total,
+                  pedido.descuento,
+                  pedido.propina,
+                ),
+          );
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header del usuario
+              Container(
+                margin: EdgeInsets.only(top: 16, bottom: 8),
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: primary.withOpacity(0.3)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.person, color: primary, size: 20),
+                        SizedBox(width: 8),
+                        Text(
+                          mesero,
+                          style: TextStyle(
+                            color: primary,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          '${pedidos.length} pedido${pedidos.length != 1 ? 's' : ''}',
+                          style: TextStyle(color: textLight, fontSize: 12),
+                        ),
+                        Text(
+                          formatCurrency(totalUsuario),
+                          style: TextStyle(
+                            color: primary,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              // Listar pedidos del usuario
+              ...pedidos
+                  .map(
+                    (pedido) => Container(
             margin: EdgeInsets.only(bottom: 8),
             padding: EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -1688,7 +1766,7 @@ class _ResumenCierreDetalladoScreenState
                       children: [
                         Icon(
                           Icons.table_restaurant,
-                          color: Colors.blue,
+                                    color: primary,
                           size: 16,
                         ),
                         SizedBox(width: 8),
@@ -1707,13 +1785,16 @@ class _ResumenCierreDetalladoScreenState
                         if (pedido.descuento > 0 || pedido.propina > 0) ...[
                           Text(
                             'Total items: ${formatCurrency(pedido.total)}',
-                            style: TextStyle(color: Colors.grey, fontSize: 12),
+                                      style: TextStyle(
+                                        color: textLight,
+                                        fontSize: 12,
+                                      ),
                           ),
                           if (pedido.descuento > 0)
                             Text(
                               'Descuento: -${formatCurrency(pedido.descuento)}',
                               style: TextStyle(
-                                color: Colors.orange,
+                                          color: AppTheme.warning,
                                 fontSize: 12,
                               ),
                             ),
@@ -1721,7 +1802,7 @@ class _ResumenCierreDetalladoScreenState
                             Text(
                               'Propina: +${formatCurrency(pedido.propina)}',
                               style: TextStyle(
-                                color: Colors.amber,
+                                          color: AppTheme.success,
                                 fontSize: 12,
                               ),
                             ),
@@ -1730,7 +1811,7 @@ class _ResumenCierreDetalladoScreenState
                         Text(
                           'PAGADO: ${formatCurrency(PaymentCalculator.calcularTotalRealDetalle(pedido.total, pedido.descuento, pedido.propina))}',
                           style: TextStyle(
-                            color: Colors.green,
+                                      color: AppTheme.success,
                             fontWeight: FontWeight.bold,
                             fontSize: 14,
                           ),
@@ -1783,9 +1864,11 @@ class _ResumenCierreDetalladoScreenState
                     margin: EdgeInsets.only(top: 8),
                     padding: EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.blue.withOpacity(0.1),
+                                color: primary.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                                border: Border.all(
+                                  color: primary.withOpacity(0.3),
+                                ),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1794,14 +1877,14 @@ class _ResumenCierreDetalladoScreenState
                           children: [
                             Icon(
                               Icons.account_balance_wallet,
-                              color: Colors.blue,
+                                        color: primary,
                               size: 16,
                             ),
                             SizedBox(width: 8),
                             Text(
                               'Desglose del pago mixto:',
                               style: TextStyle(
-                                color: Colors.blue,
+                                          color: primary,
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -1844,7 +1927,7 @@ class _ResumenCierreDetalladoScreenState
                                     Text(
                                       formatCurrency(entry.value),
                                       style: TextStyle(
-                                        color: Colors.blue,
+                                                  color: primary,
                                         fontSize: 12,
                                         fontWeight: FontWeight.bold,
                                       ),
@@ -1856,7 +1939,7 @@ class _ResumenCierreDetalladoScreenState
                             .toList(),
                         Divider(
                           height: 12,
-                          color: Colors.blue.withOpacity(0.3),
+                                    color: primary.withOpacity(0.3),
                         ),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1864,7 +1947,7 @@ class _ResumenCierreDetalladoScreenState
                             Text(
                               'Total verificado:',
                               style: TextStyle(
-                                color: Colors.blue,
+                                          color: primary,
                                 fontSize: 12,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -1876,7 +1959,7 @@ class _ResumenCierreDetalladoScreenState
                                 ).values.fold(0.0, (a, b) => a + b),
                               ),
                               style: TextStyle(
-                                color: Colors.green,
+                                          color: AppTheme.success,
                                 fontSize: 12,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -1890,7 +1973,11 @@ class _ResumenCierreDetalladoScreenState
               ],
             ),
           ),
-        ),
+                  )
+                  .toList(),
+            ],
+          );
+        }).toList(),
       ],
     );
   }
@@ -1944,7 +2031,9 @@ class _ResumenCierreDetalladoScreenState
                     Text(
                       formatCurrency(balanceFinal),
                       style: TextStyle(
-                        color: balanceFinal >= 0 ? Colors.green : Colors.red,
+                        color: balanceFinal >= 0
+                            ? AppTheme.success
+                            : AppTheme.error,
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
                       ),
@@ -1963,14 +2052,14 @@ class _ResumenCierreDetalladoScreenState
               Text(
                 'INGRESOS:',
                 style: TextStyle(
-                  color: Colors.green,
+                  color: AppTheme.success,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               _buildInfoRow(
                 '+ Total Ventas',
                 formatCurrency(totalVentasCorrectas),
-                valueColor: Colors.green,
+                valueColor: AppTheme.success,
               ),
               // ✅ DESGLOSE: Mostrar desglose de ventas (usando datos correctos de resumenVentas)
               Padding(
@@ -1982,14 +2071,14 @@ class _ResumenCierreDetalladoScreenState
                       formatCurrency(
                         ventas.ventasPorFormaPago['efectivo'] ?? 0,
                       ),
-                      valueColor: Colors.green.withOpacity(0.8),
+                      valueColor: AppTheme.success.withOpacity(0.8),
                     ),
                     _buildInfoRow(
                       '  • Transferencia',
                       formatCurrency(
                         ventas.ventasPorFormaPago['transferencia'] ?? 0,
                       ),
-                      valueColor: Colors.green.withOpacity(0.8),
+                      valueColor: AppTheme.success.withOpacity(0.8),
                     ),
                   ],
                 ),
@@ -1997,35 +2086,35 @@ class _ResumenCierreDetalladoScreenState
               _buildInfoRow(
                 '+ Ingresos de Caja',
                 formatCurrency(movimientos.totalIngresosCaja),
-                valueColor: Colors.green,
+                valueColor: AppTheme.success,
               ),
               _buildInfoRow(
                 '= Subtotal Ingresos',
                 formatCurrency(ingresosTotales),
-                valueColor: Colors.green,
+                valueColor: AppTheme.success,
               ),
               Divider(color: textLight.withOpacity(0.3)),
               Text(
                 'EGRESOS:',
                 style: TextStyle(
-                  color: Colors.red,
+                  color: AppTheme.error,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               _buildInfoRow(
                 '- Total Gastos',
                 formatCurrency(resumen.totalGastos),
-                valueColor: Colors.red,
+                valueColor: AppTheme.error,
               ),
               _buildInfoRow(
                 '- Total Compras',
                 formatCurrency(resumen.totalCompras),
-                valueColor: Colors.red,
+                valueColor: AppTheme.error,
               ),
               _buildInfoRow(
                 '= Subtotal Egresos',
                 formatCurrency(egresosTotales),
-                valueColor: Colors.red,
+                valueColor: AppTheme.error,
               ),
               Divider(color: textLight.withOpacity(0.3)),
               _buildInfoRow(
@@ -2037,8 +2126,8 @@ class _ResumenCierreDetalladoScreenState
                 'Utilidad Bruta',
                 formatCurrency(resumen.utilidadBruta),
                 valueColor: resumen.utilidadBruta >= 0
-                    ? Colors.green
-                    : Colors.red,
+                    ? AppTheme.success
+                    : AppTheme.error,
               ),
             ],
           ),

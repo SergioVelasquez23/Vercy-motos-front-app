@@ -165,10 +165,10 @@ class PedidoService {
   /// Esto evita llamar a getAllCuadres() en cada creación de pedido
   Future<String?> _getCuadreIdActivo() async {
     try {
-      // Si hay caché válido (menos de 5 minutos), usarlo
+      // Si hay caché válido (menos de 30 minutos), usarlo
       if (_cuadreIdActivo != null && _cuadreIdCacheTime != null) {
         final diferencia = DateTime.now().difference(_cuadreIdCacheTime!);
-        if (diferencia.inMinutes < 5) {
+        if (diferencia.inMinutes < 30) {
           return _cuadreIdActivo;
         }
       }
@@ -198,6 +198,19 @@ class PedidoService {
   void limpiarCacheCuadreId() {
     _cuadreIdActivo = null;
     _cuadreIdCacheTime = null;
+  }
+
+  /// 🔥 Pre-calentar: obtener cuadreId activo anticipadamente para que
+  /// createPedido no tenga que esperar al backend cuando el usuario facture.
+  /// También sirve para despertar a Render del cold start.
+  void preCachearCuadreId() {
+    _getCuadreIdActivo()
+        .then((_) {
+          print('🔥 Pre-warm: cuadreId cacheado exitosamente');
+        })
+        .catchError((e) {
+          print('⚠️ Pre-warm: error obteniendo cuadreId (no crítico): $e');
+        });
   }
 
   // Función auxiliar para parsear respuestas de lista de pedidos
@@ -576,13 +589,13 @@ class PedidoService {
     try {
       // Obtener todos los pedidos activos
       final pedidosActivos = await getPedidosByEstado(EstadoPedido.activo);
-
+      
       // Filtrar solo los que tienen mesa='DEUDA'
       final deudas = pedidosActivos.where((p) => p.mesa == 'DEUDA').toList();
-
+      
       // Ordenar por fecha (más recientes primero)
       deudas.sort((a, b) => b.fecha.compareTo(a.fecha));
-
+      
       return deudas;
     } catch (e) {
       throw Exception('Error al obtener deudas: $e');
@@ -610,7 +623,7 @@ class PedidoService {
         headers: headers,
         body: json.encode(pedido.toJson()),
           )
-          .timeout(const Duration(seconds: 30));
+          .timeout(const Duration(seconds: 90));
 
       if (response.statusCode == 201) {
         return Pedido.fromJson(json.decode(response.body));
@@ -659,7 +672,7 @@ class PedidoService {
         headers: headers,
         body: json.encode(pedidoJson),
           )
-          .timeout(const Duration(seconds: 30));
+          .timeout(const Duration(seconds: 90));
 
         
         
@@ -734,7 +747,8 @@ class PedidoService {
         Uri.parse('$baseUrl/api/pedidos/${pedido.id}'),
         headers: headers,
         body: json.encode(pedidoJson),
-      );
+          )
+          .timeout(const Duration(seconds: 90));
 
         
         
@@ -1787,7 +1801,8 @@ class PedidoService {
         Uri.parse('$baseUrl/api/pedidos/$pedidoId/pagar'),
         headers: headers,
         body: json.encode(pagarData),
-      );
+          )
+          .timeout(const Duration(seconds: 90));
 
         
         

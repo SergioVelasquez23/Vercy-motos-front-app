@@ -1082,6 +1082,9 @@ class _ProductosScreenState extends State<ProductosScreen> {
     final productoOServicioController = TextEditingController(
       text: isEditing ? (producto.productoOServicio ?? '') : '',
     );
+    if (isEditing) {
+      print('🔍 [INIT] Inicializando productoOServicioController con: "${producto.productoOServicio}"');
+    }
     final tipoProductoNombreController = TextEditingController(
       text: isEditing ? (producto.tipoProductoNombre ?? '') : '',
     );
@@ -1521,20 +1524,31 @@ class _ProductosScreenState extends State<ProductosScreen> {
                           child: Column(
                             children: [
                               // Producto o Servicio
-                              TextField(
-                                controller: productoOServicioController,
+                              DropdownButtonFormField<String>(
+                                value: productoOServicioController.text.isNotEmpty
+                                    ? productoOServicioController.text.toUpperCase()
+                                    : 'PRODUCTO',
+                                dropdownColor: AppTheme.cardBg,
                                 style: TextStyle(color: AppTheme.textPrimary),
                                 decoration: InputDecoration(
                                   labelText: 'Producto o Servicio',
-                                  helperText:
-                                      'Ej: Producto, Servicio, Materia Prima',
-                                  helperStyle: TextStyle(fontSize: 11),
                                   filled: true,
                                   fillColor: AppTheme.cardBg.withOpacity(0.3),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                 ),
+                                items: ['PRODUCTO', 'SERVICIO']
+                                    .map((tipo) => DropdownMenuItem(
+                                          value: tipo,
+                                          child: Text(tipo),
+                                        ))
+                                    .toList(),
+                                onChanged: (value) {
+                                  print('🔍 [DROPDOWN] Cambio detectado: "$value"');
+                                  productoOServicioController.text = value ?? 'PRODUCTO';
+                                  print('🔍 [DROPDOWN] Controller actualizado: "${productoOServicioController.text}"');
+                                },
                               ),
                               SizedBox(height: 16),
 
@@ -2866,7 +2880,12 @@ class _ProductosScreenState extends State<ProductosScreen> {
                                 // CLASIFICACIÓN
                                 productoOServicio:
                                     productoOServicioController.text.isNotEmpty
-                                    ? productoOServicioController.text
+                                    ? (() {
+                                        print('🔍 [ACTUALIZAR] productoOServicioController.text: "${productoOServicioController.text}"');
+                                        final valor = productoOServicioController.text.toLowerCase();
+                                        print('🔍 [ACTUALIZAR] productoOServicio (lowercase): "$valor"');
+                                        return valor;
+                                      })()
                                     : null,
                                 tipoProductoNombre:
                                     tipoProductoNombreController.text.isNotEmpty
@@ -2984,7 +3003,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                               ImageLoaderService().invalidateProductImage(
                                 producto.id,
                               );
-                                                             } else {
+                                                          } else {
                               // Crear nuevo producto
                               if (selectedCategoriaId == null) {
                                 throw Exception(
@@ -3021,7 +3040,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                                 // CLASIFICACIÓN
                                 productoOServicio:
                                     productoOServicioController.text.isNotEmpty
-                                    ? productoOServicioController.text
+                                    ? productoOServicioController.text.toLowerCase()
                                     : null,
                                 tipoProductoNombre:
                                     tipoProductoNombreController.text.isNotEmpty

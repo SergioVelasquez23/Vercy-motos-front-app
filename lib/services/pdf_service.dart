@@ -219,6 +219,17 @@ class PDFService {
     final font = await _getFontRegular();
     final fontBold = await _getFontBold();
 
+    // Cargar logo con manejo de errores
+    pw.MemoryImage? logoImage;
+    try {
+      final logoData = await rootBundle.load('assets/images/vercylogo.png');
+      logoImage = pw.MemoryImage(logoData.buffer.asUint8List());
+      print('✅ Logo cargado exitosamente');
+    } catch (e) {
+      print('⚠️ Error cargando logo: $e');
+      logoImage = null;
+    }
+
     // Pre-procesar todos los valores del resumen para evitar errores
     // Obtener datos del negocio (pueden venir directamente o en objeto 'negocio')
     final negocio = resumen['negocio'] as Map<String, dynamic>?;
@@ -240,6 +251,23 @@ class PDFService {
     final hora = _toSafeString(resumen['hora']);
     final cliente = _toSafeString(resumen['cliente'], 'CONSUMIDOR FINAL');
     final clienteNit = _toSafeString(resumen['clienteNit'], '222222222-2');
+    final clienteTipoId = _toSafeString(resumen['clienteTipoId'], 'CC');
+    final clienteDireccion = _toSafeString(resumen['clienteDireccion']);
+    final clienteTelefono = _toSafeString(resumen['clienteTelefono']);
+    final clienteCorreo = _toSafeString(resumen['clienteCorreo']);
+    final clienteDepartamento = _toSafeString(resumen['clienteDepartamento']);
+    final clienteCiudad = _toSafeString(resumen['clienteCiudad']);
+
+    // Debug: Verificar datos del cliente
+    print('📋 Datos del cliente en PDF:');
+    print('  - Nombre: $cliente');
+    print('  - NIT: $clienteNit');
+    print('  - Dirección: $clienteDireccion');
+    print('  - Teléfono: $clienteTelefono');
+    print('  - Correo: $clienteCorreo');
+    print('  - Departamento: $clienteDepartamento');
+    print('  - Ciudad: $clienteCiudad');
+    
     final departamento = _toSafeString(
       resumen['departamento'] ?? negocio?['departamento'],
       'CALDAS',
@@ -278,10 +306,19 @@ class PDFService {
                     child: pw.Column(
                       crossAxisAlignment: pw.CrossAxisAlignment.start,
                       children: [
-                        pw.Text(
-                          nombreNegocio,
-                          style: pw.TextStyle(font: fontBold, fontSize: 18),
-                        ),
+                        if (logoImage != null)
+                          pw.Image(
+                            logoImage,
+                            width: 120,
+                            height: 60,
+                            fit: pw.BoxFit.contain,
+                          )
+                        else
+                          pw.Text(
+                            nombreNegocio,
+                            style: pw.TextStyle(font: fontBold, fontSize: 18),
+                          ),
+                        pw.SizedBox(height: 4),
                         if (nit.isNotEmpty)
                           pw.Text(
                             'NIT: $nit',
@@ -349,29 +386,32 @@ class PDFService {
                               style: pw.TextStyle(font: fontBold, fontSize: 10),
                             ),
                             pw.Text(
-                              'ID: CC $clienteNit',
+                              'ID: $clienteNit',
                               style: pw.TextStyle(font: font, fontSize: 9),
                             ),
                             pw.Text(
-                              'Departamento: $departamento',
+                              'Departamento: ${clienteDepartamento.isNotEmpty ? clienteDepartamento : departamento}',
                               style: pw.TextStyle(font: font, fontSize: 9),
                             ),
                             pw.Text(
-                              'Ciudad: $ciudad',
+                              'Ciudad: ${clienteCiudad.isNotEmpty ? clienteCiudad : ciudad}',
                               style: pw.TextStyle(font: font, fontSize: 9),
                             ),
-                            pw.Text(
-                              'Telefono:',
-                              style: pw.TextStyle(font: font, fontSize: 9),
-                            ),
-                            pw.Text(
-                              'Direccion:',
-                              style: pw.TextStyle(font: font, fontSize: 9),
-                            ),
-                            pw.Text(
-                              'Correo:',
-                              style: pw.TextStyle(font: font, fontSize: 9),
-                            ),
+                            if (clienteTelefono.isNotEmpty)
+                              pw.Text(
+                                'Telefono: $clienteTelefono',
+                                style: pw.TextStyle(font: font, fontSize: 9),
+                              ),
+                            if (clienteDireccion.isNotEmpty)
+                              pw.Text(
+                                'Direccion: $clienteDireccion',
+                                style: pw.TextStyle(font: font, fontSize: 9),
+                              ),
+                            if (clienteCorreo.isNotEmpty)
+                              pw.Text(
+                                'Correo: $clienteCorreo',
+                                style: pw.TextStyle(font: font, fontSize: 9),
+                              ),
                           ],
                         ),
                       ),
@@ -537,9 +577,10 @@ class PDFService {
                 ],
               ),
 
-              pw.SizedBox(height: 12),
+              // ========== ESPACIO FLEXIBLE ENTRE PRODUCTOS Y PIE ==========
+              pw.Spacer(),
 
-              // ========== RESUMEN Y TOTALES ==========
+              // ========== RESUMEN Y TOTALES (al pie) ==========
               _buildResumenYTotales(resumen, font, fontBold),
 
               pw.SizedBox(height: 8),
@@ -556,9 +597,11 @@ class PDFService {
                       'VALOR EN LETRAS: ',
                       style: pw.TextStyle(font: fontBold, fontSize: 9),
                     ),
-                    pw.Text(
-                      _numeroALetras((resumen['total'] ?? 0.0).toDouble()),
-                      style: pw.TextStyle(font: font, fontSize: 9),
+                    pw.Expanded(
+                      child: pw.Text(
+                        _numeroALetras((resumen['total'] ?? 0.0).toDouble()),
+                        style: pw.TextStyle(font: font, fontSize: 9),
+                      ),
                     ),
                   ],
                 ),
@@ -589,7 +632,7 @@ class PDFService {
                 ),
               ),
 
-              pw.Spacer(),
+              pw.SizedBox(height: 12),
 
               // ========== PIE DE PÁGINA ==========
               pw.Center(

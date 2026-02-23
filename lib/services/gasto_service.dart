@@ -5,6 +5,7 @@ import '../models/gasto.dart';
 import '../models/tipo_gasto.dart';
 import '../config/api_config.dart';
 import '../utils/caja_error_handler.dart';
+import 'alertas_service.dart';
 
 class GastoService {
   static final GastoService _instance = GastoService._internal();
@@ -13,6 +14,7 @@ class GastoService {
 
   String get baseUrl => ApiConfig.instance.baseUrl;
   final storage = FlutterSecureStorage();
+  final AlertasService _alertasService = AlertasService();
 
   // Headers con autenticación
   Future<Map<String, String>> _getHeaders() async {
@@ -180,7 +182,12 @@ class GastoService {
 
       if (response.statusCode == 201) {
         final responseData = json.decode(response.body);
-        return Gasto.fromJson(responseData['data']);
+        final gasto = Gasto.fromJson(responseData['data']);
+
+        // Enviar alerta de Telegram en segundo plano
+        _enviarAlertaGastoTelegram(gasto);
+
+        return gasto;
       } else {
         final error = CajaErrorHandler.procesarRespuesta(response);
         CajaErrorHandler.mostrarError(error);
@@ -190,6 +197,28 @@ class GastoService {
         
       throw Exception('Error al crear gasto: ${e.toString()}');
     }
+  }
+
+  /// Envía alerta de gasto por Telegram en segundo plano
+  void _enviarAlertaGastoTelegram(Gasto gasto) {
+    // Ejecutar en segundo plano sin bloquear la aplicación
+    Future.delayed(Duration.zero, () async {
+      try {
+        await _alertasService.enviarAlertaGasto(
+          tipoGasto: gasto.tipoGastoNombre,
+          concepto: gasto.concepto,
+          monto: gasto.monto,
+          responsable: gasto.responsable,
+          formaPago: gasto.formaPago,
+          numeroRecibo: gasto.numeroRecibo,
+          numeroFactura: gasto.numeroFactura,
+          proveedor: gasto.proveedor,
+        );
+      } catch (e) {
+        // Ignorar error de alerta para no afectar la creación del gasto
+        print('Error al enviar alerta de gasto por Telegram: $e');
+      }
+    });
   }
 
   // Actualizar gasto

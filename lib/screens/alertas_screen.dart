@@ -503,6 +503,28 @@ class _AlertasScreenState extends State<AlertasScreen>
             () => _ejecutarPruebaDeuda(),
           ),
 
+          const SizedBox(height: 12),
+
+          // Prueba de alerta de gastos
+          _buildPruebaCard(
+            'Alerta de Gastos',
+            'Envía una alerta de prueba de gasto realizado',
+            Icons.attach_money,
+            Colors.purple,
+            () => _ejecutarPruebaGasto(),
+          ),
+
+          const SizedBox(height: 12),
+
+          // Prueba de alerta de cuentas por pagar
+          _buildPruebaCard(
+            'Alerta de CxP',
+            'Envía una alerta de prueba de cuenta por pagar',
+            Icons.receipt_long,
+            Colors.indigo,
+            () => _ejecutarPruebaCxP(),
+          ),
+
           const SizedBox(height: 24),
 
           // Ejecutar todas las pruebas
@@ -721,6 +743,32 @@ class _AlertasScreenState extends State<AlertasScreen>
       );
     } catch (e) {
       _mostrarResultadoPrueba('Deuda', false, 'Error: $e');
+    }
+  }
+
+  Future<void> _ejecutarPruebaGasto() async {
+    try {
+      final response = await _alertasService.probarAlertaGasto();
+      _mostrarResultadoPrueba(
+        'Gastos',
+        response.isSuccess,
+        response.data ?? response.message ?? 'Prueba completada',
+      );
+    } catch (e) {
+      _mostrarResultadoPrueba('Gastos', false, 'Error: $e');
+    }
+  }
+
+  Future<void> _ejecutarPruebaCxP() async {
+    try {
+      final response = await _alertasService.probarAlertaCxP();
+      _mostrarResultadoPrueba(
+        'Cuentas por Pagar',
+        response.isSuccess,
+        response.data ?? response.message ?? 'Prueba completada',
+      );
+    } catch (e) {
+      _mostrarResultadoPrueba('Cuentas por Pagar', false, 'Error: $e');
     }
   }
 

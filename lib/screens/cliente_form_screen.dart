@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/cliente.dart';
 import '../services/cliente_service.dart';
+import '../services/colombia_location_service.dart';
 import '../theme/app_theme.dart';
 
 class ClienteFormScreen extends StatefulWidget {
@@ -14,7 +15,16 @@ class ClienteFormScreen extends StatefulWidget {
 
 class _ClienteFormScreenState extends State<ClienteFormScreen> {
   final ClienteService _clienteService = ClienteService();
+  final ColombiaLocationService _locationService = ColombiaLocationService();
   final _formKey = GlobalKey<FormState>();
+
+  // Datos de ubicación Colombia
+  List<Departamento> _departamentos = [];
+  List<Municipio> _municipios = [];
+  Departamento? _selectedDepartamento;
+  Municipio? _selectedMunicipio;
+  bool _loadingDepartamentos = true;
+  bool _loadingMunicipios = false;
 
   // Controladores - Identificación
   final _tipoPersonaController = TextEditingController();
@@ -31,8 +41,6 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
   final _telefonoController = TextEditingController();
   final _celularController = TextEditingController();
   final _direccionController = TextEditingController();
-  final _ciudadController = TextEditingController();
-  final _departamentoController = TextEditingController();
   final _paisController = TextEditingController(text: 'Colombia');
   final _codigoPostalController = TextEditingController();
 
@@ -58,8 +66,70 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
     // Inicializar tipo de persona como "natural" por defecto
     _tipoPersonaController.text = 'natural';
 
+    _cargarDepartamentos();
+
     if (_esEdicion) {
       _cargarDatosCliente();
+    }
+  }
+
+  Future<void> _cargarDepartamentos() async {
+    try {
+      final departamentos = await _locationService.getDepartamentos();
+      if (mounted) {
+        setState(() {
+          _departamentos = departamentos;
+          _loadingDepartamentos = false;
+        });
+
+        // Si estamos editando, buscar el departamento por nombre
+        if (_esEdicion && widget.cliente?.departamento != null) {
+          final depName = widget.cliente!.departamento!.toLowerCase();
+          final match = _departamentos.where(
+            (d) => d.name.toLowerCase() == depName,
+          );
+          if (match.isNotEmpty) {
+            _selectedDepartamento = match.first;
+            await _cargarMunicipios(match.first.id);
+            // Buscar el municipio por nombre
+            if (widget.cliente?.ciudad != null) {
+              final cityName = widget.cliente!.ciudad!.toLowerCase();
+              final cityMatch = _municipios.where(
+                (m) => m.name.toLowerCase() == cityName,
+              );
+              if (cityMatch.isNotEmpty && mounted) {
+                setState(() => _selectedMunicipio = cityMatch.first);
+              }
+            }
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _loadingDepartamentos = false);
+      }
+    }
+  }
+
+  Future<void> _cargarMunicipios(int departamentoId) async {
+    setState(() {
+      _loadingMunicipios = true;
+      _selectedMunicipio = null;
+      _municipios = [];
+    });
+
+    try {
+      final municipios = await _locationService.getMunicipios(departamentoId);
+      if (mounted) {
+        setState(() {
+          _municipios = municipios;
+          _loadingMunicipios = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _loadingMunicipios = false);
+      }
     }
   }
 
@@ -79,9 +149,8 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
     _correoController.text = c.correo ?? '';
     _telefonoController.text = c.telefono ?? '';
     _direccionController.text = c.direccion ?? '';
-    _ciudadController.text = c.ciudad ?? '';
-    _departamentoController.text = c.departamento ?? '';
     _codigoPostalController.text = c.codigoPostal ?? '';
+    // Departamento y ciudad se cargan asíncronamente en _cargarDepartamentos()
 
     // Tributario
     _responsableIVA = c.responsableIVA;
@@ -108,8 +177,6 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
     _telefonoController.dispose();
     _celularController.dispose();
     _direccionController.dispose();
-    _ciudadController.dispose();
-    _departamentoController.dispose();
     _paisController.dispose();
     _codigoPostalController.dispose();
     _actividadEconomicaController.dispose();
@@ -417,30 +484,265 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
           ),
         ),
         SizedBox(height: 16),
-        Row(
+        // Departamento - Dropdown con buscador
+        _buildDepartamentoDropdown(),
+        SizedBox(height: 16),
+        // Ciudad/Municipio - Dropdown con buscador
+        _buildMunicipioDropdown(),
+      ],
+    );
+  }
+
+  /// Dropdown con buscador para Departamento
+  Widget _buildDepartamentoDropdown() {
+    if (_loadingDepartamentos) {
+      return InputDecorator(
+        decoration: InputDecoration(
+          labelText: 'Departamento',
+          border: OutlineInputBorder(),
+          prefixIcon: Icon(Icons.map),
+        ),
+        child: Row(
           children: [
-            Expanded(
-              child: TextFormField(
-                controller: _ciudadController,
-                decoration: InputDecoration(
-                  labelText: 'Ciudad',
-                  border: OutlineInputBorder(),
-                ),
+            SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: AppTheme.primary,
               ),
             ),
-            SizedBox(width: 16),
-            Expanded(
-              child: TextFormField(
-                controller: _departamentoController,
-                decoration: InputDecoration(
-                  labelText: 'Departamento',
-                  border: OutlineInputBorder(),
-                ),
-              ),
+            SizedBox(width: 12),
+            Text(
+              'Cargando departamentos...',
+              style: TextStyle(color: Colors.grey.shade400),
             ),
           ],
         ),
-      ],
+      );
+    }
+
+    return Autocomplete<Departamento>(
+      displayStringForOption: (dep) => dep.name,
+      initialValue: _selectedDepartamento != null
+          ? TextEditingValue(text: _selectedDepartamento!.name)
+          : null,
+      optionsBuilder: (TextEditingValue textEditingValue) {
+        if (textEditingValue.text.isEmpty) {
+          return _departamentos;
+        }
+        return _departamentos.where(
+          (dep) => dep.name.toLowerCase().contains(
+            textEditingValue.text.toLowerCase(),
+          ),
+        );
+      },
+      onSelected: (Departamento departamento) {
+        setState(() {
+          _selectedDepartamento = departamento;
+        });
+        _cargarMunicipios(departamento.id);
+      },
+      fieldViewBuilder: (context, textController, focusNode, onFieldSubmitted) {
+        return TextFormField(
+          controller: textController,
+          focusNode: focusNode,
+          style: TextStyle(color: Colors.white),
+          decoration: InputDecoration(
+            labelText: 'Departamento',
+            hintText: 'Buscar departamento...',
+            border: OutlineInputBorder(),
+            prefixIcon: Icon(Icons.map),
+            suffixIcon: textController.text.isNotEmpty
+                ? IconButton(
+                    icon: Icon(
+                      Icons.clear,
+                      size: 18,
+                      color: Colors.grey.shade400,
+                    ),
+                    onPressed: () {
+                      textController.clear();
+                      setState(() {
+                        _selectedDepartamento = null;
+                        _selectedMunicipio = null;
+                        _municipios = [];
+                      });
+                    },
+                  )
+                : Icon(Icons.arrow_drop_down, color: Colors.grey.shade400),
+          ),
+        );
+      },
+      optionsViewBuilder: (context, onSelected, options) {
+        return Align(
+          alignment: Alignment.topLeft,
+          child: Material(
+            elevation: 8,
+            color: AppTheme.cardElevated,
+            borderRadius: BorderRadius.circular(8),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: 250,
+                maxWidth: MediaQuery.of(context).size.width - 80,
+              ),
+              child: ListView.builder(
+                padding: EdgeInsets.zero,
+                shrinkWrap: true,
+                itemCount: options.length,
+                itemBuilder: (context, index) {
+                  final dep = options.elementAt(index);
+                  return ListTile(
+                    dense: true,
+                    title: Text(
+                      dep.name,
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    leading: Icon(
+                      Icons.location_city,
+                      size: 18,
+                      color: AppTheme.primary,
+                    ),
+                    hoverColor: AppTheme.primary.withOpacity(0.15),
+                    onTap: () => onSelected(dep),
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Dropdown con buscador para Municipio/Ciudad
+  Widget _buildMunicipioDropdown() {
+    if (_loadingMunicipios) {
+      return InputDecorator(
+        decoration: InputDecoration(
+          labelText: 'Ciudad / Municipio',
+          border: OutlineInputBorder(),
+          prefixIcon: Icon(Icons.location_city),
+        ),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: AppTheme.primary,
+              ),
+            ),
+            SizedBox(width: 12),
+            Text(
+              'Cargando municipios...',
+              style: TextStyle(color: Colors.grey.shade400),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_selectedDepartamento == null) {
+      return InputDecorator(
+        decoration: InputDecoration(
+          labelText: 'Ciudad / Municipio',
+          border: OutlineInputBorder(),
+          prefixIcon: Icon(Icons.location_city),
+        ),
+        child: Text(
+          'Seleccione primero un departamento',
+          style: TextStyle(color: Colors.grey.shade500),
+        ),
+      );
+    }
+
+    return Autocomplete<Municipio>(
+      displayStringForOption: (mun) => mun.name,
+      initialValue: _selectedMunicipio != null
+          ? TextEditingValue(text: _selectedMunicipio!.name)
+          : null,
+      optionsBuilder: (TextEditingValue textEditingValue) {
+        if (textEditingValue.text.isEmpty) {
+          return _municipios;
+        }
+        return _municipios.where(
+          (mun) => mun.name.toLowerCase().contains(
+            textEditingValue.text.toLowerCase(),
+          ),
+        );
+      },
+      onSelected: (Municipio municipio) {
+        setState(() {
+          _selectedMunicipio = municipio;
+        });
+      },
+      fieldViewBuilder: (context, textController, focusNode, onFieldSubmitted) {
+        return TextFormField(
+          controller: textController,
+          focusNode: focusNode,
+          style: TextStyle(color: Colors.white),
+          decoration: InputDecoration(
+            labelText: 'Ciudad / Municipio',
+            hintText: 'Buscar municipio...',
+            border: OutlineInputBorder(),
+            prefixIcon: Icon(Icons.location_city),
+            suffixIcon: textController.text.isNotEmpty
+                ? IconButton(
+                    icon: Icon(
+                      Icons.clear,
+                      size: 18,
+                      color: Colors.grey.shade400,
+                    ),
+                    onPressed: () {
+                      textController.clear();
+                      setState(() {
+                        _selectedMunicipio = null;
+                      });
+                    },
+                  )
+                : Icon(Icons.arrow_drop_down, color: Colors.grey.shade400),
+          ),
+        );
+      },
+      optionsViewBuilder: (context, onSelected, options) {
+        return Align(
+          alignment: Alignment.topLeft,
+          child: Material(
+            elevation: 8,
+            color: AppTheme.cardElevated,
+            borderRadius: BorderRadius.circular(8),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: 250,
+                maxWidth: MediaQuery.of(context).size.width - 80,
+              ),
+              child: ListView.builder(
+                padding: EdgeInsets.zero,
+                shrinkWrap: true,
+                itemCount: options.length,
+                itemBuilder: (context, index) {
+                  final mun = options.elementAt(index);
+                  return ListTile(
+                    dense: true,
+                    title: Text(
+                      mun.name,
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    leading: Icon(
+                      Icons.place,
+                      size: 18,
+                      color: AppTheme.primary,
+                    ),
+                    hoverColor: AppTheme.primary.withOpacity(0.15),
+                    onTap: () => onSelected(mun),
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -647,10 +949,8 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
         direccion: _direccionController.text.isEmpty
             ? null
             : _direccionController.text,
-        ciudad: _ciudadController.text.isEmpty ? null : _ciudadController.text,
-        departamento: _departamentoController.text.isEmpty
-            ? null
-            : _departamentoController.text,
+        ciudad: _selectedMunicipio?.name,
+        departamento: _selectedDepartamento?.name,
         codigoPostal: _codigoPostalController.text.isEmpty
             ? null
             : _codigoPostalController.text,

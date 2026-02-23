@@ -6,6 +6,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models/producto.dart';
 import '../models/categoria.dart';
+import '../models/movimiento_stock.dart';
+import '../models/api_response.dart';
 import '../config/api_config.dart';
 import '../utils/retry_strategy.dart';
 import 'alertas_service.dart';
@@ -90,7 +92,7 @@ class ProductoService {
     }
 
     if (_enableProductLogs) {
-             }
+          }
     
     return headers;
   }
@@ -673,9 +675,29 @@ class ProductoService {
   }
 
   // ⚡ NUEVO: Endpoint ligero optimizado como primera opción
+  /// Obtiene solo id y nombre de productos - ULTRA LIGERO para desplegables
+  Future<List<Producto>> getProductosLigeroParaDesplegables() async {
+    try {
+      final headers = await _getHeaders();
+      final url = '$baseUrl/api/productos/ligero?page=0&size=5000';
+
+      final response = await http
+          .get(Uri.parse(url), headers: headers)
+          .timeout(Duration(seconds: 15));
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        final productos = _parseListResponseLigero(responseData);
+        return productos;
+      }
+      return await _getProductosBasico();
+    } catch (e) {
+      return [];
+    }
+  }
+
   Future<List<Producto>> _getProductosLigero() async {
     final headers = await _getHeaders();
-    // ⚡ OPTIMIZADO: Cargar TODOS los productos con inventario (bodega y almacén)
     final url = '$baseUrl/api/productos?page=0&size=10000';
 
     try {
@@ -687,14 +709,10 @@ class ProductoService {
         },
       );
 
-        
-
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
-        // ⚡ Usar fromJsonLigero para NO cargar imágenes
         final productos = _parseListResponseLigero(responseData);
 
-        // Actualizar cache
         for (var producto in productos) {
           _productosCache[producto.id] = producto;
         }
@@ -704,8 +722,6 @@ class ProductoService {
         throw Exception('Error ${response.statusCode} en endpoint ligero');
       }
     } catch (e) {
-        
-        
       return await _getProductosBasico();
     }
   }
@@ -826,17 +842,44 @@ class ProductoService {
   Future<Producto> addProducto(Producto producto) async {
     try {
       final headers = await _getHeaders();
+      
+      // Preparar el JSON sin el id vacío para crear un nuevo producto
+      final productoJson = producto.toJson();
+      if (productoJson['id'] == null || productoJson['id'] == '') {
+        productoJson.remove(
+          'id',
+        ); // Eliminar el id vacío para que el backend genere uno nuevo
+      }
+
+      print('🔍 JSON enviado al backend: ${json.encode(productoJson)}');
+      
       final response = await http
           .post(
             Uri.parse('$baseUrl/api/productos'),
             headers: headers,
-            body: json.encode(producto.toJson()),
+            body: json.encode(productoJson),
           )
           .timeout(Duration(seconds: 300)); // Timeout aumentado para Render
 
       if (response.statusCode == 201) {
-          
-        return Producto.fromJson(json.decode(response.body));
+        // 🔍 DEBUG: Ver la respuesta completa del backend
+        print('🔍 Respuesta del backend (crear producto):');
+        print(response.body);
+
+        final jsonResponse = json.decode(response.body);
+        print('🔍 JSON parseado: $jsonResponse');
+        
+        // Extraer el objeto 'data' si viene envuelto en {success, data, ...}
+        final productoData = jsonResponse is Map && jsonResponse.containsKey('data') && jsonResponse['data'] != null
+            ? jsonResponse['data']
+            : jsonResponse;
+        
+        print('🔍 ID recibido: ${productoData['_id']} o ${productoData['id']}');
+
+        final productoCreado = Producto.fromJson(productoData);
+        print('🔍 Producto creado con ID: ${productoCreado.id}');
+
+        return productoCreado;
       } else {
         throw Exception('Error del servidor: ${response.statusCode}');
       }
@@ -1015,6 +1058,79 @@ class ProductoService {
     }
   }
 
+  /// Descarga todos los productos en formato Excel
+  Future<List<int>> descargarProductosExcel() async {
+    try {
+      final headers = await _getHeaders();
+
+      print('📥 Descargando productos en Excel...');
+
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl/api/productos/exportar-excel'),
+            headers: headers,
+          )
+          .timeout(Duration(seconds: 60));
+
+      if (response.statusCode == 200) {
+        print('✅ Excel descargado exitosamente');
+        print('   Tamaño: ${response.bodyBytes.length} bytes');
+        return response.bodyBytes;
+      } else {
+        throw Exception(
+          'Error descargando Excel: ${response.statusCode} - ${response.body}',
+        );
+      }
+    } catch (e) {
+      print('❌ Error descargando Excel: $e');
+      throw Exception('No se pudo descargar el archivo: $e');
+    }
+  }
+
+  /// Descarga productos con filtros específicos en formato Excel
+  Future<List<int>> descargarProductosFiltrados({
+    String? categoria,
+    String? bodega,
+    String? almacen,
+    bool? conImagenes,
+  }) async {
+    try {
+      final headers = await _getHeaders();
+
+      // Construir query parameters
+      final params = <String, String>{};
+      if (categoria != null && categoria.isNotEmpty)
+        params['categoria'] = categoria;
+      if (bodega != null && bodega.isNotEmpty) params['bodega'] = bodega;
+      if (almacen != null && almacen.isNotEmpty) params['almacen'] = almacen;
+      if (conImagenes != null) params['conImagenes'] = conImagenes.toString();
+
+      final uri = Uri.parse(
+        '$baseUrl/api/productos/exportar-excel',
+      ).replace(queryParameters: params.isNotEmpty ? params : null);
+
+      print('📥 Descargando productos filtrados en Excel...');
+      print('   Parámetros: $params');
+
+      final response = await http
+          .get(uri, headers: headers)
+          .timeout(Duration(seconds: 60));
+
+      if (response.statusCode == 200) {
+        print('✅ Excel filtrado descargado exitosamente');
+        print('   Tamaño: ${response.bodyBytes.length} bytes');
+        return response.bodyBytes;
+      } else {
+        throw Exception(
+          'Error descargando Excel: ${response.statusCode} - ${response.body}',
+        );
+      }
+    } catch (e) {
+      print('❌ Error descargando Excel filtrado: $e');
+      throw Exception('No se pudo descargar el archivo: $e');
+    }
+  }
+
   // Actualizar producto
   Future<Producto> updateProducto(Producto producto) async {
     try {
@@ -1073,6 +1189,10 @@ class ProductoService {
       if (producto.porcentajeImpuesto != null) {
         productoJson['porcentajeImpuesto'] = producto.porcentajeImpuesto;
       }
+      if (producto.productoOServicio != null) {
+        productoJson['tipoItem'] = producto.productoOServicio!.toLowerCase();
+        productoJson['productoOServicio'] = producto.productoOServicio;
+      }
       if (producto.nombreProveedor != null) {
         productoJson['nombreProveedor'] = producto.nombreProveedor;
       }
@@ -1091,8 +1211,11 @@ class ProductoService {
 
       // 🔍 LOG: Ver exactamente qué se envía al backend
       print('📤 PUT /api/productos/${producto.id}');
+      print('   - productoOServicio: ${producto.productoOServicio}');
+      print('   - tipoItem: ${productoJson['tipoItem']}');
       print('   - cantidadAlmacen enviado: ${productoJson['cantidadAlmacen']}');
       print('   - cantidadBodega enviado: ${productoJson['cantidadBodega']}');
+      print('🔍 JSON completo a enviar: ${json.encode(productoJson)}');
 
       final response = await http
           .put(
@@ -1109,16 +1232,45 @@ class ProductoService {
           
         final responseBody = json.decode(response.body);
 
-        // 🛠️ WORKAROUND: Si el backend devuelve null, usar los valores enviados
-        if (responseBody['cantidadAlmacen'] == null &&
-            producto.almacen != null) {
-          responseBody['cantidadAlmacen'] = producto.almacen;
-        }
-        if (responseBody['cantidadBodega'] == null && producto.bodega != null) {
-          responseBody['cantidadBodega'] = producto.bodega;
+        // ✅ Desenvolver el campo 'data' si el backend lo envuelve
+        Map<String, dynamic> productoData;
+        if (responseBody is Map<String, dynamic> && responseBody.containsKey('data') && responseBody['data'] is Map<String, dynamic>) {
+          productoData = responseBody['data'];
+          print('   - Respuesta envuelta en data, desenvolviendo...');
+        } else {
+          productoData = responseBody;
         }
 
-        final productoActualizado = Producto.fromJson(responseBody);
+        // 🛠️ WORKAROUND: Si el backend devuelve null, usar los valores enviados
+        if (productoData['cantidadAlmacen'] == null &&
+            producto.almacen != null) {
+          productoData['cantidadAlmacen'] = producto.almacen;
+        }
+        if (productoData['cantidadBodega'] == null && producto.bodega != null) {
+          productoData['cantidadBodega'] = producto.bodega;
+        }
+
+        // 🛠️ WORKAROUND: Si el backend no devuelve productoOServicio/tipoItem, usar el valor enviado
+        if (productoData['productoOServicio'] == null && productoData['tipoItem'] == null) {
+          productoData['productoOServicio'] = producto.productoOServicio;
+          productoData['tipoItem'] = producto.productoOServicio?.toLowerCase();
+          print('   - productoOServicio/tipoItem no devuelto por backend, usando valor enviado: ${producto.productoOServicio}');
+        }
+
+        print('   - productoData productoOServicio: ${productoData['productoOServicio']}');
+        print('   - productoData tipoItem: ${productoData['tipoItem']}');
+
+        var productoActualizado = Producto.fromJson(productoData);
+
+        // ✅ CRÍTICO: Si después del parseo productoOServicio es null, forzar el valor enviado
+        if (productoActualizado.productoOServicio == null && producto.productoOServicio != null) {
+          productoActualizado = productoActualizado.copyWith(
+            productoOServicio: producto.productoOServicio,
+          );
+          print('   - productoOServicio era null tras parseo, forzando: ${producto.productoOServicio}');
+        }
+
+        print('   - Producto parseado productoOServicio: ${productoActualizado.productoOServicio}');
 
         // ✅ CRÍTICO: Actualizar el cache con los valores corregidos
         _productoByIdCache[producto.id] = productoActualizado;
@@ -2525,6 +2677,54 @@ class ProductoService {
     } catch (e) {
       // Fallback a básico
       return await _getProductosBasico();
+    }
+  }
+
+  /// Obtiene el historial de movimientos de stock de un producto
+  Future<ApiResponse<List<MovimientoStock>>> getMovimientosStock(
+    String productoId,
+  ) async {
+    try {
+      final headers = await _getHeaders();
+      final url = '$baseUrl/api/productos/$productoId/movimientos';
+
+      final response = await http
+          .get(Uri.parse(url), headers: headers)
+          .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+
+        // Manejar tanto respuesta directa como respuesta con estructura {success, data}
+        final List<dynamic> data = responseData is Map
+            ? (responseData['data'] ?? [])
+            : (responseData ?? []);
+
+        final movimientos = data
+            .map((json) => MovimientoStock.fromJson(json))
+            .toList();
+
+        return ApiResponse<List<MovimientoStock>>(
+          success: true,
+          data: movimientos,
+          message: 'Movimientos obtenidos',
+          timestamp: DateTime.now().toIso8601String(),
+        );
+      }
+
+      return ApiResponse<List<MovimientoStock>>(
+        success: false,
+        data: null,
+        message: 'Error ${response.statusCode}',
+        timestamp: DateTime.now().toIso8601String(),
+      );
+    } catch (e) {
+      return ApiResponse<List<MovimientoStock>>(
+        success: false,
+        data: null,
+        message: 'Error de conectividad: $e',
+        timestamp: DateTime.now().toIso8601String(),
+      );
     }
   }
 }

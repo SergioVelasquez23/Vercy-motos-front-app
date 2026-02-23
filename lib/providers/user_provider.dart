@@ -137,6 +137,10 @@ class UserProvider extends ChangeNotifier {
 
     if (kIsWeb) {
       html.window.localStorage.remove('jwt_token');
+      // Limpiar credenciales guardadas para evitar auto-login en web
+      await storage.delete(key: 'saved_email');
+      await storage.delete(key: 'saved_password');
+      await storage.delete(key: 'remember_credentials');
     } else {
       // Limpiar token
       await storage.delete(key: 'jwt_token');

@@ -12,10 +12,16 @@ class ReportesService {
   final PedidoService _pedidoService = PedidoService();
 
   // Obtener dashboard
-  Future<DashboardData?> getDashboard() async {
+  Future<DashboardData?> getDashboard({bool forceRefresh = false}) async {
     try {
+      // Agregar parámetro de timestamp para evitar caching de HTTP
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final endpoint = forceRefresh
+          ? '/api/reportes/dashboard?_t=$timestamp'
+          : '/api/reportes/dashboard';
+
       final response = await _apiService.get<Map<String, dynamic>>(
-        '/api/reportes/dashboard',
+        endpoint,
         (json) => json,
       );
 
@@ -124,6 +130,102 @@ class ReportesService {
     if (response.isSuccess) {
       return response.data ?? [];
     } else {
+      return [];
+    }
+  }
+
+  // Obtener top clientes (excluyendo Consumidor Final)
+  Future<List<Map<String, dynamic>>> getTopClientes([int limite = 5]) async {
+    final response = await _apiService.get<List<Map<String, dynamic>>>(
+      '/api/reportes/top-clientes?limite=$limite&excluirConsumidorFinal=true',
+      (json) => List<Map<String, dynamic>>.from(json),
+    );
+
+    if (response.isSuccess) {
+      return response.data ?? [];
+    } else {
+      return [];
+    }
+  }
+
+  // Obtener reporte detallado de ventas por producto
+  Future<List<Map<String, dynamic>>> getProductosVentasDetallado({
+    required DateTime desde,
+    required DateTime hasta,
+    String? cliente,
+    String? producto,
+    String? vendedor,
+    String? codigo,
+  }) async {
+    String endpoint =
+        '/api/reportes/productos/ventas-detallado?fechaDesde=${desde.toIso8601String()}&fechaHasta=${hasta.toIso8601String()}';
+
+    if (cliente != null && cliente.isNotEmpty) {
+      endpoint += '&cliente=$cliente';
+    }
+    if (producto != null && producto.isNotEmpty) {
+      endpoint += '&nombreProducto=$producto';
+    }
+    if (vendedor != null && vendedor.isNotEmpty) {
+      endpoint += '&vendedor=$vendedor';
+    }
+    if (codigo != null && codigo.isNotEmpty) {
+      endpoint += '&codigo=$codigo';
+    }
+
+    try {
+      final response = await _apiService.get<List<Map<String, dynamic>>>(
+        endpoint,
+        (json) => List<Map<String, dynamic>>.from(json),
+      );
+
+      if (response.isSuccess) {
+        return response.data ?? [];
+      } else {
+        return [];
+      }
+    } catch (e) {
+      return [];
+    }
+  }
+
+  // Obtener reporte agrupado de ventas por producto
+  Future<List<Map<String, dynamic>>> getProductosVentasAgrupado({
+    required DateTime desde,
+    required DateTime hasta,
+    String? cliente,
+    String? producto,
+    String? vendedor,
+    String? codigo,
+  }) async {
+    String endpoint =
+        '/api/reportes/productos/ventas-agrupado?fechaDesde=${desde.toIso8601String()}&fechaHasta=${hasta.toIso8601String()}';
+
+    if (cliente != null && cliente.isNotEmpty) {
+      endpoint += '&cliente=$cliente';
+    }
+    if (producto != null && producto.isNotEmpty) {
+      endpoint += '&nombreProducto=$producto';
+    }
+    if (vendedor != null && vendedor.isNotEmpty) {
+      endpoint += '&vendedor=$vendedor';
+    }
+    if (codigo != null && codigo.isNotEmpty) {
+      endpoint += '&codigo=$codigo';
+    }
+
+    try {
+      final response = await _apiService.get<List<Map<String, dynamic>>>(
+        endpoint,
+        (json) => List<Map<String, dynamic>>.from(json),
+      );
+
+      if (response.isSuccess) {
+        return response.data ?? [];
+      } else {
+        return [];
+      }
+    } catch (e) {
       return [];
     }
   }

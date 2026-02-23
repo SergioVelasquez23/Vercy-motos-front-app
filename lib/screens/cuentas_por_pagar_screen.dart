@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/cuenta_por_pagar.dart';
+import '../models/proveedor.dart';
 import '../services/cartera_service.dart';
+import '../services/proveedor_service.dart';
+import '../theme/app_theme.dart';
 import '../utils/currency_utils.dart';
 import '../widgets/vercy_sidebar_layout.dart';
 
@@ -14,13 +17,13 @@ class CuentasPorPagarScreen extends StatefulWidget {
 
 class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
   final CarteraService _carteraService = CarteraService();
+  final ProveedorService _proveedorService = ProveedorService();
 
   List<CuentaPorPagar> cuentas = [];
   List<CuentaPorPagar> cuentasFiltradas = [];
   bool isLoading = true;
   String? error;
   EstadoCuentaPagar? filtroEstado;
-  bool soloConDescuento = false;
   String busqueda = '';
 
   final TextEditingController _searchController = TextEditingController();
@@ -45,12 +48,15 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
 
     try {
       final response = await _carteraService.getCuentasPorPagar();
+
       if (response.isSuccess) {
         setState(() {
           cuentas = response.data ?? [];
           _aplicarFiltros();
           isLoading = false;
         });
+        // Verificar alertas Telegram en segundo plano
+        _carteraService.verificarAlertasCxP();
       } else {
         setState(() {
           error = response.message;
@@ -75,11 +81,6 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
           .toList();
     }
 
-    // Filtro por descuento
-    if (soloConDescuento) {
-      resultado = resultado.where((cuenta) => cuenta.tieneDescuento).toList();
-    }
-
     // Filtro por búsqueda
     if (busqueda.isNotEmpty) {
       resultado = resultado.where((cuenta) {
@@ -90,24 +91,142 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
       }).toList();
     }
 
-    // Ordenar: primero los que van a perder descuento, luego por fecha de vencimiento
-    resultado.sort((a, b) {
-      if (a.proximoAPerderDescuento && !b.proximoAPerderDescuento) return -1;
-      if (!a.proximoAPerderDescuento && b.proximoAPerderDescuento) return 1;
-      return a.fechaVencimiento.compareTo(b.fechaVencimiento);
-    });
+    // Ordenar por fecha de vencimiento
+    resultado.sort((a, b) => a.fechaVencimiento.compareTo(b.fechaVencimiento));
 
     setState(() {
       cuentasFiltradas = resultado;
     });
   }
 
-  Future<void> _mostrarFormularioCrear() async {
-    await showDialog(
+  Future<void> _registrarPago(CuentaPorPagar cuenta) async {
+    final TextEditingController montoController = TextEditingController();
+
+    final result = await showDialog<double>(
       context: context,
-      builder: (context) => const _FormularioCuentaPorPagar(),
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        title: Text(
+          'Registrar Pago - ${cuenta.proveedorNombre}',
+          style: const TextStyle(color: Colors.black87),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Saldo pendiente: ${CurrencyUtils.format(cuenta.saldoPendiente)}',
+              style: const TextStyle(color: Colors.black87),
+            ),
+            if (cuenta.tieneDescuento && !cuenta.descuentoPerdido) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Con descuento: ${CurrencyUtils.format(cuenta.montoConDescuento)}',
+                style: const TextStyle(
+                  color: AppTheme.primary,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+            const SizedBox(height: 16),
+            TextField(
+              controller: montoController,
+              keyboardType: TextInputType.number,
+              style: const TextStyle(color: Colors.black87),
+              decoration: const InputDecoration(
+                labelText: 'Monto del pago',
+                prefixText: '\$ ',
+                border: OutlineInputBorder(),
+              ),
+              autofocus: true,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final monto = double.tryParse(montoController.text);
+              if (monto != null &&
+                  monto > 0 &&
+                  monto <= cuenta.saldoPendiente) {
+                Navigator.pop(context, monto);
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Ingrese un monto válido'),
+                    backgroundColor: AppTheme.error,
+                  ),
+                );
+              }
+            },
+            child: const Text('Registrar'),
+          ),
+        ],
+      ),
     );
-    _cargarCuentas(); // Recargar después de crear
+
+    if (result != null) {
+      await _procesarPago(cuenta, result);
+    }
+  }
+
+  Future<void> _procesarPago(CuentaPorPagar cuenta, double monto) async {
+    try {
+      print('🔵 [PAGO CxP] Iniciando registro de pago');
+      print('📋 Cuenta ID: ${cuenta.id}');
+      print('💰 Monto: $monto');
+      print('🏢 Proveedor: ${cuenta.proveedorNombre}');
+      print('📊 Saldo pendiente antes: ${cuenta.saldoPendiente}');
+
+      final response = await _carteraService.registrarPagoCuentaPorPagar(
+        cuentaId: cuenta.id!,
+        montoPago: monto,
+        observaciones: 'Pago registrado desde aplicación',
+      );
+
+      print('📨 [PAGO CxP] Respuesta del backend:');
+      print('✅ Success: ${response.isSuccess}');
+      print('📝 Message: ${response.message}');
+      print('📦 Data: ${response.data}');
+
+      if (response.isSuccess) {
+        print('🎉 [PAGO CxP] Pago registrado exitosamente');
+        print(
+          'ℹ️ [AUTO-ALERTA] La auto-alerta de cuenta pagada se envía automáticamente desde CarteraService',
+        );
+        print(
+          '   Ver línea 335 de cartera_service.dart - allí se invoca _alertasService.enviarAlertaCuentaPagada()\n',
+        );
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Pago registrado exitosamente'),
+            backgroundColor: AppTheme.primary,
+          ),
+        );
+        await _cargarCuentas();
+      } else {
+        print('❌ [PAGO CxP] Error al registrar pago: ${response.message}');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${response.message}'),
+            backgroundColor: AppTheme.error,
+          ),
+        );
+      }
+    } catch (e) {
+      print('💥 [PAGO CxP] Excepción al registrar pago: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error de conexión: $e'),
+          backgroundColor: AppTheme.error,
+        ),
+      );
+    }
   }
 
   @override
@@ -116,7 +235,7 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Cuentas por Pagar'),
-          backgroundColor: const Color(0xFFFF9800),
+          backgroundColor: const Color(0xFFE65100),
           foregroundColor: Colors.white,
           elevation: 0,
           actions: [
@@ -127,15 +246,15 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
           ],
         ),
         floatingActionButton: FloatingActionButton(
-          onPressed: _mostrarFormularioCrear,
-          backgroundColor: const Color(0xFFFF9800),
-          child: const Icon(Icons.add),
+          onPressed: _mostrarFormularioNuevaCuenta,
+          backgroundColor: const Color(0xFFE65100),
+          child: const Icon(Icons.add, color: Colors.white),
         ),
         body: Column(
           children: [
             // Filtros y búsqueda
             Container(
-              color: const Color(0xFFFF9800),
+              color: const Color(0xFFE65100),
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
@@ -173,21 +292,9 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
                         const SizedBox(width: 8),
                         _buildFiltroChip('Vencidas', EstadoCuentaPagar.VENCIDA),
                         const SizedBox(width: 8),
-                        _buildFiltroChip('Pagadas', EstadoCuentaPagar.PAGADA),
+                        _buildFiltroChip('Abonadas', EstadoCuentaPagar.ABONADA),
                         const SizedBox(width: 8),
-                        FilterChip(
-                          label: const Text('Con Descuento'),
-                          selected: soloConDescuento,
-                          onSelected: (selected) {
-                            setState(() {
-                              soloConDescuento = selected;
-                              _aplicarFiltros();
-                            });
-                          },
-                          backgroundColor: Colors.white,
-                          selectedColor: Colors.white,
-                          checkmarkColor: const Color(0xFFFF9800),
-                        ),
+                        _buildFiltroChip('Pagadas', EstadoCuentaPagar.PAGADA),
                       ],
                     ),
                   ),
@@ -203,10 +310,10 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
                   ? _buildErrorWidget()
                   : _buildCuentasList(),
             ),
-          ], // cierra children del Column
-        ), // cierra Column del body
-      ), // cierra Scaffold
-    ); // cierra VercySidebarLayout
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildFiltroChip(String label, EstadoCuentaPagar? estado) {
@@ -222,7 +329,7 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
       },
       backgroundColor: Colors.white,
       selectedColor: Colors.white,
-      checkmarkColor: const Color(0xFFFF9800),
+      checkmarkColor: const Color(0xFFE65100),
     );
   }
 
@@ -231,7 +338,7 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.error_outline, size: 64, color: Colors.red),
+          const Icon(Icons.error_outline, size: 64, color: AppTheme.error),
           const SizedBox(height: 16),
           Text(
             'Error al cargar cuentas',
@@ -274,28 +381,26 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
       onRefresh: _cargarCuentas,
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
-        itemCount: cuentasFiltradas.length + 1,
+        itemCount: 1 + cuentasFiltradas.length,
         itemBuilder: (context, index) {
           if (index == 0) {
             return _buildResumenHeader();
           }
-
-          final cuenta = cuentasFiltradas[index - 1];
-          return _buildCuentaCard(cuenta);
+          return _buildCuentaCard(cuentasFiltradas[index - 1]);
         },
       ),
     );
   }
 
   Widget _buildResumenHeader() {
-    final total = cuentasFiltradas.fold<double>(
+    final totalPendiente = cuentasFiltradas.fold<double>(
       0,
       (sum, cuenta) => sum + cuenta.saldoPendiente,
     );
 
-    final conDescuento = cuentasFiltradas.where((c) => c.tieneDescuento).length;
-    final proximasPerder = cuentasFiltradas
-        .where((c) => c.proximoAPerderDescuento)
+    final vencidas = cuentasFiltradas.where((c) => c.estaVencida).length;
+    final proximasVencer = cuentasFiltradas
+        .where((c) => c.requiereAtencionPronto)
         .length;
 
     return Card(
@@ -312,33 +417,32 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
               ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
-
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _buildResumenItem(
                   'Total',
-                  CurrencyUtils.format(total),
-                  Icons.payments,
-                  const Color(0xFFFF9800),
+                  CurrencyUtils.format(totalPendiente),
+                  Icons.attach_money,
+                  AppTheme.primary,
                 ),
                 _buildResumenItem(
                   'Cuentas',
                   '${cuentasFiltradas.length}',
                   Icons.receipt,
-                  Colors.blue,
+                  AppTheme.primaryLight,
                 ),
                 _buildResumenItem(
-                  'Con Desc.',
-                  '$conDescuento',
-                  Icons.local_offer,
-                  Colors.green,
-                ),
-                _buildResumenItem(
-                  '¡Riesgo!',
-                  '$proximasPerder',
+                  'Vencidas',
+                  '$vencidas',
                   Icons.warning,
-                  Colors.red,
+                  AppTheme.error,
+                ),
+                _buildResumenItem(
+                  'Próximas',
+                  '$proximasVencer',
+                  Icons.schedule,
+                  AppTheme.secondary,
                 ),
               ],
             ),
@@ -371,30 +475,46 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
   }
 
   Widget _buildCuentaCard(CuentaPorPagar cuenta) {
-    Color? estadoColor;
+    Color estadoColor;
     IconData estadoIcon;
 
-    if (cuenta.proximoAPerderDescuento) {
-      estadoColor = Colors.red;
-      estadoIcon = Icons.warning;
-    } else {
-      switch (cuenta.estado) {
-        case EstadoCuentaPagar.VENCIDA:
-          estadoColor = Colors.red;
-          estadoIcon = Icons.warning;
-          break;
-        case EstadoCuentaPagar.PENDIENTE:
-          estadoColor = Colors.orange;
-          estadoIcon = Icons.pending;
-          break;
-        case EstadoCuentaPagar.PAGADA:
-          estadoColor = Colors.green;
-          estadoIcon = Icons.check_circle;
-          break;
-        default:
-          estadoColor = Colors.blue;
-          estadoIcon = Icons.payment;
-      }
+    switch (cuenta.estado) {
+      case EstadoCuentaPagar.VENCIDA:
+        estadoColor = AppTheme.error;
+        estadoIcon = Icons.warning;
+        break;
+      case EstadoCuentaPagar.PENDIENTE:
+        estadoColor = cuenta.requiereAtencionPronto
+            ? AppTheme.secondary
+            : AppTheme.primary;
+        estadoIcon = cuenta.requiereAtencionPronto
+            ? Icons.schedule
+            : Icons.pending;
+        break;
+      case EstadoCuentaPagar.ABONADA:
+        estadoColor = AppTheme.primaryLight;
+        estadoIcon = Icons.payment;
+        break;
+      case EstadoCuentaPagar.PAGADA:
+        estadoColor = AppTheme.primary;
+        estadoIcon = Icons.check_circle;
+        break;
+    }
+
+    final String estadoLabel;
+    switch (cuenta.estado) {
+      case EstadoCuentaPagar.PENDIENTE:
+        estadoLabel = 'Pendiente';
+        break;
+      case EstadoCuentaPagar.VENCIDA:
+        estadoLabel = 'Vencida';
+        break;
+      case EstadoCuentaPagar.PAGADA:
+        estadoLabel = 'Pagada';
+        break;
+      case EstadoCuentaPagar.ABONADA:
+        estadoLabel = 'Abonada';
+        break;
     }
 
     return Card(
@@ -420,53 +540,32 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
                         'Factura: ${cuenta.numeroFactura}',
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
+                      if (cuenta.esRecurrente)
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.repeat,
+                              size: 14,
+                              color: AppTheme.secondary,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              _getFrecuenciaLabel(cuenta.frecuencia),
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(color: AppTheme.secondary),
+                            ),
+                          ],
+                        ),
                     ],
                   ),
                 ),
-                if (cuenta.tieneDescuento)
-                  Container(
-                    margin: const EdgeInsets.only(right: 8),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: cuenta.proximoAPerderDescuento
-                          ? Colors.red.withOpacity(0.1)
-                          : Colors.green.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.local_offer,
-                          size: 12,
-                          color: cuenta.proximoAPerderDescuento
-                              ? Colors.red
-                              : Colors.green,
-                        ),
-                        const SizedBox(width: 2),
-                        Text(
-                          '${cuenta.porcentajeDescuento}%',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: cuenta.proximoAPerderDescuento
-                                ? Colors.red
-                                : Colors.green,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 8,
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: estadoColor?.withOpacity(0.1),
+                    color: estadoColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
@@ -475,9 +574,7 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
                       Icon(estadoIcon, size: 14, color: estadoColor),
                       const SizedBox(width: 4),
                       Text(
-                        cuenta.proximoAPerderDescuento
-                            ? '¡Desc. Riesgo!'
-                            : cuenta.estado.displayName,
+                        estadoLabel,
                         style: TextStyle(
                           color: estadoColor,
                           fontSize: 12,
@@ -489,36 +586,6 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
                 ),
               ],
             ),
-
-            // Alerta de descuento en riesgo
-            if (cuenta.proximoAPerderDescuento) ...[
-              const SizedBox(height: 8),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.red[50],
-                  border: Border.all(color: Colors.red, width: 1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.warning, color: Colors.red, size: 16),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        '¡Descuento del ${cuenta.porcentajeDescuento}% se pierde en ${cuenta.diasParaPerderDescuento} días!',
-                        style: const TextStyle(
-                          color: Colors.red,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
 
             const SizedBox(height: 12),
 
@@ -533,47 +600,52 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
                       'Total: ${CurrencyUtils.format(cuenta.montoTotal)}',
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
-                    if (cuenta.tieneDescuento && !cuenta.descuentoPerdido)
+                    if (cuenta.montoAbonado > 0)
                       Text(
-                        'Con descuento: ${CurrencyUtils.format(cuenta.montoConDescuento)}',
+                        'Abonado: ${CurrencyUtils.format(cuenta.montoAbonado)}',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.green,
-                          fontWeight: FontWeight.bold,
+                          color: AppTheme.primary,
                         ),
                       ),
-                    if (cuenta.tieneDescuento)
+                    if (cuenta.tieneDescuento && !cuenta.descuentoPerdido)
                       Text(
-                        'Ahorro: ${CurrencyUtils.format(cuenta.montoDescuento)}',
+                        'Descuento: ${cuenta.porcentajeDescuento}%',
                         style: Theme.of(
                           context,
-                        ).textTheme.bodySmall?.copyWith(color: Colors.green),
+                        ).textTheme.bodySmall?.copyWith(
+                          color: AppTheme.primary,
+                        ),
                       ),
                   ],
                 ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      CurrencyUtils.format(cuenta.saldoPendiente),
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                Text(
+                  CurrencyUtils.format(cuenta.saldoPendiente),
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                         color: estadoColor,
                       ),
-                    ),
-                    if (cuenta.tieneDescuento &&
-                        cuenta.fechaLimiteDescuento != null)
-                      Text(
-                        'Desc. hasta: ${DateFormat('dd/MM').format(cuenta.fechaLimiteDescuento!)}',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: cuenta.proximoAPerderDescuento
-                              ? Colors.red
-                              : Colors.green,
-                        ),
-                      ),
-                  ],
                 ),
               ],
             ),
+
+            // Barra de progreso si hay abonos
+            if (cuenta.montoAbonado > 0) ...[
+              const SizedBox(height: 8),
+              LinearProgressIndicator(
+                value: cuenta.montoAbonado / cuenta.montoTotal,
+                backgroundColor: AppTheme.surfaceDark,
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  cuenta.montoAbonado >= cuenta.montoTotal
+                      ? AppTheme.primary
+                      : AppTheme.secondary,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '${((cuenta.montoAbonado / cuenta.montoTotal) * 100).toStringAsFixed(1)}% pagado',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
 
             const SizedBox(height: 8),
 
@@ -590,7 +662,7 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
                 Text(
                   cuenta.estaVencida
                       ? '(${cuenta.diasVencimiento.abs()} días vencida)'
-                      : '(${cuenta.diasVencimiento} días)',
+                      : '(${cuenta.diasRestantes} días)',
                   style: TextStyle(
                     fontSize: 12,
                     color: estadoColor,
@@ -599,263 +671,568 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
                 ),
               ],
             ),
+
+            // Alerta de descuento próximo a perder
+            if (cuenta.proximoAPerderDescuento) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppTheme.secondary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: AppTheme.secondary.withOpacity(0.3),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.discount,
+                      size: 16,
+                      color: AppTheme.secondaryLight,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '¡Descuento próximo a vencer! ${cuenta.diasParaPerderDescuento} días restantes',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.secondaryLight,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
+            // Botones de acción
+            if (cuenta.estado != EstadoCuentaPagar.PAGADA &&
+                cuenta.saldoPendiente > 0) ...[
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: () => _enviarAlertaTelegramManual(cuenta),
+                    icon: const Icon(Icons.send, size: 18),
+                    label: const Text('Alerta'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppTheme.secondary,
+                      side: const BorderSide(color: AppTheme.secondary),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton.icon(
+                    onPressed: () => _registrarPago(cuenta),
+                    icon: const Icon(Icons.payment),
+                    label: const Text('Registrar Pago'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primary,
+                      foregroundColor: AppTheme.white,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),
     );
   }
-}
 
-// Formulario para crear nueva cuenta por pagar
-class _FormularioCuentaPorPagar extends StatefulWidget {
-  const _FormularioCuentaPorPagar();
+  Future<void> _mostrarFormularioNuevaCuenta() async {
+    final proveedorNombreCtrl = TextEditingController();
+    final numeroFacturaCtrl = TextEditingController();
+    final montoTotalCtrl = TextEditingController();
+    final diasVencimientoCtrl = TextEditingController(text: '30');
+    final observacionesCtrl = TextEditingController();
+    final porcentajeDescuentoCtrl = TextEditingController();
+    final diasAvisosCtrl = TextEditingController(text: '15,7,3,1');
+    final diasAvisoDescuentoCtrl = TextEditingController(text: '10,5,2,1');
+    TipoCuentaPagar tipoSeleccionado = TipoCuentaPagar.facturaProveedor;
+    FrecuenciaCuentaPagar frecuenciaSeleccionada = FrecuenciaCuentaPagar.unica;
+    bool esRecurrente = false;
+    bool tieneDescuento = false;
+    bool avisosActivados = true;
+    String? proveedorIdSeleccionado;
+    List<Proveedor> proveedores = [];
 
-  @override
-  State<_FormularioCuentaPorPagar> createState() =>
-      __FormularioCuentaPorPagarState();
-}
+    // Cargar proveedores
+    try {
+      proveedores = await _proveedorService.getProveedores();
+    } catch (_) {}
 
-class __FormularioCuentaPorPagarState extends State<_FormularioCuentaPorPagar> {
-  final _formKey = GlobalKey<FormState>();
-  final CarteraService _carteraService = CarteraService();
+    if (!mounted) return;
 
-  final TextEditingController _proveedorController = TextEditingController();
-  final TextEditingController _facturaController = TextEditingController();
-  final TextEditingController _montoController = TextEditingController();
-  final TextEditingController _diasVencimientoController =
-      TextEditingController();
-  final TextEditingController _porcentajeDescuentoController =
-      TextEditingController();
-  final TextEditingController _diasDescuentoController =
-      TextEditingController();
+    final result = await showDialog<CuentaPorPagar>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: Colors.white,
+              title: const Text(
+                'Nueva Cuenta por Pagar',
+                style: TextStyle(color: Colors.black87),
+              ),
+              content: SingleChildScrollView(
+                child: SizedBox(
+                  width: MediaQuery.of(context).size.width * 0.8,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Proveedor - Autocompletar o escribir
+                      Autocomplete<Proveedor>(
+                        optionsBuilder: (TextEditingValue textEditingValue) {
+                          if (textEditingValue.text.isEmpty) {
+                            return proveedores;
+                          }
+                          return proveedores.where(
+                            (p) => p.nombre.toLowerCase().contains(
+                              textEditingValue.text.toLowerCase(),
+                            ),
+                          );
+                        },
+                        displayStringForOption: (Proveedor p) => p.nombre,
+                        onSelected: (Proveedor p) {
+                          proveedorIdSeleccionado = p.id;
+                          proveedorNombreCtrl.text = p.nombre;
+                        },
+                        fieldViewBuilder:
+                            (context, controller, focusNode, onSubmitted) {
+                              // Sincronizar con nuestro controller
+                              controller.addListener(() {
+                                proveedorNombreCtrl.text = controller.text;
+                              });
+                              return TextField(
+                                controller: controller,
+                                focusNode: focusNode,
+                                style: const TextStyle(color: Colors.black87),
+                                decoration: const InputDecoration(
+                                  labelText: 'Proveedor *',
+                                  prefixIcon: Icon(Icons.business),
+                                  border: OutlineInputBorder(),
+                                ),
+                              );
+                            },
+                      ),
+                      const SizedBox(height: 12),
 
-  bool tieneDescuento = false;
-  bool isSubmitting = false;
+                      // Tipo de cuenta
+                      DropdownButtonFormField<TipoCuentaPagar>(
+                        value: tipoSeleccionado,
+                        decoration: const InputDecoration(
+                          labelText: 'Tipo de cuenta',
+                          prefixIcon: Icon(Icons.category),
+                          border: OutlineInputBorder(),
+                        ),
+                        items: TipoCuentaPagar.values.map((tipo) {
+                          return DropdownMenuItem(
+                            value: tipo,
+                            child: Text(_getTipoLabel(tipo)),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          setDialogState(() => tipoSeleccionado = value!);
+                        },
+                      ),
+                      const SizedBox(height: 12),
 
-  @override
-  void dispose() {
-    _proveedorController.dispose();
-    _facturaController.dispose();
-    _montoController.dispose();
-    _diasVencimientoController.dispose();
-    _porcentajeDescuentoController.dispose();
-    _diasDescuentoController.dispose();
-    super.dispose();
+                      // Número de factura
+                      TextField(
+                        controller: numeroFacturaCtrl,
+                        style: const TextStyle(color: Colors.black87),
+                        decoration: const InputDecoration(
+                          labelText: 'Número de factura *',
+                          prefixIcon: Icon(Icons.receipt),
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Monto total
+                      TextField(
+                        controller: montoTotalCtrl,
+                        keyboardType: TextInputType.number,
+                        style: const TextStyle(color: Colors.black87),
+                        decoration: const InputDecoration(
+                          labelText: 'Monto total *',
+                          prefixText: '\$ ',
+                          prefixIcon: Icon(Icons.attach_money),
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Días de vencimiento
+                      TextField(
+                        controller: diasVencimientoCtrl,
+                        keyboardType: TextInputType.number,
+                        style: const TextStyle(color: Colors.black87),
+                        decoration: const InputDecoration(
+                          labelText: 'Días de vencimiento',
+                          prefixIcon: Icon(Icons.calendar_today),
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Descuento
+                      SwitchListTile(
+                        title: const Text(
+                          '¿Tiene descuento por pronto pago?',
+                          style: TextStyle(fontSize: 14),
+                        ),
+                        value: tieneDescuento,
+                        activeColor: const Color(0xFFE65100),
+                        onChanged: (value) {
+                          setDialogState(() => tieneDescuento = value);
+                        },
+                      ),
+                      if (tieneDescuento) ...[
+                        TextField(
+                          controller: porcentajeDescuentoCtrl,
+                          keyboardType: TextInputType.number,
+                          style: const TextStyle(color: Colors.black87),
+                          decoration: const InputDecoration(
+                            labelText: 'Porcentaje de descuento (%)',
+                            prefixIcon: Icon(Icons.discount),
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+
+                      // Recurrencia
+                      SwitchListTile(
+                        title: const Text(
+                          '¿Es recurrente?',
+                          style: TextStyle(fontSize: 14),
+                        ),
+                        value: esRecurrente,
+                        activeColor: const Color(0xFFE65100),
+                        onChanged: (value) {
+                          setDialogState(() => esRecurrente = value);
+                        },
+                      ),
+                      if (esRecurrente) ...[
+                        DropdownButtonFormField<FrecuenciaCuentaPagar>(
+                          value: frecuenciaSeleccionada,
+                          decoration: const InputDecoration(
+                            labelText: 'Frecuencia',
+                            prefixIcon: Icon(Icons.repeat),
+                            border: OutlineInputBorder(),
+                          ),
+                          items: FrecuenciaCuentaPagar.values
+                              .where((f) => f != FrecuenciaCuentaPagar.unica)
+                              .map((frecuencia) {
+                                return DropdownMenuItem(
+                                  value: frecuencia,
+                                  child: Text(_getFrecuenciaLabel(frecuencia)),
+                                );
+                              })
+                              .toList(),
+                          onChanged: (value) {
+                            setDialogState(
+                              () => frecuenciaSeleccionada = value!,
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+
+                      // === CONFIGURACIÓN DE ALERTAS AUTOMÁTICAS ===
+                      const Divider(height: 20),
+                      const Text(
+                        'Alertas automáticas por Telegram',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+
+                      // Activar/desactivar alertas
+                      SwitchListTile(
+                        title: const Text(
+                          'Alertas automáticas activadas',
+                          style: TextStyle(fontSize: 13),
+                        ),
+                        value: avisosActivados,
+                        onChanged: (value) {
+                          setDialogState(() => avisosActivados = value);
+                        },
+                      ),
+                      const SizedBox(height: 8),
+
+                      // Días para alertas de vencimiento
+                      TextField(
+                        controller: diasAvisosCtrl,
+                        style: const TextStyle(color: Colors.black87),
+                        decoration: const InputDecoration(
+                          labelText:
+                              'Días para alertas (antes del vencimiento)',
+                          helperText: 'Ej: 15,7,3,1',
+                          prefixIcon: Icon(Icons.notifications),
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Días para alertas de descuento
+                      TextField(
+                        controller: diasAvisoDescuentoCtrl,
+                        style: const TextStyle(color: Colors.black87),
+                        decoration: const InputDecoration(
+                          labelText: 'Días para alertas de descuento',
+                          helperText: 'Ej: 10,5,2,1',
+                          prefixIcon: Icon(Icons.discount),
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Observaciones
+                      TextField(
+                        controller: observacionesCtrl,
+                        maxLines: 2,
+                        style: const TextStyle(color: Colors.black87),
+                        decoration: const InputDecoration(
+                          labelText: 'Observaciones',
+                          prefixIcon: Icon(Icons.note),
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancelar'),
+                ),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.save),
+                  label: const Text('Guardar'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFE65100),
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: () {
+                    final nombre = proveedorNombreCtrl.text.trim();
+                    final factura = numeroFacturaCtrl.text.trim();
+                    final monto = double.tryParse(montoTotalCtrl.text);
+                    final dias = int.tryParse(diasVencimientoCtrl.text) ?? 30;
+
+                    if (nombre.isEmpty ||
+                        factura.isEmpty ||
+                        monto == null ||
+                        monto <= 0) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Complete los campos obligatorios (*)'),
+                          backgroundColor: AppTheme.error,
+                        ),
+                      );
+                      return;
+                    }
+
+                    final descuento = tieneDescuento
+                        ? double.tryParse(porcentajeDescuentoCtrl.text) ?? 0.0
+                        : 0.0;
+
+                    // Parsear días de alertas
+                    List<int> diasAvisos = [15, 7, 3, 1];
+                    List<int> diasAvisoDescuento = [10, 5, 2, 1];
+                    try {
+                      diasAvisos = diasAvisosCtrl.text
+                          .split(',')
+                          .map((s) => int.parse(s.trim()))
+                          .toList();
+                    } catch (_) {
+                      diasAvisos = [15, 7, 3, 1];
+                    }
+                    try {
+                      diasAvisoDescuento = diasAvisoDescuentoCtrl.text
+                          .split(',')
+                          .map((s) => int.parse(s.trim()))
+                          .toList();
+                    } catch (_) {
+                      diasAvisoDescuento = [10, 5, 2, 1];
+                    }
+
+                    final nuevaCuenta = CuentaPorPagar(
+                      proveedorId: proveedorIdSeleccionado,
+                      proveedorNombre: nombre,
+                      numeroFactura: factura,
+                      montoTotal: monto,
+                      saldoPendiente: monto,
+                      fechaVencimiento: DateTime.now().add(
+                        Duration(days: dias),
+                      ),
+                      diasVencimiento: dias,
+                      tieneDescuento: tieneDescuento,
+                      porcentajeDescuento: descuento,
+                      estado: EstadoCuentaPagar.PENDIENTE,
+                      tipo: tipoSeleccionado,
+                      frecuencia: esRecurrente
+                          ? frecuenciaSeleccionada
+                          : FrecuenciaCuentaPagar.unica,
+                      esRecurrente: esRecurrente,
+                      observaciones: observacionesCtrl.text.trim().isNotEmpty
+                          ? observacionesCtrl.text.trim()
+                          : null,
+                      diasAvisos: diasAvisos,
+                      diasAvisoDescuento: diasAvisoDescuento,
+                      avisosActivados: avisosActivados,
+                    );
+                    Navigator.pop(context, nuevaCuenta);
+                  },
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (result != null) {
+      await _crearCuenta(result);
+    }
   }
 
-  Future<void> _guardar() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    setState(() {
-      isSubmitting = true;
-    });
-
+  Future<void> _crearCuenta(CuentaPorPagar cuenta) async {
     try {
-      final cuenta = CuentaPorPagar(
-        proveedorId:
-            'temp', // Esto debería venir de una selección de proveedores
-        proveedorNombre: _proveedorController.text,
-        numeroFactura: _facturaController.text,
-        montoTotal: double.parse(_montoController.text),
-        saldoPendiente: double.parse(_montoController.text),
-        fechaVencimiento: DateTime.now().add(
-          Duration(days: int.parse(_diasVencimientoController.text)),
-        ),
-        diasVencimiento: int.parse(_diasVencimientoController.text),
-        tieneDescuento: tieneDescuento,
-        porcentajeDescuento: tieneDescuento
-            ? double.parse(_porcentajeDescuentoController.text)
-            : 0,
-        estado: EstadoCuentaPagar.PENDIENTE,
-      );
-
       final response = await _carteraService.crearCuentaPorPagar(cuenta);
       if (response.isSuccess) {
-        Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Cuenta por pagar creada exitosamente'),
-            backgroundColor: Colors.green,
+            backgroundColor: AppTheme.primary,
           ),
         );
+        // Enviar alerta Telegram de nueva CxP
+        _enviarAlertaNuevaCxPTelegram(cuenta);
+        await _cargarCuentas();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error: ${response.message}'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppTheme.error,
           ),
         );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text('Error de conexión: $e'),
+          backgroundColor: AppTheme.error,
+        ),
       );
-    } finally {
-      setState(() {
-        isSubmitting = false;
-      });
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      backgroundColor: Colors.white,
-      title: const Text(
-        'Nueva Cuenta por Pagar',
-        style: TextStyle(color: Colors.black87),
-      ),
-      content: SizedBox(
-        width: double.maxFinite,
-        child: SingleChildScrollView(
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  controller: _proveedorController,
-                  style: TextStyle(color: Colors.black87),
-                  decoration: const InputDecoration(
-                    labelText: 'Proveedor',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (value) =>
-                      value?.isEmpty == true ? 'Campo requerido' : null,
-                ),
-                const SizedBox(height: 12),
+  void _enviarAlertaNuevaCxPTelegram(CuentaPorPagar cuenta) {
+    Future.microtask(() async {
+      try {
+        await _carteraService.enviarAlertaCxPProximaVencer(cuenta);
+      } catch (_) {}
+    });
+  }
 
-                TextFormField(
-                  controller: _facturaController,
-                  style: TextStyle(color: Colors.black87),
-                  decoration: const InputDecoration(
-                    labelText: 'Número de Factura',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (value) =>
-                      value?.isEmpty == true ? 'Campo requerido' : null,
-                ),
-                const SizedBox(height: 12),
+  String _getTipoLabel(TipoCuentaPagar tipo) {
+    switch (tipo) {
+      case TipoCuentaPagar.arriendo:
+        return 'Arriendo';
+      case TipoCuentaPagar.serviciosPublicos:
+        return 'Servicios Públicos';
+      case TipoCuentaPagar.facturaProveedor:
+        return 'Factura Proveedor';
+      case TipoCuentaPagar.nomina:
+        return 'Nómina';
+      case TipoCuentaPagar.seguros:
+        return 'Seguros';
+      case TipoCuentaPagar.impuestos:
+        return 'Impuestos';
+      case TipoCuentaPagar.mantenimiento:
+        return 'Mantenimiento';
+      case TipoCuentaPagar.otros:
+        return 'Otros';
+    }
+  }
 
-                TextFormField(
-                  controller: _montoController,
-                  keyboardType: TextInputType.number,
-                  style: TextStyle(color: Colors.black87),
-                  decoration: const InputDecoration(
-                    labelText: 'Monto Total',
-                    prefixText: '\$ ',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (value) {
-                    if (value?.isEmpty == true) return 'Campo requerido';
-                    if (double.tryParse(value!) == null)
-                      return 'Monto inválido';
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 12),
+  String _getFrecuenciaLabel(FrecuenciaCuentaPagar frecuencia) {
+    switch (frecuencia) {
+      case FrecuenciaCuentaPagar.unica:
+        return 'Única';
+      case FrecuenciaCuentaPagar.mensual:
+        return 'Mensual';
+      case FrecuenciaCuentaPagar.bimestral:
+        return 'Bimestral';
+      case FrecuenciaCuentaPagar.trimestral:
+        return 'Trimestral';
+      case FrecuenciaCuentaPagar.semestral:
+        return 'Semestral';
+      case FrecuenciaCuentaPagar.anual:
+        return 'Anual';
+    }
+  }
 
-                TextFormField(
-                  controller: _diasVencimientoController,
-                  keyboardType: TextInputType.number,
-                  style: TextStyle(color: Colors.black87),
-                  decoration: const InputDecoration(
-                    labelText: 'Días para vencimiento',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (value) {
-                    if (value?.isEmpty == true) return 'Campo requerido';
-                    if (int.tryParse(value!) == null) return 'Número inválido';
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 12),
+  Future<void> _enviarAlertaTelegramManual(CuentaPorPagar cuenta) async {
+    try {
+      print('🔔 [ALERTA MANUAL CxP] Iniciando envío de alerta manual');
+      print('📋 Cuenta ID: ${cuenta.id}');
+      print('🏢 Proveedor: ${cuenta.proveedorNombre}');
+      print('💰 Saldo pendiente: ${cuenta.saldoPendiente}');
+      print('📅 Fecha vencimiento: ${cuenta.fechaVencimiento}');
+      print('⏰ Está vencida: ${cuenta.estaVencida}');
+      print('💸 Próximo a perder descuento: ${cuenta.proximoAPerderDescuento}');
+      print('🎁 Tiene descuento: ${cuenta.tieneDescuento}');
 
-                CheckboxListTile(
-                  title: const Text(
-                    'Tiene descuento por pronto pago',
-                    style: TextStyle(color: Colors.black87),
-                  ),
-                  value: tieneDescuento,
-                  onChanged: (value) {
-                    setState(() {
-                      tieneDescuento = value ?? false;
-                    });
-                  },
-                ),
+      String tipoAlerta = '';
+      if (cuenta.estaVencida) {
+        tipoAlerta = 'VENCIDA';
+        print('📤 [ALERTA] Tipo: CUENTA VENCIDA');
+        print('📨 Enviando a: enviarAlertaCxPVencida()');
+        await _carteraService.enviarAlertaCxPVencida(cuenta);
+      } else if (cuenta.proximoAPerderDescuento) {
+        tipoAlerta = 'DESCUENTO EN RIESGO';
+        print('📤 [ALERTA] Tipo: DESCUENTO EN RIESGO');
+        print('📨 Enviando a: enviarAlertaCxPDescuentoRiesgo()');
+        await _carteraService.enviarAlertaCxPDescuentoRiesgo(cuenta);
+      } else {
+        tipoAlerta = 'PRÓXIMA A VENCER';
+        print('📤 [ALERTA] Tipo: PRÓXIMA A VENCER');
+        print('📨 Enviando a: enviarAlertaCxPProximaVencer()');
+        await _carteraService.enviarAlertaCxPProximaVencer(cuenta);
+      }
 
-                if (tieneDescuento) ...[
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextFormField(
-                          controller: _porcentajeDescuentoController,
-                          keyboardType: TextInputType.number,
-                          style: TextStyle(color: Colors.black87),
-                          decoration: const InputDecoration(
-                            labelText: 'Porcentaje descuento',
-                            suffixText: '%',
-                            border: OutlineInputBorder(),
-                          ),
-                          validator: tieneDescuento
-                              ? (value) {
-                                  if (value?.isEmpty == true)
-                                    return 'Campo requerido';
-                                  final num = double.tryParse(value!);
-                                  if (num == null || num <= 0 || num > 100) {
-                                    return 'Porcentaje inválido';
-                                  }
-                                  return null;
-                                }
-                              : null,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: TextFormField(
-                          controller: _diasDescuentoController,
-                          keyboardType: TextInputType.number,
-                          style: TextStyle(color: Colors.black87),
-                          decoration: const InputDecoration(
-                            labelText: 'Días descuento',
-                            border: OutlineInputBorder(),
-                          ),
-                          validator: tieneDescuento
-                              ? (value) {
-                                  if (value?.isEmpty == true)
-                                    return 'Campo requerido';
-                                  if (int.tryParse(value!) == null)
-                                    return 'Número inválido';
-                                  return null;
-                                }
-                              : null,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ],
-            ),
+      print('✅ [ALERTA MANUAL CxP] Alerta enviada exitosamente');
+      print('📧 Tipo de alerta enviada: $tipoAlerta');
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Alerta $tipoAlerta enviada por Telegram'),
+            backgroundColor: AppTheme.primary,
           ),
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: isSubmitting ? null : () => Navigator.pop(context),
-          child: const Text('Cancelar'),
-        ),
-        ElevatedButton(
-          onPressed: isSubmitting ? null : _guardar,
-          child: isSubmitting
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Text('Guardar'),
-        ),
-      ],
-    );
+        );
+      }
+    } catch (e) {
+      print('❌ [ALERTA MANUAL CxP] Error al enviar alerta: $e');
+      print('💥 Stack trace: ${StackTrace.current}');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al enviar alerta: $e'),
+            backgroundColor: AppTheme.error,
+          ),
+        );
+      }
+    }
   }
 }

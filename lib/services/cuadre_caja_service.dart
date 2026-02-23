@@ -169,7 +169,8 @@ class CuadreCajaService {
       final response = await http.get(
         Uri.parse('$baseUrl/api/cuadres-caja/abiertas'),
         headers: headers,
-      );
+          )
+          .timeout(const Duration(seconds: 60));
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);

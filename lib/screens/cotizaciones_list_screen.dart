@@ -576,32 +576,34 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen> {
         // Información del negocio
         'negocioNombre': 'VERCY MOTOS',
         'negocioNit': '1002378776-7',
-        'negocioTelefono': '',
-        'negocioDireccion': 'CALDAS',
+        'negocioTelefono': '(6) 8839844',
+        'negocioDireccion': 'Carrera 19 Calle 23, Caldas - Manizales, Caldas',
         'negocioCorreo': 'juandiegocaycedo1@gmail.com',
 
-        // Información del cliente
-        'clienteNombre': cotizacion.clienteNombre ?? cotizacion.clienteId,
+        // Información del cliente - USAR DATOS COMPLETOS GUARDADOS
+        'clienteNombre': cotizacion.clienteNombre ?? 'Cliente sin nombre',
         'clienteDocumento': cotizacion.clienteId,
         'clienteCiudad': 'MANIZALES',
         'clienteTelefono': cotizacion.clienteTelefono ?? '',
+        'clienteEmail': cotizacion.clienteEmail ?? '',
+        'clienteDepartamento': 'CALDAS',
 
         // Información de la cotización
         'numeroCotizacion':
             cotizacion.numeroCotizacion ??
-            'CO-${cotizacion.id?.substring(0, 8)}',
+            'COT-${cotizacion.id?.substring(0, 8) ?? 'NEW'}',
         'fechaCotizacion':
             '${cotizacion.fecha.year}-${cotizacion.fecha.month.toString().padLeft(2, '0')}-${cotizacion.fecha.day.toString().padLeft(2, '0')}',
         'fechaVence': cotizacion.fechaVencimiento != null
             ? '${cotizacion.fechaVencimiento!.year}-${cotizacion.fechaVencimiento!.month.toString().padLeft(2, '0')}-${cotizacion.fechaVencimiento!.day.toString().padLeft(2, '0')}'
             : '',
 
-        // Items - Convertir de ItemCotizacion a formato esperado
+        // Items - Convertir de ItemCotizacion a formato esperado POR EL PDF
         'items': cotizacion.items
             .map(
               (item) => {
-                'codigo': item.productoId,
-                'detalle': item.productoNombre ?? item.productoId,
+                'codigo': item.codigoProducto ?? item.productoId,
+                'detalle': item.productoNombre ?? 'Producto sin nombre',
                 'cantidad': item.cantidad,
                 'valorUnit': item.precioUnitario,
                 'dcto': item.porcentajeDescuento,
@@ -609,6 +611,7 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen> {
                 'iva': item.porcentajeImpuesto,
                 'valorIVA': item.valorImpuesto,
                 'subtotal': item.subtotal,
+                'total': item.valorTotal,
               },
             )
             .toList(),
@@ -617,6 +620,7 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen> {
         'subtotal': cotizacion.subtotal,
         'totalIva': cotizacion.totalImpuestos,
         'totalDescuentos': cotizacion.totalDescuentos,
+        'totalRetenciones': cotizacion.totalRetenciones,
         'total': cotizacion.totalFinal,
         'totalSinIva': cotizacion.subtotal - cotizacion.totalDescuentos,
         'baseImp': cotizacion.subtotal - cotizacion.totalDescuentos,

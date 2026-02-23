@@ -219,6 +219,7 @@ class Producto {
     // Campos para carga masiva
     'codigo': codigo,
     'productoOServicio': productoOServicio,
+    'tipoItem': productoOServicio?.toLowerCase(),
     'controlInventario': controlInventario,
     'porcentajeImpuesto': porcentajeImpuesto,
     'inventarioBajo': inventarioBajo,
@@ -304,7 +305,8 @@ class Producto {
           : [],
       // Campos para carga masiva
       codigo: json['codigo']?.toString(),
-      productoOServicio: json['productoOServicio']?.toString(),
+      productoOServicio:
+          json['productoOServicio']?.toString() ?? json['tipoItem']?.toString(),
       controlInventario: json['controlInventario']?.toString(),
       porcentajeImpuesto: (json['porcentajeImpuesto'] as num?)?.toDouble(),
       inventarioBajo: json['inventarioBajo'] as int?,
@@ -397,6 +399,10 @@ class Producto {
       codigoBarras: json['codigoBarras']?.toString(),
       // ✅ FIX: Agregar campo codigo que faltaba
       codigo: json['codigo']?.toString(),
+      // ✅ FIX: Parsear productoOServicio/tipoItem para que esté disponible al editar
+      productoOServicio:
+          json['productoOServicio']?.toString() ?? json['tipoItem']?.toString(),
+      controlInventario: json['controlInventario']?.toString(),
     );
   }
 

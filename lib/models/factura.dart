@@ -11,6 +11,9 @@ class Factura {
   final String? clienteNit;
   final String? clienteTelefono;
   final String? clienteDireccion;
+  final String? clienteDepartamento;
+  final String? clienteCiudad;
+  final String? clienteCorreo;
   final double total;
   final double? descuento;
   final double subtotal;
@@ -33,6 +36,9 @@ class Factura {
     this.clienteNit,
     this.clienteTelefono,
     this.clienteDireccion,
+    this.clienteDepartamento,
+    this.clienteCiudad,
+    this.clienteCorreo,
     required this.total,
     this.descuento = 0.0,
     required this.subtotal,
@@ -57,6 +63,9 @@ class Factura {
     String? clienteNit,
     String? clienteTelefono,
     String? clienteDireccion,
+    String? clienteDepartamento,
+    String? clienteCiudad,
+    String? clienteCorreo,
     double? total,
     double? descuento,
     double? subtotal,
@@ -79,6 +88,9 @@ class Factura {
       clienteNit: clienteNit ?? this.clienteNit,
       clienteTelefono: clienteTelefono ?? this.clienteTelefono,
       clienteDireccion: clienteDireccion ?? this.clienteDireccion,
+      clienteDepartamento: clienteDepartamento ?? this.clienteDepartamento,
+      clienteCiudad: clienteCiudad ?? this.clienteCiudad,
+      clienteCorreo: clienteCorreo ?? this.clienteCorreo,
       total: total ?? this.total,
       descuento: descuento ?? this.descuento,
       subtotal: subtotal ?? this.subtotal,
@@ -105,6 +117,10 @@ class Factura {
       if (clienteNit != null) 'clienteNit': clienteNit,
       if (clienteTelefono != null) 'clienteTelefono': clienteTelefono,
       if (clienteDireccion != null) 'clienteDireccion': clienteDireccion,
+      if (clienteDepartamento != null)
+        'clienteDepartamento': clienteDepartamento,
+      if (clienteCiudad != null) 'clienteCiudad': clienteCiudad,
+      if (clienteCorreo != null) 'clienteCorreo': clienteCorreo,
       'total': total,
       'descuento': descuento,
       'subtotal': subtotal,
@@ -163,6 +179,9 @@ class Factura {
       clienteNit: json['clienteNit'],
       clienteTelefono: json['clienteTelefono'],
       clienteDireccion: json['clienteDireccion'],
+      clienteDepartamento: json['clienteDepartamento'],
+      clienteCiudad: json['clienteCiudad'],
+      clienteCorreo: json['clienteCorreo'],
       total: json['total']?.toDouble() ?? 0.0,
       descuento: json['descuento']?.toDouble() ?? 0.0,
       subtotal: json['subtotal']?.toDouble() ?? 0.0,
@@ -187,6 +206,9 @@ class Factura {
     String? clienteNit,
     String? clienteTelefono,
     String? clienteDireccion,
+    String? clienteDepartamento,
+    String? clienteCiudad,
+    String? clienteCorreo,
     double? descuentoAdicional,
   }) {
     // Usa el descuento del pedido si no se proporciona uno adicional
@@ -197,6 +219,9 @@ class Factura {
       clienteNit: clienteNit,
       clienteTelefono: clienteTelefono,
       clienteDireccion: clienteDireccion,
+      clienteDepartamento: clienteDepartamento,
+      clienteCiudad: clienteCiudad,
+      clienteCorreo: clienteCorreo,
       total: pedido.total - descuentoTotal,
       descuento: descuentoTotal,
       subtotal: pedido.total,

@@ -7,12 +7,15 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:barcode/barcode.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../models/producto.dart';
 import '../models/categoria.dart';
 import '../services/producto_service.dart';
+import '../providers/datos_cache_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/vercy_sidebar_layout.dart';
 import '../utils/format_utils.dart';
+import '../utils/file_download_helper.dart';
 
 class ProductosListScreen extends StatefulWidget {
   const ProductosListScreen({super.key});
@@ -208,6 +211,33 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.info,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                    SizedBox(width: 12),
+                    ElevatedButton.icon(
+                      onPressed: () => _descargarProductosExcel(tipo: 'bodega'),
+                      icon: Icon(Icons.download, color: Colors.white),
+                      label: Text(
+                        'Descargar - Bodega',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                    ElevatedButton.icon(
+                      onPressed: () =>
+                          _descargarProductosExcel(tipo: 'almacen'),
+                      icon: Icon(Icons.download, color: Colors.white),
+                      label: Text(
+                        'Descargar - Almacén',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.deepOrange,
                         foregroundColor: Colors.white,
                       ),
                     ),
@@ -668,6 +698,21 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
                 Container(
                   width: 32,
                   height: 32,
+                  margin: EdgeInsets.only(right: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade600,
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    padding: EdgeInsets.zero,
+                    icon: Icon(Icons.history, color: Colors.white, size: 16),
+                    onPressed: () => _mostrarMovimientosStock(producto),
+                    tooltip: 'Movimientos de stock',
+                  ),
+                ),
+                Container(
+                  width: 32,
+                  height: 32,
                   decoration: BoxDecoration(
                     color: Colors.red.shade600,
                     shape: BoxShape.circle,
@@ -906,12 +951,26 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
       ),
     );
 
+    // Guardar los valores locales que ya tenemos (productoOServicio puede venir correcto de la lista)
+    final productoOServicioLocal = producto.productoOServicio;
+    print('🔍 [_editarProducto] productoOServicio local: "$productoOServicioLocal"');
+
     _productoService
         .getProducto(producto.id)
         .then((productoCompleto) {
           if (productoCompleto != null) {
             ScaffoldMessenger.of(context).clearSnackBars();
-            _mostrarFormularioProductoCompleto(producto: productoCompleto);
+            // ✅ FIX: Si el producto del servidor no tiene productoOServicio pero el local sí, preservar el local
+            Producto productoFinal = productoCompleto;
+            if ((productoCompleto.productoOServicio == null || productoCompleto.productoOServicio!.isEmpty) 
+                && productoOServicioLocal != null && productoOServicioLocal.isNotEmpty) {
+              productoFinal = productoCompleto.copyWith(
+                productoOServicio: productoOServicioLocal,
+              );
+              print('🔍 [_editarProducto] productoOServicio restaurado del local: "$productoOServicioLocal"');
+            }
+            print('🔍 [_editarProducto] productoFinal.productoOServicio: "${productoFinal.productoOServicio}"');
+            _mostrarFormularioProductoCompleto(producto: productoFinal);
           } else {
             ScaffoldMessenger.of(context).clearSnackBars();
             ScaffoldMessenger.of(context).showSnackBar(
@@ -1026,14 +1085,16 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
       text: isEditing ? (producto.localizacion ?? '') : '',
     );
 
-    // Estados para dropdowns
+    // Estados para dropdowns - usar listas para mutabilidad
     String? categoriaSeleccionada = isEditing ? producto.categoria?.id : null;
-    String tipoSeleccionado = isEditing
-        ? (producto.productoOServicio ?? 'PRODUCTO')
-        : 'PRODUCTO';
-    String controlInventarioSeleccionado = isEditing
+    final tipoSeleccionado = [isEditing
+        ? (producto.productoOServicio?.toUpperCase() ?? 'PRODUCTO')
+        : 'PRODUCTO'];
+    print('🔍 [DIALOG INIT] tipoSeleccionado inicial: "${tipoSeleccionado[0]}"');
+    print('🔍 [DIALOG INIT] producto.productoOServicio: "${producto?.productoOServicio}"');
+    final controlInventarioSeleccionado = [isEditing
         ? (producto.controlInventario ?? 'SI')
-        : 'SI';
+        : 'SI'];
 
     showDialog(
       context: context,
@@ -1082,9 +1143,10 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
                               descripcionController,
                               codigoController,
                               codigoBarrasController,
-                              tipoSeleccionado,
+                              tipoSeleccionado[0],
                               categoriaSeleccionada,
                               setDialogState,
+                              tipoSeleccionado,
                             ),
                             // Tab 2: Precios
                             _buildTabPrecios(
@@ -1115,8 +1177,9 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
                               ubicacion3Controller,
                               ubicacion4Controller,
                               localizacionController,
-                              controlInventarioSeleccionado,
+                              controlInventarioSeleccionado[0],
                               setDialogState,
+                              controlInventarioSeleccionado,
                             ),
                           ],
                         ),
@@ -1147,15 +1210,16 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
                       return;
                     }
 
-                    Navigator.pop(context);
-                    await _guardarProductoCompleto(
+                    // ✅ Primero guardar el producto y actualizar la lista
+                    print('🔍 [GUARDAR] tipoSeleccionado antes de guardar: "${tipoSeleccionado[0]}"');
+                    final guardadoExitoso = await _guardarProductoCompleto(
                       producto: producto,
                       // Información básica
                       nombre: nombreController.text.trim(),
                       descripcion: descripcionController.text.trim(),
                       codigo: codigoController.text.trim(),
                       codigoBarras: codigoBarrasController.text.trim(),
-                      tipo: tipoSeleccionado,
+                      tipo: tipoSeleccionado[0],
                       // Precios
                       precio: double.tryParse(precioController.text) ?? 0,
                       costo: double.tryParse(costoController.text) ?? 0,
@@ -1184,7 +1248,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
                       nombreProveedor: nombreProveedorController.text.trim(),
                       nitProveedor: nitProveedorController.text.trim(),
                       // Inventario
-                      controlInventario: controlInventarioSeleccionado,
+                      controlInventario: controlInventarioSeleccionado[0],
                       inventarioBajo:
                           int.tryParse(inventarioBajoController.text) ?? 5,
                       inventarioOptimo:
@@ -1198,6 +1262,11 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
                       ubicacion4: ubicacion4Controller.text.trim(),
                       localizacion: localizacionController.text.trim(),
                     );
+                    
+                    // ✅ Cerrar el diálogo solo si se guardó exitosamente
+                    if (guardadoExitoso && context.mounted) {
+                      Navigator.pop(context);
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.primary,
@@ -1236,7 +1305,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
     // Estado para categoría seleccionada
     String? categoriaSeleccionada = isEditing ? producto.categoria?.id : null;
     String tipoSeleccionado = isEditing
-        ? (producto.productoOServicio ?? 'PRODUCTO')
+        ? (producto.productoOServicio?.toUpperCase() ?? 'PRODUCTO')
         : 'PRODUCTO';
 
     showDialog(
@@ -1291,8 +1360,12 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
                           ),
                         ],
                         onChanged: (value) {
+                          print('🔍 [DROPDOWN LIST] Cambio detectado: "$value"');
                           setDialogState(
-                            () => tipoSeleccionado = value ?? 'PRODUCTO',
+                            () {
+                              tipoSeleccionado = value ?? 'PRODUCTO';
+                              print('🔍 [DROPDOWN LIST] tipoSeleccionado actualizado: "$tipoSeleccionado"');
+                            },
                           );
                         },
                       ),
@@ -1442,6 +1515,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
                     }
 
                     Navigator.pop(context);
+                    print('🔍 [GUARDA PRODUCTO LIST] tipo a guardar: "$tipoSeleccionado"');
                     await _guardarProducto(
                       producto: producto,
                       nombre: nombreController.text.trim(),
@@ -1478,6 +1552,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
     required String tipo,
   }) async {
     try {
+      print('🔍 [_guardarProducto] Parámetro tipo recibido: "$tipo"');
       final service = ProductoService();
 
       // Encontrar la categoría seleccionada
@@ -1491,6 +1566,8 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
 
       if (producto != null) {
         // Editar producto existente
+        print('🔍 [_guardarProducto] Editando producto existente');
+        print('🔍 [_guardarProducto] tipo.toLowerCase(): "${tipo.toLowerCase()}"');
         final productoActualizado = Producto(
           id: producto.id,
           nombre: nombre,
@@ -1499,7 +1576,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
           precio: precio,
           costo: costo,
           categoria: categoriaSeleccionada,
-          productoOServicio: tipo,
+          productoOServicio: tipo.toLowerCase(),
           almacen: producto.almacen,
           bodega: producto.bodega,
           inventarioBajo: producto.inventarioBajo,
@@ -1507,6 +1584,8 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
           impuestos: producto.impuestos,
           utilidad: producto.utilidad,
         );
+        
+        print('🔍 [_guardarProducto] productoActualizado.productoOServicio: "${productoActualizado.productoOServicio}"');
 
         await service.updateProducto(productoActualizado);
 
@@ -1526,7 +1605,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
           precio: precio,
           costo: costo,
           categoria: categoriaSeleccionada,
-          productoOServicio: tipo,
+          productoOServicio: tipo.toLowerCase(),
           almacen: 0,
           bodega: 0,
           inventarioBajo: 5,
@@ -2221,7 +2300,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
   }
 
   // Nueva función para guardar producto con todos los campos
-  Future<void> _guardarProductoCompleto({
+  Future<bool> _guardarProductoCompleto({
     Producto? producto,
     // Información básica
     required String nombre,
@@ -2258,6 +2337,8 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
     required String ubicacion4,
     required String localizacion,
   }) async {
+    print('🔍 [_guardarProductoCompleto] Recibido tipo: "$tipo"');
+    print('🔍 [_guardarProductoCompleto] Convirtiendo a lowercase: "${tipo.toLowerCase()}"');
     try {
       final service = ProductoService();
 
@@ -2281,7 +2362,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
           precio: precio,
           costo: costo,
           categoria: categoriaSeleccionada,
-          productoOServicio: tipo,
+          productoOServicio: tipo.toLowerCase(),
           porcentajeImpuesto: porcentajeImpuesto,
           precioVentaOpc1: precioVentaOpc1,
           precioVentaOpc2: precioVentaOpc2,
@@ -2313,6 +2394,17 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
         );
 
         await service.updateProducto(productoActualizado);
+
+        // ✅ Actualizar el producto en la lista local
+        if (mounted) {
+          setState(() {
+            final index = _productos.indexWhere((p) => p.id == producto.id);
+            if (index != -1) {
+              _productos[index] = productoActualizado;
+              _aplicarFiltros();
+            }
+          });
+        }
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -2362,38 +2454,71 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
           utilidad: precio - costo,
         );
 
+        print('🔍 Creando producto: ${nuevoProducto.nombre}');
         final productoCreado = await service.addProducto(nuevoProducto);
+        print('🔍 Producto recibido del servicio, ID: "${productoCreado.id}"');
 
-        // ✅ NUEVO: Agregar el producto a la lista local sin esperar recargar cache
-        if (mounted) {
-          setState(() {
-            // Agregar al inicio con el ID asignado por el backend
-            _productos.insert(0, productoCreado);
-            _aplicarFiltros();
-          });
+        // ✅ Verificar que el producto tenga un ID válido
+        if (productoCreado.id.isEmpty) {
+          print(
+            '⚠️ WARNING: El producto creado no tiene ID. Recargando lista completa...',
+          );
+          // Si no hay ID válido, recargar toda la lista
+          await _cargarDatos();
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Producto creado (recargando lista)'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        } else {
+          // ✅ ID válido: Agregar el producto a la lista local sin esperar recargar cache
+          if (mounted) {
+            final cacheProvider = Provider.of<DatosCacheProvider>(
+              context,
+              listen: false,
+            );
+
+            setState(() {
+              // Agregar al inicio con el ID asignado por el backend
+              _productos.insert(0, productoCreado);
+              _aplicarFiltros();
+            });
+
+            // Actualizar también el Provider cache para futuras referencias
+            cacheProvider.agregarProductoAlCache(productoCreado);
+
+            print(
+              '✅ Producto agregado a la lista local con ID: ${productoCreado.id}',
+            );
+          }
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Producto creado correctamente'),
+              backgroundColor: AppTheme.success,
+            ),
+          );
         }
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Producto creado correctamente'),
-            backgroundColor: AppTheme.success,
-          ),
-        );
       }
 
       // ⚡ OPTIMIZADO: Ya no recargar todo, el producto ya está en la lista local
+      return true; // ✅ Retornar éxito
     } catch (e) {
+      print('❌ Error al guardar producto: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error al guardar producto: $e'),
           backgroundColor: Colors.red,
         ),
       );
+      return false; // ❌ Retornar error
     }
   }
 
   // Funciones auxiliares para el formulario completo con tabs
-  Widget _buildTabBasico(TextEditingController nombreController, TextEditingController descripcionController, TextEditingController codigoController, TextEditingController codigoBarrasController, String tipoSeleccionado, String? categoriaSeleccionada, StateSetter setState) {
+  Widget _buildTabBasico(TextEditingController nombreController, TextEditingController descripcionController, TextEditingController codigoController, TextEditingController codigoBarrasController, String tipoSeleccionado, String? categoriaSeleccionada, StateSetter setState, List<String> tipoSeleccionadoList) {
     return Padding(
       padding: EdgeInsets.all(16),
       child: SingleChildScrollView(
@@ -2407,7 +2532,13 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
                     'Tipo *',
                     tipoSeleccionado,
                     ['PRODUCTO', 'SERVICIO'],
-                    (value) => setState(() => tipoSeleccionado = value ?? 'PRODUCTO'),
+                    (value) {
+                      print('🔍 [DROPDOWN] Cambio de tipo detectado: "$value"');
+                      setState(() {
+                        tipoSeleccionadoList[0] = value ?? 'PRODUCTO';
+                        print('🔍 [DROPDOWN] tipoSeleccionado actualizado a: "${tipoSeleccionadoList[0]}"');
+                      });
+                    },
                   ),
                 ),
                 SizedBox(width: 16),
@@ -2516,7 +2647,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
     );
   }
 
-  Widget _buildTabInventario(TextEditingController almacenController, TextEditingController bodegaController, TextEditingController inventarioBajoController, TextEditingController inventarioOptimoController, TextEditingController ubicacion1Controller, TextEditingController ubicacion2Controller, TextEditingController ubicacion3Controller, TextEditingController ubicacion4Controller, TextEditingController localizacionController, String controlInventarioSeleccionado, StateSetter setState) {
+  Widget _buildTabInventario(TextEditingController almacenController, TextEditingController bodegaController, TextEditingController inventarioBajoController, TextEditingController inventarioOptimoController, TextEditingController ubicacion1Controller, TextEditingController ubicacion2Controller, TextEditingController ubicacion3Controller, TextEditingController ubicacion4Controller, TextEditingController localizacionController, String controlInventarioSeleccionado, StateSetter setState, List<String> controlInventarioSeleccionadoList) {
     return Padding(
       padding: EdgeInsets.all(16),
       child: SingleChildScrollView(
@@ -2532,7 +2663,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
                     'Control Inventario',
                     controlInventarioSeleccionado,
                     ['SI', 'NO'],
-                    (value) => setState(() => controlInventarioSeleccionado = value ?? 'SI'),
+                    (value) => setState(() => controlInventarioSeleccionadoList[0] = value ?? 'SI'),
                   ),
                 ),
                 SizedBox(width: 16),
@@ -3287,6 +3418,200 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
             ),
         ],
       ),
+    );
+  }
+
+  /// Descarga productos en formato Excel
+  Future<void> _descargarProductosExcel({required String tipo}) async {
+    try {
+      // Mostrar diálogo de carga
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (c) => AlertDialog(
+            backgroundColor: AppTheme.cardBg,
+            content: Row(
+              children: [
+                CircularProgressIndicator(color: AppTheme.primary),
+                SizedBox(width: 16),
+                Text(
+                  'Descargando productos...',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+
+      // Descargar archivo
+      final bytes = await _productoService.descargarProductosExcel();
+
+      // Cerrar diálogo de carga
+      if (mounted) Navigator.pop(context);
+
+      // Descargar el archivo
+      final timestamp = DateTime.now();
+      final filename =
+          'productos_${tipo}_${timestamp.year}${timestamp.month.toString().padLeft(2, '0')}${timestamp.day.toString().padLeft(2, '0')}_${timestamp.hour.toString().padLeft(2, '0')}${timestamp.minute.toString().padLeft(2, '0')}.xlsx';
+
+      FileDownloadHelper.downloadFile(
+        bytes,
+        filename: filename,
+        mimeType:
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      );
+
+      // Mostrar éxito
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Archivo descargado: $filename'),
+            backgroundColor: AppTheme.success,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      // Cerrar diálogo si está abierto
+      if (mounted) {
+        try {
+          Navigator.pop(context);
+        } catch (_) {}
+      }
+
+      // Mostrar error
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error descargando productos: $e'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
+  /// Muestra el historial de movimientos de stock del producto
+  void _mostrarMovimientosStock(Producto producto) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return FutureBuilder(
+          future: _productoService.getMovimientosStock(producto.id),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return AlertDialog(
+                title: Text('Movimientos: ${producto.nombre}'),
+                content: const Center(child: CircularProgressIndicator()),
+              );
+            }
+
+            if (snapshot.hasError) {
+              return AlertDialog(
+                title: Text('Movimientos: ${producto.nombre}'),
+                content: Text('Error: ${snapshot.error}'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Cerrar'),
+                  ),
+                ],
+              );
+            }
+
+            final response = snapshot.data;
+            final movimientos = response?.data ?? [];
+
+            return AlertDialog(
+              title: Text('Movimientos: ${producto.nombre}'),
+              content: SizedBox(
+                width: 600,
+                height: 400,
+                child: movimientos.isEmpty
+                    ? const Center(child: Text('Sin movimientos registrados'))
+                    : ListView.builder(
+                        itemCount: movimientos.length,
+                        itemBuilder: (context, index) {
+                          final mov = movimientos[index];
+                          final esEntrada = mov.cantidad > 0;
+
+                          return Card(
+                            margin: const EdgeInsets.symmetric(
+                              vertical: 4,
+                              horizontal: 0,
+                            ),
+                            child: ListTile(
+                              leading: Container(
+                                decoration: BoxDecoration(
+                                  color: esEntrada
+                                      ? Colors.green.shade700
+                                      : Colors.red.shade700,
+                                  borderRadius: BorderRadius.circular(50),
+                                ),
+                                padding: const EdgeInsets.all(8),
+                                child: Text(
+                                  esEntrada
+                                      ? '+${mov.cantidad}'
+                                      : '${mov.cantidad}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                              title: Text(
+                                mov.tipoLabel,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    DateFormat(
+                                      'dd/MM/yyyy HH:mm',
+                                    ).format(mov.fecha),
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
+                                  if (mov.usuario != null)
+                                    Text(
+                                      'Por: ${mov.usuario}',
+                                      style: const TextStyle(fontSize: 11),
+                                    ),
+                                  if (mov.observaciones != null &&
+                                      mov.observaciones!.isNotEmpty)
+                                    Text(
+                                      mov.observaciones!,
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        fontStyle: FontStyle.italic,
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                ],
+                              ),
+                              isThreeLine: true,
+                            ),
+                          );
+                        },
+                      ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cerrar'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 }

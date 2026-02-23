@@ -256,6 +256,22 @@ class DatosCacheProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Invalidar solo del caché de productos (para refetch rápido después de crear/editar)
+  void limpiarProductos() {
+    _productos = null;
+    _ultimaCargaProductos = null;
+    notifyListeners();
+  }
+
+  /// Agregar un nuevo producto al cache existente (sin refetch!)
+  void agregarProductoAlCache(Producto nuevoProducto) {
+    if (_productos != null) {
+      // Agregar al inicio de la lista
+      _productos!.insert(0, nuevoProducto);
+      notifyListeners();
+    }
+  }
+
   /// ⚡ ULTRA RÁPIDO: Carga inicial optimizada (solo productos sin imágenes)
   Future<void> initializeRapido() async {
     _isLoadingProductos = true;

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import '../models/cliente.dart';
 import '../models/factura.dart';
 import '../models/pedido.dart';
 import '../models/negocio_info.dart';
+import '../services/cliente_service.dart';
 import '../services/factura_service.dart';
 import '../services/pedido_service.dart';
 import '../services/pdf_service.dart';
@@ -19,6 +21,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
   final PedidoService _pedidoService = PedidoService();
   final PDFService _pdfService = PDFService();
   final NegocioInfoService _negocioInfoService = NegocioInfoService();
+  final ClienteService _clienteService = ClienteService();
 
   List<Factura> _facturas = [];
   List<Pedido> _pedidosPagados = [];
@@ -679,8 +682,117 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
     );
   }
 
+  /// Buscar el cliente completo desde la API por nombre o documento
+  Future<Cliente?> _buscarClienteCompleto(
+    String? nombreCliente, {
+    String? nit,
+  }) async {
+    if (nombreCliente == null ||
+        nombreCliente.isEmpty ||
+        nombreCliente == 'CONSUMIDOR FINAL') {
+      return null;
+    }
+    try {
+      print('🔍 Buscando cliente: "$nombreCliente" | NIT: "$nit"');
+
+      // 1) Intentar buscar por NIT/documento si está disponible
+      if (nit != null && nit.isNotEmpty && nit != '222222222-2') {
+        String docLimpio = nit
+            .replaceAll(RegExp(r'^(CC|NIT|CE|TI|Pasaporte)\s*'), '')
+            .trim();
+        if (docLimpio.contains('-')) {
+          docLimpio = docLimpio.split('-').first.trim();
+        }
+        print('📋 Buscando por documento: "$docLimpio"');
+        final clientePorDoc = await _clienteService.obtenerClientePorDocumento(
+          docLimpio,
+        );
+        if (clientePorDoc != null) {
+          print(
+            '✅ Cliente encontrado por documento: ${clientePorDoc.nombreCompleto}',
+          );
+          return clientePorDoc;
+        }
+        print('⚠️ No se encontró cliente por documento');
+      }
+
+      // 2) Buscar por nombre completo
+      final nombreLimpio = nombreCliente.trim().replaceAll(RegExp(r'\s+'), ' ');
+      print('📝 Buscando por nombre: "$nombreLimpio"');
+      var resultados = await _clienteService.buscarClientes(nombreLimpio);
+      print('📊 Resultados encontrados: ${resultados.length}');
+      if (resultados.isNotEmpty) {
+        // Buscar coincidencia exacta primero
+        final exacto = resultados.where(
+          (c) => c.nombreCompleto.toLowerCase() == nombreLimpio.toLowerCase(),
+        );
+        if (exacto.isNotEmpty) {
+          print(
+            '✅ Cliente encontrado (coincidencia exacta): ${exacto.first.nombreCompleto}',
+          );
+          return exacto.first;
+        }
+        print(
+          '✅ Cliente encontrado (primer resultado): ${resultados.first.nombreCompleto}',
+        );
+        return resultados.first;
+      }
+
+      // 3) Si no encontró, buscar por partes del nombre (primer palabra)
+      final partes = nombreLimpio.split(' ');
+      if (partes.length > 1) {
+        print(
+          '🔄 Intentando búsqueda por partes del nombre: "${partes.first}"',
+        );
+        // Intentar con el primer nombre
+        resultados = await _clienteService.buscarClientes(partes.first);
+        print('📊 Resultados por primer nombre: ${resultados.length}');
+        if (resultados.isNotEmpty) {
+          // Buscar el que mejor coincida con el nombre completo
+          final coincidencia = resultados.where(
+            (c) => c.nombreCompleto.toLowerCase() == nombreLimpio.toLowerCase(),
+          );
+          if (coincidencia.isNotEmpty) {
+            print(
+              '✅ Cliente encontrado (coincidencia exacta en búsqueda parcial): ${coincidencia.first.nombreCompleto}',
+            );
+            return coincidencia.first;
+          }
+          // Si no hay exacta, buscar que contenga el nombre
+          final parcial = resultados.where(
+            (c) =>
+                c.nombreCompleto.toLowerCase().contains(
+                  partes.first.toLowerCase(),
+                ) &&
+                c.nombreCompleto.toLowerCase().contains(
+                  partes.last.toLowerCase(),
+                ),
+          );
+          if (parcial.isNotEmpty) {
+            print(
+              '✅ Cliente encontrado (coincidencia parcial): ${parcial.first.nombreCompleto}',
+            );
+            return parcial.first;
+          }
+        }
+      }
+
+      print('❌ No se encontró el cliente: "$nombreCliente"');
+    } catch (e) {
+      print('⚠️ Error buscando cliente completo: $e');
+    }
+    return null;
+  }
+
   Future<Map<String, dynamic>> _crearResumenDocumento(dynamic documento) async {
-    final negocioInfo = await _negocioInfoService.getNegocioInfo();
+    // Intentar obtener info del negocio, pero no fallar si no existe
+    NegocioInfo? negocioInfo;
+    try {
+      negocioInfo = await _negocioInfoService.getNegocioInfo();
+    } catch (e) {
+      print('⚠️ No se pudo obtener info del negocio: $e');
+      // Continuar sin negocioInfo, usar valores por defecto
+    }
 
     // Helper para formatear fecha (formato YYYY-MM-DD)
     String formatearFecha(DateTime? fecha) {
@@ -697,6 +809,23 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
 
     if (documento is Pedido) {
       final fechaDoc = documento.fechaPago ?? documento.fecha;
+
+      // Buscar datos completos del cliente SOLO si no están guardados en datosAdicionales
+      Cliente? clienteCompleto;
+      final datosGuardados = documento.datosAdicionales;
+
+      print('📋 DEBUG - Datos guardados en pedido: $datosGuardados');
+      print('📋 DEBUG - Cliente en pedido: ${documento.cliente}');
+
+      if (datosGuardados == null ||
+          datosGuardados['clienteDepartamento'] == null ||
+          datosGuardados['clienteCiudad'] == null) {
+        print('⚠️ Datos incompletos, buscando cliente en API...');
+        clienteCompleto = await _buscarClienteCompleto(documento.cliente);
+      } else {
+        print('✅ Usando datos guardados del cliente');
+      }
+
       resumen = {
         // Datos del negocio
         'nombreNegocio': negocioInfo?.nombre ?? 'VERCY MOTOS',
@@ -713,8 +842,35 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
         'fecha': formatearFecha(fechaDoc),
         'hora': formatearHora(fechaDoc),
         'fechaVencimiento': formatearFecha(fechaDoc),
-        'cliente': documento.cliente ?? 'CONSUMIDOR FINAL',
-        'clienteNit': '222222222-2',
+        'cliente':
+            datosGuardados?['clienteNombreCompleto'] ??
+            documento.cliente ??
+            'CONSUMIDOR FINAL',
+        'clienteNit':
+            datosGuardados?['clienteNit'] ??
+            (clienteCompleto != null
+                ? '${clienteCompleto.tipoIdentificacion} ${clienteCompleto.numeroIdentificacion}${clienteCompleto.digitoVerificacion != null ? "-${clienteCompleto.digitoVerificacion}" : ""}'
+                : ''),
+        'clienteDireccion':
+            datosGuardados?['clienteDireccion'] ??
+            clienteCompleto?.direccion ??
+            '',
+        'clienteTelefono':
+            datosGuardados?['clienteTelefono'] ??
+            clienteCompleto?.telefono ??
+            '',
+        'clienteCorreo':
+            datosGuardados?['clienteCorreo'] ?? clienteCompleto?.correo ?? '',
+        'clienteDepartamento':
+            datosGuardados?['clienteDepartamento'] ??
+            clienteCompleto?.departamento ??
+            '',
+        'clienteCiudad':
+            datosGuardados?['clienteCiudad'] ?? clienteCompleto?.ciudad ?? '',
+        'clienteTipoId':
+            datosGuardados?['clienteTipoId'] ??
+            clienteCompleto?.tipoIdentificacion ??
+            'CC',
         'productos': documento.items
             .map(
               (item) => {
@@ -741,6 +897,18 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
       final subtotalCalc = documento.subtotal;
       final ivaCalc = documento.total - documento.subtotal;
       final fechaDoc = documento.fechaCreacion ?? DateTime.now();
+
+      // Buscar datos completos del cliente SOLO si no están guardados en la factura
+      Cliente? clienteCompleto;
+      if (documento.clienteDepartamento == null ||
+          documento.clienteCiudad == null ||
+          documento.clienteCorreo == null) {
+        clienteCompleto = await _buscarClienteCompleto(
+          documento.clienteNombre.isNotEmpty ? documento.clienteNombre : null,
+          nit: documento.clienteNit,
+        );
+      }
+
       resumen = {
         // Datos del negocio
         'nombreNegocio': negocioInfo?.nombre ?? 'VERCY MOTOS',
@@ -760,7 +928,24 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
         'cliente': documento.clienteNombre.isNotEmpty
             ? documento.clienteNombre
             : 'CONSUMIDOR FINAL',
-        'clienteNit': '222222222-2',
+        'clienteNit':
+            documento.clienteNit ??
+            (clienteCompleto != null
+                ? '${clienteCompleto.tipoIdentificacion} ${clienteCompleto.numeroIdentificacion}${clienteCompleto.digitoVerificacion != null ? "-${clienteCompleto.digitoVerificacion}" : ""}'
+                : ''),
+        'clienteDireccion':
+            documento.clienteDireccion ?? clienteCompleto?.direccion ?? '',
+        'clienteTelefono':
+            documento.clienteTelefono ?? clienteCompleto?.telefono ?? '',
+        'clienteCorreo':
+            documento.clienteCorreo ?? clienteCompleto?.correo ?? '',
+        'clienteDepartamento':
+            documento.clienteDepartamento ??
+            clienteCompleto?.departamento ??
+            '',
+        'clienteCiudad':
+            documento.clienteCiudad ?? clienteCompleto?.ciudad ?? '',
+        'clienteTipoId': clienteCompleto?.tipoIdentificacion ?? 'CC',
         'productos':
             documento.items
                 ?.map(

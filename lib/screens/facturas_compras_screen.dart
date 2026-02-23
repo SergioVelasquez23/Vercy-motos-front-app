@@ -905,16 +905,16 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
 
       if (cacheProvider.productos != null &&
           cacheProvider.productos!.isNotEmpty) {
-        // Usar productos del cache (mucho más rápido)
+        // ✅ El cache está disponible - asignar sin setState innecesarios
+        _productos = cacheProvider.productos!;
         if (mounted) {
-          setState(() {
-            _productos = cacheProvider.productos!;
-            _cargandoProductos = false;
-          });
+          setState(
+            () => _cargandoProductos = false,
+          ); // Solo actualizar estado de carga
         }
       } else {
         // Si no hay productos en cache, cargarlos del servicio
-        setState(() => _cargandoProductos = true);
+        if (mounted) setState(() => _cargandoProductos = true);
         final productos = await _productoService.getProductos();
         if (mounted) {
           setState(() {
@@ -946,6 +946,422 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
         setState(() => _cargandoProveedores = false);
       }
     }
+  }
+
+  Future<void> _mostrarDialogoCrearProducto() async {
+    final nombreController = TextEditingController();
+    final codigoController = TextEditingController();
+    final precioController = TextEditingController();
+    final costoController = TextEditingController();
+    final cantidadController = TextEditingController(text: '0');
+    final descripcionController = TextEditingController();
+    final codigoBarrasController = TextEditingController();
+    final categoriaController = TextEditingController();
+    final marcaController = TextEditingController();
+    final ubicacionController = TextEditingController();
+    final impuestosController = TextEditingController(text: '19');
+    bool guardando = false;
+
+    await showDialog(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: AppTheme.cardBg,
+          title: Row(
+            children: [
+              Icon(Icons.add_shopping_cart, color: AppTheme.primary),
+              SizedBox(width: 8),
+              Text(
+                'Crear Nuevo Producto',
+                style: TextStyle(color: AppTheme.textPrimary, fontSize: 18),
+              ),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Container(
+              width: 450,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Nombre
+                  TextField(
+                    controller: nombreController,
+                    style: TextStyle(color: AppTheme.textPrimary),
+                    decoration: InputDecoration(
+                      labelText: 'Nombre del producto *',
+                      labelStyle: TextStyle(color: AppTheme.textSecondary),
+                      filled: true,
+                      fillColor: AppTheme.surfaceDark,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 12),
+                  // Código y Código de barras
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: codigoController,
+                          style: TextStyle(color: AppTheme.textPrimary),
+                          decoration: InputDecoration(
+                            labelText: 'Código (opcional)',
+                            labelStyle: TextStyle(
+                              color: AppTheme.textSecondary,
+                            ),
+                            filled: true,
+                            fillColor: AppTheme.surfaceDark,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: TextField(
+                          controller: codigoBarrasController,
+                          style: TextStyle(color: AppTheme.textPrimary),
+                          decoration: InputDecoration(
+                            labelText: 'Código barras',
+                            labelStyle: TextStyle(
+                              color: AppTheme.textSecondary,
+                            ),
+                            filled: true,
+                            fillColor: AppTheme.surfaceDark,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 12),
+                  // Costo y Precio
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: costoController,
+                          keyboardType: TextInputType.number,
+                          style: TextStyle(color: AppTheme.textPrimary),
+                          decoration: InputDecoration(
+                            labelText: 'Costo *',
+                            labelStyle: TextStyle(
+                              color: AppTheme.textSecondary,
+                            ),
+                            prefixText: '\$ ',
+                            filled: true,
+                            fillColor: AppTheme.surfaceDark,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: TextField(
+                          controller: precioController,
+                          keyboardType: TextInputType.number,
+                          style: TextStyle(color: AppTheme.textPrimary),
+                          decoration: InputDecoration(
+                            labelText: 'Precio venta *',
+                            labelStyle: TextStyle(
+                              color: AppTheme.textSecondary,
+                            ),
+                            prefixText: '\$ ',
+                            filled: true,
+                            fillColor: AppTheme.surfaceDark,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 12),
+                  // Cantidad inicial
+                  TextField(
+                    controller: cantidadController,
+                    keyboardType: TextInputType.number,
+                    style: TextStyle(color: AppTheme.textPrimary),
+                    decoration: InputDecoration(
+                      labelText: 'Cantidad inicial',
+                      labelStyle: TextStyle(color: AppTheme.textSecondary),
+                      filled: true,
+                      fillColor: AppTheme.surfaceDark,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 12),
+                  // Cantidad y % Impuesto
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: cantidadController,
+                          keyboardType: TextInputType.number,
+                          style: TextStyle(color: AppTheme.textPrimary),
+                          decoration: InputDecoration(
+                            labelText: 'Cantidad',
+                            labelStyle: TextStyle(
+                              color: AppTheme.textSecondary,
+                            ),
+                            filled: true,
+                            fillColor: AppTheme.surfaceDark,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: TextField(
+                          controller: impuestosController,
+                          keyboardType: TextInputType.number,
+                          style: TextStyle(color: AppTheme.textPrimary),
+                          decoration: InputDecoration(
+                            labelText: '% Impuesto',
+                            labelStyle: TextStyle(
+                              color: AppTheme.textSecondary,
+                            ),
+                            filled: true,
+                            fillColor: AppTheme.surfaceDark,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 12),
+                  // Categoría, Marca, Ubicación
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: categoriaController,
+                          style: TextStyle(color: AppTheme.textPrimary),
+                          decoration: InputDecoration(
+                            labelText: 'Categoría',
+                            labelStyle: TextStyle(
+                              color: AppTheme.textSecondary,
+                            ),
+                            filled: true,
+                            fillColor: AppTheme.surfaceDark,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: TextField(
+                          controller: marcaController,
+                          style: TextStyle(color: AppTheme.textPrimary),
+                          decoration: InputDecoration(
+                            labelText: 'Marca',
+                            labelStyle: TextStyle(
+                              color: AppTheme.textSecondary,
+                            ),
+                            filled: true,
+                            fillColor: AppTheme.surfaceDark,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 12),
+                  // Ubicación
+                  TextField(
+                    controller: ubicacionController,
+                    style: TextStyle(color: AppTheme.textPrimary),
+                    decoration: InputDecoration(
+                      labelText: 'Ubicación/Localización',
+                      labelStyle: TextStyle(color: AppTheme.textSecondary),
+                      filled: true,
+                      fillColor: AppTheme.surfaceDark,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 12),
+                  // Descripción
+                  TextField(
+                    controller: descripcionController,
+                    maxLines: 2,
+                    style: TextStyle(color: AppTheme.textPrimary),
+                    decoration: InputDecoration(
+                      labelText: 'Descripción (opcional)',
+                      labelStyle: TextStyle(color: AppTheme.textSecondary),
+                      filled: true,
+                      fillColor: AppTheme.surfaceDark,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: guardando ? null : () => Navigator.pop(dialogContext),
+              child: Text(
+                'Cancelar',
+                style: TextStyle(color: AppTheme.textSecondary),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: guardando
+                  ? null
+                  : () async {
+                      if (nombreController.text.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('El nombre es obligatorio')),
+                        );
+                        return;
+                      }
+                      if (costoController.text.isEmpty ||
+                          precioController.text.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('El costo y precio son obligatorios'),
+                          ),
+                        );
+                        return;
+                      }
+
+                      setDialogState(() => guardando = true);
+
+                      try {
+                        final precio = double.parse(precioController.text);
+                        final costo = double.parse(costoController.text);
+                        final utilidad = precio - costo;
+                        final cantidad =
+                            int.tryParse(cantidadController.text) ?? 0;
+                        final impuestos =
+                            double.tryParse(impuestosController.text) ?? 19;
+
+                        final nuevoProducto = Producto(
+                          id: '',
+                          nombre: nombreController.text.trim(),
+                          codigo: codigoController.text.isNotEmpty
+                              ? codigoController.text.trim()
+                              : null,
+                          codigoBarras: codigoBarrasController.text.isNotEmpty
+                              ? codigoBarrasController.text.trim()
+                              : null,
+                          precio: precio,
+                          costo: costo,
+                          utilidad: utilidad,
+                          cantidad: cantidad,
+                          descripcion: descripcionController.text.isNotEmpty
+                              ? descripcionController.text.trim()
+                              : null,
+                          categoria: null, // Sin categoría por ahora
+                          marca: marcaController.text.isNotEmpty
+                              ? marcaController.text.trim()
+                              : null,
+                          localizacion: ubicacionController.text.isNotEmpty
+                              ? ubicacionController.text.trim()
+                              : null,
+                          porcentajeImpuesto: impuestos,
+                          estado: 'Activo',
+                        );
+
+                        final productoCreado = await _productoService
+                            .addProducto(nuevoProducto);
+
+                        // � AGREGAR DIRECTAMENTE a la lista EXISTENTE (sin refetch!)
+                        if (mounted) {
+                          final cacheProvider = Provider.of<DatosCacheProvider>(
+                            context,
+                            listen: false,
+                          );
+
+                          // 1️⃣ Agregar a lista local - CREAR NUEVA LISTA
+                          setState(() {
+                            // Crear una nueva lista con el producto al inicio
+                            _productos = [productoCreado, ..._productos];
+                            _productoSeleccionado = productoCreado;
+                            _codigoProductoController.text =
+                                productoCreado.codigo ?? productoCreado.id;
+                            _nombreProductoController.text =
+                                productoCreado.nombre;
+                            _valorUnitarioController.text = productoCreado.costo
+                                .toString();
+                          });
+
+                          // 2️⃣ Actualizar TAMBIÉN el Provider para next time
+                          cacheProvider.agregarProductoAlCache(productoCreado);
+                        }
+
+                        Navigator.pop(dialogContext);
+
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              '✅ Producto creado: ${productoCreado.nombre}',
+                            ),
+                            backgroundColor: AppTheme.success,
+                            duration: Duration(seconds: 3),
+                          ),
+                        );
+                      } catch (e) {
+                        setDialogState(() => guardando = false);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Error al crear producto: $e'),
+                            backgroundColor: AppTheme.error,
+                          ),
+                        );
+                      }
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primary,
+              ),
+              child: guardando
+                  ? SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Text('Crear'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -1644,7 +2060,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
             SizedBox(width: 8),
             // Nombre Producto - Autocomplete con indicador de carga
             Expanded(
-              flex: 3,
+              flex: 2,
               child: _cargandoProductos
                   ? Container(
                       padding: EdgeInsets.symmetric(
@@ -1831,6 +2247,26 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                             );
                           },
                     ),
+            ),
+            SizedBox(width: 4),
+            // Botón para crear nuevo producto
+            Container(
+              height: 36,
+              width: 36,
+              decoration: BoxDecoration(
+                color: AppTheme.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(
+                  color: AppTheme.primary.withOpacity(0.3),
+                  width: 1,
+                ),
+              ),
+              child: IconButton(
+                padding: EdgeInsets.zero,
+                icon: Icon(Icons.add, color: AppTheme.primary, size: 20),
+                onPressed: _mostrarDialogoCrearProducto,
+                tooltip: 'Crear nuevo producto',
+              ),
             ),
             SizedBox(width: 8),
             // Cantidad

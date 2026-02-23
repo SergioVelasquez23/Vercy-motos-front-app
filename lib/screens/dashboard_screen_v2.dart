@@ -41,6 +41,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
   late StreamSubscription<bool> _pedidoCompletadoSubscription;
   late StreamSubscription<bool> _pedidoPagadoSubscription;
   late Timer _autoRefreshTimer;
+  late Timer _dayChangeDetectorTimer;
   int _selectedIndex = 0;
   bool _isLoading = true;
 
@@ -58,6 +59,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
   List<Map<String, dynamic>> _ventasPorDia = [];
   List<Map<String, dynamic>> _ingresosVsEgresos = [];
   List<Map<String, dynamic>> _topProductos = [];
+  List<Map<String, dynamic>> _topClientes = [];
 
   // Datos adicionales para nuevos componentes
   List<Map<String, dynamic>> _pedidosPorHora = [];
@@ -71,6 +73,14 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
   // Variables para cálculos corregidos de dashboard
   bool _calculosCorregidos = false;
   Map<String, double> _totalesCorregidos = {};
+
+  // Variables para detectar cambio de día
+  late DateTime _ultimaFechaCargada;
+  bool _diaActualizado = false;
+
+  // Variables para detectar cambio de semana
+  late int _ultimaSemanaCalculada;
+  bool _semanaActualizada = false;
 
   /// Construye un indicador visual para mostrar el progreso de la precarga de datos
   Widget _buildPrecargaIndicator() {
@@ -110,6 +120,12 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
   void initState() {
     super.initState();
 
+    // Inicializar la fecha de la última carga
+    _ultimaFechaCargada = DateTime.now();
+
+    // Inicializar el número de semana cargado
+    _ultimaSemanaCalculada = _calcularNumeroDeSemana(DateTime.now());
+
     // Agregar observer para detectar cambios en el ciclo de vida
     WidgetsBinding.instance.addObserver(this);
 
@@ -140,6 +156,12 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
             setState(() {});
           }
         });
+
+        // Timer para detectar cambios de día y semana (verifica cada minuto)
+        _dayChangeDetectorTimer = Timer.periodic(Duration(minutes: 1), (timer) {
+          _verificarYActualizarPorCambioDeDia();
+          _verificarYActualizarPorCambioDeSemanA();
+        });
       } else if (userProvider.isAsesor) {
         // Para asesores, no cargar datos del dashboard, solo marcar como completado
         setState(() {
@@ -167,7 +189,15 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-    // Lifecycle handling - no action needed currently
+    
+    // Cuando la app vuelve al primer plano, recargar datos
+    if (state == AppLifecycleState.resumed) {
+      if (mounted &&
+          Provider.of<UserProvider>(context, listen: false).isAdmin) {
+        // Force refresh en caso de que los datos se hayan vuelto stale
+        _cargarDatos(forceRefresh: true);
+      }
+    }
   }
 
   @override
@@ -178,11 +208,12 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
     _pedidoCompletadoSubscription.cancel();
     _pedidoPagadoSubscription.cancel();
     _autoRefreshTimer.cancel();
+    _dayChangeDetectorTimer.cancel();
 
     super.dispose();
   }
 
-  Future<void> _cargarDatos() async {
+  Future<void> _cargarDatos({bool forceRefresh = false}) async {
     if (!mounted) return;
 
     setState(() => _isLoading = true);
@@ -191,13 +222,17 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
       // Los datos se cargarán bajo demanda cuando sea necesario
 
       // Cargar datos en paralelo pero manejar errores individualmente
-      final estadisticasFuture = _cargarEstadisticas().catchError((e) {
+      final estadisticasFuture = _cargarEstadisticas(forceRefresh: forceRefresh)
+          .catchError((e) {
         return null;
       });
       final ingresosFuture = _cargarIngresosVsEgresos().catchError((e) {
         return null;
       });
       final topProductosFuture = _cargarTopProductos().catchError((e) {
+        return null;
+      });
+      final topClientesFuture = _cargarTopClientes().catchError((e) {
         return null;
       });
       final ventasPorDiaFuture = _reportesService
@@ -238,6 +273,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         estadisticasFuture,
         ingresosFuture,
         topProductosFuture,
+        topClientesFuture,
         ventasPorDiaFuture,
         pedidosPorHoraFuture,
         ultimosPedidosFuture,
@@ -252,10 +288,52 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
     }
   }
 
-  Future<void> _cargarEstadisticas() async {
+  int _calcularNumeroDeSemana(DateTime fecha) {
+    final enero4 = DateTime(fecha.year, 1, 4);
+    final primerLunes = enero4.subtract(Duration(days: enero4.weekday - 1));
+    final diferenciaDias = fecha.difference(primerLunes).inDays;
+    return (diferenciaDias / 7).floor() + 1;
+  }
+
+  void _verificarYActualizarPorCambioDeSemanA() {
+    final ahora = DateTime.now();
+    final numeroSemanaActual = _calcularNumeroDeSemana(ahora);
+
+    if (numeroSemanaActual != _ultimaSemanaCalculada && !_semanaActualizada) {
+      if (mounted) {
+        _ultimaSemanaCalculada = numeroSemanaActual;
+        _semanaActualizada = true;
+        _cargarDatos(forceRefresh: true);
+      }
+    } else if (numeroSemanaActual == _ultimaSemanaCalculada) {
+      _semanaActualizada = false;
+    }
+  }
+
+  void _verificarYActualizarPorCambioDeDia() {
+    final ahora = DateTime.now();
+    final diaHaCambiado =
+        ahora.day != _ultimaFechaCargada.day ||
+        ahora.month != _ultimaFechaCargada.month ||
+        ahora.year != _ultimaFechaCargada.year;
+
+    if (diaHaCambiado && !_diaActualizado) {
+      if (mounted) {
+        _ultimaFechaCargada = ahora;
+        _diaActualizado = true;
+        _cargarDatos(forceRefresh: true);
+      }
+    } else if (!diaHaCambiado) {
+      _diaActualizado = false;
+    }
+  }
+
+  Future<void> _cargarEstadisticas({bool forceRefresh = false}) async {
     try {
       // Obtener datos del dashboard desde el servicio
-      final dashboardData = await _reportesService.getDashboard();
+      final dashboardData = await _reportesService.getDashboard(
+        forceRefresh: forceRefresh,
+      );
 
       if (dashboardData != null && mounted) {
         // Limpiar objetivos temporales ya que tenemos datos frescos del backend
@@ -349,6 +427,43 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
       }
     } catch (e) {
       // Error handling
+    }
+  }
+
+  Future<void> _cargarTopClientes() async {
+    try {
+      // Obtener top 5 clientes que más compran (excluyendo Consumidor Final)
+      final topClientes = await _reportesService.getTopClientes(5);
+
+      // Transformar datos al formato esperado por la UI
+      final List<Map<String, dynamic>> clientesTransformados = [];
+      final List<Color> colores = [
+        Colors.teal,
+        Colors.cyan,
+        Colors.lightBlue,
+        Colors.blueAccent,
+        Colors.blue,
+      ];
+
+      for (int i = 0; i < topClientes.length; i++) {
+        final cliente = topClientes[i];
+        final porcentaje = (cliente['porcentaje'] ?? 0.0).toDouble();
+
+        clientesTransformados.add({
+          'nombre': cliente['nombre'],
+          'porcentaje': porcentaje,
+          'color': colores[i % colores.length],
+        });
+      }
+
+      if (mounted) {
+        setState(() {
+          _topClientes = clientesTransformados;
+        });
+      }
+    } catch (e) {
+      // Error handling
+      print('❌ Error al cargar top clientes: $e');
     }
   }
 
@@ -836,6 +951,31 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                                             ],
                                           ),
                                     SizedBox(height: AppTheme.spacingXLarge),
+
+                                        // Gráficos de clientes en fila o columna según el dispositivo
+                                        context.isMobile
+                                            ? Column(
+                                                children: [
+                                                  _buildTopClientesChart(
+                                                    context,
+                                                  ),
+                                                ],
+                                              )
+                                            : Row(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Expanded(
+                                                    child:
+                                                        _buildTopClientesChart(
+                                                          context,
+                                                        ),
+                                                  ),
+                                                ],
+                                              ),
+                                        SizedBox(
+                                          height: AppTheme.spacingXLarge,
+                                        ),
 
                                     // Últimos pedidos y vendedores responsivos
                                     context.isMobile
@@ -1827,6 +1967,125 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                                 color: AppTheme.textPrimary,
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTopClientesChart(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.all(
+        context.isMobile ? AppTheme.spacingMedium : AppTheme.spacingXLarge,
+      ),
+      decoration: AppTheme.elevatedCardDecoration,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.people, color: AppTheme.success, size: 20),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'CLIENTES QUE MÁS COMPRAN',
+                  style: TextStyle(
+                    color: AppTheme.textPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 4),
+          Text(
+            'MES ACTUAL (SIN CONSUMIDOR FINAL)',
+            style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+          ),
+          SizedBox(height: 20),
+          SizedBox(
+            height: 160,
+            child: _topClientes.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(color: AppTheme.primary),
+                        SizedBox(height: 8),
+                        Text(
+                          'Cargando clientes...',
+                          style: TextStyle(
+                            color: AppTheme.textSecondary,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : PieChart(
+                    PieChartData(
+                      sections: _topClientes.map((cliente) {
+                        return PieChartSectionData(
+                          value: (cliente['porcentaje'] ?? 0).toDouble(),
+                          color: cliente['color'] ?? Colors.grey,
+                          title: '${(cliente['porcentaje'] ?? 0).toInt()}%',
+                          radius: 50,
+                          titleStyle: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        );
+                      }).toList(),
+                      sectionsSpace: 2,
+                      centerSpaceRadius: 25,
+                    ),
+                  ),
+          ),
+          SizedBox(height: 16),
+          SizedBox(
+            height: 100,
+            child: _topClientes.isEmpty
+                ? Center(
+                    child: Text(
+                      'No hay datos de clientes',
+                      style: TextStyle(
+                        color: AppTheme.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
+                  )
+                : ListView(
+                    children: _topClientes.map((cliente) {
+                      return Padding(
+                        padding: EdgeInsets.only(bottom: 4),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                color: cliente['color'] ?? Colors.grey,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                cliente['nombre'] ?? 'Cliente',
+                                style: TextStyle(
+                                  color: AppTheme.textPrimary,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
                           ],

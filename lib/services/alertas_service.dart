@@ -10,7 +10,8 @@ class AlertasService {
     // === INTEGRACIÓN TELEGRAM ===
     static const String _telegramApiUrl = 'https://api.telegram.org/bot';
     static const String _telegramToken = '8539029528:AAFjyVd941iMgpIbqEbwN6VLWEZi_m4p53U'; // Reemplaza por tu token real
-    static const String _telegramChatId = '6535645414'; // Reemplaza por tu chat_id real
+  static const String _telegramChatId =
+      '8024779345'; // ID del chat de Telegram para alertas
 
     /// Envía un mensaje de texto a Telegram
     Future<http.Response> sendTelegramMessage(String message) async {
@@ -233,6 +234,64 @@ class AlertasService {
     }
   }
 
+  /// Envía alerta de gasto realizado
+  Future<ApiResponse<Map<String, dynamic>>> enviarAlertaGasto({
+    required String tipoGasto,
+    required String concepto,
+    required double monto,
+    required String responsable,
+    String? formaPago,
+    String? numeroRecibo,
+    String? numeroFactura,
+    String? proveedor,
+  }) async {
+    try {
+      final String url = _baseApiService.buildUrl(
+        '/api/telegram-gastos/alerta',
+      );
+      final Map<String, String> headers = await _baseApiService.getHeaders();
+
+      final Map<String, dynamic> alertData = {
+        'tipoGasto': tipoGasto,
+        'concepto': concepto,
+        'monto': monto,
+        'responsable': responsable,
+        if (formaPago != null) 'formaPago': formaPago,
+        if (numeroRecibo != null) 'numeroRecibo': numeroRecibo,
+        if (numeroFactura != null) 'numeroFactura': numeroFactura,
+        if (proveedor != null) 'proveedor': proveedor,
+      };
+
+      final http.Response response = await _baseApiService.httpClient
+          .post(Uri.parse(url), headers: headers, body: json.encode(alertData))
+          .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        return ApiResponse<Map<String, dynamic>>(
+          success: true,
+          data: data,
+          message: 'Alerta de gasto enviada exitosamente',
+          timestamp: DateTime.now().toIso8601String(),
+        );
+      }
+
+      return ApiResponse<Map<String, dynamic>>(
+        success: false,
+        data: null,
+        message: 'Error ${response.statusCode}: ${response.body}',
+        timestamp: DateTime.now().toIso8601String(),
+      );
+    } catch (e) {
+      return ApiResponse<Map<String, dynamic>>(
+        success: false,
+        data: null,
+        message: 'Error de conectividad: $e',
+        timestamp: DateTime.now().toIso8601String(),
+      );
+    }
+  }
+
   // === VERIFICACIÓN DE CONECTIVIDAD ===
 
   /// Verifica la conectividad con el microservicio de alertas
@@ -404,6 +463,522 @@ class AlertasService {
           success: true,
           data: data['message'] ?? 'Prueba ejecutada',
           message: 'Prueba de deuda ejecutada exitosamente',
+          timestamp: DateTime.now().toIso8601String(),
+        );
+      }
+
+      return ApiResponse<String>(
+        success: false,
+        data: null,
+        message: 'Error ${response.statusCode}: ${response.body}',
+        timestamp: DateTime.now().toIso8601String(),
+      );
+    } catch (e) {
+      return ApiResponse<String>(
+        success: false,
+        data: null,
+        message: 'Error de conectividad: $e',
+        timestamp: DateTime.now().toIso8601String(),
+      );
+    }
+  }
+
+  /// Prueba de alerta de gastos
+  Future<ApiResponse<String>> probarAlertaGasto() async {
+    try {
+      final String url = _baseApiService.buildUrl('/api/telegram-gastos/test');
+      final Map<String, String> headers = await _baseApiService.getHeaders();
+
+      final http.Response response = await _baseApiService.httpClient
+          .post(Uri.parse(url), headers: headers)
+          .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        return ApiResponse<String>(
+          success: true,
+          data: data['message'] ?? 'Prueba ejecutada',
+          message: 'Prueba de gastos ejecutada exitosamente',
+          timestamp: DateTime.now().toIso8601String(),
+        );
+      }
+
+      return ApiResponse<String>(
+        success: false,
+        data: null,
+        message: 'Error ${response.statusCode}: ${response.body}',
+        timestamp: DateTime.now().toIso8601String(),
+      );
+    } catch (e) {
+      return ApiResponse<String>(
+        success: false,
+        data: null,
+        message: 'Error de conectividad: $e',
+        timestamp: DateTime.now().toIso8601String(),
+      );
+    }
+  }
+
+  // === BOT CUENTAS POR PAGAR ===
+
+  /// Envía alerta de nueva cuenta por pagar
+  Future<ApiResponse<Map<String, dynamic>>> enviarAlertaNuevaCxP({
+    required String proveedor,
+    required String numeroFactura,
+    required double monto,
+    required DateTime fechaVencimiento,
+    String? descripcion,
+  }) async {
+    try {
+      final String url = _baseApiService.buildUrl(
+        '/api/cuentas-por-pagar-bot/nueva-cuenta',
+      );
+      final Map<String, String> headers = await _baseApiService.getHeaders();
+
+      final Map<String, dynamic> alertData = {
+        'proveedorNombre': proveedor,
+        'numeroFactura': numeroFactura,
+        'montoTotal': monto,
+        'diasVencimiento': fechaVencimiento.difference(DateTime.now()).inDays,
+        if (descripcion != null) 'descripcion': descripcion,
+      };
+
+      final http.Response response = await _baseApiService.httpClient
+          .post(Uri.parse(url), headers: headers, body: json.encode(alertData))
+          .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        return ApiResponse<Map<String, dynamic>>(
+          success: true,
+          data: data,
+          message: 'Alerta de nueva CxP enviada exitosamente',
+          timestamp: DateTime.now().toIso8601String(),
+        );
+      }
+
+      return ApiResponse<Map<String, dynamic>>(
+        success: false,
+        data: null,
+        message: 'Error ${response.statusCode}: ${response.body}',
+        timestamp: DateTime.now().toIso8601String(),
+      );
+    } catch (e) {
+      return ApiResponse<Map<String, dynamic>>(
+        success: false,
+        data: null,
+        message: 'Error de conectividad: $e',
+        timestamp: DateTime.now().toIso8601String(),
+      );
+    }
+  }
+
+  /// Envía alerta de cuenta próxima a vencer
+  Future<ApiResponse<Map<String, dynamic>>> enviarAlertaCxPProximaVencer({
+    required String numeroFactura,
+    required double monto,
+    required int diasRestantes,
+    String? cuentaId,
+  }) async {
+    try {
+      print('\n📡 [ALERTAS API] enviarAlertaCxPProximaVencer()');
+
+      String baseUrl = _baseApiService.buildUrl(
+        '/api/cuentas-por-pagar-bot/proxima-a-vencer',
+      );
+
+      if (cuentaId != null && cuentaId.isNotEmpty) {
+        baseUrl += '?cuentaId=$cuentaId';
+      }
+
+      print('🌐 URL: $baseUrl');
+
+      final Map<String, String> headers = await _baseApiService.getHeaders();
+
+      final Map<String, dynamic> alertData = {
+        'numeroFactura': numeroFactura,
+        'montoTotal': monto,
+        'diasVencimiento': diasRestantes,
+      };
+
+      print('📦 Body JSON que se envía al backend:');
+      print('   ${json.encode(alertData)}');
+
+      final http.Response response = await _baseApiService.httpClient
+          .post(
+            Uri.parse(baseUrl),
+            headers: headers,
+            body: json.encode(alertData),
+          )
+          .timeout(const Duration(seconds: 30));
+
+      print('📥 [ALERTAS API] Response status: ${response.statusCode}');
+      print('📥 [ALERTAS API] Response body: ${response.body}\n');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = json.decode(response.body) as Map<String, dynamic>;
+        print('✅ [ALERTAS API] Alerta PRÓXIMA A VENCER enviada exitosamente\n');
+        return ApiResponse<Map<String, dynamic>>(
+          success: true,
+          data: data,
+          message: 'Alerta de CxP próxima a vencer enviada exitosamente',
+          timestamp: DateTime.now().toIso8601String(),
+        );
+      }
+
+      print('❌ [ALERTAS API] Error al enviar alerta\n');
+      return ApiResponse<Map<String, dynamic>>(
+        success: false,
+        data: null,
+        message: 'Error ${response.statusCode}: ${response.body}',
+        timestamp: DateTime.now().toIso8601String(),
+      );
+    } catch (e) {
+      print('💥 [ALERTAS API] Excepción: $e\n');
+      return ApiResponse<Map<String, dynamic>>(
+        success: false,
+        data: null,
+        message: 'Error de conectividad: $e',
+        timestamp: DateTime.now().toIso8601String(),
+      );
+    }
+  }
+
+  /// Envía alerta de cuenta vencida
+  Future<ApiResponse<Map<String, dynamic>>> enviarAlertaCxPVencida({
+    required String numeroFactura,
+    required double montoVencido,
+    required int diasVencida,
+    String? cuentaId,
+  }) async {
+    try {
+      print('\n📡 [ALERTAS API] enviarAlertaCxPVencida()');
+
+      String baseUrl = _baseApiService.buildUrl(
+        '/api/cuentas-por-pagar-bot/cuenta-vencida',
+      );
+
+      if (cuentaId != null && cuentaId.isNotEmpty) {
+        baseUrl += '?cuentaId=$cuentaId';
+      }
+
+      print('🌐 URL: $baseUrl');
+
+      final Map<String, String> headers = await _baseApiService.getHeaders();
+
+      final Map<String, dynamic> alertData = {
+        'numeroFactura': numeroFactura,
+        'montoTotal': montoVencido,
+        'diasVencimiento': diasVencida,
+      };
+
+      print('📦 Body JSON que se envía al backend:');
+      print('   ${json.encode(alertData)}');
+
+      final http.Response response = await _baseApiService.httpClient
+          .post(
+            Uri.parse(baseUrl),
+            headers: headers,
+            body: json.encode(alertData),
+          )
+          .timeout(const Duration(seconds: 30));
+
+      print('📥 [ALERTAS API] Response status: ${response.statusCode}');
+      print('📥 [ALERTAS API] Response body: ${response.body}\n');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = json.decode(response.body) as Map<String, dynamic>;
+        return ApiResponse<Map<String, dynamic>>(
+          success: true,
+          data: data,
+          message: 'Alerta de CxP vencida enviada exitosamente',
+          timestamp: DateTime.now().toIso8601String(),
+        );
+      }
+
+      print('❌ [ALERTAS API] Error al enviar alerta\n');
+      return ApiResponse<Map<String, dynamic>>(
+        success: false,
+        data: null,
+        message: 'Error ${response.statusCode}: ${response.body}',
+        timestamp: DateTime.now().toIso8601String(),
+      );
+    } catch (e) {
+      print('💥 [ALERTAS API] Excepción: $e\n');
+      return ApiResponse<Map<String, dynamic>>(
+        success: false,
+        data: null,
+        message: 'Error de conectividad: $e',
+        timestamp: DateTime.now().toIso8601String(),
+      );
+    }
+  }
+
+  /// Envía alerta de descuento próximo a vencer
+  Future<ApiResponse<Map<String, dynamic>>> enviarAlertaDescuentoProximoVencer({
+    required String numeroFactura,
+    required double montoSinDescuento,
+    required double montoConDescuento,
+    required double ahorro,
+    required int? diasRestantes,
+    String? cuentaId,
+  }) async {
+    try {
+      print('\n📡 [ALERTAS API] enviarAlertaDescuentoProximoVencer()');
+
+      String baseUrl = _baseApiService.buildUrl(
+        '/api/cuentas-por-pagar-bot/descuento-proximo-vencer',
+      );
+
+      // Agregar cuentaId como parámetro de query si está disponible
+      if (cuentaId != null && cuentaId.isNotEmpty) {
+        baseUrl += '?cuentaId=$cuentaId';
+      }
+
+      print('🌐 URL Final: $baseUrl');
+
+      final Map<String, String> headers = await _baseApiService.getHeaders();
+
+      final Map<String, dynamic> alertData = {
+        'numeroFactura': numeroFactura,
+        'montoTotal': montoSinDescuento,
+        'porcentajeDescuento': (ahorro / montoSinDescuento * 100)
+            .toStringAsFixed(2),
+        if (diasRestantes != null) 'diasDescuento': diasRestantes,
+      };
+
+      print('📦 Body JSON que se envía al backend:');
+      print('   ${json.encode(alertData)}');
+      print('   montoSinDescuento: $montoSinDescuento');
+      print('   montoConDescuento: $montoConDescuento');
+      print('   ahorro: $ahorro');
+
+      final http.Response response = await _baseApiService.httpClient
+          .post(
+            Uri.parse(baseUrl),
+            headers: headers,
+            body: json.encode(alertData),
+          )
+          .timeout(const Duration(seconds: 30));
+
+      print('📨 Respuesta del backend:');
+      print('   Status: ${response.statusCode}');
+      print('   Body: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        print(
+          '✅ [ALERTAS API] Alerta DESCUENTO EN RIESGO enviada exitosamente\n',
+        );
+        return ApiResponse<Map<String, dynamic>>(
+          success: true,
+          data: data,
+          message: 'Alerta de descuento próximo a vencer enviada exitosamente',
+          timestamp: DateTime.now().toIso8601String(),
+        );
+      }
+
+      print('❌ [ALERTAS API] Error al enviar alerta\n');
+      return ApiResponse<Map<String, dynamic>>(
+        success: false,
+        data: null,
+        message: 'Error ${response.statusCode}: ${response.body}',
+        timestamp: DateTime.now().toIso8601String(),
+      );
+    } catch (e) {
+      print('💥 [ALERTAS API] Excepción: $e\n');
+      return ApiResponse<Map<String, dynamic>>(
+        success: false,
+        data: null,
+        message: 'Error de conectividad: $e',
+        timestamp: DateTime.now().toIso8601String(),
+      );
+    }
+  }
+
+  /// Envía alerta de descuento perdido
+  Future<ApiResponse<Map<String, dynamic>>> enviarAlertaDescuentoPerdido({
+    required String proveedor,
+    required String numeroFactura,
+    required double montoSinDescuento,
+    required double ahorroQueSePerdio,
+  }) async {
+    try {
+      final String url = _baseApiService.buildUrl(
+        '/api/cuentas-por-pagar-bot/descuento-perdido',
+      );
+      final Map<String, String> headers = await _baseApiService.getHeaders();
+
+      final Map<String, dynamic> alertData = {
+        'proveedorNombre': proveedor,
+        'numeroFactura': numeroFactura,
+        'montoTotal': montoSinDescuento,
+        'ahorroQueSePerdio': ahorroQueSePerdio,
+      };
+
+      final http.Response response = await _baseApiService.httpClient
+          .post(Uri.parse(url), headers: headers, body: json.encode(alertData))
+          .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        return ApiResponse<Map<String, dynamic>>(
+          success: true,
+          data: data,
+          message: 'Alerta de descuento perdido enviada exitosamente',
+          timestamp: DateTime.now().toIso8601String(),
+        );
+      }
+
+      return ApiResponse<Map<String, dynamic>>(
+        success: false,
+        data: null,
+        message: 'Error ${response.statusCode}: ${response.body}',
+        timestamp: DateTime.now().toIso8601String(),
+      );
+    } catch (e) {
+      return ApiResponse<Map<String, dynamic>>(
+        success: false,
+        data: null,
+        message: 'Error de conectividad: $e',
+        timestamp: DateTime.now().toIso8601String(),
+      );
+    }
+  }
+
+  /// Envía alerta de abono realizado
+  Future<ApiResponse<Map<String, dynamic>>> enviarAlertaAbonoRealizado({
+    required String proveedor,
+    required String numeroFactura,
+    required double montoAbono,
+    required double saldoPendiente,
+  }) async {
+    try {
+      final String url = _baseApiService.buildUrl(
+        '/api/cuentas-por-pagar-bot/abono-realizado',
+      );
+      final Map<String, String> headers = await _baseApiService.getHeaders();
+
+      final Map<String, dynamic> alertData = {
+        'proveedorNombre': proveedor,
+        'numeroFactura': numeroFactura,
+        'montoAbono': montoAbono,
+        'saldoPendiente': saldoPendiente,
+      };
+
+      final http.Response response = await _baseApiService.httpClient
+          .post(Uri.parse(url), headers: headers, body: json.encode(alertData))
+          .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        return ApiResponse<Map<String, dynamic>>(
+          success: true,
+          data: data,
+          message: 'Alerta de abono realizado enviada exitosamente',
+          timestamp: DateTime.now().toIso8601String(),
+        );
+      }
+
+      return ApiResponse<Map<String, dynamic>>(
+        success: false,
+        data: null,
+        message: 'Error ${response.statusCode}: ${response.body}',
+        timestamp: DateTime.now().toIso8601String(),
+      );
+    } catch (e) {
+      return ApiResponse<Map<String, dynamic>>(
+        success: false,
+        data: null,
+        message: 'Error de conectividad: $e',
+        timestamp: DateTime.now().toIso8601String(),
+      );
+    }
+  }
+
+  /// Envía alerta de cuenta pagada completamente
+  Future<ApiResponse<Map<String, dynamic>>> enviarAlertaCuentaPagada({
+    required String proveedor,
+    required String numeroFactura,
+    required double montoTotal,
+    String? cuentaId,
+  }) async {
+    try {
+      print('\n📡 [ALERTAS API] enviarAlertaCuentaPagada()');
+
+      final String url = _baseApiService.buildUrl(
+        '/api/cuentas-por-pagar-bot/cuenta-pagada',
+      );
+
+      print('🌐 URL: $url');
+
+      final Map<String, String> headers = await _baseApiService.getHeaders();
+
+      final Map<String, dynamic> alertData = {
+        'proveedorNombre': proveedor,
+        'numeroFactura': numeroFactura,
+        'montoTotal': montoTotal,
+        if (cuentaId != null && cuentaId.isNotEmpty) 'cuentaId': cuentaId,
+      };
+
+      print('📦 Body JSON que se envía al backend:');
+      print('   ${json.encode(alertData)}');
+
+      final http.Response response = await _baseApiService.httpClient
+          .post(Uri.parse(url), headers: headers, body: json.encode(alertData))
+          .timeout(const Duration(seconds: 30));
+
+      print('📨 Respuesta del backend:');
+      print('   Status: ${response.statusCode}');
+      print('   Body: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        print('✅ [ALERTAS API] Alerta CUENTA PAGADA enviada exitosamente\n');
+        return ApiResponse<Map<String, dynamic>>(
+          success: true,
+          data: data,
+          message: 'Alerta de cuenta pagada enviada exitosamente',
+          timestamp: DateTime.now().toIso8601String(),
+        );
+      }
+
+      print('❌ [ALERTAS API] Error al enviar alerta\n');
+      return ApiResponse<Map<String, dynamic>>(
+        success: false,
+        data: null,
+        message: 'Error ${response.statusCode}: ${response.body}',
+        timestamp: DateTime.now().toIso8601String(),
+      );
+    } catch (e) {
+      print('💥 [ALERTAS API] Excepción: $e\n');
+      return ApiResponse<Map<String, dynamic>>(
+        success: false,
+        data: null,
+        message: 'Error de conectividad: $e',
+        timestamp: DateTime.now().toIso8601String(),
+      );
+    }
+  }
+
+  /// Prueba de alerta del bot de cuentas por pagar
+  Future<ApiResponse<String>> probarAlertaCxP() async {
+    try {
+      final String url = _baseApiService.buildUrl(
+        '/api/cuentas-por-pagar-bot/test',
+      );
+      final Map<String, String> headers = await _baseApiService.getHeaders();
+
+      final http.Response response = await _baseApiService.httpClient
+          .post(Uri.parse(url), headers: headers)
+          .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        return ApiResponse<String>(
+          success: true,
+          data: data['message'] ?? 'Prueba ejecutada',
+          message: 'Prueba de CxP ejecutada exitosamente',
           timestamp: DateTime.now().toIso8601String(),
         );
       }

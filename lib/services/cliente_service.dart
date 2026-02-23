@@ -132,11 +132,18 @@ class ClienteService {
     }
   }
 
-  /// Eliminar cliente (soft delete)
+  /// Eliminar cliente (soft delete - cambia estado a inactivo)
   Future<bool> eliminarCliente(String id) async {
     try {
-      final response = await http.delete(Uri.parse('$baseUrl/$id'));
-      return response.statusCode == 200 || response.statusCode == 204;
+      final response = await http.put(
+        Uri.parse('$baseUrl/$id'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: json.encode({'estado': 'inactivo'}),
+      );
+      return response.statusCode == 200;
     } catch (e) {
         
       return false;

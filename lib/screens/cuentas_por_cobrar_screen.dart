@@ -5,6 +5,7 @@ import '../models/pedido.dart';
 import '../models/api_response.dart';
 import '../services/cartera_service.dart';
 import '../services/pedido_service.dart';
+import '../theme/app_theme.dart';
 import '../utils/currency_utils.dart';
 import '../widgets/vercy_sidebar_layout.dart';
 
@@ -156,7 +157,7 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('Ingrese un monto válido'),
-                    backgroundColor: Colors.red,
+                    backgroundColor: AppTheme.error,
                   ),
                 );
               }
@@ -183,7 +184,7 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Abono registrado exitosamente'),
-            backgroundColor: Colors.green,
+            backgroundColor: AppTheme.primary,
           ),
         );
         await _cargarCuentas();
@@ -191,7 +192,7 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error: ${response.message}'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppTheme.error,
           ),
         );
       }
@@ -199,7 +200,7 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error de conexión: $e'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppTheme.error,
         ),
       );
     }
@@ -306,7 +307,7 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.error_outline, size: 64, color: Colors.red),
+          const Icon(Icons.error_outline, size: 64, color: AppTheme.error),
           const SizedBox(height: 16),
           Text(
             'Error al cargar cuentas',
@@ -375,7 +376,7 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
                 'Deudas de Facturación',
                 deudas.length,
                 Icons.sticky_note_2,
-                Colors.orange,
+                AppTheme.secondary,
               );
             }
             currentIndex--;
@@ -393,7 +394,7 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
                 'Cuentas por Cobrar',
                 cuentasFiltradas.length,
                 Icons.receipt_long,
-                Colors.blue,
+                AppTheme.primaryLight,
               );
             }
             currentIndex--;
@@ -449,25 +450,25 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
                   'Total',
                   CurrencyUtils.format(total),
                   Icons.attach_money,
-                  Colors.green,
+                  AppTheme.primary,
                 ),
                 _buildResumenItem(
                   'Cuentas',
                   '${cuentasFiltradas.length + deudas.length}',
                   Icons.receipt,
-                  Colors.blue,
+                  AppTheme.primaryLight,
                 ),
                 _buildResumenItem(
                   'Vencidas',
                   '$vencidas',
                   Icons.warning,
-                  Colors.red,
+                  AppTheme.error,
                 ),
                 _buildResumenItem(
                   'Próximas',
                   '$proximasVencer',
                   Icons.schedule,
-                  Colors.orange,
+                  AppTheme.secondary,
                 ),
               ],
             ),
@@ -505,19 +506,21 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
 
     switch (cuenta.estado) {
       case EstadoCuenta.VENCIDA:
-        estadoColor = Colors.red;
+        estadoColor = AppTheme.error;
         estadoIcon = Icons.warning;
         break;
       case EstadoCuenta.PENDIENTE:
-        estadoColor = cuenta.proximaAVencer ? Colors.orange : Colors.blue;
+        estadoColor = cuenta.proximaAVencer
+            ? AppTheme.secondary
+            : AppTheme.primary;
         estadoIcon = cuenta.proximaAVencer ? Icons.schedule : Icons.pending;
         break;
       case EstadoCuenta.ABONADA:
-        estadoColor = Colors.green;
+        estadoColor = AppTheme.primaryLight;
         estadoIcon = Icons.payment;
         break;
       case EstadoCuenta.PAGADA:
-        estadoColor = Colors.green;
+        estadoColor = AppTheme.primary;
         estadoIcon = Icons.check_circle;
         break;
     }
@@ -594,7 +597,9 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
                         'Abonado: ${CurrencyUtils.format(cuenta.montoAbonado)}',
                         style: Theme.of(
                           context,
-                        ).textTheme.bodySmall?.copyWith(color: Colors.green),
+                        ).textTheme.bodySmall?.copyWith(
+                          color: AppTheme.primary,
+                        ),
                       ),
                   ],
                 ),
@@ -613,9 +618,11 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
               const SizedBox(height: 8),
               LinearProgressIndicator(
                 value: cuenta.porcentajePagado / 100,
-                backgroundColor: Colors.grey[300],
+                backgroundColor: AppTheme.surfaceDark,
                 valueColor: AlwaysStoppedAnimation<Color>(
-                  cuenta.porcentajePagado >= 100 ? Colors.green : Colors.blue,
+                  cuenta.porcentajePagado >= 100
+                      ? AppTheme.primary
+                      : AppTheme.secondary,
                 ),
               ),
               const SizedBox(height: 4),
@@ -677,8 +684,8 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
                     icon: const Icon(Icons.payment),
                     label: const Text('Registrar Abono'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      foregroundColor: Colors.white,
+                      backgroundColor: AppTheme.primary,
+                      foregroundColor: AppTheme.white,
                     ),
                   ),
                 ],
@@ -741,7 +748,7 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
       elevation: 2,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Colors.orange.withOpacity(0.3), width: 1),
+        side: BorderSide(color: AppTheme.secondary.withOpacity(0.3), width: 1),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -785,9 +792,11 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.orange.withOpacity(0.15),
+                    color: AppTheme.secondary.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.orange.withOpacity(0.4)),
+                    border: Border.all(
+                      color: AppTheme.secondary.withOpacity(0.4),
+                    ),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -795,13 +804,13 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
                       Icon(
                         Icons.sticky_note_2_outlined,
                         size: 14,
-                        color: Colors.orange[700],
+                        color: AppTheme.secondary,
                       ),
                       const SizedBox(width: 4),
                       Text(
                         'DEUDA',
                         style: TextStyle(
-                          color: Colors.orange[700],
+                          color: AppTheme.secondary,
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
                         ),
@@ -838,13 +847,13 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
                       vertical: 2,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.green.withOpacity(0.1),
+                      color: AppTheme.primary.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
                       'NUEVA',
                       style: TextStyle(
-                        color: Colors.green[700],
+                        color: AppTheme.primary,
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
                       ),
@@ -860,9 +869,9 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.orange.withOpacity(0.05),
+                color: AppTheme.secondary.withOpacity(0.05),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.orange.withOpacity(0.2)),
+                border: Border.all(color: AppTheme.secondary.withOpacity(0.2)),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -872,7 +881,7 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
-                      color: Colors.grey[700],
+                      color: AppTheme.textMuted,
                     ),
                   ),
                   Text(
@@ -880,7 +889,7 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: Colors.orange[700],
+                      color: AppTheme.secondary,
                     ),
                   ),
                 ],
@@ -924,7 +933,9 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
                   onPressed: () => _verDetalleDeuda(deuda),
                   icon: const Icon(Icons.visibility_outlined),
                   label: const Text('Ver Detalle'),
-                  style: TextButton.styleFrom(foregroundColor: Colors.blue),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppTheme.secondary,
+                  ),
                 ),
                 const SizedBox(width: 8),
                 ElevatedButton.icon(
@@ -932,8 +943,8 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
                   icon: const Icon(Icons.payment),
                   label: const Text('Pagar'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    foregroundColor: Colors.white,
+                    backgroundColor: AppTheme.primary,
+                    foregroundColor: AppTheme.white,
                   ),
                 ),
               ],
@@ -948,15 +959,15 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
     await showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: Colors.white,
+        backgroundColor: AppTheme.cardBg,
         title: Row(
           children: [
-            Icon(Icons.sticky_note_2, color: Colors.orange),
+            Icon(Icons.sticky_note_2, color: AppTheme.secondary),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
                 'Detalle de Deuda',
-                style: TextStyle(color: Colors.black87),
+                style: TextStyle(color: AppTheme.textPrimary),
               ),
             ),
           ],
@@ -1024,7 +1035,7 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 18,
-                      color: Colors.orange[700],
+                      color: AppTheme.secondary,
                     ),
                   ),
                 ],
@@ -1070,12 +1081,15 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
     final confirmar = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: Colors.white,
+        backgroundColor: AppTheme.cardBg,
         title: Row(
           children: [
-            Icon(Icons.payment, color: Colors.green),
+            Icon(Icons.payment, color: AppTheme.primary),
             const SizedBox(width: 8),
-            Text('Confirmar Pago', style: TextStyle(color: Colors.black87)),
+            Text(
+              'Confirmar Pago',
+              style: TextStyle(color: AppTheme.textPrimary),
+            ),
           ],
         ),
         content: Column(
@@ -1083,21 +1097,21 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
           children: [
             Text(
               '¿Confirma el pago de esta deuda?',
-              style: TextStyle(color: Colors.black87),
+              style: TextStyle(color: AppTheme.textPrimary),
             ),
             const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.green.withOpacity(0.1),
+                color: AppTheme.primary.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.green.withOpacity(0.3)),
+                border: Border.all(color: AppTheme.primary.withOpacity(0.3)),
               ),
               child: Column(
                 children: [
                   Text(
                     'Cliente: ${deuda.cliente ?? "Sin cliente"}',
-                    style: TextStyle(color: Colors.black87),
+                    style: TextStyle(color: AppTheme.textPrimary),
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -1105,7 +1119,7 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: Colors.green[700],
+                      color: AppTheme.primary,
                     ),
                   ),
                 ],
@@ -1121,8 +1135,8 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green,
-              foregroundColor: Colors.white,
+              backgroundColor: AppTheme.primary,
+              foregroundColor: AppTheme.white,
             ),
             child: const Text('Confirmar Pago'),
           ),
@@ -1145,12 +1159,12 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
         SnackBar(
           content: Row(
             children: [
-              Icon(Icons.check_circle, color: Colors.white),
+              Icon(Icons.check_circle, color: AppTheme.white),
               const SizedBox(width: 8),
               Expanded(child: Text('Deuda pagada exitosamente')),
             ],
           ),
-          backgroundColor: Colors.green,
+          backgroundColor: AppTheme.primary,
         ),
       );
 
@@ -1161,7 +1175,7 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error al procesar el pago: $e'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppTheme.error,
         ),
       );
     }

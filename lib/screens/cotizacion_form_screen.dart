@@ -42,6 +42,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
   String _tipoImpuesto = 'IVA';
   List<ItemCotizacion> _items = [];
   List<Producto> _productosDisponibles = [];
+  List<Cliente> _clientesDisponibles = [];
   Cliente? _clienteSeleccionado;
   bool _isLoading = false;
   bool _esEdicion = false;
@@ -56,6 +57,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
     super.initState();
     _esEdicion = widget.cotizacion != null;
     _cargarProductos();
+    _cargarClientes();
 
     if (_esEdicion) {
       _cargarDatosCotizacion();
@@ -87,9 +89,19 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
     }
   }
 
+  Future<void> _cargarClientes() async {
+    try {
+      final clientes = await _clienteService.obtenerClientes();
+      setState(() {
+        _clientesDisponibles = clientes;
+      });
+    } catch (e) {
+      // Continuar sin clientes si falla la carga
+    }
+  }
+
   void _cargarDatosCotizacion() {
     final c = widget.cotizacion!;
-    _clienteController.text = c.clienteId;
     _fecha = c.fecha;
     _fechaVencimiento =
         c.fechaVencimiento ?? DateTime.now().add(Duration(days: 30));
@@ -98,6 +110,17 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
     _retencion = c.retencion;
     _reteIVA = c.reteIVA;
     _reteICA = c.reteICA;
+
+    // ✅ IMPORTANTE: Buscar el cliente en la lista disponible y asignarlo
+    try {
+      _clienteSeleccionado = _clientesDisponibles.firstWhere(
+        (cliente) => cliente.id == c.clienteId,
+      );
+      _clienteController.text = _clienteSeleccionado!.nombreCompleto;
+    } catch (e) {
+      // Si no se encuentra, usar el nombre guardado en la cotización
+      _clienteController.text = c.clienteNombre ?? c.clienteId;
+    }
   }
 
   @override
@@ -297,46 +320,118 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
             ],
           ),
           SizedBox(height: 16),
-          Row(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Cliente *',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    TextField(
-                      controller: _clienteController,
-                      decoration: InputDecoration(
-                        border: OutlineInputBorder(),
-                        contentPadding: EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
-                        ),
-                        hintText: 'Buscar o seleccionar cliente',
-                      ),
-                    ),
-                  ],
+              Text(
+                'Cliente *',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
                 ),
               ),
-              SizedBox(width: 8),
-              Padding(
-                padding: EdgeInsets.only(top: 24),
-                child: IconButton(
-                  onPressed: _buscarCliente,
-                  icon: Icon(Icons.search),
-                  style: IconButton.styleFrom(
-                    backgroundColor: AppTheme.primary,
-                    foregroundColor: Colors.white,
-                  ),
-                  tooltip: 'Buscar cliente',
-                ),
+              SizedBox(height: 8),
+              Autocomplete<Cliente>(
+                optionsBuilder: (TextEditingValue textEditingValue) {
+                  if (textEditingValue.text.isEmpty) {
+                    return _clientesDisponibles;
+                  }
+                  return _clientesDisponibles.where(
+                    (Cliente cliente) => cliente.nombreCompleto
+                        .toLowerCase()
+                        .contains(textEditingValue.text.toLowerCase()),
+                  );
+                },
+                displayStringForOption: (Cliente cliente) =>
+                    cliente.nombreCompleto,
+                onSelected: (Cliente cliente) {
+                  setState(() {
+                    _clienteSeleccionado = cliente;
+                    _clienteController.text = cliente.nombreCompleto;
+                  });
+                },
+                fieldViewBuilder:
+                    (context, textController, focusNode, onSubmit) {
+                      return TextField(
+                        controller: textController,
+                        focusNode: focusNode,
+                        style: TextStyle(color: AppTheme.textPrimary),
+                        decoration: InputDecoration(
+                          labelText: 'Seleccionar cliente',
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          suffixIcon: Icon(
+                            Icons.arrow_drop_down,
+                            color: AppTheme.textSecondary,
+                          ),
+                          hintText: 'Escribe nombre del cliente...',
+                          hintStyle: TextStyle(color: AppTheme.textMuted),
+                        ),
+                      );
+                    },
+                optionsViewBuilder: (context, onSelected, options) {
+                  return Align(
+                    alignment: Alignment.topLeft,
+                    child: Material(
+                      elevation: 4.0,
+                      color: AppTheme.surfaceDark,
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        constraints: BoxConstraints(
+                          maxHeight: 300,
+                          maxWidth: 400,
+                        ),
+                        child: ListView.builder(
+                          padding: EdgeInsets.all(8.0),
+                          itemCount: options.length,
+                          shrinkWrap: true,
+                          itemBuilder: (context, index) {
+                            final option = options.elementAt(index);
+                            return InkWell(
+                              onTap: () => onSelected(option),
+                              child: Container(
+                                padding: EdgeInsets.all(12.0),
+                                decoration: BoxDecoration(
+                                  border: Border(
+                                    bottom: BorderSide(
+                                      color: AppTheme.textSecondary.withOpacity(
+                                        0.2,
+                                      ),
+                                      width: 1,
+                                    ),
+                                  ),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      option.nombreCompleto,
+                                      style: TextStyle(
+                                        color: AppTheme.textPrimary,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    if (option.correo != null)
+                                      Text(
+                                        option.correo!,
+                                        style: TextStyle(
+                                          color: AppTheme.textSecondary,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  );
+                },
               ),
             ],
           ),
@@ -362,6 +457,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
                     vertical: 8,
                   ),
                   hintText: 'Notas adicionales...',
+                  hintStyle: TextStyle(color: AppTheme.textMuted),
                 ),
                 maxLines: 3,
               ),
@@ -443,15 +539,19 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
                         return TextField(
                           controller: textEditingController,
                           focusNode: focusNode,
+                          style: TextStyle(color: AppTheme.textPrimary),
                           decoration: InputDecoration(
                             labelText: 'Nombre producto *',
+                            labelStyle: TextStyle(
+                              color: AppTheme.textSecondary,
+                            ),
                             border: OutlineInputBorder(),
                             suffixIcon: Icon(
                               Icons.arrow_drop_down,
                               color: AppTheme.textSecondary,
                             ),
                             hintText: 'Escribe al menos 2 letras...',
-                            hintStyle: TextStyle(color: AppTheme.textSecondary),
+                            hintStyle: TextStyle(color: AppTheme.textMuted),
                           ),
                         );
                       },
@@ -989,10 +1089,10 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
   }
 
   Future<void> _guardarCotizacion() async {
-    if (_clienteController.text.isEmpty) {
+    if (_clienteSeleccionado == null) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Seleccione un cliente')));
+      ).showSnackBar(SnackBar(content: Text('Seleccione un cliente válido')));
       return;
     }
 
@@ -1008,7 +1108,10 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
     try {
       final cotizacion = Cotizacion(
         id: widget.cotizacion?.id,
-        clienteId: _clienteController.text,
+        clienteId: _clienteSeleccionado!.id!,
+        clienteNombre: _clienteSeleccionado!.nombreCompleto,
+        clienteTelefono: _clienteSeleccionado!.telefono,
+        clienteEmail: _clienteSeleccionado!.correo,
         fecha: _fecha,
         fechaVencimiento: _fechaVencimiento,
         items: _items,

@@ -14,6 +14,7 @@ import 'screens/cuadre_caja_screen.dart';
 import 'screens/abrir_caja_screen.dart';
 import 'screens/cerrar_caja_screen.dart';
 import 'screens/reportes_screen.dart';
+import 'screens/informes_productos_screen.dart';
 import 'screens/pedidos_screen_fusion.dart';
 import 'screens/configuracion_facturacion_screen.dart';
 import 'screens/gastos_screen.dart';
@@ -34,6 +35,7 @@ import 'screens/cuentas_por_pagar_screen.dart';
 import 'screens/gastos_programados_screen.dart';
 import 'screens/alertas_screen.dart';
 import 'screens/autorizaciones_screen.dart';
+import 'screens/eliminar_pedidos_screen.dart';
 import 'models/cliente.dart';
 import 'models/cotizacion.dart';
 import 'providers/user_provider.dart';
@@ -176,6 +178,7 @@ class MyApp extends StatelessWidget {
         '/pedidos_internos': (context) =>
             PedidosScreenFusion(), // Cambiado aquí
         '/facturas-lista': (context) => FacturasListScreen(),
+        '/eliminar-pedidos': (context) => const EliminarPedidosScreen(),
         '/facturacion/config': (context) =>
             const ConfiguracionFacturacionScreen(),
 
@@ -187,6 +190,8 @@ class MyApp extends StatelessWidget {
         '/reportes/pedidos': (context) => ReportesScreen(initialReportIndex: 3),
         '/reportes/clientes': (context) =>
             ReportesScreen(initialReportIndex: 4),
+        // Ruta para informes de productos
+        '/informes/productos': (context) => const InformesProductosScreen(),
       },
     );
   }

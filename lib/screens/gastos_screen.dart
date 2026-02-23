@@ -55,6 +55,7 @@ class _GastosScreenState extends State<GastosScreen> {
   String? _selectedCuadreId;
   String? _selectedTipoGastoId;
   String? _selectedProveedorId;
+  int _proveedorResetKey = 0;
   String? _selectedFormaPago;
   DateTime _selectedDate = DateTime.now();
   Gasto? _gastoEditando;
@@ -277,6 +278,7 @@ class _GastosScreenState extends State<GastosScreen> {
             .where((p) => p.nombre == gasto.proveedor)
             .firstOrNull;
         _selectedProveedorId = proveedor?.id;
+        _proveedorResetKey++;
       }
 
       // DEBUG
@@ -326,6 +328,7 @@ class _GastosScreenState extends State<GastosScreen> {
     _impuestosController.clear();
     _selectedTipoGastoId = null;
     _selectedProveedorId = null;
+    _proveedorResetKey++;
     _selectedFormaPago = null;
     _selectedDate = DateTime.now();
     _pagadoDesdeCaja = false; // ✅ Reset checkbox
@@ -806,53 +809,159 @@ class _GastosScreenState extends State<GastosScreen> {
               Row(
                 children: [
                   Expanded(
-                    child: Container(
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: AppTheme.surfaceDark,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: AppTheme.textSecondary.withOpacity(0.3),
-                        ),
+                    child: Autocomplete<Proveedor>(
+                      key: ValueKey(
+                        'proveedor_autocomplete_$_proveedorResetKey',
                       ),
-                      child: DropdownButtonFormField<String>(
-                        value: _selectedProveedorId,
-                        style: TextStyle(
-                          color: AppTheme.textPrimary,
-                          fontSize: 15,
-                        ),
-                        decoration: InputDecoration(
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                          border: InputBorder.none,
-                          hintText: 'Seleccionar...',
-                          hintStyle: TextStyle(
-                            color: AppTheme.textSecondary,
-                            fontSize: 15,
-                          ),
-                        ),
-                        dropdownColor: AppTheme.cardBg,
-                        isExpanded: true,
-                        items: [
-                          DropdownMenuItem<String>(
-                            value: null,
-                            child: Text(
-                              'Seleccionar...',
-                              style: TextStyle(color: AppTheme.textSecondary),
-                            ),
-                          ),
-                          ..._proveedores.map(
-                            (p) => DropdownMenuItem<String>(
-                              value: p.id,
-                              child: Text(p.nombre),
-                            ),
-                          ),
-                        ],
-                        onChanged: (v) =>
-                            setState(() => _selectedProveedorId = v),
-                      ),
+                      optionsBuilder: (TextEditingValue textEditingValue) {
+                        if (textEditingValue.text.isEmpty) {
+                          return _proveedores.take(10);
+                        }
+                        final query = textEditingValue.text.toLowerCase();
+                        return _proveedores
+                            .where(
+                              (p) => p.nombre.toLowerCase().contains(query),
+                            )
+                            .take(15);
+                      },
+                      displayStringForOption: (Proveedor p) => p.nombre,
+                      initialValue: _selectedProveedorId != null
+                          ? TextEditingValue(
+                              text:
+                                  _proveedores
+                                      .where(
+                                        (p) => p.id == _selectedProveedorId,
+                                      )
+                                      .map((p) => p.nombre)
+                                      .firstOrNull ??
+                                  '',
+                            )
+                          : null,
+                      onSelected: (Proveedor proveedor) {
+                        _selectedProveedorId = proveedor.id;
+                      },
+                      fieldViewBuilder:
+                          (
+                            BuildContext context,
+                            TextEditingController textEditingController,
+                            FocusNode focusNode,
+                            VoidCallback onFieldSubmitted,
+                          ) {
+                            return Container(
+                              height: 48,
+                              decoration: BoxDecoration(
+                                color: AppTheme.surfaceDark,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: AppTheme.textSecondary.withOpacity(
+                                    0.3,
+                                  ),
+                                ),
+                              ),
+                              child: TextField(
+                                controller: textEditingController,
+                                focusNode: focusNode,
+                                style: TextStyle(
+                                  color: AppTheme.textPrimary,
+                                  fontSize: 15,
+                                ),
+                                decoration: InputDecoration(
+                                  contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 12,
+                                  ),
+                                  border: InputBorder.none,
+                                  hintText: 'Buscar proveedor...',
+                                  hintStyle: TextStyle(
+                                    color: AppTheme.textSecondary,
+                                    fontSize: 15,
+                                  ),
+                                  prefixIcon: Icon(
+                                    Icons.search,
+                                    color: AppTheme.textSecondary,
+                                    size: 20,
+                                  ),
+                                  suffixIcon:
+                                      textEditingController.text.isNotEmpty
+                                      ? IconButton(
+                                          icon: Icon(
+                                            Icons.clear,
+                                            color: AppTheme.textSecondary,
+                                            size: 18,
+                                          ),
+                                          onPressed: () {
+                                            textEditingController.clear();
+                                            setState(() {
+                                              _selectedProveedorId = null;
+                                              _proveedorResetKey++;
+                                            });
+                                          },
+                                        )
+                                      : Icon(
+                                          Icons.arrow_drop_down,
+                                          color: AppTheme.textSecondary,
+                                        ),
+                                ),
+                              ),
+                            );
+                          },
+                      optionsViewBuilder:
+                          (
+                            BuildContext context,
+                            AutocompleteOnSelected<Proveedor> onSelected,
+                            Iterable<Proveedor> options,
+                          ) {
+                            return Align(
+                              alignment: Alignment.topLeft,
+                              child: Material(
+                                elevation: 4.0,
+                                color: AppTheme.cardBg,
+                                borderRadius: BorderRadius.circular(8),
+                                child: Container(
+                                  constraints: BoxConstraints(
+                                    maxHeight: 250,
+                                    maxWidth: 350,
+                                  ),
+                                  child: ListView.builder(
+                                    padding: EdgeInsets.all(8.0),
+                                    itemCount: options.length,
+                                    shrinkWrap: true,
+                                    itemBuilder:
+                                        (BuildContext context, int index) {
+                                          final Proveedor proveedor = options
+                                              .elementAt(index);
+                                          return InkWell(
+                                            onTap: () => onSelected(proveedor),
+                                            child: Container(
+                                              padding: EdgeInsets.symmetric(
+                                                horizontal: 12,
+                                                vertical: 10,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                border: Border(
+                                                  bottom: BorderSide(
+                                                    color: AppTheme
+                                                        .textSecondary
+                                                        .withOpacity(0.15),
+                                                    width: 1,
+                                                  ),
+                                                ),
+                                              ),
+                                              child: Text(
+                                                proveedor.nombre,
+                                                style: TextStyle(
+                                                  color: AppTheme.textPrimary,
+                                                  fontSize: 14,
+                                                ),
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
                     ),
                   ),
                   SizedBox(width: 8),
@@ -1053,6 +1162,7 @@ class _GastosScreenState extends State<GastosScreen> {
                         ),
                       ),
                       child: DropdownButtonFormField<String>(
+                        key: ValueKey('tipoGasto_$_selectedTipoGastoIdNuevo'),
                         value: _selectedTipoGastoIdNuevo,
                         style: TextStyle(
                           color: AppTheme.textPrimary,
@@ -1434,6 +1544,7 @@ class _GastosScreenState extends State<GastosScreen> {
             width: 180,
             padding: EdgeInsets.symmetric(horizontal: 8, vertical: 12),
             child: DropdownButtonFormField<String>(
+              key: ValueKey('impuesto_$_nuevoImpuestoTipo'),
               value: _nuevoImpuestoTipo,
               style: TextStyle(color: AppTheme.textPrimary, fontSize: 15),
               decoration: InputDecoration(
@@ -1884,6 +1995,7 @@ class _GastosScreenState extends State<GastosScreen> {
                     if (widget.cuadreCajaId == null)
                       Expanded(
                         child: DropdownButtonFormField<String>(
+                          key: ValueKey('cuadre_$_selectedCuadreId'),
                           decoration: InputDecoration(
                             labelText: 'Filtrar por Cuadre',
                             labelStyle: TextStyle(

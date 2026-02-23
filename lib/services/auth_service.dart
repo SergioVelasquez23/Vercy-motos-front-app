@@ -30,7 +30,7 @@ class AuthService {
           'name': name,
           'email': email,
           'password': password,
-          'roles': ['ASESOR'], // Rol por defecto para nuevos usuarios
+          'roles': ['asesor'], // Rol por defecto para nuevos usuarios
         }),
       );
       if (response.statusCode == 200 || response.statusCode == 201) {

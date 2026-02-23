@@ -96,6 +96,10 @@ class Pedido {
   double totalRetenciones; // Suma de todas las retenciones
   double totalFinal; // Total después de todo
 
+  // 📋 DATOS ADICIONALES
+  Map<String, dynamic>?
+  datosAdicionales; // Información extra (cliente completo, etc.)
+
   void setFormaPago(String formaPago) {
     this.formaPago = formaPago;
   }
@@ -155,6 +159,7 @@ class Pedido {
     this.totalDescuentos = 0.0,
     this.totalRetenciones = 0.0,
     this.totalFinal = 0.0,
+    this.datosAdicionales,
   });
 
   String get tipoTexto {
@@ -255,7 +260,7 @@ class Pedido {
 
   Map<String, dynamic> toJson() => {
     '_id': id,
-    'fecha': fecha.toIso8601String(),
+    'fecha': fecha.toUtc().toIso8601String(),
     'tipo': tipo.toJson(),
     'mesa': mesa,
     'cliente': cliente,
@@ -278,7 +283,7 @@ class Pedido {
       'pagosParciales': pagosParciales.map((pago) => pago.toJson()).toList(),
     if (historialEdiciones.isNotEmpty)
       'historialEdiciones': historialEdiciones.map((h) => h.toJson()).toList(),
-    if (fechaPago != null) 'fechaPago': fechaPago!.toIso8601String(),
+    if (fechaPago != null) 'fechaPago': fechaPago!.toUtc().toIso8601String(),
     if (pagadoPor != null) 'pagadoPor': pagadoPor,
     'propina': propina,
     // Nuevos campos de facturación
@@ -286,7 +291,7 @@ class Pedido {
     if (archivosAdjuntos != null) 'archivosAdjuntos': archivosAdjuntos,
     'tipoFactura': tipoFactura,
     if (fechaVencimiento != null)
-      'fechaVencimiento': fechaVencimiento!.toIso8601String(),
+      'fechaVencimiento': fechaVencimiento!.toUtc().toIso8601String(),
     if (numeroFactura != null) 'numeroFactura': numeroFactura,
     if (codigoBarrasFactura != null) 'codigoBarrasFactura': codigoBarrasFactura,
     'retencion': retencion,
@@ -304,6 +309,7 @@ class Pedido {
     'totalDescuentos': totalDescuentos,
     'totalRetenciones': totalRetenciones,
     'totalFinal': totalFinal,
+    if (datosAdicionales != null) 'datosAdicionales': datosAdicionales,
   };
 
   factory Pedido.fromJson(Map<String, dynamic> json) {
@@ -325,7 +331,7 @@ class Pedido {
 
     return Pedido(
       id: json['_id'] ?? json['id'] ?? '',
-      fecha: DateTime.parse(json['fecha']),
+      fecha: DateTime.parse(json['fecha']).toLocal(),
       tipo: TipoPedidoExtension.fromJson(json['tipo'] ?? 'normal'),
       mesa: json['mesa'] ?? '',
       cliente:
@@ -344,7 +350,7 @@ class Pedido {
       pedidoPor: json['pedidoPor'] ?? json['guardadoPor'],
       guardadoPor: json['guardadoPor'],
       fechaCortesia: json['fechaCortesia'] != null
-          ? DateTime.parse(json['fechaCortesia'])
+          ? DateTime.parse(json['fechaCortesia']).toLocal()
           : null,
       formaPago: json['formaPago'],
       incluyePropina: json['incluyePropina'] ?? false,
@@ -355,7 +361,7 @@ class Pedido {
       pagosParciales: pagosParciales,
       historialEdiciones: historial,
       fechaPago: json['fechaPago'] != null
-          ? DateTime.parse(json['fechaPago'])
+          ? DateTime.parse(json['fechaPago']).toLocal()
           : null,
       pagadoPor: json['pagadoPor'],
       propina: (json['propina'] ?? 0).toDouble(),
@@ -366,7 +372,7 @@ class Pedido {
           : null,
       tipoFactura: json['tipoFactura'] ?? 'POS',
       fechaVencimiento: json['fechaVencimiento'] != null
-          ? DateTime.parse(json['fechaVencimiento'])
+          ? DateTime.parse(json['fechaVencimiento']).toLocal()
           : null,
       numeroFactura: json['numeroFactura'],
       codigoBarrasFactura: json['codigoBarrasFactura'],
@@ -385,6 +391,9 @@ class Pedido {
       totalDescuentos: (json['totalDescuentos'] ?? 0).toDouble(),
       totalRetenciones: (json['totalRetenciones'] ?? 0).toDouble(),
       totalFinal: (json['totalFinal'] ?? 0).toDouble(),
+      datosAdicionales: json['datosAdicionales'] != null
+          ? Map<String, dynamic>.from(json['datosAdicionales'])
+          : null,
     );
   }
 }
