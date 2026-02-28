@@ -1340,7 +1340,7 @@ class _DialogoPagoState extends State<DialogoPago> {
               end: Alignment.bottomCenter,
             ),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.white.withOpacity(0.2)),
+          border: Border.all(color: Colors.black12),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(0.2),

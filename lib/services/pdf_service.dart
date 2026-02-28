@@ -6,6 +6,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:path_provider/path_provider.dart';
+import 'pdf_download_helper.dart';
 
 class PDFService {
   // Cache de fuentes para evitar cargas repetidas
@@ -577,6 +578,34 @@ class PDFService {
                 ],
               ),
 
+              pw.SizedBox(height: 12),
+
+              // ========== OBSERVACIONES (debajo de productos) ==========
+              pw.Container(
+                decoration: pw.BoxDecoration(
+                  border: pw.Border.all(color: PdfColors.black, width: 0.5),
+                ),
+                padding: const pw.EdgeInsets.all(8),
+                width: double.infinity,
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text(
+                      'OBSERVACIONES:',
+                      style: pw.TextStyle(font: fontBold, fontSize: 9),
+                    ),
+                    pw.SizedBox(height: 4),
+                    pw.Text(
+                      _toSafeString(
+                        resumen['observaciones'],
+                        'Este documento se asimila en todos sus efectos legales a una letra de cambio (Articulo 774 del Codigo de Comercio)',
+                      ),
+                      style: pw.TextStyle(font: font, fontSize: 8),
+                    ),
+                  ],
+                ),
+              ),
+
               // ========== ESPACIO FLEXIBLE ENTRE PRODUCTOS Y PIE ==========
               pw.Spacer(),
 
@@ -602,31 +631,6 @@ class PDFService {
                         _numeroALetras((resumen['total'] ?? 0.0).toDouble()),
                         style: pw.TextStyle(font: font, fontSize: 9),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-
-              pw.SizedBox(height: 8),
-
-              // ========== OBSERVACIONES ==========
-              pw.Container(
-                decoration: pw.BoxDecoration(
-                  border: pw.Border.all(color: PdfColors.black, width: 0.5),
-                ),
-                padding: const pw.EdgeInsets.all(8),
-                width: double.infinity,
-                child: pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: [
-                    pw.Text(
-                      'OBSERVACIONES:',
-                      style: pw.TextStyle(font: fontBold, fontSize: 9),
-                    ),
-                    pw.SizedBox(height: 4),
-                    pw.Text(
-                      'Este documento se asimila en todos sus efectos legales a una letra de cambio (Artículo 774 del Código de Comercio)',
-                      style: pw.TextStyle(font: font, fontSize: 8),
                     ),
                   ],
                 ),
@@ -940,12 +944,43 @@ class PDFService {
                   font,
                   fontBold,
                 ),
-                _buildTotalRow(
-                  'DCTO. GENERAL',
-                  _formatearMoneda(descuento),
-                  font,
-                  fontBold,
-                ),
+                // Mostrar descuento general solo si > 0
+                if (descuento > 0)
+                  _buildTotalRow(
+                    'DCTO. GENERAL',
+                    '-${_formatearMoneda(descuento)}',
+                    font,
+                    fontBold,
+                  ),
+                // Retenciones (mostrar solo si > 0)
+                if ((resumen['retencion'] ?? 0.0) > 0)
+                  _buildTotalRow(
+                    'RETENCIÓN (${(resumen['retencionPct'] ?? 0).toStringAsFixed(1)}%)',
+                    '-${_formatearMoneda(resumen['retencion'] ?? 0.0)}',
+                    font,
+                    fontBold,
+                  ),
+                if ((resumen['reteIVA'] ?? 0.0) > 0)
+                  _buildTotalRow(
+                    'RETEIVA (${(resumen['reteIVAPct'] ?? 0).toStringAsFixed(1)}%)',
+                    '-${_formatearMoneda(resumen['reteIVA'] ?? 0.0)}',
+                    font,
+                    fontBold,
+                  ),
+                if ((resumen['reteICA'] ?? 0.0) > 0)
+                  _buildTotalRow(
+                    'RETEICA (${(resumen['reteICAPct'] ?? 0).toStringAsFixed(1)}%)',
+                    '-${_formatearMoneda(resumen['reteICA'] ?? 0.0)}',
+                    font,
+                    fontBold,
+                  ),
+                if ((resumen['aiu'] ?? 0.0) > 0)
+                  _buildTotalRow(
+                    'AIU (${(resumen['aiuPct'] ?? 0).toStringAsFixed(1)}%)',
+                    '+${_formatearMoneda(resumen['aiu'] ?? 0.0)}',
+                    font,
+                    fontBold,
+                  ),
                 pw.Container(
                   color: const PdfColor.fromInt(0xFFF5F5F5),
                   padding: const pw.EdgeInsets.all(4),
@@ -1439,6 +1474,7 @@ class PDFService {
   Future<void> mostrarVistaPrevia({
     required Map<String, dynamic> resumen,
     bool esFactura = false,
+    String? nombreArchivo,
   }) async {
     try {
       final pdfBytes = await generarResumenPedidoPDF(
@@ -1446,17 +1482,21 @@ class PDFService {
         esFactura: esFactura,
       );
 
-      // En web, usar Printing.layoutPdf que abre el diálogo de impresión/PDF
+      final fileName =
+          nombreArchivo ??
+          '${esFactura ? 'Factura' : 'Resumen'}_${resumen['pedidoId'] ?? resumen['numero'] ?? DateTime.now().millisecondsSinceEpoch}.pdf';
+
+      // En web, descargar el archivo directamente
       if (kIsWeb) {
-        await Printing.layoutPdf(
-          onLayout: (PdfPageFormat format) async => pdfBytes,
-          name:
-              '${esFactura ? 'Factura' : 'Resumen'}_${resumen['pedidoId'] ?? resumen['numero'] ?? DateTime.now().millisecondsSinceEpoch}',
-          format: PdfPageFormat.letter,
-        );
+        descargarPDFWeb(pdfBytes, fileName);
       } else {
         // En móvil/desktop, intentar guardar el archivo
-        await _guardarYAbrirPDFWindows(pdfBytes, resumen, esFactura);
+        await _guardarYAbrirPDFWindows(
+          pdfBytes,
+          resumen,
+          esFactura,
+          nombreArchivo: fileName,
+        );
       }
     } catch (e) {
         
@@ -1467,12 +1507,14 @@ class PDFService {
           esFactura: esFactura,
         );
           
+        final fileName =
+            nombreArchivo ??
+            '${esFactura ? 'Factura' : 'Resumen'}_${resumen['pedidoId'] ?? resumen['numero'] ?? DateTime.now().millisecondsSinceEpoch}.pdf';
         
         // Intentar compartir como última opción
         await Printing.sharePdf(
           bytes: pdfBytes,
-          filename:
-              '${esFactura ? 'Factura' : 'Resumen'}_${resumen['pedidoId'] ?? resumen['numero'] ?? DateTime.now().millisecondsSinceEpoch}.pdf',
+          filename: fileName,
         );
       } catch (e2) {
           
@@ -1485,12 +1527,14 @@ class PDFService {
   Future<void> _guardarYAbrirPDFWindows(
     Uint8List pdfBytes,
     Map<String, dynamic> resumen,
-    bool esFactura,
-  ) async {
+    bool esFactura, {
+    String? nombreArchivo,
+  }) async {
     try {
       // Obtener directorio de documentos
       final directory = await getApplicationDocumentsDirectory();
       final fileName =
+          nombreArchivo ??
           '${esFactura ? 'Factura' : 'Resumen'}_${resumen['pedidoId'] ?? resumen['numero'] ?? DateTime.now().millisecondsSinceEpoch}.pdf';
       final file = File('${directory.path}/$fileName');
 

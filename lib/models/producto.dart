@@ -257,6 +257,32 @@ class Producto {
       );
     }
     
+    // 🔍 DEBUG: Log para TODOS los productos para verificar campos
+    final nombre = json['nombre']?.toString() ?? '';
+    final productoOServicio = json['productoOServicio']?.toString();
+    final tipoItem = json['tipoItem']?.toString();
+
+    // Log para productos tipo servicio
+    if (productoOServicio == 'servicio' || tipoItem == 'servicio') {
+      print('🔍 fromJson - SERVICIO detectado:');
+      print('   Nombre: $nombre');
+      print('   productoOServicio: $productoOServicio');
+      print('   tipoItem: $tipoItem');
+    }
+
+    // Log si el campo viene null cuando debería existir
+    if (nombre.toLowerCase().contains('servicio') ||
+        (nombre.toLowerCase().contains('mano') &&
+            nombre.toLowerCase().contains('obra'))) {
+      if (productoOServicio == null && tipoItem == null) {
+        print('⚠️ fromJson - Producto sospechoso SIN campo tipo:');
+        print('   Nombre: $nombre');
+        print('   productoOServicio: $productoOServicio');
+        print('   tipoItem: $tipoItem');
+        print('   Keys disponibles: ${json.keys.take(15).toList()}...');
+      }
+    }
+    
     return Producto(
       id: json['_id']?.toString() ?? json['id']?.toString() ?? '',
       nombre: json['nombre']?.toString() ?? '',
@@ -342,6 +368,16 @@ class Producto {
   factory Producto.fromJsonLigero(Map<String, dynamic> json) {
     // 🔍 LOG: Ver campos de inventario que llegan del endpoint /ligero
     final nombre = json['nombre']?.toString() ?? '';
+    
+    // 🔍 DEBUG TEMPORAL: Ver si viene productoOServicio o tipoItem
+    if (nombre.toLowerCase().contains('mano') &&
+        nombre.toLowerCase().contains('obra')) {
+      print('🔍 fromJsonLigero - Producto tipo servicio detectado:');
+      print('   Nombre: $nombre');
+      print('   productoOServicio: ${json['productoOServicio']}');
+      print('   tipoItem: ${json['tipoItem']}');
+      print('   Keys disponibles: ${json.keys.toList()}');
+    }
     
     // 🔍 BUSCAR CANTIDAD ALMACÉN: intentar múltiples nombres de campos
     final cantAlmacen = _obtenerValor(json, [

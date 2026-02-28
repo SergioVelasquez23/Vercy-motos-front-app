@@ -628,12 +628,19 @@ class _EliminarPedidosScreenState extends State<EliminarPedidosScreen> {
       ),
     );
   }
+  
+  // Helper para formato 12 horas
+  String _formatHora12h(DateTime dt) {
+    final hour24 = dt.hour;
+    final hour12 = hour24 == 0 ? 12 : (hour24 > 12 ? hour24 - 12 : hour24);
+    final period = hour24 >= 12 ? 'PM' : 'AM';
+    return '${hour12.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')} $period';
+  }
 
   Widget _buildPedidoRow(Pedido pedido, bool isSelected) {
-    final hora =
-        '${pedido.fecha.hour.toString().padLeft(2, '0')}:${pedido.fecha.minute.toString().padLeft(2, '0')}';
+    final hora = _formatHora12h(pedido.fecha);
     final fechaPago = pedido.fechaPago != null
-        ? '${pedido.fechaPago!.hour.toString().padLeft(2, '0')}:${pedido.fechaPago!.minute.toString().padLeft(2, '0')}'
+        ? _formatHora12h(pedido.fechaPago!)
         : hora;
 
     return Container(

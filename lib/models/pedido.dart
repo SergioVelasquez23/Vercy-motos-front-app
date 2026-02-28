@@ -258,9 +258,21 @@ class Pedido {
     }
   }
 
+  /// Formatea DateTime a ISO8601 sin zona horaria (hora local tal como está)
+  /// Esto evita que el backend interprete la hora como UTC y le sume/reste horas
+  static String _formatDateTimeLocal(DateTime dt) {
+    return '${dt.year.toString().padLeft(4, '0')}-'
+        '${dt.month.toString().padLeft(2, '0')}-'
+        '${dt.day.toString().padLeft(2, '0')}T'
+        '${dt.hour.toString().padLeft(2, '0')}:'
+        '${dt.minute.toString().padLeft(2, '0')}:'
+        '${dt.second.toString().padLeft(2, '0')}';
+  }
+
   Map<String, dynamic> toJson() => {
     '_id': id,
-    'fecha': fecha.toUtc().toIso8601String(),
+    // Usar formato ISO8601 sin 'Z' para evitar conversiones UTC
+    'fecha': _formatDateTimeLocal(fecha),
     'tipo': tipo.toJson(),
     'mesa': mesa,
     'cliente': cliente,
@@ -272,7 +284,9 @@ class Pedido {
     'plataforma': plataforma,
     'pedidoPor': pedidoPor,
     'guardadoPor': guardadoPor,
-    'fechaCortesia': fechaCortesia?.toIso8601String(),
+    'fechaCortesia': fechaCortesia != null
+        ? _formatDateTimeLocal(fechaCortesia!)
+        : null,
     'formaPago': formaPago,
     'incluyePropina': incluyePropina,
     'descuento': descuento,
@@ -283,7 +297,7 @@ class Pedido {
       'pagosParciales': pagosParciales.map((pago) => pago.toJson()).toList(),
     if (historialEdiciones.isNotEmpty)
       'historialEdiciones': historialEdiciones.map((h) => h.toJson()).toList(),
-    if (fechaPago != null) 'fechaPago': fechaPago!.toUtc().toIso8601String(),
+    if (fechaPago != null) 'fechaPago': _formatDateTimeLocal(fechaPago!),
     if (pagadoPor != null) 'pagadoPor': pagadoPor,
     'propina': propina,
     // Nuevos campos de facturación
@@ -291,7 +305,7 @@ class Pedido {
     if (archivosAdjuntos != null) 'archivosAdjuntos': archivosAdjuntos,
     'tipoFactura': tipoFactura,
     if (fechaVencimiento != null)
-      'fechaVencimiento': fechaVencimiento!.toUtc().toIso8601String(),
+      'fechaVencimiento': _formatDateTimeLocal(fechaVencimiento!),
     if (numeroFactura != null) 'numeroFactura': numeroFactura,
     if (codigoBarrasFactura != null) 'codigoBarrasFactura': codigoBarrasFactura,
     'retencion': retencion,

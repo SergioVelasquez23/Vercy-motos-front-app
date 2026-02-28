@@ -546,6 +546,42 @@ class PedidoService {
     }
   }
 
+  /// 🆕 Obtener TODOS los documentos/pedidos pagados (incluye documentos sintéticos)
+  /// Usa el nuevo endpoint mejorado del backend que incluye pedidos pagados que
+  /// no estén asociados a ningún documento pagado
+  /// GET /api/documentos/todos/pagados
+  Future<List<Pedido>> getTodosDocumentosPagados() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl/api/documentos/todos/pagados'),
+            headers: headers,
+          )
+          .timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        return _parseListResponse(responseData);
+      } else if (response.statusCode == 404) {
+        // Fallback: usar método anterior si el endpoint no existe
+        return await getPedidosByEstado(EstadoPedido.pagado);
+      } else {
+        throw Exception(
+          'Error al obtener documentos pagados: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      print('⚠️ Error en getTodosDocumentosPagados: $e');
+      // Fallback: intentar con el método anterior
+      try {
+        return await getPedidosByEstado(EstadoPedido.pagado);
+      } catch (fallbackError) {
+        throw Exception('Error de conexión: $e');
+      }
+    }
+  }
+
   /// Obtener pedidos activos de una mesa específica (optimizado)
   /// Usa el endpoint /api/pedidos/mesa/{mesa}/activos para mayor eficiencia
   Future<List<Pedido>> getPedidosActivosMesa(String mesa) async {
@@ -803,9 +839,115 @@ class PedidoService {
     return await PedidoService().actualizarEstadoPedido(pedidoId, nuevoEstado);
   }
 
+  // ✅ NUEVO: Devolver el stock de los productos de un pedido antes de eliminarlo
+  /// Este método obtiene el pedido, itera sobre sus items y devuelve
+  /// las cantidades al stock (almacen o bodega según el origen)
+  Future<void> _devolverStockProductos(String pedidoId) async {
+    try {
+      print('🔄 Iniciando devolución de stock para pedido $pedidoId');
+
+      // 1. Obtener el pedido completo
+      final pedido = await getPedidoById(pedidoId);
+      if (pedido == null) {
+        print('⚠️ No se encontró el pedido $pedidoId para devolver stock');
+        return;
+      }
+
+      print('📦 Pedido encontrado: ${pedido.items.length} items');
+
+      // 2. Para cada item del pedido, devolver el stock
+      for (var item in pedido.items) {
+        try {
+          print('');
+          print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+          print(
+            '   📦 DEVOLVIENDO STOCK - Item ${pedido.items.indexOf(item) + 1}/${pedido.items.length}',
+          );
+          print('   - Producto: ${item.productoNombre ?? item.productoId}');
+          print('   - Producto ID: ${item.productoId}');
+          print('   - Cantidad a devolver: ${item.cantidad} unidades');
+          print('   - Origen de venta: ${item.origen}');
+
+          // Obtener el producto del servicio
+          final producto = await _productoService.getProducto(item.productoId);
+
+          if (producto == null) {
+            print('   ❌ ERROR: No se encontró el producto ${item.productoId}');
+            print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            continue;
+          }
+
+          print('');
+          print('   📊 INVENTARIO ACTUAL:');
+          print('      • Almacén: ${producto.almacen ?? 0} unidades');
+          print('      • Bodega: ${producto.bodega ?? 0} unidades');
+
+          // Calcular nuevas cantidades sumando lo que se vendió
+          int nuevoAlmacen = producto.almacen ?? 0;
+          int nuevoBodega = producto.bodega ?? 0;
+
+          // Devolver las cantidades según el origen
+          if (item.origen.toUpperCase() == 'BODEGA') {
+            nuevoBodega += item.cantidad;
+            print('');
+            print('   🔄 ACTUALIZANDO BODEGA:');
+            print('      • Antes: ${producto.bodega ?? 0}');
+            print('      • Cantidad a sumar: +${item.cantidad}');
+            print('      • Después: $nuevoBodega');
+          } else {
+            // Por defecto devolver a ALMACÉN
+            nuevoAlmacen += item.cantidad;
+            print('');
+            print('   🔄 ACTUALIZANDO ALMACÉN:');
+            print('      • Antes: ${producto.almacen ?? 0}');
+            print('      • Cantidad a sumar: +${item.cantidad}');
+            print('      • Después: $nuevoAlmacen');
+          }
+
+          // Actualizar el producto con las nuevas cantidades
+          final productoActualizado = producto.copyWith(
+            almacen: nuevoAlmacen,
+            bodega: nuevoBodega,
+          );
+
+          print('');
+          print('   🚀 Enviando actualización al backend...');
+          print('      - Endpoint: PUT /api/productos/${producto.id}');
+          print('      - cantidadAlmacen: $nuevoAlmacen');
+          print('      - cantidadBodega: $nuevoBodega');
+
+          await _productoService.updateProducto(productoActualizado);
+
+          print('   ✅ STOCK DEVUELTO EXITOSAMENTE');
+          print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        } catch (e) {
+          print('   ❌ ERROR devolviendo stock para item ${item.productoId}:');
+          print('      $e');
+          print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+          // Continuar con el siguiente item aunque falle uno
+          continue;
+        }
+      }
+
+      print('');
+      print('🎉 ═══════════════════════════════════════════════════════');
+      print('   ✅ DEVOLUCIÓN DE STOCK COMPLETADA');
+      print('   Pedido: $pedidoId');
+      print('   Items procesados: ${pedido.items.length}');
+      print('═══════════════════════════════════════════════════════');
+      print('');
+    } catch (e) {
+      print('❌ Error general devolviendo stock: $e');
+      // No lanzar excepción para no bloquear la eliminación del pedido
+    }
+  }
+
   // Eliminar pedido (con reversión automática de dinero en caja)
   Future<void> eliminarPedido(String id) async {
     try {
+      // ✅ NUEVO: Devolver stock ANTES de eliminar el pedido
+      await _devolverStockProductos(id);
+      
       final headers = await _getHeaders();
       final response = await http.delete(
         Uri.parse('$baseUrl/api/pedidos/$id'),
@@ -845,6 +987,8 @@ class PedidoService {
   // Esta función específicamente maneja pedidos pagados o con estado especial
   Future<void> eliminarPedidoForzado(String id) async {
     try {
+      // ✅ NUEVO: Devolver stock ANTES de eliminar el pedido
+      await _devolverStockProductos(id);
         
 
       final headers = await _getHeaders();
@@ -903,6 +1047,8 @@ class PedidoService {
   /// Este método utiliza el endpoint especial que maneja la reversión de pagos
   Future<void> eliminarPedidoPagado(String id) async {
     try {
+      // ✅ NUEVO: Devolver stock ANTES de eliminar el pedido
+      await _devolverStockProductos(id);
         
 
       final headers = await _getHeaders();
@@ -2209,6 +2355,22 @@ class PedidoService {
   Future<Map<String, dynamic>> eliminarTodosPedidosActivos() async {
     try {
         
+      // ✅ NUEVO: Devolver stock de TODOS los pedidos activos ANTES de eliminarlos
+      try {
+        final pedidosActivos = await getPedidosByEstado(EstadoPedido.activo);
+        print(
+          '🔄 Devolviendo stock de ${pedidosActivos.length} pedidos activos...',
+        );
+
+        for (var pedido in pedidosActivos) {
+          await _devolverStockProductos(pedido.id);
+        }
+
+        print('✅ Stock devuelto para todos los pedidos activos');
+      } catch (e) {
+        print('⚠️ Error devolviendo stock de pedidos activos: $e');
+        // Continuar con la eliminación aunque falle la devolución de stock
+      }
 
       final headers = await _getHeaders();
 

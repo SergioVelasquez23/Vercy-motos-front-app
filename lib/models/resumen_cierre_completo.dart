@@ -125,6 +125,8 @@ class MovimientosEfectivoCompleto {
   final double ventasTransferencia;
   final double gastosEfectivo;
   final double comprasEfectivo;
+  final double efectivoDeclarado;
+  final double descuadre; // Descuadre = efectivoEsperado - efectivoDeclarado
 
   MovimientosEfectivoCompleto({
     required this.ingresosTransferencia,
@@ -140,6 +142,8 @@ class MovimientosEfectivoCompleto {
     required this.ventasTransferencia,
     required this.gastosEfectivo,
     required this.comprasEfectivo,
+    this.efectivoDeclarado = 0.0,
+    this.descuadre = 0.0,
   });
 
   factory MovimientosEfectivoCompleto.fromJson(Map<String, dynamic> json) {
@@ -191,6 +195,16 @@ class MovimientosEfectivoCompleto {
 
       
        
+    // Leer valores  
+    final efectivoEsperado = safeToDouble(json['efectivoEsperado']);
+    final efectivoDeclarado = safeToDouble(json['efectivoDeclarado']);
+
+    // Calcular descuadre si no viene del backend
+    double descuadre = safeToDouble(json['descuadre']);
+    if (descuadre == 0.0 && efectivoDeclarado > 0 && efectivoEsperado > 0) {
+      descuadre = efectivoEsperado - efectivoDeclarado;
+    }
+    
     return MovimientosEfectivoCompleto(
       ingresosTransferencia: safeToDouble(json['ingresosTransferencia']),
       ingresosEfectivo: safeToDouble(json['ingresosEfectivo']),
@@ -199,7 +213,7 @@ class MovimientosEfectivoCompleto {
       ),
       gastosTransferencia: safeToDouble(json['gastosTransferencia']),
       transferenciaEsperada: safeToDouble(json['transferenciaEsperada']),
-      efectivoEsperado: safeToDouble(json['efectivoEsperado']),
+      efectivoEsperado: efectivoEsperado,
       totalIngresosCaja: safeToDouble(json['totalIngresosCaja']),
       fondoInicial: safeToDouble(json['fondoInicial']),
       comprasTransferencia: safeToDouble(json['comprasTransferencia']),
@@ -207,6 +221,8 @@ class MovimientosEfectivoCompleto {
       ventasTransferencia: ventasTrans,
       gastosEfectivo: safeToDouble(json['gastosEfectivo']),
       comprasEfectivo: safeToDouble(json['comprasEfectivo']),
+      efectivoDeclarado: efectivoDeclarado,
+      descuadre: descuadre,
     );
   }
 }
@@ -378,6 +394,9 @@ class CuadreInfoCompleto {
   final double fondoInicial;
   final String id;
   final String nombre;
+  final double efectivoEsperado;
+  final double efectivoDeclarado;
+  final double descuadre;
 
   CuadreInfoCompleto({
     required this.fondoInicialDesglosado,
@@ -389,6 +408,9 @@ class CuadreInfoCompleto {
     required this.fondoInicial,
     required this.id,
     required this.nombre,
+    this.efectivoEsperado = 0.0,
+    this.efectivoDeclarado = 0.0,
+    this.descuadre = 0.0,
   });
 
   factory CuadreInfoCompleto.fromJson(Map<String, dynamic> json) {
@@ -409,6 +431,25 @@ class CuadreInfoCompleto {
       return result;
     }
 
+    // Leer valores
+    final efectivoEsperado = safeToDouble(json['efectivoEsperado']);
+    final efectivoDeclarado = safeToDouble(json['efectivoDeclarado']);
+
+    // DEBUG: Imprimir los valores que vienen del backend
+    print('🔍 CuadreInfoCompleto.fromJson - Datos del backend:');
+    print('   efectivoEsperado: $efectivoEsperado');
+    print('   efectivoDeclarado: $efectivoDeclarado');
+    print('   descuadre (json): ${json['descuadre']}');
+
+    // Calcular descuadre si no viene del backend
+    double descuadre = safeToDouble(json['descuadre']);
+    if (descuadre == 0.0 && efectivoDeclarado > 0 && efectivoEsperado > 0) {
+      descuadre = efectivoEsperado - efectivoDeclarado;
+      print('   ✅ Descuadre calculado: $descuadre');
+    } else {
+      print('   📦 Descuadre del backend: $descuadre');
+    }
+
     return CuadreInfoCompleto(
       fondoInicialDesglosado: safeMapToDouble(
         json['fondoInicialDesglosado']?.cast<String, dynamic>(),
@@ -421,6 +462,9 @@ class CuadreInfoCompleto {
       fondoInicial: safeToDouble(json['fondoInicial']),
       id: json['id']?.toString() ?? '',
       nombre: json['nombre']?.toString() ?? 'Caja sin nombre',
+      efectivoEsperado: efectivoEsperado,
+      efectivoDeclarado: efectivoDeclarado,
+      descuadre: descuadre,
     );
   }
 }

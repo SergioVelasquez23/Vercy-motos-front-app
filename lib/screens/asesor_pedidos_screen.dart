@@ -162,6 +162,58 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
     print('   - Producto: ${producto.nombre}');
     print('   - Bodega: ${producto.bodega}');
     print('   - Almacén: ${producto.almacen}');
+    print('   - TipoItem: ${producto.productoOServicio}');
+
+    // ⚠️ VALIDACIÓN DE STOCK: No aplicar a servicios
+    final esServicio = producto.productoOServicio?.toLowerCase() == 'servicio';
+
+    if (!esServicio) {
+      final stockAlmacen = producto.almacen ?? 0;
+      final stockBodega = producto.bodega ?? 0;
+      final stockTotal = stockAlmacen + stockBodega;
+
+      // Validación 1: Si no hay stock en ninguna ubicación, NO PERMITIR agregar
+      if (stockTotal <= 0) {
+        print('   ❌ BLOQUEADO: No hay stock en ninguna ubicación');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '❌ No hay stock disponible para "${producto.nombre}"\n'
+              'Stock en ALMACÉN: $stockAlmacen\n'
+              'Stock en BODEGA: $stockBodega\n\n'
+              'Selecciona otro producto.',
+            ),
+            backgroundColor: Colors.red.shade700,
+            duration: Duration(seconds: 5),
+          ),
+        );
+        return;
+      }
+
+      // Validación 2: Si la cantidad solicitada es mayor al stock total, NO PERMITIR
+      if (cantidad > stockTotal) {
+        print(
+          '   ❌ BLOQUEADO: Cantidad solicitada ($cantidad) > stock total ($stockTotal)',
+        );
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '❌ Stock insuficiente para "${producto.nombre}"\n'
+              'Stock total disponible: $stockTotal\n'
+              'Cantidad solicitada: $cantidad\n\n'
+              'Reduce la cantidad o selecciona otro producto.',
+            ),
+            backgroundColor: Colors.red.shade700,
+            duration: Duration(seconds: 5),
+          ),
+        );
+        return;
+      }
+
+      print('   ✅ Validación pasada: Stock suficiente');
+    } else {
+      print('   ℹ️  Es servicio - sin validación de stock');
+    }
     
     // 📦 Mostrar diálogo para elegir de dónde descontar
     final origen = await _mostrarDialogoSeleccionarOrigen(
@@ -221,8 +273,49 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
       return;
     }
 
+    final item = _carrito[index];
+    
+    // 🔍 Buscar el producto en la lista para validar stock
+    final producto = _productos.firstWhere(
+      (p) => p.id == item.productoId,
+      orElse: () => _productos.first, // Fallback
+    );
+
+    // ✅ VALIDACIÓN: No aplicar a servicios
+    final tipoProducto = producto.productoOServicio?.trim().toLowerCase();
+    final esServicio = tipoProducto == 'servicio';
+
+    if (!esServicio) {
+      // 📦 Validar stock del origen seleccionado
+      final stockAlmacen = producto.almacen ?? 0;
+      final stockBodega = producto.bodega ?? 0;
+      final origen = item.origen?.toUpperCase() ?? 'ALMACÉN';
+
+      int stockDisponible = 0;
+      if (origen == 'BODEGA') {
+        stockDisponible = stockBodega;
+      } else {
+        stockDisponible = stockAlmacen;
+      }
+
+      // ⚠️ VALIDACIÓN: No permitir superar el stock disponible
+      if (nuevaCantidad > stockDisponible) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '❌ Stock insuficiente en $origen\n'
+              'Disponible: $stockDisponible\n'
+              'Solicitado: $nuevaCantidad',
+            ),
+            backgroundColor: Colors.red.shade700,
+            duration: Duration(seconds: 3),
+          ),
+        );
+        return; // No actualizar la cantidad
+      }
+    }
+
     setState(() {
-      final item = _carrito[index];
       _carrito[index] = ItemPedido(
         productoId: item.productoId,
         productoNombre: item.productoNombre ?? 'Producto',
@@ -1408,39 +1501,65 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
     print('   - bodegaDisponible: $bodegaDisponible');
     print('   - almacenDisponible: $almacenDisponible');
 
-    // 🔧 VALIDACIÓN COMENTADA TEMPORALMENTE: Permitir descuento incluso si bodega/almacén
-    // muestran 0 mientras se arregla el problema de los números en carga ligera
-    // if (bodegaDisponible <= 0 && almacenDisponible <= 0) {
-    //   print('   ❌ Sin stock en ninguna ubicación');
-    //   _mostrarError('⚠️ Sin stock disponible en bodega ni almacén');
-    //   return null;
-    // }
+    // ✅ VALIDACIÓN DE STOCK: Bloquear si no hay stock en ninguna ubicación
+    final esServicio = producto.productoOServicio?.toLowerCase() == 'servicio';
 
-    // 🔧 VALIDACIÓN COMENTADA TEMPORALMENTE: Permitir descuento de bodega incluso si no hay stock
-    // if (bodegaDisponible > 0 && almacenDisponible <= 0) {
-    //   print('   ✅ Solo hay stock en BODEGA, seleccionando automáticamente');
-    //   if (cantidad > bodegaDisponible) {
-    //     _mostrarError(
-    //       '⚠️ Stock insuficiente en bodega. Disponible: $bodegaDisponible',
-    //     );
-    //     return null;
-    //   }
-    //   return 'BODEGA';
-    // }
+    if (!esServicio) {
+      if (bodegaDisponible <= 0 && almacenDisponible <= 0) {
+        print('   ❌ Sin stock en ninguna ubicación');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Sin stock disponible en bodega ni almacén'),
+            backgroundColor: Colors.red.shade700,
+            duration: Duration(seconds: 3),
+          ),
+        );
+        return null;
+      }
 
-    // 🔧 VALIDACIÓN COMENTADA TEMPORALMENTE: Permitir descuento de almacén incluso si no hay stock
-    // if (almacenDisponible > 0 && bodegaDisponible <= 0) {
-    //   print('   ✅ Solo hay stock en ALMACÉN, seleccionando automáticamente');
-    //   if (cantidad > almacenDisponible) {
-    //     _mostrarError(
-    //       '⚠️ Stock insuficiente en almacén. Disponible: $almacenDisponible',
-    //     );
-    //     return null;
-    //   }
-    //   return 'ALMACÉN';
-    // }
+      // Si solo hay stock en una ubicación, seleccionar automáticamente
+      if (bodegaDisponible > 0 && almacenDisponible <= 0) {
+        print('   ✅ Solo hay stock en BODEGA, seleccionando automáticamente');
+        if (cantidad > bodegaDisponible) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                '❌ Stock insuficiente en BODEGA\n'
+                'Disponible: $bodegaDisponible\n'
+                'Solicitado: $cantidad',
+              ),
+              backgroundColor: Colors.red.shade700,
+              duration: Duration(seconds: 4),
+            ),
+          );
+          return null;
+        }
+        return 'BODEGA';
+      }
+
+      if (almacenDisponible > 0 && bodegaDisponible <= 0) {
+        print('   ✅ Solo hay stock en ALMACÉN, seleccionando automáticamente');
+        if (cantidad > almacenDisponible) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                '❌ Stock insuficiente en ALMACÉN\n'
+                'Disponible: $almacenDisponible\n'
+                'Solicitado: $cantidad',
+              ),
+              backgroundColor: Colors.red.shade700,
+              duration: Duration(seconds: 4),
+            ),
+          );
+          return null;
+        }
+        return 'ALMACÉN';
+      }
+    }
     
-    print('   📋 Hay stock en ambas ubicaciones, mostrando diálogo');
+    print(
+      '   📋 Hay stock en ambas ubicaciones o es servicio, mostrando diálogo',
+    );
 
     // Si hay stock en ambas ubicaciones, mostrar diálogo para elegir
     return await showDialog<String>(
@@ -1477,16 +1596,31 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
             ),
             SizedBox(height: 16),
             // Opción Bodega
-            // 🔧 TEMPORAL: Permitir descuento sin validar stock
             ElevatedButton.icon(
-              onPressed: () => Navigator.pop(context, 'BODEGA'),
+              onPressed: bodegaDisponible >= cantidad
+                  ? () => Navigator.pop(context, 'BODEGA')
+                  : () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            '❌ Stock insuficiente en BODEGA\n'
+                            'Disponible: $bodegaDisponible\n'
+                            'Solicitado: $cantidad',
+                          ),
+                          backgroundColor: Colors.red.shade700,
+                          duration: Duration(seconds: 3),
+                        ),
+                      );
+                    },
               icon: Icon(Icons.store),
               label: Text(
                 'BODEGA (Disponible: $bodegaDisponible)',
                 style: TextStyle(fontSize: 14),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primary,
+                backgroundColor: bodegaDisponible >= cantidad
+                    ? AppTheme.primary
+                    : Colors.grey,
                 foregroundColor: Colors.white,
                 padding: EdgeInsets.symmetric(vertical: 12),
                 alignment: Alignment.centerLeft,
@@ -1494,16 +1628,31 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
             ),
             SizedBox(height: 8),
             // Opción Almacén
-            // 🔧 TEMPORAL: Permitir descuento sin validar stock
             ElevatedButton.icon(
-              onPressed: () => Navigator.pop(context, 'ALMACÉN'),
+              onPressed: almacenDisponible >= cantidad
+                  ? () => Navigator.pop(context, 'ALMACÉN')
+                  : () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            '❌ Stock insuficiente en ALMACÉN\n'
+                            'Disponible: $almacenDisponible\n'
+                            'Solicitado: $cantidad',
+                          ),
+                          backgroundColor: Colors.red.shade700,
+                          duration: Duration(seconds: 3),
+                        ),
+                      );
+                    },
               icon: Icon(Icons.inventory_2),
               label: Text(
                 'ALMACÉN (Disponible: $almacenDisponible)',
                 style: TextStyle(fontSize: 14),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.success,
+                backgroundColor: almacenDisponible >= cantidad
+                    ? AppTheme.success
+                    : Colors.grey,
                 foregroundColor: Colors.white,
                 padding: EdgeInsets.symmetric(vertical: 12),
                 alignment: Alignment.centerLeft,

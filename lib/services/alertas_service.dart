@@ -11,7 +11,7 @@ class AlertasService {
     static const String _telegramApiUrl = 'https://api.telegram.org/bot';
     static const String _telegramToken = '8539029528:AAFjyVd941iMgpIbqEbwN6VLWEZi_m4p53U'; // Reemplaza por tu token real
   static const String _telegramChatId =
-      '8024779345'; // ID del chat de Telegram para alertas
+      '6535645414'; // ID del chat de Telegram para alertas
 
     /// Envía un mensaje de texto a Telegram
     Future<http.Response> sendTelegramMessage(String message) async {

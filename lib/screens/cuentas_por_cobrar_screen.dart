@@ -114,10 +114,10 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
     final result = await showDialog<double>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: Colors.white,
+        backgroundColor: AppTheme.cardBg,
         title: Text(
           'Registrar Abono - ${cuenta.clienteNombre}',
-          style: TextStyle(color: Colors.black87),
+          style: TextStyle(color: AppTheme.textPrimary),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -125,13 +125,13 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
           children: [
             Text(
               'Saldo pendiente: ${CurrencyUtils.format(cuenta.saldoPendiente)}',
-              style: TextStyle(color: Colors.black87),
+              style: TextStyle(color: AppTheme.textPrimary),
             ),
             const SizedBox(height: 16),
             TextField(
               controller: montoController,
               keyboardType: TextInputType.number,
-              style: TextStyle(color: Colors.black87),
+              style: TextStyle(color: AppTheme.textPrimary),
               decoration: const InputDecoration(
                 labelText: 'Monto del abono',
                 prefixText: '\$ ',
@@ -212,8 +212,8 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Cuentas por Cobrar'),
-          backgroundColor: const Color(0xFF1976D2),
-          foregroundColor: Colors.white,
+          backgroundColor: AppTheme.primary,
+          foregroundColor: AppTheme.white,
           elevation: 0,
           actions: [
             IconButton(
@@ -226,7 +226,7 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
           children: [
             // Filtros y búsqueda
             Container(
-              color: const Color(0xFF1976D2),
+              color: AppTheme.primary,
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
@@ -237,7 +237,7 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
                       hintText: 'Buscar por cliente o factura...',
                       prefixIcon: const Icon(Icons.search),
                       filled: true,
-                      fillColor: Colors.white,
+                      fillColor: AppTheme.white,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide.none,
@@ -296,9 +296,9 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
           _aplicarFiltros();
         });
       },
-      backgroundColor: Colors.white,
-      selectedColor: Colors.white,
-      checkmarkColor: const Color(0xFF1976D2),
+      backgroundColor: AppTheme.white,
+      selectedColor: AppTheme.white,
+      checkmarkColor: AppTheme.primary,
     );
   }
 
@@ -341,7 +341,7 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
             Icon(
               Icons.account_balance_wallet_outlined,
               size: 64,
-              color: Colors.grey,
+              color: AppTheme.metal,
             ),
             SizedBox(height: 16),
             Text('No se encontraron cuentas por cobrar ni deudas'),
@@ -764,7 +764,11 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
                     children: [
                       Row(
                         children: [
-                          Icon(Icons.person, size: 16, color: Colors.grey[600]),
+                          Icon(
+                            Icons.person,
+                            size: 16,
+                            color: AppTheme.textMuted,
+                          ),
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
@@ -780,7 +784,7 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
                       Text(
                         'Pedido #${deuda.id.substring(0, 8)}',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.grey[600],
+                          color: AppTheme.textMuted,
                         ),
                       ),
                     ],
@@ -826,14 +830,14 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
             // Información de fecha y productos
             Row(
               children: [
-                Icon(Icons.calendar_today, size: 14, color: Colors.grey[600]),
+                Icon(Icons.calendar_today, size: 14, color: AppTheme.textMuted),
                 const SizedBox(width: 4),
                 Text(
                   DateFormat('dd/MM/yyyy HH:mm').format(deuda.fecha),
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
                 const SizedBox(width: 12),
-                Icon(Icons.shopping_cart, size: 14, color: Colors.grey[600]),
+                Icon(Icons.shopping_cart, size: 14, color: AppTheme.textMuted),
                 const SizedBox(width: 4),
                 Text(
                   '${deuda.items.length} item(s)',
@@ -901,19 +905,19 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.grey[100],
+                  color: AppTheme.cardBg.withOpacity(0.5),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.note, size: 14, color: Colors.grey[600]),
+                    Icon(Icons.note, size: 14, color: AppTheme.textMuted),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
                         deuda.notas!,
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.grey[700],
+                          color: AppTheme.textSecondary,
                           fontStyle: FontStyle.italic,
                         ),
                       ),
@@ -990,7 +994,7 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
                 'Productos:',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+                  color: AppTheme.textPrimary,
                 ),
               ),
               const SizedBox(height: 8),
@@ -1003,14 +1007,14 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
                       Expanded(
                         child: Text(
                           '${item.cantidad}x ${item.productoNombre}',
-                          style: TextStyle(color: Colors.black87),
+                          style: TextStyle(color: AppTheme.textPrimary),
                         ),
                       ),
                       Text(
                         CurrencyUtils.format(item.subtotal),
                         style: TextStyle(
                           fontWeight: FontWeight.w500,
-                          color: Colors.black87,
+                          color: AppTheme.textPrimary,
                         ),
                       ),
                     ],
@@ -1027,7 +1031,7 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
-                      color: Colors.black87,
+                      color: AppTheme.textPrimary,
                     ),
                   ),
                   Text(
@@ -1065,12 +1069,12 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
               label,
               style: TextStyle(
                 fontWeight: FontWeight.w500,
-                color: Colors.grey[700],
+                color: AppTheme.textMuted,
               ),
             ),
           ),
           Expanded(
-            child: Text(value, style: TextStyle(color: Colors.black87)),
+            child: Text(value, style: TextStyle(color: AppTheme.textPrimary)),
           ),
         ],
       ),

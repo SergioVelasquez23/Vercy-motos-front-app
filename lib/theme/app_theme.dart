@@ -5,17 +5,17 @@ import 'package:flutter/material.dart';
 /// PALETA VERCY MOTOS: Azul, Morado, Blanco, Metal y Negro
 class AppTheme {
   // ===== COLORES PRINCIPALES - VERCY MOTOS =====
-  static const Color backgroundDark = Color(0xFF000000); // Negro
-  static const Color surfaceDark = Color(0xFF1A1A1A); // Negro suave
-  static const Color cardBg = Color(0xFF212121); // Gris oscuro
-  static const Color cardElevated = Color(0xFF2C2C2C); // Gris oscuro elevado
+  static const Color backgroundDark = Color(0xFFFFFFFF); // Blanco
+  static const Color surfaceDark = Color(0xFFF5F5F5); // Gris muy claro
+  static const Color cardBg = Color(0xFFFFFFFF); // Blanco
+  static const Color cardElevated = Color(0xFFFAFAFA); // Gris clarísimo
 
   // ===== COLORES DE TEXTO =====
-  static const Color textPrimary = Color(0xFFFFFFFF); // Blanco
-  static const Color textSecondary = Color(0xFFE0E0E0); // Blanco suave
-  static const Color textMuted = Color(0xFF757575); // Metal/Gris
-  static const Color textDark = Color(0xFFFFFFFF); // Blanco para fondos oscuros
-  static const Color textLight = Color(0xFFE8E8E8); // Gris muy claro
+  static const Color textPrimary = Color.fromARGB(255, 2, 2, 2); // Negro/Gris oscuro
+  static const Color textSecondary = Color(0xFF424242); // Gris oscuro
+  static const Color textMuted = Color.fromARGB(255, 2, 2, 2); // Metal/Gris
+  static const Color textDark = Color(0xFF000000); // Negro para fondos claros
+  static const Color textLight = Color(0xFF616161); // Gris medio
 
   // ===== COLORES DE ACENTO - VERCY MOTOS =====
   static const Color primary = Color(0xFF2196F3); // Azul principal
@@ -32,7 +32,7 @@ class AppTheme {
   static const Color success = Color(0xFF4CAF50);
   static const Color warning = Color(0xFFFF9800);
   static const Color error = Color(0xFFF44336);
-  static const Color info = Color(0xFF2196F3); // Azul
+  static const Color info = Color.fromARGB(255, 0, 0, 0); // Azul
   static const Color accent = Color(0xFF9C27B0); // Morado
 
   // ===== GRADIENTES =====
@@ -150,7 +150,7 @@ class AppTheme {
   static BoxDecoration get cardDecoration => BoxDecoration(
     color: cardBg,
     borderRadius: BorderRadius.circular(radiusMedium),
-    border: Border.all(color: Color(0xFF404040), width: 1),
+    border: Border.all(color: Color(0xFFE0E0E0), width: 1),
     boxShadow: cardShadow,
   );
 
@@ -164,7 +164,7 @@ class AppTheme {
   static BoxDecoration get inputDecoration => BoxDecoration(
     color: surfaceDark,
     borderRadius: BorderRadius.circular(radiusMedium),
-    border: Border.all(color: Color(0xFF404040), width: 1),
+    border: Border.all(color: Color(0xFFE0E0E0), width: 1),
   );
 
   // ===== ESTILOS DE BOTÓN =====

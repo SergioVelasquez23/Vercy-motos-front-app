@@ -105,10 +105,10 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
     final result = await showDialog<double>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: Colors.white,
+        backgroundColor: AppTheme.cardBg,
         title: Text(
           'Registrar Pago - ${cuenta.proveedorNombre}',
-          style: const TextStyle(color: Colors.black87),
+          style: TextStyle(color: AppTheme.textPrimary),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -116,7 +116,7 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
           children: [
             Text(
               'Saldo pendiente: ${CurrencyUtils.format(cuenta.saldoPendiente)}',
-              style: const TextStyle(color: Colors.black87),
+              style: TextStyle(color: AppTheme.textPrimary),
             ),
             if (cuenta.tieneDescuento && !cuenta.descuentoPerdido) ...[
               const SizedBox(height: 8),
@@ -132,7 +132,7 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
             TextField(
               controller: montoController,
               keyboardType: TextInputType.number,
-              style: const TextStyle(color: Colors.black87),
+              style: TextStyle(color: AppTheme.textPrimary),
               decoration: const InputDecoration(
                 labelText: 'Monto del pago',
                 prefixText: '\$ ',
@@ -235,8 +235,8 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Cuentas por Pagar'),
-          backgroundColor: const Color(0xFFE65100),
-          foregroundColor: Colors.white,
+          backgroundColor: AppTheme.warning,
+          foregroundColor: AppTheme.white,
           elevation: 0,
           actions: [
             IconButton(
@@ -247,14 +247,14 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
         ),
         floatingActionButton: FloatingActionButton(
           onPressed: _mostrarFormularioNuevaCuenta,
-          backgroundColor: const Color(0xFFE65100),
-          child: const Icon(Icons.add, color: Colors.white),
+          backgroundColor: AppTheme.warning,
+          child: Icon(Icons.add, color: AppTheme.white),
         ),
         body: Column(
           children: [
             // Filtros y búsqueda
             Container(
-              color: const Color(0xFFE65100),
+              color: AppTheme.warning,
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: [

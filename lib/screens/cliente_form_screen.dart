@@ -191,9 +191,9 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
       data: Theme.of(context).copyWith(
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
-          fillColor: AppTheme.surfaceDark,
+          fillColor: Colors.white,
           labelStyle: TextStyle(color: Colors.grey.shade400),
-          hintStyle: TextStyle(color: Colors.grey.shade500),
+          hintStyle: TextStyle(color: const Color.fromARGB(255, 247, 247, 247)),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
             borderSide: BorderSide(color: Colors.grey.shade700),
@@ -210,13 +210,13 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
             borderRadius: BorderRadius.circular(8),
             borderSide: BorderSide(color: Colors.red, width: 1),
           ),
-          prefixIconColor: Colors.grey.shade400,
+          prefixIconColor: const Color.fromARGB(255, 255, 255, 255),
         ),
         textSelectionTheme: TextSelectionThemeData(
-          cursorColor: AppTheme.primary,
+          cursorColor: const Color.fromARGB(255, 0, 0, 0),
         ),
         dropdownMenuTheme: DropdownMenuThemeData(
-          textStyle: TextStyle(color: Colors.white),
+          textStyle: TextStyle(color: AppTheme.textPrimary),
         ),
       ),
       child: Scaffold(
@@ -259,7 +259,10 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
       decoration: BoxDecoration(
         color: AppTheme.cardBg,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade800, width: 1),
+        border: Border.all(
+          color: const Color.fromARGB(255, 11, 11, 11),
+          width: 1,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -267,7 +270,7 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
           Container(
             padding: EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppTheme.primary.withOpacity(0.15),
+              color: AppTheme.primary.withOpacity(0.3),
               borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
             ),
             child: Row(
@@ -547,7 +550,7 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
         return TextFormField(
           controller: textController,
           focusNode: focusNode,
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(color: AppTheme.textPrimary),
           decoration: InputDecoration(
             labelText: 'Departamento',
             hintText: 'Buscar departamento...',
@@ -595,14 +598,14 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
                     dense: true,
                     title: Text(
                       dep.name,
-                      style: TextStyle(color: Colors.white),
+                      style: TextStyle(color: AppTheme.textPrimary),
                     ),
                     leading: Icon(
                       Icons.location_city,
                       size: 18,
                       color: AppTheme.primary,
                     ),
-                    hoverColor: AppTheme.primary.withOpacity(0.15),
+                    hoverColor: AppTheme.primary.withOpacity(0.3),
                     onTap: () => onSelected(dep),
                   );
                 },
@@ -681,7 +684,7 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
         return TextFormField(
           controller: textController,
           focusNode: focusNode,
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(color: AppTheme.textPrimary),
           decoration: InputDecoration(
             labelText: 'Ciudad / Municipio',
             hintText: 'Buscar municipio...',
@@ -727,14 +730,14 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
                     dense: true,
                     title: Text(
                       mun.name,
-                      style: TextStyle(color: Colors.white),
+                      style: TextStyle(color: AppTheme.textPrimary),
                     ),
                     leading: Icon(
                       Icons.place,
                       size: 18,
                       color: AppTheme.primary,
                     ),
-                    hoverColor: AppTheme.primary.withOpacity(0.15),
+                    hoverColor: AppTheme.primary.withOpacity(0.3),
                     onTap: () => onSelected(mun),
                   );
                 },

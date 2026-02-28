@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/role.dart';
 import '../services/role_service.dart';
+import '../theme/app_theme.dart';
 
 class RolesScreen extends StatefulWidget {
   const RolesScreen({super.key});
@@ -75,7 +76,7 @@ class _RolesScreenState extends State<RolesScreen> {
                 Expanded(
                   child: TextField(
                     controller: _searchController,
-                    style: const TextStyle(color: Colors.white),
+                    style: TextStyle(color: const Color.fromARGB(255, 8, 8, 8)),
                     decoration: InputDecoration(
                       hintText: 'Buscar roles...',
                       hintStyle: TextStyle(color: Colors.grey[400]),
@@ -145,7 +146,7 @@ class _RolesScreenState extends State<RolesScreen> {
 
   Widget _buildRoleCard(Role role) {
     return Card(
-      color: Colors.grey[850],
+      color: const Color.fromARGB(255, 0, 0, 0),
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
@@ -186,7 +187,7 @@ class _RolesScreenState extends State<RolesScreen> {
                         Text(
                           role.descripcion!,
                           style: TextStyle(
-                            color: Colors.grey[400],
+                            color: const Color.fromARGB(255, 13, 13, 13),
                             fontSize: 14,
                           ),
                         ),
@@ -221,7 +222,7 @@ class _RolesScreenState extends State<RolesScreen> {
                 if (role.fechaCreacion != null)
                   Text(
                     'Creado: ${_formatDate(role.fechaCreacion!)}',
-                    style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                    style: TextStyle(color: const Color.fromARGB(255, 0, 0, 0), fontSize: 12),
                   )
                 else
                   const SizedBox(),
@@ -266,14 +267,14 @@ class _RolesScreenState extends State<RolesScreen> {
           backgroundColor: Colors.grey[900],
           title: Text(
             isEditing ? 'Editar Rol' : 'Nuevo Rol',
-            style: const TextStyle(color: Colors.white),
+            style: TextStyle(color: AppTheme.textPrimary),
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
                 controller: nombreController,
-                style: const TextStyle(color: Colors.white),
+                style: TextStyle(color: AppTheme.textPrimary),
                 decoration: InputDecoration(
                   labelText: 'Nombre del rol *',
                   labelStyle: const TextStyle(color: Colors.grey),
@@ -288,7 +289,7 @@ class _RolesScreenState extends State<RolesScreen> {
               const SizedBox(height: 16),
               TextField(
                 controller: descripcionController,
-                style: const TextStyle(color: Colors.white),
+                style: TextStyle(color: AppTheme.textPrimary),
                 maxLines: 3,
                 decoration: InputDecoration(
                   labelText: 'Descripción',
@@ -311,9 +312,9 @@ class _RolesScreenState extends State<RolesScreen> {
                     },
                     activeColor: const Color(0xFFFF6B00),
                   ),
-                  const Text(
+                  Text(
                     'Rol activo',
-                    style: TextStyle(color: Colors.white),
+                    style: TextStyle(color: AppTheme.textPrimary),
                   ),
                 ],
               ),
@@ -415,13 +416,13 @@ class _RolesScreenState extends State<RolesScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: Colors.grey[900],
-        title: const Text(
+        title: Text(
           'Confirmar eliminación',
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(color: AppTheme.textPrimary),
         ),
         content: Text(
           '¿Está seguro de que desea eliminar el rol "${role.nombre}"?',
-          style: const TextStyle(color: Colors.white),
+          style: TextStyle(color: AppTheme.textPrimary),
         ),
         actions: [
           TextButton(

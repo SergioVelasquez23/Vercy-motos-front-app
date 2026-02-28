@@ -156,6 +156,7 @@ class ReportesService {
     String? producto,
     String? vendedor,
     String? codigo,
+    String? cuadreId,
   }) async {
     String endpoint =
         '/api/reportes/productos/ventas-detallado?fechaDesde=${desde.toIso8601String()}&fechaHasta=${hasta.toIso8601String()}';
@@ -171,6 +172,9 @@ class ReportesService {
     }
     if (codigo != null && codigo.isNotEmpty) {
       endpoint += '&codigo=$codigo';
+    }
+    if (cuadreId != null && cuadreId.isNotEmpty) {
+      endpoint += '&cuadreId=$cuadreId';
     }
 
     try {
@@ -197,6 +201,7 @@ class ReportesService {
     String? producto,
     String? vendedor,
     String? codigo,
+    String? cuadreId,
   }) async {
     String endpoint =
         '/api/reportes/productos/ventas-agrupado?fechaDesde=${desde.toIso8601String()}&fechaHasta=${hasta.toIso8601String()}';
@@ -212,6 +217,9 @@ class ReportesService {
     }
     if (codigo != null && codigo.isNotEmpty) {
       endpoint += '&codigo=$codigo';
+    }
+    if (cuadreId != null && cuadreId.isNotEmpty) {
+      endpoint += '&cuadreId=$cuadreId';
     }
 
     try {

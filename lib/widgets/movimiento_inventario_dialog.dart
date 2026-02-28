@@ -195,7 +195,7 @@ class _MovimientoInventarioDialogState
                     child: TextButton(
                       onPressed: () => _selectDate(context),
                       style: TextButton.styleFrom(
-                        backgroundColor: Colors.white10,
+                        backgroundColor: Colors.black12,
                         padding: EdgeInsets.symmetric(vertical: 16),
                         alignment: Alignment.centerLeft,
                       ),
@@ -219,7 +219,7 @@ class _MovimientoInventarioDialogState
               Container(
                 padding: EdgeInsets.symmetric(horizontal: 12),
                 decoration: BoxDecoration(
-                  color: Colors.white10,
+                  color: Colors.black12,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: DropdownButton<String>(
@@ -248,7 +248,7 @@ class _MovimientoInventarioDialogState
                 controller: _facturaController,
                 decoration: InputDecoration(
                   filled: true,
-                  fillColor: Colors.white10,
+                  fillColor: Colors.black12,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -267,7 +267,7 @@ class _MovimientoInventarioDialogState
                 controller: _observacionesController,
                 decoration: InputDecoration(
                   filled: true,
-                  fillColor: Colors.white10,
+                  fillColor: Colors.black12,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -287,7 +287,7 @@ class _MovimientoInventarioDialogState
                 controller: _proveedorController,
                 decoration: InputDecoration(
                   filled: true,
-                  fillColor: Colors.white10,
+                  fillColor: Colors.black12,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -327,7 +327,7 @@ class _MovimientoInventarioDialogState
               Container(
                 padding: EdgeInsets.symmetric(horizontal: 12),
                 decoration: BoxDecoration(
-                  color: Colors.white10,
+                  color: Colors.black12,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: DropdownButton<Inventario>(
@@ -387,7 +387,7 @@ class _MovimientoInventarioDialogState
                           ],
                           decoration: InputDecoration(
                             filled: true,
-                            fillColor: Colors.white10,
+                            fillColor: Colors.black12,
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
                             ),
@@ -433,7 +433,7 @@ class _MovimientoInventarioDialogState
                           ],
                           decoration: InputDecoration(
                             filled: true,
-                            fillColor: Colors.white10,
+                            fillColor: Colors.black12,
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
                             ),

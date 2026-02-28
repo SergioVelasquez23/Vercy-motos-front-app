@@ -44,8 +44,10 @@ const kTextLight = 0xFFA0A0A0;
 
 // Constantes para formatos de fecha
 const kDateFormat = 'dd/MM/yyyy';
-const kTimeFormat = 'HH:mm';
-const kDateTimeFormat = 'dd/MM/yyyy HH:mm';
+const kTimeFormat = 'hh:mm a'; // Formato 12 horas con AM/PM
+const kTimeFormat24 = 'HH:mm'; // Formato 24 horas (para backend)
+const kDateTimeFormat = 'dd/MM/yyyy hh:mm a'; // Formato 12 horas con AM/PM
+const kDateTimeFormat24 = 'dd/MM/yyyy HH:mm'; // Formato 24 horas (para backend)
 
 // Mensajes de error comunes
 const kErrorConexion =

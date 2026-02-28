@@ -2079,7 +2079,7 @@ class _GastosScreenState extends State<GastosScreen> {
                             context: context,
                             initialDate: _fechaInicio ?? DateTime.now(),
                             firstDate: DateTime(2020),
-                            lastDate: DateTime.now(),
+                            lastDate: DateTime(2100),
                             builder: (context, child) {
                               return Theme(
                                 data: Theme.of(context).copyWith(
@@ -2131,7 +2131,7 @@ class _GastosScreenState extends State<GastosScreen> {
                             context: context,
                             initialDate: _fechaFin ?? DateTime.now(),
                             firstDate: DateTime(2020),
-                            lastDate: DateTime.now(),
+                            lastDate: DateTime(2100),
                             builder: (context, child) {
                               return Theme(
                                 data: Theme.of(context).copyWith(

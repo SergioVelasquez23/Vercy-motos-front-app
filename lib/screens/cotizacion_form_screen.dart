@@ -100,7 +100,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
     }
   }
 
-  void _cargarDatosCotizacion() {
+  Future<void> _cargarDatosCotizacion() async {
     final c = widget.cotizacion!;
     _fecha = c.fecha;
     _fechaVencimiento =
@@ -118,8 +118,19 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
       );
       _clienteController.text = _clienteSeleccionado!.nombreCompleto;
     } catch (e) {
-      // Si no se encuentra, usar el nombre guardado en la cotización
-      _clienteController.text = c.clienteNombre ?? c.clienteId;
+      // Si no se encuentra en la lista, obtenerlo directamente de la base de datos
+      try {
+        _clienteSeleccionado = await _clienteService.obtenerClientePorId(c.clienteId);
+        if (_clienteSeleccionado != null) {
+          _clienteController.text = _clienteSeleccionado!.nombreCompleto;
+          setState(() {});
+        } else {
+          _clienteController.text = c.clienteNombre ?? c.clienteId;
+        }
+      } catch (err) {
+        // Si todo falla, usar el nombre guardado en la cotización
+        _clienteController.text = c.clienteNombre ?? c.clienteId;
+      }
     }
   }
 
@@ -744,12 +755,12 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
               Icon(
                 Icons.shopping_cart_outlined,
                 size: 64,
-                color: Colors.grey[600],
+                color: Colors.grey[400],
               ),
               SizedBox(height: 16),
               Text(
                 'No hay productos agregados',
-                style: TextStyle(color: Colors.grey[400], fontSize: 16),
+                style: TextStyle(color: AppTheme.textSecondary, fontSize: 16),
               ),
             ],
           ),
@@ -953,7 +964,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
           _buildTotalRow('Impuestos', totalImpuestos),
           _buildTotalRow('Descuentos', -totalDescuentos),
           _buildTotalRow('Retenciones', -totalRetenciones),
-          Divider(thickness: 2, color: Colors.grey.shade700),
+          Divider(thickness: 2, color: Colors.grey.shade300),
           _buildTotalRow('TOTAL', total, isTotal: true),
         ],
       ),

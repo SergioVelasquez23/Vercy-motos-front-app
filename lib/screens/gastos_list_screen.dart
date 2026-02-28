@@ -147,7 +147,7 @@ class _GastosListScreenState extends State<GastosListScreen> {
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: Colors.white,
+                color: AppTheme.textPrimary,
               ),
             ),
             SizedBox(height: 24),
@@ -367,7 +367,7 @@ class _GastosListScreenState extends State<GastosListScreen> {
                 ),
                 Text(
                   'Cuentas por\nPagar',
-                  style: TextStyle(color: Colors.white, fontSize: 12),
+                  style: TextStyle(color: AppTheme.textPrimary, fontSize: 12),
                 ),
               ],
             ),
@@ -396,7 +396,7 @@ class _GastosListScreenState extends State<GastosListScreen> {
                 ),
                 Text(
                   'Ver pagos\nparciales',
-                  style: TextStyle(color: Colors.white, fontSize: 12),
+                  style: TextStyle(color: AppTheme.textPrimary, fontSize: 12),
                 ),
               ],
             ),
@@ -415,7 +415,7 @@ class _GastosListScreenState extends State<GastosListScreen> {
               child: DropdownButton<String>(
                 value: _tipoGastoSeleccionado,
                 dropdownColor: AppTheme.cardBg,
-                style: TextStyle(color: Colors.white, fontSize: 14),
+                style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
                 icon: Icon(Icons.arrow_drop_down, color: Colors.grey),
                 items: _tiposGastoFiltro.map((tipo) {
                   return DropdownMenuItem(
@@ -443,7 +443,7 @@ class _GastosListScreenState extends State<GastosListScreen> {
     return TextField(
       controller: controller,
       onChanged: onChanged,
-      style: TextStyle(color: Colors.white, fontSize: 14),
+      style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: TextStyle(color: Colors.grey.shade500),
@@ -601,7 +601,7 @@ class _GastosListScreenState extends State<GastosListScreen> {
       child: Text(
         texto,
         style: TextStyle(
-          color: Colors.white,
+          color: AppTheme.textPrimary,
           fontWeight: FontWeight.bold,
           fontSize: 13,
         ),
@@ -640,7 +640,7 @@ class _GastosListScreenState extends State<GastosListScreen> {
             flex: 1,
             child: Text(
               numeroGasto,
-              style: TextStyle(color: Colors.white, fontSize: 13),
+              style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
             ),
           ),
 
@@ -649,7 +649,7 @@ class _GastosListScreenState extends State<GastosListScreen> {
             flex: 2,
             child: Text(
               gasto.proveedor ?? 'N/A',
-              style: TextStyle(color: Colors.white, fontSize: 13),
+              style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -659,7 +659,7 @@ class _GastosListScreenState extends State<GastosListScreen> {
             flex: 2,
             child: Text(
               '${gasto.fechaGasto.year}-${gasto.fechaGasto.month.toString().padLeft(2, '0')}-${gasto.fechaGasto.day.toString().padLeft(2, '0')}',
-              style: TextStyle(color: Colors.white, fontSize: 13),
+              style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
             ),
           ),
 
@@ -668,7 +668,7 @@ class _GastosListScreenState extends State<GastosListScreen> {
             flex: 2,
             child: Text(
               gasto.concepto,
-              style: TextStyle(color: Colors.white, fontSize: 13),
+              style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -678,7 +678,7 @@ class _GastosListScreenState extends State<GastosListScreen> {
             flex: 2,
             child: Text(
               gasto.formaPago ?? 'PRINCIPAL-CAJA',
-              style: TextStyle(color: Colors.white, fontSize: 13),
+              style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -688,7 +688,7 @@ class _GastosListScreenState extends State<GastosListScreen> {
             flex: 2,
             child: Text(
               '\$ ${formatNumberWithDots(gasto.monto)}',
-              style: TextStyle(color: Colors.white, fontSize: 13),
+              style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
               textAlign: TextAlign.right,
             ),
           ),
@@ -698,7 +698,7 @@ class _GastosListScreenState extends State<GastosListScreen> {
             flex: 2,
             child: Text(
               '\$ ${formatNumberWithDots(pagado)}',
-              style: TextStyle(color: Colors.white, fontSize: 13),
+              style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
               textAlign: TextAlign.right,
             ),
           ),
@@ -721,7 +721,7 @@ class _GastosListScreenState extends State<GastosListScreen> {
             flex: 2,
             child: Text(
               gasto.tipoGastoNombre,
-              style: TextStyle(color: Colors.white, fontSize: 13),
+              style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -804,7 +804,10 @@ class _GastosListScreenState extends State<GastosListScreen> {
           children: [
             Icon(Icons.receipt_long, color: AppTheme.primary),
             SizedBox(width: 12),
-            Text('Detalle del Gasto', style: TextStyle(color: Colors.white)),
+            Text(
+              'Detalle del Gasto',
+              style: TextStyle(color: AppTheme.textPrimary),
+            ),
           ],
         ),
         content: Container(
@@ -864,7 +867,7 @@ class _GastosListScreenState extends State<GastosListScreen> {
             ),
           ),
           Expanded(
-            child: Text(value, style: TextStyle(color: Colors.white)),
+            child: Text(value, style: TextStyle(color: AppTheme.textPrimary)),
           ),
         ],
       ),
@@ -876,10 +879,13 @@ class _GastosListScreenState extends State<GastosListScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppTheme.cardBg,
-        title: Text('¿Eliminar Gasto?', style: TextStyle(color: Colors.white)),
+        title: Text(
+          '¿Eliminar Gasto?',
+          style: TextStyle(color: AppTheme.textPrimary),
+        ),
         content: Text(
           '¿Está seguro que desea eliminar este gasto?\n\nConcepto: ${gasto.concepto}\nMonto: \$ ${formatNumberWithDots(gasto.monto)}',
-          style: TextStyle(color: Colors.grey.shade300),
+          style: TextStyle(color: AppTheme.textSecondary),
         ),
         actions: [
           TextButton(

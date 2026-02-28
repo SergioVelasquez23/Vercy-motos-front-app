@@ -182,7 +182,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: AppTheme.textPrimary,
                   ),
                 ),
                 Row(
@@ -294,7 +294,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
               child: DropdownButton<String>(
                 value: _tipoFiltro,
                 dropdownColor: AppTheme.cardBg,
-                style: TextStyle(color: Colors.white, fontSize: 14),
+                style: TextStyle(color: Colors.black87, fontSize: 14),
                 icon: Icon(Icons.arrow_drop_down, color: Colors.grey),
                 items: [
                   DropdownMenuItem(value: 'PRODUCTO', child: Text('PRODUCTO')),
@@ -342,7 +342,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
               child: DropdownButton<String>(
                 value: _categoriaSeleccionada,
                 dropdownColor: AppTheme.cardBg,
-                style: TextStyle(color: Colors.white, fontSize: 14),
+                style: TextStyle(color: Colors.black87, fontSize: 14),
                 icon: Icon(Icons.arrow_drop_down, color: Colors.grey),
                 hint: Text('Otros', style: TextStyle(color: Colors.grey)),
                 items: [
@@ -374,7 +374,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
     return TextField(
       controller: controller,
       onChanged: onChanged,
-      style: TextStyle(color: Colors.white, fontSize: 14),
+      style: TextStyle(color: Colors.black87, fontSize: 14),
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: TextStyle(color: Colors.grey.shade500),
@@ -497,7 +497,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
       child: Text(
         texto,
         style: TextStyle(
-          color: Colors.white,
+          color: AppTheme.textPrimary,
           fontWeight: FontWeight.bold,
           fontSize: 13,
         ),
@@ -552,7 +552,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
             flex: 3,
             child: Text(
               producto.nombre.toUpperCase(),
-              style: TextStyle(color: Colors.white, fontSize: 13),
+              style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -562,7 +562,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
             flex: 2,
             child: Text(
               '\$ ${formatNumberWithDots(producto.precio)}',
-              style: TextStyle(color: Colors.white, fontSize: 13),
+              style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
               textAlign: TextAlign.right,
             ),
           ),
@@ -577,7 +577,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
                 '${_getStockTotal(producto)}',
                 style: TextStyle(
                   color: _getStockTotal(producto) > 0
-                      ? Colors.white
+                      ? AppTheme.textPrimary
                       : Colors.red,
                   fontSize: 13,
                   fontWeight: _getStockTotal(producto) == 0
@@ -594,7 +594,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
             flex: 2,
             child: Text(
               '\$ ${formatNumberWithDots(producto.costo)}',
-              style: TextStyle(color: Colors.white, fontSize: 13),
+              style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
               textAlign: TextAlign.right,
             ),
           ),
@@ -744,7 +744,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
             Expanded(
               child: Text(
                 producto.nombre,
-                style: TextStyle(color: Colors.white, fontSize: 18),
+                style: TextStyle(color: AppTheme.textPrimary, fontSize: 18),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
@@ -838,7 +838,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
             ),
           ),
           Expanded(
-            child: Text(value, style: TextStyle(color: Colors.white)),
+            child: Text(value, style: TextStyle(color: AppTheme.textPrimary)),
           ),
         ],
       ),
@@ -854,7 +854,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
           children: [
             Icon(Icons.location_on, color: AppTheme.primary),
             SizedBox(width: 12),
-            Text('Ubicaciones', style: TextStyle(color: Colors.white)),
+            Text('Ubicaciones', style: TextStyle(color: AppTheme.textPrimary)),
           ],
         ),
         content: Container(
@@ -916,7 +916,10 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
           Text(label, style: TextStyle(color: Colors.grey.shade400)),
           Text(
             value,
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+            style: TextStyle(
+              color: AppTheme.textPrimary,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ],
       ),
@@ -1112,7 +1115,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
                   SizedBox(width: 12),
                   Text(
                     isEditing ? 'Editar Producto' : 'Nuevo Producto',
-                    style: TextStyle(color: Colors.white),
+                    style: TextStyle(color: AppTheme.textPrimary),
                   ),
                 ],
               ),
@@ -1324,7 +1327,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
                   SizedBox(width: 12),
                   Text(
                     isEditing ? 'Editar Producto' : 'Nuevo Producto',
-                    style: TextStyle(color: Colors.white),
+                    style: TextStyle(color: AppTheme.textPrimary),
                   ),
                 ],
               ),
@@ -1338,10 +1341,10 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
                       DropdownButtonFormField<String>(
                         value: tipoSeleccionado,
                         dropdownColor: AppTheme.cardBg,
-                        style: TextStyle(color: Colors.white),
+                        style: TextStyle(color: Colors.black87),
                         decoration: InputDecoration(
                           labelText: 'Tipo',
-                          labelStyle: TextStyle(color: Colors.white70),
+                          labelStyle: TextStyle(color: Colors.black54),
                           border: OutlineInputBorder(
                             borderSide: BorderSide(color: Colors.grey),
                           ),
@@ -1374,10 +1377,10 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
                       // Código
                       TextField(
                         controller: codigoController,
-                        style: TextStyle(color: Colors.white),
+                        style: TextStyle(color: Colors.black87),
                         decoration: InputDecoration(
                           labelText: 'Código',
-                          labelStyle: TextStyle(color: Colors.white70),
+                          labelStyle: TextStyle(color: Colors.black54),
                           border: OutlineInputBorder(),
                           enabledBorder: OutlineInputBorder(
                             borderSide: BorderSide(color: Colors.grey),
@@ -1389,10 +1392,10 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
                       // Nombre
                       TextField(
                         controller: nombreController,
-                        style: TextStyle(color: Colors.white),
+                        style: TextStyle(color: Colors.black87),
                         decoration: InputDecoration(
                           labelText: 'Nombre *',
-                          labelStyle: TextStyle(color: Colors.white70),
+                          labelStyle: TextStyle(color: Colors.black54),
                           border: OutlineInputBorder(),
                           enabledBorder: OutlineInputBorder(
                             borderSide: BorderSide(color: Colors.grey),
@@ -1404,11 +1407,11 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
                       // Descripción
                       TextField(
                         controller: descripcionController,
-                        style: TextStyle(color: Colors.white),
+                        style: TextStyle(color: Colors.black87),
                         maxLines: 3,
                         decoration: InputDecoration(
                           labelText: 'Descripción',
-                          labelStyle: TextStyle(color: Colors.white70),
+                          labelStyle: TextStyle(color: Colors.black54),
                           border: OutlineInputBorder(),
                           enabledBorder: OutlineInputBorder(
                             borderSide: BorderSide(color: Colors.grey),
@@ -1421,10 +1424,10 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
                       DropdownButtonFormField<String>(
                         value: categoriaSeleccionada,
                         dropdownColor: AppTheme.cardBg,
-                        style: TextStyle(color: Colors.white),
+                        style: TextStyle(color: Colors.black87),
                         decoration: InputDecoration(
                           labelText: 'Categoría',
-                          labelStyle: TextStyle(color: Colors.white70),
+                          labelStyle: TextStyle(color: Colors.black54),
                           border: OutlineInputBorder(
                             borderSide: BorderSide(color: Colors.grey),
                           ),
@@ -1457,11 +1460,11 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
                           Expanded(
                             child: TextField(
                               controller: costoController,
-                              style: TextStyle(color: Colors.white),
+                              style: TextStyle(color: Colors.black87),
                               keyboardType: TextInputType.number,
                               decoration: InputDecoration(
                                 labelText: 'Costo *',
-                                labelStyle: TextStyle(color: Colors.white70),
+                                labelStyle: TextStyle(color: Colors.black54),
                                 border: OutlineInputBorder(),
                                 enabledBorder: OutlineInputBorder(
                                   borderSide: BorderSide(color: Colors.grey),
@@ -1474,11 +1477,11 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
                           Expanded(
                             child: TextField(
                               controller: precioController,
-                              style: TextStyle(color: Colors.white),
+                              style: TextStyle(color: Colors.black87),
                               keyboardType: TextInputType.number,
                               decoration: InputDecoration(
                                 labelText: 'Precio *',
-                                labelStyle: TextStyle(color: Colors.white70),
+                                labelStyle: TextStyle(color: Colors.black54),
                                 border: OutlineInputBorder(),
                                 enabledBorder: OutlineInputBorder(
                                   borderSide: BorderSide(color: Colors.grey),
@@ -1647,7 +1650,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
               SizedBox(width: 12),
               Text(
                 'Confirmar eliminación',
-                style: TextStyle(color: Colors.white),
+                style: TextStyle(color: AppTheme.textPrimary),
               ),
             ],
           ),
@@ -1657,7 +1660,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
             children: [
               Text(
                 '¿Estás seguro de que deseas eliminar este producto?',
-                style: TextStyle(color: Colors.white),
+                style: TextStyle(color: AppTheme.textPrimary),
               ),
               SizedBox(height: 12),
               Container(
@@ -1754,7 +1757,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
               SizedBox(width: 12),
               Text(
                 titulo,
-                style: TextStyle(color: Colors.white),
+                style: TextStyle(color: AppTheme.textPrimary),
               ),
             ],
           ),
@@ -1767,7 +1770,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
                 children: [
                   Text(
                     'Selecciona un archivo Excel (.xlsx) con los datos de los productos.\nÚltima columna: $ultimaColumna',
-                    style: TextStyle(color: Colors.white),
+                    style: TextStyle(color: AppTheme.textPrimary),
                   ),
                   SizedBox(height: 16),
                   Container(
@@ -1923,7 +1926,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
               SizedBox(width: 16),
               Text(
                 'Analizando archivo Excel...',
-                style: TextStyle(color: Colors.white),
+                style: TextStyle(color: AppTheme.textPrimary),
               ),
             ],
           ),
@@ -1946,7 +1949,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
             backgroundColor: AppTheme.cardBg,
             title: Text(
               'Diagnóstico del Excel',
-              style: TextStyle(color: Colors.white),
+              style: TextStyle(color: AppTheme.textPrimary),
             ),
             content: Container(
               width: 500,
@@ -1968,18 +1971,18 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
                           Text(
                             'Resumen del archivo:',
                             style: TextStyle(
-                              color: Colors.white,
+                              color: AppTheme.textPrimary,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                           SizedBox(height: 8),
                           Text(
                             'Total columnas: ${resultado['totalColumnas']}',
-                            style: TextStyle(color: Colors.white),
+                            style: TextStyle(color: AppTheme.textPrimary),
                           ),
                           Text(
                             'Total filas: ${resultado['totalFilas']}',
-                            style: TextStyle(color: Colors.white),
+                            style: TextStyle(color: AppTheme.textPrimary),
                           ),
                           SizedBox(height: 8),
                           Row(
@@ -2035,7 +2038,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
                     Text(
                       'Columnas detectadas:',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: AppTheme.textPrimary,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -2065,7 +2068,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
                                             child: Text(
                                               '${col['original']}',
                                               style: TextStyle(
-                                                color: Colors.white,
+                                                color: AppTheme.textPrimary,
                                                 fontSize: 12,
                                               ),
                                             ),
@@ -2125,7 +2128,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
             ),
             content: Text(
               'Error al analizar el archivo:\n$e',
-              style: TextStyle(color: Colors.white),
+              style: TextStyle(color: AppTheme.textPrimary),
             ),
             actions: [
               TextButton(
@@ -2159,7 +2162,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
               SizedBox(width: 16),
               Text(
                 'Procesando archivo Excel...',
-                style: TextStyle(color: Colors.white),
+                style: TextStyle(color: AppTheme.textPrimary),
               ),
             ],
           ),
@@ -2191,7 +2194,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
             backgroundColor: AppTheme.cardBg,
             title: Text(
               'Carga Completada',
-              style: TextStyle(color: Colors.white),
+              style: TextStyle(color: AppTheme.textPrimary),
             ),
             content: Column(
               mainAxisSize: MainAxisSize.min,
@@ -2282,7 +2285,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
             title: Text('Error', style: TextStyle(color: Colors.red)),
             content: Text(
               'Error al procesar el archivo:\n$e',
-              style: TextStyle(color: Colors.white),
+              style: TextStyle(color: AppTheme.textPrimary),
             ),
             actions: [
               TextButton(
@@ -2711,12 +2714,12 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
   Widget _buildTextField(String label, TextEditingController controller, {int maxLines = 1, bool isNumeric = false}) {
     return TextField(
       controller: controller,
-      style: TextStyle(color: Colors.white),
+      style: TextStyle(color: Colors.black87),
       maxLines: maxLines,
       keyboardType: isNumeric ? TextInputType.number : TextInputType.text,
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: TextStyle(color: Colors.white70),
+        labelStyle: TextStyle(color: Colors.black54),
         border: OutlineInputBorder(),
         enabledBorder: OutlineInputBorder(
           borderSide: BorderSide(color: Colors.grey),
@@ -2732,10 +2735,10 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
     return DropdownButtonFormField<String>(
       value: value,
       dropdownColor: AppTheme.cardBg,
-      style: TextStyle(color: Colors.white),
+      style: TextStyle(color: Colors.black87),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: TextStyle(color: Colors.white70),
+        labelStyle: TextStyle(color: Colors.black54),
         border: OutlineInputBorder(),
         enabledBorder: OutlineInputBorder(
           borderSide: BorderSide(color: Colors.grey),
@@ -2753,10 +2756,10 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
     return DropdownButtonFormField<String>(
       value: value,
       dropdownColor: AppTheme.cardBg,
-      style: TextStyle(color: Colors.white),
+      style: TextStyle(color: Colors.black87),
       decoration: InputDecoration(
         labelText: 'Categoría',
-        labelStyle: TextStyle(color: Colors.white70),
+        labelStyle: TextStyle(color: Colors.black54),
         border: OutlineInputBorder(),
         enabledBorder: OutlineInputBorder(
           borderSide: BorderSide(color: Colors.grey),
@@ -2794,7 +2797,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
           backgroundColor: AppTheme.cardBg,
           title: Text(
             'Imprimir código de barras',
-            style: TextStyle(color: Colors.white),
+            style: TextStyle(color: AppTheme.textPrimary),
           ),
           content: Container(
             width: 400,
@@ -2824,7 +2827,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
                       Text(
                         producto.nombre,
                         style: TextStyle(
-                          color: Colors.white,
+                          color: AppTheme.textPrimary,
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
@@ -2838,7 +2841,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
                 Text(
                   'Opciones de impresión:',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: AppTheme.textPrimary,
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
                   ),
@@ -2849,7 +2852,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
                 CheckboxListTile(
                   title: Text(
                     'Incluir fecha',
-                    style: TextStyle(color: Colors.white),
+                    style: TextStyle(color: AppTheme.textPrimary),
                   ),
                   value: incluirFecha,
                   activeColor: AppTheme.primary,
@@ -2866,7 +2869,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
                 CheckboxListTile(
                   title: Text(
                     'Incluir código del producto',
-                    style: TextStyle(color: Colors.white),
+                    style: TextStyle(color: AppTheme.textPrimary),
                   ),
                   value: incluirCodigo,
                   activeColor: AppTheme.primary,
@@ -2883,7 +2886,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
                 CheckboxListTile(
                   title: Text(
                     'Incluir precio',
-                    style: TextStyle(color: Colors.white),
+                    style: TextStyle(color: AppTheme.textPrimary),
                   ),
                   value: incluirPrecio,
                   activeColor: AppTheme.primary,
@@ -2902,10 +2905,10 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
                 TextField(
                   controller: cantidadController,
                   keyboardType: TextInputType.number,
-                  style: TextStyle(color: Colors.white),
+                  style: TextStyle(color: Colors.black87),
                   decoration: InputDecoration(
                     labelText: 'Cantidad de códigos a imprimir',
-                    labelStyle: TextStyle(color: Colors.white70),
+                    labelStyle: TextStyle(color: Colors.black54),
                     hintText: 'Ej: 2',
                     hintStyle: TextStyle(color: Colors.grey.shade600),
                     border: OutlineInputBorder(
@@ -3125,7 +3128,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
         backgroundColor: AppTheme.cardBg,
         title: Text(
           'Seleccionar método de impresión',
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(color: AppTheme.textPrimary),
         ),
         content: Text(
           'Elige el método que mejor funcione con tu impresora:',
@@ -3252,7 +3255,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
         backgroundColor: AppTheme.cardBg,
         title: Text(
           'Seleccionar impresora',
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(color: AppTheme.textPrimary),
         ),
         content: Container(
           width: 300,
@@ -3270,7 +3273,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
                       leading: Icon(Icons.print, color: Colors.white),
                       title: Text(
                         printer.name,
-                        style: TextStyle(color: Colors.white),
+                        style: TextStyle(color: AppTheme.textPrimary),
                       ),
                       subtitle: printer.location != null
                           ? Text(
@@ -3437,7 +3440,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
                 SizedBox(width: 16),
                 Text(
                   'Descargando productos...',
-                  style: TextStyle(color: Colors.white),
+                  style: TextStyle(color: AppTheme.textPrimary),
                 ),
               ],
             ),
@@ -3557,7 +3560,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
                                       ? '+${mov.cantidad}'
                                       : '${mov.cantidad}',
                                   style: const TextStyle(
-                                    color: Colors.white,
+                                    color: AppTheme.textPrimary,
                                     fontWeight: FontWeight.bold,
                                     fontSize: 12,
                                   ),

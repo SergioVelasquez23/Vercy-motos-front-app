@@ -108,6 +108,22 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
       // Intentar obtener cuadre completo primero
       try {
         final cuadreCompleto = await _cuadreCajaService.getCuadreCompleto();
+        print('');
+        print('═══════════════════════════════════════════════════');
+        print('📥 RESPUESTA DEL BACKEND - CUADRE COMPLETO:');
+        print('   efectivoEsperado: ${cuadreCompleto['efectivoEsperado']}');
+        print(
+          '   fondoInicial: ${cuadreCompleto['fondoInicial'] ?? _cajaActual?.fondoInicial}',
+        );
+        print('   ventasEfectivo: ${cuadreCompleto['ventasEfectivo']}');
+        print(
+          '   ventasTransferencias: ${cuadreCompleto['ventasTransferencias']}',
+        );
+        print('   totalGastos: ${cuadreCompleto['totalGastos']}');
+        print('   totalDomicilios: ${cuadreCompleto['totalDomicilios']}');
+        print('═══════════════════════════════════════════════════');
+        print('');
+        
         setState(() {
           _cuadreCompletoData = cuadreCompleto;
         });
@@ -203,22 +219,24 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
               }
             }
           }
-          // El efectivo esperado debería incluir las ventas en efectivo y domicilios menos gastos
-          // Si el backend ya incluye domicilios, usamos su valor directamente
+          // ✅ USAR EL VALOR DEL BACKEND DIRECTAMENTE - SIN RECALCULAR NADA
           if (cuadreCompleto.containsKey('efectivoEsperado')) {
             _efectivoEsperado = (cuadreCompleto['efectivoEsperado'] ?? 0.0)
                 .toDouble();
-
-            // Asegurarnos que siempre agregamos los domicilios al efectivo esperado
-            // a menos que el backend explícitamente indique que ya están incluidos
-            if (_totalDomicilios > 0 &&
-                !cuadreCompleto.containsKey('domiciliosIncluidos')) {
-              _efectivoEsperado += _totalDomicilios;
-            }
+            print('');
+            print('✅ ═══════════════════════════════════════════════════');
+            print('💰 EFECTIVO ESPERADO ESTABLECIDO:');
+            print('   Valor del backend: $_efectivoEsperado');
+            print('   Fuente: cuadreCompleto[efectivoEsperado]');
+            print('═══════════════════════════════════════════════════');
+            print('');
           } else {
-            // Calcular manualmente si no viene del backend
-            _efectivoEsperado =
-                _ventasEfectivo + _totalDomicilios - _totalGastos;
+            print('');
+            print('⚠️ ═══════════════════════════════════════════════════');
+            print('❌ BACKEND NO ENVIÓ efectivoEsperado');
+            print('   Usando valor por defecto: 0');
+            print('═══════════════════════════════════════════════════');
+            print('');
           }
         });
         _calcularDiferencia();
@@ -246,20 +264,13 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
             .toDouble();
         _totalDomicilios = (detallesVentas['totalDomicilios'] ?? 0).toDouble();
 
-        // Verificar si el backend ya incluye domicilios en efectivoEsperadoPorVentas
+        // ✅ USAR EL VALOR DEL BACKEND DIRECTAMENTE - SIN RECALCULAR NADA
         if (detallesVentas.containsKey('efectivoEsperadoPorVentas')) {
           _efectivoEsperado = (detallesVentas['efectivoEsperadoPorVentas'] ?? 0)
               .toDouble();
-
-          // Siempre asegurarnos de incluir domicilios a menos que el backend diga que ya están incluidos
-          if (_totalDomicilios > 0 &&
-              !detallesVentas.containsKey('domiciliosIncluidos')) {
-            _efectivoEsperado += _totalDomicilios;
-          }
-        } else {
-          // Calcular manualmente si no viene del backend
-          // Sumamos ventas efectivo + domicilios - gastos
-          _efectivoEsperado = _ventasEfectivo + _totalDomicilios - _totalGastos;
+          print(
+            '💰 Efectivo esperado del backend (fallback): $_efectivoEsperado',
+          );
         }
       });
       _calcularDiferencia();
@@ -285,12 +296,10 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
           if (ventasPorTipo.containsKey('domicilios') &&
               ventasPorTipo['domicilios'] != null) {
             _totalDomicilios = (ventasPorTipo['domicilios'] ?? 0.0).toDouble();
-              
           }
 
-          // Recalcular el efectivo esperado: ventas + domicilios - gastos
-          _efectivoEsperado = _ventasEfectivo + _totalDomicilios - _totalGastos;
-
+          // ❌ NO RECALCULAR - Usar el valor del backend sin modificar
+          print('🚫 NO se recalcula el efectivo esperado');
           // Log del cálculo para depuració
         });
         _calcularDiferencia();
@@ -360,9 +369,18 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
 
       setState(() {
         _resumenCompletoData = resumenCompleto;
-        // Actualizar el efectivo esperado desde el resumen completo
-        _efectivoEsperado =
-            resumenCompleto.movimientosEfectivo.efectivoEsperado;
+        
+        // ✅ SOLO actualizar si no tenemos valor aún
+        // No sobrescribir el valor de cuadreCompleto
+        if (_efectivoEsperado == 0 || _efectivoEsperado == 0.0) {
+          _efectivoEsperado =
+              resumenCompleto.movimientosEfectivo.efectivoEsperado;
+          print('💰 Efectivo esperado del resumenCompleto: $_efectivoEsperado');
+        } else {
+          print(
+            '✅ Manteniendo efectivo esperado de cuadreCompleto: $_efectivoEsperado',
+          );
+        }
 
         // Also sync the sales values between cuadreCompleto and resumenCompleto
         if (resumenCompleto.movimientosEfectivo.ventasEfectivo > 0 ||
@@ -403,14 +421,247 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
   void _calcularDiferencia() {
     final efectivoDeclarado =
         double.tryParse(_efectivoDeclaradoController.text) ?? 0;
-    // La diferencia debe ser contra el total esperado
-    // En caja debe haber: fondo inicial + (ventas efectivo + domicilios - gastos)
-    // Nota: El backend podría no estar contabilizando domicilios en efectivoEsperado
-    // así que los agregamos explícitamente
-    final totalEsperado = (_cajaActual?.fondoInicial ?? 0) + _efectivoEsperado;
+    // ✅ USAR DIRECTAMENTE _efectivoEsperado (ya incluye fondo inicial del backend)
     setState(() {
-      _diferencia = efectivoDeclarado - totalEsperado;
+      _diferencia = efectivoDeclarado - _efectivoEsperado;
     });
+    print('💵 Cálculo de diferencia:');
+    print('   Efectivo declarado: $efectivoDeclarado');
+    print('   Efectivo esperado: $_efectivoEsperado');
+    print('   Diferencia: $_diferencia');
+  }
+
+  // Mostrar diálogo para ingresar el efectivo declarado
+  Future<double?> _mostrarDialogoEfectivoDeclarado() async {
+    final efectivoController = TextEditingController();
+    double? efectivoDeclarado;
+    bool mostrarDescuadre = false;
+    double descuadre = 0.0;
+
+    return await showDialog<double>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              backgroundColor: AppTheme.backgroundDark,
+              title: Text(
+                '💵 Declarar Efectivo en Caja',
+                style: TextStyle(
+                  color: AppTheme.textPrimary,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Información del efectivo esperado
+                    Container(
+                      padding: EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Efectivo esperado:',
+                            style: TextStyle(
+                              color: AppTheme.textPrimary,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          Text(
+                            formatCurrency(_efectivoEsperado),
+                            style: TextStyle(
+                              color: Colors.blue,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(height: 16),
+
+                    // Campo para ingresar el efectivo declarado
+                    Text(
+                      'Ingrese el efectivo real en caja:',
+                      style: TextStyle(
+                        color: AppTheme.textPrimary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    TextField(
+                      controller: efectivoController,
+                      keyboardType: TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      style: TextStyle(color: AppTheme.textPrimary),
+                      decoration: InputDecoration(
+                        hintText: '0.00',
+                        hintStyle: TextStyle(color: Colors.grey),
+                        prefixIcon: Icon(
+                          Icons.monetization_on,
+                          color: Colors.green,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: Colors.grey),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: Colors.blue, width: 2),
+                        ),
+                      ),
+                      onChanged: (value) {
+                        setState(() {
+                          efectivoDeclarado = double.tryParse(value);
+                          if (efectivoDeclarado != null) {
+                            descuadre = _efectivoEsperado - efectivoDeclarado!;
+                            mostrarDescuadre =
+                                descuadre.abs() > 0.01; // Tolerancia mínima
+                          } else {
+                            mostrarDescuadre = false;
+                          }
+                        });
+                      },
+                    ),
+
+                    // Mostrar descuadre si existe
+                    if (mostrarDescuadre) ...[
+                      SizedBox(height: 16),
+                      Container(
+                        padding: EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: descuadre > 0
+                              ? Colors.red.withOpacity(0.1)
+                              : Colors.orange.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: descuadre > 0
+                                ? Colors.red.withOpacity(0.3)
+                                : Colors.orange.withOpacity(0.3),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  descuadre > 0
+                                      ? Icons.warning_amber_rounded
+                                      : Icons.info_outline,
+                                  color: descuadre > 0
+                                      ? Colors.red
+                                      : Colors.orange,
+                                  size: 20,
+                                ),
+                                SizedBox(width: 8),
+                                Text(
+                                  '⚠️ Descuadre detectado',
+                                  style: TextStyle(
+                                    color: AppTheme.textPrimary,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 8),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  descuadre > 0 ? 'Falta:' : 'Sobra:',
+                                  style: TextStyle(color: AppTheme.textPrimary),
+                                ),
+                                Text(
+                                  formatCurrency(descuadre.abs()),
+                                  style: TextStyle(
+                                    color: descuadre > 0
+                                        ? Colors.red
+                                        : Colors.orange,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              descuadre > 0
+                                  ? 'El efectivo en caja es menor al esperado'
+                                  : 'El efectivo en caja es mayor al esperado',
+                              style: TextStyle(
+                                color: Colors.grey[400],
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              actions: [
+                // Botón cancelar
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop(null);
+                  },
+                  child: Text('Cancelar', style: TextStyle(color: Colors.grey)),
+                ),
+
+                // Botón reintentar (si hay descuadre)
+                if (mostrarDescuadre)
+                  TextButton(
+                    onPressed: () {
+                      setState(() {
+                        efectivoController.clear();
+                        mostrarDescuadre = false;
+                        efectivoDeclarado = null;
+                      });
+                    },
+                    child: Text(
+                      'Reintentar',
+                      style: TextStyle(color: Colors.orange),
+                    ),
+                  ),
+
+                // Botón confirmar
+                ElevatedButton(
+                  onPressed: efectivoDeclarado != null
+                      ? () {
+                          Navigator.of(context).pop(efectivoDeclarado);
+                        }
+                      : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: mostrarDescuadre
+                        ? Colors.orange
+                        : Colors.green,
+                  ),
+                  child: Text(
+                    mostrarDescuadre ? 'Cerrar con Descuadre' : 'Confirmar',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   Future<void> _cerrarCaja() async {
@@ -419,10 +670,13 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
       return;
     }
 
-    // Eliminado: No se requiere efectivo declarado
-
-    // ✅ ELIMINADO: Diálogo de confirmación no necesario
-    // Proceder directamente al cierre
+    // Solicitar el efectivo declarado
+    final efectivoDeclarado = await _mostrarDialogoEfectivoDeclarado();
+    
+    // Si el usuario canceló, no continuar
+    if (efectivoDeclarado == null) {
+      return;
+    }
 
     setState(() {
       _isLoading = true;
@@ -432,16 +686,30 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
       final userProvider = Provider.of<UserProvider>(context, listen: false);
       final responsable = userProvider.userName ?? _cajaActual!.responsable;
 
+      // Calcular el descuadre
+      final descuadre = _efectivoEsperado - efectivoDeclarado;
+
+      // Actualizar el cuadre con el efectivo declarado
       final cuadre = await _cuadreCajaService.updateCuadre(
         _cajaActual!.id!,
         responsable: responsable,
-        observaciones: 'Caja cerrada - ${_observacionesController.text}',
+        efectivoDeclarado: efectivoDeclarado,
+        observaciones:
+            'Caja cerrada - ${_observacionesController.text}${descuadre.abs() > 0.01 ? ' - Descuadre: ${formatCurrency(descuadre.abs())} ${descuadre > 0 ? "(Falta)" : "(Sobra)"}' : ''}',
         cerrarCaja: true,
         estado: 'cerrada',
       );
 
       if (cuadre.id != null) {
-        _mostrarExito('Caja cerrada exitosamente');
+        // Mostrar mensaje apropiado según si hay descuadre o no
+        if (descuadre.abs() > 0.01) {
+          _mostrarExito(
+            'Caja cerrada con descuadre de ${formatCurrency(descuadre.abs())} ${descuadre > 0 ? "(Falta)" : "(Sobra)"}',
+          );
+        } else {
+          _mostrarExito('Caja cerrada exitosamente - Sin descuadre');
+        }
+        
         // Volver a la pantalla anterior
         Navigator.of(
           context,
@@ -843,6 +1111,82 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
             ),
             valueColor: Colors.amber,
           ),
+          // Mostrar efectivo declarado si existe
+          if (movimientos.efectivoDeclarado > 0) ...[
+            _buildInfoRow(
+              'Efectivo Declarado:',
+              formatCurrency(movimientos.efectivoDeclarado),
+              valueColor: Colors.blue,
+            ),
+          ],
+          // Mostrar descuadre si existe
+          if (movimientos.descuadre.abs() > 0.01) ...[
+            Divider(color: Colors.grey.withOpacity(0.3), height: 20),
+            Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: movimientos.descuadre > 0
+                    ? Colors.red.withOpacity(0.1)
+                    : Colors.orange.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: movimientos.descuadre > 0
+                      ? Colors.red.withOpacity(0.3)
+                      : Colors.orange.withOpacity(0.3),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        movimientos.descuadre > 0
+                            ? Icons.warning_amber_rounded
+                            : Icons.info_outline,
+                        color: movimientos.descuadre > 0
+                            ? Colors.red
+                            : Colors.orange,
+                        size: 18,
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        'Descuadre en Caja',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.textPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        movimientos.descuadre > 0 ? 'Faltante:' : 'Sobrante:',
+                        style: TextStyle(
+                          color: AppTheme.textSecondary,
+                          fontSize: 13,
+                        ),
+                      ),
+                      Text(
+                        formatCurrency(movimientos.descuadre.abs()),
+                        style: TextStyle(
+                          color: movimientos.descuadre > 0
+                              ? Colors.red
+                              : Colors.orange,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );

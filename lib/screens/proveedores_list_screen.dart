@@ -100,7 +100,7 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen> {
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: Colors.white,
+                color: AppTheme.textPrimary,
               ),
             ),
             SizedBox(height: 24),
@@ -271,7 +271,7 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen> {
     return TextField(
       controller: controller,
       onChanged: onChanged,
-      style: TextStyle(color: Colors.white, fontSize: 14),
+      style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: TextStyle(color: Colors.grey.shade500),
@@ -367,7 +367,7 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen> {
       child: Text(
         texto,
         style: TextStyle(
-          color: Colors.white,
+          color: AppTheme.textPrimary,
           fontWeight: FontWeight.bold,
           fontSize: 14,
         ),
@@ -399,7 +399,7 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen> {
             flex: 2,
             child: Text(
               idDisplay,
-              style: TextStyle(color: Colors.white, fontSize: 13),
+              style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
             ),
           ),
 
@@ -408,7 +408,7 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen> {
             flex: 4,
             child: Text(
               proveedor.nombre,
-              style: TextStyle(color: Colors.white, fontSize: 13),
+              style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -418,7 +418,7 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen> {
             flex: 2,
             child: Text(
               proveedor.telefono ?? '',
-              style: TextStyle(color: Colors.white, fontSize: 13),
+              style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
             ),
           ),
 
@@ -427,7 +427,7 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen> {
             flex: 3,
             child: Text(
               proveedor.direccion ?? '',
-              style: TextStyle(color: Colors.white, fontSize: 13),
+              style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -1031,13 +1031,13 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen> {
             SizedBox(width: 12),
             Text(
               'Confirmar eliminación',
-              style: TextStyle(color: Colors.white),
+              style: TextStyle(color: AppTheme.textPrimary),
             ),
           ],
         ),
         content: Text(
           '¿Estás seguro de que deseas eliminar el proveedor "${proveedor.nombre}"?',
-          style: TextStyle(color: Colors.grey.shade300),
+          style: TextStyle(color: AppTheme.textSecondary),
         ),
         actions: [
           TextButton(
@@ -1089,7 +1089,7 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen> {
               SizedBox(width: 12),
               Text(
                 'Carga Masiva de Proveedores',
-                style: TextStyle(color: Colors.white),
+                style: TextStyle(color: AppTheme.textPrimary),
               ),
             ],
           ),
@@ -1101,13 +1101,13 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen> {
               children: [
                 Text(
                   'Selecciona un archivo Excel (.xlsx) con los datos de los proveedores.',
-                  style: TextStyle(color: Colors.white),
+                  style: TextStyle(color: AppTheme.textPrimary),
                 ),
                 SizedBox(height: 16),
                 Text(
                   'Columnas requeridas:',
                   style: TextStyle(
-                    color: Colors.grey.shade300,
+                    color: AppTheme.textSecondary,
                     fontWeight: FontWeight.w600,
                     fontSize: 12,
                   ),
@@ -1196,7 +1196,7 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen> {
               SizedBox(width: 16),
               Text(
                 'Procesando archivo Excel...',
-                style: TextStyle(color: Colors.white),
+                style: TextStyle(color: AppTheme.textPrimary),
               ),
             ],
           ),
@@ -1249,7 +1249,7 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen> {
             SizedBox(width: 8),
             Text(
               'Resultado de la carga',
-              style: TextStyle(color: Colors.white),
+              style: TextStyle(color: AppTheme.textPrimary),
             ),
           ],
         ),

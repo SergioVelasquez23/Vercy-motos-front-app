@@ -6,6 +6,7 @@ import '../models/user_role.dart';
 import '../services/user_service.dart';
 import '../services/role_service.dart';
 import '../services/user_role_service.dart';
+import '../theme/app_theme.dart';
 
 class UsersScreen extends StatefulWidget {
   const UsersScreen({super.key});
@@ -200,7 +201,7 @@ class _UsersScreenState extends State<UsersScreen> {
                 Expanded(
                   child: TextField(
                     controller: _searchController,
-                    style: const TextStyle(color: Colors.white),
+                    style: TextStyle(color: AppTheme.textPrimary),
                     decoration: InputDecoration(
                       hintText: 'Buscar usuarios...',
                       hintStyle: TextStyle(color: Colors.grey[400]),
@@ -407,7 +408,7 @@ class _UsersScreenState extends State<UsersScreen> {
                           Text(
                             'Email: ${user.email}',
                             style: TextStyle(
-                              color: Colors.grey[300],
+                              color: AppTheme.textSecondary,
                               fontSize: 14,
                             ),
                           ),
@@ -466,7 +467,7 @@ class _UsersScreenState extends State<UsersScreen> {
           backgroundColor: Colors.grey[900],
           title: Text(
             isEditing ? 'Editar Usuario' : 'Nuevo Usuario',
-            style: const TextStyle(color: Colors.white),
+            style: TextStyle(color: AppTheme.textPrimary),
           ),
           content: SingleChildScrollView(
             child: Column(
@@ -475,7 +476,7 @@ class _UsersScreenState extends State<UsersScreen> {
                 // Nombre
                 TextField(
                   controller: nombreController,
-                  style: const TextStyle(color: Colors.white),
+                  style: TextStyle(color: AppTheme.textPrimary),
                   decoration: InputDecoration(
                     labelText: 'Nombre *',
                     labelStyle: const TextStyle(color: Colors.grey),
@@ -492,7 +493,7 @@ class _UsersScreenState extends State<UsersScreen> {
                 // Email
                 TextField(
                   controller: emailController,
-                  style: const TextStyle(color: Colors.white),
+                  style: TextStyle(color: AppTheme.textPrimary),
                   keyboardType: TextInputType.emailAddress,
                   decoration: InputDecoration(
                     labelText: 'Correo electrónico *',
@@ -511,7 +512,7 @@ class _UsersScreenState extends State<UsersScreen> {
                 TextField(
                   controller: passwordController,
                   obscureText: true,
-                  style: const TextStyle(color: Colors.white),
+                  style: TextStyle(color: AppTheme.textPrimary),
                   decoration: InputDecoration(
                     labelText: isEditing
                         ? 'Nueva contraseña (opcional)'
@@ -569,20 +570,20 @@ class _UsersScreenState extends State<UsersScreen> {
           backgroundColor: Colors.grey[900],
           title: Text(
             'Cambiar Rol - ${user.displayName}',
-            style: const TextStyle(color: Colors.white),
+            style: TextStyle(color: AppTheme.textPrimary),
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
                 'Usuario: ${user.email}',
-                style: TextStyle(color: Colors.grey[400]),
+                style: TextStyle(color: AppTheme.textSecondary),
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
                 initialValue: selectedRoleId,
                 dropdownColor: Colors.grey[800],
-                style: const TextStyle(color: Colors.white),
+                style: TextStyle(color: AppTheme.textPrimary),
                 decoration: InputDecoration(
                   labelText: 'Seleccionar Rol',
                   labelStyle: const TextStyle(color: Colors.grey),
@@ -606,7 +607,7 @@ class _UsersScreenState extends State<UsersScreen> {
                         const SizedBox(width: 8),
                         Text(
                           _getRoleDisplayName(role.nombre),
-                          style: const TextStyle(color: Colors.white),
+                          style: TextStyle(color: AppTheme.textPrimary),
                         ),
                       ],
                     ),

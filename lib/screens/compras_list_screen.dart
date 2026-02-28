@@ -156,7 +156,7 @@ class _ComprasListScreenState extends State<ComprasListScreen> {
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: Colors.white,
+                color: AppTheme.textPrimary,
               ),
             ),
             SizedBox(height: 24),
@@ -364,7 +364,7 @@ class _ComprasListScreenState extends State<ComprasListScreen> {
                 ),
                 Text(
                   'Cuentas por\nPagar',
-                  style: TextStyle(color: Colors.white, fontSize: 12),
+                  style: TextStyle(color: AppTheme.textPrimary, fontSize: 12),
                 ),
               ],
             ),
@@ -383,7 +383,7 @@ class _ComprasListScreenState extends State<ComprasListScreen> {
               child: DropdownButton<String>(
                 value: _ordenamiento,
                 dropdownColor: AppTheme.cardBg,
-                style: TextStyle(color: Colors.white, fontSize: 14),
+                style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
                 icon: Icon(Icons.arrow_drop_down, color: Colors.grey),
                 items: [
                   DropdownMenuItem(
@@ -418,7 +418,7 @@ class _ComprasListScreenState extends State<ComprasListScreen> {
               child: DropdownButton<String>(
                 value: _ubicacion,
                 dropdownColor: AppTheme.cardBg,
-                style: TextStyle(color: Colors.white, fontSize: 14),
+                style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
                 icon: Icon(Icons.arrow_drop_down, color: Colors.grey),
                 items: [
                   DropdownMenuItem(value: 'TODAS', child: Text('Ubicación')),
@@ -467,7 +467,7 @@ class _ComprasListScreenState extends State<ComprasListScreen> {
     return TextField(
       controller: controller,
       onChanged: onChanged,
-      style: TextStyle(color: Colors.white, fontSize: 14),
+      style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: TextStyle(color: Colors.grey.shade500),
@@ -634,7 +634,7 @@ class _ComprasListScreenState extends State<ComprasListScreen> {
       child: Text(
         texto,
         style: TextStyle(
-          color: Colors.white,
+          color: AppTheme.textPrimary,
           fontWeight: FontWeight.bold,
           fontSize: 13,
         ),
@@ -689,7 +689,7 @@ class _ComprasListScreenState extends State<ComprasListScreen> {
             flex: 1,
             child: Text(
               numeroCompra,
-              style: TextStyle(color: Colors.white, fontSize: 13),
+              style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
             ),
           ),
 
@@ -745,7 +745,7 @@ class _ComprasListScreenState extends State<ComprasListScreen> {
             flex: 2,
             child: Text(
               compra.proveedorNombre,
-              style: TextStyle(color: Colors.white, fontSize: 13),
+              style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -755,7 +755,7 @@ class _ComprasListScreenState extends State<ComprasListScreen> {
             flex: 2,
             child: Text(
               '${compra.fechaFactura.year}-${compra.fechaFactura.month.toString().padLeft(2, '0')}-${compra.fechaFactura.day.toString().padLeft(2, '0')}',
-              style: TextStyle(color: Colors.white, fontSize: 13),
+              style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
             ),
           ),
 
@@ -764,7 +764,7 @@ class _ComprasListScreenState extends State<ComprasListScreen> {
             flex: 2,
             child: Text(
               '${compra.fechaVencimiento.year}-${compra.fechaVencimiento.month.toString().padLeft(2, '0')}-${compra.fechaVencimiento.day.toString().padLeft(2, '0')}',
-              style: TextStyle(color: Colors.white, fontSize: 13),
+              style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
             ),
           ),
 
@@ -773,7 +773,7 @@ class _ComprasListScreenState extends State<ComprasListScreen> {
             flex: 2,
             child: Text(
               '\$ ${formatNumberWithDots(compra.total)}',
-              style: TextStyle(color: Colors.white, fontSize: 13),
+              style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
               textAlign: TextAlign.right,
             ),
           ),
@@ -783,7 +783,7 @@ class _ComprasListScreenState extends State<ComprasListScreen> {
             flex: 1,
             child: Text(
               '\$ ${formatNumberWithDots(compra.totalDescuentos)}',
-              style: TextStyle(color: Colors.white, fontSize: 13),
+              style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
               textAlign: TextAlign.right,
             ),
           ),
@@ -793,7 +793,7 @@ class _ComprasListScreenState extends State<ComprasListScreen> {
             flex: 2,
             child: Text(
               '\$ ${formatNumberWithDots(pagado)}',
-              style: TextStyle(color: Colors.white, fontSize: 13),
+              style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
               textAlign: TextAlign.right,
             ),
           ),
@@ -830,7 +830,7 @@ class _ComprasListScreenState extends State<ComprasListScreen> {
             flex: 2,
             child: Text(
               'BODEGA',
-              style: TextStyle(color: Colors.white, fontSize: 13),
+              style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
             ),
           ),
         ],

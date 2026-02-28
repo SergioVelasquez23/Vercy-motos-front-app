@@ -336,28 +336,44 @@ class CarteraService {
             final String? facturaBackend = cuenta['numeroFactura'] as String?;
             final String? proveedorBackend =
                 cuenta['proveedorNombre'] as String?;
+            final String? proveedorIdBackend = cuenta['proveedorId'] as String?;
 
             // Usar datos pasados por parámetro o extraer del backend
             final String numFactura = numeroFactura ?? facturaBackend ?? 'S/N';
-            final String nomProveedor =
-                proveedorNombre ?? proveedorBackend ?? 'Proveedor General';
+            final String? nomProveedor = proveedorNombre ?? proveedorBackend;
             final double montoTotal =
                 cuenta['montoTotal'] as double? ?? montoPago;
 
-            print('📤 [AUTO-ALERTA] Enviando alerta de cuenta pagada:');
-            print('   🏢 Proveedor: $nomProveedor');
-            print('   📄 Número Factura: $numFactura');
-            print('   💰 Monto Total: $montoTotal');
+            // Solo enviar alerta si hay un proveedor válido
+            if (nomProveedor != null &&
+                nomProveedor.isNotEmpty &&
+                numFactura != 'S/N' &&
+                (proveedorIdBackend != null && proveedorIdBackend.isNotEmpty)) {
+              print('📤 [AUTO-ALERTA] Enviando alerta de cuenta pagada:');
+              print('   🏢 Proveedor: $nomProveedor');
+              print('   📄 Número Factura: $numFactura');
+              print('   💰 Monto Total: $montoTotal');
+              print('   🆔 Proveedor ID: $proveedorIdBackend');
 
-            // Enviar alerta de cuenta pagada en segundo plano
-            _alertasService.enviarAlertaCuentaPagada(
-              proveedor: nomProveedor,
-              numeroFactura: numFactura,
-              montoTotal: montoTotal,
-              cuentaId: cuentaId,
-            );
+              // ⛔ ALERTAS DE TELEGRAM DESHABILITADAS
+              // Enviar alerta de cuenta pagada en segundo plano
+              // _alertasService.enviarAlertaCuentaPagada(
+              //   proveedor: nomProveedor,
+              //   numeroFactura: numFactura,
+              //   montoTotal: montoTotal,
+              //   cuentaId: cuentaId,
+              // );
 
-            print('✅ [AUTO-ALERTA] Alerta enviada correctamente\n');
+              print('ℹ️ [AUTO-ALERTA] Alertas deshabilitadas\n');
+            } else {
+              print('⚠️ [AUTO-ALERTA] Datos incompletos para enviar alerta:');
+              print('   - Proveedor: ${nomProveedor ?? "NULL"}');
+              print('   - Número Factura: $numFactura');
+              print('   - Proveedor ID: ${proveedorIdBackend ?? "NULL"}');
+              print(
+                '   ℹ️  La cuenta debe tener un proveedor válido para enviar alertas\n',
+              );
+            }
           } else {
             print(
               '⚠️ [AUTO-ALERTA] No hay datos de cuenta en la respuesta, no se envía alerta\n',
@@ -564,15 +580,23 @@ class CarteraService {
   Future<ApiResponse<String>> verificarAlertas() async {
     try {
       final String url = _baseApiService.buildUrl(
-        '$_baseEndpoint/alertas/verificar',
+        '$_baseEndpoint/verificar-alertas',
       );
+      
+      print('\n🔔 [ALERTAS] Verificando todas las alertas del sistema...');
+      print('🌐 URL: $url');
+      
       final Map<String, String> headers = await _baseApiService.getHeaders();
 
       final http.Response response = await _baseApiService.httpClient
           .post(Uri.parse(url), headers: headers)
           .timeout(const Duration(seconds: 30));
 
+      print('📨 Response status: ${response.statusCode}');
+      print('📦 Response body: ${response.body}');
+
       if (response.statusCode == 200 || response.statusCode == 201) {
+        print('✅ [ALERTAS] Verificación completada exitosamente\n');
         return ApiResponse<String>(
           success: true,
           data: 'Alertas verificadas exitosamente',
@@ -581,6 +605,7 @@ class CarteraService {
         );
       }
 
+      print('❌ [ALERTAS] Error en verificación\n');
       return ApiResponse<String>(
         success: false,
         data: null,
@@ -588,6 +613,7 @@ class CarteraService {
         timestamp: DateTime.now().toIso8601String(),
       );
     } catch (e) {
+      print('💥 [ALERTAS] Excepción en verificarAlertas: $e\n');
       return ApiResponse<String>(
         success: false,
         data: null,
@@ -750,20 +776,21 @@ class CarteraService {
       for (final cuenta in response.data!) {
         if (!cuenta.activa) continue;
 
-        // Alerta: próxima a vencer (5 días o menos)
-        if (cuenta.requiereAtencionPronto && !cuenta.alertaEnviada) {
-          await enviarAlertaCxPProximaVencer(cuenta);
-        }
+        // ⛔ ALERTAS AUTOMÁTICAS DE TELEGRAM DESHABILITADAS
+        // // Alerta: próxima a vencer (5 días o menos)
+        // if (cuenta.requiereAtencionPronto && !cuenta.alertaEnviada) {
+        //   await enviarAlertaCxPProximaVencer(cuenta);
+        // }
 
-        // Alerta: vencida sin pagar
-        if (cuenta.estaVencidaSinPagar) {
-          await enviarAlertaCxPVencida(cuenta);
-        }
+        // // Alerta: vencida sin pagar
+        // if (cuenta.estaVencidaSinPagar) {
+        //   await enviarAlertaCxPVencida(cuenta);
+        // }
 
-        // Alerta: descuento próximo a perderse
-        if (cuenta.proximoAPerderDescuento) {
-          await enviarAlertaCxPDescuentoRiesgo(cuenta);
-        }
+        // // Alerta: descuento próximo a perderse
+        // if (cuenta.proximoAPerderDescuento) {
+        //   await enviarAlertaCxPDescuentoRiesgo(cuenta);
+        // }
       }
     } catch (e) {
       print('Error verificando alertas CxP: $e');
@@ -774,21 +801,33 @@ class CarteraService {
   Future<void> enviarAlertaCxPProximaVencer(CuentaPorPagar cuenta) async {
     try {
       print('\n🔔 [SERVICIO] enviarAlertaCxPProximaVencer()');
-      print('📦 Payload que se enviará:');
+      print('📦 Validando datos de la cuenta:');
       print('   📄 numeroFactura: ${cuenta.numeroFactura}');
       print('   💰 monto: ${cuenta.montoTotal}');
       print('   📅 diasRestantes: ${cuenta.diasRestantes}');
       print('   🆔 cuentaId: ${cuenta.id}');
       print('   🏢 proveedor: ${cuenta.proveedorNombre}');
+      print('   🆔 proveedorId: ${cuenta.proveedorId}');
 
-      await _alertasService.enviarAlertaCxPProximaVencer(
-        numeroFactura: cuenta.numeroFactura,
-        monto: cuenta.montoTotal,
-        diasRestantes: cuenta.diasRestantes,
-        cuentaId: cuenta.id,
-      );
+      // Validar que tenga proveedor válido
+      if (cuenta.proveedorNombre == null ||
+          cuenta.proveedorNombre.isEmpty ||
+          (cuenta.proveedorId?.isEmpty ?? true)) {
+        print(
+          '⚠️ [SERVICIO] Cuenta sin proveedor válido, no se envía alerta\n',
+        );
+        return;
+      }
 
-      print('✅ [SERVICIO] Alerta PRÓXIMA A VENCER enviada correctamente\n');
+      // ⛔ ALERTAS DE TELEGRAM DESHABILITADAS
+      // await _alertasService.enviarAlertaCxPProximaVencer(
+      //   numeroFactura: cuenta.numeroFactura,
+      //   monto: cuenta.montoTotal,
+      //   diasRestantes: cuenta.diasRestantes,
+      //   cuentaId: cuenta.id,
+      // );
+
+      print('ℹ️ [SERVICIO] Alertas deshabilitadas\n');
     } catch (e) {
       print('❌ [SERVICIO] Error al enviar alerta próxima vencer: $e\n');
     }
@@ -798,21 +837,33 @@ class CarteraService {
   Future<void> enviarAlertaCxPVencida(CuentaPorPagar cuenta) async {
     try {
       print('\n🚨 [SERVICIO] enviarAlertaCxPVencida()');
-      print('📦 Payload que se enviará:');
+      print('📦 Validando datos de la cuenta:');
       print('   📄 numeroFactura: ${cuenta.numeroFactura}');
       print('   💸 montoVencido: ${cuenta.saldoPendiente}');
       print('   ⏰ diasVencida: ${cuenta.diasRestantes.abs()}');
       print('   🆔 cuentaId: ${cuenta.id}');
       print('   🏢 proveedor: ${cuenta.proveedorNombre}');
+      print('   🆔 proveedorId: ${cuenta.proveedorId}');
 
-      await _alertasService.enviarAlertaCxPVencida(
-        numeroFactura: cuenta.numeroFactura,
-        montoVencido: cuenta.saldoPendiente,
-        diasVencida: cuenta.diasRestantes.abs(),
-        cuentaId: cuenta.id,
-      );
+      // Validar que tenga proveedor válido
+      if (cuenta.proveedorNombre == null ||
+          cuenta.proveedorNombre.isEmpty ||
+          (cuenta.proveedorId?.isEmpty ?? true)) {
+        print(
+          '⚠️ [SERVICIO] Cuenta sin proveedor válido, no se envía alerta\n',
+        );
+        return;
+      }
 
-      print('✅ [SERVICIO] Alerta VENCIDA enviada correctamente\n');
+      // ⛔ ALERTAS DE TELEGRAM DESHABILITADAS
+      // await _alertasService.enviarAlertaCxPVencida(
+      //   numeroFactura: cuenta.numeroFactura,
+      //   montoVencido: cuenta.saldoPendiente,
+      //   diasVencida: cuenta.diasRestantes.abs(),
+      //   cuentaId: cuenta.id,
+      // );
+
+      print('ℹ️ [SERVICIO] Alertas deshabilitadas\n');
     } catch (e) {
       print('❌ [SERVICIO] Error al enviar alerta vencida: $e\n');
     }
@@ -822,7 +873,7 @@ class CarteraService {
   Future<void> enviarAlertaCxPDescuentoRiesgo(CuentaPorPagar cuenta) async {
     try {
       print('\n💸 [SERVICIO] enviarAlertaCxPDescuentoRiesgo()');
-      print('📦 Payload que se enviará:');
+      print('📦 Validando datos de la cuenta:');
       print('   📄 numeroFactura: ${cuenta.numeroFactura}');
       print('   💰 montoSinDescuento: ${cuenta.montoTotal}');
       print('   🎁 montoConDescuento: ${cuenta.montoConDescuento}');
@@ -830,17 +881,29 @@ class CarteraService {
       print('   ⏳ diasRestantes: ${cuenta.diasParaPerderDescuento}');
       print('   🆔 cuentaId: ${cuenta.id}');
       print('   🏢 proveedor: ${cuenta.proveedorNombre}');
+      print('   🆔 proveedorId: ${cuenta.proveedorId}');
 
-      await _alertasService.enviarAlertaDescuentoProximoVencer(
-        numeroFactura: cuenta.numeroFactura,
-        montoSinDescuento: cuenta.montoTotal,
-        montoConDescuento: cuenta.montoConDescuento,
-        ahorro: cuenta.montoDescuento,
-        diasRestantes: cuenta.diasParaPerderDescuento,
-        cuentaId: cuenta.id,
-      );
+      // Validar que tenga proveedor válido
+      if (cuenta.proveedorNombre == null ||
+          cuenta.proveedorNombre.isEmpty ||
+          (cuenta.proveedorId?.isEmpty ?? true)) {
+        print(
+          '⚠️ [SERVICIO] Cuenta sin proveedor válido, no se envía alerta\n',
+        );
+        return;
+      }
 
-      print('✅ [SERVICIO] Alerta DESCUENTO EN RIESGO enviada correctamente\n');
+      // ⛔ ALERTAS DE TELEGRAM DESHABILITADAS
+      // await _alertasService.enviarAlertaDescuentoProximoVencer(
+      //   numeroFactura: cuenta.numeroFactura,
+      //   montoSinDescuento: cuenta.montoTotal,
+      //   montoConDescuento: cuenta.montoConDescuento,
+      //   ahorro: cuenta.montoDescuento,
+      //   diasRestantes: cuenta.diasParaPerderDescuento,
+      //   cuentaId: cuenta.id,
+      // );
+
+      print('ℹ️ [SERVICIO] Alertas deshabilitadas\n');
     } catch (e) {
       print('❌ [SERVICIO] Error al enviar alerta descuento riesgo: $e\n');
     }

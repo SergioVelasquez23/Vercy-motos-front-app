@@ -272,6 +272,39 @@ class DatosCacheProvider extends ChangeNotifier {
     }
   }
 
+  /// Actualizar un producto específico en el cache (sin refetch!)
+  void actualizarProductoEnCache(Producto productoActualizado) {
+    if (_productos != null && productoActualizado.id != null) {
+      final index = _productos!.indexWhere(
+        (p) => p.id == productoActualizado.id,
+      );
+      if (index >= 0) {
+        _productos![index] = productoActualizado;
+        notifyListeners();
+        print('✅ Producto actualizado en caché: ${productoActualizado.nombre}');
+      } else {
+        print(
+          '⚠️ Producto no encontrado en caché para actualizar: ${productoActualizado.id}',
+        );
+      }
+    }
+  }
+
+  /// Eliminar un producto específico del cache (sin refetch!)
+  void eliminarProductoDelCache(String productoId) {
+    if (_productos != null && productoId.isNotEmpty) {
+      final index = _productos!.indexWhere((p) => p.id == productoId);
+      if (index >= 0) {
+        final nombreProducto = _productos![index].nombre;
+        _productos!.removeAt(index);
+        notifyListeners();
+        print('✅ Producto eliminado del caché: $nombreProducto');
+      } else {
+        print('⚠️ Producto no encontrado en caché para eliminar: $productoId');
+      }
+    }
+  }
+
   /// ⚡ ULTRA RÁPIDO: Carga inicial optimizada (solo productos sin imágenes)
   Future<void> initializeRapido() async {
     _isLoadingProductos = true;

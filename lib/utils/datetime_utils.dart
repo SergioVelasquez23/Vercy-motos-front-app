@@ -128,17 +128,32 @@ class DateTimeUtils {
     try {
       // Convertir a zona horaria local
       final localDateTime = dateTime.toLocal();
+      
+      // Helper para formato 12 horas
+      String formatTime12h(DateTime dt) {
+        final hour24 = dt.hour;
+        final hour12 = hour24 == 0 ? 12 : (hour24 > 12 ? hour24 - 12 : hour24);
+        final period = hour24 >= 12 ? 'PM' : 'AM';
+        return '${hour12.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')} $period';
+      }
 
       switch (format) {
         case 'date':
           return '${localDateTime.day.toString().padLeft(2, '0')}/${localDateTime.month.toString().padLeft(2, '0')}/${localDateTime.year}';
         case 'time':
+          return formatTime12h(localDateTime);
+        case 'time24': // Formato 24h para casos específicos
           return '${localDateTime.hour.toString().padLeft(2, '0')}:${localDateTime.minute.toString().padLeft(2, '0')}';
         case 'short':
-          return '${localDateTime.day}/${localDateTime.month} ${localDateTime.hour}:${localDateTime.minute.toString().padLeft(2, '0')}';
+          final hour24 = localDateTime.hour;
+          final hour12 = hour24 == 0
+              ? 12
+              : (hour24 > 12 ? hour24 - 12 : hour24);
+          final period = hour24 >= 12 ? 'PM' : 'AM';
+          return '${localDateTime.day}/${localDateTime.month} $hour12:${localDateTime.minute.toString().padLeft(2, '0')} $period';
         case 'datetime':
         default:
-          return '${localDateTime.day.toString().padLeft(2, '0')}/${localDateTime.month.toString().padLeft(2, '0')}/${localDateTime.year} ${localDateTime.hour.toString().padLeft(2, '0')}:${localDateTime.minute.toString().padLeft(2, '0')}';
+          return '${localDateTime.day.toString().padLeft(2, '0')}/${localDateTime.month.toString().padLeft(2, '0')}/${localDateTime.year} ${formatTime12h(localDateTime)}';
       }
     } catch (e) {
         

@@ -89,6 +89,7 @@ class MovimientosEfectivo {
   final double comprasEfectivo;
   final double diferencia;
   final double efectivoDeclarado;
+  final double descuadre; // Descuadre = efectivoEsperado - efectivoDeclarado
 
   MovimientosEfectivo({
     required this.efectivoEsperado,
@@ -101,6 +102,7 @@ class MovimientosEfectivo {
     required this.comprasEfectivo,
     required this.diferencia,
     required this.efectivoDeclarado,
+    this.descuadre = 0.0,
   });
 
   factory MovimientosEfectivo.fromJson(Map<String, dynamic> json) {
@@ -127,6 +129,7 @@ class MovimientosEfectivo {
       comprasEfectivo: safeToDouble(json['comprasEfectivo']),
       diferencia: safeToDouble(json['diferencia']),
       efectivoDeclarado: safeToDouble(json['efectivoDeclarado']),
+      descuadre: safeToDouble(json['descuadre']),
     );
   }
 }

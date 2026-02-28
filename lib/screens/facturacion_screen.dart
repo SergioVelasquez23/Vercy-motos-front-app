@@ -18,6 +18,7 @@ import '../models/negocio_info.dart';
 import '../theme/app_theme.dart';
 import '../providers/user_provider.dart';
 import '../providers/datos_cache_provider.dart';
+import '../providers/facturacion_draft_provider.dart';
 import '../widgets/vercy_sidebar_layout.dart';
 import '../dialogs/dialogo_pago.dart';
 import '../utils/busqueda_productos_utils.dart';
@@ -127,6 +128,10 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     text: '0',
   );
   bool _retencionesExpanded = false;
+  
+  // Controlador de observaciones
+  final TextEditingController _observacionesController =
+      TextEditingController();
 
   Cliente? _clienteSeleccionado;
   Producto? _productoSeleccionado;
@@ -148,11 +153,22 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     // 🔥 Pre-warm: despertar backend de Render y pre-cachear cuadreId
     _preCalentarBackend();
     
+    // 🔄 Iniciar sincronización automática de inventario
+    Future.microtask(() {
+      final draftProvider = Provider.of<FacturacionDraftProvider>(
+        context,
+        listen: false,
+      );
+      draftProvider.startSync();
+    });
+    
     // Si se pasó un pedido de asesor, cargar clientes primero
     if (widget.pedidoAsesor != null) {
       _inicializarConPedidoAsesor();
     } else {
       _cargarClientes();
+      // 📝 Restaurar borrador existente (si no es pedido asesor)
+      Future.microtask(() => _restaurarBorrador());
     }
   }
 
@@ -291,6 +307,20 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
 
   @override
   void dispose() {
+    // ⏸️ Detener sincronización automática
+    // NO limpiar el borrador aquí - se mantiene para cuando regresen
+    if (mounted) {
+      try {
+        final draftProvider = Provider.of<FacturacionDraftProvider>(
+          context,
+          listen: false,
+        );
+        draftProvider.stopSync();
+      } catch (e) {
+        print('⚠️ Error deteniendo sincronización: $e');
+      }
+    }
+    
     _clienteController.dispose();
     _codigoBarrasController.dispose();
     _codigoController.dispose();
@@ -315,9 +345,173 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     _reteICAController.dispose();
     _aiuController.dispose();
     _dctoGeneralController.dispose();
+    _observacionesController.dispose();
     // ✅ LIMPIAR CONTROLADORES DE AUTOCOMPLETE
 
     super.dispose();
+  }
+
+  /// 📝 Restaurar borrador existente del provider
+  void _restaurarBorrador() {
+    try {
+      final draftProvider = Provider.of<FacturacionDraftProvider>(
+        context,
+        listen: false,
+      );
+
+      // Solo restaurar si hay un borrador guardado
+      if (!draftProvider.hasDraft) {
+        print('ℹ️  No hay borrador para restaurar');
+        return;
+      }
+
+      print('📝 Restaurando borrador - ${draftProvider.itemsCount} items');
+
+      setState(() {
+        // Restaurar items
+        _items = List.from(draftProvider.items);
+
+        // Restaurar cliente
+        _clienteSeleccionado = draftProvider.clienteSeleccionado;
+        _clienteController.text = draftProvider.clienteNombre;
+
+        // Restaurar método de pago
+        _metodoPago = draftProvider.metodoPago;
+        _tipoFactura = draftProvider.tipoFactura;
+        _origenSeleccionado = draftProvider.origenSeleccionado;
+        _fechaFactura = draftProvider.fechaFactura;
+        _fechaVencimiento = draftProvider.fechaVencimiento;
+
+        // Restaurar datos extras
+        if (draftProvider.ordenCompra != null) {
+          _ordenCompraController.text = draftProvider.ordenCompra!;
+        }
+        if (draftProvider.ordenServicio != null) {
+          _ordenServicioController.text = draftProvider.ordenServicio!;
+        }
+        if (draftProvider.ordenPedido != null) {
+          _ordenPedidoController.text = draftProvider.ordenPedido!;
+        }
+        if (draftProvider.vendedor != null) {
+          _vendedorController.text = draftProvider.vendedor!;
+        }
+        if (draftProvider.guia != null) {
+          _guiaController.text = draftProvider.guia!;
+        }
+        if (draftProvider.observaciones != null) {
+          _observacionesController.text = draftProvider.observaciones!;
+        }
+
+        // Restaurar montos de pago múltiple
+        final montos = draftProvider.montosPago;
+        _montoEfectivoController.text = montos['efectivo']?.toString() ?? '0';
+        _montoTransferenciaController.text =
+            montos['transferencia']?.toString() ?? '0';
+        _montoTarjetaController.text = montos['tarjeta']?.toString() ?? '0';
+        _montoSistereditoController.text =
+            montos['sistecredito']?.toString() ?? '0';
+        _montoDatafonoController.text = montos['datafono']?.toString() ?? '0';
+
+        // Restaurar retenciones
+        _retencionController.text = draftProvider.retencion.toString();
+        _reteIVAController.text = draftProvider.reteIVA.toString();
+        _reteICAController.text = draftProvider.reteICA.toString();
+        _aiuController.text = draftProvider.aiu.toString();
+        _dctoGeneralController.text = draftProvider.dctoGeneral.toString();
+      });
+
+      // Mostrar notificación
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '✨ Borrador restaurado - ${draftProvider.itemsCount} productos',
+          ),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+
+      print('✅ Borrador restaurado exitosamente');
+    } catch (e) {
+      print('⚠️ Error restaurando borrador: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('⚠️ Error restaurando borrador anterior'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+    }
+  }
+
+  /// 💾 Guardar TODO el estado actual al provider
+  void _guardarEstadoCompleto() {
+    try {
+      final draftProvider = Provider.of<FacturacionDraftProvider>(
+        context,
+        listen: false,
+      );
+
+      // Guardar items
+      draftProvider.setItems(_items);
+
+      // Guardar cliente
+      draftProvider.setCliente(_clienteSeleccionado, _clienteController.text);
+
+      // Guardar método de pago y tipo de factura
+      draftProvider.setMetodoPago(_metodoPago);
+      draftProvider.setTipoFactura(_tipoFactura);
+      draftProvider.setOrigenSeleccionado(_origenSeleccionado);
+      draftProvider.setFechaFactura(_fechaFactura);
+      draftProvider.setFechaVencimiento(_fechaVencimiento);
+
+      // Guardar datos extras si tienen contenido
+      if (_ordenCompraController.text.isNotEmpty) {
+        draftProvider.setOrdenCompra(_ordenCompraController.text);
+      }
+      if (_ordenServicioController.text.isNotEmpty) {
+        draftProvider.setOrdenServicio(_ordenServicioController.text);
+      }
+      if (_ordenPedidoController.text.isNotEmpty) {
+        draftProvider.setOrdenPedido(_ordenPedidoController.text);
+      }
+      if (_vendedorController.text.isNotEmpty) {
+        draftProvider.setVendedor(_vendedorController.text);
+      }
+      if (_guiaController.text.isNotEmpty) {
+        draftProvider.setGuia(_guiaController.text);
+      }
+      if (_observacionesController.text.isNotEmpty) {
+        draftProvider.setObservaciones(_observacionesController.text);
+      }
+
+      // Guardar montos de pago múltiple
+      final montos = {
+        'efectivo': double.tryParse(_montoEfectivoController.text) ?? 0,
+        'transferencia':
+            double.tryParse(_montoTransferenciaController.text) ?? 0,
+        'tarjeta': double.tryParse(_montoTarjetaController.text) ?? 0,
+        'sistecredito': double.tryParse(_montoSistereditoController.text) ?? 0,
+        'datafono': double.tryParse(_montoDatafonoController.text) ?? 0,
+      };
+      draftProvider.setMontosPago(montos);
+
+      // Guardar retenciones
+      draftProvider.setRetencion(
+        double.tryParse(_retencionController.text) ?? 0,
+      );
+      draftProvider.setReteIVA(double.tryParse(_reteIVAController.text) ?? 0);
+      draftProvider.setReteICA(double.tryParse(_reteICAController.text) ?? 0);
+      draftProvider.setAiu(double.tryParse(_aiuController.text) ?? 0);
+      draftProvider.setDctoGeneral(
+        double.tryParse(_dctoGeneralController.text) ?? 0,
+      );
+
+      print(
+        '💾 Estado completo guardado - ${_items.length} items, cliente: ${_clienteController.text}',
+      );
+    } catch (e) {
+      print('⚠️ Error guardando estado completo: $e');
+    }
   }
 
   @override
@@ -352,6 +546,8 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                         _buildDatosProducto(),
                         SizedBox(height: spacing),
                         _buildItemsList(),
+                        SizedBox(height: spacing),
+                        _buildObservaciones(),
                         SizedBox(height: spacing),
                         _buildRetencionesYAIU(),
                         SizedBox(height: spacing),
@@ -673,6 +869,8 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                 _clienteSeleccionado = cliente;
                 _clienteController.text = cliente.nombreCompleto;
               });
+              // 💾 Guardar estado completo al cambiar cliente
+              _guardarEstadoCompleto();
             },
             fieldViewBuilder:
                 (
@@ -1554,6 +1752,15 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                               _nombreProductoController.text = producto.nombre;
                               _valorUnitController.text = producto.precio.toString();
                             });
+                            
+                            // ✅ Limpiar campo automáticamente después de breve delay (feedback visual)
+                            Future.delayed(Duration(milliseconds: 300), () {
+                              if (mounted) {
+                                setState(() {
+                                  _nombreProductoController.clear();
+                                });
+                              }
+                            });
                           },
                           fieldViewBuilder:
                               (
@@ -1670,6 +1877,15 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                                   : producto.id;
                               _nombreProductoController.text = producto.nombre;
                               _valorUnitController.text = producto.precio.toString();
+                            });
+                            
+                            // ✅ Limpiar campo automáticamente después de breve delay (feedback visual)
+                            Future.delayed(Duration(milliseconds: 300), () {
+                              if (mounted) {
+                                setState(() {
+                                  _nombreProductoController.clear();
+                                });
+                              }
                             });
                           },
                           fieldViewBuilder:
@@ -1876,7 +2092,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                     ],
                   ),
                   SizedBox(height: 16),
-                  // 📦 MOSTRAR STOCK DISPONIBLE
+                  // 📦 MOSTRAR STOCK DISPONIBLE CON BOTÓN REFRESCAR
                   if (_productoSeleccionado != null)
                     Container(
                       padding: EdgeInsets.all(12),
@@ -1891,13 +2107,74 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            'Stock disponible: ${_productoSeleccionado!.nombre}',
-                            style: TextStyle(
-                              color: AppTheme.textPrimary,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13,
-                            ),
+                          Row(
+                            children: [
+                              Text(
+                                'Stock disponible: ${_productoSeleccionado!.nombre}',
+                                style: TextStyle(
+                                  color: AppTheme.textPrimary,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                ),
+                              ),
+                              SizedBox(width: 8),
+                              IconButton(
+                                tooltip: 'Refrescar stock',
+                                icon: Icon(
+                                  Icons.refresh,
+                                  color: AppTheme.primary,
+                                ),
+                                onPressed: () async {
+                                  if (_productoSeleccionado == null) return;
+                                  setState(() => _isLoading = true);
+                                  try {
+                                    final productoActualizado =
+                                        await _productoService.getProducto(
+                                          _productoSeleccionado!.id,
+                                        );
+                                    if (productoActualizado != null) {
+                                      setState(() {
+                                        _productoSeleccionado =
+                                            productoActualizado;
+                                        // También actualiza la lista si es necesario
+                                        final idx = _productosDisponibles
+                                            .indexWhere(
+                                              (p) =>
+                                                  p.id ==
+                                                  productoActualizado.id,
+                                            );
+                                        if (idx != -1) {
+                                          _productosDisponibles[idx] =
+                                              productoActualizado;
+                                        }
+                                      });
+                                    } else {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            'No se encontró el producto actualizado',
+                                          ),
+                                          backgroundColor: Colors.orange,
+                                        ),
+                                      );
+                                    }
+                                  } catch (e) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          'Error al refrescar stock: $e',
+                                        ),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                  } finally {
+                                    setState(() => _isLoading = false);
+                                  }
+                                },
+                              ),
+                            ],
                           ),
                           SizedBox(height: 8),
                           Row(
@@ -2392,6 +2669,54 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     );
   }
 
+  Widget _buildObservaciones() {
+    return Container(
+      padding: EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: AppTheme.cardBg,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 2)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.note_alt, color: AppTheme.primary, size: 24),
+              SizedBox(width: 12),
+              Text(
+                'Observaciones',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 16),
+          TextField(
+            controller: _observacionesController,
+            maxLines: 3,
+            style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+            decoration: InputDecoration(
+              hintText: 'Ej: Abonado \$50,000 - Paquete 1, etc...',
+              hintStyle: TextStyle(color: AppTheme.textSecondary),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              contentPadding: EdgeInsets.all(16),
+              filled: true,
+              fillColor: AppTheme.surfaceDark,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildRetencionesYAIU() {
     return Container(
       decoration: BoxDecoration(
@@ -2689,99 +3014,15 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
   }
 
   void _agregarItem() {
-    if (_nombreProductoController.text.isEmpty ||
-        _valorUnitController.text.isEmpty) {
+    // Validación básica mínima - solo valor
+    if (_valorUnitController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Complete los datos del producto')),
-      );
-      return;
-    }
-
-    // ⚠️ REQUERIR PRODUCTO SELECCIONADO: Para validar stock correctamente
-    if (_productoSeleccionado == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('❌ Debe seleccionar un producto de la lista para agregarlo al carrito'),
-          backgroundColor: Colors.orange.shade700,
-          duration: Duration(seconds: 3),
-        ),
+        SnackBar(content: Text('❌ Complete el valor del producto')),
       );
       return;
     }
 
     final cantidad = int.tryParse(_cantidadController.text) ?? 1;
-    
-    // 📦 VALIDACIÓN DE STOCK: No permitir agregar si no hay inventario
-    // No aplica para servicios (tipoItem == 'servicio')
-    final tipoItem = _productoSeleccionado!.productoOServicio?.toLowerCase() ?? 'producto';
-    final esServicio = tipoItem == 'servicio';
-    
-    // 🔍 LOG para debugging
-    print('🛒 Agregando producto al carrito:');
-    print('   - Nombre: ${_productoSeleccionado!.nombre}');
-    print('   - Tipo: $tipoItem');
-    print('   - Es servicio: $esServicio');
-    print('   - Control inventario: ${_productoSeleccionado!.controlInventario}');
-    print('   - Stock almacén: ${_productoSeleccionado!.almacen}');
-    print('   - Stock bodega: ${_productoSeleccionado!.bodega}');
-    print('   - Origen seleccionado: $_origenSeleccionado');
-    print('   - Cantidad solicitada: $cantidad');
-    
-    // ⚠️ VALIDACIÓN DE STOCK: Aplicar a TODOS LOS PRODUCTOS (excepto servicios)
-    // No importa el valor de controlInventario - si es producto, debe validar stock en el origen seleccionado
-    if (!esServicio) {
-      final stockAlmacen = _productoSeleccionado!.almacen ?? 0;
-      final stockBodega = _productoSeleccionado!.bodega ?? 0;
-
-      // Validar stock del ORIGEN SELECCIONADO únicamente
-      int stockDisponible = 0;
-      if (_origenSeleccionado.toUpperCase() == 'BODEGA') {
-        stockDisponible = stockBodega;
-      } else if (_origenSeleccionado.toUpperCase() == 'ALMACÉN' || _origenSeleccionado.toUpperCase() == 'ALMACEN') {
-        stockDisponible = stockAlmacen;
-      }
-
-      print('   - Stock disponible en $_origenSeleccionado: $stockDisponible');
-
-      // Validación 1: Si no hay stock en el origen seleccionado, NO PERMITIR agregar
-      if (stockDisponible <= 0) {
-        print('   ❌ BLOQUEADO: No hay stock en $_origenSeleccionado');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '❌ No hay stock en $_origenSeleccionado para "${_productoSeleccionado!.nombre}"\n'
-              'Stock en ALMACÉN: $stockAlmacen\n'
-              'Stock en BODEGA: $stockBodega\n\n'
-              'Cambia el origen o selecciona otro producto.',
-            ),
-            backgroundColor: Colors.red.shade700,
-            duration: Duration(seconds: 5),
-          ),
-        );
-        return;
-      }
-
-      // Validación 2: Si la cantidad solicitada es mayor al stock disponible, NO PERMITIR
-      if (cantidad > stockDisponible) {
-        print('   ❌ BLOQUEADO: Cantidad solicitada ($cantidad) > stock disponible ($stockDisponible)');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '❌ Stock insuficiente en $_origenSeleccionado\n'
-              'Disponible: $stockDisponible\n'
-              'Solicitado: $cantidad',
-            ),
-            backgroundColor: Colors.red.shade700,
-            duration: Duration(seconds: 5),
-          ),
-        );
-        return;
-      }
-      
-      print('   ✅ Validación pasada: Stock suficiente en $_origenSeleccionado');
-    } else {
-      print('   ℹ️  Es servicio - sin validación de stock');
-    } // fin if (!esServicio)
 
     final precioUnitario = double.tryParse(_valorUnitController.text) ?? 0;
     final porcentajeImpuesto =
@@ -2797,7 +3038,8 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       productoId:
           _productoSeleccionado?.id ??
           'temp-${DateTime.now().millisecondsSinceEpoch}',
-      productoNombre: _nombreProductoController.text,
+      productoNombre:
+          _productoSeleccionado?.nombre ?? _nombreProductoController.text,
       cantidad: cantidad,
       precioUnitario: precioUnitario,
       origen: _origenSeleccionado, // 📦 Pasar el origen seleccionado
@@ -2807,12 +3049,18 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       _items.add(item);
       _limpiarFormularioProducto();
     });
+    
+    // � Guardar estado completo en provider
+    _guardarEstadoCompleto();
   }
 
   void _eliminarItem(int index) {
     setState(() {
       _items.removeAt(index);
     });
+    
+    // � Guardar estado completo en provider
+    _guardarEstadoCompleto();
   }
 
   void _limpiarFormularioProducto() {
@@ -2986,7 +3234,11 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
             children: _metodosPago.map((metodo) {
               final isSelected = _metodoPago == metodo['value'];
               return InkWell(
-                onTap: () => setState(() => _metodoPago = metodo['value']),
+                onTap: () {
+                  setState(() => _metodoPago = metodo['value']);
+                  // 💾 Guardar estado completo al cambiar método de pago
+                  _guardarEstadoCompleto();
+                },
                 borderRadius: BorderRadius.circular(12),
                 child: Container(
                   padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -3877,7 +4129,30 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     try {
       // 🚀 GUARDAR TODOS LOS DATOS NECESARIOS ANTES DE LIMPIAR
       final subtotal = _items.fold(0.0, (sum, item) => sum + item.subtotal);
-      final total = subtotal;
+      
+      // Calcular retenciones, descuentos e IVA
+      final retencionPct = double.tryParse(_retencionController.text) ?? 0;
+      final reteIVAPct = double.tryParse(_reteIVAController.text) ?? 0;
+      final reteICAPct = double.tryParse(_reteICAController.text) ?? 0;
+      final aiuPct = double.tryParse(_aiuController.text) ?? 0;
+      final dctoGeneral = double.tryParse(_dctoGeneralController.text) ?? 0;
+
+      final retencionValor = subtotal * (retencionPct / 100);
+      final reteIVAValor = subtotal * (reteIVAPct / 100);
+      final reteICAValor = subtotal * (reteICAPct / 100);
+      final aiuValor = subtotal * (aiuPct / 100);
+
+      // Los impuestos de los items ya están incluidos en el subtotal
+      final totalImpuestos = 0.0;
+      final totalDescuentos = dctoGeneral;
+      final totalRetenciones = retencionValor + reteIVAValor + reteICAValor;
+      final total =
+          subtotal +
+          totalImpuestos +
+          aiuValor -
+          totalDescuentos -
+          totalRetenciones;
+      
       final userName =
           Provider.of<UserProvider>(context, listen: false).userName ??
           'Sistema';
@@ -3912,6 +4187,9 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       final montoDatafono = _metodoPago == 'datafono' ? total : 0.0;
       final esPedidoAsesor = widget.pedidoAsesor != null;
       final pedidoAsesorId = widget.pedidoAsesor?.id;
+
+      // ✅ CAPTURAR OBSERVACIONES ANTES DE LIMPIAR (para el PDF)
+      final observacionesCapturadas = _observacionesController.text.trim();
 
       // ✅ CAPTURAR CLIENTE SELECCIONADO ANTES DE LIMPIAR (para el PDF)
       Cliente? clienteCapturado = _clienteSeleccionado;
@@ -3969,11 +4247,6 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
         ),
       );
 
-      // Si viene de pedido asesor, regresar inmediatamente
-      if (esPedidoAsesor) {
-        Navigator.of(context).pop();
-      }
-
       // 🚀 TODO EN BACKGROUND - Crear pedido + pagar + inventario
       Future.microtask(() async {
         try {
@@ -4007,10 +4280,23 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
             tipoFactura: tipoFacturaCapturado,
             fechaVencimiento: fechaVencimientoCapturada,
             subtotal: subtotal,
-            totalImpuestos: 0.0,
-            totalDescuentos: 0.0,
+            totalImpuestos: totalImpuestos,
+            totalDescuentos: totalDescuentos,
             totalFinal: total,
             datosAdicionales: datosAdicionales,
+            // ✅ Agregar campos de retenciones y descuentos
+            retencion: retencionPct,
+            valorRetencion: retencionValor,
+            reteIVA: reteIVAPct,
+            valorReteIVA: reteIVAValor,
+            reteICA: reteICAPct,
+            valorReteICA: reteICAValor,
+            descuentoGeneral: dctoGeneral,
+            aiu: {'porcentaje': aiuPct, 'valor': aiuValor},
+            // ✅ Agregar observaciones capturadas
+            notas: observacionesCapturadas.isNotEmpty
+                ? observacionesCapturadas
+                : null,
           );
 
           final pedidoCreado = await _pedidoService.createPedido(pedido);
@@ -4025,7 +4311,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
             notas: esPedidoAsesor
                 ? 'Pago de pedido asesor'
                 : 'Pago desde facturación',
-            descuento: 0.0,
+            descuento: totalDescuentos + totalRetenciones,
             pagoMultiple: metodoPagoUsado == 'multiple',
             montoEfectivo: montoEfectivo,
             montoTarjeta: montoTarjeta,
@@ -4097,10 +4383,20 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
               pedidoPagado,
               metodoPagoUsado,
               total,
-              0.0,
+              totalDescuentos + totalRetenciones,
               0.0,
               negocioInfo,
               clienteData: clienteCompleto,
+              retencionPct: retencionPct,
+              reteIVAPct: reteIVAPct,
+              reteICAPct: reteICAPct,
+              aiuPct: aiuPct,
+              dctoGeneral: dctoGeneral,
+              retencionValor: retencionValor,
+              reteIVAValor: reteIVAValor,
+              reteICAValor: reteICAValor,
+              aiuValor: aiuValor,
+              observaciones: observacionesCapturadas,
             );
 
             // Mostrar diálogo con opciones de PDF/Imprimir
@@ -4167,8 +4463,8 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                         Expanded(
                           child: InkWell(
                             onTap: () async {
-                              Navigator.of(dialogContext).pop();
-                              await _pdfService.mostrarVistaPrevia(
+                              // NO cerrar el diálogo automáticamente
+                              await _mostrarPDFConNombrePersonalizado(
                                 resumen: resumen,
                                 esFactura: true,
                               );
@@ -4210,7 +4506,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                         Expanded(
                           child: InkWell(
                             onTap: () async {
-                              Navigator.of(dialogContext).pop();
+                              // NO cerrar el diálogo automáticamente
                               await _pdfService.mostrarDialogoImpresion(
                                 resumen: resumen,
                                 esFactura: true,
@@ -4255,9 +4551,15 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                 ),
                 actions: [
                   TextButton(
-                    onPressed: () => Navigator.of(dialogContext).pop(),
+                    onPressed: () {
+                      Navigator.of(dialogContext).pop(); // Cerrar diálogo
+                      // Si es pedido asesor, regresar a la pantalla anterior
+                      if (esPedidoAsesor && mounted) {
+                        Navigator.of(context).pop();
+                      }
+                    },
                     child: Text(
-                      'Cerrar sin imprimir',
+                      'Cerrar',
                       style: TextStyle(color: AppTheme.textSecondary),
                     ),
                   ),
@@ -4736,12 +5038,36 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       }
 
       // Preparar el resumen para el PDF
-      final resumen = _prepararResumenFactura(pedido, medioPago, totalPagado, descuento, propina, negocioInfo);
+      final resumen = _prepararResumenFactura(
+        pedido,
+        medioPago,
+        totalPagado,
+        descuento,
+        propina,
+        negocioInfo,
+        retencionPct: pedido.retencion,
+        reteIVAPct: pedido.reteIVA,
+        reteICAPct: pedido.reteICA,
+        aiuPct: pedido.aiu != null
+            ? (pedido.aiu!['porcentaje'] as num?)?.toDouble()
+            : null,
+        dctoGeneral: pedido.descuentoGeneral,
+        retencionValor: pedido.valorRetencion,
+        reteIVAValor: pedido.valorReteIVA,
+        reteICAValor: pedido.valorReteICA,
+        aiuValor: pedido.aiu != null
+            ? (pedido.aiu!['valor'] as num?)?.toDouble()
+            : null,
+        observaciones: pedido.notas,
+      );
 
       Navigator.of(context).pop(); // Cerrar indicador de carga
 
-      // Mostrar el PDF
-      await _pdfService.mostrarVistaPrevia(resumen: resumen, esFactura: true);
+      // Mostrar el PDF con nombre personalizable
+      await _mostrarPDFConNombrePersonalizado(
+        resumen: resumen,
+        esFactura: true,
+      );
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -4794,7 +5120,28 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       }
 
       // Preparar el resumen para el PDF
-      final resumen = _prepararResumenFactura(pedido, medioPago, totalPagado, descuento, propina, negocioInfo);
+      final resumen = _prepararResumenFactura(
+        pedido,
+        medioPago,
+        totalPagado,
+        descuento,
+        propina,
+        negocioInfo,
+        retencionPct: pedido.retencion,
+        reteIVAPct: pedido.reteIVA,
+        reteICAPct: pedido.reteICA,
+        aiuPct: pedido.aiu != null
+            ? (pedido.aiu!['porcentaje'] as num?)?.toDouble()
+            : null,
+        dctoGeneral: pedido.descuentoGeneral,
+        retencionValor: pedido.valorRetencion,
+        reteIVAValor: pedido.valorReteIVA,
+        reteICAValor: pedido.valorReteICA,
+        aiuValor: pedido.aiu != null
+            ? (pedido.aiu!['valor'] as num?)?.toDouble()
+            : null,
+        observaciones: pedido.notas,
+      );
 
       Navigator.of(context).pop(); // Cerrar indicador de carga
 
@@ -4827,12 +5174,38 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     double propina,
     NegocioInfo? negocioInfo, {
     Cliente? clienteData,
+    double? retencionPct,
+    double? reteIVAPct,
+    double? reteICAPct,
+    double? aiuPct,
+    double? dctoGeneral,
+    double? retencionValor,
+    double? reteIVAValor,
+    double? reteICAValor,
+    double? aiuValor,
+    String? observaciones,
   }) {
     // Usar clienteData pasado como parámetro, o _clienteSeleccionado como fallback
     final cliente = clienteData ?? _clienteSeleccionado;
     final now = DateTime.now();
     final fechaFormateada = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
     final horaFormateada = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}';
+
+    // ✅ Usar valores pasados como parámetros (ya capturados antes de limpiar el formulario)
+    final retencionPctFinal = retencionPct ?? 0;
+    final reteIVAPctFinal = reteIVAPct ?? 0;
+    final reteICAPctFinal = reteICAPct ?? 0;
+    final aiuPctFinal = aiuPct ?? 0;
+    final dctoGeneralFinal = dctoGeneral ?? 0;
+
+    final subtotalBase = pedido.subtotal;
+    final retencionValorFinal =
+        retencionValor ?? (subtotalBase * (retencionPctFinal / 100));
+    final reteIVAValorFinal =
+        reteIVAValor ?? (subtotalBase * (reteIVAPctFinal / 100));
+    final reteICAValorFinal =
+        reteICAValor ?? (subtotalBase * (reteICAPctFinal / 100));
+    final aiuValorFinal = aiuValor ?? (subtotalBase * (aiuPctFinal / 100));
 
     return {
       // Información del negocio
@@ -4889,12 +5262,28 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       // Totales
       'subtotal': pedido.subtotal,
       'totalSinIva': pedido.total,
-      'totalIva': 0.0,
-      'impuestos': 0.0,
+      'totalIva': pedido.totalImpuestos,
+      'impuestos': pedido.totalImpuestos,
       'descuento': descuento,
+      'descuentoGeneral': dctoGeneralFinal,
       'propina': propina,
       'total': totalPagado,
       'totalFactura': totalPagado,
+      
+      // Retenciones y AIU (para mostrar en el PDF)
+      'retencion': retencionValorFinal,
+      'retencionPct': retencionPctFinal,
+      'reteIVA': reteIVAValorFinal,
+      'reteIVAPct': reteIVAPctFinal,
+      'reteICA': reteICAValorFinal,
+      'reteICAPct': reteICAPctFinal,
+      'aiu': aiuValorFinal,
+      'aiuPct': aiuPctFinal,
+
+      // Observaciones personalizadas (usar parámetro pasado o valor por defecto)
+      'observaciones': observaciones?.isNotEmpty == true
+          ? observaciones
+          : 'Este documento se asimila en todos sus efectos legales a una letra de cambio (Artículo 774 del Código de Comercio)',
 
       // Forma de pago
       'medioPago': medioPago,
@@ -4942,6 +5331,9 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       _reteICAController.text = '0';
       _aiuController.text = '0';
       _dctoGeneralController.text = '0';
+      
+      // Limpiar observaciones
+      _observacionesController.clear();
 
       // Resetear variables de estado
       _fechaCompra = null;
@@ -4973,11 +5365,103 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       // ✅ Incrementar key para forzar reconstrucción de Autocompletes
       _autocompleteResetKey++;
     });
+    
+    // 🗑️ Limpiar borrador del provider
+    try {
+      final draftProvider = Provider.of<FacturacionDraftProvider>(
+        context,
+        listen: false,
+      );
+      draftProvider.clearDraft();
+      print('🗑️ Borrador limpiado del provider');
+    } catch (e) {
+      print('⚠️ Error limpiando provider: $e');
+    }
   }
 
   Future<void> _guardarFactura() async {
     // Este método ahora solo se usa para compatibilidad
     // La lógica principal está en _guardarYPagar y _guardarComoBorrador
     await _guardarYPagar();
+  }
+
+  // Método para mostrar diálogo de edición de nombre de archivo PDF
+  Future<void> _mostrarPDFConNombrePersonalizado({
+    required Map<String, dynamic> resumen,
+    bool esFactura = true,
+  }) async {
+    final nombreSugerido =
+        'Factura_${resumen['pedidoId'] ?? resumen['numero'] ?? DateTime.now().millisecondsSinceEpoch}.pdf';
+    final controladorNombre = TextEditingController(text: nombreSugerido);
+
+    final nombreFinal = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppTheme.cardBg,
+        title: Text(
+          'Nombre del archivo',
+          style: TextStyle(color: AppTheme.textPrimary),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Personaliza el nombre del archivo PDF:',
+              style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+            ),
+            SizedBox(height: 12),
+            TextField(
+              controller: controladorNombre,
+              autofocus: true,
+              style: TextStyle(color: AppTheme.textPrimary),
+              decoration: InputDecoration(
+                hintText: 'Nombre del archivo',
+                hintStyle: TextStyle(color: AppTheme.textSecondary),
+                filled: true,
+                fillColor: AppTheme.surfaceDark,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide.none,
+                ),
+                suffixText: '.pdf',
+                suffixStyle: TextStyle(color: AppTheme.textSecondary),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(
+              'Cancelar',
+              style: TextStyle(color: AppTheme.textSecondary),
+            ),
+          ),
+          ElevatedButton.icon(
+            onPressed: () {
+              var nombre = controladorNombre.text.trim();
+              if (nombre.isEmpty) {
+                nombre = nombreSugerido;
+              }
+              if (!nombre.endsWith('.pdf')) {
+                nombre = '$nombre.pdf';
+              }
+              Navigator.of(context).pop(nombre);
+            },
+            icon: Icon(Icons.download, color: Colors.white),
+            label: Text('Guardar', style: TextStyle(color: Colors.white)),
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.success),
+          ),
+        ],
+      ),
+    );
+
+    if (nombreFinal != null) {
+      await _pdfService.mostrarVistaPrevia(
+        resumen: resumen,
+        esFactura: esFactura,
+        nombreArchivo: nombreFinal,
+      );
+    }
   }
 }

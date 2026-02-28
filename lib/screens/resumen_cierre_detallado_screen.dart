@@ -663,6 +663,92 @@ class _ResumenCierreDetalladoScreenState
                       .toList(),
                 ),
               ],
+              // DEBUG: Ver los valores antes de mostrar
+              Builder(
+                builder: (context) {
+                  print('🔍 _buildCuadreInfo - Valores para mostrar:');
+                  print('   efectivoEsperado: ${info.efectivoEsperado}');
+                  print('   efectivoDeclarado: ${info.efectivoDeclarado}');
+                  print('   descuadre: ${info.descuadre}');
+                  print(
+                    '   Condición cumplida: ${info.efectivoDeclarado > 0 || info.descuadre.abs() > 0.01}',
+                  );
+                  return SizedBox.shrink();
+                },
+              ),
+              // Mostrar efectivo declarado y descuadre si existen
+              if (info.efectivoDeclarado > 0 ||
+                  info.descuadre.abs() > 0.01) ...[
+                Divider(height: 16, color: textLight.withOpacity(0.2)),
+                if (info.efectivoEsperado > 0)
+                  _buildInfoRow(
+                    'Efectivo Esperado',
+                    formatCurrency(info.efectivoEsperado),
+                    valueColor: Colors.blue,
+                  ),
+                if (info.efectivoDeclarado > 0) ...[
+                  SizedBox(height: 10),
+                  _buildInfoRow(
+                    'Efectivo Declarado',
+                    formatCurrency(info.efectivoDeclarado),
+                    valueColor: Colors.green,
+                  ),
+                ],
+                if (info.descuadre.abs() > 0.01) ...[
+                  SizedBox(height: 12),
+                  Container(
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: info.descuadre > 0
+                          ? Colors.red.withOpacity(0.1)
+                          : Colors.orange.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: info.descuadre > 0
+                            ? Colors.red.withOpacity(0.3)
+                            : Colors.orange.withOpacity(0.3),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              info.descuadre > 0
+                                  ? Icons.warning_amber_rounded
+                                  : Icons.info_outline,
+                              color: info.descuadre > 0
+                                  ? Colors.red
+                                  : Colors.orange,
+                              size: 18,
+                            ),
+                            SizedBox(width: 8),
+                            Text(
+                              info.descuadre > 0 ? 'Faltante' : 'Sobrante',
+                              style: TextStyle(
+                                color: textDark,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Text(
+                          formatCurrency(info.descuadre.abs()),
+                          style: TextStyle(
+                            color: info.descuadre > 0
+                                ? Colors.red
+                                : Colors.orange,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
             ],
           ),
         ),
@@ -2139,7 +2225,11 @@ class _ResumenCierreDetalladoScreenState
   String _formatDate(String dateString) {
     try {
       final date = DateTime.parse(dateString);
-      return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+      // Formato 12 horas con AM/PM
+      final hour24 = date.hour;
+      final hour12 = hour24 == 0 ? 12 : (hour24 > 12 ? hour24 - 12 : hour24);
+      final period = hour24 >= 12 ? 'PM' : 'AM';
+      return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year} ${hour12.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')} $period';
     } catch (e) {
       return dateString;
     }

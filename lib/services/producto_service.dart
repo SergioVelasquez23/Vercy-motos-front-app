@@ -11,6 +11,7 @@ import '../models/api_response.dart';
 import '../config/api_config.dart';
 import '../utils/retry_strategy.dart';
 import 'alertas_service.dart';
+import '../providers/datos_cache_provider.dart';
 
 /// Flag para habilitar/deshabilitar logs detallados de productos
 /// En producción web esto debe ser false para evitar spam en consola
@@ -922,16 +923,31 @@ class ProductoService {
 
       if (response.statusCode == 201) {
         final responseData = json.decode(response.body);
+        Producto nuevoProducto;
+        
         if (responseData is Map<String, dynamic>) {
           // Si la respuesta es un objeto con "data"
           if (responseData.containsKey('data')) {
-            return Producto.fromJson(responseData['data']);
+            nuevoProducto = Producto.fromJson(responseData['data']);
           } else {
-            return Producto.fromJson(responseData);
+            nuevoProducto = Producto.fromJson(responseData);
           }
         } else {
           throw Exception('Formato de respuesta inesperado');
         }
+
+        // ✅ NUEVO: Agregar al caché del provider para que aparezca inmediatamente
+        try {
+          final cacheProvider = DatosCacheProvider();
+          cacheProvider.agregarProductoAlCache(nuevoProducto);
+          print(
+            '✅ Producto agregado al caché del provider: ${nuevoProducto.nombre}',
+          );
+        } catch (e) {
+          print('⚠️ No se pudo agregar al caché del provider: $e');
+        }
+
+        return nuevoProducto;
       } else {
         throw Exception('Error del servidor: ${response.statusCode}');
       }
@@ -1134,25 +1150,16 @@ class ProductoService {
   // Actualizar producto
   Future<Producto> updateProducto(Producto producto) async {
     try {
+      // ⛔ NOTIFICACIONES DE TELEGRAM DESHABILITADAS
       // Verificar si la cantidad en bodega es baja y notificar por Telegram
-      const int kStockBajoUmbral =
-          10; // O importar desde constants.dart si ya está
-      if (producto.bodega != null && producto.bodega! <= kStockBajoUmbral) {
-        // Puedes personalizar los datos de contacto aquí
-        final alertasService = AlertasService();
-        final mensaje =
-            '⚠️ Alerta: El producto "${producto.nombre}" tiene stock bajo en bodega (${producto.bodega}).';
-        // Notificación por Telegram
-        alertasService.sendTelegramMessage(mensaje);
-        // Si quieres usar WhatsApp/email, puedes llamar enviarAlertaStock también:
-        // alertasService.enviarAlertaStock(
-        //   whatsapp: '573001112233',
-        //   email: 'alertas@tucorreo.com',
-        //   producto: producto.nombre,
-        //   stockActual: producto.bodega!,
-        //   stockMinimo: kStockBajoUmbral,
-        // );
-      }
+      // const int kStockBajoUmbral = 10;
+      // if (producto.bodega != null && producto.bodega! <= kStockBajoUmbral) {
+      //   final alertasService = AlertasService();
+      //   final mensaje =
+      //       '⚠️ Alerta: El producto "${producto.nombre}" tiene stock bajo en bodega (${producto.bodega}).';
+      //   alertasService.sendTelegramMessage(mensaje);
+      // }
+      
       // ✅ Validar que el producto tenga un ID válido
       if (producto.id.isEmpty) {
         throw Exception('No se puede actualizar un producto sin ID');
@@ -1210,12 +1217,17 @@ class ProductoService {
       }
 
       // 🔍 LOG: Ver exactamente qué se envía al backend
+      print('');
+      print('━━━ ACTUALIZACIÓN DE PRODUCTO ━━━');
       print('📤 PUT /api/productos/${producto.id}');
+      print('📦 Producto: ${producto.nombre}');
       print('   - productoOServicio: ${producto.productoOServicio}');
       print('   - tipoItem: ${productoJson['tipoItem']}');
-      print('   - cantidadAlmacen enviado: ${productoJson['cantidadAlmacen']}');
-      print('   - cantidadBodega enviado: ${productoJson['cantidadBodega']}');
-      print('🔍 JSON completo a enviar: ${json.encode(productoJson)}');
+      print('   🏭 INVENTARIO A ENVIAR:');
+      print('      • cantidadAlmacen: ${productoJson['cantidadAlmacen']}');
+      print('      • cantidadBodega: ${productoJson['cantidadBodega']}');
+      print('🔍 JSON completo: ${json.encode(productoJson)}');
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
       final response = await http
           .put(
@@ -1226,9 +1238,13 @@ class ProductoService {
           .timeout(Duration(seconds: 300)); // Timeout aumentado para Render
 
       // 🔍 LOG: Ver respuesta del backend
-      print('   - Response status: ${response.statusCode}');
+      print('');
+      print('📥 RESPUESTA DEL BACKEND:');
+      print('   - Status Code: ${response.statusCode}');
+      print('   - Response Body: ${response.body}');
 
       if (response.statusCode == 200) {
+        print('   ✅ Producto actualizado exitosamente en el backend');
           
         final responseBody = json.decode(response.body);
 
@@ -1262,6 +1278,13 @@ class ProductoService {
 
         var productoActualizado = Producto.fromJson(productoData);
 
+        print('');
+        print('   📊 INVENTARIO CONFIRMADO DEL BACKEND:');
+        print('      • Almacén: ${productoActualizado.almacen ?? 0} unidades');
+        print('      • Bodega: ${productoActualizado.bodega ?? 0} unidades');
+        print('   ─────────────────────────────────────');
+        print('');
+
         // ✅ CRÍTICO: Si después del parseo productoOServicio es null, forzar el valor enviado
         if (productoActualizado.productoOServicio == null && producto.productoOServicio != null) {
           productoActualizado = productoActualizado.copyWith(
@@ -1274,6 +1297,15 @@ class ProductoService {
 
         // ✅ CRÍTICO: Actualizar el cache con los valores corregidos
         _productoByIdCache[producto.id] = productoActualizado;
+
+        // ✅ NUEVO: Actualizar en el DatosCacheProvider para reflejar cambios inmediatamente
+        try {
+          final cacheProvider = DatosCacheProvider();
+          cacheProvider.actualizarProductoEnCache(productoActualizado);
+          print('✅ Caché del provider actualizado exitosamente');
+        } catch (e) {
+          print('⚠️ No se pudo actualizar el caché del provider: $e');
+        }
 
         return productoActualizado;
       } else {
@@ -1345,6 +1377,29 @@ class ProductoService {
         print('⚠️ Error al actualizar costo: ${response.statusCode}');
       } else {
         print('✅ Costo actualizado para producto $productoId: \$$nuevoCosto');
+        
+        // ✅ NUEVO: Actualizar en el caché del provider
+        if (response.statusCode == 200) {
+          try {
+            final responseData = json.decode(response.body);
+            final productoData = responseData is Map<String, dynamic>
+                ? (responseData['data'] ?? responseData)
+                : responseData;
+            final productoActualizado = Producto.fromJson(productoData);
+
+            // Actualizar caché local
+            _productoByIdCache[productoId] = productoActualizado;
+
+            // Actualizar caché del provider
+            final cacheProvider = DatosCacheProvider();
+            cacheProvider.actualizarProductoEnCache(productoActualizado);
+            print('✅ Caché actualizado después de cambio de costo');
+          } catch (e) {
+            print(
+              '⚠️ No se pudo actualizar el caché después de cambio de costo: $e',
+            );
+          }
+        }
       }
     } catch (e) {
       // No lanzar excepción para no interrumpir el flujo de la compra
@@ -1362,6 +1417,18 @@ class ProductoService {
 
       if (response.statusCode == 200 || response.statusCode == 204) {
           
+        // ✅ NUEVO: Eliminar del caché del provider
+        try {
+          final cacheProvider = DatosCacheProvider();
+          cacheProvider.eliminarProductoDelCache(id);
+          print('✅ Producto eliminado del caché del provider');
+        } catch (e) {
+          print('⚠️ No se pudo eliminar del caché del provider: $e');
+        }
+
+        // Eliminar del caché local
+        _productoByIdCache.remove(id);
+        
         return;
       } else {
         throw Exception('Error del servidor: ${response.statusCode}');

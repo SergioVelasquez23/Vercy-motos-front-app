@@ -170,13 +170,13 @@ class _LazyProductImageWidgetState extends State<LazyProductImageWidget> {
                 height: 20,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white54),
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.black54),
                 ),
               ),
             )
           : Icon(
               Icons.fastfood,
-              color: Colors.white38,
+              color: Colors.black38,
               size: widget.width * 0.5,
             ),
     );

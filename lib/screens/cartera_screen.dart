@@ -4,6 +4,7 @@ import '../models/cuenta_por_cobrar.dart';
 import '../models/cuenta_por_pagar.dart';
 import '../models/gasto_programado.dart';
 import '../services/cartera_service.dart';
+import '../theme/app_theme.dart';
 import '../utils/currency_utils.dart';
 import '../widgets/vercy_sidebar_layout.dart';
 import 'cuentas_por_cobrar_screen.dart';
@@ -64,8 +65,8 @@ class _CarteraScreenState extends State<CarteraScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Gestión de Cartera'),
-          backgroundColor: const Color(0xFF1976D2),
-          foregroundColor: Colors.white,
+          backgroundColor: AppTheme.primary,
+          foregroundColor: AppTheme.white,
           elevation: 0,
           actions: [
             IconButton(
@@ -97,7 +98,7 @@ class _CarteraScreenState extends State<CarteraScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.error_outline, size: 64, color: Colors.red),
+          const Icon(Icons.error_outline, size: 64, color: AppTheme.error),
           const SizedBox(height: 16),
           Text(
             'Error al cargar datos',
@@ -179,8 +180,8 @@ class _CarteraScreenState extends State<CarteraScreen> {
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: resumen?.flujoPositivo == true
-                    ? Colors.green.withOpacity(0.1)
-                    : Colors.red.withOpacity(0.1),
+                    ? AppTheme.success.withOpacity(0.1)
+                    : AppTheme.error.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Column(
@@ -193,8 +194,8 @@ class _CarteraScreenState extends State<CarteraScreen> {
                     CurrencyUtils.format(resumen?.flujoNetoEstimado ?? 0),
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       color: resumen?.flujoPositivo == true
-                          ? Colors.green[700]
-                          : Colors.red[700],
+                          ? AppTheme.success
+                          : AppTheme.error,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -212,7 +213,7 @@ class _CarteraScreenState extends State<CarteraScreen> {
                     'Por Cobrar',
                     resumen?.totalPorCobrar ?? 0,
                     Icons.attach_money,
-                    Colors.green,
+                    AppTheme.success,
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -221,7 +222,7 @@ class _CarteraScreenState extends State<CarteraScreen> {
                     'Por Pagar',
                     resumen?.totalPorPagar ?? 0,
                     Icons.money_off,
-                    Colors.orange,
+                    AppTheme.warning,
                   ),
                 ),
               ],
@@ -236,7 +237,7 @@ class _CarteraScreenState extends State<CarteraScreen> {
                     'Gastos Mes',
                     resumen?.gastosProgramadosMes ?? 0,
                     Icons.receipt,
-                    Colors.blue,
+                    AppTheme.primary,
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -247,8 +248,8 @@ class _CarteraScreenState extends State<CarteraScreen> {
                     Icons.account_balance_wallet,
                     resumen?.liquidezEstimada != null &&
                             resumen!.liquidezEstimada >= 0
-                        ? Colors.green
-                        : Colors.red,
+                        ? AppTheme.success
+                        : AppTheme.error,
                   ),
                 ),
               ],
@@ -296,7 +297,7 @@ class _CarteraScreenState extends State<CarteraScreen> {
   Widget _buildAlertasCard() {
     return Card(
       elevation: 4,
-      color: Colors.red[50],
+      color: AppTheme.error.withOpacity(0.05),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -304,12 +305,12 @@ class _CarteraScreenState extends State<CarteraScreen> {
           children: [
             Row(
               children: [
-                Icon(Icons.warning, color: Colors.red[700]),
+                Icon(Icons.warning, color: AppTheme.error),
                 const SizedBox(width: 8),
                 Text(
                   'Alertas Importantes',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: Colors.red[700],
+                    color: AppTheme.error,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -321,14 +322,14 @@ class _CarteraScreenState extends State<CarteraScreen> {
               _buildAlertaItem(
                 '${resumen!.cuentasVencidas} cuentas vencidas',
                 Icons.schedule,
-                Colors.red,
+                AppTheme.error,
               ),
 
             if (resumen != null && resumen!.proveedoresDescuentoRiesgo > 0)
               _buildAlertaItem(
                 '${resumen!.proveedoresDescuentoRiesgo} descuentos en riesgo',
                 Icons.local_offer,
-                Colors.orange,
+                AppTheme.warning,
               ),
           ],
         ),

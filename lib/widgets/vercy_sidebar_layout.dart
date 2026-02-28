@@ -36,12 +36,32 @@ class _VercySidebarLayoutState extends State<VercySidebarLayout> {
               duration: Duration(milliseconds: 300),
               width: 270,
               decoration: BoxDecoration(
-                color: AppTheme.surfaceDark,
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    AppTheme.primary.withOpacity(0.06),
+                    AppTheme.secondary.withOpacity(0.04),
+                    Colors.white,
+                  ],
+                  stops: [0.0, 0.5, 1.0],
+                ),
+                border: Border(
+                  right: BorderSide(
+                    color: AppTheme.primary.withOpacity(0.15),
+                    width: 2,
+                  ),
+                ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.3),
-                    blurRadius: 10,
-                    offset: Offset(2, 0),
+                    color: AppTheme.primary.withOpacity(0.15),
+                    blurRadius: 15,
+                    offset: Offset(3, 0),
+                  ),
+                  BoxShadow(
+                    color: Colors.white.withOpacity(0.5),
+                    blurRadius: 8,
+                    offset: Offset(-2, 0),
                   ),
                 ],
               ),
@@ -69,7 +89,18 @@ class _VercySidebarLayoutState extends State<VercySidebarLayout> {
                 // Contenido
                 Expanded(
                   child: Container(
-                    color: AppTheme.backgroundDark,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          Color(0xFFF5F7FA),
+                          Color(0xFFE8EAF6),
+                          Color(0xFFF5F7FA),
+                        ],
+                        stops: [0.0, 0.5, 1.0],
+                      ),
+                    ),
                     child: widget.child,
                   ),
                 ),
@@ -85,7 +116,25 @@ class _VercySidebarLayoutState extends State<VercySidebarLayout> {
   Widget _buildHeader(BuildContext context) {
     return Container(
       padding: EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-      decoration: BoxDecoration(gradient: AppTheme.primaryGradient),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [AppTheme.primary, AppTheme.secondary],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.primary.withOpacity(0.3),
+            blurRadius: 12,
+            offset: Offset(0, 4),
+          ),
+          BoxShadow(
+            color: AppTheme.secondary.withOpacity(0.2),
+            blurRadius: 20,
+            spreadRadius: 2,
+          ),
+        ],
+      ),
       child: Center(
         child: Container(
           width: 200,
@@ -110,83 +159,180 @@ class _VercySidebarLayoutState extends State<VercySidebarLayout> {
       height: 70,
       padding: EdgeInsets.symmetric(horizontal: 24, vertical: 10),
       decoration: BoxDecoration(
-        gradient: AppTheme.primaryGradient,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [AppTheme.primary, AppTheme.secondary],
+        ),
+        border: Border(
+          bottom: BorderSide(color: Colors.white.withOpacity(0.2), width: 2),
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 5,
-            offset: Offset(0, 2),
+            color: AppTheme.primary.withOpacity(0.4),
+            blurRadius: 15,
+            offset: Offset(0, 5),
+          ),
+          BoxShadow(
+            color: AppTheme.secondary.withOpacity(0.2),
+            blurRadius: 25,
+            spreadRadius: 2,
           ),
         ],
       ),
       child: Row(
         children: [
-          // Icono de menú hamburguesa para mostrar/ocultar sidebar
-          IconButton(
-            icon: Icon(Icons.menu, color: Colors.white),
-            onPressed: () {
-              setState(() {
-                _isSidebarVisible = !_isSidebarVisible;
-              });
-            },
-            tooltip: _isSidebarVisible ? 'Ocultar menú' : 'Mostrar menú',
+          // Icono de menú hamburguesa con efecto
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.3),
+                width: 1,
+              ),
+            ),
+            child: IconButton(
+              icon: Icon(Icons.menu, color: Colors.white, size: 24),
+              onPressed: () {
+                setState(() {
+                  _isSidebarVisible = !_isSidebarVisible;
+                });
+              },
+              tooltip: _isSidebarVisible ? 'Ocultar menú' : 'Mostrar menú',
+            ),
           ),
-          SizedBox(width: 16),
+          SizedBox(width: 20),
 
-          // Título
+          // Título con efecto glassmorphism
           if (widget.title != null)
-            Text(
-              widget.title!,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.white.withOpacity(0.25),
+                    Colors.white.withOpacity(0.1),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.3),
+                  width: 1.5,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.white.withOpacity(0.2),
+                    blurRadius: 10,
+                    spreadRadius: 1,
+                  ),
+                ],
+              ),
+              child: Text(
+                widget.title!,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.5,
+                  shadows: [
+                    Shadow(
+                      color: Colors.black.withOpacity(0.3),
+                      blurRadius: 4,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
+                ),
               ),
             ),
 
           Spacer(),
 
-          // Usuario
-          Row(
-            children: [
-              Icon(Icons.person, color: Colors.white, size: 20),
-              SizedBox(width: 8),
-              Text(
-                userName,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
+          // Usuario con contenedor especial
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.white.withOpacity(0.2),
+                  Colors.white.withOpacity(0.08),
+                ],
               ),
-            ],
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.3),
+                width: 1,
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.25),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.white.withOpacity(0.3),
+                        blurRadius: 8,
+                        spreadRadius: 1,
+                      ),
+                    ],
+                  ),
+                  child: Icon(Icons.person, color: Colors.white, size: 18),
+                ),
+                SizedBox(width: 10),
+                Text(
+                  userName,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+              ],
+            ),
           ),
 
           SizedBox(width: 16),
 
-          // Iconos de ayuda, home, configuración
-          IconButton(
-            icon: Icon(Icons.help_outline, color: Colors.white),
-            onPressed: () {
-              // Mostrar ayuda
-            },
-            tooltip: 'Ayuda',
-          ),
-          IconButton(
-            icon: Icon(Icons.home, color: Colors.white),
-            onPressed: () {
-              Navigator.pushReplacementNamed(context, '/dashboard');
-            },
-            tooltip: 'Inicio',
-          ),
-          IconButton(
-            icon: Icon(Icons.settings, color: Colors.white),
-            onPressed: () {
-              // Ir a configuración
-            },
-            tooltip: 'Configuración',
+          // Iconos con efectos mejorados
+          _buildTopBarIcon(Icons.help_outline, 'Ayuda', () {}),
+          SizedBox(width: 8),
+          _buildTopBarIcon(Icons.home, 'Inicio', () {
+            Navigator.pushReplacementNamed(context, '/dashboard');
+          }),
+          SizedBox(width: 8),
+          _buildTopBarIcon(Icons.settings, 'Configuración', () {}),
+        ],
+      ),
+    );
+  }
+
+  /// Widget auxiliar para iconos del top bar
+  Widget _buildTopBarIcon(
+    IconData icon,
+    String tooltip,
+    VoidCallback onPressed,
+  ) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.15),
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white.withOpacity(0.3), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.white.withOpacity(0.2),
+            blurRadius: 8,
+            spreadRadius: 0,
           ),
         ],
+      ),
+      child: IconButton(
+        icon: Icon(icon, color: Colors.white, size: 20),
+        onPressed: onPressed,
+        tooltip: tooltip,
       ),
     );
   }
@@ -382,13 +528,45 @@ class _VercySidebarLayoutState extends State<VercySidebarLayout> {
     return Container(
       margin: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-        color: isSelected
-            ? AppTheme.primary.withOpacity(0.2)
-            : Colors.transparent,
-        borderRadius: BorderRadius.circular(8),
-        border: isSelected
-            ? Border.all(color: AppTheme.primary, width: 2)
-            : null,
+        gradient: isSelected
+            ? LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  AppTheme.primary.withOpacity(0.15),
+                  AppTheme.secondary.withOpacity(0.08),
+                ],
+              )
+            : LinearGradient(
+                colors: [Colors.white.withOpacity(0.5), Colors.transparent],
+              ),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: isSelected
+              ? AppTheme.primary.withOpacity(0.4)
+              : Colors.grey.withOpacity(0.15),
+          width: isSelected ? 2 : 1,
+        ),
+        boxShadow: isSelected
+            ? [
+                BoxShadow(
+                  color: AppTheme.primary.withOpacity(0.2),
+                  blurRadius: 8,
+                  offset: Offset(0, 2),
+                ),
+                BoxShadow(
+                  color: AppTheme.secondary.withOpacity(0.1),
+                  blurRadius: 15,
+                  spreadRadius: 1,
+                ),
+              ]
+            : [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.03),
+                  blurRadius: 3,
+                  offset: Offset(0, 1),
+                ),
+              ],
       ),
       child: ListTile(
         leading: Icon(
@@ -446,9 +624,24 @@ class _VercySidebarLayoutState extends State<VercySidebarLayout> {
     return Container(
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        border: Border(
-          top: BorderSide(color: AppTheme.metal.withOpacity(0.3), width: 1),
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.white.withOpacity(0.5),
+            AppTheme.metal.withOpacity(0.05),
+          ],
         ),
+        border: Border(
+          top: BorderSide(color: AppTheme.primary.withOpacity(0.2), width: 2),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.primary.withOpacity(0.08),
+            blurRadius: 8,
+            offset: Offset(0, -2),
+          ),
+        ],
       ),
       child: Row(
         children: [
@@ -522,7 +715,39 @@ class _VercySidebarLayoutState extends State<VercySidebarLayout> {
             });
           },
           child: Container(
+            margin: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             padding: EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            decoration: BoxDecoration(
+              gradient: isExpanded
+                  ? LinearGradient(
+                      colors: [
+                        AppTheme.secondary.withOpacity(0.12),
+                        AppTheme.primary.withOpacity(0.06),
+                      ],
+                    )
+                  : LinearGradient(
+                      colors: [
+                        Colors.white.withOpacity(0.4),
+                        Colors.transparent,
+                      ],
+                    ),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: isExpanded
+                    ? AppTheme.secondary.withOpacity(0.3)
+                    : Colors.grey.withOpacity(0.1),
+                width: isExpanded ? 1.5 : 1,
+              ),
+              boxShadow: isExpanded
+                  ? [
+                      BoxShadow(
+                        color: AppTheme.secondary.withOpacity(0.15),
+                        blurRadius: 6,
+                        offset: Offset(0, 2),
+                      ),
+                    ]
+                  : null,
+            ),
             child: Row(
               children: [
                 Icon(icon, color: AppTheme.textSecondary, size: 20),
@@ -562,11 +787,35 @@ class _VercySidebarLayoutState extends State<VercySidebarLayout> {
         Navigator.pushReplacementNamed(context, subItem.route);
       },
       child: Container(
-        margin: EdgeInsets.only(left: 20),
+        margin: EdgeInsets.only(left: 20, right: 8, top: 2, bottom: 2),
         padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         decoration: BoxDecoration(
-          color: isSelected ? AppTheme.primary.withOpacity(0.1) : null,
+          gradient: isSelected
+              ? LinearGradient(
+                  colors: [
+                    AppTheme.primary.withOpacity(0.12),
+                    AppTheme.secondary.withOpacity(0.06),
+                  ],
+                )
+              : LinearGradient(
+                  colors: [Colors.white.withOpacity(0.3), Colors.transparent],
+                ),
           borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected
+                ? AppTheme.primary.withOpacity(0.3)
+                : Colors.grey.withOpacity(0.1),
+            width: isSelected ? 1.5 : 0.5,
+          ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: AppTheme.primary.withOpacity(0.12),
+                    blurRadius: 5,
+                    offset: Offset(0, 1),
+                  ),
+                ]
+              : null,
         ),
         child: Row(
           children: [

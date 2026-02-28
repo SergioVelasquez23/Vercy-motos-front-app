@@ -210,20 +210,54 @@ String _detectAndFixCorruption(String formatted, dynamic originalValue) {
   return formatted;
 }
 
-/// Formatea una fecha en formato legible dd/MM/yyyy HH:mm
-/// Ejemplo: 2025-09-30T14:30:00.000Z -> 30/09/2025 14:30
+/// Formatea una fecha en formato legible dd/MM/yyyy hh:mm AM/PM (12 horas)
+/// Ejemplo: 2025-09-30T14:30:00.000Z -> 30/09/2025 02:30 PM
 String formatDate(DateTime dateTime) {
   try {
     final day = dateTime.day.toString().padLeft(2, '0');
     final month = dateTime.month.toString().padLeft(2, '0');
     final year = dateTime.year.toString();
-    final hour = dateTime.hour.toString().padLeft(2, '0');
+    
+    // Convertir a formato 12 horas
+    final hour24 = dateTime.hour;
+    final hour12 = hour24 == 0 ? 12 : (hour24 > 12 ? hour24 - 12 : hour24);
+    final period = hour24 >= 12 ? 'PM' : 'AM';
     final minute = dateTime.minute.toString().padLeft(2, '0');
 
-    return '$day/$month/$year $hour:$minute';
+    return '$day/$month/$year ${hour12.toString().padLeft(2, '0')}:$minute $period';
   } catch (e) {
       
     return 'Fecha inválida';
+  }
+}
+
+/// Formatea solo la hora en formato 12 horas con AM/PM
+/// Ejemplo: 14:30 -> 02:30 PM
+String formatTime12h(DateTime dateTime) {
+  try {
+    final hour24 = dateTime.hour;
+    final hour12 = hour24 == 0 ? 12 : (hour24 > 12 ? hour24 - 12 : hour24);
+    final period = hour24 >= 12 ? 'PM' : 'AM';
+    final minute = dateTime.minute.toString().padLeft(2, '0');
+
+    return '${hour12.toString().padLeft(2, '0')}:$minute $period';
+  } catch (e) {
+    return 'Hora inválida';
+  }
+}
+
+/// Formatea hora en formato 12h corto (sin padding en hora)
+/// Ejemplo: 14:30 -> 2:30 PM
+String formatTime12hShort(DateTime dateTime) {
+  try {
+    final hour24 = dateTime.hour;
+    final hour12 = hour24 == 0 ? 12 : (hour24 > 12 ? hour24 - 12 : hour24);
+    final period = hour24 >= 12 ? 'PM' : 'AM';
+    final minute = dateTime.minute.toString().padLeft(2, '0');
+
+    return '$hour12:$minute $period';
+  } catch (e) {
+    return 'Hora inválida';
   }
 }
 

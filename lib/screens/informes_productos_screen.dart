@@ -6,6 +6,7 @@ import '../services/cliente_service.dart';
 import '../services/producto_service.dart';
 import '../services/reportes_service.dart';
 import '../theme/app_theme.dart';
+import '../services/cuadre_caja_service.dart';
 
 class InformesProductosScreen extends StatefulWidget {
   const InformesProductosScreen({super.key});
@@ -19,6 +20,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
   final ReportesService _reportesService = ReportesService();
   final ProductoService _productoService = ProductoService();
   final ClienteService _clienteService = ClienteService();
+  final _cuadreCajaService = CuadreCajaService();
   final DateFormat _dateFormat = DateFormat('yyyy-MM-dd');
 
   // Filtros
@@ -48,6 +50,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
     super.initState();
     _cargarDatosIniciales();
   }
+  bool _filtrarPorCaja = true;
 
   Future<void> _cargarDatosIniciales() async {
     await Future.wait([_cargarClientes(), _cargarProductos()]);
@@ -86,7 +89,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
       context: context,
       initialDate: isDesde ? _fechaDesde : _fechaHasta,
       firstDate: DateTime(2020),
-      lastDate: DateTime.now(),
+      lastDate: DateTime(2100),
     );
     if (picked != null) {
       setState(() {
@@ -112,8 +115,21 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
     });
 
     try {
+      String? cuadreId;
+      if (_filtrarPorCaja) {
+        final cajaActiva = await _cuadreCajaService.getCajaActiva();
+        cuadreId = cajaActiva?.id;
+        if (cuadreId == null) {
+          if (mounted) {
+            setState(() => _isLoading = false);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('No hay caja activa.')),
+            );
+          }
+          return;
+        }
+      }
       List<Map<String, dynamic>> datos;
-
       if (tipo == 'detallado') {
         datos = await _reportesService.getProductosVentasDetallado(
           desde: _fechaDesde,
@@ -130,6 +146,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
           codigo: _codigoController.text.isNotEmpty
               ? _codigoController.text
               : null,
+          cuadreId: _filtrarPorCaja ? cuadreId : null,
         );
       } else {
         datos = await _reportesService.getProductosVentasAgrupado(
@@ -147,7 +164,55 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
           codigo: _codigoController.text.isNotEmpty
               ? _codigoController.text
               : null,
+          cuadreId: _filtrarPorCaja ? cuadreId : null,
         );
+      }
+      // Filtrar en frontend por cuadreId o por rango de apertura/cierre de la caja activa
+      if (_filtrarPorCaja && cuadreId != null) {
+        if (datos.isNotEmpty && datos.first.containsKey('cuadreId')) {
+          datos = datos.where((item) => item['cuadreId'] == cuadreId).toList();
+        } else {
+          // Si no existe el campo cuadreId, filtrar por rango de fechas de la caja activa
+          final cajaActiva = await _cuadreCajaService.getCajaActiva();
+          if (cajaActiva != null) {
+            // Rango: desde el día de apertura a las 6 AM hasta el día siguiente a las 4 AM
+            final apertura = DateTime(
+              cajaActiva.fechaApertura.year,
+              cajaActiva.fechaApertura.month,
+              cajaActiva.fechaApertura.day,
+              6,
+              0,
+              0,
+            );
+            final cierre = DateTime(
+              cajaActiva.fechaApertura.add(const Duration(days: 1)).year,
+              cajaActiva.fechaApertura.add(const Duration(days: 1)).month,
+              cajaActiva.fechaApertura.add(const Duration(days: 1)).day,
+              4,
+              0,
+              0,
+            );
+            datos = datos.where((item) {
+              final fechaStr = item['fecha'] ?? '';
+              DateTime? fechaPedido;
+              try {
+                fechaPedido = DateTime.parse(
+                  fechaStr.replaceAll('/', '-').replaceAll(' ', 'T'),
+                );
+              } catch (_) {
+                // Intentar parsear como 'yyyy-MM-dd HH:mm'
+                try {
+                  fechaPedido = DateFormat('yyyy-MM-dd HH:mm').parse(fechaStr);
+                } catch (_) {
+                  return false;
+                }
+              }
+              return fechaPedido != null &&
+                  !fechaPedido.isBefore(apertura) &&
+                  !fechaPedido.isAfter(cierre);
+            }).toList();
+          }
+        }
       }
 
       // Calcular totales
@@ -183,46 +248,78 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark ? const Color(0xFF1E1E1E) : Colors.grey[50];
-    final cardColor = isDark ? const Color(0xFF252525) : Colors.white;
-    final textColor = isDark ? Colors.white : Colors.black;
-    final subtextColor = isDark ? Colors.grey[400] : Colors.grey[700];
-
     return Scaffold(
-      backgroundColor: bgColor,
+      backgroundColor: AppTheme.backgroundDark,
       appBar: AppBar(
-        title: const Text('Informes de Productos'),
+        title: const Text(
+          'Informes de Productos',
+          style: TextStyle(color: Colors.white),
+        ),
         centerTitle: true,
         backgroundColor: AppTheme.warning,
         elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () {
+            Navigator.pushReplacementNamed(context, '/dashboard');
+          },
+        ),
       ),
       body: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(20.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // SECCIÓN DE FILTROS
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: cardColor,
+                  color: AppTheme.cardBg,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.grey.withOpacity(0.3)),
+                  border: Border.all(
+                    color: AppTheme.metal.withOpacity(0.2),
+                    width: 1,
+                  ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Generar informe productos',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: textColor,
-                      ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Generar informe productos',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.textPrimary,
+                          ),
+                        ),
+                        Row(
+                          children: [
+                            Text(
+                              'Filtrar por caja activa',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: AppTheme.textSecondary,
+                              ),
+                            ),
+                            Switch(
+                              value: _filtrarPorCaja,
+                              onChanged: (v) {
+                                setState(() {
+                                  _filtrarPorCaja = v;
+                                });
+                              },
+                              activeColor: AppTheme.success,
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 24),
                     // Fila 1: Fechas
                     Row(
                       children: [
@@ -231,44 +328,34 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
                             'Desde',
                             _fechaDesde,
                             () => _selectDate(true),
-                            textColor,
-                            cardColor,
                           ),
                         ),
-                        const SizedBox(width: 10),
+                        const SizedBox(width: 12),
                         Expanded(
                           child: _buildDateField(
                             'Hasta',
                             _fechaHasta,
                             () => _selectDate(false),
-                            textColor,
-                            cardColor,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 15),
+                    const SizedBox(height: 16),
                     // Fila 2: Cliente y Vendedor
                     Row(
                       children: [
                         Expanded(
-                          child: _buildClienteAutocomplete(
-                            textColor,
-                            cardColor,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
+                          child: _buildClienteAutocomplete()),
+                        const SizedBox(width: 12),
                         Expanded(
                           child: _buildTextField(
                             'Vendedor',
                             _vendedorController,
-                            textColor,
-                            cardColor,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 15),
+                    const SizedBox(height: 16),
                     // Fila 3: Código y Producto
                     Row(
                       children: [
@@ -276,20 +363,15 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
                           child: _buildTextField(
                             'Código',
                             _codigoController,
-                            textColor,
-                            cardColor,
                           ),
                         ),
-                        const SizedBox(width: 10),
+                        const SizedBox(width: 12),
                         Expanded(
-                          child: _buildProductoAutocomplete(
-                            textColor,
-                            cardColor,
-                          ),
+                          child: _buildProductoAutocomplete(),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 24),
                     // Botones de acción
                     Row(
                       children: [
@@ -300,13 +382,23 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
                                 : () => _generarInforme('detallado'),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppTheme.success,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              foregroundColor: Colors.white,
+                              disabledBackgroundColor: AppTheme.success
+                                  .withOpacity(0.5),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              elevation: 0,
                             ),
                             icon: const Icon(Icons.description),
-                            label: const Text('Generar informe detallado'),
+                            label: const Text(
+                              'Generar informe detallado',
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
                           ),
                         ),
-                        const SizedBox(width: 10),
+                        const SizedBox(width: 12),
                         Expanded(
                           child: ElevatedButton.icon(
                             onPressed: _isLoading
@@ -314,10 +406,20 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
                                 : () => _generarInforme('agrupado'),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppTheme.success,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              foregroundColor: Colors.white,
+                              disabledBackgroundColor: AppTheme.success
+                                  .withOpacity(0.5),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              elevation: 0,
                             ),
                             icon: const Icon(Icons.summarize),
-                            label: const Text('Generar informe agrupado'),
+                            label: const Text(
+                              'Generar informe agrupado',
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
                           ),
                         ),
                       ],
@@ -325,10 +427,10 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
               // TABLA DE RESULTADOS
               if (_tipoInformeActual != null)
-                _buildTablaResultados(textColor, cardColor, subtextColor),
+                _buildTablaResultados(),
             ],
           ),
         ),
@@ -340,8 +442,6 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
     String label,
     DateTime fecha,
     VoidCallback onTap,
-    Color textColor,
-    Color cardColor,
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -349,29 +449,37 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
         Text(
           label,
           style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey[600],
+            fontSize: 13,
+            color: AppTheme.textSecondary,
             fontWeight: FontWeight.w500,
           ),
         ),
-        const SizedBox(height: 5),
+        const SizedBox(height: 8),
         InkWell(
           onTap: onTap,
+          borderRadius: BorderRadius.circular(6),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
             decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey.withOpacity(0.3)),
-              borderRadius: BorderRadius.circular(4),
-              color: cardColor,
+              border: Border.all(
+                color: AppTheme.metal.withOpacity(0.2),
+                width: 1,
+              ),
+              borderRadius: BorderRadius.circular(6),
+              color: AppTheme.cardBg,
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
                   _dateFormat.format(fecha),
-                  style: TextStyle(color: textColor),
+                  style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
                 ),
-                Icon(Icons.calendar_today, color: Colors.grey[600], size: 18),
+                Icon(
+                  Icons.calendar_today,
+                  color: AppTheme.textSecondary,
+                  size: 18,
+                ),
               ],
             ),
           ),
@@ -383,8 +491,6 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
   Widget _buildTextField(
     String label,
     TextEditingController controller,
-    Color textColor,
-    Color cardColor,
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -392,51 +498,64 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
         Text(
           label,
           style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey[600],
+            fontSize: 13,
+            color: AppTheme.textSecondary,
             fontWeight: FontWeight.w500,
           ),
         ),
-        const SizedBox(height: 5),
+        const SizedBox(height: 8),
         TextField(
           controller: controller,
-          style: TextStyle(color: textColor),
+          style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
           decoration: InputDecoration(
             hintText: label,
-            hintStyle: const TextStyle(color: Colors.grey),
+            hintStyle: TextStyle(
+              color: AppTheme.textSecondary.withOpacity(0.5),
+              fontSize: 14,
+            ),
             contentPadding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 12,
+              horizontal: 14,
+              vertical: 13,
             ),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(4),
-              borderSide: BorderSide(color: Colors.grey.withOpacity(0.3)),
+              borderRadius: BorderRadius.circular(6),
+              borderSide: BorderSide(
+                color: AppTheme.metal.withOpacity(0.2),
+                width: 1,
+              ),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(6),
+              borderSide: BorderSide(
+                color: AppTheme.metal.withOpacity(0.2),
+                width: 1,
+              ),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(4),
-              borderSide: const BorderSide(color: Color(0xFFFF6B00)),
+              borderRadius: BorderRadius.circular(6),
+              borderSide: BorderSide(color: AppTheme.warning, width: 1.5),
             ),
             filled: true,
-            fillColor: cardColor,
+            fillColor: AppTheme.cardBg,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildClienteAutocomplete(Color textColor, Color cardColor) {
+  Widget _buildClienteAutocomplete() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           'Cliente',
           style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey[600],
+            fontSize: 13,
+            color: AppTheme.textSecondary,
             fontWeight: FontWeight.w500,
           ),
         ),
-        const SizedBox(height: 5),
+        const SizedBox(height: 8),
         Autocomplete<Cliente>(
           displayStringForOption: (c) => c.nombreCompleto,
           optionsBuilder: (TextEditingValue textEditingValue) {
@@ -455,23 +574,26 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
             return TextField(
               controller: controller,
               focusNode: focusNode,
-              style: TextStyle(color: textColor),
+              style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
               onChanged: (value) {
                 _clienteController.text = value;
               },
               decoration: InputDecoration(
                 hintText: 'Buscar cliente...',
-                hintStyle: const TextStyle(color: Colors.grey),
-                prefixIcon: const Icon(
+                hintStyle: TextStyle(
+                  color: AppTheme.textSecondary.withOpacity(0.5),
+                  fontSize: 14,
+                ),
+                prefixIcon: Icon(
                   Icons.search,
-                  color: Colors.grey,
+                  color: AppTheme.textSecondary,
                   size: 20,
                 ),
                 suffixIcon: controller.text.isNotEmpty
                     ? IconButton(
-                        icon: const Icon(
+                        icon: Icon(
                           Icons.clear,
-                          color: Colors.grey,
+                          color: AppTheme.textSecondary,
                           size: 18,
                         ),
                         onPressed: () {
@@ -481,19 +603,29 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
                       )
                     : null,
                 contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 12,
+                  horizontal: 14,
+                  vertical: 13,
                 ),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(4),
-                  borderSide: BorderSide(color: Colors.grey.withOpacity(0.3)),
+                  borderRadius: BorderRadius.circular(6),
+                  borderSide: BorderSide(
+                    color: AppTheme.metal.withOpacity(0.2),
+                    width: 1,
+                  ),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(6),
+                  borderSide: BorderSide(
+                    color: AppTheme.metal.withOpacity(0.2),
+                    width: 1,
+                  ),
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(4),
-                  borderSide: const BorderSide(color: Color(0xFFFF6B00)),
+                  borderRadius: BorderRadius.circular(6),
+                  borderSide: BorderSide(color: AppTheme.warning, width: 1.5),
                 ),
                 filled: true,
-                fillColor: cardColor,
+                fillColor: AppTheme.cardBg,
               ),
             );
           },
@@ -501,8 +633,8 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
             return Align(
               alignment: Alignment.topLeft,
               child: Material(
-                elevation: 4,
-                color: cardColor,
+                elevation: 8,
+                color: AppTheme.cardBg,
                 borderRadius: BorderRadius.circular(8),
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(
@@ -510,7 +642,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
                     maxWidth: 400,
                   ),
                   child: ListView.builder(
-                    padding: EdgeInsets.zero,
+                    padding: const EdgeInsets.symmetric(vertical: 4),
                     shrinkWrap: true,
                     itemCount: options.length,
                     itemBuilder: (context, index) {
@@ -519,17 +651,20 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
                         dense: true,
                         title: Text(
                           cliente.nombreCompleto,
-                          style: TextStyle(color: textColor, fontSize: 13),
+                          style: TextStyle(
+                            color: AppTheme.textPrimary,
+                            fontSize: 13,
+                          ),
                         ),
                         subtitle: Text(
                           cliente.numeroIdentificacion,
                           style: TextStyle(
-                            color: Colors.grey[500],
+                            color: AppTheme.textSecondary,
                             fontSize: 11,
                           ),
                         ),
                         onTap: () => onSelected(cliente),
-                        hoverColor: const Color(0xFFFF6B00).withOpacity(0.1),
+                        hoverColor: AppTheme.warning.withOpacity(0.1),
                       );
                     },
                   ),
@@ -542,19 +677,19 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
     );
   }
 
-  Widget _buildProductoAutocomplete(Color textColor, Color cardColor) {
+  Widget _buildProductoAutocomplete() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           'Nombre Producto',
           style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey[600],
+            fontSize: 13,
+            color: AppTheme.textSecondary,
             fontWeight: FontWeight.w500,
           ),
         ),
-        const SizedBox(height: 5),
+        const SizedBox(height: 8),
         Autocomplete<Producto>(
           displayStringForOption: (p) => p.nombre,
           optionsBuilder: (TextEditingValue textEditingValue) {
@@ -573,23 +708,26 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
             return TextField(
               controller: controller,
               focusNode: focusNode,
-              style: TextStyle(color: textColor),
+              style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
               onChanged: (value) {
                 _productoController.text = value;
               },
               decoration: InputDecoration(
                 hintText: 'Buscar producto...',
-                hintStyle: const TextStyle(color: Colors.grey),
-                prefixIcon: const Icon(
+                hintStyle: TextStyle(
+                  color: AppTheme.textSecondary.withOpacity(0.5),
+                  fontSize: 14,
+                ),
+                prefixIcon: Icon(
                   Icons.search,
-                  color: Colors.grey,
+                  color: AppTheme.textSecondary,
                   size: 20,
                 ),
                 suffixIcon: controller.text.isNotEmpty
                     ? IconButton(
-                        icon: const Icon(
+                        icon: Icon(
                           Icons.clear,
-                          color: Colors.grey,
+                          color: AppTheme.textSecondary,
                           size: 18,
                         ),
                         onPressed: () {
@@ -599,19 +737,29 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
                       )
                     : null,
                 contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 12,
+                  horizontal: 14,
+                  vertical: 13,
                 ),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(4),
-                  borderSide: BorderSide(color: Colors.grey.withOpacity(0.3)),
+                  borderRadius: BorderRadius.circular(6),
+                  borderSide: BorderSide(
+                    color: AppTheme.metal.withOpacity(0.2),
+                    width: 1,
+                  ),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(6),
+                  borderSide: BorderSide(
+                    color: AppTheme.metal.withOpacity(0.2),
+                    width: 1,
+                  ),
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(4),
-                  borderSide: const BorderSide(color: Color(0xFFFF6B00)),
+                  borderRadius: BorderRadius.circular(6),
+                  borderSide: BorderSide(color: AppTheme.warning, width: 1.5),
                 ),
                 filled: true,
-                fillColor: cardColor,
+                fillColor: AppTheme.cardBg,
               ),
             );
           },
@@ -619,8 +767,8 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
             return Align(
               alignment: Alignment.topLeft,
               child: Material(
-                elevation: 4,
-                color: cardColor,
+                elevation: 8,
+                color: AppTheme.cardBg,
                 borderRadius: BorderRadius.circular(8),
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(
@@ -628,7 +776,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
                     maxWidth: 400,
                   ),
                   child: ListView.builder(
-                    padding: EdgeInsets.zero,
+                    padding: const EdgeInsets.symmetric(vertical: 4),
                     shrinkWrap: true,
                     itemCount: options.length,
                     itemBuilder: (context, index) {
@@ -637,17 +785,20 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
                         dense: true,
                         title: Text(
                           producto.nombre,
-                          style: TextStyle(color: textColor, fontSize: 13),
+                          style: TextStyle(
+                            color: AppTheme.textPrimary,
+                            fontSize: 13,
+                          ),
                         ),
                         subtitle: Text(
                           producto.codigo ?? '',
                           style: TextStyle(
-                            color: Colors.grey[500],
+                            color: AppTheme.textSecondary,
                             fontSize: 11,
                           ),
                         ),
                         onTap: () => onSelected(producto),
-                        hoverColor: const Color(0xFFFF6B00).withOpacity(0.1),
+                        hoverColor: AppTheme.warning.withOpacity(0.1),
                       );
                     },
                   ),
@@ -660,16 +811,12 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
     );
   }
 
-  Widget _buildTablaResultados(
-    Color textColor,
-    Color cardColor,
-    Color? subtextColor,
-  ) {
+  Widget _buildTablaResultados() {
     if (_isLoading) {
       return Container(
         padding: const EdgeInsets.all(40),
         alignment: Alignment.center,
-        child: const CircularProgressIndicator(),
+        child: CircularProgressIndicator(color: AppTheme.warning),
       );
     }
 
@@ -679,7 +826,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
         alignment: Alignment.center,
         child: Text(
           'No hay datos para mostrar',
-          style: TextStyle(color: subtextColor, fontSize: 16),
+          style: TextStyle(color: AppTheme.textSecondary, fontSize: 16),
         ),
       );
     }
@@ -689,68 +836,78 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
       children: [
         // Resumen
         Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: cardColor,
+            color: AppTheme.cardBg,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.grey.withOpacity(0.3)),
+            border: Border.all(
+              color: AppTheme.metal.withOpacity(0.2),
+              width: 1,
+            ),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildResumenCard('Cantidad', _totalCantidad.toDouble(), textColor, isInt: true),
-              _buildResumenCard('Subtotal', _totalSubtotal, textColor),
-              _buildResumenCard('Descuento', _totalDescuento, textColor),
-              _buildResumenCard('Impuesto', _totalImpuesto, textColor),
-              _buildResumenCard('Total Ventas', _totalVentas, textColor),
+              _buildResumenCard(
+                'Cantidad',
+                _totalCantidad.toDouble(),
+                isInt: true,
+              ),
+              _buildResumenCard('Subtotal', _totalSubtotal),
+              _buildResumenCard('Descuento', _totalDescuento),
+              _buildResumenCard('Impuesto', _totalImpuesto),
+              _buildResumenCard('Total Ventas', _totalVentas),
             ],
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 24),
         // Tabla
         Container(
           decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey.withOpacity(0.3)),
+            border: Border.all(
+              color: AppTheme.metal.withOpacity(0.2),
+              width: 1,
+            ),
             borderRadius: BorderRadius.circular(8),
-            color: cardColor,
+            color: AppTheme.cardBg,
           ),
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: DataTable(
               headingRowColor: WidgetStateProperty.all(
-                Colors.black.withOpacity(0.2),
+                AppTheme.backgroundDark.withOpacity(0.3),
               ),
-              dataRowColor: WidgetStateProperty.all(cardColor.withOpacity(0.7)),
+              dataRowColor: WidgetStateProperty.all(AppTheme.cardBg),
               columns: [
-                DataColumn(label: _buildColumnHeader('TIPO', textColor)),
-                DataColumn(label: _buildColumnHeader('FECHA', textColor)),
-                DataColumn(label: _buildColumnHeader('# FACTURA', textColor)),
-                DataColumn(label: _buildColumnHeader('CLIENTE', textColor)),
-                DataColumn(label: _buildColumnHeader('PRODUCTO', textColor)),
-                DataColumn(label: _buildColumnHeader('CÓDIGO', textColor)),
+                DataColumn(label: _buildColumnHeader('TIPO')),
+                DataColumn(label: _buildColumnHeader('FECHA')),
+                DataColumn(label: _buildColumnHeader('# FACTURA')),
+                DataColumn(label: _buildColumnHeader('CLIENTE')),
+                DataColumn(label: _buildColumnHeader('PRODUCTO')),
+                DataColumn(label: _buildColumnHeader('CÓDIGO')),
                 DataColumn(
                   numeric: true,
-                  label: _buildColumnHeader('CANT', textColor),
+                  label: _buildColumnHeader('CANT'),
                 ),
                 DataColumn(
                   numeric: true,
-                  label: _buildColumnHeader('P. UNIT', textColor),
+                  label: _buildColumnHeader('P. UNIT'),
                 ),
                 DataColumn(
                   numeric: true,
-                  label: _buildColumnHeader('SUBTOTAL', textColor),
+                  label: _buildColumnHeader('SUBTOTAL'),
                 ),
                 DataColumn(
                   numeric: true,
-                  label: _buildColumnHeader('DESC.', textColor),
+                  label: _buildColumnHeader('DESC.'),
                 ),
                 DataColumn(
                   numeric: true,
-                  label: _buildColumnHeader('IMP.', textColor),
+                  label: _buildColumnHeader('IMP.'),
                 ),
                 DataColumn(
                   numeric: true,
-                  label: _buildColumnHeader('TOTAL', textColor),
+                  label: _buildColumnHeader('TOTAL'),
                 ),
               ],
               rows: _resultados.map((item) {
@@ -765,64 +922,93 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
                     DataCell(
                       Text(
                         item['tipo'] ?? 'POS',
-                        style: TextStyle(color: textColor, fontSize: 12),
+                        style: TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontSize: 12,
+                        ),
                       ),
                     ),
                     DataCell(
                       Text(
                         item['fecha'] ?? '-',
-                        style: TextStyle(color: textColor, fontSize: 12),
+                        style: TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontSize: 12,
+                        ),
                       ),
                     ),
                     DataCell(
                       Text(
                         item['numeroFactura'] ?? '-',
-                        style: TextStyle(color: textColor, fontSize: 12),
+                        style: TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontSize: 12,
+                        ),
                       ),
                     ),
                     DataCell(
                       Text(
                         item['cliente'] ?? '-',
-                        style: TextStyle(color: textColor, fontSize: 12),
+                        style: TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontSize: 12,
+                        ),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     DataCell(
                       Text(
                         item['nombreProducto'] ?? '-',
-                        style: TextStyle(color: textColor, fontSize: 12),
+                        style: TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontSize: 12,
+                        ),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     DataCell(
                       Text(
                         item['codigoProducto'] ?? '-',
-                        style: TextStyle(color: textColor, fontSize: 12),
+                        style: TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontSize: 12,
+                        ),
                       ),
                     ),
                     DataCell(
                       Text(
                         (item['cantidad'] ?? 0).toString(),
-                        style: TextStyle(color: textColor, fontSize: 12),
+                        style: TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontSize: 12,
+                        ),
                       ),
                     ),
                     DataCell(
                       Text(
                         _formatCurrency(precioUnitario),
-                        style: TextStyle(color: textColor, fontSize: 12),
+                        style: TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontSize: 12,
+                        ),
                       ),
                     ),
                     DataCell(
                       Text(
                         _formatCurrency(subtotal),
-                        style: TextStyle(color: textColor, fontSize: 12),
+                        style: TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontSize: 12,
+                        ),
                       ),
                     ),
                     DataCell(
                       Text(
                         _formatCurrency(descuento),
                         style: TextStyle(
-                          color: descuento > 0 ? Colors.orange : textColor,
+                          color: descuento > 0
+                              ? AppTheme.warning
+                              : AppTheme.textPrimary,
                           fontSize: 12,
                         ),
                       ),
@@ -830,14 +1016,17 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
                     DataCell(
                       Text(
                         _formatCurrency(impuesto),
-                        style: TextStyle(color: textColor, fontSize: 12),
+                        style: TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontSize: 12,
+                        ),
                       ),
                     ),
                     DataCell(
                       Text(
                         _formatCurrency(total),
-                        style: const TextStyle(
-                          color: Colors.green,
+                        style: TextStyle(
+                          color: AppTheme.success,
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
                         ),
@@ -849,30 +1038,41 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
             ),
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 24),
         // Fila de totales
         Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: cardColor,
+            color: AppTheme.cardBg,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.grey.withOpacity(0.3)),
+            border: Border.all(
+              color: AppTheme.metal.withOpacity(0.2),
+              width: 1,
+            ),
           ),
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
               children: [
-                _buildTotalItem('REGISTROS', _resultados.length.toString(), textColor),
+                _buildTotalItem('REGISTROS', _resultados.length.toString()),
                 const SizedBox(width: 30),
-                _buildTotalItem('CANTIDAD', _totalCantidad.toString(), textColor),
+                _buildTotalItem('CANTIDAD', _totalCantidad.toString()),
                 const SizedBox(width: 30),
-                _buildTotalItem('SUBTOTAL', _formatCurrency(_totalSubtotal), textColor),
+                _buildTotalItem('SUBTOTAL', _formatCurrency(_totalSubtotal)),
                 const SizedBox(width: 30),
-                _buildTotalItem('DESCUENTO', _formatCurrency(_totalDescuento), Colors.orange),
+                _buildTotalItem(
+                  'DESCUENTO',
+                  _formatCurrency(_totalDescuento),
+                  color: AppTheme.warning,
+                ),
                 const SizedBox(width: 30),
-                _buildTotalItem('IMPUESTO', _formatCurrency(_totalImpuesto), textColor),
+                _buildTotalItem('IMPUESTO', _formatCurrency(_totalImpuesto)),
                 const SizedBox(width: 30),
-                _buildTotalItem('TOTAL VENTAS', _formatCurrency(_totalVentas), Colors.green),
+                _buildTotalItem(
+                  'TOTAL VENTAS',
+                  _formatCurrency(_totalVentas),
+                  color: AppTheme.success,
+                ),
               ],
             ),
           ),
@@ -881,59 +1081,59 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
     );
   }
 
-  Widget _buildColumnHeader(String text, Color textColor) {
+  Widget _buildColumnHeader(String text) {
     return Text(
       text,
       style: TextStyle(
-        color: textColor,
-        fontWeight: FontWeight.bold,
+        color: AppTheme.textPrimary,
+        fontWeight: FontWeight.w600,
         fontSize: 12,
       ),
     );
   }
 
-  Widget _buildResumenCard(String label, double valor, Color textColor, {bool isInt = false}) {
+  Widget _buildResumenCard(String label, double valor, {bool isInt = false}) {
     return Column(
       children: [
         Text(
           label,
           style: TextStyle(
-            color: Colors.grey[600],
+            color: AppTheme.textSecondary,
             fontSize: 12,
             fontWeight: FontWeight.w500,
           ),
         ),
-        const SizedBox(height: 5),
+        const SizedBox(height: 6),
         Text(
           isInt ? valor.toInt().toString() : _formatCurrency(valor),
           style: TextStyle(
-            color: textColor,
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
+            color: AppTheme.textPrimary,
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildTotalItem(String label, String value, Color color) {
+  Widget _buildTotalItem(String label, String value, {Color? color}) {
     return Column(
       children: [
         Text(
           label,
           style: TextStyle(
-            color: Colors.grey[500],
+            color: AppTheme.textSecondary,
             fontSize: 11,
             fontWeight: FontWeight.w500,
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 6),
         Text(
           value,
           style: TextStyle(
-            color: color,
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
+            color: color ?? AppTheme.textPrimary,
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ],

@@ -323,6 +323,13 @@ class _ReportesScreenState extends State<ReportesScreen>
     return Scaffold(
       backgroundColor: bgDark,
       appBar: AppBar(
+        automaticallyImplyLeading: true,
+        leading: Navigator.canPop(context)
+            ? IconButton(
+                icon: Icon(Icons.arrow_back, color: Colors.white),
+                onPressed: () => Navigator.of(context).pop(),
+              )
+            : null,
         title: Text(
           'Reportes',
           style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),

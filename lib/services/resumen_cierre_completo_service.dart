@@ -188,6 +188,8 @@ class ResumenCierreCompletoService {
             ventasTransferencias, // Usar datos del cuadre completo
         gastosEfectivo: resumen.movimientosEfectivo.gastosEfectivo,
         comprasEfectivo: resumen.movimientosEfectivo.comprasEfectivo,
+        efectivoDeclarado: resumen.movimientosEfectivo.efectivoDeclarado,
+        descuadre: resumen.movimientosEfectivo.descuadre,
       );
 
       return ResumenCierreCompleto(

@@ -29,7 +29,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
   bool _isLoading = false;
 
   // Filtros
-  String _filtroTipo = 'POS';
+  String _filtroTipo = ''; // 🔥 Mostrar TODOS los documentos por defecto
   String _filtroNumero = '';
   String _filtroCliente = '';
   String _filtroOrden = '';
@@ -45,21 +45,77 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
     try {
       // Cargar facturas tradicionales
       final facturas = await _facturaService.getFacturas();
+      print('📄 Facturas cargadas: ${facturas.length}');
       
-      // ⚡ OPTIMIZADO: Cargar solo pedidos pagados en lugar de todos los pedidos
-      final pedidosPagados = await _pedidoService.getPedidosByEstado(
-        EstadoPedido.pagado,
+      // ⚡ ESTRATEGIA MEJORADA: Usar múltiples fuentes para asegurar completitud
+      // 1. Obtener todos los documentos pagados (endpoint optimizado)
+      // 2. Obtener pedidos pagados por estado
+      // 3. Obtener pedidos de hoy (para estar seguros de tener los más recientes)
+
+      List<Pedido> pedidosPagados = [];
+      List<Pedido> pedidosHoy = [];
+
+      try {
+        // Intentar primero con el endpoint más completo
+        pedidosPagados = await _pedidoService.getTodosDocumentosPagados();
+        print(
+          '📋 Documentos pagados (endpoint completo): ${pedidosPagados.length}',
+        );
+      } catch (e) {
+        print('⚠️ Error con getTodosDocumentosPagados, usando fallback: $e');
+        pedidosPagados = await _pedidoService.getPedidosByEstado(
+          EstadoPedido.pagado,
+        );
+        print(
+          '💳 Pedidos pagados (fallback por estado): ${pedidosPagados.length}',
+        );
+      }
+
+      try {
+        pedidosHoy = await _pedidoService.getPedidosHoy();
+        print('📅 Pedidos de hoy: ${pedidosHoy.length}');
+      } catch (e) {
+        print('⚠️ Error obteniendo pedidos de hoy: $e');
+      }
+
+      // Combinar todas las listas eliminando duplicados por ID
+      final pedidosMap = <String, Pedido>{};
+
+      // Agregar pedidos pagados (históricos)
+      for (var pedido in pedidosPagados) {
+        pedidosMap[pedido.id] = pedido;
+      }
+
+      // Agregar pedidos de hoy que estén pagados (sobrescribe si ya existe, prioriza datos frescos)
+      for (var pedido in pedidosHoy) {
+        if (pedido.estado == EstadoPedido.pagado || pedido.estaPagado) {
+          pedidosMap[pedido.id] = pedido;
+        }
+      }
+
+      final todosPedidosPagados = pedidosMap.values.toList();
+      print(
+        '🔗 Total pedidos únicos después de combinar: ${todosPedidosPagados.length}',
       );
 
-      // Filtrar solo los de tipo POS o mesa FACTURACION
-      final pedidosFacturacion = pedidosPagados
-          .where(
-            (p) => p.tipoFactura == 'POS' || p.mesa == 'FACTURACION',
-          )
-          .toList();
+      // 🔥 Mostrar TODOS los pedidos pagados, sin filtrar por tipoFactura ni mesa
+      final pedidosFacturacion = todosPedidosPagados;
+
+      print('🎯 Pedidos pagados para tabla: ${pedidosFacturacion.length}');
+
+      // Debug: mostrar algunos IDs de pedidos para verificar
+      if (pedidosFacturacion.isNotEmpty) {
+        print(
+          '📝 Primeros 5 IDs: ${pedidosFacturacion.take(5).map((p) => p.id).join(", ")}',
+        );
+      }
 
       // Ordenar por fecha descendente
-      pedidosFacturacion.sort((a, b) => b.fecha.compareTo(a.fecha));
+      pedidosFacturacion.sort((a, b) {
+        final fechaA = a.fechaPago ?? a.fecha;
+        final fechaB = b.fechaPago ?? b.fecha;
+        return fechaB.compareTo(fechaA);
+      });
       
       setState(() {
         _facturas = facturas;
@@ -67,6 +123,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
         _aplicarFiltros();
       });
     } catch (e) {
+      print('❌ Error cargando documentos: $e');
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Error al cargar documentos: $e')));
@@ -102,6 +159,10 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
       documentos.add(factura);
     }
     
+    print(
+      '🔍 Filtros actuales - Tipo: "$_filtroTipo", Número: "$_filtroNumero", Cliente: "$_filtroCliente"',
+    );
+    
     // Agregar pedidos pagados filtrados (solo para tipo POS o vacío)
     if (_filtroTipo.isEmpty || _filtroTipo == 'POS') {
       for (var pedido in _pedidosPagados) {
@@ -119,6 +180,8 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
         documentos.add(pedido);
       }
     }
+
+    print('📋 Documentos finales después de filtros: ${documentos.length}');
 
     // Ordenar por fecha descendente
     documentos.sort((a, b) {
@@ -144,7 +207,13 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
       return fechaB.compareTo(fechaA);
     });
 
-    _documentosFiltrados = documentos;
+    setState(() {
+      _documentosFiltrados = documentos;
+    });
+
+    print(
+      '✅ _documentosFiltrados actualizado con ${_documentosFiltrados.length} elementos',
+    );
   }
 
   @override
@@ -194,6 +263,54 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
               ),
             ],
           ),
+          Row(
+            children: [
+              ElevatedButton.icon(
+                onPressed: () async {
+                  await _cargarDocumentos();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Lista actualizada'),
+                      backgroundColor: AppTheme.success,
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                },
+                icon: Icon(Icons.refresh, color: Colors.white),
+                label: Text(
+                  'Actualizar',
+                  style: TextStyle(color: Colors.white),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primary,
+                ),
+              ),
+              SizedBox(width: 8),
+              ElevatedButton.icon(
+                onPressed: () {
+                  setState(() {
+                    _filtroTipo = ''; // 🔥 Resetear a TODOS
+                    _filtroNumero = '';
+                    _filtroCliente = '';
+                    _aplicarFiltros();
+                  });
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Filtros limpiados'),
+                      backgroundColor: AppTheme.success,
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                },
+                icon: Icon(Icons.clear, color: Colors.white),
+                label: Text(
+                  'Limpiar filtros',
+                  style: TextStyle(color: Colors.white),
+                ),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -222,7 +339,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
                 fillColor: AppTheme.cardBg,
               ),
               dropdownColor: AppTheme.cardBg,
-              style: TextStyle(color: Colors.white),
+              style: TextStyle(color: AppTheme.textPrimary),
               items: [
                 DropdownMenuItem(value: 'POS', child: Text('POS')),
                 DropdownMenuItem(value: 'FE', child: Text('FE')),
@@ -252,7 +369,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
                 filled: true,
                 fillColor: AppTheme.cardBg,
               ),
-              style: TextStyle(color: Colors.white),
+              style: TextStyle(color: AppTheme.textPrimary),
               onChanged: (value) {
                 setState(() {
                   _filtroNumero = value;
@@ -277,7 +394,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
                 filled: true,
                 fillColor: AppTheme.cardBg,
               ),
-              style: TextStyle(color: Colors.white),
+              style: TextStyle(color: AppTheme.textPrimary),
               onChanged: (value) {
                 setState(() {
                   _filtroCliente = value;
@@ -302,7 +419,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
                 filled: true,
                 fillColor: AppTheme.cardBg,
               ),
-              style: TextStyle(color: Colors.white),
+              style: TextStyle(color: AppTheme.textPrimary),
               onChanged: (value) {
                 setState(() {
                   _filtroOrden = value;
@@ -321,7 +438,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
               backgroundColor: AppTheme.cardBg,
               padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
             ),
-            child: Text('Otros', style: TextStyle(color: Colors.white)),
+            child: Text('Otros', style: TextStyle(color: AppTheme.textPrimary)),
           ),
         ],
       ),
@@ -478,7 +595,12 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
                     itemCount: _documentosFiltrados.length,
                     itemBuilder: (context, index) {
                       final documento = _documentosFiltrados[index];
-                      return _buildTableRow(documento, index);
+                      try {
+                        return _buildTableRow(documento, index);
+                      } catch (e) {
+                        print('❌ Error renderizando fila $index: $e');
+                        return Container(); // Evitar que un error rompa toda la lista
+                      }
                     },
                   ),
           ),
@@ -556,7 +678,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
                 Expanded(
                   child: Text(
                     numero,
-                    style: TextStyle(color: Colors.white, fontSize: 13),
+                    style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
@@ -569,7 +691,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
             flex: 3,
             child: Text(
               clienteNombre,
-              style: TextStyle(color: Colors.white, fontSize: 13),
+              style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -581,7 +703,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
               fecha != null
                   ? '${fecha.year}-${fecha.month.toString().padLeft(2, '0')}-${fecha.day.toString().padLeft(2, '0')}'
                   : 'N/A',
-              style: TextStyle(color: Colors.white, fontSize: 13),
+              style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
             ),
           ),
 
@@ -590,7 +712,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
             flex: 2,
             child: Text(
               '\$ ${total.toStringAsFixed(0)}',
-              style: TextStyle(color: Colors.white, fontSize: 13),
+              style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
               textAlign: TextAlign.right,
             ),
           ),
@@ -600,7 +722,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
             flex: 2,
             child: Text(
               '\$ ${abono.toStringAsFixed(0)}',
-              style: TextStyle(color: Colors.white, fontSize: 13),
+              style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
               textAlign: TextAlign.right,
             ),
           ),
@@ -610,7 +732,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
             flex: 2,
             child: Text(
               '\$ ${saldo.toStringAsFixed(0)}',
-              style: TextStyle(color: Colors.white, fontSize: 13),
+              style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
               textAlign: TextAlign.right,
             ),
           ),
@@ -980,7 +1102,10 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
   Future<void> _verPDF(dynamic documento) async {
     try {
       final resumen = await _crearResumenDocumento(documento);
-      await _pdfService.mostrarVistaPrevia(resumen: resumen, esFactura: true);
+      await _mostrarPDFConNombrePersonalizado(
+        resumen: resumen,
+        esFactura: true,
+      );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -1001,6 +1126,86 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
           content: Text('Error al imprimir: $e'),
           backgroundColor: Colors.red,
         ),
+      );
+    }
+  }
+
+  // Método para mostrar diálogo de edición de nombre de archivo PDF
+  Future<void> _mostrarPDFConNombrePersonalizado({
+    required Map<String, dynamic> resumen,
+    bool esFactura = true,
+  }) async {
+    final nombreSugerido =
+        'Factura_${resumen['pedidoId'] ?? resumen['numero'] ?? DateTime.now().millisecondsSinceEpoch}.pdf';
+    final controladorNombre = TextEditingController(text: nombreSugerido);
+
+    final nombreFinal = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppTheme.cardBg,
+        title: Text(
+          'Nombre del archivo',
+          style: TextStyle(color: AppTheme.textPrimary),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Personaliza el nombre del archivo PDF:',
+              style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+            ),
+            SizedBox(height: 12),
+            TextField(
+              controller: controladorNombre,
+              autofocus: true,
+              style: TextStyle(color: AppTheme.textPrimary),
+              decoration: InputDecoration(
+                hintText: 'Nombre del archivo',
+                hintStyle: TextStyle(color: AppTheme.textSecondary),
+                filled: true,
+                fillColor: AppTheme.surfaceDark,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide.none,
+                ),
+                suffixText: '.pdf',
+                suffixStyle: TextStyle(color: AppTheme.textSecondary),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(
+              'Cancelar',
+              style: TextStyle(color: AppTheme.textSecondary),
+            ),
+          ),
+          ElevatedButton.icon(
+            onPressed: () {
+              var nombre = controladorNombre.text.trim();
+              if (nombre.isEmpty) {
+                nombre = nombreSugerido;
+              }
+              if (!nombre.endsWith('.pdf')) {
+                nombre = '$nombre.pdf';
+              }
+              Navigator.of(context).pop(nombre);
+            },
+            icon: Icon(Icons.download, color: Colors.white),
+            label: Text('Guardar', style: TextStyle(color: Colors.white)),
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.success),
+          ),
+        ],
+      ),
+    );
+
+    if (nombreFinal != null) {
+      await _pdfService.mostrarVistaPrevia(
+        resumen: resumen,
+        esFactura: esFactura,
+        nombreArchivo: nombreFinal,
       );
     }
   }

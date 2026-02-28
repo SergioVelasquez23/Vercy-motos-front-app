@@ -18,6 +18,7 @@ class CuadreCaja {
   final String? urlComprobanteDiario;
   final String? urlInventario;
   final double totalIngresos; // Nuevo campo para el total de ingresos
+  final double descuadre; // Descuadre = efectivoEsperado - efectivoDeclarado
   
   // 📊 TOTALES POR MÉTODO DE PAGO
   final double totalEfectivo;
@@ -46,6 +47,7 @@ class CuadreCaja {
     this.urlComprobanteDiario,
     this.urlInventario,
     this.totalIngresos = 0.0, // Valor por defecto
+    this.descuadre = 0.0, // Valor por defecto
     // 📊 TOTALES POR MÉTODO DE PAGO
     this.totalEfectivo = 0.0,
     this.totalTransferencia = 0.0,
@@ -79,6 +81,7 @@ class CuadreCaja {
       urlComprobanteDiario: json['urlComprobanteDiario'],
       urlInventario: json['urlInventario'],
       totalIngresos: (json['totalIngresos'] ?? 0).toDouble(),
+      descuadre: (json['descuadre'] ?? 0).toDouble(),
       // 📊 TOTALES POR MÉTODO DE PAGO
       totalEfectivo: (json['totalEfectivo'] ?? 0).toDouble(),
       totalTransferencia: (json['totalTransferencia'] ?? 0).toDouble(),
@@ -111,6 +114,7 @@ class CuadreCaja {
         'urlComprobanteDiario': urlComprobanteDiario,
       if (urlInventario != null) 'urlInventario': urlInventario,
       'totalIngresos': totalIngresos,
+      'descuadre': descuadre,
       // 📊 TOTALES POR MÉTODO DE PAGO
       'totalEfectivo': totalEfectivo,
       'totalTransferencia': totalTransferencia,
@@ -140,6 +144,7 @@ class CuadreCaja {
     String? urlComprobanteDiario,
     String? urlInventario,
     double? totalIngresos,
+    double? descuadre,
     // 📊 TOTALES POR MÉTODO DE PAGO
     double? totalEfectivo,
     double? totalTransferencia,
@@ -167,6 +172,7 @@ class CuadreCaja {
       urlComprobanteDiario: urlComprobanteDiario ?? this.urlComprobanteDiario,
       urlInventario: urlInventario ?? this.urlInventario,
       totalIngresos: totalIngresos ?? this.totalIngresos,
+      descuadre: descuadre ?? this.descuadre,
       // 📊 TOTALES POR MÉTODO DE PAGO
       totalEfectivo: totalEfectivo ?? this.totalEfectivo,
       totalTransferencia: totalTransferencia ?? this.totalTransferencia,

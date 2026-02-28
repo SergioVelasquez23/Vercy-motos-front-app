@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/cotizacion.dart';
+import '../models/cliente.dart';
 import '../services/cotizacion_service.dart';
+import '../services/cliente_service.dart';
 import '../services/pdf_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/vercy_sidebar_layout.dart';
@@ -12,6 +14,7 @@ class CotizacionesListScreen extends StatefulWidget {
 
 class _CotizacionesListScreenState extends State<CotizacionesListScreen> {
   final CotizacionService _cotizacionService = CotizacionService();
+  final ClienteService _clienteService = ClienteService();
   final PDFService _pdfService = PDFService();
   final TextEditingController _searchController = TextEditingController();
 
@@ -131,7 +134,7 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen> {
           Spacer(),
           Text(
             '${_cotizacionesFiltradas.length} cotizaciones',
-            style: TextStyle(fontSize: 16, color: Colors.grey[400]),
+            style: TextStyle(fontSize: 16, color: Colors.black),
           ),
         ],
       ),
@@ -143,7 +146,7 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen> {
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppTheme.cardBg,
-        border: Border(bottom: BorderSide(color: Colors.grey[800]!)),
+        border: Border(bottom: BorderSide(color: Colors.grey[300]!)),
       ),
       child: Row(
         children: [
@@ -152,11 +155,11 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen> {
             flex: 3,
             child: TextField(
               controller: _searchController,
-              style: TextStyle(color: Colors.white),
+              style: TextStyle(color: AppTheme.textPrimary),
               decoration: InputDecoration(
                 hintText: 'Buscar cotización...',
-                hintStyle: TextStyle(color: Colors.grey[500]),
-                prefixIcon: Icon(Icons.search, color: Colors.grey[400]),
+                hintStyle: TextStyle(color: Colors.black),
+                prefixIcon: Icon(Icons.search, color: Colors.black),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
@@ -175,7 +178,7 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen> {
           DropdownButton<String>(
             value: _filtroEstado,
             dropdownColor: AppTheme.cardBg,
-            style: TextStyle(color: Colors.white),
+            style: TextStyle(color: AppTheme.textPrimary),
             items: [
               DropdownMenuItem(
                 value: 'todos',
@@ -219,7 +222,7 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen> {
       padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: AppTheme.cardBg,
-        border: Border(bottom: BorderSide(color: Colors.grey[800]!)),
+        border: Border(bottom: BorderSide(color: Colors.grey[300]!)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -274,13 +277,13 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.request_quote_outlined, size: 80, color: Colors.grey[600]),
+          Icon(Icons.request_quote_outlined, size: 80, color: Colors.grey[400]),
           SizedBox(height: 16),
           Text(
             _searchController.text.isEmpty
                 ? 'No hay cotizaciones registradas'
                 : 'No se encontraron cotizaciones',
-            style: TextStyle(fontSize: 18, color: Colors.grey[400]),
+            style: TextStyle(fontSize: 18, color: Colors.black),
           ),
           SizedBox(height: 8),
           TextButton.icon(
@@ -358,31 +361,31 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen> {
           SizedBox(height: 4),
           Row(
             children: [
-              Icon(Icons.person, size: 14, color: Colors.grey[400]),
+              Icon(Icons.person, size: 14, color: Colors.black),
               SizedBox(width: 4),
               Text(
-                'Cliente: ${cotizacion.clienteId}',
-                style: TextStyle(color: Colors.grey[300]),
+                'Cliente: ${cotizacion.clienteNombre ?? 'CONSUMIDOR FINAL'}',
+                style: TextStyle(color: Colors.black),
               ),
             ],
           ),
           SizedBox(height: 4),
           Row(
             children: [
-              Icon(Icons.calendar_today, size: 14, color: Colors.grey[400]),
+              Icon(Icons.calendar_today, size: 14, color: Colors.black),
               SizedBox(width: 4),
               Text(
                 'Fecha: ${cotizacion.fecha.day}/${cotizacion.fecha.month}/${cotizacion.fecha.year}',
-                style: TextStyle(color: Colors.grey[300]),
+                style: TextStyle(color: Colors.black),
               ),
               SizedBox(width: 16),
               if (cotizacion.fechaVencimiento != null) ...[
-                Icon(Icons.event, size: 14, color: Colors.grey[400]),
+                Icon(Icons.event, size: 14, color: Colors.black),
                 SizedBox(width: 4),
                 Text(
                   'Vence: ${cotizacion.fechaVencimiento!.day}/${cotizacion.fechaVencimiento!.month}/${cotizacion.fechaVencimiento!.year}',
                   style: TextStyle(
-                    color: diasVigencia < 0 ? Colors.red : Colors.grey[300],
+                    color: diasVigencia < 0 ? Colors.red : Colors.black,
                   ),
                 ),
               ],
@@ -391,11 +394,11 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen> {
           SizedBox(height: 4),
           Row(
             children: [
-              Icon(Icons.shopping_cart, size: 14, color: Colors.grey[400]),
+              Icon(Icons.shopping_cart, size: 14, color: Colors.black),
               SizedBox(width: 4),
               Text(
                 '${cotizacion.items.length} items',
-                style: TextStyle(color: Colors.grey[300]),
+                style: TextStyle(color: Colors.black),
               ),
             ],
           ),
@@ -407,7 +410,7 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen> {
               borderRadius: BorderRadius.circular(4),
             ),
             child: Text(
-              'Total: \$\${cotizacion.totalFinal.toStringAsFixed(0)}',
+              'Total: \$${cotizacion.totalFinal.toStringAsFixed(0)}',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
@@ -476,7 +479,7 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen> {
       case 'convertida':
         return AppTheme.secondary;
       default:
-        return Colors.grey;
+        return Colors.grey[600]!;
     }
   }
 
@@ -571,6 +574,58 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen> {
     try {
       setState(() => _isLoading = true);
 
+      // 🔥 OBTENER DATOS COMPLETOS DEL CLIENTE - IGUAL QUE EN FACTURACION_SCREEN
+      Cliente? clienteCompleto;
+      final nombreClienteCotizacion = cotizacion.clienteNombre ?? '';
+      
+      print('📋 Buscando cliente para cotización...');
+      print('   - clienteId: ${cotizacion.clienteId}');
+      print('   - clienteNombre guardado: $nombreClienteCotizacion');
+
+      // Estrategia 1: Buscar por ID
+      if (cotizacion.clienteId.isNotEmpty) {
+        try {
+          clienteCompleto = await _clienteService.obtenerClientePorId(
+            cotizacion.clienteId,
+          );
+          if (clienteCompleto != null) {
+            print('✅ Cliente encontrado por ID: ${clienteCompleto.nombreCompleto}');
+          }
+        } catch (e) {
+          print('⚠️ Error obteniendo cliente por ID: $e');
+        }
+      }
+
+      // Estrategia 2: Si no se encontró por ID, buscar por nombre
+      if (clienteCompleto == null && 
+          nombreClienteCotizacion.isNotEmpty && 
+          nombreClienteCotizacion != 'CONSUMIDOR FINAL') {
+        try {
+          print('🔍 Buscando cliente por nombre: "$nombreClienteCotizacion"');
+          final resultados = await _clienteService.buscarClientes(nombreClienteCotizacion);
+          if (resultados.isNotEmpty) {
+            // Buscar coincidencia exacta primero
+            final exacto = resultados.where(
+              (c) => c.nombreCompleto.toLowerCase() == nombreClienteCotizacion.toLowerCase(),
+            );
+            clienteCompleto = exacto.isNotEmpty ? exacto.first : resultados.first;
+            print('✅ Cliente encontrado por nombre: ${clienteCompleto.nombreCompleto}');
+          } else {
+            print('❌ No se encontró cliente con ese nombre');
+          }
+        } catch (e) {
+          print('⚠️ Error buscando cliente por nombre: $e');
+        }
+      }
+
+      // Nombre final para usar en el PDF
+      final nombreCliente = clienteCompleto?.nombreCompleto ?? 
+                           (nombreClienteCotizacion.isNotEmpty 
+                             ? nombreClienteCotizacion 
+                             : 'CONSUMIDOR FINAL');
+      
+      print('📝 Nombre final para PDF: $nombreCliente');
+
       // Preparar datos del resumen para el PDF
       final resumen = {
         // Información del negocio
@@ -580,13 +635,19 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen> {
         'negocioDireccion': 'Carrera 19 Calle 23, Caldas - Manizales, Caldas',
         'negocioCorreo': 'juandiegocaycedo1@gmail.com',
 
-        // Información del cliente - USAR DATOS COMPLETOS GUARDADOS
-        'clienteNombre': cotizacion.clienteNombre ?? 'Cliente sin nombre',
-        'clienteDocumento': cotizacion.clienteId,
-        'clienteCiudad': 'MANIZALES',
-        'clienteTelefono': cotizacion.clienteTelefono ?? '',
-        'clienteEmail': cotizacion.clienteEmail ?? '',
-        'clienteDepartamento': 'CALDAS',
+        // Información del cliente - USAR NOMBRES DE CAMPOS QUE ESPERA PDF_SERVICE
+        'cliente': nombreCliente,  // ⚠️ PDF espera 'cliente', no 'clienteNombre'
+        'clienteNit': clienteCompleto != null
+            ? '${clienteCompleto.tipoIdentificacion} ${clienteCompleto.numeroIdentificacion}${clienteCompleto.digitoVerificacion != null ? "-${clienteCompleto.digitoVerificacion}" : ""}'
+            : cotizacion.clienteId,
+        'clienteCiudad': clienteCompleto?.ciudad ?? 'MANIZALES',
+        'clienteTelefono':
+            clienteCompleto?.telefono ?? (cotizacion.clienteTelefono ?? ''),
+        'clienteCorreo':  // ⚠️ PDF espera 'clienteCorreo', no 'clienteEmail'
+            clienteCompleto?.correo ?? (cotizacion.clienteEmail ?? ''),
+        'clienteDepartamento': clienteCompleto?.departamento ?? 'CALDAS',
+        'clienteDireccion': clienteCompleto?.direccion ?? '',
+        'clienteTipoId': clienteCompleto?.tipoIdentificacion ?? 'CC',
 
         // Información de la cotización
         'numeroCotizacion':

@@ -2153,13 +2153,21 @@ class _PedidosScreenFusionState extends State<PedidosScreenFusion>
     final hoy = DateTime(ahora.year, ahora.month, ahora.day);
     final ayer = hoy.subtract(Duration(days: 1));
     final fechaSinHora = DateTime(fecha.year, fecha.month, fecha.day);
+    
+    // Helper para formato 12 horas
+    String formatHora12h(DateTime dt) {
+      final hour24 = dt.hour;
+      final hour12 = hour24 == 0 ? 12 : (hour24 > 12 ? hour24 - 12 : hour24);
+      final period = hour24 >= 12 ? 'PM' : 'AM';
+      return '${hour12.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')} $period';
+    }
 
     if (fechaSinHora == hoy) {
-      return 'hoy ${fecha.hour.toString().padLeft(2, '0')}:${fecha.minute.toString().padLeft(2, '0')}';
+      return 'hoy ${formatHora12h(fecha)}';
     } else if (fechaSinHora == ayer) {
-      return 'ayer ${fecha.hour.toString().padLeft(2, '0')}:${fecha.minute.toString().padLeft(2, '0')}';
+      return 'ayer ${formatHora12h(fecha)}';
     } else {
-      return '${fecha.day.toString().padLeft(2, '0')}/${fecha.month.toString().padLeft(2, '0')} ${fecha.hour.toString().padLeft(2, '0')}:${fecha.minute.toString().padLeft(2, '0')}';
+      return '${fecha.day.toString().padLeft(2, '0')}/${fecha.month.toString().padLeft(2, '0')} ${formatHora12h(fecha)}';
     }
   }
 }

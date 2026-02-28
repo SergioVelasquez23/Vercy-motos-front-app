@@ -543,7 +543,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                         context: context,
                         initialDate: _fechaInicio ?? DateTime.now().subtract(Duration(days: 30)),
                         firstDate: DateTime(2020),
-                        lastDate: DateTime.now(),
+                        lastDate: DateTime(2100),
                         builder: (context, child) {
                           return Theme(
                             data: Theme.of(context).copyWith(
@@ -573,7 +573,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                         context: context,
                         initialDate: _fechaFin ?? DateTime.now(),
                         firstDate: DateTime(2020),
-                        lastDate: DateTime.now(),
+                        lastDate: DateTime(2100),
                         builder: (context, child) {
                           return Theme(
                             data: Theme.of(context).copyWith(

@@ -880,29 +880,63 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
       child: VercySidebarLayout(
         title: '¡Hola! Bienvenido a Vercy Motos',
         child: Scaffold(
-          backgroundColor: AppTheme.backgroundDark,
-          body: SafeArea(
-            child: Column(
-              children: [
-                // Indicador de precarga de datos
-                _buildPrecargaIndicator(),
-                Expanded(
-                  child: (userProvider.isAdmin || userProvider.isSuperAdmin || userProvider.isAsesor)
-                      ? (_isLoading
-                            ? Center(
-                                child: CircularProgressIndicator(
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    AppTheme.primary,
+          backgroundColor: Colors.transparent,
+          body: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color(0xFFF5F7FA),
+                  Color(0xFFE8EAF6),
+                  Color(0xFFF5F7FA),
+                ],
+                stops: [0.0, 0.5, 1.0],
+              ),
+            ),
+            child: SafeArea(
+              child: Column(
+                children: [
+                  // Indicador de precarga de datos
+                  _buildPrecargaIndicator(),
+                  Expanded(
+                    child:
+                        (userProvider.isAdmin ||
+                            userProvider.isSuperAdmin ||
+                            userProvider.isAsesor)
+                        ? (_isLoading
+                              ? Center(
+                                  child: Container(
+                                    padding: EdgeInsets.all(40),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(20),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: AppTheme.primary.withOpacity(
+                                            0.1,
+                                          ),
+                                          blurRadius: 30,
+                                          spreadRadius: 10,
+                                        ),
+                                      ],
+                                    ),
+                                    child: CircularProgressIndicator(
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        AppTheme.primary,
+                                      ),
+                                      strokeWidth: 3,
+                                    ),
                                   ),
-                                ),
-                              )
-                            : RefreshIndicator(
-                                onRefresh: _cargarDatos,
-                                child: SingleChildScrollView(
-                                  physics: AlwaysScrollableScrollPhysics(),
-                                  padding: EdgeInsets.all(
-                                    context.responsivePadding,
-                                  ),
+                                )
+                              : RefreshIndicator(
+                                  onRefresh: _cargarDatos,
+                                  color: AppTheme.primary,
+                                  child: SingleChildScrollView(
+                                    physics: AlwaysScrollableScrollPhysics(),
+                                    padding: EdgeInsets.all(
+                                      context.responsivePadding,
+                                    ),
                                   child: Column(
                                     children: [
                                       // Solo mostrar datos de admin si es admin
@@ -1069,6 +1103,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
           ), // Cierra Scaffold
         ), // Cierra VercySidebarLayout
       ), // Cierra AdminKeySequenceDetector
+      ),
     );
   }
 
@@ -1158,7 +1193,25 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
 
     return Container(
       height: 60,
-      color: AppTheme.cardBg,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Colors.white, AppTheme.primary.withOpacity(0.02)],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.primary.withOpacity(0.05),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+          BoxShadow(
+            color: Colors.white.withOpacity(0.5),
+            blurRadius: 4,
+            offset: Offset(0, -1),
+          ),
+        ],
+      ),
       child: Scrollbar(
         scrollbarOrientation: ScrollbarOrientation.bottom,
         thumbVisibility: true,
@@ -1397,8 +1450,45 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         margin: EdgeInsets.symmetric(horizontal: 4),
         decoration: BoxDecoration(
-          color: isSelected ? AppTheme.primary : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
+          gradient: isSelected
+              ? LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [AppTheme.primary, AppTheme.secondary],
+                )
+              : LinearGradient(
+                  colors: [
+                    Colors.white.withOpacity(0.6),
+                    Colors.white.withOpacity(0.3),
+                  ],
+                ),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isSelected
+                ? AppTheme.primary.withOpacity(0.3)
+                : Colors.grey.withOpacity(0.2),
+            width: 1.5,
+          ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: AppTheme.primary.withOpacity(0.4),
+                    blurRadius: 12,
+                    offset: Offset(0, 3),
+                  ),
+                  BoxShadow(
+                    color: AppTheme.secondary.withOpacity(0.2),
+                    blurRadius: 20,
+                    spreadRadius: 1,
+                  ),
+                ]
+              : [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 4,
+                    offset: Offset(0, 1),
+                  ),
+                ],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -1549,7 +1639,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                         _obtenerObjetivoActual('semana') *
                         100)
                     .round(),
-            color: AppTheme.warning,
+            color: AppTheme.secondary,
             periodo: 'semana',
           ),
           SizedBox(height: AppTheme.spacingMedium),
@@ -1640,7 +1730,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                             _obtenerObjetivoActual('semana') *
                             100)
                         .round(),
-                color: AppTheme.warning,
+                color: AppTheme.secondary,
                 periodo: 'semana',
               ),
             ),
@@ -1707,23 +1797,84 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
       padding: EdgeInsets.all(
         context.isMobile ? AppTheme.spacingMedium : AppTheme.spacingLarge,
       ),
-      decoration: AppTheme.cardDecoration,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white,
+            AppTheme.primaryLight.withOpacity(0.03),
+            Colors.white,
+          ],
+        ),
+        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+        border: Border.all(
+          color: AppTheme.primaryLight.withOpacity(0.2),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.primaryLight.withOpacity(0.1),
+            blurRadius: 20,
+            offset: Offset(0, 10),
+            spreadRadius: 0,
+          ),
+          BoxShadow(
+            color: Colors.white.withOpacity(0.8),
+            blurRadius: 8,
+            offset: Offset(-4, -4),
+            spreadRadius: 0,
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(Icons.circle, color: Color(0xFF00E5FF), size: 12),
-              SizedBox(width: 8),
-              Text(
-                'INGRESOS VS EGRESOS',
-                style: TextStyle(
-                  color: AppTheme.textPrimary,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  AppTheme.primaryLight.withOpacity(0.15),
+                  AppTheme.primaryLight.withOpacity(0.05),
+                ],
               ),
-            ],
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryLight,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.primaryLight.withOpacity(0.4),
+                        blurRadius: 8,
+                        spreadRadius: 1,
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    Icons.account_balance_wallet,
+                    color: Colors.white,
+                    size: 14,
+                  ),
+                ),
+                SizedBox(width: 10),
+                Text(
+                  'INGRESOS VS EGRESOS',
+                  style: TextStyle(
+                    color: AppTheme.primaryLight,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ],
+            ),
           ),
           SizedBox(height: 16),
           SizedBox(
@@ -1827,12 +1978,12 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                           barRods: [
                             BarChartRodData(
                               toY: (entry.value['ingresos'] ?? 0).toDouble(),
-                              color: Color(0xFF00E5FF),
+                              color: AppTheme.primaryLight,
                               width: 12,
                             ),
                             BarChartRodData(
                               toY: (entry.value['egresos'] ?? 0).toDouble(),
-                              color: Color(0xFFFF5252),
+                              color: AppTheme.error,
                               width: 12,
                             ),
                           ],
@@ -1845,9 +1996,9 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _buildLegendItem(Color(0xFF00E5FF), 'Ingresos'),
+              _buildLegendItem(AppTheme.primaryLight, 'Ingresos'),
               SizedBox(width: 24),
-              _buildLegendItem(Color(0xFFFF5252), 'Egresos'),
+              _buildLegendItem(AppTheme.error, 'Egresos'),
             ],
           ),
         ],
@@ -1860,28 +2011,93 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
       padding: EdgeInsets.all(
         context.isMobile ? AppTheme.spacingMedium : AppTheme.spacingLarge,
       ),
-      decoration: AppTheme.cardDecoration,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white,
+            AppTheme.secondary.withOpacity(0.03),
+            Colors.white,
+          ],
+        ),
+        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+        border: Border.all(
+          color: AppTheme.secondary.withOpacity(0.2),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.secondary.withOpacity(0.1),
+            blurRadius: 20,
+            offset: Offset(0, 10),
+            spreadRadius: 0,
+          ),
+          BoxShadow(
+            color: Colors.white.withOpacity(0.8),
+            blurRadius: 8,
+            offset: Offset(-4, -4),
+            spreadRadius: 0,
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(Icons.circle, color: Colors.red, size: 12),
-              SizedBox(width: 8),
-              Text(
-                'TOP 5',
-                style: TextStyle(
-                  color: AppTheme.textPrimary,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  AppTheme.secondary.withOpacity(0.15),
+                  AppTheme.secondary.withOpacity(0.05),
+                ],
               ),
-            ],
-          ),
-          SizedBox(height: 4),
-          Text(
-            'PRODUCTOS MES ACTUAL',
-            style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: AppTheme.secondary,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.secondary.withOpacity(0.4),
+                        blurRadius: 8,
+                        spreadRadius: 1,
+                      ),
+                    ],
+                  ),
+                  child: Icon(Icons.star, color: Colors.white, size: 14),
+                ),
+                SizedBox(width: 10),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'TOP 5',
+                      style: TextStyle(
+                        color: AppTheme.secondary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    Text(
+                      'PRODUCTOS MES ACTUAL',
+                      style: TextStyle(
+                        color: AppTheme.secondary.withOpacity(0.7),
+                        fontSize: 9,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
           SizedBox(height: 20),
           SizedBox(
@@ -1985,30 +2201,88 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
       padding: EdgeInsets.all(
         context.isMobile ? AppTheme.spacingMedium : AppTheme.spacingXLarge,
       ),
-      decoration: AppTheme.elevatedCardDecoration,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white,
+            AppTheme.metal.withOpacity(0.03),
+            Colors.white,
+          ],
+          stops: [0.0, 0.5, 1.0],
+        ),
+        borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
+        border: Border.all(color: AppTheme.metal.withOpacity(0.2), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.metal.withOpacity(0.08),
+            blurRadius: 20,
+            offset: Offset(0, 4),
+          ),
+          BoxShadow(color: Colors.white, blurRadius: 8, offset: Offset(-4, -4)),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(Icons.people, color: AppTheme.success, size: 20),
-              SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'CLIENTES QUE MÁS COMPRAN',
-                  style: TextStyle(
-                    color: AppTheme.textPrimary,
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
+          Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: AppTheme.spacingMedium,
+              vertical: AppTheme.spacingSmall,
+            ),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  AppTheme.metal.withOpacity(0.1),
+                  AppTheme.metal.withOpacity(0.05),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppTheme.metal.withOpacity(0.15),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.metal.withOpacity(0.3),
+                        blurRadius: 8,
+                        spreadRadius: 0,
+                      ),
+                    ],
+                  ),
+                  child: Icon(Icons.people, color: AppTheme.metal, size: 20),
+                ),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'CLIENTES QUE MÁS COMPRAN',
+                        style: TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'MES ACTUAL (SIN CONSUMIDOR FINAL)',
+                        style: TextStyle(
+                          color: AppTheme.textSecondary,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ),
-            ],
-          ),
-          SizedBox(height: 4),
-          Text(
-            'MES ACTUAL (SIN CONSUMIDOR FINAL)',
-            style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+              ],
+            ),
           ),
           SizedBox(height: 20),
           SizedBox(
@@ -2238,24 +2512,77 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
       padding: EdgeInsets.all(
         context.isMobile ? AppTheme.spacingMedium : AppTheme.spacingXLarge,
       ),
-      decoration: AppTheme.elevatedCardDecoration,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white,
+            AppTheme.success.withOpacity(0.03),
+            Colors.white,
+          ],
+        ),
+        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+        border: Border.all(color: AppTheme.success.withOpacity(0.2), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.success.withOpacity(0.1),
+            blurRadius: 20,
+            offset: Offset(0, 10),
+            spreadRadius: 0,
+          ),
+          BoxShadow(
+            color: Colors.white.withOpacity(0.8),
+            blurRadius: 8,
+            offset: Offset(-4, -4),
+            spreadRadius: 0,
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(Icons.trending_up, color: AppTheme.success, size: 16),
-              SizedBox(width: 12),
-              Text(
-                'VENTAS ÚLTIMOS 7 DÍAS',
-                style: TextStyle(
-                  color: AppTheme.textPrimary,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.5,
-                ),
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  AppTheme.success.withOpacity(0.15),
+                  AppTheme.success.withOpacity(0.05),
+                ],
               ),
-            ],
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: AppTheme.success,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.success.withOpacity(0.4),
+                        blurRadius: 8,
+                        spreadRadius: 1,
+                      ),
+                    ],
+                  ),
+                  child: Icon(Icons.trending_up, color: Colors.white, size: 16),
+                ),
+                SizedBox(width: 10),
+                Text(
+                  'VENTAS ÚLTIMOS 7 DÍAS',
+                  style: TextStyle(
+                    color: AppTheme.success,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+              ],
+            ),
           ),
           SizedBox(height: 24),
           SizedBox(
@@ -2388,30 +2715,77 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
       padding: EdgeInsets.all(
         context.isMobile ? AppTheme.spacingMedium : AppTheme.spacingXLarge,
       ),
-      decoration: AppTheme.elevatedCardDecoration,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white,
+            AppTheme.primary.withOpacity(0.03),
+            Colors.white,
+          ],
+          stops: [0.0, 0.5, 1.0],
+        ),
+        borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
+        border: Border.all(color: AppTheme.primary.withOpacity(0.2), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.primary.withOpacity(0.08),
+            blurRadius: 20,
+            offset: Offset(0, 4),
+          ),
+          BoxShadow(color: Colors.white, blurRadius: 8, offset: Offset(-4, -4)),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(
-                Icons.receipt,
-                color: Colors.blue,
-                size: 16,
-              ), // Ícono más grande
-              SizedBox(width: 12),
-              Text(
-                'ÚLTIMOS PEDIDOS',
-                style: TextStyle(
-                  color: AppTheme.textPrimary,
-                  fontSize: 16, // Título más grande
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.5,
-                ),
+          Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: AppTheme.spacingMedium,
+              vertical: AppTheme.spacingSmall,
+            ),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  AppTheme.primary.withOpacity(0.1),
+                  AppTheme.primary.withOpacity(0.05),
+                ],
               ),
-            ],
+              borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary.withOpacity(0.15),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.primary.withOpacity(0.3),
+                        blurRadius: 8,
+                        spreadRadius: 0,
+                      ),
+                    ],
+                  ),
+                  child: Icon(Icons.receipt, color: AppTheme.primary, size: 16),
+                ),
+                SizedBox(width: 12),
+                Text(
+                  'ÚLTIMOS PEDIDOS',
+                  style: TextStyle(
+                    color: AppTheme.textPrimary,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ],
+            ),
           ),
-          SizedBox(height: 20), // Más espacio
+          SizedBox(height: 20),
           SizedBox(
             height: 320, // Lista más alta
             child: _ultimosPedidos.isEmpty
@@ -2531,27 +2905,81 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
       padding: EdgeInsets.all(
         context.isMobile ? AppTheme.spacingMedium : AppTheme.spacingXLarge,
       ),
-      decoration: AppTheme.elevatedCardDecoration,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white,
+            AppTheme.secondary.withOpacity(0.03),
+            Colors.white,
+          ],
+          stops: [0.0, 0.5, 1.0],
+        ),
+        borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
+        border: Border.all(
+          color: AppTheme.secondary.withOpacity(0.2),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.secondary.withOpacity(0.08),
+            blurRadius: 20,
+            offset: Offset(0, 4),
+          ),
+          BoxShadow(color: Colors.white, blurRadius: 8, offset: Offset(-4, -4)),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(
-                Icons.star,
-                color: AppTheme.warning,
-                size: context.isMobile ? 16 : 18,
+          Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: AppTheme.spacingMedium,
+              vertical: AppTheme.spacingSmall,
+            ),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  AppTheme.secondary.withOpacity(0.1),
+                  AppTheme.secondary.withOpacity(0.05),
+                ],
               ),
-              SizedBox(width: AppTheme.spacingMedium),
-              Text(
-                'TOP VENDEDORES',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: AppTheme.textPrimary,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.5,
+              borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppTheme.secondary.withOpacity(0.15),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.secondary.withOpacity(0.3),
+                        blurRadius: 8,
+                        spreadRadius: 0,
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    Icons.star,
+                    color: AppTheme.secondary,
+                    size: context.isMobile ? 16 : 18,
+                  ),
                 ),
-              ),
-            ],
+                SizedBox(width: AppTheme.spacingMedium),
+                Text(
+                  'TOP VENDEDORES',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: AppTheme.textPrimary,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ],
+            ),
           ),
           SizedBox(height: AppTheme.spacingLarge),
           SizedBox(
@@ -2593,7 +3021,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                             ),
                             border: Border.all(
                               color: puesto <= 3
-                                  ? AppTheme.warning
+                                  ? AppTheme.secondary
                                   : AppTheme.textMuted.withOpacity(0.3),
                               width: puesto <= 3 ? 2 : 1,
                             ),
@@ -2645,7 +3073,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                                 '\$${_formatCurrency(vendedor['totalVentas'] ?? 0)}',
                                 style: Theme.of(context).textTheme.titleMedium
                                     ?.copyWith(
-                                      color: AppTheme.warning,
+                                      color: AppTheme.secondary,
                                       fontWeight: FontWeight.bold,
                                     ),
                               ),
@@ -2732,7 +3160,34 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
       padding: EdgeInsets.all(
         context.isMobile ? AppTheme.spacingMedium : AppTheme.spacingLarge,
       ),
-      decoration: AppTheme.elevatedCardDecoration,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            color.withOpacity(0.15),
+            color.withOpacity(0.05),
+            Colors.white.withOpacity(0.9),
+          ],
+          stops: [0.0, 0.4, 1.0],
+        ),
+        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+        border: Border.all(color: color.withOpacity(0.3), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.2),
+            blurRadius: 20,
+            offset: Offset(0, 8),
+            spreadRadius: 0,
+          ),
+          BoxShadow(
+            color: Colors.white.withOpacity(0.8),
+            blurRadius: 8,
+            offset: Offset(-4, -4),
+            spreadRadius: 0,
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -2743,8 +3198,9 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                 child: Text(
                   title,
                   style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: AppTheme.textSecondary,
-                    fontWeight: FontWeight.w500,
+                    color: color.withOpacity(0.8),
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.5,
                   ),
                 ),
               ),
@@ -2759,10 +3215,16 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                       child: Container(
                         padding: EdgeInsets.all(AppTheme.spacingXSmall),
                         decoration: BoxDecoration(
-                          color: color.withOpacity(0.1),
+                          gradient: LinearGradient(
+                            colors: [
+                              color.withOpacity(0.2),
+                              color.withOpacity(0.1),
+                            ],
+                          ),
                           borderRadius: BorderRadius.circular(
                             AppTheme.radiusSmall,
                           ),
+                          border: Border.all(color: color.withOpacity(0.3)),
                         ),
                         child: Icon(Icons.edit, size: 14, color: color),
                       ),
@@ -2770,18 +3232,32 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                   if (periodo != null) SizedBox(width: AppTheme.spacingSmall),
                   Container(
                     padding: EdgeInsets.symmetric(
-                      horizontal: AppTheme.spacingSmall,
-                      vertical: AppTheme.spacingXSmall,
+                      horizontal: 12, vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: color.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
+                      gradient: LinearGradient(
+                        colors: [
+                          color.withOpacity(0.9),
+                          color.withOpacity(0.7),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: color.withOpacity(0.4),
+                          blurRadius: 8,
+                          offset: Offset(0, 4),
+                        ),
+                      ],
                     ),
                     child: Text(
                       '$percentage%',
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: color,
+                        color: Colors.white,
                         fontWeight: FontWeight.bold,
+                        fontSize: 12,
                       ),
                     ),
                   ),
@@ -2789,12 +3265,14 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
               ),
             ],
           ),
-          SizedBox(height: AppTheme.spacingSmall),
+          SizedBox(height: AppTheme.spacingMedium),
           Text(
             value,
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
               color: AppTheme.textPrimary,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w800,
+              fontSize: context.isMobile ? 28 : 32,
+              letterSpacing: -0.5,
             ),
           ),
           SizedBox(height: AppTheme.spacingXSmall),
@@ -2802,18 +3280,87 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
             objective,
             style: Theme.of(
               context,
-            ).textTheme.labelSmall?.copyWith(color: AppTheme.textSecondary),
-          ),
-          SizedBox(height: AppTheme.spacingSmall),
-          SizedBox(
-            width: context.isMobile ? 70 : 80,
-            height: context.isMobile ? 70 : 80,
-            child: CircularProgressIndicator(
-              value: percentage / 100,
-              strokeWidth: context.isMobile ? 6 : 8,
-              backgroundColor: AppTheme.textMuted.withOpacity(0.3),
-              valueColor: AlwaysStoppedAnimation<Color>(color),
+            ).textTheme.labelSmall?.copyWith(
+              color: AppTheme.textSecondary.withOpacity(0.7),
+              fontSize: 12,
             ),
+          ),
+          SizedBox(height: AppTheme.spacingMedium),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      height: 8,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(4),
+                        gradient: LinearGradient(
+                          colors: [
+                            color.withOpacity(0.3),
+                            Colors.grey.withOpacity(0.2),
+                          ],
+                        ),
+                      ),
+                      child: FractionallySizedBox(
+                        alignment: Alignment.centerLeft,
+                        widthFactor: (percentage / 100).clamp(0.0, 1.0),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(4),
+                            gradient: LinearGradient(
+                              colors: [color, color.withOpacity(0.7)],
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: color.withOpacity(0.5),
+                                blurRadius: 8,
+                                spreadRadius: 1,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(width: AppTheme.spacingMedium),
+              Container(
+                width: context.isMobile ? 60 : 70,
+                height: context.isMobile ? 60 : 70,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [color.withOpacity(0.1), Colors.transparent],
+                  ),
+                ),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    SizedBox(
+                      width: context.isMobile ? 60 : 70,
+                      height: context.isMobile ? 60 : 70,
+                      child: CircularProgressIndicator(
+                        value: percentage / 100,
+                        strokeWidth: context.isMobile ? 5 : 6,
+                        backgroundColor: Colors.grey.withOpacity(0.2),
+                        valueColor: AlwaysStoppedAnimation<Color>(color),
+                        strokeCap: StrokeCap.round,
+                      ),
+                    ),
+                    Icon(
+                      Icons.trending_up,
+                      color: color,
+                      size: context.isMobile ? 20 : 24,
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),

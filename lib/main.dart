@@ -40,6 +40,7 @@ import 'models/cliente.dart';
 import 'models/cotizacion.dart';
 import 'providers/user_provider.dart';
 import 'providers/datos_cache_provider.dart';
+import 'providers/facturacion_draft_provider.dart';
 
 void main() async {
   // Aseguramos que Flutter esté inicializado
@@ -52,6 +53,7 @@ void main() async {
       providers: [
         ChangeNotifierProvider(create: (_) => UserProvider()),
         ChangeNotifierProvider(create: (_) => DatosCacheProvider()),
+        ChangeNotifierProvider(create: (_) => FacturacionDraftProvider()),
       ],
       child: MyApp(),
     ),
@@ -86,22 +88,22 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         primaryColor: Color(0xFF2196F3), // Azul Vercy Motos
-        scaffoldBackgroundColor: Color(0xFF000000), // Negro
+        scaffoldBackgroundColor: Color(0xFFFFFFFF), // Blanco
         fontFamily: 'Roboto',
-        brightness: Brightness.dark,
-        colorScheme: ColorScheme.dark(
+        brightness: Brightness.light,
+        colorScheme: ColorScheme.light(
           primary: Color(0xFF2196F3), // Azul
           secondary: Color(0xFF9C27B0), // Morado
-          surface: Color(0xFF212121), // Gris oscuro
+          surface: Color(0xFFF5F5F5), // Gris muy claro
         ),
-        cardColor: Color(0xFF212121),
+        cardColor: Color(0xFFFFFFFF),
         appBarTheme: AppBarTheme(
           backgroundColor: Color(0xFF2196F3), // Azul
           foregroundColor: Color(0xFFFFFFFF), // Blanco
         ),
         textTheme: TextTheme(
-          bodyLarge: TextStyle(color: Color(0xFFFFFFFF)),
-          bodyMedium: TextStyle(color: Color(0xFFE0E0E0)),
+          bodyLarge: TextStyle(color: Color(0xFF212121)),
+          bodyMedium: TextStyle(color: Color(0xFF424242)),
         ),
         // Estilo global para inputs con labels negros (para fondos claros)
         inputDecorationTheme: InputDecorationTheme(

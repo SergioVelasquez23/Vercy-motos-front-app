@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../services/estadisticas_mensuales_service.dart';
 import '../services/excel_export_service.dart';
 import '../providers/user_provider.dart';
+import '../models/pedido.dart';
 
 class ExportarMensualScreen extends StatefulWidget {
   const ExportarMensualScreen({super.key});
@@ -26,7 +27,6 @@ class _ExportarMensualScreenState extends State<ExportarMensualScreen> {
   @override
   void initState() {
     super.initState();
-    // Inicializar formato de fecha para español
     initializeDateFormatting('es_ES', null);
   }
 
@@ -410,7 +410,7 @@ class _ExportarMensualScreenState extends State<ExportarMensualScreen> {
       context: context,
       initialDate: _fechaSeleccionada,
       firstDate: DateTime(2020),
-      lastDate: DateTime.now(),
+      lastDate: DateTime(2100),
       selectableDayPredicate: (DateTime date) {
         // Solo permitir seleccionar el primer día del mes
         return date.day == 1;

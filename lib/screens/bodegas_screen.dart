@@ -602,7 +602,10 @@ class _BodegasScreenState extends State<BodegasScreen> {
                     child: TextField(
                       controller: _searchController,
                       onChanged: (_) => _aplicarFiltros(),
-                      style: TextStyle(color: Colors.white, fontSize: 14),
+                      style: TextStyle(
+                        color: AppTheme.textPrimary,
+                        fontSize: 14,
+                      ),
                       decoration: InputDecoration(
                         hintText: 'Buscar por nombre, código, tipo...',
                         hintStyle: TextStyle(color: Colors.grey.shade500),
@@ -645,7 +648,7 @@ class _BodegasScreenState extends State<BodegasScreen> {
                       child: DropdownButton<String>(
                         value: _filtroEstado,
                         dropdownColor: AppTheme.cardBg,
-                        style: TextStyle(color: Colors.white),
+                        style: TextStyle(color: AppTheme.textPrimary),
                         icon: Icon(Icons.arrow_drop_down, color: Colors.grey),
                         items: [
                           DropdownMenuItem(

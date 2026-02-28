@@ -422,6 +422,10 @@ class ProductoCanceladoCard extends StatelessWidget {
   }
 
   String _formatHora(DateTime fecha) {
-    return '${fecha.hour.toString().padLeft(2, '0')}:${fecha.minute.toString().padLeft(2, '0')}';
+    // Formato 12 horas con AM/PM
+    final hour24 = fecha.hour;
+    final hour12 = hour24 == 0 ? 12 : (hour24 > 12 ? hour24 - 12 : hour24);
+    final period = hour24 >= 12 ? 'PM' : 'AM';
+    return '${hour12.toString().padLeft(2, '0')}:${fecha.minute.toString().padLeft(2, '0')} $period';
   }
 }

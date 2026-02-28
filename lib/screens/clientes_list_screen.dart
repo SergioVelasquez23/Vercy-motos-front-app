@@ -93,7 +93,7 @@ class _ClientesListScreenState extends State<ClientesListScreen> {
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: Colors.white,
+                color: AppTheme.textPrimary,
               ),
             ),
             SizedBox(height: 24),
@@ -120,7 +120,7 @@ class _ClientesListScreenState extends State<ClientesListScreen> {
       decoration: BoxDecoration(
         color: AppTheme.cardBg,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade800),
+        border: Border.all(color: Colors.grey.shade300),
       ),
       child: Row(
         children: [
@@ -129,18 +129,18 @@ class _ClientesListScreenState extends State<ClientesListScreen> {
             flex: 3,
             child: TextField(
               controller: _searchController,
-              style: TextStyle(color: Colors.white),
+              style: TextStyle(color: AppTheme.textPrimary),
               decoration: InputDecoration(
                 hintText: 'Buscar por nombre, documento o correo...',
-                hintStyle: TextStyle(color: Colors.grey[500]),
-                prefixIcon: Icon(Icons.search, color: Colors.grey[400]),
+                hintStyle: TextStyle(color: Colors.black),
+                prefixIcon: Icon(Icons.search, color: Colors.black),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: Colors.grey.shade700),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: Colors.grey.shade700),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
@@ -163,14 +163,14 @@ class _ClientesListScreenState extends State<ClientesListScreen> {
             decoration: BoxDecoration(
               color: AppTheme.surfaceDark,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.grey.shade700),
+              border: Border.all(color: Colors.grey.shade300),
             ),
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
                 value: _filtroEstado,
                 dropdownColor: AppTheme.cardBg,
-                style: TextStyle(color: Colors.white),
-                icon: Icon(Icons.arrow_drop_down, color: Colors.grey),
+                style: TextStyle(color: AppTheme.textPrimary),
+                icon: Icon(Icons.arrow_drop_down, color: Colors.black),
                 items: [
                   DropdownMenuItem(
                     value: 'todos',
@@ -206,7 +206,7 @@ class _ClientesListScreenState extends State<ClientesListScreen> {
           // Contador de clientes
           Text(
             '${_clientesFiltrados.length} clientes',
-            style: TextStyle(fontSize: 14, color: Colors.grey[400]),
+            style: TextStyle(fontSize: 14, color: Colors.black),
           ),
           Spacer(),
           // Botón Carga Masiva
@@ -258,13 +258,13 @@ class _ClientesListScreenState extends State<ClientesListScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.people_outline, size: 64, color: Colors.grey[600]),
+          Icon(Icons.people_outline, size: 64, color: Colors.grey[400]),
           SizedBox(height: 16),
           Text(
             _searchController.text.isEmpty
                 ? 'No hay clientes registrados'
                 : 'No se encontraron clientes',
-            style: TextStyle(fontSize: 16, color: Colors.grey[400]),
+            style: TextStyle(fontSize: 16, color: Colors.black),
           ),
           SizedBox(height: 16),
           ElevatedButton.icon(
@@ -335,7 +335,7 @@ class _ClientesListScreenState extends State<ClientesListScreen> {
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 16,
-                color: Colors.white,
+                color: AppTheme.textPrimary,
               ),
             ),
           ),
@@ -356,16 +356,16 @@ class _ClientesListScreenState extends State<ClientesListScreen> {
           SizedBox(height: 4),
           Row(
             children: [
-              Icon(Icons.badge, size: 14, color: Colors.grey[400]),
+              Icon(Icons.badge, size: 14, color: Colors.black),
               SizedBox(width: 4),
               Text(
                 '${cliente.tipoIdentificacion}: ${cliente.numeroIdentificacion}',
-                style: TextStyle(color: Colors.grey[300]),
+                style: TextStyle(color: Colors.black),
               ),
               if (cliente.digitoVerificacion != null)
                 Text(
                   '-${cliente.digitoVerificacion}',
-                  style: TextStyle(color: Colors.grey[300]),
+                  style: TextStyle(color: Colors.black),
                 ),
             ],
           ),
@@ -373,11 +373,11 @@ class _ClientesListScreenState extends State<ClientesListScreen> {
             SizedBox(height: 4),
             Row(
               children: [
-                Icon(Icons.email, size: 14, color: Colors.grey[400]),
+                Icon(Icons.email, size: 14, color: Colors.black),
                 SizedBox(width: 4),
                 Text(
                   cliente.correo!,
-                  style: TextStyle(color: Colors.grey[300]),
+                  style: TextStyle(color: Colors.black),
                 ),
               ],
             ),
@@ -386,11 +386,11 @@ class _ClientesListScreenState extends State<ClientesListScreen> {
             SizedBox(height: 4),
             Row(
               children: [
-                Icon(Icons.phone, size: 14, color: Colors.grey[400]),
+                Icon(Icons.phone, size: 14, color: Colors.black),
                 SizedBox(width: 4),
                 Text(
                   cliente.telefono!,
-                  style: TextStyle(color: Colors.grey[300]),
+                  style: TextStyle(color: Colors.black),
                 ),
               ],
             ),
@@ -613,7 +613,7 @@ class _ClientesListScreenState extends State<ClientesListScreen> {
               SizedBox(width: 12),
               Text(
                 'Carga Masiva de Clientes',
-                style: TextStyle(color: Colors.white, fontSize: 18),
+                style: TextStyle(color: AppTheme.textPrimary, fontSize: 18),
               ),
             ],
           ),
@@ -633,7 +633,7 @@ class _ClientesListScreenState extends State<ClientesListScreen> {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: AppTheme.textPrimary,
                   ),
                 ),
                 SizedBox(height: 8),
@@ -642,7 +642,7 @@ class _ClientesListScreenState extends State<ClientesListScreen> {
                   decoration: BoxDecoration(
                     color: AppTheme.surfaceDark,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.grey.shade700),
+                    border: Border.all(color: Colors.grey.shade300),
                   ),
                   child: Text(
                     '• TIPOCLIENTE* (Persona Natural / Persona Jurídica)\n'
@@ -657,7 +657,7 @@ class _ClientesListScreenState extends State<ClientesListScreen> {
                     '• CORREO',
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.grey[400],
+                      color: Colors.grey[600],
                       height: 1.6,
                     ),
                   ),
@@ -668,7 +668,7 @@ class _ClientesListScreenState extends State<ClientesListScreen> {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: AppTheme.textPrimary,
                   ),
                 ),
                 SizedBox(height: 8),
@@ -677,7 +677,7 @@ class _ClientesListScreenState extends State<ClientesListScreen> {
                   decoration: BoxDecoration(
                     color: AppTheme.surfaceDark,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.grey.shade700),
+                    border: Border.all(color: Colors.grey.shade300),
                   ),
                   child: Text(
                     '• MES CUMPLEAÑOS, DIA CUMPLEAÑOS\n'
@@ -687,7 +687,7 @@ class _ClientesListScreenState extends State<ClientesListScreen> {
                     '• BLOQUEADO (SI/NO)',
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.grey[400],
+                      color: Colors.grey[600],
                       height: 1.6,
                     ),
                   ),
@@ -719,7 +719,7 @@ class _ClientesListScreenState extends State<ClientesListScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text('Cancelar', style: TextStyle(color: Colors.grey)),
+              child: Text('Cancelar', style: TextStyle(color: AppTheme.textSecondary)),
             ),
             ElevatedButton.icon(
               onPressed: () {
@@ -877,12 +877,15 @@ class _ClientesListScreenState extends State<ClientesListScreen> {
                     SizedBox(height: 20),
                     Text(
                       'Cargando clientes...',
-                      style: TextStyle(color: Colors.white, fontSize: 16),
+                      style: TextStyle(
+                        color: AppTheme.textPrimary,
+                        fontSize: 16,
+                      ),
                     ),
                     SizedBox(height: 8),
                     Text(
                       'Por favor espera, esto puede tardar unos segundos',
-                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                      style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
                     ),
                   ],
                 ),
@@ -1014,7 +1017,7 @@ class _ClientesListScreenState extends State<ClientesListScreen> {
                         ),
                         Text(
                           'clientes cargados exitosamente',
-                          style: TextStyle(fontSize: 12, color: Colors.grey),
+                          style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
                         ),
                       ],
                     ),
@@ -1057,7 +1060,7 @@ class _ClientesListScreenState extends State<ClientesListScreen> {
                     padding: EdgeInsets.only(top: 8),
                     child: Text(
                       '... y ${errores.length - 10} errores más',
-                      style: TextStyle(fontSize: 11, color: Colors.grey),
+                      style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
                     ),
                   ),
               ],

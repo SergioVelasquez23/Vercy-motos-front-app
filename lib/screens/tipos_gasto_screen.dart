@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/tipo_gasto.dart';
 import '../services/gasto_service.dart';
+import '../theme/app_theme.dart';
 
 class TiposGastoScreen extends StatefulWidget {
   const TiposGastoScreen({super.key});
@@ -190,26 +191,32 @@ class _TiposGastoScreenState extends State<TiposGastoScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: cardBg,
-        title: Text('Confirmar eliminación', style: TextStyle(color: textDark)),
+        title: Text(
+          'Confirmar eliminación',
+          style: TextStyle(color: AppTheme.textPrimary),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               '¿Está seguro de eliminar este tipo de gasto?',
-              style: TextStyle(color: textLight),
+              style: TextStyle(color: AppTheme.textSecondary),
             ),
             SizedBox(height: 12),
             Text(
               'Nombre: ${tipo.nombre}',
-              style: TextStyle(color: textDark, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: AppTheme.textPrimary,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             if (tipo.descripcion != null && tipo.descripcion!.isNotEmpty)
               Padding(
                 padding: EdgeInsets.only(top: 4),
                 child: Text(
                   'Descripción: ${tipo.descripcion}',
-                  style: TextStyle(color: textLight, fontSize: 14),
+                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
                 ),
               ),
           ],
@@ -217,7 +224,10 @@ class _TiposGastoScreenState extends State<TiposGastoScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: Text('Cancelar', style: TextStyle(color: textLight)),
+            child: Text(
+              'Cancelar',
+              style: TextStyle(color: AppTheme.textSecondary),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
@@ -368,7 +378,7 @@ class _TiposGastoScreenState extends State<TiposGastoScreen> {
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 22,
-                      color: textDark,
+                      color: AppTheme.textPrimary,
                     ),
                   ),
                 ],
@@ -378,20 +388,20 @@ class _TiposGastoScreenState extends State<TiposGastoScreen> {
                 controller: _nombreController,
                 decoration: InputDecoration(
                   labelText: 'Nombre del Tipo de Gasto',
-                  labelStyle: TextStyle(color: textLight),
+                  labelStyle: TextStyle(color: AppTheme.textSecondary),
                   border: OutlineInputBorder(),
                 ),
-                style: TextStyle(color: textDark),
+                style: TextStyle(color: AppTheme.textPrimary),
               ),
               SizedBox(height: 16),
               TextFormField(
                 controller: _descripcionController,
                 decoration: InputDecoration(
                   labelText: 'Descripción (Opcional)',
-                  labelStyle: TextStyle(color: textLight),
+                  labelStyle: TextStyle(color: AppTheme.textSecondary),
                   border: OutlineInputBorder(),
                 ),
-                style: TextStyle(color: textDark),
+                style: TextStyle(color: AppTheme.textPrimary),
                 maxLines: 3,
               ),
               SizedBox(height: 24),
@@ -437,7 +447,7 @@ class _TiposGastoScreenState extends State<TiposGastoScreen> {
                 SizedBox(height: 16),
                 Text(
                   'No hay tipos de gasto registrados',
-                  style: TextStyle(color: textLight, fontSize: 16),
+                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 16),
                 ),
                 SizedBox(height: 16),
                 Row(
@@ -478,7 +488,9 @@ class _TiposGastoScreenState extends State<TiposGastoScreen> {
                   title: Text(
                     tipo.nombre,
                     style: TextStyle(
-                      color: tipo.activo ? textDark : textLight,
+                      color: tipo.activo
+                          ? AppTheme.textPrimary
+                          : AppTheme.textSecondary,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -486,7 +498,7 @@ class _TiposGastoScreenState extends State<TiposGastoScreen> {
                       tipo.descripcion != null && tipo.descripcion!.isNotEmpty
                       ? Text(
                           tipo.descripcion!,
-                          style: TextStyle(color: textLight),
+                          style: TextStyle(color: AppTheme.textSecondary),
                         )
                       : null,
                   trailing: Row(
@@ -514,7 +526,7 @@ class _TiposGastoScreenState extends State<TiposGastoScreen> {
                             value: 'edit',
                             child: Text(
                               'Editar',
-                              style: TextStyle(color: textDark),
+                              style: TextStyle(color: AppTheme.textPrimary),
                             ),
                           ),
                           PopupMenuItem(

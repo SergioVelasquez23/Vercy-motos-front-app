@@ -128,29 +128,6 @@ class GastoService {
     bool? pagadoDesdeCaja,
   }) async {
     try {
-      // Validación de efectivo comentada por problemas de conexión
-      // if (validarEfectivo &&
-      //     pagadoDesdeCaja == true &&
-      //     formaPago?.toLowerCase() == 'efectivo') {
-      //   final hayEfectivo = await ValidacionCajaUtil.validarEfectivoDisponible(
-      //     monto,
-      //   );
-
-      //   if (!hayEfectivo) {
-      //     throw Exception('No hay suficiente efectivo en caja para este gasto');
-      //   }
-
-      //   // Si hay efectivo suficiente, confirmar la operación
-      //   final confirmado = await ValidacionCajaUtil.confirmarOperacionEfectivo(
-      //     monto: monto,
-      //     tipoOperacion: 'Gasto',
-      //     detalleOperacion: concepto,
-      //   );
-
-      //   if (!confirmado) {
-      //     throw Exception('Operación cancelada por el usuario');
-      //   }
-      // }
 
       final headers = await _getHeaders();
       final body = {
@@ -184,8 +161,9 @@ class GastoService {
         final responseData = json.decode(response.body);
         final gasto = Gasto.fromJson(responseData['data']);
 
+        // ⛔ ALERTAS DE TELEGRAM DESHABILITADAS
         // Enviar alerta de Telegram en segundo plano
-        _enviarAlertaGastoTelegram(gasto);
+        // _enviarAlertaGastoTelegram(gasto);
 
         return gasto;
       } else {
