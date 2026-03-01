@@ -47,13 +47,8 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
       final facturas = await _facturaService.getFacturas();
       print('📄 Facturas cargadas: ${facturas.length}');
       
-      // ⚡ ESTRATEGIA MEJORADA: Usar múltiples fuentes para asegurar completitud
-      // 1. Obtener todos los documentos pagados (endpoint optimizado)
-      // 2. Obtener pedidos pagados por estado
-      // 3. Obtener pedidos de hoy (para estar seguros de tener los más recientes)
-
+      // ⚡ Obtener TODOS los pedidos pagados (sin filtrar por fecha)
       List<Pedido> pedidosPagados = [];
-      List<Pedido> pedidosHoy = [];
 
       try {
         // Intentar primero con el endpoint más completo
@@ -63,6 +58,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
         );
       } catch (e) {
         print('⚠️ Error con getTodosDocumentosPagados, usando fallback: $e');
+        // Fallback: obtener por estado (no filtra por fecha)
         pedidosPagados = await _pedidoService.getPedidosByEstado(
           EstadoPedido.pagado,
         );
@@ -71,35 +67,8 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
         );
       }
 
-      try {
-        pedidosHoy = await _pedidoService.getPedidosHoy();
-        print('📅 Pedidos de hoy: ${pedidosHoy.length}');
-      } catch (e) {
-        print('⚠️ Error obteniendo pedidos de hoy: $e');
-      }
-
-      // Combinar todas las listas eliminando duplicados por ID
-      final pedidosMap = <String, Pedido>{};
-
-      // Agregar pedidos pagados (históricos)
-      for (var pedido in pedidosPagados) {
-        pedidosMap[pedido.id] = pedido;
-      }
-
-      // Agregar pedidos de hoy que estén pagados (sobrescribe si ya existe, prioriza datos frescos)
-      for (var pedido in pedidosHoy) {
-        if (pedido.estado == EstadoPedido.pagado || pedido.estaPagado) {
-          pedidosMap[pedido.id] = pedido;
-        }
-      }
-
-      final todosPedidosPagados = pedidosMap.values.toList();
-      print(
-        '🔗 Total pedidos únicos después de combinar: ${todosPedidosPagados.length}',
-      );
-
-      // 🔥 Mostrar TODOS los pedidos pagados, sin filtrar por tipoFactura ni mesa
-      final pedidosFacturacion = todosPedidosPagados;
+      // 🔥 Mostrar TODOS los pedidos pagados, sin filtrar por tipoFactura ni mesa ni fecha
+      final pedidosFacturacion = pedidosPagados;
 
       print('🎯 Pedidos pagados para tabla: ${pedidosFacturacion.length}');
 

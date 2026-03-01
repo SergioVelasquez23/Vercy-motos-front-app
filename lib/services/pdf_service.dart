@@ -1471,6 +1471,26 @@ class PDFService {
     }
   }
 
+  /// Descargar PDF que ya ha sido generado (sin regenerar)
+  Future<void> descargarPDFDirecto({
+    required Uint8List pdfBytes,
+    required String nombreArchivo,
+  }) async {
+    try {
+      // En web, descargar el archivo directamente
+      if (kIsWeb) {
+        descargarPDFWeb(pdfBytes, nombreArchivo);
+      } else {
+        // En móvil/desktop, guardar el archivo
+        final directory = await getApplicationDocumentsDirectory();
+        final file = File('${directory.path}/$nombreArchivo');
+        await file.writeAsBytes(pdfBytes);
+      }
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   Future<void> mostrarVistaPrevia({
     required Map<String, dynamic> resumen,
     bool esFactura = false,
@@ -1547,5 +1567,367 @@ class PDFService {
         
       rethrow;
     }
+  }
+
+  /// Generar PDF de informe de productos
+  Future<Uint8List> generarInformeProductosPDF({
+    required Map<String, dynamic> resumen,
+  }) async {
+    final pdf = pw.Document();
+
+    // Usar fuentes seguras para web
+    final font = await _getFontRegular();
+    final fontBold = await _getFontBold();
+
+    // Pre-procesar valores
+    final nombreNegocio = _toSafeString(
+      resumen['nombreNegocio'],
+      'VERCY MOTOS',
+    );
+    final tipoInforme = _toSafeString(resumen['tipoInforme'], 'Informe');
+    final fechaDesde = _toSafeString(resumen['fechaDesde']);
+    final fechaHasta = _toSafeString(resumen['fechaHasta']);
+    final cliente = _toSafeString(resumen['cliente'], 'Todos');
+    final producto = _toSafeString(resumen['producto'], 'Todos');
+    final vendedor = _toSafeString(resumen['vendedor'], 'Todos');
+    final codigo = _toSafeString(resumen['codigo'], 'Todos');
+    final fecha = _toSafeString(resumen['fecha']);
+    final hora = _toSafeString(resumen['hora']);
+
+    final totalRegistros = resumen['totalRegistros'] ?? 0;
+    final totalCantidad = resumen['totalCantidad'] ?? 0;
+    final totalSubtotal = (resumen['totalSubtotal'] ?? 0.0).toDouble();
+    final totalDescuento = (resumen['totalDescuento'] ?? 0.0).toDouble();
+    final totalImpuesto = (resumen['totalImpuesto'] ?? 0.0).toDouble();
+    final totalVentas = (resumen['totalVentas'] ?? 0.0).toDouble();
+
+    final productos = resumen['productos'] ?? [];
+
+    pdf.addPage(
+      pw.Page(
+        pageFormat: PdfPageFormat.letter,
+        margin: const pw.EdgeInsets.all(20),
+        build: (pw.Context context) {
+          return pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              // ========== ENCABEZADO ==========
+              pw.Container(
+                decoration: pw.BoxDecoration(
+                  border: pw.Border.all(color: PdfColors.black, width: 1),
+                ),
+                padding: const pw.EdgeInsets.all(12),
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text(
+                      nombreNegocio,
+                      style: pw.TextStyle(font: fontBold, fontSize: 18),
+                    ),
+                    pw.SizedBox(height: 4),
+                    pw.Text(
+                      tipoInforme,
+                      style: pw.TextStyle(font: fontBold, fontSize: 14),
+                    ),
+                    pw.SizedBox(height: 8),
+                    pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Text(
+                          'Fecha: $fecha $hora',
+                          style: pw.TextStyle(font: font, fontSize: 10),
+                        ),
+                        pw.Text(
+                          'Período: $fechaDesde a $fechaHasta',
+                          style: pw.TextStyle(font: font, fontSize: 10),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              pw.SizedBox(height: 12),
+
+              // ========== FILTROS APLICADOS ==========
+              pw.Container(
+                decoration: pw.BoxDecoration(
+                  border: pw.Border.all(color: PdfColors.grey400, width: 0.5),
+                ),
+                padding: const pw.EdgeInsets.all(8),
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text(
+                      'FILTROS APLICADOS',
+                      style: pw.TextStyle(font: fontBold, fontSize: 10),
+                    ),
+                    pw.SizedBox(height: 4),
+                    pw.Row(
+                      children: [
+                        pw.Expanded(
+                          child: pw.Text(
+                            'Cliente: $cliente',
+                            style: pw.TextStyle(font: font, fontSize: 9),
+                          ),
+                        ),
+                        pw.Expanded(
+                          child: pw.Text(
+                            'Producto: $producto',
+                            style: pw.TextStyle(font: font, fontSize: 9),
+                          ),
+                        ),
+                      ],
+                    ),
+                    pw.SizedBox(height: 2),
+                    pw.Row(
+                      children: [
+                        pw.Expanded(
+                          child: pw.Text(
+                            'Vendedor: $vendedor',
+                            style: pw.TextStyle(font: font, fontSize: 9),
+                          ),
+                        ),
+                        pw.Expanded(
+                          child: pw.Text(
+                            'Código: $codigo',
+                            style: pw.TextStyle(font: font, fontSize: 9),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              pw.SizedBox(height: 12),
+
+              // ========== TABLA DE PRODUCTOS ==========
+              pw.Table(
+                border: pw.TableBorder.all(color: PdfColors.black, width: 0.5),
+                columnWidths: {
+                  0: const pw.FlexColumnWidth(0.5), // ITEM
+                  1: const pw.FlexColumnWidth(1), // FECHA
+                  2: const pw.FlexColumnWidth(1), // FACTURA
+                  3: const pw.FlexColumnWidth(1.5), // CLIENTE
+                  4: const pw.FlexColumnWidth(1.5), // PRODUCTO
+                  5: const pw.FlexColumnWidth(0.8), // CÓDIGO
+                  6: const pw.FlexColumnWidth(0.6), // CANT
+                  7: const pw.FlexColumnWidth(1), // P. UNIT
+                  8: const pw.FlexColumnWidth(1), // SUBTOTAL
+                  9: const pw.FlexColumnWidth(0.7), // DESC.
+                  10: const pw.FlexColumnWidth(0.7), // IMP.
+                  11: const pw.FlexColumnWidth(1), // TOTAL
+                },
+                children: [
+                  // Encabezado
+                  pw.TableRow(
+                    decoration: const pw.BoxDecoration(
+                      color: PdfColor.fromInt(0xFFF5F5F5),
+                    ),
+                    children: [
+                      _buildTableHeader('ITEM', fontBold),
+                      _buildTableHeader('FECHA', fontBold),
+                      _buildTableHeader('FACTURA', fontBold),
+                      _buildTableHeader('CLIENTE', fontBold),
+                      _buildTableHeader('PRODUCTO', fontBold),
+                      _buildTableHeader('CÓDIGO', fontBold),
+                      _buildTableHeader('CANT', fontBold),
+                      _buildTableHeader('P. UNIT', fontBold),
+                      _buildTableHeader('SUBTOTAL', fontBold),
+                      _buildTableHeader('DESC.', fontBold),
+                      _buildTableHeader('IMP.', fontBold),
+                      _buildTableHeader('TOTAL', fontBold),
+                    ],
+                  ),
+                  // Productos
+                  ...(_buildProductosInformeTable(productos, font)),
+                ],
+              ),
+
+              pw.SizedBox(height: 12),
+
+              // ========== RESUMEN DE TOTALES ==========
+              pw.Container(
+                decoration: pw.BoxDecoration(
+                  border: pw.Border.all(color: PdfColors.black, width: 0.5),
+                ),
+                child: pw.Column(
+                  children: [
+                    pw.Container(
+                      decoration: const pw.BoxDecoration(
+                        color: PdfColor.fromInt(0xFFF5F5F5),
+                        border: pw.Border(
+                          bottom: pw.BorderSide(
+                            color: PdfColors.black,
+                            width: 0.5,
+                          ),
+                        ),
+                      ),
+                      padding: const pw.EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      child: pw.Text(
+                        'RESUMEN TOTAL',
+                        style: pw.TextStyle(font: fontBold, fontSize: 11),
+                      ),
+                    ),
+                    pw.Container(
+                      padding: const pw.EdgeInsets.all(8),
+                      child: pw.Column(
+                        children: [
+                          _buildTotalRowInforme(
+                            'Total Registros',
+                            totalRegistros.toString(),
+                            font,
+                            fontBold,
+                          ),
+                          _buildTotalRowInforme(
+                            'Cantidad Total',
+                            totalCantidad.toString(),
+                            font,
+                            fontBold,
+                          ),
+                          _buildTotalRowInforme(
+                            'Subtotal',
+                            _formatearMoneda(totalSubtotal),
+                            font,
+                            fontBold,
+                          ),
+                          _buildTotalRowInforme(
+                            'Descuentos',
+                            _formatearMoneda(totalDescuento),
+                            font,
+                            fontBold,
+                          ),
+                          _buildTotalRowInforme(
+                            'Impuestos',
+                            _formatearMoneda(totalImpuesto),
+                            font,
+                            fontBold,
+                          ),
+                          pw.SizedBox(height: 4),
+                          pw.Container(
+                            decoration: const pw.BoxDecoration(
+                              border: pw.Border(
+                                top: pw.BorderSide(
+                                  color: PdfColors.black,
+                                  width: 0.5,
+                                ),
+                              ),
+                            ),
+                            padding: const pw.EdgeInsets.symmetric(
+                              horizontal: 0,
+                              vertical: 4,
+                            ),
+                            child: pw.Row(
+                              mainAxisAlignment:
+                                  pw.MainAxisAlignment.spaceBetween,
+                              children: [
+                                pw.Text(
+                                  'TOTAL VENTAS',
+                                  style: pw.TextStyle(
+                                    font: fontBold,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                                pw.Text(
+                                  _formatearMoneda(totalVentas),
+                                  style: pw.TextStyle(
+                                    font: fontBold,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              pw.SizedBox(height: 12),
+
+              // ========== PIE DE PÁGINA ==========
+              pw.Center(
+                child: pw.Text(
+                  'Este es un documento generado automáticamente por el sistema de gestión - $nombreNegocio',
+                  style: pw.TextStyle(font: font, fontSize: 8),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+
+    return pdf.save();
+  }
+
+  /// Construir filas de productos para informe
+  List<pw.TableRow> _buildProductosInformeTable(
+    List<dynamic> productos,
+    pw.Font font,
+  ) {
+    List<pw.TableRow> rows = [];
+    int itemNum = 1;
+
+    for (var producto in productos) {
+      if (producto is! Map<String, dynamic>) continue;
+
+      final tipo = _toSafeString(producto['tipo'], 'POS');
+      final fecha = _toSafeString(producto['fecha'], '-');
+      final numeroFactura = _toSafeString(producto['numeroFactura'], '-');
+      final cliente = _toSafeString(producto['cliente'], '-');
+      final nombreProducto = _toSafeString(producto['nombreProducto'], '-');
+      final codigoProducto = _toSafeString(producto['codigoProducto'], '-');
+      final cantidad = producto['cantidad'] ?? 0;
+      final precioUnitario = (producto['precioUnitario'] ?? 0.0).toDouble();
+      final subtotal = (producto['subtotal'] ?? 0.0).toDouble();
+      final descuento = (producto['descuento'] ?? 0.0).toDouble();
+      final impuesto = (producto['impuesto'] ?? 0.0).toDouble();
+      final total = (producto['total'] ?? 0.0).toDouble();
+
+      rows.add(
+        pw.TableRow(
+          children: [
+            _buildTableCell('$itemNum', font),
+            _buildTableCell(fecha, font),
+            _buildTableCell(numeroFactura, font),
+            _buildTableCell(cliente, font, align: pw.TextAlign.left),
+            _buildTableCell(nombreProducto, font, align: pw.TextAlign.left),
+            _buildTableCell(codigoProducto, font),
+            _buildTableCell('$cantidad', font),
+            _buildTableCell(_formatearNumero(precioUnitario), font),
+            _buildTableCell(_formatearNumero(subtotal), font),
+            _buildTableCell(_formatearNumero(descuento), font),
+            _buildTableCell(_formatearNumero(impuesto), font),
+            _buildTableCell(_formatearNumero(total), font),
+          ],
+        ),
+      );
+      itemNum++;
+    }
+
+    return rows;
+  }
+
+  /// Construir fila de totales para informe
+  pw.Widget _buildTotalRowInforme(
+    String label,
+    String valor,
+    pw.Font font,
+    pw.Font fontBold,
+  ) {
+    return pw.Row(
+      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+      children: [
+        pw.Text(label, style: pw.TextStyle(font: font, fontSize: 9)),
+        pw.Text(valor, style: pw.TextStyle(font: font, fontSize: 9)),
+      ],
+    );
   }
 }

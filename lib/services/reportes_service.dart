@@ -16,9 +16,11 @@ class ReportesService {
     try {
       // Agregar parámetro de timestamp para evitar caching de HTTP
       final timestamp = DateTime.now().millisecondsSinceEpoch;
+      // ✅ IMPORTANTE: ignorarCaja=true para que el backend NO filtre por cuadreId
+      // Esto evita que "Facturado Hoy" muestre datos de cajas anteriores
       final endpoint = forceRefresh
-          ? '/api/reportes/dashboard?_t=$timestamp'
-          : '/api/reportes/dashboard';
+          ? '/api/reportes/dashboard?_t=$timestamp&ignorarCaja=true'
+          : '/api/reportes/dashboard?ignorarCaja=true';
 
       final response = await _apiService.get<Map<String, dynamic>>(
         endpoint,

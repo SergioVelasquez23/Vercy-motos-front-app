@@ -7,6 +7,7 @@ import '../services/producto_service.dart';
 import '../services/reportes_service.dart';
 import '../theme/app_theme.dart';
 import '../services/cuadre_caja_service.dart';
+import '../services/pdf_service.dart';
 
 class InformesProductosScreen extends StatefulWidget {
   const InformesProductosScreen({super.key});
@@ -21,11 +22,14 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
   final ProductoService _productoService = ProductoService();
   final ClienteService _clienteService = ClienteService();
   final _cuadreCajaService = CuadreCajaService();
+  final PDFService _pdfService = PDFService();
   final DateFormat _dateFormat = DateFormat('yyyy-MM-dd');
 
   // Filtros
-  DateTime _fechaDesde = DateTime.now().subtract(const Duration(days: 30));
-  DateTime _fechaHasta = DateTime.now();
+  DateTime _fechaDesde = DateTime.now().subtract(const Duration(days: 1));
+  DateTime _fechaHasta = DateTime.now().add(const Duration(days: 1));
+  final TextEditingController _fechaDesdeController = TextEditingController();
+  final TextEditingController _fechaHastaController = TextEditingController();
   final TextEditingController _clienteController = TextEditingController();
   final TextEditingController _vendedorController = TextEditingController();
   final TextEditingController _productoController = TextEditingController();
@@ -49,6 +53,8 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
   void initState() {
     super.initState();
     _cargarDatosIniciales();
+    _fechaDesdeController.text = _dateFormat.format(_fechaDesde);
+    _fechaHastaController.text = _dateFormat.format(_fechaHasta);
   }
   bool _filtrarPorCaja = true;
 
@@ -85,21 +91,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
   }
 
   Future<void> _selectDate(bool isDesde) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: isDesde ? _fechaDesde : _fechaHasta,
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2100),
-    );
-    if (picked != null) {
-      setState(() {
-        if (isDesde) {
-          _fechaDesde = picked;
-        } else {
-          _fechaHasta = picked;
-        }
-      });
-    }
+    // Eliminado: ya no se usa el selector de calendario
   }
 
   Future<void> _generarInforme(String tipo) async {
@@ -128,6 +120,23 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
           }
           return;
         }
+      }
+      // Parsear fechas desde los campos de texto
+      try {
+        _fechaDesde = DateFormat(
+          'yyyy-MM-dd',
+        ).parse(_fechaDesdeController.text);
+        _fechaHasta = DateFormat(
+          'yyyy-MM-dd',
+        ).parse(_fechaHastaController.text);
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Formato de fecha inválido. Use yyyy-MM-dd.'),
+          ),
+        );
+        setState(() => _isLoading = false);
+        return;
       }
       List<Map<String, dynamic>> datos;
       if (tipo == 'detallado') {
@@ -320,22 +329,74 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
                       ],
                     ),
                     const SizedBox(height: 24),
-                    // Fila 1: Fechas
+                    // Fila 1: Fechas (solo campos de texto)
                     Row(
                       children: [
                         Expanded(
-                          child: _buildDateField(
-                            'Desde',
-                            _fechaDesde,
-                            () => _selectDate(true),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Desde',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: AppTheme.textSecondary,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              TextField(
+                                controller: _fechaDesdeController,
+                                decoration: InputDecoration(
+                                  hintText: 'yyyy-MM-dd',
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 13,
+                                  ),
+                                ),
+                                style: TextStyle(
+                                  color: AppTheme.textPrimary,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: _buildDateField(
-                            'Hasta',
-                            _fechaHasta,
-                            () => _selectDate(false),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Hasta',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: AppTheme.textSecondary,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              TextField(
+                                controller: _fechaHastaController,
+                                decoration: InputDecoration(
+                                  hintText: 'yyyy-MM-dd',
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 13,
+                                  ),
+                                ),
+                                style: TextStyle(
+                                  color: AppTheme.textPrimary,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
@@ -1050,31 +1111,67 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
               width: 1,
             ),
           ),
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                _buildTotalItem('REGISTROS', _resultados.length.toString()),
-                const SizedBox(width: 30),
-                _buildTotalItem('CANTIDAD', _totalCantidad.toString()),
-                const SizedBox(width: 30),
-                _buildTotalItem('SUBTOTAL', _formatCurrency(_totalSubtotal)),
-                const SizedBox(width: 30),
-                _buildTotalItem(
-                  'DESCUENTO',
-                  _formatCurrency(_totalDescuento),
-                  color: AppTheme.warning,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Totales
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    _buildTotalItem('REGISTROS', _resultados.length.toString()),
+                    const SizedBox(width: 30),
+                    _buildTotalItem('CANTIDAD', _totalCantidad.toString()),
+                    const SizedBox(width: 30),
+                    _buildTotalItem(
+                      'SUBTOTAL',
+                      _formatCurrency(_totalSubtotal),
+                    ),
+                    const SizedBox(width: 30),
+                    _buildTotalItem(
+                      'DESCUENTO',
+                      _formatCurrency(_totalDescuento),
+                      color: AppTheme.warning,
+                    ),
+                    const SizedBox(width: 30),
+                    _buildTotalItem(
+                      'IMPUESTO',
+                      _formatCurrency(_totalImpuesto),
+                    ),
+                    const SizedBox(width: 30),
+                    _buildTotalItem(
+                      'TOTAL VENTAS',
+                      _formatCurrency(_totalVentas),
+                      color: AppTheme.success,
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 30),
-                _buildTotalItem('IMPUESTO', _formatCurrency(_totalImpuesto)),
-                const SizedBox(width: 30),
-                _buildTotalItem(
-                  'TOTAL VENTAS',
-                  _formatCurrency(_totalVentas),
-                  color: AppTheme.success,
-                ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 24),
+              // Botones de descarga
+              Row(
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: () => _descargarPDFInforme(),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red.shade600,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                    ),
+                    icon: const Icon(Icons.picture_as_pdf, color: Colors.white),
+                    label: const Text(
+                      'Descargar PDF',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ],
@@ -1139,4 +1236,157 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
       ],
     );
   }
+
+  /// Generar resumen del informe para PDF
+  Map<String, dynamic> _crearResumenInforme() {
+    return {
+      'nombreNegocio': 'VERCY MOTOS',
+      'fecha': _dateFormat.format(DateTime.now()),
+      'hora': DateFormat('HH:mm:ss').format(DateTime.now()),
+      'tipoInforme': _tipoInformeActual == 'detallado'
+          ? 'Informe Detallado'
+          : 'Informe Agrupado',
+      'fechaDesde': _fechaDesdeController.text,
+      'fechaHasta': _fechaHastaController.text,
+      'cliente': _clienteController.text.isNotEmpty
+          ? _clienteController.text
+          : 'Todos',
+      'producto': _productoController.text.isNotEmpty
+          ? _productoController.text
+          : 'Todos',
+      'vendedor': _vendedorController.text.isNotEmpty
+          ? _vendedorController.text
+          : 'Todos',
+      'codigo': _codigoController.text.isNotEmpty
+          ? _codigoController.text
+          : 'Todos',
+      'productos': _resultados
+          .map(
+            (item) => {
+              'tipo': item['tipo'] ?? 'POS',
+              'fecha': item['fecha'] ?? '-',
+              'numeroFactura': item['numeroFactura'] ?? '-',
+              'cliente': item['cliente'] ?? '-',
+              'nombreProducto': item['nombreProducto'] ?? '-',
+              'codigoProducto': item['codigoProducto'] ?? '-',
+              'cantidad': item['cantidad'] ?? 0,
+              'precioUnitario': item['precioUnitario'] ?? 0,
+              'subtotal': item['subtotal'] ?? 0,
+              'descuento': item['descuento'] ?? 0,
+              'impuesto': item['impuesto'] ?? 0,
+              'total': item['total'] ?? 0,
+            },
+          )
+          .toList(),
+      'totalRegistros': _resultados.length,
+      'totalCantidad': _totalCantidad,
+      'totalSubtotal': _totalSubtotal,
+      'totalDescuento': _totalDescuento,
+      'totalImpuesto': _totalImpuesto,
+      'totalVentas': _totalVentas,
+    };
+  }
+
+  /// Descargar el informe como PDF
+  Future<void> _descargarPDFInforme() async {
+    try {
+      final resumen = _crearResumenInforme();
+      final nombreArchivo =
+          'Informe_Productos_${_tipoInformeActual}_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}';
+
+      await _mostrarDialogoPDFConNombrePersonalizado(resumen, nombreArchivo);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al generar PDF: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  /// Mostrar diálogo para personalizar nombre del archivo PDF
+  Future<void> _mostrarDialogoPDFConNombrePersonalizado(
+    Map<String, dynamic> resumen,
+    String nombrePorDefecto,
+  ) async {
+    final TextEditingController nombreController = TextEditingController(
+      text: nombrePorDefecto,
+    );
+
+    if (!mounted) return;
+
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Personalizar nombre del archivo PDF'),
+        content: TextField(
+          controller: nombreController,
+          decoration: InputDecoration(
+            hintText: 'Nombre del archivo',
+            suffixText: '.pdf',
+            border: const OutlineInputBorder(),
+            filled: true,
+            fillColor: Colors.grey.shade100,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () async {
+              Navigator.pop(context);
+              String nombre = nombreController.text.trim();
+              if (nombre.isEmpty) {
+                nombre = 'Informe_Productos';
+              }
+              if (!nombre.endsWith('.pdf')) {
+                nombre = '$nombre.pdf';
+              }
+
+              try {
+                // ✅ Usar el método correcto para informes de productos
+                final pdfBytes = await _pdfService.generarInformeProductosPDF(
+                  resumen: resumen,
+                );
+
+                // Descargar el PDF directamente
+                await _pdfService.descargarPDFDirecto(
+                  pdfBytes: pdfBytes,
+                  nombreArchivo: nombre,
+                );
+
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('PDF descargado exitosamente'),
+                      backgroundColor: Colors.green,
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Error descargando PDF: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            },
+            icon: const Icon(Icons.download),
+            label: const Text('Descargar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+
 }

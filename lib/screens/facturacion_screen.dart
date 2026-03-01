@@ -70,6 +70,10 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       TextEditingController();
   final TextEditingController _guiaController = TextEditingController();
 
+  // Controladores adicionales para Autocomplete
+  TextEditingController? _nombreProductoAutocompleteController;
+  TextEditingController? _codigoAutocompleteController;
+
   // Variables de estado
   String _tipoFactura = 'POS';
   DateTime _fechaFactura = DateTime.now();
@@ -166,7 +170,10 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     if (widget.pedidoAsesor != null) {
       _inicializarConPedidoAsesor();
     } else {
-      _cargarClientes();
+      _cargarClientes().then((_) {
+        // Asignar cliente por defecto si no hay ninguno seleccionado
+        _asignarClientePorDefecto();
+      });
       // 📝 Restaurar borrador existente (si no es pedido asesor)
       Future.microtask(() => _restaurarBorrador());
     }
@@ -186,6 +193,10 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     await _cargarClientes(); // Esperar a que se carguen los clientes
     if (mounted) {
       _precargarDatosPedidoAsesor(); // Luego precargar datos del pedido
+      // Asignar cliente por defecto si después de precargar no hay cliente válido
+      Future.delayed(Duration(milliseconds: 100), () {
+        _asignarClientePorDefecto();
+      });
     }
   }
 
@@ -305,6 +316,16 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     }
   }
 
+  /// Asignar cliente por defecto si no hay ninguno seleccionado
+  void _asignarClientePorDefecto() {
+    if (_clienteSeleccionado == null && _clienteController.text.trim().isEmpty) {
+      setState(() {
+        _clienteController.text = 'CONSUMIDOR FINAL';
+        _clienteSeleccionado = null; // Mantener como null ya que no es un cliente de la base de datos
+      });
+    }
+  }
+
   @override
   void dispose() {
     // ⏸️ Detener sincronización automática
@@ -347,6 +368,8 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     _dctoGeneralController.dispose();
     _observacionesController.dispose();
     // ✅ LIMPIAR CONTROLADORES DE AUTOCOMPLETE
+    _nombreProductoAutocompleteController?.dispose();
+    _codigoAutocompleteController?.dispose();
 
     super.dispose();
   }
@@ -889,6 +912,34 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                     controller: textEditingController,
                     focusNode: focusNode,
                     style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+                    onChanged: (value) {
+                      // ✅ Si el usuario borra todo el texto, asignar CONSUMIDOR FINAL
+                      if (value.trim().isEmpty) {
+                        Future.delayed(Duration(milliseconds: 300), () {
+                          if (mounted &&
+                              textEditingController.text.trim().isEmpty) {
+                            setState(() {
+                              _clienteSeleccionado = null;
+                              _clienteController.text = 'CONSUMIDOR FINAL';
+                            });
+                            textEditingController.text = 'CONSUMIDOR FINAL';
+                          }
+                        });
+                      } else {
+                        // Actualizar el controlador principal con el texto actual
+                        _clienteController.text = value;
+                      }
+                    },
+                    onEditingComplete: () {
+                      // ✅ Al terminar de editar, verificar si está vacío
+                      if (textEditingController.text.trim().isEmpty) {
+                        setState(() {
+                          _clienteSeleccionado = null;
+                          _clienteController.text = 'CONSUMIDOR FINAL';
+                        });
+                        textEditingController.text = 'CONSUMIDOR FINAL';
+                      }
+                    },
                     decoration: InputDecoration(
                       border: OutlineInputBorder(),
                       contentPadding: EdgeInsets.symmetric(
@@ -1753,12 +1804,11 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                               _valorUnitController.text = producto.precio.toString();
                             });
                             
-                            // ✅ Limpiar campo automáticamente después de breve delay (feedback visual)
-                            Future.delayed(Duration(milliseconds: 300), () {
+                            // ✅ Limpiar ambos controladores inmediatamente
+                            Future.delayed(Duration(milliseconds: 100), () {
                               if (mounted) {
-                                setState(() {
-                                  _nombreProductoController.clear();
-                                });
+                                _codigoController.clear();
+                                _codigoAutocompleteController?.clear();
                               }
                             });
                           },
@@ -1769,6 +1819,9 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                                 FocusNode focusNode,
                                 VoidCallback onFieldSubmitted,
                               ) {
+                                // Capturar referencia del controlador interno  
+                                _codigoAutocompleteController =
+                                    textEditingController;
                                 // Sincronizar con el controlador principal
                                 WidgetsBinding.instance.addPostFrameCallback((_) {
                                   textEditingController.text = _codigoController.text;
@@ -1879,12 +1932,11 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                               _valorUnitController.text = producto.precio.toString();
                             });
                             
-                            // ✅ Limpiar campo automáticamente después de breve delay (feedback visual)
-                            Future.delayed(Duration(milliseconds: 300), () {
+                            // ✅ Limpiar ambos controladores inmediatamente
+                            Future.delayed(Duration(milliseconds: 100), () {
                               if (mounted) {
-                                setState(() {
-                                  _nombreProductoController.clear();
-                                });
+                                _nombreProductoController.clear();
+                                _nombreProductoAutocompleteController?.clear();
                               }
                             });
                           },
@@ -1895,6 +1947,10 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                                 FocusNode focusNode,
                                 VoidCallback onFieldSubmitted,
                               ) {
+                                // Capturar referencia del controlador interno
+                                _nombreProductoAutocompleteController =
+                                    textEditingController;
+                                
                                 return TextField(
                                   controller: textEditingController,
                                   focusNode: focusNode,

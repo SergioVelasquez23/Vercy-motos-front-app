@@ -808,14 +808,6 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
             onPressed: () => Navigator.pop(context),
             child: Text('Cerrar', style: TextStyle(color: AppTheme.primary)),
           ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.pushNamed(context, '/productos');
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.success),
-            child: Text('Editar', style: TextStyle(color: Colors.white)),
-          ),
         ],
       ),
     );

@@ -402,11 +402,11 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
       // Transformar datos al formato esperado por la UI
       final List<Map<String, dynamic>> productosTransformados = [];
       final List<Color> colores = [
-        Colors.red,
-        Colors.blue,
-        Colors.green,
-        Colors.orange,
-        Colors.purple,
+        AppTheme.primary,
+        AppTheme.secondary,
+        AppTheme.primaryLight,
+        AppTheme.warning,
+        AppTheme.secondaryDark,
       ];
 
       for (int i = 0; i < topProductos.length; i++) {
@@ -797,7 +797,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
               content: Text(
                 'Objetivo de $periodo actualizado a \$${_formatNumber(nuevoObjetivo)}',
               ),
-              backgroundColor: Colors.green,
+              backgroundColor: AppTheme.primary,
             ),
           );
         }
@@ -1129,11 +1129,11 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
             padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
               color: !_isLoading
-                  ? Colors.green.withOpacity(0.2)
+                  ? AppTheme.primary.withOpacity(0.2)
                   : Colors.orange.withOpacity(0.2),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: !_isLoading ? Colors.green : Colors.orange,
+                color: !_isLoading ? AppTheme.primary : Colors.orange,
                 width: 1,
               ),
             ),
@@ -1144,7 +1144,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                   width: 8,
                   height: 8,
                   decoration: BoxDecoration(
-                    color: !_isLoading ? Colors.green : Colors.orange,
+                    color: !_isLoading ? AppTheme.primary : Colors.orange,
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -1386,7 +1386,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                 children: [
                   Icon(
                     Icons.account_balance_wallet,
-                    color: Colors.green,
+                    color: AppTheme.secondary,
                     size: 18,
                   ),
                   SizedBox(width: 8),
@@ -1658,7 +1658,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                         _obtenerObjetivoActual('mes') *
                         100)
                     .round(),
-            color: AppTheme.success,
+            color: AppTheme.secondary,
             periodo: 'mes',
           ),
           SizedBox(height: AppTheme.spacingMedium),
@@ -1755,7 +1755,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                             _obtenerObjetivoActual('mes') *
                             100)
                         .round(),
-                color: AppTheme.success,
+                color: AppTheme.secondary,
                 periodo: 'mes',
               ),
             ),
@@ -2518,15 +2518,15 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
           end: Alignment.bottomRight,
           colors: [
             Colors.white,
-            AppTheme.success.withOpacity(0.03),
+            AppTheme.primary.withOpacity(0.03),
             Colors.white,
           ],
         ),
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-        border: Border.all(color: AppTheme.success.withOpacity(0.2), width: 1),
+        border: Border.all(color: AppTheme.primary.withOpacity(0.2), width: 1),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.success.withOpacity(0.1),
+            color: AppTheme.primary.withOpacity(0.1),
             blurRadius: 20,
             offset: Offset(0, 10),
             spreadRadius: 0,
@@ -2547,8 +2547,8 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  AppTheme.success.withOpacity(0.15),
-                  AppTheme.success.withOpacity(0.05),
+                  AppTheme.primary.withOpacity(0.15),
+                  AppTheme.primary.withOpacity(0.05),
                 ],
               ),
               borderRadius: BorderRadius.circular(20),
@@ -2559,11 +2559,11 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                 Container(
                   padding: EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: AppTheme.success,
+                    color: AppTheme.primary,
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: AppTheme.success.withOpacity(0.4),
+                        color: AppTheme.primary.withOpacity(0.4),
                         blurRadius: 8,
                         spreadRadius: 1,
                       ),
@@ -2575,7 +2575,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                 Text(
                   'VENTAS ÚLTIMOS 7 DÍAS',
                   style: TextStyle(
-                    color: AppTheme.success,
+                    color: AppTheme.primary,
                     fontSize: 15,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 0.8,
@@ -2648,7 +2648,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                                       Text(
                                         '\$${_formatCurrency(ventas)}',
                                         style: TextStyle(
-                                          color: AppTheme.success,
+                                          color: AppTheme.primary,
                                           fontSize: 9,
                                           fontWeight: FontWeight.bold,
                                         ),
@@ -2695,7 +2695,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                           barRods: [
                             BarChartRodData(
                               toY: ventas,
-                              color: AppTheme.success,
+                              color: AppTheme.primaryLight,
                               width: 20,
                               borderRadius: BorderRadius.circular(4),
                             ),
@@ -3098,7 +3098,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
   Color _getEstadoColor(String? estado) {
     switch (estado?.toLowerCase()) {
       case 'pagada':
-        return Colors.green;
+        return AppTheme.primary;
       case 'pendiente':
         return Colors.orange;
       case 'cancelado':
