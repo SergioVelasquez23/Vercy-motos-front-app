@@ -56,6 +56,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
     _fechaDesdeController.text = _dateFormat.format(_fechaDesde);
     _fechaHastaController.text = _dateFormat.format(_fechaHasta);
   }
+
   bool _filtrarPorCaja = true;
 
   Future<void> _cargarDatosIniciales() async {
@@ -405,8 +406,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
                     // Fila 2: Cliente y Vendedor
                     Row(
                       children: [
-                        Expanded(
-                          child: _buildClienteAutocomplete()),
+                        Expanded(child: _buildClienteAutocomplete()),
                         const SizedBox(width: 12),
                         Expanded(
                           child: _buildTextField(
@@ -421,15 +421,10 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
                     Row(
                       children: [
                         Expanded(
-                          child: _buildTextField(
-                            'Código',
-                            _codigoController,
-                          ),
+                          child: _buildTextField('Código', _codigoController),
                         ),
                         const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildProductoAutocomplete(),
-                        ),
+                        Expanded(child: _buildProductoAutocomplete()),
                       ],
                     ),
                     const SizedBox(height: 24),
@@ -490,8 +485,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
               ),
               const SizedBox(height: 24),
               // TABLA DE RESULTADOS
-              if (_tipoInformeActual != null)
-                _buildTablaResultados(),
+              if (_tipoInformeActual != null) _buildTablaResultados(),
             ],
           ),
         ),
@@ -499,11 +493,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
     );
   }
 
-  Widget _buildDateField(
-    String label,
-    DateTime fecha,
-    VoidCallback onTap,
-  ) {
+  Widget _buildDateField(String label, DateTime fecha, VoidCallback onTap) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -549,10 +539,7 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
     );
   }
 
-  Widget _buildTextField(
-    String label,
-    TextEditingController controller,
-  ) {
+  Widget _buildTextField(String label, TextEditingController controller) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -946,30 +933,15 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
                 DataColumn(label: _buildColumnHeader('CLIENTE')),
                 DataColumn(label: _buildColumnHeader('PRODUCTO')),
                 DataColumn(label: _buildColumnHeader('CÓDIGO')),
-                DataColumn(
-                  numeric: true,
-                  label: _buildColumnHeader('CANT'),
-                ),
-                DataColumn(
-                  numeric: true,
-                  label: _buildColumnHeader('P. UNIT'),
-                ),
+                DataColumn(numeric: true, label: _buildColumnHeader('CANT')),
+                DataColumn(numeric: true, label: _buildColumnHeader('P. UNIT')),
                 DataColumn(
                   numeric: true,
                   label: _buildColumnHeader('SUBTOTAL'),
                 ),
-                DataColumn(
-                  numeric: true,
-                  label: _buildColumnHeader('DESC.'),
-                ),
-                DataColumn(
-                  numeric: true,
-                  label: _buildColumnHeader('IMP.'),
-                ),
-                DataColumn(
-                  numeric: true,
-                  label: _buildColumnHeader('TOTAL'),
-                ),
+                DataColumn(numeric: true, label: _buildColumnHeader('DESC.')),
+                DataColumn(numeric: true, label: _buildColumnHeader('IMP.')),
+                DataColumn(numeric: true, label: _buildColumnHeader('TOTAL')),
               ],
               rows: _resultados.map((item) {
                 final total = (item['total'] ?? 0).toDouble();
@@ -1151,6 +1123,25 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
               // Botones de descarga
               Row(
                 children: [
+                  ElevatedButton.icon(
+                    onPressed: () => _mostrarVistaPreviewPDF(),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primary,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                    ),
+                    icon: const Icon(Icons.preview, color: Colors.white),
+                    label: const Text(
+                      'Vista previa PDF',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
                   ElevatedButton.icon(
                     onPressed: () => _descargarPDFInforme(),
                     style: ElevatedButton.styleFrom(
@@ -1388,5 +1379,57 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
     );
   }
 
+  /// Mostrar vista previa del PDF antes de descargar
+  Future<void> _mostrarVistaPreviewPDF() async {
+    try {
+      final resumen = _crearResumenInforme();
 
+      // Mostrar diálogo de carga mientras se genera el PDF
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            backgroundColor: AppTheme.cardBg,
+            content: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(color: AppTheme.primary),
+                const SizedBox(width: 16),
+                Text(
+                  'Generando vista previa...',
+                  style: TextStyle(color: AppTheme.textPrimary),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+
+      // Generar y mostrar la vista previa del PDF
+      await _pdfService.mostrarVistaPreviewInformeProductos(resumen);
+
+      // Cerrar diálogo de carga
+      if (mounted) {
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      // Cerrar diálogo de carga si está abierto
+      if (mounted) {
+        try {
+          Navigator.pop(context);
+        } catch (_) {}
+      }
+
+      // Mostrar error
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al mostrar vista previa: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
 }

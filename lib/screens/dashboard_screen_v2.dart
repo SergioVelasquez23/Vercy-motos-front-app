@@ -190,14 +190,17 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
     
-    // Cuando la app vuelve al primer plano, recargar datos
-    if (state == AppLifecycleState.resumed) {
-      if (mounted &&
-          Provider.of<UserProvider>(context, listen: false).isAdmin) {
-        // Force refresh en caso de que los datos se hayan vuelto stale
-        _cargarDatos(forceRefresh: true);
-      }
-    }
+    // ⛔ DESHABILITADO: No recargar automáticamente cuando la app vuelve al primer plano
+    // Esto causaba que el dashboard se refrescara cada vez que el usuario hacía alt+tab
+    // El dashboard ya tiene auto-refresh con timer y listeners de eventos
+
+    // if (state == AppLifecycleState.resumed) {
+    //   if (mounted &&
+    //       Provider.of<UserProvider>(context, listen: false).isAdmin) {
+    //     // Force refresh en caso de que los datos se hayan vuelto stale
+    //     _cargarDatos(forceRefresh: true);
+    //   }
+    // }
   }
 
   @override

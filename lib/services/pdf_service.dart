@@ -57,7 +57,6 @@ class PDFService {
       _fontRegular = pw.Font.helvetica();
       return _fontRegular!;
     } catch (e) {
-        
       return pw.Font.helvetica();
     }
   }
@@ -69,7 +68,6 @@ class PDFService {
       _fontBold = pw.Font.helveticaBold();
       return _fontBold!;
     } catch (e) {
-        
       return pw.Font.helveticaBold();
     }
   }
@@ -268,7 +266,7 @@ class PDFService {
     print('  - Correo: $clienteCorreo');
     print('  - Departamento: $clienteDepartamento');
     print('  - Ciudad: $clienteCiudad');
-    
+
     final departamento = _toSafeString(
       resumen['departamento'] ?? negocio?['departamento'],
       'CALDAS',
@@ -1362,7 +1360,6 @@ class PDFService {
         format: esFactura ? PdfPageFormat.letter : PdfPageFormat.roll80,
       );
     } catch (e) {
-        
       rethrow;
     }
   }
@@ -1384,7 +1381,6 @@ class PDFService {
             '${esFactura ? 'Factura' : 'Resumen'}_${resumen['pedidoId'] ?? resumen['numero'] ?? DateTime.now().millisecondsSinceEpoch}.pdf',
       );
     } catch (e) {
-        
       rethrow;
     }
   }
@@ -1408,7 +1404,6 @@ class PDFService {
       await file.writeAsBytes(pdfBytes);
       return file;
     } catch (e) {
-        
       rethrow;
     }
   }
@@ -1438,7 +1433,6 @@ class PDFService {
         await mostrarDialogoImpresion(resumen: resumen, esFactura: esFactura);
       }
     } catch (e) {
-        
       rethrow;
     }
   }
@@ -1448,7 +1442,6 @@ class PDFService {
     try {
       return await Printing.listPrinters();
     } catch (e) {
-        
       return [];
     }
   }
@@ -1466,7 +1459,6 @@ class PDFService {
         format: PdfPageFormat.letter,
       );
     } catch (e) {
-        
       rethrow;
     }
   }
@@ -1486,6 +1478,23 @@ class PDFService {
         final file = File('${directory.path}/$nombreArchivo');
         await file.writeAsBytes(pdfBytes);
       }
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Vista previa del PDF de informe de productos
+  Future<void> mostrarVistaPreviewInformeProductos(
+    Map<String, dynamic> resumen,
+  ) async {
+    try {
+      final pdfBytes = await generarInformeProductosPDF(resumen: resumen);
+
+      await Printing.layoutPdf(
+        onLayout: (PdfPageFormat format) async => pdfBytes,
+        name: 'Informe_Productos_${DateTime.now().millisecondsSinceEpoch}',
+        format: PdfPageFormat.letter,
+      );
     } catch (e) {
       rethrow;
     }
@@ -1519,25 +1528,20 @@ class PDFService {
         );
       }
     } catch (e) {
-        
       // Si falla, intentar compartir el PDF como alternativa
       try {
         final pdfBytes = await generarResumenPedidoPDF(
           resumen: resumen,
           esFactura: esFactura,
         );
-          
+
         final fileName =
             nombreArchivo ??
             '${esFactura ? 'Factura' : 'Resumen'}_${resumen['pedidoId'] ?? resumen['numero'] ?? DateTime.now().millisecondsSinceEpoch}.pdf';
-        
+
         // Intentar compartir como última opción
-        await Printing.sharePdf(
-          bytes: pdfBytes,
-          filename: fileName,
-        );
+        await Printing.sharePdf(bytes: pdfBytes, filename: fileName);
       } catch (e2) {
-          
         rethrow;
       }
     }
@@ -1560,11 +1564,7 @@ class PDFService {
 
       // Escribir el archivo
       await file.writeAsBytes(pdfBytes);
-
-        
-        
     } catch (e) {
-        
       rethrow;
     }
   }

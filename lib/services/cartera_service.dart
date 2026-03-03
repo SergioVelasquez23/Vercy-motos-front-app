@@ -337,34 +337,57 @@ class CarteraService {
             final String? proveedorBackend =
                 cuenta['proveedorNombre'] as String?;
             final String? proveedorIdBackend = cuenta['proveedorId'] as String?;
+            final double? saldoPendienteBackend =
+                (cuenta['saldoPendiente'] as num?)?.toDouble();
 
             // Usar datos pasados por parámetro o extraer del backend
             final String numFactura = numeroFactura ?? facturaBackend ?? 'S/N';
             final String? nomProveedor = proveedorNombre ?? proveedorBackend;
             final double montoTotal =
-                cuenta['montoTotal'] as double? ?? montoPago;
+                (cuenta['montoTotal'] as num?)?.toDouble() ?? montoPago;
+            final double saldoPendiente = saldoPendienteBackend ?? 0.0;
+
+            // Determinar si es abono parcial o pago completo
+            final bool esPagoCompleto = saldoPendiente <= 0;
 
             // Solo enviar alerta si hay un proveedor válido
             if (nomProveedor != null &&
                 nomProveedor.isNotEmpty &&
                 numFactura != 'S/N' &&
                 (proveedorIdBackend != null && proveedorIdBackend.isNotEmpty)) {
-              print('📤 [AUTO-ALERTA] Enviando alerta de cuenta pagada:');
-              print('   🏢 Proveedor: $nomProveedor');
-              print('   📄 Número Factura: $numFactura');
-              print('   💰 Monto Total: $montoTotal');
-              print('   🆔 Proveedor ID: $proveedorIdBackend');
+              
+              if (esPagoCompleto) {
+                // Enviar alerta de cuenta pagada completamente
+                print(
+                  '📤 [AUTO-ALERTA] Enviando alerta de cuenta PAGADA COMPLETAMENTE:',
+                );
+                print('   🏢 Proveedor: $nomProveedor');
+                print('   📄 Número Factura: $numFactura');
+                print('   💰 Monto Total: $montoTotal');
+                print('   🆔 Proveedor ID: $proveedorIdBackend');
 
-              // ⛔ ALERTAS DE TELEGRAM DESHABILITADAS
-              // Enviar alerta de cuenta pagada en segundo plano
-              // _alertasService.enviarAlertaCuentaPagada(
-              //   proveedor: nomProveedor,
-              //   numeroFactura: numFactura,
-              //   montoTotal: montoTotal,
-              //   cuentaId: cuentaId,
-              // );
+                _alertasService.enviarAlertaCuentaPagada(
+                  proveedor: nomProveedor,
+                  numeroFactura: numFactura,
+                  montoTotal: montoTotal,
+                  cuentaId: cuentaId,
+                );
+              } else {
+                // Enviar alerta de abono parcial
+                print('📤 [AUTO-ALERTA] Enviando alerta de ABONO PARCIAL:');
+                print('   🏢 Proveedor: $nomProveedor');
+                print('   📄 Número Factura: $numFactura');
+                print('   💵 Monto Abono: $montoPago');
+                print('   💰 Saldo Pendiente: $saldoPendiente');
+                print('   🆔 Proveedor ID: $proveedorIdBackend');
 
-              print('ℹ️ [AUTO-ALERTA] Alertas deshabilitadas\n');
+                _alertasService.enviarAlertaAbonoRealizado(
+                  proveedor: nomProveedor,
+                  numeroFactura: numFactura,
+                  montoAbono: montoPago,
+                  saldoPendiente: saldoPendiente,
+                );
+              }
             } else {
               print('⚠️ [AUTO-ALERTA] Datos incompletos para enviar alerta:');
               print('   - Proveedor: ${nomProveedor ?? "NULL"}');
