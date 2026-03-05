@@ -4200,7 +4200,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
       cantidad: cantidad,
       unidad: 'UND',
       precioUnitario: precioUnitario,
-      subtotal: total,
+      subtotal: baseGravable,
       valorImpuesto: impuesto,
       valorDescuento: descuento,
       porcentajeImpuesto: porcentajeImpuesto,

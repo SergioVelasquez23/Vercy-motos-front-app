@@ -692,10 +692,7 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen> {
         'reteICA': cotizacion.valorReteICA,
 
         // Cantidades
-        'cantidadArticulos': cotizacion.items.fold(
-          0,
-          (sum, item) => sum + item.cantidad,
-        ),
+        'cantidadArticulos': cotizacion.items.length,
         'cantidadProductos': cotizacion.items.length,
 
         // Observaciones

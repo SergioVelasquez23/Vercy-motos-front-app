@@ -667,7 +667,7 @@ class PDFService {
     Map<String, dynamic> resumen,
     pw.Font font,
   ) {
-    final productos = resumen['productos'] ?? [];
+    final productos = resumen['productos'] ?? resumen['items'] ?? [];
     if (productos is! List) return [];
 
     List<pw.TableRow> rows = [];
@@ -679,15 +679,19 @@ class PDFService {
         producto['codigo'] ?? producto['productoId'],
       );
       final nombre = _toSafeString(
-        producto['nombre'] ?? producto['producto'],
+        producto['productoNombre'] ??
+            producto['nombre'] ??
+            producto['producto'],
         'Producto',
       );
       final precioUnit =
-          (producto['precio'] ?? producto['precioUnitario'] ?? 0.0);
-      final descuento = producto['descuento'] ?? 0;
-      final iva = producto['iva'] ?? 0;
-      final valorIva = (precioUnit * cantidad * iva / 100);
-      final totalSinIva = (precioUnit * cantidad) - descuento;
+          (producto['precioUnitario'] ?? producto['precio'] ?? 0.0);
+      final porcentajeDescuento = producto['porcentajeDescuento'] ?? 0;
+      final valorDescuento = (producto['valorDescuento'] ?? 0.0);
+      final porcentajeImpuesto = producto['porcentajeImpuesto'] ?? 0;
+      final valorImpuesto = (producto['valorImpuesto'] ?? 0.0);
+      final subtotal = (precioUnit * cantidad);
+      final totalItem = subtotal - valorDescuento + valorImpuesto;
 
       rows.add(
         pw.TableRow(
@@ -697,11 +701,11 @@ class PDFService {
             _buildTableCell('$cantidad', font),
             _buildTableCell(nombre, font, align: pw.TextAlign.left),
             _buildTableCell(_formatearNumero(precioUnit), font),
-            _buildTableCell('$descuento%', font),
-            _buildTableCell('$descuento', font),
-            _buildTableCell('$iva%', font),
-            _buildTableCell(_formatearNumero(valorIva), font),
-            _buildTableCell(_formatearNumero(totalSinIva), font),
+            _buildTableCell('$porcentajeDescuento%', font),
+            _buildTableCell(_formatearNumero(valorDescuento), font),
+            _buildTableCell('$porcentajeImpuesto%', font),
+            _buildTableCell(_formatearNumero(valorImpuesto), font),
+            _buildTableCell(_formatearNumero(totalItem), font),
           ],
         ),
       );
@@ -734,9 +738,7 @@ class PDFService {
     final productos = resumen['productos'] ?? [];
     final cantidadArticulos =
         resumen['cantidadArticulos'] ??
-        (productos is List
-            ? productos.fold(0, (sum, p) => sum + ((p['cantidad'] ?? 1) as int))
-            : 0);
+        (productos is List ? productos.length : 0);
     final cantidadProductos =
         resumen['cantidadProductos'] ??
         (productos is List ? productos.length : 0);
@@ -1073,7 +1075,7 @@ class PDFService {
       'TRECE',
       'CATORCE',
       'QUINCE',
-      'DIECISÉIS',
+      'DIECISEIS',
       'DIECISIETE',
       'DIECIOCHO',
       'DIECINUEVE',
@@ -1091,54 +1093,61 @@ class PDFService {
       'NOVECIENTOS',
     ];
 
+    // Convierte un grupo de hasta 999 a letras
+    String grupoALetras(int n) {
+      String r = '';
+      if (n >= 100) {
+        int cen = n ~/ 100;
+        r += '${centenas[cen]} ';
+        n = n % 100;
+      }
+      if (n >= 10 && n <= 19) {
+        r += especiales[n - 10];
+      } else if (n >= 10) {
+        int dec = n ~/ 10;
+        int uni = n % 10;
+        r += uni == 0 ? decenas[dec] : '${decenas[dec]} Y ${unidades[uni]}';
+      } else if (n > 0) {
+        r += unidades[n];
+      }
+      return r.trim();
+    }
+
     int n = numero.toInt();
     if (n == 0) return 'CERO PESOS';
     if (n == 100) return 'CIEN PESOS';
-    if (n == 1000) return 'MIL PESOS';
 
     String resultado = '';
+
+    // Millones
+    if (n >= 1000000) {
+      int millones = n ~/ 1000000;
+      if (millones == 1) {
+        resultado += 'UN MILLON ';
+      } else {
+        resultado += '${grupoALetras(millones)} MILLONES ';
+      }
+      n = n % 1000000;
+    }
 
     // Miles
     if (n >= 1000) {
       int miles = n ~/ 1000;
       if (miles == 1) {
         resultado += 'MIL ';
-      } else if (miles < 10) {
-        resultado += '${unidades[miles]} MIL ';
-      } else if (miles < 100) {
-        int dec = miles ~/ 10;
-        int uni = miles % 10;
-        if (miles >= 10 && miles <= 19) {
-          resultado += '${especiales[miles - 10]} MIL ';
-        } else if (uni == 0) {
-          resultado += '${decenas[dec]} MIL ';
-        } else {
-          resultado += '${decenas[dec]} Y ${unidades[uni]} MIL ';
-        }
+      } else {
+        resultado += '${grupoALetras(miles)} MIL ';
       }
       n = n % 1000;
     }
 
-    // Centenas
-    if (n >= 100) {
-      int cen = n ~/ 100;
-      resultado += '${centenas[cen]} ';
-      n = n % 100;
-    }
-
-    // Decenas y unidades
-    if (n >= 10 && n <= 19) {
-      resultado += especiales[n - 10];
-    } else if (n >= 10) {
-      int dec = n ~/ 10;
-      int uni = n % 10;
-      if (uni == 0) {
-        resultado += decenas[dec];
+    // Centenas, decenas y unidades restantes
+    if (n > 0) {
+      if (n == 100) {
+        resultado += 'CIEN ';
       } else {
-        resultado += '${decenas[dec]} Y ${unidades[uni]}';
+        resultado += grupoALetras(n);
       }
-    } else if (n > 0) {
-      resultado += unidades[n];
     }
 
     return '${resultado.trim()} PESOS';
@@ -1196,7 +1205,11 @@ class PDFService {
     Map<String, dynamic> resumen,
     pw.Font font,
   ) {
-    final productos = resumen['productos'] ?? resumen['detalleProductos'] ?? [];
+    final productos =
+        resumen['productos'] ??
+        resumen['items'] ??
+        resumen['detalleProductos'] ??
+        [];
 
     if (productos is! List) {
       return [
@@ -1209,8 +1222,12 @@ class PDFService {
 
     return productos.map<pw.Widget>((producto) {
       final cantidad = producto['cantidad'] ?? 1;
-      final nombre = producto['nombre'] ?? producto['producto'] ?? 'Producto';
-      final precio = producto['precio'] ?? 0.0;
+      final nombre =
+          producto['productoNombre'] ??
+          producto['nombre'] ??
+          producto['producto'] ??
+          'Producto';
+      final precio = (producto['precioUnitario'] ?? producto['precio'] ?? 0.0);
       final subtotal = (precio * cantidad);
 
       return pw.Container(

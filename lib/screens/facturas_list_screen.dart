@@ -12,6 +12,9 @@ import '../theme/app_theme.dart';
 import '../widgets/vercy_sidebar_layout.dart';
 
 class FacturasListScreen extends StatefulWidget {
+  final String? filtroInicial;
+  const FacturasListScreen({super.key, this.filtroInicial});
+
   @override
   _FacturasListScreenState createState() => _FacturasListScreenState();
 }
@@ -37,6 +40,10 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
   @override
   void initState() {
     super.initState();
+    // Si viene con filtro desde informes, pre-aplicarlo
+    if (widget.filtroInicial != null && widget.filtroInicial!.isNotEmpty) {
+      _filtroNumero = widget.filtroInicial!;
+    }
     _cargarDocumentos();
   }
 
@@ -971,14 +978,44 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
                 'precio': item.precioUnitario,
                 'precioUnitario': item.precioUnitario,
                 'subtotal': item.cantidad * item.precioUnitario,
-                'iva': 0,
-                'descuento': 0,
+                'iva': item.porcentajeImpuesto,
+                'valorIva': item.valorImpuesto,
+                'descuento': item.porcentajeDescuento,
+                'valorDescuento': item.valorDescuento,
               },
             )
             .toList(),
-        'subtotal': documento.total / 1.19,
-        'iva': documento.total - (documento.total / 1.19),
-        'total': documento.total,
+        // ✅ Calcular totales desde los ítems reales, no desde documento.total
+        'subtotal': documento.subtotal > 0
+            ? documento.subtotal
+            : documento.items.fold<double>(
+                0.0,
+                (sum, item) => sum + (item.cantidad * item.precioUnitario),
+              ),
+        'iva': documento.totalImpuestos,
+        'descuento': documento.totalDescuentos > 0
+            ? documento.totalDescuentos
+            : documento.descuento,
+        'descuentoGeneral': documento.descuentoGeneral,
+        'total': documento.totalFinal > 0
+            ? documento.totalFinal
+            : (documento.total > 0
+                  ? documento.total
+                  : documento.items.fold<double>(
+                      0.0,
+                      (sum, item) =>
+                          sum + (item.cantidad * item.precioUnitario),
+                    )),
+        // 💰 Retenciones
+        'retencion': documento.valorRetencion,
+        'retencionPct': documento.retencion,
+        'reteIVA': documento.valorReteIVA,
+        'reteIVAPct': documento.reteIVA,
+        'reteICA': documento.valorReteICA,
+        'reteICAPct': documento.reteICA,
+        // 📊 Conteos
+        'cantidadArticulos': documento.items.length,
+        'cantidadProductos': documento.items.length,
         'metodoPago': documento.formaPago ?? 'EFECTIVO',
         'formaPago': documento.formaPago ?? 'EFECTIVO',
         'vendedor': documento.mesero ?? 'Sin Vendedor',
@@ -1047,8 +1084,10 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
                     'precio': item.precioUnitario,
                     'precioUnitario': item.precioUnitario,
                     'subtotal': item.cantidad * item.precioUnitario,
-                    'iva': 0,
-                    'descuento': 0,
+                    'iva': item.porcentajeImpuesto,
+                    'valorIva': item.valorImpuesto,
+                    'descuento': item.porcentajeDescuento,
+                    'valorDescuento': item.valorDescuento,
                   },
                 )
                 .toList() ??

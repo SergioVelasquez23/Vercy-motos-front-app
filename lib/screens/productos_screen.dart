@@ -13,7 +13,9 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:io' show File;
 import 'package:http/http.dart' as http;
-import 'dart:html' as html show FileUploadInputElement, File, FileReader;
+import 'dart:html'
+    as html
+    show FileUploadInputElement, File, FileReader, BroadcastChannel;
 import 'dart:typed_data' show Uint8List;
 
 import '../theme/app_theme.dart';
@@ -3157,11 +3159,24 @@ class _ProductosScreenState extends State<ProductosScreen> {
                                     ingredientesDisponibles:
                                         nuevoProducto.ingredientesDisponibles,
                                     descripcion: nuevoProducto.descripcion,
+                                    cantidadAlmacen: nuevoProducto.almacen,
+                                    cantidadBodega: nuevoProducto.bodega,
                                   );
                                 
                             }
 
                             Navigator.of(context).pop();
+
+                            // 📡 Notificar a otras pestañas que hay un producto nuevo/editado
+                            final channel = html.BroadcastChannel(
+                              'productos_actualizados',
+                            );
+                            channel.postMessage('actualizado');
+                            // Cerrar con delay para garantizar que el mensaje se entregue
+                            Future.delayed(
+                              Duration(milliseconds: 300),
+                              () => channel.close(),
+                            );
 
                             // Recargar caché en background para mantener sincronizado
                             final cacheProvider =

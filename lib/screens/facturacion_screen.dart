@@ -1,3 +1,4 @@
+import 'dart:html' as html;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/pedido.dart';
@@ -145,6 +146,9 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
   List<Cliente> _clientesDisponibles = [];
 
   bool _isLoading = false;
+
+  // 🔴 Escuchar creación de productos desde otras pestañas
+  html.BroadcastChannel? _productosChannel;
   
   // ✅ Key para forzar reconstrucción de Autocompletes al limpiar formulario
   int _autocompleteResetKey = 0;
@@ -153,6 +157,23 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
   void initState() {
     super.initState();
     _cargarProductos();
+
+    // 🔴 Escuchar actualizaciones de productos desde otras pestañas
+    _productosChannel = html.BroadcastChannel('productos_actualizados');
+    _productosChannel!.onMessage.listen((_) async {
+      if (mounted) {
+        print(
+          '📡 Producto actualizado desde otra pestaña — recargando desde API',
+        );
+        // Forzar recarga desde API invalidando la caché
+        final cacheProvider = Provider.of<DatosCacheProvider>(
+          context,
+          listen: false,
+        );
+        await cacheProvider.recargarDatos();
+        if (mounted) await _cargarProductos();
+      }
+    });
     
     // 🔥 Pre-warm: despertar backend de Render y pre-cachear cuadreId
     _preCalentarBackend();
@@ -370,6 +391,9 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     // ✅ LIMPIAR CONTROLADORES DE AUTOCOMPLETE
     _nombreProductoAutocompleteController?.dispose();
     _codigoAutocompleteController?.dispose();
+
+    // 🔴 Cerrar canal de sincronización entre pestañas
+    _productosChannel?.close();
 
     super.dispose();
   }
@@ -3070,15 +3094,78 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
   }
 
   void _agregarItem() {
-    // Validación básica mínima - solo valor
+    // ✅ VALIDACIÓN 1: Producto seleccionado
+    if (_productoSeleccionado == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Debe seleccionar un producto'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    // ✅ VALIDACIÓN 2: Valor unitario
     if (_valorUnitController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('❌ Complete el valor del producto')),
+        SnackBar(
+          content: Text('❌ Complete el valor del producto'),
+          backgroundColor: Colors.orange,
+        ),
       );
       return;
     }
 
     final cantidad = int.tryParse(_cantidadController.text) ?? 1;
+
+    // ✅ VALIDACIÓN 3: Stock disponible para productos (no servicios, con control de inventario)
+    final esServicio =
+        _productoSeleccionado!.productoOServicio?.toLowerCase().contains(
+          'servicio',
+        ) ??
+        false;
+    final tieneControlInventario =
+        _productoSeleccionado!.controlInventario != null &&
+        _productoSeleccionado!.controlInventario!.toLowerCase() != 'no';
+
+    if (!esServicio && tieneControlInventario) {
+      int stockDisponible = 0;
+
+      // Obtener stock según el origen seleccionado
+      if (_origenSeleccionado == 'ALMACÉN') {
+        stockDisponible = _productoSeleccionado!.almacen ?? 0;
+      } else if (_origenSeleccionado == 'BODEGA') {
+        stockDisponible = _productoSeleccionado!.bodega ?? 0;
+      }
+
+      // Bloquear si no hay stock suficiente
+      if (stockDisponible <= 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '❌ Sin stock en $_origenSeleccionado (disponible: 0)',
+            ),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
+          ),
+        );
+        return;
+      }
+
+      if (cantidad > stockDisponible) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '❌ Stock insuficiente en $_origenSeleccionado\n'
+              'Solicitado: $cantidad - Disponible: $stockDisponible',
+            ),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
+          ),
+        );
+        return;
+      }
+    }
 
     final precioUnitario = double.tryParse(_valorUnitController.text) ?? 0;
     final porcentajeImpuesto =
@@ -3091,11 +3178,8 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     final valorDescuento = subtotal * (porcentajeDescuento / 100);
 
     final item = ItemPedido(
-      productoId:
-          _productoSeleccionado?.id ??
-          'temp-${DateTime.now().millisecondsSinceEpoch}',
-      productoNombre:
-          _productoSeleccionado?.nombre ?? _nombreProductoController.text,
+      productoId: _productoSeleccionado!.id,
+      productoNombre: _productoSeleccionado!.nombre,
       cantidad: cantidad,
       precioUnitario: precioUnitario,
       origen: _origenSeleccionado, // 📦 Pasar el origen seleccionado
@@ -3106,8 +3190,17 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       _limpiarFormularioProducto();
     });
     
-    // � Guardar estado completo en provider
+    // 📋 Guardar estado completo en provider
     _guardarEstadoCompleto();
+    
+    // ✅ Mensaje de confirmación
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('✅ Producto agregado desde $_origenSeleccionado'),
+        backgroundColor: Colors.green,
+        duration: Duration(seconds: 1),
+      ),
+    );
   }
 
   void _eliminarItem(int index) {
@@ -5311,8 +5404,10 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
         'precio': item.precioUnitario,
         'precioUnitario': item.precioUnitario,
         'subtotal': item.subtotal,
-        'iva': 0,
-        'descuento': 0,
+              'iva': item.porcentajeImpuesto,
+              'valorIva': item.valorImpuesto,
+              'descuento': item.porcentajeDescuento,
+              'valorDescuento': item.valorDescuento,
       }).toList(),
 
       // Totales
@@ -5346,7 +5441,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       'formaPago': _formatearFormaPago(medioPago),
 
       // Cantidades
-      'cantidadArticulos': pedido.items.fold(0, (sum, item) => sum + item.cantidad),
+      'cantidadArticulos': pedido.items.length,
       'cantidadProductos': pedido.items.length,
 
       // Tipo

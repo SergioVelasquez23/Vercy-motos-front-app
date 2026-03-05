@@ -852,6 +852,32 @@ class ProductoService {
         ); // Eliminar el id vacío para que el backend genere uno nuevo
       }
 
+      // ✅ CORRECCIÓN: Usar los nombres correctos que el backend espera para creación
+      print('🔍 [DEBUG CREAR] Valores originales antes de corrección:');
+      print('   - producto.almacen: ${producto.almacen}');
+      print('   - producto.bodega: ${producto.bodega}');
+      print('   - productoJson["almacen"]: ${productoJson["almacen"]}');
+      print('   - productoJson["bodega"]: ${productoJson["bodega"]}');
+
+      if (producto.almacen != null) {
+        productoJson['cantidadAlmacen'] = producto.almacen;
+        productoJson.remove('almacen'); // Remover el nombre incorrecto
+        print('   ✅ Cambiado almacen -> cantidadAlmacen: ${producto.almacen}');
+      }
+      if (producto.bodega != null) {
+        productoJson['cantidadBodega'] = producto.bodega;
+        productoJson.remove('bodega'); // Remover el nombre incorrecto
+        print('   ✅ Cambiado bodega -> cantidadBodega: ${producto.bodega}');
+      }
+
+      print('🔍 [DEBUG CREAR] Valores finales después de corrección:');
+      print(
+        '   - productoJson["cantidadAlmacen"]: ${productoJson["cantidadAlmacen"]}',
+      );
+      print(
+        '   - productoJson["cantidadBodega"]: ${productoJson["cantidadBodega"]}',
+      );
+
       print('🔍 JSON enviado al backend: ${json.encode(productoJson)}');
       
       final response = await http
@@ -898,6 +924,8 @@ class ProductoService {
     required String categoriaId,
     List<String> ingredientesDisponibles = const [],
     String? descripcion,
+    int? cantidadAlmacen,
+    int? cantidadBodega,
   }) async {
     try {
       final headers = await _getHeaders();
@@ -909,7 +937,15 @@ class ProductoService {
         'categoriaId': categoriaId,
         'ingredientesDisponibles': ingredientesDisponibles,
         if (descripcion != null) 'descripcion': descripcion,
+        if (cantidadAlmacen != null) 'cantidadAlmacen': cantidadAlmacen,
+        if (cantidadBodega != null) 'cantidadBodega': cantidadBodega,
       };
+
+      // 🔍 DEBUG: Ver los datos enviados
+      print('🔍 [DEBUG CREAR INGREDIENTES] Datos enviados:');
+      print('   - cantidadAlmacen: $cantidadAlmacen');
+      print('   - cantidadBodega: $cantidadBodega');
+      print('🔍 JSON enviado: ${json.encode(productoData)}');
 
       final response = await http
           .post(

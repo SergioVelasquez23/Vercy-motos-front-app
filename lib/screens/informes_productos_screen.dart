@@ -8,6 +8,7 @@ import '../services/reportes_service.dart';
 import '../theme/app_theme.dart';
 import '../services/cuadre_caja_service.dart';
 import '../services/pdf_service.dart';
+import 'facturas_list_screen.dart';
 
 class InformesProductosScreen extends StatefulWidget {
   const InformesProductosScreen({super.key});
@@ -48,6 +49,113 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
   double _totalImpuesto = 0;
   double _totalVentas = 0;
   int _totalCantidad = 0;
+
+  // 🔗 Navegar al documento real en la pantalla de Documentos
+  void _irADocumento(Map<String, dynamic> item) {
+    final pedidoId =
+        item['pedidoId']?.toString() ?? item['numeroFactura']?.toString();
+    if (pedidoId == null || pedidoId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('No se encontró el ID del pedido'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => FacturasListScreen(filtroInicial: pedidoId),
+      ),
+    );
+  }
+
+  // Mantener por compatibilidad (no se usa)
+  Future<void> _abrirPDFFactura(Map<String, dynamic> item) async {
+    _irADocumento(item);
+  }
+
+  // ⚠️ DEPRECATED: bloque antiguo conservado sólo para referencia
+  Future<void> _abrirPDFFacturaLegacy(Map<String, dynamic> item) async {
+    try {
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => Center(
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: AppTheme.cardBg,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(color: AppTheme.primary),
+                const SizedBox(height: 16),
+                Text(
+                  'Generando PDF...',
+                  style: TextStyle(color: AppTheme.textPrimary),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      // Crear resumen básico con los datos disponibles del item
+      final resumen = {
+        'pedidoId': item['pedidoId'] ?? item['numeroFactura'],
+        'numero': item['numeroFactura'] ?? 'SIN-NUMERO',
+        'fecha': item['fecha'] ?? DateTime.now().toIso8601String(),
+        'cliente': {
+          'nombreCompleto': item['cliente'] ?? 'Cliente General',
+          'numeroIdentificacion': item['clienteId'] ?? '0000000000',
+        },
+        'items': [
+          {
+            'nombreProducto': item['nombreProducto'] ?? 'Producto',
+            'codigoProducto': item['codigoProducto'] ?? '',
+            'cantidad': item['cantidad'] ?? 1,
+            'precioUnitario': item['precioUnitario'] ?? 0,
+            'subtotal': item['subtotal'] ?? 0,
+            'descuento': item['descuento'] ?? 0,
+            'impuesto': item['impuesto'] ?? 0,
+            'total': item['total'] ?? 0,
+          },
+        ],
+        'subtotal': item['subtotal'] ?? 0,
+        'descuento': item['descuento'] ?? 0,
+        'impuesto': item['impuesto'] ?? 0,
+        'total': item['total'] ?? 0,
+        'tipo': item['tipo'] ?? 'POS',
+        'metodoPago': 'No especificado',
+      };
+
+      // Cerrar diálogo de carga
+      if (mounted) Navigator.of(context).pop();
+
+      // Mostrar PDF
+      await _pdfService.mostrarDialogoImpresion(
+        resumen: resumen,
+        esFactura: true,
+      );
+    } catch (e) {
+      // Cerrar diálogo de carga si está abierto
+      if (mounted) Navigator.of(context).pop();
+
+      // Mostrar error
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al abrir PDF: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
 
   @override
   void initState() {
@@ -485,7 +593,40 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
               ),
               const SizedBox(height: 24),
               // TABLA DE RESULTADOS
-              if (_tipoInformeActual != null) _buildTablaResultados(),
+              if (_tipoInformeActual != null) ...[
+                // 💡 Indicación visual para interacción
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: AppTheme.primary.withOpacity(0.3),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.touch_app, size: 16, color: AppTheme.primary),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Haz clic en cualquier fila para ver el PDF de la factura completa',
+                        style: TextStyle(
+                          color: AppTheme.primary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                _buildTablaResultados(),
+              ],
             ],
           ),
         ),
@@ -925,7 +1066,14 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
               headingRowColor: WidgetStateProperty.all(
                 AppTheme.backgroundDark.withOpacity(0.3),
               ),
-              dataRowColor: WidgetStateProperty.all(AppTheme.cardBg),
+              dataRowColor: WidgetStateProperty.resolveWith<Color>((
+                Set<WidgetState> states,
+              ) {
+                if (states.contains(WidgetState.hovered)) {
+                  return AppTheme.primary.withOpacity(0.1);
+                }
+                return AppTheme.cardBg;
+              }),
               columns: [
                 DataColumn(label: _buildColumnHeader('TIPO')),
                 DataColumn(label: _buildColumnHeader('FECHA')),
@@ -951,6 +1099,8 @@ class _InformesProductosScreenState extends State<InformesProductosScreen> {
                 final impuesto = (item['impuesto'] ?? 0).toDouble();
 
                 return DataRow(
+                  // ✅ Agregar cursor de clic y funcionalidad de navegación al PDF
+                  onSelectChanged: (_) => _abrirPDFFactura(item),
                   cells: [
                     DataCell(
                       Text(

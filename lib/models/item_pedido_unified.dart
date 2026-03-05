@@ -39,6 +39,12 @@ class ItemPedidoUnified {
   final String? agregadoPor; // Usuario que agregó el producto
   final DateTime? fechaAgregado; // Fecha cuando se agregó
 
+  // 💰 IMPUESTOS Y DESCUENTOS POR ÍTEM
+  final double porcentajeImpuesto; // % IVA del ítem (0, 5, 19...)
+  final double valorImpuesto; // Valor calculado del IVA
+  final double porcentajeDescuento; // % descuento del ítem
+  final double valorDescuento; // Valor calculado del descuento
+
   // 🏗️ CONSTRUCTOR PRINCIPAL
   const ItemPedidoUnified({
     this.id,
@@ -51,6 +57,10 @@ class ItemPedidoUnified {
     this.ingredientesUsados = const [],
     this.agregadoPor,
     this.fechaAgregado,
+    this.porcentajeImpuesto = 0.0,
+    this.valorImpuesto = 0.0,
+    this.porcentajeDescuento = 0.0,
+    this.valorDescuento = 0.0,
   });
 
   // 🏗️ CONSTRUCTOR NOMBRADO PARA CREACIÓN RÁPIDA
@@ -93,6 +103,10 @@ class ItemPedidoUnified {
     List<String>? ingredientesUsados,
     String? agregadoPor,
     DateTime? fechaAgregado,
+    double? porcentajeImpuesto,
+    double? valorImpuesto,
+    double? porcentajeDescuento,
+    double? valorDescuento,
   }) {
     return ItemPedidoUnified(
       id: id ?? this.id,
@@ -107,6 +121,10 @@ class ItemPedidoUnified {
           ingredientesUsados ?? this.ingredientesUsados,
       agregadoPor: agregadoPor ?? this.agregadoPor,
       fechaAgregado: fechaAgregado ?? this.fechaAgregado,
+      porcentajeImpuesto: porcentajeImpuesto ?? this.porcentajeImpuesto,
+      valorImpuesto: valorImpuesto ?? this.valorImpuesto,
+      porcentajeDescuento: porcentajeDescuento ?? this.porcentajeDescuento,
+      valorDescuento: valorDescuento ?? this.valorDescuento,
     );
   }
 
@@ -118,8 +136,11 @@ class ItemPedidoUnified {
       if (productoNombre != null) 'productoNombre': productoNombre,
       'cantidad': cantidad,
       'precioUnitario': precioUnitario,
-      // subtotal se calcula automáticamente en backend y frontend
       'subtotal': subtotal,
+      'porcentajeImpuesto': porcentajeImpuesto,
+      'valorImpuesto': valorImpuesto,
+      'porcentajeDescuento': porcentajeDescuento,
+      'valorDescuento': valorDescuento,
       if (notas != null && notas!.isNotEmpty) 'notas': notas,
       'ingredientesSeleccionados': ingredientesSeleccionados,
       'ingredientesUsados': ingredientesUsados,
@@ -173,6 +194,12 @@ class ItemPedidoUnified {
           : const [],
       agregadoPor: json['agregadoPor']?.toString(),
       fechaAgregado: fechaAgregado,
+      porcentajeImpuesto:
+          (json['porcentajeImpuesto'] as num?)?.toDouble() ?? 0.0,
+      valorImpuesto: (json['valorImpuesto'] as num?)?.toDouble() ?? 0.0,
+      porcentajeDescuento:
+          (json['porcentajeDescuento'] as num?)?.toDouble() ?? 0.0,
+      valorDescuento: (json['valorDescuento'] as num?)?.toDouble() ?? 0.0,
     );
   }
 

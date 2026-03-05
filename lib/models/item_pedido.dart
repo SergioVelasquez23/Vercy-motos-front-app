@@ -36,7 +36,11 @@ class ItemPedido extends ItemPedidoUnified {
     super.ingredientesUsados = const [],
     super.agregadoPor,
     super.fechaAgregado,
-    this.origen = "ALMACÉN", // Por defecto ALMACÉN
+    super.porcentajeImpuesto = 0.0,
+    super.valorImpuesto = 0.0,
+    super.porcentajeDescuento = 0.0,
+    super.valorDescuento = 0.0,
+    this.origen = "ALMACÉN",
   });
 
   // 🏗️ CONSTRUCTOR DE COMPATIBILIDAD (para código legacy)
@@ -78,6 +82,12 @@ class ItemPedido extends ItemPedidoUnified {
       fechaAgregado: json['fechaAgregado'] != null
           ? DateTime.tryParse(json['fechaAgregado'].toString())
           : null,
+      porcentajeImpuesto:
+          (json['porcentajeImpuesto'] as num?)?.toDouble() ?? 0.0,
+      valorImpuesto: (json['valorImpuesto'] as num?)?.toDouble() ?? 0.0,
+      porcentajeDescuento:
+          (json['porcentajeDescuento'] as num?)?.toDouble() ?? 0.0,
+      valorDescuento: (json['valorDescuento'] as num?)?.toDouble() ?? 0.0,
       origen: (json['origen'] ?? 'ALMACÉN').toString(),
     );
   }
