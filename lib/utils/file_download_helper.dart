@@ -1,4 +1,4 @@
-import 'dart:html' as html;
+import 'html_stub.dart' if (dart.library.html) 'dart:html' as html;
 import 'dart:typed_data';
 
 /// Helper para descargar archivos en web

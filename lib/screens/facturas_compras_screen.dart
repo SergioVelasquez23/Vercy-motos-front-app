@@ -4166,6 +4166,11 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
         );
         return;
       }
+    } else if (_destinoSeleccionado == 'BODEGA') {
+      cantidadBodega = cantidad;
+    } else {
+      // ALMACÉN
+      cantidadAlmacen = cantidad;
     }
 
     final precioUnitario = double.tryParse(_valorUnitarioController.text) ?? 0;
@@ -4448,8 +4453,10 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
       );
         
 
-      // 📦 Registrar movimientos de inventario (entrada de stock)
-      await _registrarMovimientosInventarioCompra(facturaCreada);
+      // ✅ NO actualizar stock desde el frontend - el backend ya actualiza el stock
+      // automáticamente al crear la factura. Hacerlo aquí también causaba duplicación (+2 en vez de +1).
+      // Los items enviados ya incluyen 'destino', 'cantidadAlmacen' y 'cantidadBodega'
+      // para que el backend sepa dónde poner el stock.
 
       // � Refrescar cache de productos para actualizar UI automáticamente
       try {
@@ -4524,10 +4531,15 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
 
   // 📦 Registrar movimientos de inventario cuando se crea una factura de compra
   Future<void> _registrarMovimientosInventarioCompra(
-    FacturaCompra factura,
-  ) async {
+    FacturaCompra factura, {
+    List<ItemFacturaCompra>? itemsOriginales,
+  }) async {
     try {
-      for (var item in factura.items) {
+      // ✅ Usar items originales (con destino correcto del usuario) si están disponibles
+      // El backend NO persiste el campo 'destino', así que la respuesta siempre tiene
+      // destino='ALMACÉN' por defecto, ignorando lo que el usuario seleccionó.
+      final itemsParaProcesar = itemsOriginales ?? factura.items;
+      for (var item in itemsParaProcesar) {
         try {
           // 🔍 Obtener el producto completo para actualizar stock
           final productoCompleto = await _productoService.getProducto(
@@ -4602,35 +4614,39 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
               proveedor: factura.proveedorNombre,
             );
 
-            // 📝 Intentar registrar movimiento (pero NO bloquear actualización)
+            // 📝 Registrar movimiento - el backend YA actualiza stock al procesar el movimiento
+            // ⚠️ NO llamar updateProducto si el movimiento fue exitoso para evitar duplicar stock
+            bool movimientoParteExitoso = false;
             try {
               await _inventarioService.registrarMovimiento(movimiento);
+              movimientoParteExitoso = true;
               print(
-                '📝 Movimiento (PARTE Y PARTE) registrado: ${item.ingredienteNombre}',
+                '📝 Movimiento (PARTE Y PARTE) registrado: ${item.ingredienteNombre} - Stock actualizado por backend',
               );
             } catch (movError) {
               print(
-                '⚠️ Error registrando movimiento PARTE Y PARTE (NO crítico): $movError',
+                '⚠️ Error registrando movimiento PARTE Y PARTE: $movError - Se actualizará stock manualmente',
               );
-              // NO relanzar - continuar con actualización de stock
             }
 
-            // Actualizar producto con nuevo stock (CRÍTICO)
-            final productoActualizado = productoCompleto.copyWith(
-              almacen: almacenActual.toInt(),
-              bodega: bodegaActual.toInt(),
-            );
+            // 🔄 Solo actualizar producto MANUALMENTE si el movimiento falló (fallback)
+            if (!movimientoParteExitoso) {
+              final productoActualizado = productoCompleto.copyWith(
+                almacen: almacenActual.toInt(),
+                bodega: bodegaActual.toInt(),
+              );
 
-            try {
-              await _productoService.updateProducto(productoActualizado);
-              print(
-                '✅ Stock actualizado (PARTE Y PARTE): ${productoActualizado.nombre} - ALM: ${almacenAnterior.toInt()} → ${almacenActual.toInt()}, BOD: ${bodegaAnterior.toInt()} → ${bodegaActual.toInt()}',
-              );
-            } catch (updateError) {
-              print(
-                '❌ ERROR CRÍTICO actualizando (PARTE Y PARTE): $updateError - Producto: ${productoActualizado.nombre}',
-              );
-              rethrow;
+              try {
+                await _productoService.updateProducto(productoActualizado);
+                print(
+                  '✅ Stock actualizado manualmente (PARTE Y PARTE): ${productoActualizado.nombre} - ALM: ${almacenAnterior.toInt()} → ${almacenActual.toInt()}, BOD: ${bodegaAnterior.toInt()} → ${bodegaActual.toInt()}',
+                );
+              } catch (updateError) {
+                print(
+                  '❌ ERROR CRÍTICO actualizando (PARTE Y PARTE): $updateError - Producto: ${productoActualizado.nombre}',
+                );
+                rethrow;
+              }
             }
             continue;
           } else {
@@ -4660,38 +4676,43 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
             proveedor: factura.proveedorNombre,
           );
 
-          // 📝 Intentar registrar movimiento (pero NO bloquear actualización de stock)
+          // 📝 Registrar movimiento - el backend YA actualiza stock al procesar el movimiento
+          // ⚠️ NO llamar updateProducto si el movimiento fue exitoso para evitar duplicar stock (+2 en vez de +1)
+          bool movimientoExitoso = false;
           try {
             await _inventarioService.registrarMovimiento(movimiento);
+            movimientoExitoso = true;
             print(
-              '📝 Movimiento de inventario registrado: ${item.ingredienteNombre}',
+              '📝 Movimiento registrado: ${item.ingredienteNombre} - ${destino}: ${stockAnterior.toInt()} → ${nuevoStock.toInt()} (stock actualizado por backend)',
             );
           } catch (movError) {
-            print('⚠️ Error registrando movimiento (NO crítico): $movError');
-            // NO relanzar - continuar con actualización de stock
+            print(
+              '⚠️ Error registrando movimiento: $movError - Se actualizará stock manualmente',
+            );
           }
 
-          // 🔄 ACTUALIZAR STOCK EN EL PRODUCTO - Enviar AMBOS valores
-          final productoActualizado = productoCompleto.copyWith(
-            almacen: almacenActual.toInt(),
-            bodega: bodegaActual.toInt(),
-          );
-
-          print(
-            '📤 Enviando actualización compra: ${productoActualizado.nombre} - Almacén: ${almacenActual.toInt()}, Bodega: ${bodegaActual.toInt()}',
-          );
-
-          // 💾 Guardar producto actualizado (CRÍTICO - debe ejecutarse siempre)
-          try {
-            await _productoService.updateProducto(productoActualizado);
-            print(
-              '✅ Stock actualizado: ${productoActualizado.nombre} - ${destino}: ${stockAnterior.toInt()} → ${nuevoStock.toInt()}',
+          // 🔄 Solo actualizar producto MANUALMENTE si el movimiento falló (fallback)
+          if (!movimientoExitoso) {
+            final productoActualizado = productoCompleto.copyWith(
+              almacen: almacenActual.toInt(),
+              bodega: bodegaActual.toInt(),
             );
-          } catch (updateError) {
+
             print(
-              '❌ ERROR CRÍTICO actualizando producto: $updateError - Producto: ${productoActualizado.nombre}',
+              '📤 Fallback - Enviando actualización compra: ${productoActualizado.nombre} - Almacén: ${almacenActual.toInt()}, Bodega: ${bodegaActual.toInt()}',
             );
-            rethrow;
+
+            try {
+              await _productoService.updateProducto(productoActualizado);
+              print(
+                '✅ Stock actualizado manualmente: ${productoActualizado.nombre} - ${destino}: ${stockAnterior.toInt()} → ${nuevoStock.toInt()}',
+              );
+            } catch (updateError) {
+              print(
+                '❌ ERROR CRÍTICO actualizando producto: $updateError - Producto: ${productoActualizado.nombre}',
+              );
+              rethrow;
+            }
           }
         } catch (e) {
           // Continuar con el siguiente item aunque haya error

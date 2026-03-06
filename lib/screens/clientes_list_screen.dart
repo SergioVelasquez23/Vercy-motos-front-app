@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:file_picker/file_picker.dart';
 import 'dart:typed_data';
-import 'dart:html' as html;
+import '../utils/html_stub.dart' if (dart.library.html) 'dart:html' as html;
 import '../models/cliente.dart';
 import '../services/cliente_service.dart';
 import '../theme/app_theme.dart';

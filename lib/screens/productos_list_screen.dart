@@ -2339,7 +2339,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
 
       // Encontrar la categoría seleccionada
       Categoria? categoriaSeleccionada;
-      if (categoriaId != null) {
+      if (categoriaId != null && categoriaId.isNotEmpty) {
         categoriaSeleccionada = _categorias.firstWhere(
           (cat) => cat.id == categoriaId,
           orElse: () => Categoria(id: categoriaId, nombre: 'Unknown'),

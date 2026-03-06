@@ -13,9 +13,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:io' show File;
 import 'package:http/http.dart' as http;
-import 'dart:html'
-    as html
-    show FileUploadInputElement, File, FileReader, BroadcastChannel;
+import '../utils/html_stub.dart' if (dart.library.html) 'dart:html' as html;
 import 'dart:typed_data' show Uint8List;
 
 import '../theme/app_theme.dart';

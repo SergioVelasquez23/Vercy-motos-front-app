@@ -1,8 +1,12 @@
-/// Este archivo sirve como sustituto de dart:html para plataformas móviles
-/// Proporciona una implementación ficticia de window.localStorage
-///
-/// Este archivo se usa cuando se compila para plataformas que no son web
+/// Este archivo sirve como sustituto de dart:html para plataformas móviles.
+/// Proporciona implementaciones ficticias de clases web-only para que el código
+/// compile en Android/iOS/desktop sin errores.
 library;
+
+import 'dart:async';
+import 'dart:typed_data';
+
+// ─── window / localStorage ───────────────────────────────────────────────────
 
 class Window {
   final LocalStorage localStorage = LocalStorage();
@@ -23,3 +27,86 @@ class LocalStorage {
 }
 
 final Window window = Window();
+
+// ─── BroadcastChannel ────────────────────────────────────────────────────────
+
+class BroadcastChannel {
+  // ignore: avoid_unused_constructor_parameters
+  BroadcastChannel(String name);
+  Stream<dynamic> get onMessage => const Stream.empty();
+  void postMessage(dynamic message) {}
+  void close() {}
+}
+
+// ─── FileUploadInputElement / File / FileList ─────────────────────────────────
+
+class File {
+  final String name;
+  File(this.name);
+}
+
+class FileList {
+  final List<File> _files;
+  FileList([List<File>? files]) : _files = files ?? const [];
+  bool get isEmpty => _files.isEmpty;
+  File operator [](int index) => _files[index];
+}
+
+class FileUploadInputElement {
+  String accept = '';
+  FileList? files;
+  Stream<dynamic> get onChange => const Stream.empty();
+  void click() {}
+}
+
+// ─── FileReader ───────────────────────────────────────────────────────────────
+
+class FileReader {
+  dynamic result;
+  Stream<dynamic> get onLoad => const Stream.empty();
+  // ignore: avoid_unused_constructor_parameters
+  void readAsArrayBuffer(File file) {}
+}
+
+// ─── Blob / Url / AnchorElement / Document ────────────────────────────────────
+
+class Blob {
+  // ignore: avoid_unused_constructor_parameters
+  Blob(List<dynamic> parts, [dynamic options]);
+}
+
+class Url {
+  // ignore: avoid_unused_constructor_parameters
+  static String createObjectUrlFromBlob(Blob blob) => '';
+  // ignore: avoid_unused_constructor_parameters
+  static void revokeObjectUrl(String url) {}
+}
+
+class CssStyleDeclaration {
+  String display = '';
+}
+
+class AnchorElement {
+  final String? href;
+  final CssStyleDeclaration style = CssStyleDeclaration();
+  AnchorElement({this.href});
+  // ignore: avoid_unused_constructor_parameters
+  void setAttribute(String name, String value) {}
+  void click() {}
+  void remove() {}
+}
+
+class _ElementList {
+  // ignore: avoid_unused_constructor_parameters
+  void add(AnchorElement element) {}
+}
+
+class _Body {
+  final _ElementList children = _ElementList();
+}
+
+class Document {
+  final _Body? body = _Body();
+}
+
+final Document document = Document();

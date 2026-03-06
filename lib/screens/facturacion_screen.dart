@@ -1,4 +1,4 @@
-import 'dart:html' as html;
+import '../utils/html_stub.dart' if (dart.library.html) 'dart:html' as html;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/pedido.dart';
@@ -3124,9 +3124,9 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
           'servicio',
         ) ??
         false;
+    // Si controlInventario es null o no es explícitamente 'no', se asume que tiene control de inventario
     final tieneControlInventario =
-        _productoSeleccionado!.controlInventario != null &&
-        _productoSeleccionado!.controlInventario!.toLowerCase() != 'no';
+        _productoSeleccionado!.controlInventario?.toLowerCase() != 'no';
 
     if (!esServicio && tieneControlInventario) {
       int stockDisponible = 0;
@@ -4528,6 +4528,8 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
             }
 
             // Preparar resumen con datos completos del cliente
+            // ✅ itemsOverride: usa los items del formulario (con precios editados)
+            //    porque el backend puede devolver items con precios del catálogo
             final resumen = _prepararResumenFactura(
               pedidoPagado,
               metodoPagoUsado,
@@ -4546,6 +4548,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
               reteICAValor: reteICAValor,
               aiuValor: aiuValor,
               observaciones: observacionesCapturadas,
+              itemsOverride: itemsOriginales,
             );
 
             // Mostrar diálogo con opciones de PDF/Imprimir
@@ -5333,6 +5336,8 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     double? reteICAValor,
     double? aiuValor,
     String? observaciones,
+    List<ItemPedido>?
+    itemsOverride, // ✅ Override para usar precios del formulario (no del backend)
   }) {
     // Usar clienteData pasado como parámetro, o _clienteSeleccionado como fallback
     final cliente = clienteData ?? _clienteSeleccionado;
@@ -5395,8 +5400,10 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       'mesero': pedido.mesero ?? 'Sistema',
       'vendedor': pedido.mesero ?? 'Sistema',
 
-      // Productos
-      'productos': pedido.items.map((item) => {
+      // Productos — usar itemsOverride si se provee (preserva precios editados en facturación)
+      'productos': (itemsOverride ?? pedido.items)
+          .map(
+            (item) => {
         'codigo': item.productoId,
         'nombre': item.productoNombre,
         'producto': item.productoNombre,
@@ -5441,8 +5448,8 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       'formaPago': _formatearFormaPago(medioPago),
 
       // Cantidades
-      'cantidadArticulos': pedido.items.length,
-      'cantidadProductos': pedido.items.length,
+      'cantidadArticulos': (itemsOverride ?? pedido.items).length,
+      'cantidadProductos': (itemsOverride ?? pedido.items).length,
 
       // Tipo
       'tipoContado': 'CONTADO',

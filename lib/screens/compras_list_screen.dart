@@ -829,7 +829,11 @@ class _ComprasListScreenState extends State<ComprasListScreen> {
           Expanded(
             flex: 2,
             child: Text(
-              'BODEGA',
+              () {
+              if (compra.items.isEmpty) return 'N/A';
+              final destinos = compra.items.map((i) => i.destino).toSet();
+              return destinos.length == 1 ? destinos.first : 'MIXTO';
+            }(),
               style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
             ),
           ),

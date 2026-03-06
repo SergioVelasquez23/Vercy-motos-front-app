@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'dart:async'; // Importar para usar StreamController
 import 'package:flutter/foundation.dart';
-import 'dart:html' as html;
+import '../utils/html_stub.dart' if (dart.library.html) 'dart:html' as html;
 import '../models/pedido.dart';
 import '../utils/pedido_helper.dart'; // Añadido import
 import '../services/producto_service.dart';
@@ -1531,14 +1531,21 @@ class PedidoService {
         final producto = productosMap[item.productoId];
 
         if (producto != null) {
-          // Si tenemos el producto completo, lo usamos
+          // ✅ Solo actualizamos el nombre del producto (por si cambió en el catálogo)
+          // NUNCA sobreescribir precioUnitario con el precio del catálogo:
+          // el precio guardado en el pedido es el precio real de la transacción
           pedido.items[i] = ItemPedido(
             productoId: item.productoId,
             productoNombre: producto.nombre,
             cantidad: item.cantidad,
             notas: item.notas,
-            precioUnitario: producto.precio,
-            agregadoPor: item.agregadoPor, // ✅ CORREGIDO: Preservar agregadoPor
+            precioUnitario: item.precioUnitario, // ✅ Precio original del pedido
+            agregadoPor: item.agregadoPor,
+            porcentajeImpuesto: item.porcentajeImpuesto, // ✅ Preservar
+            valorImpuesto: item.valorImpuesto, // ✅ Preservar
+            porcentajeDescuento: item.porcentajeDescuento, // ✅ Preservar
+            valorDescuento: item.valorDescuento, // ✅ Preservar
+            origen: item.origen, // ✅ Preservar
           );
         } else if (item.producto == null) {
           // Si no tenemos el producto, pero tenemos nombre en el JSON, creamos un producto básico
@@ -1572,7 +1579,12 @@ class PedidoService {
             cantidad: item.cantidad,
             notas: item.notas,
             precioUnitario: item.precioUnitario,
-            agregadoPor: item.agregadoPor, // ✅ CORREGIDO: Preservar agregadoPor
+            agregadoPor: item.agregadoPor,
+            porcentajeImpuesto: item.porcentajeImpuesto, // ✅ Preservar
+            valorImpuesto: item.valorImpuesto, // ✅ Preservar
+            porcentajeDescuento: item.porcentajeDescuento, // ✅ Preservar
+            valorDescuento: item.valorDescuento, // ✅ Preservar
+            origen: item.origen, // ✅ Preservar
           );
         }
       }

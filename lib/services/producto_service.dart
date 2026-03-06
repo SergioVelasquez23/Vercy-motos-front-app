@@ -1219,8 +1219,8 @@ class ProductoService {
         'inventarioOptimo': producto.inventarioOptimo,
       };
       
-      // Agregar campos opcionales solo si no son null
-      if (producto.categoria?.id != null) {
+      // Agregar campos opcionales solo si no son null ni vacíos
+      if (producto.categoria?.id != null && producto.categoria!.id.isNotEmpty) {
         productoJson['categoriaId'] = producto.categoria!.id;
       }
       if (producto.imagenUrl != null) {

@@ -193,7 +193,8 @@ class FacturaCompra {
       'total': finalTotal, // Usar el total final calculado
       'pagadoDesdeCaja': pagadoDesdeCaja,
       'itemsIngredientes': itemsJsonList,
-      'items': itemsJsonList,
+      // ✅ NO enviar 'items' duplicado - el backend procesa ambos arrays causando doble stock
+      'items': [],
       'medioPago': 'Efectivo',
       'formaPago': 'Contado',
       'registradoPor': 'admin',

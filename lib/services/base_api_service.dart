@@ -3,10 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../models/api_response.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode;
-// ignore: uri_does_not_exist
-import 'dart:html'
-    if (dart.library.io) 'package:kronos_restbar/utils/html_stub.dart'
-    as html;
+import '../utils/html_stub.dart' if (dart.library.html) 'dart:html' as html;
 import '../config/api_config.dart';
 
 /// Clase base para todos los servicios de API
