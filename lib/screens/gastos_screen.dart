@@ -278,8 +278,10 @@ class _GastosScreenState extends State<GastosScreen> {
             .where((p) => p.nombre == gasto.proveedor)
             .firstOrNull;
         _selectedProveedorId = proveedor?.id;
-        _proveedorResetKey++;
+      } else {
+        _selectedProveedorId = null;
       }
+      _proveedorResetKey++;
 
       // DEBUG
     } else {
@@ -865,6 +867,20 @@ class _GastosScreenState extends State<GastosScreen> {
                                   color: AppTheme.textPrimary,
                                   fontSize: 15,
                                 ),
+                                onChanged: (text) {
+                                  // Si el usuario escribe manualmente algo distinto
+                                  // al proveedor seleccionado, limpiar la selección
+                                  if (_selectedProveedorId != null) {
+                                    final selectedProveedor = _proveedores
+                                        .where(
+                                          (p) => p.id == _selectedProveedorId,
+                                        )
+                                        .firstOrNull;
+                                    if (selectedProveedor?.nombre != text) {
+                                      _selectedProveedorId = null;
+                                    }
+                                  }
+                                },
                                 decoration: InputDecoration(
                                   contentPadding: EdgeInsets.symmetric(
                                     horizontal: 16,
@@ -1922,23 +1938,44 @@ class _GastosScreenState extends State<GastosScreen> {
           .map((c) => c['concepto'])
           .join(', ');
 
-      await _gastoService.createGasto(
-        cuadreCajaId: _selectedCuadreId!,
-        tipoGastoId: _selectedTipoGastoIdNuevo!,
-        concepto: conceptoCombinado,
-        monto: _totalGasto,
-        responsable: responsable,
-        fechaGasto: _selectedDate,
-        numeroRecibo: null,
-        numeroFactura: null,
-        proveedor: proveedorNombre,
-        formaPago: 'Efectivo',
-        subtotal: _subtotalGasto,
-        impuestos: _impuestosGasto,
-        pagadoDesdeCaja: true,
-      );
+      if (_gastoEditando != null) {
+        // Actualizar gasto existente
+        await _gastoService.updateGasto(
+          _gastoEditando!.id!,
+          cuadreCajaId: _selectedCuadreId,
+          tipoGastoId: _selectedTipoGastoIdNuevo,
+          concepto: conceptoCombinado,
+          monto: _totalGasto,
+          responsable: responsable,
+          fechaGasto: _selectedDate,
+          proveedor: proveedorNombre,
+          formaPago: _selectedFormaPago ?? 'Efectivo',
+          subtotal: _subtotalGasto,
+          impuestos: _impuestosGasto,
+          pagadoDesdeCaja: _pagadoDesdeCaja,
+        );
+        _gastoEditando = null;
+        _showSuccess('Gasto actualizado exitosamente');
+      } else {
+        // Crear nuevo gasto
+        await _gastoService.createGasto(
+          cuadreCajaId: _selectedCuadreId!,
+          tipoGastoId: _selectedTipoGastoIdNuevo!,
+          concepto: conceptoCombinado,
+          monto: _totalGasto,
+          responsable: responsable,
+          fechaGasto: _selectedDate,
+          numeroRecibo: null,
+          numeroFactura: null,
+          proveedor: proveedorNombre,
+          formaPago: _selectedFormaPago ?? 'Efectivo',
+          subtotal: _subtotalGasto,
+          impuestos: _impuestosGasto,
+          pagadoDesdeCaja: true,
+        );
+        _showSuccess('Gasto creado exitosamente');
+      }
 
-      _showSuccess('Gasto creado exitosamente');
       setState(() => _showForm = false);
       await _loadGastos();
     } catch (e) {

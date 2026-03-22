@@ -10,6 +10,7 @@ import 'facturas_compras_screen.dart';
 import 'proveedores_screen.dart';
 import 'historial_inventario_screen.dart';
 import 'configuracion_screen.dart';
+import 'negocio_info_screen.dart';
 import 'gastos_screen.dart';
 import 'ingresos_caja_screen.dart';
 import 'tipos_gasto_screen.dart';
@@ -1421,9 +1422,9 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         }),
       );
 
-      // 8. Configuración
+      // 9. Configuración
       navItems.add(
-        _buildNavItem(Icons.settings, 'Configuración', 7, () {
+        _buildNavItem(Icons.settings, 'Configuración', 8, () {
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => ConfiguracionScreen()),
@@ -1431,6 +1432,16 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         }),
       );
     }
+
+    // 8. Información del Negocio - Disponible para todos
+    navItems.add(
+      _buildNavItem(Icons.business, 'Mi Negocio', 7, () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const NegocioInfoScreen()),
+        );
+      }),
+    );
 
     return navItems;
   }

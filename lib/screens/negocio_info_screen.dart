@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models/negocio_info.dart';
 import '../services/negocio_info_service.dart';
+import '../theme/app_theme.dart';
 
 class NegocioInfoScreen extends StatefulWidget {
   const NegocioInfoScreen({super.key});
@@ -50,10 +51,10 @@ class _NegocioInfoScreenState extends State<NegocioInfoScreen> {
   bool _envioADomicilio = false;
 
   // Constantes de diseño
-  static const Color _primary = Color(0xFFFF6B00);
-  static const Color _cardBg = Color(0xFF1E1E1E);
-  static const Color _bgDark = Color(0xFF121212);
-  static const Color _textLight = Color(0xFFE0E0E0);
+  static const Color _primary = AppTheme.primary;
+  static const Color _cardBg = AppTheme.cardBg;
+  static const Color _bgDark = AppTheme.backgroundDark;
+  static const Color _textLight = AppTheme.textSecondary;
 
   @override
   void initState() {
@@ -115,7 +116,10 @@ class _NegocioInfoScreenState extends State<NegocioInfoScreen> {
     final tiposDocumento = _negocioInfoService.getTiposDocumento();
 
     _nombreController.text = info.nombre;
-    _nitController.text = info.nit ?? '';
+    // Usar nitDoc si nit no tiene valor (prioridad a nitDoc que es el campo principal)
+    _nitController.text = info.nitDoc.isNotEmpty
+        ? info.nitDoc
+        : (info.nit ?? '');
     _contactoController.text = info.contacto ?? '';
     _emailController.text = info.email ?? '';
     _direccionController.text = info.direccion ?? '';
@@ -238,6 +242,10 @@ class _NegocioInfoScreenState extends State<NegocioInfoScreen> {
             ? null
             : _nota2Controller.text.trim(),
         logoUrl: logoUrl,
+        // Guardar en ambos campos para compatibilidad
+        nit: _nitController.text.trim().isEmpty
+            ? null
+            : _nitController.text.trim(),
         fechaCreacion: _currentInfo?.fechaCreacion ?? DateTime.now(),
         fechaActualizacion: DateTime.now(),
       );
@@ -355,7 +363,7 @@ class _NegocioInfoScreenState extends State<NegocioInfoScreen> {
             SizedBox(height: 24),
             _buildSeccionNotas(),
             SizedBox(height: 32),
-            _buildBotonGuardar(),
+            _buildBotonesAccion(),
           ],
         ),
       ),
@@ -847,6 +855,94 @@ class _NegocioInfoScreenState extends State<NegocioInfoScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildBotonesAccion() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Botón Guardar
+        SizedBox(
+          height: 50,
+          child: ElevatedButton(
+            onPressed: _isSaving ? null : _guardarInformacion,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: _isSaving
+                ? Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      ),
+                      SizedBox(width: 12),
+                      Text('Guardando...'),
+                    ],
+                  )
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.save),
+                      SizedBox(width: 8),
+                      Text(
+                        'Guardar Información',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
+        ),
+        SizedBox(height: 12),
+        // Botón Enviar Factura de Prueba
+        SizedBox(
+          height: 50,
+          child: OutlinedButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => EnvioFacturaElectronicaScreen(),
+                ),
+              );
+            },
+            style: OutlinedButton.styleFrom(
+              side: BorderSide(color: _primary, width: 2),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.science, color: _primary),
+                SizedBox(width: 8),
+                Text(
+                  'Enviar Factura de Prueba',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: _primary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 

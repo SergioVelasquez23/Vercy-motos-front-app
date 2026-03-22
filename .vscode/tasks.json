@@ -1,0 +1,14 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Limpiar Gradle",
+      "type": "shell",
+      "command": "cd android; .\\gradlew.bat clean; cd ..",
+      "group": "build",
+      "windows": {
+        "command": "cd android; .\\gradlew.bat clean; cd .."
+      }
+    }
+  ]
+}

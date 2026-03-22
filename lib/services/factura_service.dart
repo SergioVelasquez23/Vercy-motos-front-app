@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../models/factura.dart';
+import '../models/pedido.dart';
 import '../config/endpoints_config.dart';
 
 /// Servicio para gestionar las operaciones relacionadas con facturas
@@ -58,6 +59,22 @@ class FacturaService {
     return [];
   }
 
+  /// Procesa la respuesta HTTP y extrae los datos de los pedidos
+  List<Pedido> _processPedidosResponse(http.Response response) {
+    if (response.statusCode == 200) {
+      final responseData = json.decode(response.body);
+      // Manejar respuestas con estructura ApiResponse o directas
+      final List<dynamic> jsonList = responseData['data'] ?? responseData;
+      final pedidos = jsonList.map((json) => Pedido.fromJson(json)).toList();
+
+      // Ordenar pedidos por fecha descendente (más recientes primero)
+      pedidos.sort((a, b) => b.fecha.compareTo(a.fecha));
+
+      return pedidos;
+    }
+    return [];
+  }
+
   /// Obtiene todas las facturas
   Future<List<Factura>> getFacturas() async {
     try {
@@ -71,6 +88,95 @@ class FacturaService {
     } catch (e) {
         
       return [];
+    }
+  }
+
+  /// Obtiene pedidos en estado PAGO con paginación
+  /// Carga 10 pedidos por página por defecto
+  Future<List<Pedido>> getPedidosPagados({int page = 0, int size = 10}) async {
+    try {
+      final headers = await _getHeaders();
+      final queryParams = {'page': page.toString(), 'size': size.toString()};
+
+      final uri = Uri.parse(
+        _endpoints.pedidos.pagados,
+      ).replace(queryParameters: queryParams);
+
+      final response = await http.get(uri, headers: headers);
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+
+        // Manejar respuesta con estructura ApiResponse
+        final Map<String, dynamic> datos = responseData['data'] ?? responseData;
+        final List<dynamic> contenido = datos['contenido'] ?? [];
+
+        final pedidos = contenido
+            .map((json) => Pedido.fromJson(json as Map<String, dynamic>))
+            .toList();
+
+        // Ordenar pedidos por fecha descendente
+        pedidos.sort((a, b) => b.fecha.compareTo(a.fecha));
+
+        return pedidos;
+      }
+      return [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  /// Obtiene todos los pedidos pagados (sin paginación)
+  /// Útil para cuando necesitas todos los registros de una vez
+  Future<List<Pedido>> getAllPedidosPagados() async {
+    try {
+      final List<Pedido> todosPedidos = [];
+      int page = 0;
+      bool hayMas = true;
+
+      while (hayMas) {
+        final pedidos = await getPedidosPagados(page: page, size: 50);
+
+        if (pedidos.isEmpty) {
+          hayMas = false;
+        } else {
+          todosPedidos.addAll(pedidos);
+          page++;
+        }
+      }
+
+      return todosPedidos;
+    } catch (e) {
+      return [];
+    }
+  }
+
+  /// Obtiene información paginada completa de pedidos pagados
+  /// Incluye totales, número de páginas, etc.
+  Future<Map<String, dynamic>?> getPedidosPagadosInfo({
+    int page = 0,
+    int size = 10,
+  }) async {
+    try {
+      final headers = await _getHeaders();
+      final queryParams = {'page': page.toString(), 'size': size.toString()};
+
+      final uri = Uri.parse(
+        _endpoints.pedidos.pagados,
+      ).replace(queryParameters: queryParams);
+
+      final response = await http.get(uri, headers: headers);
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+
+        // Manejar respuesta con estructura ApiResponse
+        final Map<String, dynamic> datos = responseData['data'] ?? responseData;
+        return datos;
+      }
+      return null;
+    } catch (e) {
+      return null;
     }
   }
 

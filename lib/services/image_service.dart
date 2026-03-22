@@ -447,46 +447,46 @@ class ImageService {
   /// Sube el logo del negocio al servidor
   Future<String> uploadNegocioLogo(XFile image) async {
     try {
-        
-
+      // Usar multipart en ambas plataformas para el logo
+      // El backend espera multipart/form-data
       if (kIsWeb) {
-        // Flutter Web: usar upload base64
-        return await _uploadNegocioLogoBase64(image);
+        return await _uploadNegocioLogoMultipartWeb(image);
       } else {
-        // Mobile/Desktop: usar multipart
         return await _uploadNegocioLogoMultipart(image);
       }
     } catch (e) {
-        
       throw Exception('No se pudo subir el logo del negocio: $e');
     }
   }
 
-  /// Sube logo del negocio usando base64 (para web)
-  Future<String> _uploadNegocioLogoBase64(XFile image) async {
+  /// Sube logo del negocio usando multipart en web (usando bytes)
+  Future<String> _uploadNegocioLogoMultipartWeb(XFile image) async {
+    final uri = Uri.parse(_apiConfig.endpoints.negocio.uploadLogo);
+    final request = http.MultipartRequest('POST', uri);
+
+    request.headers.addAll(_multipartHeaders);
+
+    // Para web, usar fromBytes ya que fromPath no funciona
     final bytes = await image.readAsBytes();
-    final base64Image = base64Encode(bytes);
+    request.files.add(
+      http.MultipartFile.fromBytes(
+        'file', // El backend espera 'file' como nombre del parámetro
+        bytes,
+        filename: image.name,
+        contentType: MediaType('image', _getImageExtension(image.name)),
+      ),
+    );
 
-    final response = await http
-        .post(
-          Uri.parse(_apiConfig.endpoints.negocio.uploadLogo),
-          headers: _headers,
-          body: json.encode({
-            'fileName': image.name,
-            'imageBase64': base64Image,
-          }),
-        )
-        .timeout(Duration(seconds: 30));
-
-      
-      
+    final streamResponse = await request.send().timeout(Duration(seconds: 30));
+    final response = await http.Response.fromStream(streamResponse);
 
     if (response.statusCode == 200) {
       final jsonData = json.decode(response.body);
-      // El backend retorna la información en el campo 'data'
-      String logoUrl = jsonData['data'] as String;
+      // El backend retorna el objeto del negocio en el campo 'data'
+      // que contiene el campo 'logoUrl'
+      final serverData = jsonData['data'] as Map<String, dynamic>;
+      final logoUrl = serverData['logoUrl'] as String;
 
-        
       return logoUrl;
     } else {
       throw Exception(
@@ -516,15 +516,13 @@ class ImageService {
     final streamResponse = await request.send().timeout(Duration(seconds: 30));
     final response = await http.Response.fromStream(streamResponse);
 
-      
-      
-
     if (response.statusCode == 200) {
       final jsonData = json.decode(response.body);
-      // El backend retorna la información en el campo 'data'
-      String logoUrl = jsonData['data'] as String;
+      // El backend retorna el objeto del negocio en el campo 'data'
+      // que contiene el campo 'logoUrl'
+      final serverData = jsonData['data'] as Map<String, dynamic>;
+      final logoUrl = serverData['logoUrl'] as String;
 
-        
       return logoUrl;
     } else {
       throw Exception(

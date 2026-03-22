@@ -72,13 +72,16 @@ class _EliminarPedidosScreenState extends State<EliminarPedidosScreen> {
       return;
     }
 
-    final confirmar = await _confirmarEliminacion([id]);
-    if (confirmar != true) return;
+    final motivo = await _confirmarEliminacion([id]);
+    if (motivo == null) return;
 
     setState(() => _isDeleting = true);
 
     try {
-      await _pedidoService.eliminarPedidoPagado(id);
+      await _pedidoService.eliminarPedidoPagado(
+        id,
+        motivoEliminacion: motivo.isNotEmpty ? motivo : null,
+      );
       _idController.clear();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -110,8 +113,8 @@ class _EliminarPedidosScreenState extends State<EliminarPedidosScreen> {
       return;
     }
 
-    final confirmar = await _confirmarEliminacion(_selectedIds.toList());
-    if (confirmar != true) return;
+    final motivo = await _confirmarEliminacion(_selectedIds.toList());
+    if (motivo == null) return;
 
     setState(() => _isDeleting = true);
 
@@ -121,7 +124,10 @@ class _EliminarPedidosScreenState extends State<EliminarPedidosScreen> {
 
     for (final id in ids) {
       try {
-        await _pedidoService.eliminarPedidoPagado(id);
+        await _pedidoService.eliminarPedidoPagado(
+          id,
+          motivoEliminacion: motivo.isNotEmpty ? motivo : null,
+        );
         eliminados++;
       } catch (e) {
         errores++;
@@ -147,8 +153,9 @@ class _EliminarPedidosScreenState extends State<EliminarPedidosScreen> {
     _cargarPedidosHoy();
   }
 
-  Future<bool?> _confirmarEliminacion(List<String> ids) {
-    return showDialog<bool>(
+  Future<String?> _confirmarEliminacion(List<String> ids) {
+    final motivoController = TextEditingController();
+    return showDialog<String?>(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppTheme.cardBg,
@@ -218,18 +225,52 @@ class _EliminarPedidosScreenState extends State<EliminarPedidosScreen> {
                 ),
               ),
             ],
+            const SizedBox(height: 16),
+            TextField(
+              controller: motivoController,
+              maxLines: 3,
+              style: TextStyle(color: AppTheme.textPrimary),
+              decoration: InputDecoration(
+                labelText: 'Razón de la eliminación (opcional)',
+                labelStyle: TextStyle(color: AppTheme.textSecondary),
+                hintText: 'Ej: Pedido duplicado, error en facturación...',
+                hintStyle: TextStyle(
+                  color: AppTheme.textSecondary.withOpacity(0.5),
+                ),
+                filled: true,
+                fillColor: AppTheme.backgroundDark,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(
+                    color: AppTheme.textSecondary.withOpacity(0.3),
+                  ),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(
+                    color: AppTheme.textSecondary.withOpacity(0.3),
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: Colors.red),
+                ),
+              ),
+            ),
           ],
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.pop(context, null),
             child: Text(
               'Cancelar',
               style: TextStyle(color: AppTheme.textSecondary),
             ),
           ),
           ElevatedButton.icon(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () {
+              Navigator.pop(context, motivoController.text.trim());
+            },
             icon: const Icon(Icons.delete_forever, size: 18),
             label: const Text('Eliminar'),
             style: ElevatedButton.styleFrom(
@@ -756,14 +797,17 @@ class _EliminarPedidosScreenState extends State<EliminarPedidosScreen> {
                   onPressed: _isDeleting
                       ? null
                       : () async {
-                          final confirmar = await _confirmarEliminacion([
+                          final motivo = await _confirmarEliminacion([
                             pedido.id,
                           ]);
-                          if (confirmar == true) {
+                          if (motivo != null) {
                             setState(() => _isDeleting = true);
                             try {
                               await _pedidoService.eliminarPedidoPagado(
                                 pedido.id,
+                                motivoEliminacion: motivo.isNotEmpty
+                                    ? motivo
+                                    : null,
                               );
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(

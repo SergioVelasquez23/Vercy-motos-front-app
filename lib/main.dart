@@ -16,7 +16,7 @@ import 'screens/cerrar_caja_screen.dart';
 import 'screens/reportes_screen.dart';
 import 'screens/informes_productos_screen.dart';
 import 'screens/pedidos_screen_fusion.dart';
-import 'screens/configuracion_facturacion_screen.dart';
+
 import 'screens/gastos_screen.dart';
 import 'screens/tipos_gasto_screen.dart';
 import 'screens/ingresos_caja_screen.dart';
@@ -36,6 +36,7 @@ import 'screens/gastos_programados_screen.dart';
 import 'screens/alertas_screen.dart';
 import 'screens/autorizaciones_screen.dart';
 import 'screens/eliminar_pedidos_screen.dart';
+import 'screens/negocio_info_screen.dart';
 import 'models/cliente.dart';
 import 'models/cotizacion.dart';
 import 'providers/user_provider.dart';
@@ -155,6 +156,7 @@ class MyApp extends StatelessWidget {
         '/traslados': (context) => TrasladosScreen(),
         '/bodegas': (context) => BodegasScreen(),
         '/cuadre_caja': (context) => CuadreCajaScreen(),
+        '/negocio-info': (context) => const NegocioInfoScreen(),
         '/abrir_caja': (context) => AbrirCajaScreen(),
         '/cerrar_caja': (context) => CerrarCajaScreen(),
         '/compras': (context) => ComprasListScreen(),
@@ -181,9 +183,6 @@ class MyApp extends StatelessWidget {
             PedidosScreenFusion(), // Cambiado aquí
         '/facturas-lista': (context) => FacturasListScreen(),
         '/eliminar-pedidos': (context) => const EliminarPedidosScreen(),
-        '/facturacion/config': (context) =>
-            const ConfiguracionFacturacionScreen(),
-
         // Rutas para la pantalla de reportes
         '/reportes': (context) => ReportesScreen(),
         '/reportes/ventas': (context) => ReportesScreen(initialReportIndex: 1),

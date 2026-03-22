@@ -16,7 +16,10 @@ class PDFService {
   /// Convertir cualquier valor a String de forma segura
   String _toSafeString(dynamic value, [String defaultValue = '']) {
     if (value == null) return defaultValue;
-    if (value is String) return _sanitizeText(value);
+    if (value is String) {
+      if (value.trim().isEmpty) return defaultValue;
+      return _sanitizeText(value);
+    }
     if (value is DateTime) {
       return '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year}';
     }
@@ -238,14 +241,23 @@ class PDFService {
           negocio?['nombre'],
       'VERCY MOTOS',
     );
-    final nit = _toSafeString(resumen['nit'] ?? negocio?['nit']);
-    final email = _toSafeString(resumen['email'] ?? negocio?['email']);
+    final nit = _toSafeString(
+      resumen['nit'] ?? negocio?['nit'],
+      '1002576776-7',
+    );
+    final email = _toSafeString(
+      resumen['email'] ?? negocio?['email'],
+      'juandiegocaycedo01@gmail.com',
+    );
     final telefono = _toSafeString(
       resumen['telefonoRestaurante'] ?? negocio?['telefono'],
+      '3224640110',
     );
     final direccion = _toSafeString(
       resumen['direccionRestaurante'] ?? negocio?['direccion'],
     );
+    final responsableIva =
+        resumen['responsableIva'] ?? negocio?['responsableIva'] ?? true;
     final fecha = _toSafeString(resumen['fecha']);
     final hora = _toSafeString(resumen['hora']);
     final cliente = _toSafeString(resumen['cliente'], 'CONSUMIDOR FINAL');
@@ -288,73 +300,240 @@ class PDFService {
     const headerBgColor = PdfColor.fromInt(0xFFF5F5F5);
 
     pdf.addPage(
-      pw.Page(
+      pw.MultiPage(
         pageFormat: PdfPageFormat.letter,
         margin: const pw.EdgeInsets.all(24),
         build: (pw.Context context) {
-          return pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              // ========== ENCABEZADO ==========
-              pw.Row(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  // Logo y datos del negocio
-                  pw.Expanded(
-                    flex: 3,
-                    child: pw.Column(
-                      crossAxisAlignment: pw.CrossAxisAlignment.start,
-                      children: [
-                        if (logoImage != null)
-                          pw.Image(
-                            logoImage,
-                            width: 120,
-                            height: 60,
-                            fit: pw.BoxFit.contain,
-                          )
-                        else
-                          pw.Text(
-                            nombreNegocio,
-                            style: pw.TextStyle(font: fontBold, fontSize: 18),
-                          ),
-                        pw.SizedBox(height: 4),
-                        if (nit.isNotEmpty)
-                          pw.Text(
-                            'NIT: $nit',
-                            style: pw.TextStyle(font: font, fontSize: 10),
-                          ),
-                        pw.SizedBox(height: 8),
-                        if (email.isNotEmpty)
-                          pw.Text(
-                            'CORREO: $email',
-                            style: pw.TextStyle(font: font, fontSize: 9),
-                          ),
+          return [
+            // ========== ENCABEZADO ==========
+            pw.Row(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                // Logo y datos del negocio
+                pw.Expanded(
+                  flex: 3,
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      if (logoImage != null)
+                        pw.Image(
+                          logoImage,
+                          width: 120,
+                          height: 60,
+                          fit: pw.BoxFit.contain,
+                        )
+                      else
                         pw.Text(
-                          'TELEFONO: $telefono / NO RESPONSABLE DE IVA',
+                          nombreNegocio,
+                          style: pw.TextStyle(font: fontBold, fontSize: 18),
+                        ),
+                      pw.SizedBox(height: 2),
+                      pw.Text(
+                        'REGIMEN SIMPLE TRIBUTACION',
+                        style: pw.TextStyle(font: fontBold, fontSize: 10),
+                      ),
+                      pw.Text(
+                        'NIT: $nit',
+                        style: pw.TextStyle(font: font, fontSize: 10),
+                      ),
+                      pw.SizedBox(height: 4),
+                      pw.Text(
+                        'Correo: $email',
+                        style: pw.TextStyle(font: font, fontSize: 9),
+                      ),
+                      pw.Text(
+                        'Telefono: $telefono',
+                        style: pw.TextStyle(font: font, fontSize: 9),
+                      ),
+                    ],
+                  ),
+                ),
+                // Fecha y hora
+                pw.Expanded(
+                  flex: 2,
+                  child: pw.Container(
+                    alignment: pw.Alignment.topRight,
+                    child: pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.end,
+                      children: [
+                        pw.Text(
+                          'Fecha y Hora de',
                           style: pw.TextStyle(font: font, fontSize: 9),
+                        ),
+                        pw.Text(
+                          'Expedicion',
+                          style: pw.TextStyle(font: font, fontSize: 9),
+                        ),
+                        pw.Text(
+                          '$fecha $hora',
+                          style: pw.TextStyle(font: fontBold, fontSize: 10),
                         ),
                       ],
                     ),
                   ),
-                  // Fecha y hora
+                ),
+              ],
+            ),
+
+            pw.SizedBox(height: 12),
+
+            // ========== DATOS DEL CLIENTE Y FACTURA ==========
+            pw.Container(
+              decoration: pw.BoxDecoration(
+                border: pw.Border.all(color: PdfColors.black, width: 0.5),
+              ),
+              child: pw.Row(
+                children: [
+                  // Datos del cliente
+                  pw.Expanded(
+                    flex: 3,
+                    child: pw.Container(
+                      padding: const pw.EdgeInsets.all(8),
+                      child: pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          pw.Text(
+                            'Cliente: $cliente',
+                            style: pw.TextStyle(font: fontBold, fontSize: 10),
+                          ),
+                          pw.Text(
+                            'ID: $clienteNit',
+                            style: pw.TextStyle(font: font, fontSize: 9),
+                          ),
+                          pw.Text(
+                            'Departamento: ${clienteDepartamento.isNotEmpty ? clienteDepartamento : departamento}',
+                            style: pw.TextStyle(font: font, fontSize: 9),
+                          ),
+                          pw.Text(
+                            'Ciudad: ${clienteCiudad.isNotEmpty ? clienteCiudad : ciudad}',
+                            style: pw.TextStyle(font: font, fontSize: 9),
+                          ),
+                          if (clienteTelefono.isNotEmpty)
+                            pw.Text(
+                              'Telefono: $clienteTelefono',
+                              style: pw.TextStyle(font: font, fontSize: 9),
+                            ),
+                          if (clienteDireccion.isNotEmpty)
+                            pw.Text(
+                              'Direccion: $clienteDireccion',
+                              style: pw.TextStyle(font: font, fontSize: 9),
+                            ),
+                          if (clienteCorreo.isNotEmpty)
+                            pw.Text(
+                              'Correo: $clienteCorreo',
+                              style: pw.TextStyle(font: font, fontSize: 9),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  // Datos de la factura
                   pw.Expanded(
                     flex: 2,
                     child: pw.Container(
-                      alignment: pw.Alignment.topRight,
+                      decoration: pw.BoxDecoration(
+                        border: pw.Border(
+                          left: pw.BorderSide(
+                            color: PdfColors.black,
+                            width: 0.5,
+                          ),
+                        ),
+                      ),
                       child: pw.Column(
-                        crossAxisAlignment: pw.CrossAxisAlignment.end,
                         children: [
-                          pw.Text(
-                            'Fecha y Hora de',
-                            style: pw.TextStyle(font: font, fontSize: 9),
+                          // Tipo de factura
+                          pw.Container(
+                            color: headerBgColor,
+                            padding: const pw.EdgeInsets.all(4),
+                            width: double.infinity,
+                            child: pw.Text(
+                              'ORDEN DE COMPRA',
+                              style: pw.TextStyle(font: fontBold, fontSize: 10),
+                              textAlign: pw.TextAlign.center,
+                            ),
                           ),
-                          pw.Text(
-                            'Expedicion',
-                            style: pw.TextStyle(font: font, fontSize: 9),
+                          pw.Container(
+                            padding: const pw.EdgeInsets.all(4),
+                            child: pw.Text(
+                              numeroPedido,
+                              style: pw.TextStyle(font: fontBold, fontSize: 11),
+                              textAlign: pw.TextAlign.center,
+                            ),
                           ),
-                          pw.Text(
-                            '$fecha $hora',
-                            style: pw.TextStyle(font: fontBold, fontSize: 10),
+                          // Fechas
+                          pw.Row(
+                            children: [
+                              pw.Expanded(
+                                child: pw.Container(
+                                  color: headerBgColor,
+                                  padding: const pw.EdgeInsets.all(2),
+                                  child: pw.Text(
+                                    'FECHA\nFACTURA',
+                                    style: pw.TextStyle(
+                                      font: font,
+                                      fontSize: 7,
+                                    ),
+                                    textAlign: pw.TextAlign.center,
+                                  ),
+                                ),
+                              ),
+                              pw.Expanded(
+                                child: pw.Container(
+                                  color: headerBgColor,
+                                  padding: const pw.EdgeInsets.all(2),
+                                  child: pw.Text(
+                                    'FECHA\nVENCE',
+                                    style: pw.TextStyle(
+                                      font: font,
+                                      fontSize: 7,
+                                    ),
+                                    textAlign: pw.TextAlign.center,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          pw.Row(
+                            children: [
+                              pw.Expanded(
+                                child: pw.Container(
+                                  padding: const pw.EdgeInsets.all(2),
+                                  child: pw.Text(
+                                    fecha,
+                                    style: pw.TextStyle(
+                                      font: font,
+                                      fontSize: 8,
+                                    ),
+                                    textAlign: pw.TextAlign.center,
+                                  ),
+                                ),
+                              ),
+                              pw.Expanded(
+                                child: pw.Container(
+                                  padding: const pw.EdgeInsets.all(2),
+                                  child: pw.Text(
+                                    _toSafeString(
+                                      resumen['fechaVencimiento'],
+                                      fecha,
+                                    ),
+                                    style: pw.TextStyle(
+                                      font: font,
+                                      fontSize: 8,
+                                    ),
+                                    textAlign: pw.TextAlign.center,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          // Resolución DIAN
+                          pw.Container(
+                            padding: const pw.EdgeInsets.all(4),
+                            child: pw.Text(
+                              'RESOLUCIÓN DE AUTORIZACIÓN N. 1234 DEL 2024-12-31 CON PREFIJO POS DESDE 1 HASTA 100000 VIG. DE 60 MESES',
+                              style: pw.TextStyle(font: font, fontSize: 6),
+                              textAlign: pw.TextAlign.center,
+                            ),
                           ),
                         ],
                       ),
@@ -362,289 +541,113 @@ class PDFService {
                   ),
                 ],
               ),
+            ),
 
-              pw.SizedBox(height: 12),
+            pw.SizedBox(height: 12),
 
-              // ========== DATOS DEL CLIENTE Y FACTURA ==========
-              pw.Container(
-                decoration: pw.BoxDecoration(
-                  border: pw.Border.all(color: PdfColors.black, width: 0.5),
-                ),
-                child: pw.Row(
+            // ========== TABLA DE PRODUCTOS ==========
+            pw.Table(
+              border: pw.TableBorder.all(color: PdfColors.black, width: 0.5),
+              columnWidths: {
+                0: const pw.FlexColumnWidth(0.5), // ITEM
+                1: const pw.FlexColumnWidth(1.5), // CÓDIGO
+                2: const pw.FlexColumnWidth(0.5), // CANT
+                3: const pw.FlexColumnWidth(3), // DETALLE
+                4: const pw.FlexColumnWidth(1), // V. UNIT
+                5: const pw.FlexColumnWidth(0.5), // DCTO
+                6: const pw.FlexColumnWidth(1), // V. UNI DCTO
+                7: const pw.FlexColumnWidth(0.5), // IVA
+                8: const pw.FlexColumnWidth(1), // VALOR IVA
+                9: const pw.FlexColumnWidth(1), // TOTAL SIN IVA
+              },
+              children: [
+                // Encabezado
+                pw.TableRow(
+                  decoration: const pw.BoxDecoration(color: headerBgColor),
                   children: [
-                    // Datos del cliente
-                    pw.Expanded(
-                      flex: 3,
-                      child: pw.Container(
-                        padding: const pw.EdgeInsets.all(8),
-                        child: pw.Column(
-                          crossAxisAlignment: pw.CrossAxisAlignment.start,
-                          children: [
-                            pw.Text(
-                              'Cliente: $cliente',
-                              style: pw.TextStyle(font: fontBold, fontSize: 10),
-                            ),
-                            pw.Text(
-                              'ID: $clienteNit',
-                              style: pw.TextStyle(font: font, fontSize: 9),
-                            ),
-                            pw.Text(
-                              'Departamento: ${clienteDepartamento.isNotEmpty ? clienteDepartamento : departamento}',
-                              style: pw.TextStyle(font: font, fontSize: 9),
-                            ),
-                            pw.Text(
-                              'Ciudad: ${clienteCiudad.isNotEmpty ? clienteCiudad : ciudad}',
-                              style: pw.TextStyle(font: font, fontSize: 9),
-                            ),
-                            if (clienteTelefono.isNotEmpty)
-                              pw.Text(
-                                'Telefono: $clienteTelefono',
-                                style: pw.TextStyle(font: font, fontSize: 9),
-                              ),
-                            if (clienteDireccion.isNotEmpty)
-                              pw.Text(
-                                'Direccion: $clienteDireccion',
-                                style: pw.TextStyle(font: font, fontSize: 9),
-                              ),
-                            if (clienteCorreo.isNotEmpty)
-                              pw.Text(
-                                'Correo: $clienteCorreo',
-                                style: pw.TextStyle(font: font, fontSize: 9),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    // Datos de la factura
-                    pw.Expanded(
-                      flex: 2,
-                      child: pw.Container(
-                        decoration: pw.BoxDecoration(
-                          border: pw.Border(
-                            left: pw.BorderSide(
-                              color: PdfColors.black,
-                              width: 0.5,
-                            ),
-                          ),
-                        ),
-                        child: pw.Column(
-                          children: [
-                            // Tipo de factura
-                            pw.Container(
-                              color: headerBgColor,
-                              padding: const pw.EdgeInsets.all(4),
-                              width: double.infinity,
-                              child: pw.Text(
-                                'FACTURA POS',
-                                style: pw.TextStyle(
-                                  font: fontBold,
-                                  fontSize: 10,
-                                ),
-                                textAlign: pw.TextAlign.center,
-                              ),
-                            ),
-                            pw.Container(
-                              padding: const pw.EdgeInsets.all(4),
-                              child: pw.Text(
-                                numeroPedido,
-                                style: pw.TextStyle(
-                                  font: fontBold,
-                                  fontSize: 11,
-                                ),
-                                textAlign: pw.TextAlign.center,
-                              ),
-                            ),
-                            // Fechas
-                            pw.Row(
-                              children: [
-                                pw.Expanded(
-                                  child: pw.Container(
-                                    color: headerBgColor,
-                                    padding: const pw.EdgeInsets.all(2),
-                                    child: pw.Text(
-                                      'FECHA\nFACTURA',
-                                      style: pw.TextStyle(
-                                        font: font,
-                                        fontSize: 7,
-                                      ),
-                                      textAlign: pw.TextAlign.center,
-                                    ),
-                                  ),
-                                ),
-                                pw.Expanded(
-                                  child: pw.Container(
-                                    color: headerBgColor,
-                                    padding: const pw.EdgeInsets.all(2),
-                                    child: pw.Text(
-                                      'FECHA\nVENCE',
-                                      style: pw.TextStyle(
-                                        font: font,
-                                        fontSize: 7,
-                                      ),
-                                      textAlign: pw.TextAlign.center,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            pw.Row(
-                              children: [
-                                pw.Expanded(
-                                  child: pw.Container(
-                                    padding: const pw.EdgeInsets.all(2),
-                                    child: pw.Text(
-                                      fecha,
-                                      style: pw.TextStyle(
-                                        font: font,
-                                        fontSize: 8,
-                                      ),
-                                      textAlign: pw.TextAlign.center,
-                                    ),
-                                  ),
-                                ),
-                                pw.Expanded(
-                                  child: pw.Container(
-                                    padding: const pw.EdgeInsets.all(2),
-                                    child: pw.Text(
-                                      _toSafeString(
-                                        resumen['fechaVencimiento'],
-                                        fecha,
-                                      ),
-                                      style: pw.TextStyle(
-                                        font: font,
-                                        fontSize: 8,
-                                      ),
-                                      textAlign: pw.TextAlign.center,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            // Resolución DIAN
-                            pw.Container(
-                              padding: const pw.EdgeInsets.all(4),
-                              child: pw.Text(
-                                'RESOLUCIÓN DE AUTORIZACIÓN N. 1234 DEL 2024-12-31 CON PREFIJO POS DESDE 1 HASTA 100000 VIG. DE 60 MESES',
-                                style: pw.TextStyle(font: font, fontSize: 6),
-                                textAlign: pw.TextAlign.center,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+                    _buildTableHeader('ITEM', fontBold),
+                    _buildTableHeader('CÓDIGO', fontBold),
+                    _buildTableHeader('CANT', fontBold),
+                    _buildTableHeader('DETALLE', fontBold),
+                    _buildTableHeader('V. UNIT', fontBold),
+                    _buildTableHeader('DCTO', fontBold),
+                    _buildTableHeader('V. UNI DCTO', fontBold),
+                    _buildTableHeader('IVA', fontBold),
+                    _buildTableHeader('VALOR IVA', fontBold),
+                    _buildTableHeader('TOTAL\nSIN IVA', fontBold),
                   ],
                 ),
+                // Productos - se agregan dinámicamente basado en la cantidad
+                ..._buildProductosTable(resumen, font),
+              ],
+            ),
+
+            pw.SizedBox(height: 12),
+
+            // ========== OBSERVACIONES (debajo de productos) ==========
+            pw.Container(
+              decoration: pw.BoxDecoration(
+                border: pw.Border.all(color: PdfColors.black, width: 0.5),
               ),
-
-              pw.SizedBox(height: 12),
-
-              // ========== TABLA DE PRODUCTOS ==========
-              pw.Table(
-                border: pw.TableBorder.all(color: PdfColors.black, width: 0.5),
-                columnWidths: {
-                  0: const pw.FlexColumnWidth(0.5), // ITEM
-                  1: const pw.FlexColumnWidth(1.5), // CÓDIGO
-                  2: const pw.FlexColumnWidth(0.5), // CANT
-                  3: const pw.FlexColumnWidth(3), // DETALLE
-                  4: const pw.FlexColumnWidth(1), // V. UNIT
-                  5: const pw.FlexColumnWidth(0.5), // DCTO
-                  6: const pw.FlexColumnWidth(1), // V. UNI DCTO
-                  7: const pw.FlexColumnWidth(0.5), // IVA
-                  8: const pw.FlexColumnWidth(1), // VALOR IVA
-                  9: const pw.FlexColumnWidth(1), // TOTAL SIN IVA
-                },
+              padding: const pw.EdgeInsets.all(8),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
-                  // Encabezado
-                  pw.TableRow(
-                    decoration: const pw.BoxDecoration(color: headerBgColor),
-                    children: [
-                      _buildTableHeader('ITEM', fontBold),
-                      _buildTableHeader('CÓDIGO', fontBold),
-                      _buildTableHeader('CANT', fontBold),
-                      _buildTableHeader('DETALLE', fontBold),
-                      _buildTableHeader('V. UNIT', fontBold),
-                      _buildTableHeader('DCTO', fontBold),
-                      _buildTableHeader('V. UNI DCTO', fontBold),
-                      _buildTableHeader('IVA', fontBold),
-                      _buildTableHeader('VALOR IVA', fontBold),
-                      _buildTableHeader('TOTAL\nSIN IVA', fontBold),
-                    ],
+                  pw.Text(
+                    'OBSERVACIONES:',
+                    style: pw.TextStyle(font: fontBold, fontSize: 9),
                   ),
-                  // Productos
-                  ..._buildProductosTable(resumen, font),
+                  pw.SizedBox(height: 4),
+                  pw.Text(
+                    _toSafeString(
+                      resumen['observaciones'],
+                      'Este documento se asimila en todos sus efectos legales a una letra de cambio (Articulo 774 del Codigo de Comercio)',
+                    ),
+                    style: pw.TextStyle(font: font, fontSize: 8),
+                  ),
                 ],
               ),
+            ),
 
-              pw.SizedBox(height: 12),
+            pw.SizedBox(height: 8),
 
-              // ========== OBSERVACIONES (debajo de productos) ==========
-              pw.Container(
-                decoration: pw.BoxDecoration(
-                  border: pw.Border.all(color: PdfColors.black, width: 0.5),
-                ),
-                padding: const pw.EdgeInsets.all(8),
-                width: double.infinity,
-                child: pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: [
-                    pw.Text(
-                      'OBSERVACIONES:',
-                      style: pw.TextStyle(font: fontBold, fontSize: 9),
-                    ),
-                    pw.SizedBox(height: 4),
-                    pw.Text(
-                      _toSafeString(
-                        resumen['observaciones'],
-                        'Este documento se asimila en todos sus efectos legales a una letra de cambio (Articulo 774 del Codigo de Comercio)',
-                      ),
-                      style: pw.TextStyle(font: font, fontSize: 8),
-                    ),
-                  ],
-                ),
+            // ========== RESUMEN Y TOTALES ==========
+            _buildResumenYTotales(resumen, font, fontBold),
+
+            pw.SizedBox(height: 8),
+
+            // ========== VALOR EN LETRAS ==========
+            pw.Container(
+              decoration: pw.BoxDecoration(
+                border: pw.Border.all(color: PdfColors.black, width: 0.5),
               ),
-
-              // ========== ESPACIO FLEXIBLE ENTRE PRODUCTOS Y PIE ==========
-              pw.Spacer(),
-
-              // ========== RESUMEN Y TOTALES (al pie) ==========
-              _buildResumenYTotales(resumen, font, fontBold),
-
-              pw.SizedBox(height: 8),
-
-              // ========== VALOR EN LETRAS ==========
-              pw.Container(
-                decoration: pw.BoxDecoration(
-                  border: pw.Border.all(color: PdfColors.black, width: 0.5),
-                ),
-                padding: const pw.EdgeInsets.all(4),
-                child: pw.Row(
-                  children: [
-                    pw.Text(
-                      'VALOR EN LETRAS: ',
-                      style: pw.TextStyle(font: fontBold, fontSize: 9),
+              padding: const pw.EdgeInsets.all(4),
+              child: pw.Row(
+                children: [
+                  pw.Text(
+                    'VALOR EN LETRAS: ',
+                    style: pw.TextStyle(font: fontBold, fontSize: 9),
+                  ),
+                  pw.Expanded(
+                    child: pw.Text(
+                      _numeroALetras((resumen['total'] ?? 0.0).toDouble()),
+                      style: pw.TextStyle(font: font, fontSize: 9),
                     ),
-                    pw.Expanded(
-                      child: pw.Text(
-                        _numeroALetras((resumen['total'] ?? 0.0).toDouble()),
-                        style: pw.TextStyle(font: font, fontSize: 9),
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
+            ),
 
-              pw.SizedBox(height: 12),
+            pw.SizedBox(height: 12),
 
-              // ========== PIE DE PÁGINA ==========
-              pw.Center(
-                child: pw.Text(
-                  'Gracias por su compra - $nombreNegocio',
-                  style: pw.TextStyle(font: font, fontSize: 8),
-                ),
+            // ========== PIE DE PÁGINA ==========
+            pw.Center(
+              child: pw.Text(
+                'Gracias por su compra - $nombreNegocio',
+                style: pw.TextStyle(font: font, fontSize: 8),
               ),
-            ],
-          );
+            ),
+          ];
         },
       ),
     );
@@ -686,10 +689,13 @@ class PDFService {
       );
       final precioUnit =
           (producto['precioUnitario'] ?? producto['precio'] ?? 0.0);
-      final porcentajeDescuento = producto['porcentajeDescuento'] ?? 0;
+      final porcentajeDescuento =
+          producto['porcentajeDescuento'] ?? producto['descuento'] ?? 0;
       final valorDescuento = (producto['valorDescuento'] ?? 0.0);
-      final porcentajeImpuesto = producto['porcentajeImpuesto'] ?? 0;
-      final valorImpuesto = (producto['valorImpuesto'] ?? 0.0);
+      final porcentajeImpuesto =
+          producto['porcentajeImpuesto'] ?? producto['iva'] ?? 0;
+      final valorImpuesto =
+          (producto['valorImpuesto'] ?? producto['valorIva'] ?? 0.0);
       final subtotal = (precioUnit * cantidad);
       final totalItem = subtotal - valorDescuento + valorImpuesto;
 
@@ -748,8 +754,35 @@ class PDFService {
     );
     final subtotal = resumen['subtotal'] ?? resumen['totalSinIva'] ?? 0.0;
     final descuento = resumen['descuento'] ?? 0.0;
+    final iva =
+        resumen['iva'] ??
+        resumen['totalIva'] ??
+        resumen['impuestos'] ??
+        resumen['totalImp'] ??
+        0.0;
     final total = resumen['total'] ?? resumen['totalFactura'] ?? 0.0;
     final formaPago = _toSafeString(resumen['formaPago'], 'Efectivo');
+    final pagosParciales = resumen['pagosParciales'] as List?;
+
+    // Calcular IVA desde productos si no viene directo
+    double ivaCalculado = (iva is num ? iva.toDouble() : 0.0);
+    double baseIva = 0.0;
+    double pctIva = 0.0;
+    if (productos is List) {
+      double ivaProductos = 0.0;
+      for (var p in productos) {
+        final valorImpuesto = (p['valorImpuesto'] ?? p['valorIva'] ?? 0.0);
+        final pctImp = (p['porcentajeImpuesto'] ?? p['iva'] ?? 0);
+        final cant = (p['cantidad'] ?? 1);
+        if (valorImpuesto is num && valorImpuesto > 0) {
+          ivaProductos +=
+              valorImpuesto.toDouble() * (cant is num ? cant.toInt() : 1);
+        }
+        if (pctImp is num && pctImp > 0) pctIva = pctImp.toDouble();
+      }
+      if (ivaCalculado == 0 && ivaProductos > 0) ivaCalculado = ivaProductos;
+      baseIva = (subtotal is num ? subtotal.toDouble() : 0.0);
+    }
 
     return pw.Row(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -761,7 +794,7 @@ class PDFService {
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
               pw.Text(
-                'NO. ARTÍCULOS: $cantidadArticulos PRODUCTOS: $cantidadProductos VENDEDOR: $vendedor TIPO: CONTADO TOTAL: ${_formatearNumero(total)}',
+                'PRODUCTOS: $cantidadProductos VENDEDOR: $vendedor TIPO: CONTADO TOTAL: ${_formatearNumero(total)}',
                 style: pw.TextStyle(font: fontBold, fontSize: 8),
               ),
               pw.SizedBox(height: 4),
@@ -783,7 +816,7 @@ class PDFService {
                       pw.Container(
                         padding: const pw.EdgeInsets.all(2),
                         child: pw.Text(
-                          'DETALLE DE IVA',
+                          'DETALLE DE IMPUESTOS',
                           style: pw.TextStyle(font: fontBold, fontSize: 7),
                           textAlign: pw.TextAlign.center,
                         ),
@@ -837,15 +870,7 @@ class PDFService {
                       pw.Container(
                         padding: const pw.EdgeInsets.all(2),
                         child: pw.Text(
-                          'TOTAL',
-                          style: pw.TextStyle(font: fontBold, fontSize: 8),
-                          textAlign: pw.TextAlign.center,
-                        ),
-                      ),
-                      pw.Container(
-                        padding: const pw.EdgeInsets.all(2),
-                        child: pw.Text(
-                          '0',
+                          _formatearNumero(baseIva),
                           style: pw.TextStyle(font: font, fontSize: 8),
                           textAlign: pw.TextAlign.center,
                         ),
@@ -853,7 +878,7 @@ class PDFService {
                       pw.Container(
                         padding: const pw.EdgeInsets.all(2),
                         child: pw.Text(
-                          '0',
+                          _formatearNumero(ivaCalculado),
                           style: pw.TextStyle(font: font, fontSize: 8),
                           textAlign: pw.TextAlign.center,
                         ),
@@ -861,7 +886,15 @@ class PDFService {
                       pw.Container(
                         padding: const pw.EdgeInsets.all(2),
                         child: pw.Text(
-                          '0',
+                          _formatearNumero(baseIva),
+                          style: pw.TextStyle(font: font, fontSize: 8),
+                          textAlign: pw.TextAlign.center,
+                        ),
+                      ),
+                      pw.Container(
+                        padding: const pw.EdgeInsets.all(2),
+                        child: pw.Text(
+                          _formatearNumero(ivaCalculado),
                           style: pw.TextStyle(font: font, fontSize: 8),
                           textAlign: pw.TextAlign.center,
                         ),
@@ -870,6 +903,14 @@ class PDFService {
                   ),
                 ],
               ),
+              if ((resumen['descuento'] ?? 0.0) > 0)
+                pw.Padding(
+                  padding: const pw.EdgeInsets.only(top: 4),
+                  child: pw.Text(
+                    'DCTO. GENERAL: -${_formatearMoneda(resumen['descuento'] ?? 0.0)}',
+                    style: pw.TextStyle(font: fontBold, fontSize: 8),
+                  ),
+                ),
             ],
           ),
         ),
@@ -900,13 +941,41 @@ class PDFService {
                     style: pw.TextStyle(font: font, fontSize: 8),
                   ),
                 ),
-                pw.Container(
-                  padding: const pw.EdgeInsets.all(2),
-                  child: pw.Text(
-                    _formatearNumero(total),
-                    style: pw.TextStyle(font: font, fontSize: 8),
+                // Desglose de pagos mixtos
+                if (pagosParciales != null && pagosParciales.isNotEmpty)
+                  ...pagosParciales.map((pago) {
+                    final nombre = _toSafeString((pago as Map)['formaPago']);
+                    final monto = (pago['monto'] ?? 0.0) is num
+                        ? (pago['monto'] as num).toDouble()
+                        : 0.0;
+                    return pw.Container(
+                      padding: const pw.EdgeInsets.symmetric(
+                        horizontal: 2,
+                        vertical: 1,
+                      ),
+                      child: pw.Row(
+                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                        children: [
+                          pw.Text(
+                            nombre,
+                            style: pw.TextStyle(font: font, fontSize: 7),
+                          ),
+                          pw.Text(
+                            _formatearNumero(monto),
+                            style: pw.TextStyle(font: font, fontSize: 7),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+                if (pagosParciales == null || pagosParciales.isEmpty)
+                  pw.Container(
+                    padding: const pw.EdgeInsets.all(2),
+                    child: pw.Text(
+                      _formatearNumero(total),
+                      style: pw.TextStyle(font: font, fontSize: 8),
+                    ),
                   ),
-                ),
                 pw.Container(
                   color: const PdfColor.fromInt(0xFFF5F5F5),
                   padding: const pw.EdgeInsets.all(2),
@@ -944,14 +1013,12 @@ class PDFService {
                   font,
                   fontBold,
                 ),
-                // Mostrar descuento general solo si > 0
-                if (descuento > 0)
-                  _buildTotalRow(
-                    'DCTO. GENERAL',
-                    '-${_formatearMoneda(descuento)}',
-                    font,
-                    fontBold,
-                  ),
+                _buildTotalRow(
+                  'IVA',
+                  _formatearMoneda(ivaCalculado),
+                  font,
+                  fontBold,
+                ),
                 // Retenciones (mostrar solo si > 0)
                 if ((resumen['retencion'] ?? 0.0) > 0)
                   _buildTotalRow(

@@ -943,7 +943,7 @@ class PedidoService {
   }
 
   // Eliminar pedido (con reversión automática de dinero en caja)
-  Future<void> eliminarPedido(String id) async {
+  Future<void> eliminarPedido(String id, {String? motivoEliminacion}) async {
     try {
       // ✅ NUEVO: Devolver stock ANTES de eliminar el pedido
       await _devolverStockProductos(id);
@@ -952,6 +952,9 @@ class PedidoService {
       final response = await http.delete(
         Uri.parse('$baseUrl/api/pedidos/$id'),
         headers: headers,
+        body: motivoEliminacion != null
+            ? json.encode({'motivoEliminacion': motivoEliminacion})
+            : null,
       );
 
         
@@ -985,7 +988,10 @@ class PedidoService {
 
   // Eliminar pedido forzadamente (para administradores)
   // Esta función específicamente maneja pedidos pagados o con estado especial
-  Future<void> eliminarPedidoForzado(String id) async {
+  Future<void> eliminarPedidoForzado(
+    String id, {
+    String? motivoEliminacion,
+  }) async {
     try {
       // ✅ NUEVO: Devolver stock ANTES de eliminar el pedido
       await _devolverStockProductos(id);
@@ -997,6 +1003,9 @@ class PedidoService {
       final response = await http.delete(
         Uri.parse('$baseUrl/api/pedidos/$id?force=true&admin=true'),
         headers: headers,
+        body: motivoEliminacion != null
+            ? json.encode({'motivoEliminacion': motivoEliminacion})
+            : null,
       );
 
         
@@ -1045,7 +1054,10 @@ class PedidoService {
 
   /// Eliminar pedido pagado - Revierte automáticamente el dinero de las ventas
   /// Este método utiliza el endpoint especial que maneja la reversión de pagos
-  Future<void> eliminarPedidoPagado(String id) async {
+  Future<void> eliminarPedidoPagado(
+    String id, {
+    String? motivoEliminacion,
+  }) async {
     try {
       // ✅ NUEVO: Devolver stock ANTES de eliminar el pedido
       await _devolverStockProductos(id);
@@ -1055,6 +1067,9 @@ class PedidoService {
       final response = await http.delete(
         Uri.parse('$baseUrl/api/pedidos/$id/pagado'),
         headers: headers,
+        body: motivoEliminacion != null
+            ? json.encode({'motivoEliminacion': motivoEliminacion})
+            : null,
       );
 
         

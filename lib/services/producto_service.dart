@@ -2287,6 +2287,12 @@ class ProductoService {
     }
   }
 
+  // Invalida la caché de un único producto por id (para forzar recarga fresca)
+  void invalidarProducto(String id) {
+    _productoByIdCache.remove(id);
+    _inFlightGetProductoById.remove(id);
+  }
+
   // Eliminar caché (útil para wake-up / recarga completa)
   void clearCache() {
     _productosCache.clear();

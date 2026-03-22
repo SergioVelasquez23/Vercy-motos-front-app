@@ -28,6 +28,19 @@ class Factura {
   final List<ItemPedido>? items;
   final User? usuario;
   final Map<String, dynamic>? datosAdicionales;
+  
+  // ===== CAMPOS PARA FACTURACIÓN ELECTRÓNICA DIAN =====
+  final String? cufe; // Código Único de Factura Electrónica (SHA-384)
+  final String? uuid; // Identificador único universal
+  final String? qrCode; // Código QR para validación
+  final String?
+  estadoDIAN; // "PENDIENTE", "PROCESANDO", "ACEPTADA", "RECHAZADA"
+  final String? xmlFactura; // XML UBL 2.1 generado
+  final String? numeroDocumentoElectronico; // Número de FE con prefijo
+  final DateTime? fechaSolicitud; // Fecha de envío a DIAN
+  final String? respuestaDIAN; // XML respuesta de DIAN
+  final String? motivoRechazo; // Razón del rechazo si aplica
+  final String? trackId; // ID de seguimiento en DIAN
 
   Factura({
     this.id,
@@ -53,6 +66,17 @@ class Factura {
     this.items,
     this.usuario,
     this.datosAdicionales,
+    // DIAN
+    this.cufe,
+    this.uuid,
+    this.qrCode,
+    this.estadoDIAN,
+    this.xmlFactura,
+    this.numeroDocumentoElectronico,
+    this.fechaSolicitud,
+    this.respuestaDIAN,
+    this.motivoRechazo,
+    this.trackId,
   });
 
   /// Crea una copia de la factura con los campos actualizados
@@ -80,6 +104,17 @@ class Factura {
     List<ItemPedido>? items,
     User? usuario,
     Map<String, dynamic>? datosAdicionales,
+    // DIAN
+    String? cufe,
+    String? uuid,
+    String? qrCode,
+    String? estadoDIAN,
+    String? xmlFactura,
+    String? numeroDocumentoElectronico,
+    DateTime? fechaSolicitud,
+    String? respuestaDIAN,
+    String? motivoRechazo,
+    String? trackId,
   }) {
     return Factura(
       id: id ?? this.id,
@@ -105,6 +140,18 @@ class Factura {
       items: items ?? this.items,
       usuario: usuario ?? this.usuario,
       datosAdicionales: datosAdicionales ?? this.datosAdicionales,
+      // DIAN
+      cufe: cufe ?? this.cufe,
+      uuid: uuid ?? this.uuid,
+      qrCode: qrCode ?? this.qrCode,
+      estadoDIAN: estadoDIAN ?? this.estadoDIAN,
+      xmlFactura: xmlFactura ?? this.xmlFactura,
+      numeroDocumentoElectronico:
+          numeroDocumentoElectronico ?? this.numeroDocumentoElectronico,
+      fechaSolicitud: fechaSolicitud ?? this.fechaSolicitud,
+      respuestaDIAN: respuestaDIAN ?? this.respuestaDIAN,
+      motivoRechazo: motivoRechazo ?? this.motivoRechazo,
+      trackId: trackId ?? this.trackId,
     );
   }
 
@@ -136,6 +183,19 @@ class Factura {
       if (items != null) 'items': items?.map((item) => item.toJson()).toList(),
       if (usuario != null) 'usuario': usuario?.toJson(),
       if (datosAdicionales != null) 'datosAdicionales': datosAdicionales,
+      // DIAN
+      if (cufe != null) 'cufe': cufe,
+      if (uuid != null) 'uuid': uuid,
+      if (qrCode != null) 'qrCode': qrCode,
+      if (estadoDIAN != null) 'estadoDIAN': estadoDIAN,
+      if (xmlFactura != null) 'xmlFactura': xmlFactura,
+      if (numeroDocumentoElectronico != null)
+        'numeroDocumentoElectronico': numeroDocumentoElectronico,
+      if (fechaSolicitud != null)
+        'fechaSolicitud': fechaSolicitud?.toIso8601String(),
+      if (respuestaDIAN != null) 'respuestaDIAN': respuestaDIAN,
+      if (motivoRechazo != null) 'motivoRechazo': motivoRechazo,
+      if (trackId != null) 'trackId': trackId,
     };
   }
 
@@ -196,6 +256,17 @@ class Factura {
       items: parseItems(json['items']),
       usuario: json['usuario'] != null ? User.fromJson(json['usuario']) : null,
       datosAdicionales: json['datosAdicionales'],
+      // DIAN
+      cufe: json['cufe'],
+      uuid: json['uuid'],
+      qrCode: json['qrCode'],
+      estadoDIAN: json['estadoDIAN'],
+      xmlFactura: json['xmlFactura'],
+      numeroDocumentoElectronico: json['numeroDocumentoElectronico'],
+      fechaSolicitud: parseDateTime(json['fechaSolicitud']),
+      respuestaDIAN: json['respuestaDIAN'],
+      motivoRechazo: json['motivoRechazo'],
+      trackId: json['trackId'],
     );
   }
 

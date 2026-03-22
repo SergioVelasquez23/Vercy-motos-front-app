@@ -2208,6 +2208,10 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                                   if (_productoSeleccionado == null) return;
                                   setState(() => _isLoading = true);
                                   try {
+                                    // 🗑️ Invalidar caché para forzar lectura fresca de la API
+                                    _productoService.invalidarProducto(
+                                      _productoSeleccionado!.id,
+                                    );
                                     final productoActualizado =
                                         await _productoService.getProducto(
                                           _productoSeleccionado!.id,
@@ -4551,6 +4555,29 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
               itemsOverride: itemsOriginales,
             );
 
+            // Agregar desglose de pagos mixtos si no vino del pedido
+            if (metodoPagoUsado == 'multiple' &&
+                resumen['pagosParciales'] == null) {
+              final desglose = <Map<String, dynamic>>[];
+              if (montoEfectivo > 0)
+                desglose.add({'formaPago': 'Efectivo', 'monto': montoEfectivo});
+              if (montoTarjeta > 0)
+                desglose.add({'formaPago': 'Tarjeta', 'monto': montoTarjeta});
+              if (montoTransferencia > 0)
+                desglose.add({
+                  'formaPago': 'Transferencia',
+                  'monto': montoTransferencia,
+                });
+              if (montoSistecredito > 0)
+                desglose.add({
+                  'formaPago': 'Sistecredito',
+                  'monto': montoSistecredito,
+                });
+              if (montoDatafono > 0)
+                desglose.add({'formaPago': 'Datafono', 'monto': montoDatafono});
+              if (desglose.isNotEmpty) resumen['pagosParciales'] = desglose;
+            }
+
             // Mostrar diálogo con opciones de PDF/Imprimir
             await showDialog(
               context: context,
@@ -5375,7 +5402,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       // Información de la factura
       'pedidoId': pedido.id,
       'numero': pedido.id,
-      'tipoDocumento': 'FACTURA POS',
+      'tipoDocumento': 'ORDEN DE COMPRA',
       'fecha': fechaFormateada,
       'hora': horaFormateada,
       'fechaVencimiento': pedido.fechaVencimiento != null
@@ -5446,6 +5473,18 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       // Forma de pago
       'medioPago': medioPago,
       'formaPago': _formatearFormaPago(medioPago),
+
+      // Desglose de pagos (para pago mixto)
+      'pagosParciales': pedido.pagosParciales.isNotEmpty
+          ? pedido.pagosParciales
+                .map(
+                  (p) => {
+                    'formaPago': _formatearFormaPago(p.formaPago),
+                    'monto': p.monto,
+                  },
+                )
+                .toList()
+          : null,
 
       // Cantidades
       'cantidadArticulos': (itemsOverride ?? pedido.items).length,

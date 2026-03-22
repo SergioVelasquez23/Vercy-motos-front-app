@@ -3908,16 +3908,41 @@ class _ProductosScreenState extends State<ProductosScreen> {
                   style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
                 ),
                 SizedBox(height: 8),
+                Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.blue[50],
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '✨ ACTUALIZA BODEGA Y ALMACÉN',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue[800],
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        '• Columna BODEGA → Cantidad para bodega\n'
+                        '• Columna ALMACEN → Cantidad para almacén',
+                        style: TextStyle(fontSize: 11, color: Colors.blue[700]),
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(height: 8),
                 Text(
                   '• CODIGO*\n'
                   '• NOMBRE DEL PRODUCTO*\n'
+                  '• BODEGA* (cantidad)\n'
+                  '• ALMACEN* (cantidad)\n'
                   '• PRECIO VENTA PRINCIPAL*\n'
                   '• COSTO UNITARIO*\n'
                   '• PRODUCTO O SERVICIO*\n'
-                  '• CONTROL DE INVENTARIO\n'
-                  '• % IMPUESTO\n'
-                  '• INVENTARIO BAJO\n'
-                  '• INVENTARIO ÓPTIMO\n'
                   '• Y más...',
                   style: TextStyle(fontSize: 12, color: Colors.grey[700]),
                 ),
@@ -4143,7 +4168,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
     try {
       var request = http.MultipartRequest(
         'POST',
-        Uri.parse('$_backendBaseUrl/api/productos/carga-masiva'),
+        Uri.parse('$_backendBaseUrl/api/productos/carga-masiva-ambos'),
       );
 
       // Agregar el archivo desde bytes
@@ -4159,7 +4184,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Productos cargados exitosamente'),
+              content: Text('✨ Bodega y Almacén actualizados exitosamente'),
               backgroundColor: Colors.green,
               duration: Duration(seconds: 3),
             ),
@@ -4192,7 +4217,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
     try {
       var request = http.MultipartRequest(
         'POST',
-        Uri.parse('$_backendBaseUrl/api/productos/carga-masiva'),
+        Uri.parse('$_backendBaseUrl/api/productos/carga-masiva-ambos'),
       );
 
       // Agregar el archivo
@@ -4206,7 +4231,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Productos cargados exitosamente'),
+              content: Text('✨ Bodega y Almacén actualizados exitosamente'),
               backgroundColor: Colors.green,
               duration: Duration(seconds: 3),
             ),

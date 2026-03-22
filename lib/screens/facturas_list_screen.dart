@@ -10,6 +10,7 @@ import '../services/pdf_service.dart';
 import '../services/negocio_info_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/vercy_sidebar_layout.dart';
+import '../widgets/facturizacion/facturizador_matias_button.dart';
 
 class FacturasListScreen extends StatefulWidget {
   final String? filtroInicial;
@@ -748,12 +749,24 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
           ),
 
           // Acciones
-          Container(
-            width: 100,
+          SizedBox(
+            width: 250,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                // Botón ver/imprimir PDF
+                // Botón facturar (solo para pedidos pagados)
+                if (esPedido && isPagado)
+                  SizedBox(
+                    height: 40,
+                    child: FacturizarMatiasButton(
+                      pedidoId: (documento as Pedido).id,
+                      onSuccess: () {
+                        _cargarDocumentos();
+                      },
+                    ),
+                  ),
+                SizedBox(width: 4),
+                // Botón ver PDF
                 IconButton(
                   icon: Icon(
                     Icons.picture_as_pdf,
@@ -763,6 +776,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
                   onPressed: () => _verPDF(documento),
                   tooltip: 'Ver PDF',
                 ),
+                // Botón imprimir
                 IconButton(
                   icon: Icon(
                     Icons.print,
@@ -1017,9 +1031,19 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
         'cantidadArticulos': documento.items.length,
         'cantidadProductos': documento.items.length,
         'metodoPago': documento.formaPago ?? 'EFECTIVO',
-        'formaPago': documento.formaPago ?? 'EFECTIVO',
+        'formaPago': _formatearFormaPagoPdf(documento.formaPago ?? 'EFECTIVO'),
         'vendedor': documento.mesero ?? 'Sin Vendedor',
         'mesero': documento.mesero ?? 'Sin Vendedor',
+        // Desglose de pagos mixtos
+        if (documento.pagosParciales.isNotEmpty)
+          'pagosParciales': documento.pagosParciales
+              .map(
+                (p) => {
+                  'formaPago': _formatearFormaPagoPdf(p.formaPago),
+                  'monto': p.monto,
+                },
+              )
+              .toList(),
       };
     } else if (documento is Factura) {
       final subtotalCalc = documento.subtotal;
@@ -1096,7 +1120,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
         'iva': ivaCalc,
         'total': documento.total,
         'metodoPago': documento.metodoPago ?? 'EFECTIVO',
-        'formaPago': documento.metodoPago ?? 'EFECTIVO',
+        'formaPago': _formatearFormaPagoPdf(documento.metodoPago ?? 'EFECTIVO'),
         'vendedor': 'Sin Vendedor',
         'mesero': 'Sin Vendedor',
       };
@@ -1135,6 +1159,27 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
           backgroundColor: Colors.red,
         ),
       );
+    }
+  }
+
+  String _formatearFormaPagoPdf(String formaPago) {
+    switch (formaPago.toLowerCase()) {
+      case 'efectivo':
+        return 'Efectivo';
+      case 'tarjeta':
+        return 'Tarjeta';
+      case 'transferencia':
+        return 'Transferencia';
+      case 'sistecredito':
+        return 'Sistecredito';
+      case 'datafono':
+        return 'Datafono';
+      case 'mixto':
+        return 'Pago Mixto';
+      case 'multiple':
+        return 'Pago Múltiple';
+      default:
+        return formaPago;
     }
   }
 

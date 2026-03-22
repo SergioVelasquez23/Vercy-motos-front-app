@@ -57,7 +57,7 @@ class Proveedor {
 
   factory Proveedor.fromJson(Map<String, dynamic> json) {
     return Proveedor(
-      id: json['id'] ?? '',
+      id: json['_id'] ?? json['id'] ?? '',
       nombre: json['nombre'] ?? '',
       apellidos: json['apellidos'],
       nombreComercial: json['nombreComercial'],

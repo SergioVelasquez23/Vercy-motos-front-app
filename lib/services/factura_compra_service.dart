@@ -3,6 +3,9 @@ import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
 import '../models/factura_compra.dart';
 import '../models/ingrediente.dart';
+import '../models/movimiento_inventario.dart';
+import 'producto_service.dart';
+import 'inventario_service.dart';
 
 class FacturaCompraService {
   final ApiConfig _apiConfig = ApiConfig.instance;
@@ -661,13 +664,19 @@ class FacturaCompraService {
   }
 
   /// Eliminar factura de compra (con reversión automática de stock y dinero)
-  Future<Map<String, dynamic>> eliminarFacturaCompra(String id) async {
+  Future<Map<String, dynamic>> eliminarFacturaCompra(
+    String id, {
+    String? motivoEliminacion,
+  }) async {
     try {
         
 
       final response = await http.delete(
         Uri.parse('$baseUrl/$id'),
         headers: headers,
+        body: motivoEliminacion != null
+            ? json.encode({'motivoEliminacion': motivoEliminacion})
+            : null,
       );
 
         
@@ -811,6 +820,120 @@ class FacturaCompraService {
     } catch (e) {
         
       throw Exception('Error de conexión: $e');
+    }
+  }
+
+  /// Revertir inventario de una factura de compra (restar del stock lo que se agregó)
+  /// Debe llamarse ANTES de eliminar la factura del backend.
+  Future<void> revertirInventarioCompra(FacturaCompra factura) async {
+    final productoService = ProductoService();
+    final inventarioService = InventarioService();
+
+    for (var item in factura.items) {
+      try {
+        final productoCompleto = await productoService.getProducto(
+          item.ingredienteId,
+        );
+
+        if (productoCompleto == null) {
+          print('⚠️ Reversión: Producto no encontrado: ${item.ingredienteId}');
+          continue;
+        }
+
+        final destino = item.destino;
+        double almacenActual = (productoCompleto.almacen ?? 0).toDouble();
+        double bodegaActual = (productoCompleto.bodega ?? 0).toDouble();
+        double almacenNuevo = almacenActual;
+        double bodegaNuevo = bodegaActual;
+
+        if (destino.toUpperCase() == 'BODEGA') {
+          bodegaNuevo = (bodegaActual - item.cantidad).clamp(
+            0,
+            double.infinity,
+          );
+        } else if (destino.toUpperCase() == 'PARTE Y PARTE') {
+          final cantidadParaAlmacen = item.cantidadAlmacen > 0
+              ? item.cantidadAlmacen
+              : item.cantidad / 2;
+          final cantidadParaBodega = item.cantidadBodega > 0
+              ? item.cantidadBodega
+              : item.cantidad / 2;
+          almacenNuevo = (almacenActual - cantidadParaAlmacen).clamp(
+            0,
+            double.infinity,
+          );
+          bodegaNuevo = (bodegaActual - cantidadParaBodega).clamp(
+            0,
+            double.infinity,
+          );
+        } else {
+          // ALMACÉN por defecto
+          almacenNuevo = (almacenActual - item.cantidad).clamp(
+            0,
+            double.infinity,
+          );
+        }
+
+        final movimiento = MovimientoInventario(
+          inventarioId: item.ingredienteId,
+          productoId: item.ingredienteId,
+          productoNombre: item.ingredienteNombre,
+          tipoMovimiento: 'Salida',
+          motivo:
+              'Reversión Compra - Factura ${factura.numeroFactura} ($destino)',
+          cantidadAnterior: almacenActual + bodegaActual,
+          cantidadMovimiento: item.cantidad,
+          cantidadNueva: almacenNuevo + bodegaNuevo,
+          responsable: 'Sistema',
+          referencia: 'REV-FC-${factura.numeroFactura}',
+          observaciones:
+              'Eliminación de compra a ${factura.proveedorNombre} - Reversión de stock en $destino',
+          costoUnitario: item.precioUnitario,
+          precioTotal: item.subtotal,
+          fecha: DateTime.now(),
+          facturaNo: factura.numeroFactura,
+          proveedor: factura.proveedorNombre,
+        );
+
+        bool movimientoExitoso = false;
+        try {
+          await inventarioService.registrarMovimiento(movimiento);
+          movimientoExitoso = true;
+          print(
+            '📝 Reversión registrada: ${item.ingredienteNombre} - $destino: '
+            '${(almacenActual + bodegaActual).toInt()} → ${(almacenNuevo + bodegaNuevo).toInt()}',
+          );
+        } catch (movError) {
+          print(
+            '⚠️ Error registrando movimiento de reversión: $movError - Se actualizará stock manualmente',
+          );
+        }
+
+        // Fallback: actualizar producto manualmente si el movimiento falló
+        if (!movimientoExitoso) {
+          final productoActualizado = productoCompleto.copyWith(
+            almacen: almacenNuevo.toInt(),
+            bodega: bodegaNuevo.toInt(),
+          );
+          try {
+            await productoService.updateProducto(productoActualizado);
+            print(
+              '✅ Stock revertido manualmente: ${productoActualizado.nombre} - '
+              'ALM: ${almacenActual.toInt()} → ${almacenNuevo.toInt()}, '
+              'BOD: ${bodegaActual.toInt()} → ${bodegaNuevo.toInt()}',
+            );
+          } catch (updateError) {
+            print(
+              '❌ ERROR CRÍTICO revirtiendo stock: $updateError - '
+              'Producto: ${productoCompleto.nombre}',
+            );
+          }
+        }
+      } catch (e) {
+        print(
+          '⚠️ Error revirtiendo inventario para ${item.ingredienteNombre}: $e',
+        );
+      }
     }
   }
 }

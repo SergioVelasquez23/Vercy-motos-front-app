@@ -187,58 +187,93 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
                 ),
                 Row(
                   children: [
-                    ElevatedButton.icon(
-                      onPressed: () =>
-                          _mostrarCargaMasivaProductos(tipo: 'bodega'),
-                      icon: Icon(Icons.upload_file, color: Colors.white),
-                      label: Text(
-                        'Carga - Bodega',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.success,
-                        foregroundColor: Colors.white,
-                      ),
-                    ),
-                    SizedBox(width: 8),
-                    ElevatedButton.icon(
-                      onPressed: () =>
-                          _mostrarCargaMasivaProductos(tipo: 'almacen'),
-                      icon: Icon(Icons.upload_file, color: Colors.white),
-                      label: Text(
-                        'Carga - Almacén',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.info,
-                        foregroundColor: Colors.white,
-                      ),
-                    ),
-                    SizedBox(width: 12),
-                    ElevatedButton.icon(
-                      onPressed: () => _descargarProductosExcel(tipo: 'bodega'),
-                      icon: Icon(Icons.download, color: Colors.white),
-                      label: Text(
-                        'Descargar - Bodega',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.orange,
-                        foregroundColor: Colors.white,
-                      ),
-                    ),
-                    SizedBox(width: 8),
-                    ElevatedButton.icon(
-                      onPressed: () =>
-                          _descargarProductosExcel(tipo: 'almacen'),
-                      icon: Icon(Icons.download, color: Colors.white),
-                      label: Text(
-                        'Descargar - Almacén',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.deepOrange,
-                        foregroundColor: Colors.white,
+                    // Dropdown con opciones de carga y descarga
+                    PopupMenuButton<String>(
+                      onSelected: (value) {
+                        if (value.startsWith('carga-')) {
+                          final tipo = value.replaceFirst('carga-', '');
+                          _mostrarCargaMasivaProductos(tipo: tipo);
+                        } else if (value.startsWith('descarga-')) {
+                          final tipo = value.replaceFirst('descarga-', '');
+                          _descargarProductosExcel(tipo: tipo);
+                        }
+                      },
+                      itemBuilder: (BuildContext context) => [
+                        // Opciones de Carga
+                        PopupMenuItem<String>(
+                          child: Row(
+                            children: [
+                              Icon(Icons.cloud_upload, color: AppTheme.success),
+                              SizedBox(width: 12),
+                              Text('Carga - Bodega'),
+                            ],
+                          ),
+                          value: 'carga-bodega',
+                        ),
+                        PopupMenuItem<String>(
+                          child: Row(
+                            children: [
+                              Icon(Icons.cloud_upload, color: AppTheme.info),
+                              SizedBox(width: 12),
+                              Text('Carga - Almacén'),
+                            ],
+                          ),
+                          value: 'carga-almacen',
+                        ),
+                        PopupMenuItem<String>(
+                          child: Row(
+                            children: [
+                              Icon(Icons.cloud_upload, color: Colors.purple),
+                              SizedBox(width: 12),
+                              Text('Carga - Ambos'),
+                            ],
+                          ),
+                          value: 'carga-ambos',
+                        ),
+                        PopupMenuDivider(),
+                        // Opciones de Descarga
+                        PopupMenuItem<String>(
+                          child: Row(
+                            children: [
+                              Icon(Icons.download, color: Colors.orange),
+                              SizedBox(width: 12),
+                              Text('Descargar - Bodega'),
+                            ],
+                          ),
+                          value: 'descarga-bodega',
+                        ),
+                        PopupMenuItem<String>(
+                          child: Row(
+                            children: [
+                              Icon(Icons.download, color: Colors.deepOrange),
+                              SizedBox(width: 12),
+                              Text('Descargar - Almacén'),
+                            ],
+                          ),
+                          value: 'descarga-almacen',
+                        ),
+                        PopupMenuItem<String>(
+                          child: Row(
+                            children: [
+                              Icon(Icons.download, color: Colors.red),
+                              SizedBox(width: 12),
+                              Text('Descargar - Ambos'),
+                            ],
+                          ),
+                          value: 'descarga-ambos',
+                        ),
+                      ],
+                      child: ElevatedButton.icon(
+                        onPressed: null,
+                        icon: Icon(Icons.more_vert, color: Colors.white),
+                        label: Text(
+                          'Excel',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primary,
+                          foregroundColor: Colors.white,
+                        ),
                       ),
                     ),
                     SizedBox(width: 12),
@@ -1121,7 +1156,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
                       TabBar(
                         indicatorColor: AppTheme.primary,
                         labelColor: AppTheme.primary,
-                        unselectedLabelColor: Colors.white70,
+                        unselectedLabelColor: Colors.grey.shade800,
                         tabs: [
                           Tab(text: 'Básico'),
                           Tab(text: 'Precios'),
@@ -1733,10 +1768,20 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
 
   void _mostrarCargaMasivaProductos({required String tipo}) {
     final esBodega = tipo == 'bodega';
-    final titulo = esBodega
+    final esAlmacen = tipo == 'almacen';
+    final esAmbos = tipo == 'ambos';
+
+    final titulo = esAmbos
+        ? 'Carga Masiva - Bodega y Almacén'
+        : esBodega
         ? 'Carga Masiva - Bodega'
         : 'Carga Masiva - Almacén';
-    final ultimaColumna = esBodega ? 'BODEGA' : 'ALMACEN';
+    
+    final ultimaColumna = esAmbos
+        ? 'BODEGA y ALMACEN'
+        : esBodega
+        ? 'BODEGA'
+        : 'ALMACEN';
     
     showDialog(
       context: context,
@@ -3448,8 +3493,13 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
 
       // Descargar el archivo
       final timestamp = DateTime.now();
+      final tipoLabel = tipo == 'ambos'
+          ? 'completo'
+          : tipo == 'bodega'
+          ? 'bodega'
+          : 'almacen';
       final filename =
-          'productos_${tipo}_${timestamp.year}${timestamp.month.toString().padLeft(2, '0')}${timestamp.day.toString().padLeft(2, '0')}_${timestamp.hour.toString().padLeft(2, '0')}${timestamp.minute.toString().padLeft(2, '0')}.xlsx';
+          'productos_${tipoLabel}_${timestamp.year}${timestamp.month.toString().padLeft(2, '0')}${timestamp.day.toString().padLeft(2, '0')}_${timestamp.hour.toString().padLeft(2, '0')}${timestamp.minute.toString().padLeft(2, '0')}.xlsx';
 
       FileDownloadHelper.downloadFile(
         bytes,

@@ -46,6 +46,9 @@ class EndpointsConfig {
   /// Endpoints para facturas
   FacturaEndpoints get facturas => FacturaEndpoints(currentBaseUrl);
 
+  /// Endpoints para pedidos
+  PedidosEndpoints get pedidos => PedidosEndpoints(currentBaseUrl);
+
   /// Endpoints para proveedores
   ProveedorEndpoints get proveedores => ProveedorEndpoints(currentBaseUrl);
 
@@ -203,6 +206,28 @@ class FacturaEndpoints {
 
   /// Obtener resumen de ventas
   String get resumenVentas => '$base/resumen-ventas';
+}
+
+/// Endpoints relacionados con pedidos
+class PedidosEndpoints {
+  final String baseUrl;
+
+  PedidosEndpoints(this.baseUrl);
+
+  /// Base URL para pedidos
+  String get base => '$baseUrl/api/pedidos';
+
+  /// Obtener pedidos pagados (para facturación electrónica)
+  String get pagados => '$base?estado=pagado';
+
+  /// Obtener un pedido por ID
+  String pedido(String id) => '$base/$id';
+
+  /// Obtener pedidos por estado
+  String porEstado(String estado) => '$base?estado=$estado';
+
+  /// Obtener pedidos por mesa
+  String porMesa(String mesa) => '$base?mesa=$mesa';
 }
 
 /// Endpoints relacionados con proveedores

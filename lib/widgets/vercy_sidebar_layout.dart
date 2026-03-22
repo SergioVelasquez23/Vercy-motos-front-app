@@ -508,6 +508,12 @@ class _VercySidebarLayoutState extends State<VercySidebarLayout> {
             route: '/eliminar-pedidos',
             isAdmin: true,
           ),
+          _buildMenuItem(
+            icon: Icons.business,
+            label: 'Mi Negocio',
+            route: '/negocio-info',
+            isAdmin: false,
+          ),
         ],
       ],
     );

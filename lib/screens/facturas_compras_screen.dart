@@ -606,46 +606,95 @@ class _FacturasComprasScreenState extends State<FacturasComprasScreen> {
 
   // Método para confirmar la eliminación de una factura
   Future<void> _confirmarEliminarFactura(FacturaCompra factura) async {
-    final confirm = await showDialog<bool>(
+    final motivoController = TextEditingController();
+    final result = await showDialog<String?>(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.cardBg,
-        title: Text(
-          'Eliminar Factura',
-          style: TextStyle(color: AppTheme.textPrimary),
-        ),
-        content: Text(
-          '¿Estás seguro de que deseas eliminar la factura ${factura.numeroFactura}?\n\n'
-          'Esta acción no se puede deshacer y afectará al inventario.',
-          style: TextStyle(color: AppTheme.textSecondary),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: Text(
-              'Cancelar',
-              style: TextStyle(color: AppTheme.textSecondary),
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: AppTheme.cardBg,
+          title: Text(
+            'Eliminar Factura',
+            style: TextStyle(color: AppTheme.textPrimary),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '¿Estás seguro de que deseas eliminar la factura ${factura.numeroFactura}?\n\n'
+                'Se revertirá el inventario asociado a esta compra.',
+                style: TextStyle(color: AppTheme.textSecondary),
+              ),
+              SizedBox(height: 16),
+              TextField(
+                controller: motivoController,
+                maxLines: 3,
+                style: TextStyle(color: AppTheme.textPrimary),
+                decoration: InputDecoration(
+                  labelText: 'Razón de la eliminación (opcional)',
+                  labelStyle: TextStyle(color: AppTheme.textSecondary),
+                  hintText: 'Ej: Factura duplicada, error de digitación...',
+                  hintStyle: TextStyle(
+                    color: AppTheme.textSecondary.withOpacity(0.5),
+                  ),
+                  filled: true,
+                  fillColor: AppTheme.backgroundDark,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(
+                      color: AppTheme.textSecondary.withOpacity(0.3),
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(
+                      color: AppTheme.textSecondary.withOpacity(0.3),
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.red),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(null),
+              child: Text(
+                'Cancelar',
+                style: TextStyle(color: AppTheme.textSecondary),
+              ),
             ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: Text('Eliminar', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(motivoController.text.trim());
+              },
+              child: Text('Eliminar', style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        );
+      },
     );
 
-    if (confirm == true) {
+    if (result != null) {
       setState(() => _isLoading = true);
       try {
+        // Revertir inventario ANTES de eliminar la factura
+        await _facturaCompraService.revertirInventarioCompra(factura);
+
         final resultado = await _facturaCompraService.eliminarFacturaCompra(
           factura.id!,
+          motivoEliminacion: result.isNotEmpty ? result : null,
         );
 
         if (resultado['success'] == true) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Factura eliminada correctamente'),
+              content: Text(
+                'Factura eliminada correctamente. Stock revertido.',
+              ),
               backgroundColor: Colors.green,
             ),
           );
