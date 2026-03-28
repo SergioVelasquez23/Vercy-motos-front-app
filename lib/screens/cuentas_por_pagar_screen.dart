@@ -7,6 +7,7 @@ import '../services/proveedor_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/currency_utils.dart';
 import '../widgets/vercy_sidebar_layout.dart';
+import '../utils/logger.dart';
 
 class CuentasPorPagarScreen extends StatefulWidget {
   const CuentasPorPagarScreen({Key? key}) : super(key: key);
@@ -176,11 +177,11 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
 
   Future<void> _procesarPago(CuentaPorPagar cuenta, double monto) async {
     try {
-      print('🔵 [PAGO CxP] Iniciando registro de pago');
-      print('📋 Cuenta ID: ${cuenta.id}');
-      print('💰 Monto: $monto');
-      print('🏢 Proveedor: ${cuenta.proveedorNombre}');
-      print('📊 Saldo pendiente antes: ${cuenta.saldoPendiente}');
+      appLog('🔵 [PAGO CxP] Iniciando registro de pago');
+      appLog('📋 Cuenta ID: ${cuenta.id}');
+      appLog('💰 Monto: $monto');
+      appLog('🏢 Proveedor: ${cuenta.proveedorNombre}');
+      appLog('📊 Saldo pendiente antes: ${cuenta.saldoPendiente}');
 
       final response = await _carteraService.registrarPagoCuentaPorPagar(
         cuentaId: cuenta.id!,
@@ -188,17 +189,17 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
         observaciones: 'Pago registrado desde aplicación',
       );
 
-      print('📨 [PAGO CxP] Respuesta del backend:');
-      print('✅ Success: ${response.isSuccess}');
-      print('📝 Message: ${response.message}');
-      print('📦 Data: ${response.data}');
+      appLog('📨 [PAGO CxP] Respuesta del backend:');
+      appLog('✅ Success: ${response.isSuccess}');
+      appLog('📝 Message: ${response.message}');
+      appLog('📦 Data: ${response.data}');
 
       if (response.isSuccess) {
-        print('🎉 [PAGO CxP] Pago registrado exitosamente');
-        print(
+        appLog('🎉 [PAGO CxP] Pago registrado exitosamente');
+        appLog(
           'ℹ️ [AUTO-ALERTA] La auto-alerta de cuenta pagada se envía automáticamente desde CarteraService',
         );
-        print(
+        appLog(
           '   Ver línea 335 de cartera_service.dart - allí se invoca _alertasService.enviarAlertaCuentaPagada()\n',
         );
 
@@ -210,7 +211,7 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
         );
         await _cargarCuentas();
       } else {
-        print('❌ [PAGO CxP] Error al registrar pago: ${response.message}');
+        appLog('❌ [PAGO CxP] Error al registrar pago: ${response.message}');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error: ${response.message}'),
@@ -219,7 +220,7 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
         );
       }
     } catch (e) {
-      print('💥 [PAGO CxP] Excepción al registrar pago: $e');
+      appLog('💥 [PAGO CxP] Excepción al registrar pago: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error de conexión: $e'),
@@ -1184,35 +1185,35 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
 
   Future<void> _enviarAlertaTelegramManual(CuentaPorPagar cuenta) async {
     try {
-      print('🔔 [ALERTA MANUAL CxP] Iniciando envío de alerta manual');
-      print('📋 Cuenta ID: ${cuenta.id}');
-      print('🏢 Proveedor: ${cuenta.proveedorNombre}');
-      print('💰 Saldo pendiente: ${cuenta.saldoPendiente}');
-      print('📅 Fecha vencimiento: ${cuenta.fechaVencimiento}');
-      print('⏰ Está vencida: ${cuenta.estaVencida}');
-      print('💸 Próximo a perder descuento: ${cuenta.proximoAPerderDescuento}');
-      print('🎁 Tiene descuento: ${cuenta.tieneDescuento}');
+      appLog('🔔 [ALERTA MANUAL CxP] Iniciando envío de alerta manual');
+      appLog('📋 Cuenta ID: ${cuenta.id}');
+      appLog('🏢 Proveedor: ${cuenta.proveedorNombre}');
+      appLog('💰 Saldo pendiente: ${cuenta.saldoPendiente}');
+      appLog('📅 Fecha vencimiento: ${cuenta.fechaVencimiento}');
+      appLog('⏰ Está vencida: ${cuenta.estaVencida}');
+      appLog('💸 Próximo a perder descuento: ${cuenta.proximoAPerderDescuento}');
+      appLog('🎁 Tiene descuento: ${cuenta.tieneDescuento}');
 
       String tipoAlerta = '';
       if (cuenta.estaVencida) {
         tipoAlerta = 'VENCIDA';
-        print('📤 [ALERTA] Tipo: CUENTA VENCIDA');
-        print('📨 Enviando a: enviarAlertaCxPVencida()');
+        appLog('📤 [ALERTA] Tipo: CUENTA VENCIDA');
+        appLog('📨 Enviando a: enviarAlertaCxPVencida()');
         await _carteraService.enviarAlertaCxPVencida(cuenta);
       } else if (cuenta.proximoAPerderDescuento) {
         tipoAlerta = 'DESCUENTO EN RIESGO';
-        print('📤 [ALERTA] Tipo: DESCUENTO EN RIESGO');
-        print('📨 Enviando a: enviarAlertaCxPDescuentoRiesgo()');
+        appLog('📤 [ALERTA] Tipo: DESCUENTO EN RIESGO');
+        appLog('📨 Enviando a: enviarAlertaCxPDescuentoRiesgo()');
         await _carteraService.enviarAlertaCxPDescuentoRiesgo(cuenta);
       } else {
         tipoAlerta = 'PRÓXIMA A VENCER';
-        print('📤 [ALERTA] Tipo: PRÓXIMA A VENCER');
-        print('📨 Enviando a: enviarAlertaCxPProximaVencer()');
+        appLog('📤 [ALERTA] Tipo: PRÓXIMA A VENCER');
+        appLog('📨 Enviando a: enviarAlertaCxPProximaVencer()');
         await _carteraService.enviarAlertaCxPProximaVencer(cuenta);
       }
 
-      print('✅ [ALERTA MANUAL CxP] Alerta enviada exitosamente');
-      print('📧 Tipo de alerta enviada: $tipoAlerta');
+      appLog('✅ [ALERTA MANUAL CxP] Alerta enviada exitosamente');
+      appLog('📧 Tipo de alerta enviada: $tipoAlerta');
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1223,8 +1224,8 @@ class _CuentasPorPagarScreenState extends State<CuentasPorPagarScreen> {
         );
       }
     } catch (e) {
-      print('❌ [ALERTA MANUAL CxP] Error al enviar alerta: $e');
-      print('💥 Stack trace: ${StackTrace.current}');
+      appLog('❌ [ALERTA MANUAL CxP] Error al enviar alerta: $e');
+      appLog('💥 Stack trace: ${StackTrace.current}');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

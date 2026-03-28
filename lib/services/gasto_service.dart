@@ -6,6 +6,7 @@ import '../models/tipo_gasto.dart';
 import '../config/api_config.dart';
 import '../utils/caja_error_handler.dart';
 import 'alertas_service.dart';
+import '../utils/logger.dart';
 
 class GastoService {
   static final GastoService _instance = GastoService._internal();
@@ -194,7 +195,7 @@ class GastoService {
         );
       } catch (e) {
         // Ignorar error de alerta para no afectar la creación del gasto
-        print('Error al enviar alerta de gasto por Telegram: $e');
+        appLog('Error al enviar alerta de gasto por Telegram: $e');
       }
     });
   }

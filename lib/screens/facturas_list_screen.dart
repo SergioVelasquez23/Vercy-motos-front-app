@@ -1,4 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import '../utils/html_stub.dart' if (dart.library.html) 'dart:html' as html;
 import '../models/cliente.dart';
 import '../models/factura.dart';
 import '../models/pedido.dart';
@@ -11,6 +14,8 @@ import '../services/negocio_info_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/vercy_sidebar_layout.dart';
 import '../widgets/facturizacion/facturizador_matias_button.dart';
+import '../utils/logger.dart';
+import '../utils/pagination_mixin.dart';
 
 class FacturasListScreen extends StatefulWidget {
   final String? filtroInicial;
@@ -20,12 +25,16 @@ class FacturasListScreen extends StatefulWidget {
   _FacturasListScreenState createState() => _FacturasListScreenState();
 }
 
-class _FacturasListScreenState extends State<FacturasListScreen> {
+class _FacturasListScreenState extends State<FacturasListScreen> with PaginacionMixin<FacturasListScreen> {
   final FacturaService _facturaService = FacturaService();
   final PedidoService _pedidoService = PedidoService();
   final PDFService _pdfService = PDFService();
   final NegocioInfoService _negocioInfoService = NegocioInfoService();
   final ClienteService _clienteService = ClienteService();
+
+  final TextEditingController _filtroNumeroController = TextEditingController();
+  final TextEditingController _filtroClienteController = TextEditingController();
+  final TextEditingController _filtroOrdenController = TextEditingController();
 
   List<Factura> _facturas = [];
   List<Pedido> _pedidosPagados = [];
@@ -44,8 +53,17 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
     // Si viene con filtro desde informes, pre-aplicarlo
     if (widget.filtroInicial != null && widget.filtroInicial!.isNotEmpty) {
       _filtroNumero = widget.filtroInicial!;
+      _filtroNumeroController.text = _filtroNumero;
     }
     _cargarDocumentos();
+  }
+
+  @override
+  void dispose() {
+    _filtroNumeroController.dispose();
+    _filtroClienteController.dispose();
+    _filtroOrdenController.dispose();
+    super.dispose();
   }
 
   Future<void> _cargarDocumentos() async {
@@ -53,7 +71,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
     try {
       // Cargar facturas tradicionales
       final facturas = await _facturaService.getFacturas();
-      print('📄 Facturas cargadas: ${facturas.length}');
+      appLog('📄 Facturas cargadas: ${facturas.length}');
       
       // ⚡ Obtener TODOS los pedidos pagados (sin filtrar por fecha)
       List<Pedido> pedidosPagados = [];
@@ -61,16 +79,16 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
       try {
         // Intentar primero con el endpoint más completo
         pedidosPagados = await _pedidoService.getTodosDocumentosPagados();
-        print(
+        appLog(
           '📋 Documentos pagados (endpoint completo): ${pedidosPagados.length}',
         );
       } catch (e) {
-        print('⚠️ Error con getTodosDocumentosPagados, usando fallback: $e');
+        appLog('⚠️ Error con getTodosDocumentosPagados, usando fallback: $e');
         // Fallback: obtener por estado (no filtra por fecha)
         pedidosPagados = await _pedidoService.getPedidosByEstado(
           EstadoPedido.pagado,
         );
-        print(
+        appLog(
           '💳 Pedidos pagados (fallback por estado): ${pedidosPagados.length}',
         );
       }
@@ -78,11 +96,11 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
       // 🔥 Mostrar TODOS los pedidos pagados, sin filtrar por tipoFactura ni mesa ni fecha
       final pedidosFacturacion = pedidosPagados;
 
-      print('🎯 Pedidos pagados para tabla: ${pedidosFacturacion.length}');
+      appLog('🎯 Pedidos pagados para tabla: ${pedidosFacturacion.length}');
 
       // Debug: mostrar algunos IDs de pedidos para verificar
       if (pedidosFacturacion.isNotEmpty) {
-        print(
+        appLog(
           '📝 Primeros 5 IDs: ${pedidosFacturacion.take(5).map((p) => p.id).join(", ")}',
         );
       }
@@ -100,7 +118,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
         _aplicarFiltros();
       });
     } catch (e) {
-      print('❌ Error cargando documentos: $e');
+      appLog('❌ Error cargando documentos: $e');
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Error al cargar documentos: $e')));
@@ -136,7 +154,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
       documentos.add(factura);
     }
     
-    print(
+    appLog(
       '🔍 Filtros actuales - Tipo: "$_filtroTipo", Número: "$_filtroNumero", Cliente: "$_filtroCliente"',
     );
     
@@ -158,7 +176,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
       }
     }
 
-    print('📋 Documentos finales después de filtros: ${documentos.length}');
+    appLog('📋 Documentos finales después de filtros: ${documentos.length}');
 
     // Ordenar por fecha descendente
     documentos.sort((a, b) {
@@ -188,7 +206,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
       _documentosFiltrados = documentos;
     });
 
-    print(
+    appLog(
       '✅ _documentosFiltrados actualizado con ${_documentosFiltrados.length} elementos',
     );
   }
@@ -335,6 +353,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
           // Filtro por número
           Expanded(
             child: TextField(
+              controller: _filtroNumeroController,
               decoration: InputDecoration(
                 labelText: 'N. Pos',
                 labelStyle: TextStyle(color: Colors.grey),
@@ -360,6 +379,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
           // Filtro por cliente
           Expanded(
             child: TextField(
+              controller: _filtroClienteController,
               decoration: InputDecoration(
                 labelText: 'Nombre cliente',
                 labelStyle: TextStyle(color: Colors.grey),
@@ -385,6 +405,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
           // Filtro por orden
           Expanded(
             child: TextField(
+              controller: _filtroOrdenController,
               decoration: InputDecoration(
                 labelText: 'Orden',
                 labelStyle: TextStyle(color: Colors.grey),
@@ -407,15 +428,34 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
           SizedBox(width: 16),
 
           // Botón otros
-          ElevatedButton(
-            onPressed: () {
-              // TODO: Implementar opciones adicionales
+          PopupMenuButton<String>(
+            onSelected: (value) async {
+              if (value == 'exportar_csv') {
+                _exportarCSV();
+              } else if (value == 'limpiar_filtros') {
+                setState(() {
+                  _filtroNumeroController.clear();
+                  _filtroClienteController.clear();
+                  _filtroOrdenController.clear();
+                  
+                  _filtroNumero = '';
+                  _filtroCliente = '';
+                  _filtroOrden = '';
+                  _filtroTipo = '';
+                });
+                _cargarDocumentos(); // Recargar si es necesario o _aplicarFiltros()
+              }
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.cardBg,
+            itemBuilder: (_) => [
+              PopupMenuItem(value: 'exportar_csv', child: Row(children: [Icon(Icons.download, size: 18, color: AppTheme.textPrimary), SizedBox(width: 8), Text('Exportar CSV', style: TextStyle(color: AppTheme.textPrimary))])),
+              PopupMenuItem(value: 'limpiar_filtros', child: Row(children: [Icon(Icons.clear_all, size: 18, color: AppTheme.textPrimary), SizedBox(width: 8), Text('Limpiar filtros', style: TextStyle(color: AppTheme.textPrimary))])),
+            ],
+            color: AppTheme.cardBg,
+            child: Container(
               padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              decoration: BoxDecoration(color: AppTheme.cardBg, borderRadius: BorderRadius.circular(8)),
+              child: Row(children: [Text('Otros', style: TextStyle(color: AppTheme.textPrimary)), SizedBox(width: 4), Icon(Icons.arrow_drop_down, color: AppTheme.textPrimary)]),
             ),
-            child: Text('Otros', style: TextStyle(color: AppTheme.textPrimary)),
           ),
         ],
       ),
@@ -568,20 +608,28 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
                       ],
                     ),
                   )
-                : ListView.builder(
-                    itemCount: _documentosFiltrados.length,
+                : Column(
+                    children: [
+                      ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: paginarLista(_documentosFiltrados).length,
                     itemBuilder: (context, index) {
-                      final documento = _documentosFiltrados[index];
+                      final documento = paginarLista(_documentosFiltrados)[index];
                       try {
                         return _buildTableRow(documento, index);
                       } catch (e) {
-                        print('❌ Error renderizando fila $index: $e');
-                        return Container(); // Evitar que un error rompa toda la lista
+                        appLog('❌ Error renderizando fila $index: $e');
+                        return Container();
                       }
                     },
                   ),
-          ),
-        ],
+                  buildPaginacion(
+                    totalItems: _documentosFiltrados.length,
+                    accentColor: AppTheme.primary,
+                  ),
+        ]),
+      )],
       ),
     );
   }
@@ -759,7 +807,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
                   SizedBox(
                     height: 40,
                     child: FacturizarMatiasButton(
-                      pedidoId: (documento as Pedido).id,
+                      pedido: documento as Pedido,
                       onSuccess: () {
                         _cargarDocumentos();
                       },
@@ -805,7 +853,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
       return null;
     }
     try {
-      print('🔍 Buscando cliente: "$nombreCliente" | NIT: "$nit"');
+      appLog('🔍 Buscando cliente: "$nombreCliente" | NIT: "$nit"');
 
       // 1) Intentar buscar por NIT/documento si está disponible
       if (nit != null && nit.isNotEmpty && nit != '222222222-2') {
@@ -815,36 +863,36 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
         if (docLimpio.contains('-')) {
           docLimpio = docLimpio.split('-').first.trim();
         }
-        print('📋 Buscando por documento: "$docLimpio"');
+        appLog('📋 Buscando por documento: "$docLimpio"');
         final clientePorDoc = await _clienteService.obtenerClientePorDocumento(
           docLimpio,
         );
         if (clientePorDoc != null) {
-          print(
+          appLog(
             '✅ Cliente encontrado por documento: ${clientePorDoc.nombreCompleto}',
           );
           return clientePorDoc;
         }
-        print('⚠️ No se encontró cliente por documento');
+        appLog('⚠️ No se encontró cliente por documento');
       }
 
       // 2) Buscar por nombre completo
       final nombreLimpio = nombreCliente.trim().replaceAll(RegExp(r'\s+'), ' ');
-      print('📝 Buscando por nombre: "$nombreLimpio"');
+      appLog('📝 Buscando por nombre: "$nombreLimpio"');
       var resultados = await _clienteService.buscarClientes(nombreLimpio);
-      print('📊 Resultados encontrados: ${resultados.length}');
+      appLog('📊 Resultados encontrados: ${resultados.length}');
       if (resultados.isNotEmpty) {
         // Buscar coincidencia exacta primero
         final exacto = resultados.where(
           (c) => c.nombreCompleto.toLowerCase() == nombreLimpio.toLowerCase(),
         );
         if (exacto.isNotEmpty) {
-          print(
+          appLog(
             '✅ Cliente encontrado (coincidencia exacta): ${exacto.first.nombreCompleto}',
           );
           return exacto.first;
         }
-        print(
+        appLog(
           '✅ Cliente encontrado (primer resultado): ${resultados.first.nombreCompleto}',
         );
         return resultados.first;
@@ -853,19 +901,19 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
       // 3) Si no encontró, buscar por partes del nombre (primer palabra)
       final partes = nombreLimpio.split(' ');
       if (partes.length > 1) {
-        print(
+        appLog(
           '🔄 Intentando búsqueda por partes del nombre: "${partes.first}"',
         );
         // Intentar con el primer nombre
         resultados = await _clienteService.buscarClientes(partes.first);
-        print('📊 Resultados por primer nombre: ${resultados.length}');
+        appLog('📊 Resultados por primer nombre: ${resultados.length}');
         if (resultados.isNotEmpty) {
           // Buscar el que mejor coincida con el nombre completo
           final coincidencia = resultados.where(
             (c) => c.nombreCompleto.toLowerCase() == nombreLimpio.toLowerCase(),
           );
           if (coincidencia.isNotEmpty) {
-            print(
+            appLog(
               '✅ Cliente encontrado (coincidencia exacta en búsqueda parcial): ${coincidencia.first.nombreCompleto}',
             );
             return coincidencia.first;
@@ -881,7 +929,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
                 ),
           );
           if (parcial.isNotEmpty) {
-            print(
+            appLog(
               '✅ Cliente encontrado (coincidencia parcial): ${parcial.first.nombreCompleto}',
             );
             return parcial.first;
@@ -889,9 +937,9 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
         }
       }
 
-      print('❌ No se encontró el cliente: "$nombreCliente"');
+      appLog('❌ No se encontró el cliente: "$nombreCliente"');
     } catch (e) {
-      print('⚠️ Error buscando cliente completo: $e');
+      appLog('⚠️ Error buscando cliente completo: $e');
     }
     return null;
   }
@@ -902,7 +950,7 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
     try {
       negocioInfo = await _negocioInfoService.getNegocioInfo();
     } catch (e) {
-      print('⚠️ No se pudo obtener info del negocio: $e');
+      appLog('⚠️ No se pudo obtener info del negocio: $e');
       // Continuar sin negocioInfo, usar valores por defecto
     }
 
@@ -926,16 +974,16 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
       Cliente? clienteCompleto;
       final datosGuardados = documento.datosAdicionales;
 
-      print('📋 DEBUG - Datos guardados en pedido: $datosGuardados');
-      print('📋 DEBUG - Cliente en pedido: ${documento.cliente}');
+      appLog('📋 DEBUG - Datos guardados en pedido: $datosGuardados');
+      appLog('📋 DEBUG - Cliente en pedido: ${documento.cliente}');
 
       if (datosGuardados == null ||
           datosGuardados['clienteDepartamento'] == null ||
           datosGuardados['clienteCiudad'] == null) {
-        print('⚠️ Datos incompletos, buscando cliente en API...');
+        appLog('⚠️ Datos incompletos, buscando cliente en API...');
         clienteCompleto = await _buscarClienteCompleto(documento.cliente);
       } else {
-        print('✅ Usando datos guardados del cliente');
+        appLog('✅ Usando datos guardados del cliente');
       }
 
       resumen = {
@@ -1262,4 +1310,38 @@ class _FacturasListScreenState extends State<FacturasListScreen> {
       );
     }
   }
+  void _exportarCSV() {
+    try {
+      final buffer = StringBuffer();
+      buffer.writeln('Número,Cliente,Fecha,Total,Estado,Medio de Pago');
+      for (final doc in _documentosFiltrados) {
+        if (doc is Factura) {
+          buffer.writeln(
+            '\${doc.numero ?? ""},"\${doc.clienteNombre}",\${doc.fechaCreacion?.toIso8601String() ?? ""},\${doc.total},\${doc.estadoPago ?? ""},\${doc.medioPago ?? ""}',
+          );
+        }
+      }
+      final csv = buffer.toString();
+      // En web: descargar como blob
+      if (kIsWeb) {
+        final bytes = utf8.encode(csv);
+        final blob = html.Blob([bytes], 'text/csv');
+        final url = html.Url.createObjectUrlFromBlob(blob);
+        final anchor = html.document.createElement('a') as html.AnchorElement
+          ..href = url
+          ..download = 'facturas_\${DateTime.now().millisecondsSinceEpoch}.csv'
+          ..click();
+        html.Url.revokeObjectUrl(url);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('CSV generado: \${_documentosFiltrados.length} registros')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al exportar: \$e'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
 }

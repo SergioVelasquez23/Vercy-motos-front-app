@@ -7,6 +7,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:path_provider/path_provider.dart';
 import 'pdf_download_helper.dart';
+import '../utils/logger.dart';
 
 class PDFService {
   // Cache de fuentes para evitar cargas repetidas
@@ -226,9 +227,9 @@ class PDFService {
     try {
       final logoData = await rootBundle.load('assets/images/vercylogo.png');
       logoImage = pw.MemoryImage(logoData.buffer.asUint8List());
-      print('✅ Logo cargado exitosamente');
+      appLog('✅ Logo cargado exitosamente');
     } catch (e) {
-      print('⚠️ Error cargando logo: $e');
+      appLog('⚠️ Error cargando logo: $e');
       logoImage = null;
     }
 
@@ -270,14 +271,14 @@ class PDFService {
     final clienteCiudad = _toSafeString(resumen['clienteCiudad']);
 
     // Debug: Verificar datos del cliente
-    print('📋 Datos del cliente en PDF:');
-    print('  - Nombre: $cliente');
-    print('  - NIT: $clienteNit');
-    print('  - Dirección: $clienteDireccion');
-    print('  - Teléfono: $clienteTelefono');
-    print('  - Correo: $clienteCorreo');
-    print('  - Departamento: $clienteDepartamento');
-    print('  - Ciudad: $clienteCiudad');
+    appLog('📋 Datos del cliente en PDF:');
+    appLog('  - Nombre: $cliente');
+    appLog('  - NIT: $clienteNit');
+    appLog('  - Dirección: $clienteDireccion');
+    appLog('  - Teléfono: $clienteTelefono');
+    appLog('  - Correo: $clienteCorreo');
+    appLog('  - Departamento: $clienteDepartamento');
+    appLog('  - Ciudad: $clienteCiudad');
 
     final departamento = _toSafeString(
       resumen['departamento'] ?? negocio?['departamento'],

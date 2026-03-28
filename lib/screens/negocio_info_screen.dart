@@ -906,42 +906,6 @@ class _NegocioInfoScreenState extends State<NegocioInfoScreen> {
                   ),
           ),
         ),
-        SizedBox(height: 12),
-        // Botón Enviar Factura de Prueba
-        SizedBox(
-          height: 50,
-          child: OutlinedButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => EnvioFacturaElectronicaScreen(),
-                ),
-              );
-            },
-            style: OutlinedButton.styleFrom(
-              side: BorderSide(color: _primary, width: 2),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.science, color: _primary),
-                SizedBox(width: 8),
-                Text(
-                  'Enviar Factura de Prueba',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: _primary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
       ],
     );
   }

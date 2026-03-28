@@ -5,6 +5,7 @@ import '../models/proveedor.dart';
 import '../services/proveedor_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/vercy_sidebar_layout.dart';
+import '../utils/pagination_mixin.dart';
 
 class ProveedoresListScreen extends StatefulWidget {
   const ProveedoresListScreen({super.key});
@@ -13,7 +14,8 @@ class ProveedoresListScreen extends StatefulWidget {
   _ProveedoresListScreenState createState() => _ProveedoresListScreenState();
 }
 
-class _ProveedoresListScreenState extends State<ProveedoresListScreen> {
+class _ProveedoresListScreenState extends State<ProveedoresListScreen>
+    with PaginacionMixin<ProveedoresListScreen> {
   final ProveedorService _proveedorService = ProveedorService();
 
   // Controladores de filtros
@@ -348,12 +350,24 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen> {
                       ],
                     ),
                   )
-                : ListView.builder(
-                    itemCount: _proveedoresFiltrados.length,
-                    itemBuilder: (context, index) {
-                      final proveedor = _proveedoresFiltrados[index];
-                      return _buildFilaTabla(proveedor, index);
-                    },
+                : Column(
+                    children: [
+                      ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: paginarLista(_proveedoresFiltrados).length,
+                        itemBuilder: (context, index) {
+                          final proveedor = paginarLista(
+                            _proveedoresFiltrados,
+                          )[index];
+                          return _buildFilaTabla(proveedor, index);
+                        },
+                      ),
+                      buildPaginacion(
+                        totalItems: _proveedoresFiltrados.length,
+                        accentColor: AppTheme.primary,
+                      ),
+                    ],
                   ),
           ),
         ],

@@ -7,13 +7,14 @@ import '../models/cliente.dart';
 import '../services/cliente_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/vercy_sidebar_layout.dart';
+import '../utils/pagination_mixin.dart';
 
 class ClientesListScreen extends StatefulWidget {
   @override
   _ClientesListScreenState createState() => _ClientesListScreenState();
 }
 
-class _ClientesListScreenState extends State<ClientesListScreen> {
+class _ClientesListScreenState extends State<ClientesListScreen> with PaginacionMixin<ClientesListScreen> {
   final ClienteService _clienteService = ClienteService();
   final TextEditingController _searchController = TextEditingController();
 
@@ -75,7 +76,11 @@ class _ClientesListScreenState extends State<ClientesListScreen> {
       }).toList();
     }
 
-    setState(() => _clientesFiltrados = filtrados);
+    setState(() {
+      _clientesFiltrados = filtrados;
+      resetPagina();
+      resetPagina();
+    });
   }
 
   @override
@@ -297,13 +302,23 @@ class _ClientesListScreenState extends State<ClientesListScreen> {
           BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 2)),
         ],
       ),
-      child: ListView.separated(
-        itemCount: _clientesFiltrados.length,
-        separatorBuilder: (context, index) => Divider(height: 1),
-        itemBuilder: (context, index) {
-          final cliente = _clientesFiltrados[index];
-          return _buildClienteItem(cliente);
-        },
+      child: Column(
+        children: [
+          Expanded(
+            child: ListView.separated(
+              itemCount: paginarLista(_clientesFiltrados).length,
+              separatorBuilder: (context, index) => Divider(height: 1),
+              itemBuilder: (context, index) {
+                final cliente = paginarLista(_clientesFiltrados)[index];
+                return _buildClienteItem(cliente);
+              },
+            ),
+          ),
+          buildPaginacion(
+            totalItems: _clientesFiltrados.length,
+            accentColor: AppTheme.primary,
+          ),
+        ],
       ),
     );
   }

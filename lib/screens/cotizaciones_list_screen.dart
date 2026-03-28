@@ -1,19 +1,26 @@
 import 'package:flutter/material.dart';
 import '../models/cotizacion.dart';
 import '../models/cliente.dart';
+import '../models/factura.dart';
 import '../services/cotizacion_service.dart';
 import '../services/cliente_service.dart';
 import '../services/pdf_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/vercy_sidebar_layout.dart';
+import '../utils/logger.dart';
+import '../utils/pagination_mixin.dart';
+import '../services/factura_service.dart';
+import '../models/item_pedido.dart';
 
 class CotizacionesListScreen extends StatefulWidget {
   @override
   _CotizacionesListScreenState createState() => _CotizacionesListScreenState();
 }
 
-class _CotizacionesListScreenState extends State<CotizacionesListScreen> {
+class _CotizacionesListScreenState extends State<CotizacionesListScreen>
+    with PaginacionMixin<CotizacionesListScreen> {
   final CotizacionService _cotizacionService = CotizacionService();
+  final FacturaService _facturaService = FacturaService();
   final ClienteService _clienteService = ClienteService();
   final PDFService _pdfService = PDFService();
   final TextEditingController _searchController = TextEditingController();
@@ -77,6 +84,7 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen> {
     // Ordenar por fecha descendente
     filtradas.sort((a, b) => b.fecha.compareTo(a.fecha));
 
+    resetPagina();
     setState(() => _cotizacionesFiltradas = filtradas);
   }
 
@@ -306,13 +314,23 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen> {
           BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 2)),
         ],
       ),
-      child: ListView.separated(
-        itemCount: _cotizacionesFiltradas.length,
-        separatorBuilder: (context, index) => Divider(height: 1),
-        itemBuilder: (context, index) {
-          final cotizacion = _cotizacionesFiltradas[index];
-          return _buildCotizacionItem(cotizacion);
-        },
+      child: Column(
+        children: [
+          Expanded(
+            child: ListView.separated(
+              itemCount: paginarLista(_cotizacionesFiltradas).length,
+              separatorBuilder: (context, index) => Divider(height: 1),
+              itemBuilder: (context, index) {
+                final cotizacion = paginarLista(_cotizacionesFiltradas)[index];
+                return _buildCotizacionItem(cotizacion);
+              },
+            ),
+          ),
+          buildPaginacion(
+            totalItems: _cotizacionesFiltradas.length,
+            accentColor: AppTheme.primary,
+          ),
+        ],
       ),
     );
   }
@@ -564,10 +582,98 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen> {
   }
 
   Future<void> _convertirAFactura(Cotizacion cotizacion) async {
-    // TODO: Implementar conversión a factura
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('Función en desarrollo')));
+    if (cotizacion.id == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('No se puede convertir una cotización sin ID'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: AppTheme.cardBg,
+        title: Text(
+          'Convertir a factura',
+          style: TextStyle(color: AppTheme.textPrimary),
+        ),
+        content: Text(
+          'Se creará una factura a partir de la cotización #${cotizacion.id?.substring(0, 8) ?? ""}\n\nCliente: ${cotizacion.clienteNombre}\nTotal: ${cotizacion.totalFinal}',
+          style: TextStyle(color: AppTheme.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancelar'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary),
+            onPressed: () => Navigator.pop(context, true),
+            child: Text('Convertir', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+
+    setState(() => _isLoading = true);
+    try {
+      // 1. Crear factura desde la cotización
+      final factura = Factura(
+        clienteNombre: cotizacion.clienteNombre ?? 'Cliente General',
+        clienteNit: null, // Asume null si no existe clienteNit
+        clienteTelefono: cotizacion.clienteTelefono,
+        total: cotizacion.totalFinal,
+        subtotal: cotizacion.subtotal,
+        descuento: cotizacion.totalDescuentos,
+        estadoPago: 'PENDIENTE',
+        items: cotizacion.items
+            ?.map(
+              (i) => ItemPedido(
+                productoId: i.productoId,
+                productoNombre: i.productoNombre,
+                cantidad: i.cantidad,
+                precioUnitario: i.precioUnitario,
+              ),
+            )
+            .toList(),
+        fechaCreacion: DateTime.now(),
+        datosAdicionales: {'origenCotizacion': cotizacion.id},
+      );
+      final facturaCreada = await _facturaService.crearFactura(factura);
+      if (facturaCreada == null) throw Exception('No se pudo crear la factura');
+
+      // 2. Marcar cotización como convertida
+      await _cotizacionService.convertirAFactura(
+        cotizacion.id!,
+        facturaCreada.id!,
+      );
+      await _cargarCotizaciones();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Factura #\${facturaCreada.numero ?? facturaCreada.id} creada exitosamente',
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al convertir: \$e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _verPDF(Cotizacion cotizacion) async {
@@ -578,9 +684,9 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen> {
       Cliente? clienteCompleto;
       final nombreClienteCotizacion = cotizacion.clienteNombre ?? '';
       
-      print('📋 Buscando cliente para cotización...');
-      print('   - clienteId: ${cotizacion.clienteId}');
-      print('   - clienteNombre guardado: $nombreClienteCotizacion');
+      appLog('📋 Buscando cliente para cotización...');
+      appLog('   - clienteId: ${cotizacion.clienteId}');
+      appLog('   - clienteNombre guardado: $nombreClienteCotizacion');
 
       // Estrategia 1: Buscar por ID
       if (cotizacion.clienteId.isNotEmpty) {
@@ -589,10 +695,12 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen> {
             cotizacion.clienteId,
           );
           if (clienteCompleto != null) {
-            print('✅ Cliente encontrado por ID: ${clienteCompleto.nombreCompleto}');
+            appLog(
+              '✅ Cliente encontrado por ID: ${clienteCompleto.nombreCompleto}',
+            );
           }
         } catch (e) {
-          print('⚠️ Error obteniendo cliente por ID: $e');
+          appLog('⚠️ Error obteniendo cliente por ID: $e');
         }
       }
 
@@ -601,7 +709,7 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen> {
           nombreClienteCotizacion.isNotEmpty && 
           nombreClienteCotizacion != 'CONSUMIDOR FINAL') {
         try {
-          print('🔍 Buscando cliente por nombre: "$nombreClienteCotizacion"');
+          appLog('🔍 Buscando cliente por nombre: "$nombreClienteCotizacion"');
           final resultados = await _clienteService.buscarClientes(nombreClienteCotizacion);
           if (resultados.isNotEmpty) {
             // Buscar coincidencia exacta primero
@@ -609,12 +717,14 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen> {
               (c) => c.nombreCompleto.toLowerCase() == nombreClienteCotizacion.toLowerCase(),
             );
             clienteCompleto = exacto.isNotEmpty ? exacto.first : resultados.first;
-            print('✅ Cliente encontrado por nombre: ${clienteCompleto.nombreCompleto}');
+            appLog(
+              '✅ Cliente encontrado por nombre: ${clienteCompleto.nombreCompleto}',
+            );
           } else {
-            print('❌ No se encontró cliente con ese nombre');
+            appLog('❌ No se encontró cliente con ese nombre');
           }
         } catch (e) {
-          print('⚠️ Error buscando cliente por nombre: $e');
+          appLog('⚠️ Error buscando cliente por nombre: $e');
         }
       }
 
@@ -624,7 +734,7 @@ class _CotizacionesListScreenState extends State<CotizacionesListScreen> {
                              ? nombreClienteCotizacion 
                              : 'CONSUMIDOR FINAL');
       
-      print('📝 Nombre final para PDF: $nombreCliente');
+      appLog('📝 Nombre final para PDF: $nombreCliente');
 
       // Preparar datos del resumen para el PDF
       final resumen = {

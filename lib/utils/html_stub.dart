@@ -87,7 +87,8 @@ class CssStyleDeclaration {
 }
 
 class AnchorElement {
-  final String? href;
+  String? href;
+  String? download;
   final CssStyleDeclaration style = CssStyleDeclaration();
   AnchorElement({this.href});
   // ignore: avoid_unused_constructor_parameters
@@ -107,6 +108,12 @@ class _Body {
 
 class Document {
   final _Body? body = _Body();
+  
+  // ignore: avoid_unused_constructor_parameters
+  dynamic createElement(String tag) {
+    if (tag == 'a') return AnchorElement();
+    return null;
+  }
 }
 
 final Document document = Document();

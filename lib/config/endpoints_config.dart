@@ -308,3 +308,74 @@ class NegocioEndpoints {
   /// Eliminar negocio
   String delete(String id) => '$base/$id';
 }
+
+/// Endpoints para cartera
+class CarteraEndpoints {
+  final String baseUrl;
+  CarteraEndpoints(this.baseUrl);
+
+  String get base => '$baseUrl/api/cartera';
+  String get cuentasPorCobrar => '$base/cuentas-por-cobrar';
+  String cuentasPorCobrarEstado(String estado) => '$base/cuentas-por-cobrar/estado/$estado';
+  String cuentasProximasVencer(int dias) => '$base/cuentas-por-cobrar/proximas-vencer/$dias';
+  String abonoCuenta(String id) => '$base/cuentas-por-cobrar/$id/abono';
+  String get cuentasPorPagar => '$base/cuentas-por-pagar';
+  String pagoCuenta(String id) => '$base/cuentas-por-pagar/$id/pago';
+  String get gastosProgramados => '$base/gastos-programados';
+  String marcarGastoPagado(String id) => '$base/gastos-programados/$id/marcar-pagado';
+  String get resumen => '$base/resumen';
+  String get verificarAlertas => '$base/verificar-alertas';
+}
+
+/// Endpoints para categorías
+class CategoriaEndpoints {
+  final String baseUrl;
+  CategoriaEndpoints(this.baseUrl);
+
+  String get base => '$baseUrl/api/categorias';
+  String categoria(String id) => '$base/$id';
+}
+
+/// Endpoints para clientes
+class ClienteEndpoints {
+  final String baseUrl;
+  ClienteEndpoints(this.baseUrl);
+
+  String get base => '$baseUrl/api/clientes';
+  String cliente(String id) => '$base/$id';
+  String get buscar => '$base/buscar';
+}
+
+/// Endpoints para reportes y dashboard
+class ReportesEndpoints {
+  final String baseUrl;
+  ReportesEndpoints(this.baseUrl);
+
+  String get base => '$baseUrl/api/reportes';
+  String get dashboard => '$base/dashboard';
+  String get cuadreCaja => '$base/cuadre-caja';
+  String get topClientes => '$base/top-clientes';
+  String get ventasAgrupadoProductos => '$base/productos/ventas-agrupado';
+  String get ventasDetalladoProductos => '$base/productos/ventas-detallado';
+}
+
+/// Endpoints para roles y permisos
+class RolesEndpoints {
+  final String baseUrl;
+  RolesEndpoints(this.baseUrl);
+
+  String get base => '$baseUrl/api/roles';
+  String rol(String id) => '$base/$id';
+  String get userRoles => '$baseUrl/api/usersroles';
+  String userRolByUser(String userId) => '$baseUrl/api/usersroles/user/$userId';
+  String assignRole(String userId, String roleId) => '$baseUrl/api/usersroles/user/$userId/role/$roleId';
+}
+
+/// Endpoints para pedidos del asesor
+class PedidosAsesorEndpoints {
+  final String baseUrl;
+  PedidosAsesorEndpoints(this.baseUrl);
+
+  String get base => '$baseUrl/api/pedidos-asesor';
+  String pedido(String id) => '$base/$id';
+}

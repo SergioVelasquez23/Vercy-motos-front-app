@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
@@ -51,8 +52,10 @@ class BodegaService {
 
       throw Exception('Error al obtener bodegas: ${response.statusCode}');
     } catch (e) {
-        
-      // Retornar lista por defecto en caso de error
+      // TODO: El endpoint /api/bodegas no existe aún en el backend.
+      // Opciones: (A) crear BodegaController en el backend,
+      // o (B) eliminar este servicio y usar cantidadBodega del modelo Producto.
+      debugPrint('[BodegaService] ⚠️ /api/bodegas no disponible: $e');
       return _getBodegasDefault();
     }
   }

@@ -5,10 +5,8 @@ import '../config/endpoints_config.dart';
 import '../models/proveedor.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-// ignore: uri_does_not_exist
-import 'dart:html'
-    if (dart.library.io) 'package:vercy_motos/utils/html_stub.dart'
-    as html;
+import '../utils/logger.dart';
+import '../utils/html_stub.dart' if (dart.library.html) 'dart:html' as html;
 
 class ProveedorService {
   static const String baseUrl = kBackendUrl;
@@ -310,14 +308,14 @@ class ProveedorService {
         ),
       );
 
-      print('📤 Enviando archivo Excel de proveedores al backend...');
+      appLog('📤 Enviando archivo Excel de proveedores al backend...');
 
       final streamedResponse = await request.send().timeout(
         Duration(seconds: 180),
       );
       final response = await http.Response.fromStream(streamedResponse);
 
-      print('📥 Respuesta recibida: ${response.statusCode}');
+      appLog('📥 Respuesta recibida: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
@@ -325,21 +323,21 @@ class ProveedorService {
         // Extraer datos según la estructura del backend
         final data = responseData['data'] ?? responseData;
 
-        print('✅ Carga masiva de proveedores completada');
-        print('   Creados: ${data['proveedoresCreados']}');
-        print('   Actualizados: ${data['proveedoresActualizados']}');
-        print('   Errores: ${data['errores']?.length ?? 0}');
+        appLog('✅ Carga masiva de proveedores completada');
+        appLog('   Creados: ${data['proveedoresCreados']}');
+        appLog('   Actualizados: ${data['proveedoresActualizados']}');
+        appLog('   Errores: ${data['errores']?.length ?? 0}');
 
         return data;
       } else {
-        print('❌ Error del servidor: ${response.statusCode}');
-        print('   Respuesta: ${response.body}');
+        appLog('❌ Error del servidor: ${response.statusCode}');
+        appLog('   Respuesta: ${response.body}');
         throw Exception(
           'Error del servidor: ${response.statusCode} - ${response.body}',
         );
       }
     } catch (e) {
-      print('❌ Error en carga masiva de proveedores: $e');
+      appLog('❌ Error en carga masiva de proveedores: $e');
       throw Exception('No se pudo procesar la carga masiva: $e');
     }
   }

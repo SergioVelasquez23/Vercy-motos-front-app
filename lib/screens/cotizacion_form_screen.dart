@@ -1093,10 +1093,122 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
   }
 
   void _buscarCliente() async {
-    // TODO: Implementar búsqueda de clientes
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('Función en desarrollo')));
+    final buscadorCtrl = TextEditingController();
+    List<Cliente> resultados = [];
+    bool cargando = false;
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDlgState) {
+          Future<void> buscar(String q) async {
+            if (q.trim().length < 2) {
+              setDlgState(() => resultados = []);
+              return;
+            }
+            setDlgState(() => cargando = true);
+            try {
+              // Primero buscar en caché local
+              final locales = _clientesDisponibles
+                  .where((c) =>
+                      c.nombreCompleto.toLowerCase().contains(q.toLowerCase()) ||
+                      (c.numeroIdentificacion ?? '').contains(q) ||
+                      (c.telefono ?? '').contains(q))
+                  .toList();
+              if (locales.isNotEmpty) {
+                setDlgState(() { resultados = locales; cargando = false; });
+                return;
+              }
+              // Fallback: buscar en backend
+              final remotos = await _clienteService.buscarClientes(q);
+              setDlgState(() { resultados = remotos; cargando = false; });
+            } catch (_) {
+              setDlgState(() => cargando = false);
+            }
+          }
+
+          return AlertDialog(
+            backgroundColor: AppTheme.cardBg,
+            title: Text(
+              'Buscar cliente',
+              style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold),
+            ),
+            content: SizedBox(
+              width: 450,
+              height: 380,
+              child: Column(
+                children: [
+                  TextField(
+                    controller: buscadorCtrl,
+                    autofocus: true,
+                    style: TextStyle(color: AppTheme.textPrimary),
+                    decoration: InputDecoration(
+                      hintText: 'Nombre, documento o teléfono…',
+                      hintStyle: TextStyle(color: AppTheme.textSecondary),
+                      prefixIcon: Icon(Icons.search, color: AppTheme.textSecondary),
+                      border: OutlineInputBorder(),
+                    ),
+                    onChanged: buscar,
+                  ),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: cargando
+                        ? const Center(child: CircularProgressIndicator())
+                        : resultados.isEmpty
+                            ? Center(
+                                child: Text(
+                                  buscadorCtrl.text.length < 2
+                                      ? 'Escriba al menos 2 caracteres'
+                                      : 'Sin resultados',
+                                  style: TextStyle(color: AppTheme.textSecondary),
+                                ),
+                              )
+                            : ListView.separated(
+                                itemCount: resultados.length,
+                                separatorBuilder: (_, __) =>
+                                    Divider(height: 1, color: Colors.white12),
+                                itemBuilder: (_, i) {
+                                  final c = resultados[i];
+                                  return ListTile(
+                                    title: Text(
+                                      c.nombreCompleto,
+                                      style: TextStyle(color: AppTheme.textPrimary),
+                                    ),
+                                    subtitle: Text(
+                                      [
+                                        if (c.numeroIdentificacion != null)
+                                          c.numeroIdentificacion!,
+                                        if (c.telefono != null) c.telefono!,
+                                      ].join(' · '),
+                                      style: TextStyle(
+                                          color: AppTheme.textSecondary, fontSize: 12),
+                                    ),
+                                    onTap: () => Navigator.pop(ctx, c),
+                                  );
+                                },
+                              ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: Text('Cancelar',
+                    style: TextStyle(color: AppTheme.textSecondary)),
+              ),
+            ],
+          );
+        },
+      ),
+    ).then((cliente) {
+      if (cliente is Cliente) {
+        setState(() {
+          _clienteSeleccionado = cliente;
+          _clienteController.text = cliente.nombreCompleto;
+        });
+      }
+    });
   }
 
   Future<void> _guardarCotizacion() async {

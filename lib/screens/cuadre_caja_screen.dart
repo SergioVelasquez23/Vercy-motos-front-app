@@ -77,6 +77,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
   String? _selectedResponsable;
   String? _selectedEstado;
   String? _selectedCajero;
+  List<String> _cajerosAgregados = []; // cajeros confirmados para este cuadre
 
   @override
   void initState() {
@@ -1278,7 +1279,26 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                           size: 30,
                         ),
                         onPressed: () {
-                          // Agregar nuevo cajero
+                          if (_selectedCajero != null &&
+                              !_cajerosAgregados.contains(_selectedCajero)) {
+                            setState(() {
+                              _cajerosAgregados.add(_selectedCajero!);
+                            });
+                          } else if (_selectedCajero == null) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Seleccione un cajero primero'),
+                                backgroundColor: Colors.orange,
+                              ),
+                            );
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Este cajero ya fue agregado'),
+                                backgroundColor: Colors.orange,
+                              ),
+                            );
+                          }
                         },
                       ),
                     ],
@@ -1313,43 +1333,59 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
                             ],
                           ),
                         ),
-                        // Filas de cajeros seleccionados
-                        ..._usuariosDisponibles
-                            .where((cajero) => _selectedCajero == cajero)
-                            .map(
-                              (cajero) => Container(
-                                decoration: BoxDecoration(
-                                  border: Border(
-                                    top: BorderSide(
-                                      color: Colors.grey.shade300,
-                                    ),
-                                  ),
-                                ),
-                                padding: EdgeInsets.symmetric(
-                                  vertical: 10,
-                                  horizontal: 16,
-                                ),
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        cajero,
-                                        style: TextStyle(color: textDark),
-                                      ),
-                                    ),
-                                    IconButton(
-                                      icon: Icon(
-                                        Icons.delete_outline,
-                                        color: Colors.grey,
-                                      ),
-                                      onPressed: () {
-                                        // Eliminar cajero
-                                      },
-                                    ),
-                                  ],
-                                ),
+                        // Filas de cajeros agregados
+                        if (_cajerosAgregados.isEmpty)
+                          Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Text(
+                              'Sin cajeros agregados',
+                              style: TextStyle(
+                                color: Colors.grey,
+                                fontStyle: FontStyle.italic,
                               ),
                             ),
+                          ),
+                        ..._cajerosAgregados.map(
+                          (cajero) => Container(
+                            decoration: BoxDecoration(
+                              border: Border(
+                                top: BorderSide(color: Colors.grey.shade300),
+                              ),
+                            ),
+                            padding: EdgeInsets.symmetric(
+                              vertical: 10,
+                              horizontal: 16,
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    cajero,
+                                    style: TextStyle(color: textDark),
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.delete_outline,
+                                    color: Colors.redAccent,
+                                  ),
+                                  tooltip: 'Quitar cajero',
+                                  onPressed: () {
+                                    setState(() {
+                                      _cajerosAgregados.remove(cajero);
+                                    });
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('$cajero eliminado'),
+                                        duration: const Duration(seconds: 2),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),

@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../config/api_config.dart';
 import '../models/pedido_asesor.dart';
+import '../utils/logger.dart';
 
 class PedidoAsesorService {
   final ApiConfig _apiConfig = ApiConfig();
@@ -39,10 +40,10 @@ class PedidoAsesorService {
       }
 
       // 🔍 DEBUG: Ver qué se envía al backend
-      print('📤 Creando pedido asesor:');
-      print('   Items: ${pedidoJson['items'].length}');
+      appLog('📤 Creando pedido asesor:');
+      appLog('   Items: ${pedidoJson['items'].length}');
       for (var item in pedidoJson['items']) {
-        print('   - ${item['productoNombre']}: origen = ${item['origen']}');
+        appLog('   - ${item['productoNombre']}: origen = ${item['origen']}');
       }
       
       final response = await http.post(
@@ -58,21 +59,21 @@ class PedidoAsesorService {
             : decoded;
         
         // 🔍 DEBUG: Ver qué devuelve el backend
-        print('📥 Respuesta del backend al crear pedido:');
+        appLog('📥 Respuesta del backend al crear pedido:');
         if (data is Map && data['items'] != null) {
-          print('   Items recibidos: ${(data['items'] as List).length}');
+          appLog('   Items recibidos: ${(data['items'] as List).length}');
 
           // WORKAROUND: Restaurar orígenes si el backend los perdió
           for (var item in data['items']) {
             final productoId = item['productoId'].toString();
-            print(
+            appLog(
               '   - ${item['productoNombre']}: origen = ${item['origen'] ?? 'NULL'}',
             );
 
             if (item['origen'] == null &&
                 origenesOriginales.containsKey(productoId)) {
               item['origen'] = origenesOriginales[productoId];
-              print(
+              appLog(
                 '   ⚠️ Restaurado origen desde frontend: ${item['origen']}',
               );
             }
@@ -117,9 +118,9 @@ class PedidoAsesorService {
         final decoded = json.decode(response.body);
 
         // 🔍 DEBUG: Ver estructura de respuesta
-        print('🔍 Respuesta del backend (pedidos asesores):');
+        appLog('🔍 Respuesta del backend (pedidos asesores):');
         if (decoded is Map && decoded['data'] != null) {
-          print('   Estructura con data wrapper');
+          appLog('   Estructura con data wrapper');
         }
 
         // Manejar diferentes estructuras de respuesta
@@ -146,16 +147,16 @@ class PedidoAsesorService {
         }
         
         // 🔍 DEBUG: Ver items en la lista de pedidos
-        print('📥 Recibidos ${data.length} pedidos del backend');
+        appLog('📥 Recibidos ${data.length} pedidos del backend');
 
         final pedidos = data.map((pedidoJson) {
           final pedido = PedidoAsesor.fromJson(pedidoJson);
 
           // Log de los items del primer pedido para debug
           if (data.indexOf(pedidoJson) == 0 && pedido.items.isNotEmpty) {
-            print('   Primer pedido - Items:');
+            appLog('   Primer pedido - Items:');
             for (var item in pedido.items) {
-              print('     - ${item.productoNombre}: origen = ${item.origen}');
+              appLog('     - ${item.productoNombre}: origen = ${item.origen}');
             }
           }
 
@@ -196,10 +197,10 @@ class PedidoAsesorService {
             : decoded;
         
         // 🔍 DEBUG: Ver qué devuelve el backend para pedido individual
-        print('📥 Pedido obtenido (ID: $id):');
+        appLog('📥 Pedido obtenido (ID: $id):');
         if (data is Map && data['items'] != null) {
           for (var item in data['items']) {
-            print(
+            appLog(
               '   - ${item['productoNombre']}: origen = ${item['origen'] ?? 'NULL (usará default ALMACÉN)'}',
             );
           }

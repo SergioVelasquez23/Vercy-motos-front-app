@@ -5,6 +5,7 @@ import '../services/pdf_export_service.dart';
 import '../utils/format_utils.dart';
 import '../utils/payment_calculator.dart';
 import '../theme/app_theme.dart';
+import '../utils/logger.dart';
 
 class ResumenCierreDetalladoScreen extends StatefulWidget {
   final String cuadreId;
@@ -666,11 +667,11 @@ class _ResumenCierreDetalladoScreenState
               // DEBUG: Ver los valores antes de mostrar
               Builder(
                 builder: (context) {
-                  print('🔍 _buildCuadreInfo - Valores para mostrar:');
-                  print('   efectivoEsperado: ${info.efectivoEsperado}');
-                  print('   efectivoDeclarado: ${info.efectivoDeclarado}');
-                  print('   descuadre: ${info.descuadre}');
-                  print(
+                  appLog('🔍 _buildCuadreInfo - Valores para mostrar:');
+                  appLog('   efectivoEsperado: ${info.efectivoEsperado}');
+                  appLog('   efectivoDeclarado: ${info.efectivoDeclarado}');
+                  appLog('   descuadre: ${info.descuadre}');
+                  appLog(
                     '   Condición cumplida: ${info.efectivoDeclarado > 0 || info.descuadre.abs() > 0.01}',
                   );
                   return SizedBox.shrink();

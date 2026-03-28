@@ -16,6 +16,8 @@ import '../theme/app_theme.dart';
 import '../widgets/vercy_sidebar_layout.dart';
 import '../utils/format_utils.dart';
 import '../utils/file_download_helper.dart';
+import '../utils/logger.dart';
+import '../utils/pagination_mixin.dart';
 
 class ProductosListScreen extends StatefulWidget {
   const ProductosListScreen({super.key});
@@ -24,7 +26,7 @@ class ProductosListScreen extends StatefulWidget {
   _ProductosListScreenState createState() => _ProductosListScreenState();
 }
 
-class _ProductosListScreenState extends State<ProductosListScreen> {
+class _ProductosListScreenState extends State<ProductosListScreen> with PaginacionMixin<ProductosListScreen> {
   final ProductoService _productoService = ProductoService();
 
   // Controladores de filtros
@@ -66,10 +68,10 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
       final categorias = results[1] as List<Categoria>;
 
       // 🔍 LOG: Verificar valores de inventario recibidos del endpoint /ligero
-      print('📦 Productos cargados: ${productos.length}');
+      appLog('📦 Productos cargados: ${productos.length}');
       for (var i = 0; i < productos.length && i < 5; i++) {
         final p = productos[i];
-        print('   - ${p.nombre}: Almacén=${p.almacen}, Bodega=${p.bodega}');
+        appLog('   - ${p.nombre}: Almacén=${p.almacen}, Bodega=${p.bodega}');
       }
 
       setState(() {
@@ -126,6 +128,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
 
       // Ordenar por nombre
       _productosFiltrados.sort((a, b) => a.nombre.compareTo(b.nombre));
+      resetPagina();
     });
   }
 
@@ -509,12 +512,22 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
                       ],
                     ),
                   )
-                : ListView.builder(
-                    itemCount: _productosFiltrados.length,
-                    itemBuilder: (context, index) {
-                      final producto = _productosFiltrados[index];
-                      return _buildFilaTabla(producto, index);
-                    },
+                : Column(
+                    children: [
+                      ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: paginarLista(_productosFiltrados).length,
+                        itemBuilder: (context, index) {
+                          final producto = paginarLista(_productosFiltrados)[index];
+                          return _buildFilaTabla(producto, index);
+                        },
+                      ),
+                      buildPaginacion(
+                        totalItems: _productosFiltrados.length,
+                        accentColor: AppTheme.primary,
+                      ),
+                    ],
                   ),
           ),
         ],
@@ -983,7 +996,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
 
     // Guardar los valores locales que ya tenemos (productoOServicio puede venir correcto de la lista)
     final productoOServicioLocal = producto.productoOServicio;
-    print('🔍 [_editarProducto] productoOServicio local: "$productoOServicioLocal"');
+    appLog('🔍 [_editarProducto] productoOServicio local: "$productoOServicioLocal"');
 
     _productoService
         .getProducto(producto.id)
@@ -997,9 +1010,9 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
               productoFinal = productoCompleto.copyWith(
                 productoOServicio: productoOServicioLocal,
               );
-              print('🔍 [_editarProducto] productoOServicio restaurado del local: "$productoOServicioLocal"');
+              appLog('🔍 [_editarProducto] productoOServicio restaurado del local: "$productoOServicioLocal"');
             }
-            print('🔍 [_editarProducto] productoFinal.productoOServicio: "${productoFinal.productoOServicio}"');
+            appLog('🔍 [_editarProducto] productoFinal.productoOServicio: "${productoFinal.productoOServicio}"');
             _mostrarFormularioProductoCompleto(producto: productoFinal);
           } else {
             ScaffoldMessenger.of(context).clearSnackBars();
@@ -1120,8 +1133,8 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
     final tipoSeleccionado = [isEditing
         ? (producto.productoOServicio?.toUpperCase() ?? 'PRODUCTO')
         : 'PRODUCTO'];
-    print('🔍 [DIALOG INIT] tipoSeleccionado inicial: "${tipoSeleccionado[0]}"');
-    print('🔍 [DIALOG INIT] producto.productoOServicio: "${producto?.productoOServicio}"');
+    appLog('🔍 [DIALOG INIT] tipoSeleccionado inicial: "${tipoSeleccionado[0]}"');
+    appLog('🔍 [DIALOG INIT] producto.productoOServicio: "${producto?.productoOServicio}"');
     final controlInventarioSeleccionado = [isEditing
         ? (producto.controlInventario ?? 'SI')
         : 'SI'];
@@ -1241,7 +1254,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
                     }
 
                     // ✅ Primero guardar el producto y actualizar la lista
-                    print('🔍 [GUARDAR] tipoSeleccionado antes de guardar: "${tipoSeleccionado[0]}"');
+                    appLog('🔍 [GUARDAR] tipoSeleccionado antes de guardar: "${tipoSeleccionado[0]}"');
                     final guardadoExitoso = await _guardarProductoCompleto(
                       producto: producto,
                       // Información básica
@@ -1390,11 +1403,11 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
                           ),
                         ],
                         onChanged: (value) {
-                          print('🔍 [DROPDOWN LIST] Cambio detectado: "$value"');
+                          appLog('🔍 [DROPDOWN LIST] Cambio detectado: "$value"');
                           setDialogState(
                             () {
                               tipoSeleccionado = value ?? 'PRODUCTO';
-                              print('🔍 [DROPDOWN LIST] tipoSeleccionado actualizado: "$tipoSeleccionado"');
+                              appLog('🔍 [DROPDOWN LIST] tipoSeleccionado actualizado: "$tipoSeleccionado"');
                             },
                           );
                         },
@@ -1545,7 +1558,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
                     }
 
                     Navigator.pop(context);
-                    print('🔍 [GUARDA PRODUCTO LIST] tipo a guardar: "$tipoSeleccionado"');
+                    appLog('🔍 [GUARDA PRODUCTO LIST] tipo a guardar: "$tipoSeleccionado"');
                     await _guardarProducto(
                       producto: producto,
                       nombre: nombreController.text.trim(),
@@ -1582,7 +1595,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
     required String tipo,
   }) async {
     try {
-      print('🔍 [_guardarProducto] Parámetro tipo recibido: "$tipo"');
+      appLog('🔍 [_guardarProducto] Parámetro tipo recibido: "$tipo"');
       final service = ProductoService();
 
       // Encontrar la categoría seleccionada
@@ -1596,8 +1609,8 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
 
       if (producto != null) {
         // Editar producto existente
-        print('🔍 [_guardarProducto] Editando producto existente');
-        print('🔍 [_guardarProducto] tipo.toLowerCase(): "${tipo.toLowerCase()}"');
+        appLog('🔍 [_guardarProducto] Editando producto existente');
+        appLog('🔍 [_guardarProducto] tipo.toLowerCase(): "${tipo.toLowerCase()}"');
         final productoActualizado = Producto(
           id: producto.id,
           nombre: nombre,
@@ -1615,7 +1628,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
           utilidad: producto.utilidad,
         );
         
-        print('🔍 [_guardarProducto] productoActualizado.productoOServicio: "${productoActualizado.productoOServicio}"');
+        appLog('🔍 [_guardarProducto] productoActualizado.productoOServicio: "${productoActualizado.productoOServicio}"');
 
         await service.updateProducto(productoActualizado);
 
@@ -2153,7 +2166,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
         Navigator.pop(context);
       }
 
-      print('Error al diagnosticar archivo Excel: $e');
+      appLog('Error al diagnosticar archivo Excel: $e');
       if (mounted) {
         showDialog(
           context: context,
@@ -2313,7 +2326,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
         Navigator.pop(context);
       }
 
-      print('Error al procesar archivo Excel: $e');
+      appLog('Error al procesar archivo Excel: $e');
       if (mounted) {
         showDialog(
           context: context,
@@ -2377,8 +2390,8 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
     required String ubicacion4,
     required String localizacion,
   }) async {
-    print('🔍 [_guardarProductoCompleto] Recibido tipo: "$tipo"');
-    print('🔍 [_guardarProductoCompleto] Convirtiendo a lowercase: "${tipo.toLowerCase()}"');
+    appLog('🔍 [_guardarProductoCompleto] Recibido tipo: "$tipo"');
+    appLog('🔍 [_guardarProductoCompleto] Convirtiendo a lowercase: "${tipo.toLowerCase()}"');
     try {
       final service = ProductoService();
 
@@ -2494,13 +2507,13 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
           utilidad: precio - costo,
         );
 
-        print('🔍 Creando producto: ${nuevoProducto.nombre}');
+        appLog('🔍 Creando producto: ${nuevoProducto.nombre}');
         final productoCreado = await service.addProducto(nuevoProducto);
-        print('🔍 Producto recibido del servicio, ID: "${productoCreado.id}"');
+        appLog('🔍 Producto recibido del servicio, ID: "${productoCreado.id}"');
 
         // ✅ Verificar que el producto tenga un ID válido
         if (productoCreado.id.isEmpty) {
-          print(
+          appLog(
             '⚠️ WARNING: El producto creado no tiene ID. Recargando lista completa...',
           );
           // Si no hay ID válido, recargar toda la lista
@@ -2529,7 +2542,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
             // Actualizar también el Provider cache para futuras referencias
             cacheProvider.agregarProductoAlCache(productoCreado);
 
-            print(
+            appLog(
               '✅ Producto agregado a la lista local con ID: ${productoCreado.id}',
             );
           }
@@ -2546,7 +2559,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
       // ⚡ OPTIMIZADO: Ya no recargar todo, el producto ya está en la lista local
       return true; // ✅ Retornar éxito
     } catch (e) {
-      print('❌ Error al guardar producto: $e');
+      appLog('❌ Error al guardar producto: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error al guardar producto: $e'),
@@ -2573,10 +2586,10 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
                     tipoSeleccionado,
                     ['PRODUCTO', 'SERVICIO'],
                     (value) {
-                      print('🔍 [DROPDOWN] Cambio de tipo detectado: "$value"');
+                      appLog('🔍 [DROPDOWN] Cambio de tipo detectado: "$value"');
                       setState(() {
                         tipoSeleccionadoList[0] = value ?? 'PRODUCTO';
-                        print('🔍 [DROPDOWN] tipoSeleccionado actualizado a: "${tipoSeleccionadoList[0]}"');
+                        appLog('🔍 [DROPDOWN] tipoSeleccionado actualizado a: "${tipoSeleccionadoList[0]}"');
                       });
                     },
                   ),
@@ -3009,14 +3022,14 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
       String? codigoBarras = producto.codigoBarras;
 
       // DEBUG inicial
-      print('🔍 DEBUG CODIGO BARRAS:');
-      print('  - producto.codigoBarras: ${producto.codigoBarras}');
-      print('  - producto.codigo: ${producto.codigo}');
-      print('  - producto.id: ${producto.id}');
-      print('  - producto.nombre: ${producto.nombre}');
+      appLog('🔍 DEBUG CODIGO BARRAS:');
+      appLog('  - producto.codigoBarras: ${producto.codigoBarras}');
+      appLog('  - producto.codigo: ${producto.codigo}');
+      appLog('  - producto.id: ${producto.id}');
+      appLog('  - producto.nombre: ${producto.nombre}');
 
       if (codigoBarras == null || codigoBarras.isEmpty) {
-        print('⏳ Obteniendo producto completo para código de barras...');
+        appLog('⏳ Obteniendo producto completo para código de barras...');
 
         try {
           // Obtener producto completo desde el backend
@@ -3024,10 +3037,10 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
             producto.id,
           );
 
-          print('📦 Producto completo obtenido:');
-          print('  - productoCompleto: ${productoCompleto != null}');
+          appLog('📦 Producto completo obtenido:');
+          appLog('  - productoCompleto: ${productoCompleto != null}');
           if (productoCompleto != null) {
-            print(
+            appLog(
               '  - productoCompleto.codigoBarras: ${productoCompleto.codigoBarras}',
             );
           }
@@ -3036,16 +3049,16 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
               productoCompleto.codigoBarras != null &&
               productoCompleto.codigoBarras!.isNotEmpty) {
             codigoBarras = productoCompleto.codigoBarras;
-            print('✅ Código de barras obtenido: $codigoBarras');
+            appLog('✅ Código de barras obtenido: $codigoBarras');
           } else {
-            print('❌ El producto completo tampoco tiene código de barras');
+            appLog('❌ El producto completo tampoco tiene código de barras');
           }
         } catch (e) {
-          print('❌ Error obteniendo producto completo: $e');
+          appLog('❌ Error obteniendo producto completo: $e');
         }
       }
 
-      print('🔍 CODIGO DE BARRAS FINAL: $codigoBarras');
+      appLog('🔍 CODIGO DE BARRAS FINAL: $codigoBarras');
 
       if (codigoBarras == null || codigoBarras.isEmpty) {
         if (mounted) {
@@ -3138,7 +3151,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
         );
       }
     } catch (e) {
-      print('Error al generar PDF: $e');
+      appLog('Error al generar PDF: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -3226,7 +3239,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
         _mostrarMensajeExito('Se abrió el diálogo del sistema para imprimir');
       }
     } catch (e) {
-      print('Error en impresión con diálogo del sistema: $e');
+      appLog('Error en impresión con diálogo del sistema: $e');
       _mostrarMensajeError('Error al abrir diálogo del sistema: $e');
     }
   }
@@ -3245,7 +3258,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
         _mostrarMensajeExito('Vista previa generada correctamente');
       }
     } catch (e) {
-      print('Error en vista previa: $e');
+      appLog('Error en vista previa: $e');
       _mostrarMensajeError('Error en vista previa: $e');
     }
   }
@@ -3272,7 +3285,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
         }
       }
     } catch (e) {
-      print('Error en impresión directa: $e');
+      appLog('Error en impresión directa: $e');
       _mostrarMensajeError(
         'Error en impresión directa: $e\nIntenta con "Vista previa"',
       );
@@ -3355,7 +3368,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> {
         _mostrarMensajeExito('Impreso en: ${printer.name}');
       }
     } catch (e) {
-      print('Error imprimiendo en ${printer.name}: $e');
+      appLog('Error imprimiendo en ${printer.name}: $e');
       _mostrarMensajeError('Error imprimiendo en ${printer.name}: $e');
     }
   }

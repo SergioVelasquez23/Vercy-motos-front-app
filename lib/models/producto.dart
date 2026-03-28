@@ -1,3 +1,4 @@
+import '../utils/logger.dart';
 import 'categoria.dart';
 
 class IngredienteProducto {
@@ -252,7 +253,7 @@ class Producto {
   factory Producto.fromJson(Map<String, dynamic> json) {
     // DEBUG TEMPORAL: Ver si viene codigoBarras del backend
     if (json['codigoBarras'] != null) {
-      print(
+      appLog(
         '🏷️ fromJson - codigoBarras encontrado: ${json['codigoBarras']} para ${json['nombre']}',
       );
     }
@@ -264,10 +265,10 @@ class Producto {
 
     // Log para productos tipo servicio
     if (productoOServicio == 'servicio' || tipoItem == 'servicio') {
-      print('🔍 fromJson - SERVICIO detectado:');
-      print('   Nombre: $nombre');
-      print('   productoOServicio: $productoOServicio');
-      print('   tipoItem: $tipoItem');
+      appLog('🔍 fromJson - SERVICIO detectado:');
+      appLog('   Nombre: $nombre');
+      appLog('   productoOServicio: $productoOServicio');
+      appLog('   tipoItem: $tipoItem');
     }
 
     // Log si el campo viene null cuando debería existir
@@ -275,11 +276,11 @@ class Producto {
         (nombre.toLowerCase().contains('mano') &&
             nombre.toLowerCase().contains('obra'))) {
       if (productoOServicio == null && tipoItem == null) {
-        print('⚠️ fromJson - Producto sospechoso SIN campo tipo:');
-        print('   Nombre: $nombre');
-        print('   productoOServicio: $productoOServicio');
-        print('   tipoItem: $tipoItem');
-        print('   Keys disponibles: ${json.keys.take(15).toList()}...');
+        appLog('⚠️ fromJson - Producto sospechoso SIN campo tipo:');
+        appLog('   Nombre: $nombre');
+        appLog('   productoOServicio: $productoOServicio');
+        appLog('   tipoItem: $tipoItem');
+        appLog('   Keys disponibles: ${json.keys.take(15).toList()}...');
       }
     }
     
@@ -372,11 +373,11 @@ class Producto {
     // 🔍 DEBUG TEMPORAL: Ver si viene productoOServicio o tipoItem
     if (nombre.toLowerCase().contains('mano') &&
         nombre.toLowerCase().contains('obra')) {
-      print('🔍 fromJsonLigero - Producto tipo servicio detectado:');
-      print('   Nombre: $nombre');
-      print('   productoOServicio: ${json['productoOServicio']}');
-      print('   tipoItem: ${json['tipoItem']}');
-      print('   Keys disponibles: ${json.keys.toList()}');
+      appLog('🔍 fromJsonLigero - Producto tipo servicio detectado:');
+      appLog('   Nombre: $nombre');
+      appLog('   productoOServicio: ${json['productoOServicio']}');
+      appLog('   tipoItem: ${json['tipoItem']}');
+      appLog('   Keys disponibles: ${json.keys.toList()}');
     }
     
     // 🔍 BUSCAR CANTIDAD ALMACÉN: intentar múltiples nombres de campos
@@ -393,10 +394,10 @@ class Producto {
 
     // Solo loguear los primeros 3 productos para no saturar la consola
     if (nombre.contains('CARBURADOR') || nombre.contains('PUFF')) {
-      print('📦 fromJsonLigero: $nombre');
-      print('   - cantidadAlmacen: $cantAlmacen');
-      print('   - cantidadBodega: $cantBodega');
-      print('   - JSON keys: ${json.keys.toList()}');
+      appLog('📦 fromJsonLigero: $nombre');
+      appLog('   - cantidadAlmacen: $cantAlmacen');
+      appLog('   - cantidadBodega: $cantBodega');
+      appLog('   - JSON keys: ${json.keys.toList()}');
     }
     
     return Producto(

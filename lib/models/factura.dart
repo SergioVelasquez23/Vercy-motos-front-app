@@ -18,7 +18,9 @@ class Factura {
   final double? descuento;
   final double subtotal;
   final String? estadoPago; // "PAGADO", "PENDIENTE", "ANULADO"
-  final String? metodoPago; // "EFECTIVO", "TARJETA", "CHEQUE", etc.
+  final String? medioPago; // "EFECTIVO", "TARJETA", "CHEQUE", etc. (campo del backend)
+  /// Alias de compatibilidad: apunta a medioPago
+  String? get metodoPago => medioPago;
   final bool emitida;
   final bool anulada;
   final String? motivoAnulacion;
@@ -42,6 +44,14 @@ class Factura {
   final String? motivoRechazo; // Razón del rechazo si aplica
   final String? trackId; // ID de seguimiento en DIAN
 
+  // ===== CAMPOS FISCALES / TRIBUTARIOS =====
+  final String? formaPago; // "Contado", "Crédito"
+  final String? tipoDescuento; // "Valor" o "Porcentaje"
+  final double baseGravable; // Base sobre la que se calculan impuestos
+  final double totalRetenciones; // Total de retenciones aplicadas
+  final double porcentajeRetencion; // % Retención en la fuente
+  final double valorRetencion; // Valor de retención en la fuente
+
   Factura({
     this.id,
     this.numero,
@@ -56,7 +66,7 @@ class Factura {
     this.descuento = 0.0,
     required this.subtotal,
     this.estadoPago = "PENDIENTE",
-    this.metodoPago,
+    this.medioPago,
     this.emitida = false,
     this.anulada = false,
     this.motivoAnulacion,
@@ -77,6 +87,13 @@ class Factura {
     this.respuestaDIAN,
     this.motivoRechazo,
     this.trackId,
+    // Tributarios
+    this.formaPago,
+    this.tipoDescuento,
+    this.baseGravable = 0.0,
+    this.totalRetenciones = 0.0,
+    this.porcentajeRetencion = 0.0,
+    this.valorRetencion = 0.0,
   });
 
   /// Crea una copia de la factura con los campos actualizados
@@ -94,7 +111,7 @@ class Factura {
     double? descuento,
     double? subtotal,
     String? estadoPago,
-    String? metodoPago,
+    String? medioPago,
     bool? emitida,
     bool? anulada,
     String? motivoAnulacion,
@@ -115,6 +132,12 @@ class Factura {
     String? respuestaDIAN,
     String? motivoRechazo,
     String? trackId,
+    String? formaPago,
+    String? tipoDescuento,
+    double? baseGravable,
+    double? totalRetenciones,
+    double? porcentajeRetencion,
+    double? valorRetencion,
   }) {
     return Factura(
       id: id ?? this.id,
@@ -130,7 +153,7 @@ class Factura {
       descuento: descuento ?? this.descuento,
       subtotal: subtotal ?? this.subtotal,
       estadoPago: estadoPago ?? this.estadoPago,
-      metodoPago: metodoPago ?? this.metodoPago,
+      medioPago: medioPago ?? this.medioPago,
       emitida: emitida ?? this.emitida,
       anulada: anulada ?? this.anulada,
       motivoAnulacion: motivoAnulacion ?? this.motivoAnulacion,
@@ -152,6 +175,12 @@ class Factura {
       respuestaDIAN: respuestaDIAN ?? this.respuestaDIAN,
       motivoRechazo: motivoRechazo ?? this.motivoRechazo,
       trackId: trackId ?? this.trackId,
+      formaPago: formaPago ?? this.formaPago,
+      tipoDescuento: tipoDescuento ?? this.tipoDescuento,
+      baseGravable: baseGravable ?? this.baseGravable,
+      totalRetenciones: totalRetenciones ?? this.totalRetenciones,
+      porcentajeRetencion: porcentajeRetencion ?? this.porcentajeRetencion,
+      valorRetencion: valorRetencion ?? this.valorRetencion,
     );
   }
 
@@ -172,7 +201,7 @@ class Factura {
       'descuento': descuento,
       'subtotal': subtotal,
       'estadoPago': estadoPago,
-      if (metodoPago != null) 'metodoPago': metodoPago,
+      if (medioPago != null) 'medioPago': medioPago,
       'emitida': emitida,
       'anulada': anulada,
       if (motivoAnulacion != null) 'motivoAnulacion': motivoAnulacion,
@@ -196,6 +225,13 @@ class Factura {
       if (respuestaDIAN != null) 'respuestaDIAN': respuestaDIAN,
       if (motivoRechazo != null) 'motivoRechazo': motivoRechazo,
       if (trackId != null) 'trackId': trackId,
+      // Tributarios
+      if (formaPago != null) 'formaPago': formaPago,
+      if (tipoDescuento != null) 'tipoDescuento': tipoDescuento,
+      'baseGravable': baseGravable,
+      'totalRetenciones': totalRetenciones,
+      'porcentajeRetencion': porcentajeRetencion,
+      'valorRetencion': valorRetencion,
     };
   }
 
@@ -246,7 +282,7 @@ class Factura {
       descuento: json['descuento']?.toDouble() ?? 0.0,
       subtotal: json['subtotal']?.toDouble() ?? 0.0,
       estadoPago: json['estadoPago'] ?? 'PENDIENTE',
-      metodoPago: json['metodoPago'],
+      medioPago: json['medioPago'] ?? json['metodoPago'], // 'medioPago' es el campo del backend
       emitida: json['emitida'] ?? false,
       anulada: json['anulada'] ?? false,
       motivoAnulacion: json['motivoAnulacion'],
@@ -267,6 +303,13 @@ class Factura {
       respuestaDIAN: json['respuestaDIAN'],
       motivoRechazo: json['motivoRechazo'],
       trackId: json['trackId'],
+      // Tributarios
+      formaPago: json['formaPago'],
+      tipoDescuento: json['tipoDescuento'],
+      baseGravable: (json['baseGravable'] ?? 0.0).toDouble(),
+      totalRetenciones: (json['totalRetenciones'] ?? 0.0).toDouble(),
+      porcentajeRetencion: (json['porcentajeRetencion'] ?? 0.0).toDouble(),
+      valorRetencion: (json['valorRetencion'] ?? 0.0).toDouble(),
     );
   }
 

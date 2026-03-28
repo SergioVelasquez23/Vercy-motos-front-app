@@ -1,5 +1,6 @@
 import 'html_stub.dart' if (dart.library.html) 'dart:html' as html;
 import 'dart:typed_data';
+import '../utils/logger.dart';
 
 /// Helper para descargar archivos en web
 class FileDownloadHelper {
@@ -29,9 +30,9 @@ class FileDownloadHelper {
       html.Url.revokeObjectUrl(url);
       anchor.remove();
 
-      print('✅ Archivo descargado: $filename');
+      appLog('✅ Archivo descargado: $filename');
     } catch (e) {
-      print('❌ Error descargando archivo: $e');
+      appLog('❌ Error descargando archivo: $e');
       throw Exception('No se pudo descargar el archivo: $e');
     }
   }

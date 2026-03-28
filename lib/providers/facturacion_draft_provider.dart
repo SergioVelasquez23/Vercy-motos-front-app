@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/item_pedido.dart';
 import '../models/cliente.dart';
+import '../utils/logger.dart';
 
 /// Provider para mantener el estado del borrador de facturación
 ///
@@ -185,7 +186,7 @@ class FacturacionDraftProvider extends ChangeNotifier {
   void addItem(ItemPedido item) {
     _items.add(item);
     notifyListeners();
-    print(
+    appLog(
       '✅ Item agregado al borrador: ${item.productoNombre} x${item.cantidad}',
     );
   }
@@ -194,7 +195,7 @@ class FacturacionDraftProvider extends ChangeNotifier {
     if (index >= 0 && index < _items.length) {
       _items[index] = item;
       notifyListeners();
-      print('✅ Item actualizado en borrador: ${item.productoNombre}');
+      appLog('✅ Item actualizado en borrador: ${item.productoNombre}');
     }
   }
 
@@ -203,46 +204,46 @@ class FacturacionDraftProvider extends ChangeNotifier {
       final item = _items[index];
       _items.removeAt(index);
       notifyListeners();
-      print('❌ Item eliminado del borrador: ${item.productoNombre}');
+      appLog('❌ Item eliminado del borrador: ${item.productoNombre}');
     }
   }
 
   void clearItems() {
     _items.clear();
     notifyListeners();
-    print('🗑️ Items del borrador limpiados');
+    appLog('🗑️ Items del borrador limpiados');
   }
 
   void setItems(List<ItemPedido> items) {
     _items = List.from(items);
     notifyListeners();
-    print('📝 Borrador actualizado: ${_items.length} items');
+    appLog('📝 Borrador actualizado: ${_items.length} items');
   }
 
   // 🔄 SINCRONIZACIÓN (simplificada - solo control de timer)
   void startSync() {
     if (!_enableSync) {
-      print('ℹ️  Sincronización automática deshabilitada');
+      appLog('ℹ️  Sincronización automática deshabilitada');
       return;
     }
 
     _syncTimer?.cancel();
-    print('🔄 Sincronización iniciada');
+    appLog('🔄 Sincronización iniciada');
 
     // Por ahora solo un placeholder
     _syncTimer = Timer.periodic(Duration(seconds: 30), (timer) {
-      print('🔄 Tick de sincronización (no implementado)');
+      appLog('🔄 Tick de sincronización (no implementado)');
     });
   }
 
   void stopSync() {
     _syncTimer?.cancel();
-    print('⏸️ Sincronización detenida');
+    appLog('⏸️ Sincronización detenida');
   }
 
   /// Forzar sincronización manual (placeholder)
   Future<void> forceSync() async {
-    print('🔄 Sincronización manual (no implementado)');
+    appLog('🔄 Sincronización manual (no implementado)');
   }
 
   // 🗑️ LIMPIAR TODO EL BORRADOR
@@ -278,7 +279,7 @@ class FacturacionDraftProvider extends ChangeNotifier {
     _dctoGeneral = 0;
 
     notifyListeners();
-    print('🗑️ Borrador limpiado completamente');
+    appLog('🗑️ Borrador limpiado completamente');
   }
 
   @override

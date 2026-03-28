@@ -6,6 +6,8 @@ import '../models/categoria.dart';
 import '../models/producto.dart';
 import '../services/producto_service.dart';
 import '../widgets/imagen_categoria_widget.dart';
+import '../utils/pagination_mixin.dart';
+import '../theme/app_theme.dart';
 
 class CategoriasScreen extends StatefulWidget {
   const CategoriasScreen({super.key});
@@ -14,7 +16,8 @@ class CategoriasScreen extends StatefulWidget {
   _CategoriasScreenState createState() => _CategoriasScreenState();
 }
 
-class _CategoriasScreenState extends State<CategoriasScreen> {
+class _CategoriasScreenState extends State<CategoriasScreen>
+    with PaginacionMixin<CategoriasScreen> {
   final ProductoService _productoService = ProductoService();
   List<Categoria> _categorias = [];
   List<Producto> _productos = [];
@@ -102,12 +105,24 @@ class _CategoriasScreenState extends State<CategoriasScreen> {
             )
           : RefreshIndicator(
               onRefresh: _cargarDatos,
-              child: ListView.builder(
-                padding: EdgeInsets.all(16),
-                itemCount: _categorias.length,
-                itemBuilder: (context, index) {
-                  return _buildCategoriaItem(_categorias[index]);
-                },
+              child: Column(
+                children: [
+                  Expanded(
+                    child: ListView.builder(
+                      padding: EdgeInsets.all(16),
+                      itemCount: paginarLista(_categorias).length,
+                      itemBuilder: (context, index) {
+                        return _buildCategoriaItem(
+                          paginarLista(_categorias)[index],
+                        );
+                      },
+                    ),
+                  ),
+                  buildPaginacion(
+                    totalItems: _categorias.length,
+                    accentColor: AppTheme.primary,
+                  ),
+                ],
               ),
             ),
       floatingActionButton: FloatingActionButton(

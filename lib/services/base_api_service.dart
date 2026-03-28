@@ -5,6 +5,7 @@ import '../models/api_response.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode;
 import '../utils/html_stub.dart' if (dart.library.html) 'dart:html' as html;
 import '../config/api_config.dart';
+import '../utils/logger.dart';
 
 /// Clase base para todos los servicios de API
 /// Centraliza la lógica común de autenticación, headers y manejo de errores
@@ -39,9 +40,6 @@ class BaseApiService {
         return await _storage.read(key: 'jwt_token');
       }
     } catch (e) {
-      if (kDebugMode) {
-          
-      }
       return null;
     }
   }
@@ -107,9 +105,7 @@ class BaseApiService {
       final headers = await getHeaders();
       final url = buildUrl(endpoint);
       
-      if (kDebugMode) {
-          
-      }
+      appLog('GET \$url');
 
       // Usar cliente seguro
       final response = await _httpClient
@@ -118,9 +114,7 @@ class BaseApiService {
 
       return _handleResponse<T>(response, fromJson);
     } catch (e) {
-      if (kDebugMode) {
-          
-      }
+      appLog('Error en request', level: LogLevel.error, error: e);
       return ApiResponse<T>(
         success: false,
         message: 'Error de conexión: $e',
@@ -139,10 +133,6 @@ class BaseApiService {
       final headers = await getHeaders();
       final url = buildUrl(endpoint);
       
-      if (kDebugMode) {
-          
-      }
-      
       final response = await _httpClient
           .get(Uri.parse(url), headers: headers)
           .timeout(timeout);
@@ -158,9 +148,7 @@ class BaseApiService {
         );
       }
     } catch (e) {
-      if (kDebugMode) {
-          
-      }
+      appLog('Error en request', level: LogLevel.error, error: e);
       return ApiResponse<List<T>>(
         success: false,
         message: 'Error de conexión: $e',
@@ -179,11 +167,6 @@ class BaseApiService {
     try {
       final headers = await getHeaders();
       final url = buildUrl(endpoint);
-      
-      if (kDebugMode) {
-          
-          
-      }
 
       final response = await _httpClient
           .post(
@@ -195,9 +178,7 @@ class BaseApiService {
 
       return _handleResponse<T>(response, fromJson);
     } catch (e) {
-      if (kDebugMode) {
-          
-      }
+      appLog('Error en request', level: LogLevel.error, error: e);
       return ApiResponse<T>(
         success: false,
         message: 'Error de conexión: $e',
@@ -216,11 +197,6 @@ class BaseApiService {
     try {
       final headers = await getHeaders();
       final url = buildUrl(endpoint);
-      
-      if (kDebugMode) {
-          
-          
-      }
 
       final response = await _httpClient
           .put(
@@ -232,9 +208,7 @@ class BaseApiService {
 
       return _handleResponse<T>(response, fromJson);
     } catch (e) {
-      if (kDebugMode) {
-          
-      }
+      appLog('Error en request', level: LogLevel.error, error: e);
       return ApiResponse<T>(
         success: false,
         message: 'Error de conexión: $e',
@@ -255,10 +229,6 @@ class BaseApiService {
       // Agregar encabezados de seguridad adicionales
       final securityHeaders = ApiConfig.instance.getSecurityHeaders();
       headers.addAll(securityHeaders);
-      
-      if (kDebugMode) {
-          
-      }
 
       final response = await _httpClient
           .delete(Uri.parse(url), headers: headers)
@@ -280,9 +250,7 @@ class BaseApiService {
         );
       }
     } catch (e) {
-      if (kDebugMode) {
-          
-      }
+      appLog('Error en request', level: LogLevel.error, error: e);
       return ApiResponse<void>(
         success: false,
         message: 'Error de conexión: $e',

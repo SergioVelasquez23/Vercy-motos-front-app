@@ -717,6 +717,194 @@ class _GastosScreenState extends State<GastosScreen> {
     );
   }
 
+  // Método para abrir diálogo de crear nuevo proveedor
+  Future<void> _abrirCrearProveedor() async {
+    final nombreController = TextEditingController();
+    final telefonoController = TextEditingController();
+    bool guardando = false;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: AppTheme.cardBg,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppTheme.primary.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(Icons.business, color: AppTheme.primary, size: 24),
+              ),
+              SizedBox(width: 12),
+              Text(
+                'Nuevo Proveedor',
+                style: TextStyle(
+                  color: AppTheme.textPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          content: Container(
+            width: 400,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nombreController,
+                  style: TextStyle(color: AppTheme.textPrimary),
+                  decoration: InputDecoration(
+                    labelText: 'Nombre del Proveedor *',
+                    labelStyle: TextStyle(color: AppTheme.textSecondary),
+                    hintText: 'Ej: Transportes XYZ',
+                    hintStyle: TextStyle(
+                      color: AppTheme.textSecondary.withOpacity(0.5),
+                    ),
+                    filled: true,
+                    fillColor: AppTheme.surfaceDark,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(
+                        color: AppTheme.textSecondary.withOpacity(0.3),
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(
+                        color: AppTheme.textSecondary.withOpacity(0.3),
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: AppTheme.primary),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 16),
+                TextField(
+                  controller: telefonoController,
+                  style: TextStyle(color: AppTheme.textPrimary),
+                  decoration: InputDecoration(
+                    labelText: 'Teléfono (opcional)',
+                    labelStyle: TextStyle(color: AppTheme.textSecondary),
+                    hintText: 'Ej: +57 300 1234567',
+                    hintStyle: TextStyle(
+                      color: AppTheme.textSecondary.withOpacity(0.5),
+                    ),
+                    filled: true,
+                    fillColor: AppTheme.surfaceDark,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(
+                        color: AppTheme.textSecondary.withOpacity(0.3),
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(
+                        color: AppTheme.textSecondary.withOpacity(0.3),
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: AppTheme.primary),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: guardando ? null : () => Navigator.pop(context),
+              child: Text(
+                'Cancelar',
+                style: TextStyle(color: AppTheme.textSecondary),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: guardando
+                  ? null
+                  : () async {
+                      if (nombreController.text.trim().isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'El nombre del proveedor es requerido',
+                            ),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                        return;
+                      }
+
+                      setDialogState(() => guardando = true);
+
+                      try {
+                        final nuevoProveedor = Proveedor(
+                          id: '',
+                          nombre: nombreController.text.trim(),
+                          telefono: telefonoController.text.trim().isEmpty
+                              ? null
+                              : telefonoController.text.trim(),
+                          fechaCreacion: DateTime.now(),
+                          fechaActualizacion: DateTime.now(),
+                        );
+
+                        await _proveedorService.crearProveedor(nuevoProveedor);
+
+                        if (mounted) {
+                          await _loadProveedores();
+                          Navigator.pop(context);
+                          _showSuccess('Proveedor creado exitosamente');
+                        }
+                      } catch (e) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Error al crear proveedor: $e'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      } finally {
+                        if (mounted) {
+                          setDialogState(() => guardando = false);
+                        }
+                      }
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primary,
+                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: guardando
+                  ? SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Text('Crear', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -998,9 +1186,7 @@ class _GastosScreenState extends State<GastosScreen> {
                         size: 24,
                       ),
                       padding: EdgeInsets.zero,
-                      onPressed: () {
-                        // TODO: Abrir diálogo para crear proveedor
-                      },
+                      onPressed: _abrirCrearProveedor,
                     ),
                   ),
                 ],

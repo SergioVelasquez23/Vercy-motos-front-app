@@ -14,6 +14,7 @@ import '../models/item_pedido.dart';
 import '../models/cancelar_producto_request.dart'; // Para cancelaciones selectivas
 import '../config/api_config.dart';
 import '../services/cuadre_caja_service.dart'; // Para validar caja abierta
+import '../utils/logger.dart';
 
 class PedidoService {
   static final PedidoService _instance = PedidoService._internal();
@@ -189,7 +190,7 @@ class PedidoService {
       _cuadreIdCacheTime = null;
       return null;
     } catch (e) {
-      print('⚠️ Error obteniendo cuadreId activo: $e');
+      appLog('⚠️ Error obteniendo cuadreId activo: $e');
       return null;
     }
   }
@@ -206,10 +207,10 @@ class PedidoService {
   void preCachearCuadreId() {
     _getCuadreIdActivo()
         .then((_) {
-          print('🔥 Pre-warm: cuadreId cacheado exitosamente');
+          appLog('🔥 Pre-warm: cuadreId cacheado exitosamente');
         })
         .catchError((e) {
-          print('⚠️ Pre-warm: error obteniendo cuadreId (no crítico): $e');
+          appLog('⚠️ Pre-warm: error obteniendo cuadreId (no crítico): $e');
         });
   }
 
@@ -572,7 +573,7 @@ class PedidoService {
         );
       }
     } catch (e) {
-      print('⚠️ Error en getTodosDocumentosPagados: $e');
+      appLog('⚠️ Error en getTodosDocumentosPagados: $e');
       // Fallback: intentar con el método anterior
       try {
         return await getPedidosByEstado(EstadoPedido.pagado);
@@ -844,43 +845,43 @@ class PedidoService {
   /// las cantidades al stock (almacen o bodega según el origen)
   Future<void> _devolverStockProductos(String pedidoId) async {
     try {
-      print('🔄 Iniciando devolución de stock para pedido $pedidoId');
+      appLog('🔄 Iniciando devolución de stock para pedido $pedidoId');
 
       // 1. Obtener el pedido completo
       final pedido = await getPedidoById(pedidoId);
       if (pedido == null) {
-        print('⚠️ No se encontró el pedido $pedidoId para devolver stock');
+        appLog('⚠️ No se encontró el pedido $pedidoId para devolver stock');
         return;
       }
 
-      print('📦 Pedido encontrado: ${pedido.items.length} items');
+      appLog('📦 Pedido encontrado: ${pedido.items.length} items');
 
       // 2. Para cada item del pedido, devolver el stock
       for (var item in pedido.items) {
         try {
-          print('');
-          print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-          print(
+          appLog('');
+          appLog('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+          appLog(
             '   📦 DEVOLVIENDO STOCK - Item ${pedido.items.indexOf(item) + 1}/${pedido.items.length}',
           );
-          print('   - Producto: ${item.productoNombre ?? item.productoId}');
-          print('   - Producto ID: ${item.productoId}');
-          print('   - Cantidad a devolver: ${item.cantidad} unidades');
-          print('   - Origen de venta: ${item.origen}');
+          appLog('   - Producto: ${item.productoNombre ?? item.productoId}');
+          appLog('   - Producto ID: ${item.productoId}');
+          appLog('   - Cantidad a devolver: ${item.cantidad} unidades');
+          appLog('   - Origen de venta: ${item.origen}');
 
           // Obtener el producto del servicio
           final producto = await _productoService.getProducto(item.productoId);
 
           if (producto == null) {
-            print('   ❌ ERROR: No se encontró el producto ${item.productoId}');
-            print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            appLog('   ❌ ERROR: No se encontró el producto ${item.productoId}');
+            appLog('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
             continue;
           }
 
-          print('');
-          print('   📊 INVENTARIO ACTUAL:');
-          print('      • Almacén: ${producto.almacen ?? 0} unidades');
-          print('      • Bodega: ${producto.bodega ?? 0} unidades');
+          appLog('');
+          appLog('   📊 INVENTARIO ACTUAL:');
+          appLog('      • Almacén: ${producto.almacen ?? 0} unidades');
+          appLog('      • Bodega: ${producto.bodega ?? 0} unidades');
 
           // Calcular nuevas cantidades sumando lo que se vendió
           int nuevoAlmacen = producto.almacen ?? 0;
@@ -889,19 +890,19 @@ class PedidoService {
           // Devolver las cantidades según el origen
           if (item.origen.toUpperCase() == 'BODEGA') {
             nuevoBodega += item.cantidad;
-            print('');
-            print('   🔄 ACTUALIZANDO BODEGA:');
-            print('      • Antes: ${producto.bodega ?? 0}');
-            print('      • Cantidad a sumar: +${item.cantidad}');
-            print('      • Después: $nuevoBodega');
+            appLog('');
+            appLog('   🔄 ACTUALIZANDO BODEGA:');
+            appLog('      • Antes: ${producto.bodega ?? 0}');
+            appLog('      • Cantidad a sumar: +${item.cantidad}');
+            appLog('      • Después: $nuevoBodega');
           } else {
             // Por defecto devolver a ALMACÉN
             nuevoAlmacen += item.cantidad;
-            print('');
-            print('   🔄 ACTUALIZANDO ALMACÉN:');
-            print('      • Antes: ${producto.almacen ?? 0}');
-            print('      • Cantidad a sumar: +${item.cantidad}');
-            print('      • Después: $nuevoAlmacen');
+            appLog('');
+            appLog('   🔄 ACTUALIZANDO ALMACÉN:');
+            appLog('      • Antes: ${producto.almacen ?? 0}');
+            appLog('      • Cantidad a sumar: +${item.cantidad}');
+            appLog('      • Después: $nuevoAlmacen');
           }
 
           // Actualizar el producto con las nuevas cantidades
@@ -910,34 +911,34 @@ class PedidoService {
             bodega: nuevoBodega,
           );
 
-          print('');
-          print('   🚀 Enviando actualización al backend...');
-          print('      - Endpoint: PUT /api/productos/${producto.id}');
-          print('      - cantidadAlmacen: $nuevoAlmacen');
-          print('      - cantidadBodega: $nuevoBodega');
+          appLog('');
+          appLog('   🚀 Enviando actualización al backend...');
+          appLog('      - Endpoint: PUT /api/productos/${producto.id}');
+          appLog('      - cantidadAlmacen: $nuevoAlmacen');
+          appLog('      - cantidadBodega: $nuevoBodega');
 
           await _productoService.updateProducto(productoActualizado);
 
-          print('   ✅ STOCK DEVUELTO EXITOSAMENTE');
-          print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+          appLog('   ✅ STOCK DEVUELTO EXITOSAMENTE');
+          appLog('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         } catch (e) {
-          print('   ❌ ERROR devolviendo stock para item ${item.productoId}:');
-          print('      $e');
-          print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+          appLog('   ❌ ERROR devolviendo stock para item ${item.productoId}:');
+          appLog('      $e');
+          appLog('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
           // Continuar con el siguiente item aunque falle uno
           continue;
         }
       }
 
-      print('');
-      print('🎉 ═══════════════════════════════════════════════════════');
-      print('   ✅ DEVOLUCIÓN DE STOCK COMPLETADA');
-      print('   Pedido: $pedidoId');
-      print('   Items procesados: ${pedido.items.length}');
-      print('═══════════════════════════════════════════════════════');
-      print('');
+      appLog('');
+      appLog('🎉 ═══════════════════════════════════════════════════════');
+      appLog('   ✅ DEVOLUCIÓN DE STOCK COMPLETADA');
+      appLog('   Pedido: $pedidoId');
+      appLog('   Items procesados: ${pedido.items.length}');
+      appLog('═══════════════════════════════════════════════════════');
+      appLog('');
     } catch (e) {
-      print('❌ Error general devolviendo stock: $e');
+      appLog('❌ Error general devolviendo stock: $e');
       // No lanzar excepción para no bloquear la eliminación del pedido
     }
   }
@@ -2385,7 +2386,7 @@ class PedidoService {
       // ✅ NUEVO: Devolver stock de TODOS los pedidos activos ANTES de eliminarlos
       try {
         final pedidosActivos = await getPedidosByEstado(EstadoPedido.activo);
-        print(
+        appLog(
           '🔄 Devolviendo stock de ${pedidosActivos.length} pedidos activos...',
         );
 
@@ -2393,9 +2394,9 @@ class PedidoService {
           await _devolverStockProductos(pedido.id);
         }
 
-        print('✅ Stock devuelto para todos los pedidos activos');
+        appLog('✅ Stock devuelto para todos los pedidos activos');
       } catch (e) {
-        print('⚠️ Error devolviendo stock de pedidos activos: $e');
+        appLog('⚠️ Error devolviendo stock de pedidos activos: $e');
         // Continuar con la eliminación aunque falle la devolución de stock
       }
 

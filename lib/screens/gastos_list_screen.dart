@@ -4,6 +4,7 @@ import '../services/gasto_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/vercy_sidebar_layout.dart';
 import '../utils/format_utils.dart';
+import '../utils/pagination_mixin.dart';
 
 class GastosListScreen extends StatefulWidget {
   const GastosListScreen({super.key});
@@ -12,7 +13,7 @@ class GastosListScreen extends StatefulWidget {
   _GastosListScreenState createState() => _GastosListScreenState();
 }
 
-class _GastosListScreenState extends State<GastosListScreen> {
+class _GastosListScreenState extends State<GastosListScreen> with PaginacionMixin<GastosListScreen> {
   final GastoService _gastoService = GastoService();
 
   // Controladores de filtros
@@ -578,16 +579,19 @@ class _GastosListScreenState extends State<GastosListScreen> {
                       ],
                     ),
                   )
-                : ListView.builder(
-                    itemCount: _gastosFiltrados.length,
+                : Column(
+                    children: [
+                      ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: paginarLista(_gastosFiltrados).length,
                     itemBuilder: (context, index) {
-                      final gasto = _gastosFiltrados[index];
+                      final gasto = paginarLista(_gastosFiltrados)[index];
                       return _buildFilaTabla(gasto, index);
                     },
                   ),
-          ),
-        ],
-      ),
+        ])),
+    ]),
     );
   }
 

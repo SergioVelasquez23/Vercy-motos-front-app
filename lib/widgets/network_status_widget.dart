@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/network_discovery_service.dart';
-import '../config/api_config_new.dart';
+import '../config/api_config.dart';
 
 /// Widget que muestra el estado actual de la conexión de red
 /// y permite reconectar manualmente
@@ -65,7 +65,7 @@ class _NetworkStatusWidgetState extends State<NetworkStatusWidget>
       await apiConfig.initialize();
 
       // Obtener información de configuración
-      _environment = apiConfig.environmentName;
+      _environment = apiConfig.isDevelopment ? 'Desarrollo' : 'Producción';
       _baseUrl = apiConfig.baseUrl;
 
       // Verificar si hay una IP del servidor conocida

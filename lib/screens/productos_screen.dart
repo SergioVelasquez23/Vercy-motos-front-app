@@ -26,6 +26,7 @@ import '../services/image_service.dart';
 import '../services/producto_service.dart';
 import '../services/image_loader_service.dart';
 import '../utils/format_utils.dart';
+import '../utils/logger.dart';
 
 class ProductosScreen extends StatefulWidget {
   const ProductosScreen({super.key});
@@ -1083,7 +1084,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
       text: isEditing ? (producto.productoOServicio ?? '') : '',
     );
     if (isEditing) {
-      print('🔍 [INIT] Inicializando productoOServicioController con: "${producto.productoOServicio}"');
+      appLog('🔍 [INIT] Inicializando productoOServicioController con: "${producto.productoOServicio}"');
     }
     final tipoProductoNombreController = TextEditingController(
       text: isEditing ? (producto.tipoProductoNombre ?? '') : '',
@@ -1545,9 +1546,9 @@ class _ProductosScreenState extends State<ProductosScreen> {
                                         ))
                                     .toList(),
                                 onChanged: (value) {
-                                  print('🔍 [DROPDOWN] Cambio detectado: "$value"');
+                                  appLog('🔍 [DROPDOWN] Cambio detectado: "$value"');
                                   productoOServicioController.text = value ?? 'PRODUCTO';
-                                  print('🔍 [DROPDOWN] Controller actualizado: "${productoOServicioController.text}"');
+                                  appLog('🔍 [DROPDOWN] Controller actualizado: "${productoOServicioController.text}"');
                                 },
                               ),
                               SizedBox(height: 16),
@@ -2881,9 +2882,9 @@ class _ProductosScreenState extends State<ProductosScreen> {
                                 productoOServicio:
                                     productoOServicioController.text.isNotEmpty
                                     ? (() {
-                                        print('🔍 [ACTUALIZAR] productoOServicioController.text: "${productoOServicioController.text}"');
+                                        appLog('🔍 [ACTUALIZAR] productoOServicioController.text: "${productoOServicioController.text}"');
                                         final valor = productoOServicioController.text.toLowerCase();
-                                        print('🔍 [ACTUALIZAR] productoOServicio (lowercase): "$valor"');
+                                        appLog('🔍 [ACTUALIZAR] productoOServicio (lowercase): "$valor"');
                                         return valor;
                                       })()
                                     : null,
@@ -3998,7 +3999,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
             action: SnackBarAction(
               label: 'OK',
               textColor: Colors.white,
-              onPressed: () {},
+              onPressed: () => ScaffoldMessenger.of(context).hideCurrentSnackBar(),
             ),
           ),
         );

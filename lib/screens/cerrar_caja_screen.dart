@@ -8,6 +8,7 @@ import '../services/resumen_cierre_completo_service.dart';
 import '../models/resumen_cierre_completo.dart';
 import '../utils/format_utils.dart';
 import '../theme/app_theme.dart';
+import '../utils/logger.dart';
 
 class CerrarCajaScreen extends StatefulWidget {
   const CerrarCajaScreen({super.key});
@@ -108,21 +109,21 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
       // Intentar obtener cuadre completo primero
       try {
         final cuadreCompleto = await _cuadreCajaService.getCuadreCompleto();
-        print('');
-        print('═══════════════════════════════════════════════════');
-        print('📥 RESPUESTA DEL BACKEND - CUADRE COMPLETO:');
-        print('   efectivoEsperado: ${cuadreCompleto['efectivoEsperado']}');
-        print(
+        appLog('');
+        appLog('═══════════════════════════════════════════════════');
+        appLog('📥 RESPUESTA DEL BACKEND - CUADRE COMPLETO:');
+        appLog('   efectivoEsperado: ${cuadreCompleto['efectivoEsperado']}');
+        appLog(
           '   fondoInicial: ${cuadreCompleto['fondoInicial'] ?? _cajaActual?.fondoInicial}',
         );
-        print('   ventasEfectivo: ${cuadreCompleto['ventasEfectivo']}');
-        print(
+        appLog('   ventasEfectivo: ${cuadreCompleto['ventasEfectivo']}');
+        appLog(
           '   ventasTransferencias: ${cuadreCompleto['ventasTransferencias']}',
         );
-        print('   totalGastos: ${cuadreCompleto['totalGastos']}');
-        print('   totalDomicilios: ${cuadreCompleto['totalDomicilios']}');
-        print('═══════════════════════════════════════════════════');
-        print('');
+        appLog('   totalGastos: ${cuadreCompleto['totalGastos']}');
+        appLog('   totalDomicilios: ${cuadreCompleto['totalDomicilios']}');
+        appLog('═══════════════════════════════════════════════════');
+        appLog('');
         
         setState(() {
           _cuadreCompletoData = cuadreCompleto;
@@ -223,20 +224,20 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
           if (cuadreCompleto.containsKey('efectivoEsperado')) {
             _efectivoEsperado = (cuadreCompleto['efectivoEsperado'] ?? 0.0)
                 .toDouble();
-            print('');
-            print('✅ ═══════════════════════════════════════════════════');
-            print('💰 EFECTIVO ESPERADO ESTABLECIDO:');
-            print('   Valor del backend: $_efectivoEsperado');
-            print('   Fuente: cuadreCompleto[efectivoEsperado]');
-            print('═══════════════════════════════════════════════════');
-            print('');
+            appLog('');
+            appLog('✅ ═══════════════════════════════════════════════════');
+            appLog('💰 EFECTIVO ESPERADO ESTABLECIDO:');
+            appLog('   Valor del backend: $_efectivoEsperado');
+            appLog('   Fuente: cuadreCompleto[efectivoEsperado]');
+            appLog('═══════════════════════════════════════════════════');
+            appLog('');
           } else {
-            print('');
-            print('⚠️ ═══════════════════════════════════════════════════');
-            print('❌ BACKEND NO ENVIÓ efectivoEsperado');
-            print('   Usando valor por defecto: 0');
-            print('═══════════════════════════════════════════════════');
-            print('');
+            appLog('');
+            appLog('⚠️ ═══════════════════════════════════════════════════');
+            appLog('❌ BACKEND NO ENVIÓ efectivoEsperado');
+            appLog('   Usando valor por defecto: 0');
+            appLog('═══════════════════════════════════════════════════');
+            appLog('');
           }
         });
         _calcularDiferencia();
@@ -268,7 +269,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
         if (detallesVentas.containsKey('efectivoEsperadoPorVentas')) {
           _efectivoEsperado = (detallesVentas['efectivoEsperadoPorVentas'] ?? 0)
               .toDouble();
-          print(
+          appLog(
             '💰 Efectivo esperado del backend (fallback): $_efectivoEsperado',
           );
         }
@@ -299,7 +300,7 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
           }
 
           // ❌ NO RECALCULAR - Usar el valor del backend sin modificar
-          print('🚫 NO se recalcula el efectivo esperado');
+          appLog('🚫 NO se recalcula el efectivo esperado');
           // Log del cálculo para depuració
         });
         _calcularDiferencia();
@@ -375,9 +376,9 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
         if (_efectivoEsperado == 0 || _efectivoEsperado == 0.0) {
           _efectivoEsperado =
               resumenCompleto.movimientosEfectivo.efectivoEsperado;
-          print('💰 Efectivo esperado del resumenCompleto: $_efectivoEsperado');
+          appLog('💰 Efectivo esperado del resumenCompleto: $_efectivoEsperado');
         } else {
-          print(
+          appLog(
             '✅ Manteniendo efectivo esperado de cuadreCompleto: $_efectivoEsperado',
           );
         }
@@ -425,10 +426,10 @@ class _CerrarCajaScreenState extends State<CerrarCajaScreen> {
     setState(() {
       _diferencia = efectivoDeclarado - _efectivoEsperado;
     });
-    print('💵 Cálculo de diferencia:');
-    print('   Efectivo declarado: $efectivoDeclarado');
-    print('   Efectivo esperado: $_efectivoEsperado');
-    print('   Diferencia: $_diferencia');
+    appLog('💵 Cálculo de diferencia:');
+    appLog('   Efectivo declarado: $efectivoDeclarado');
+    appLog('   Efectivo esperado: $_efectivoEsperado');
+    appLog('   Diferencia: $_diferencia');
   }
 
   // Mostrar diálogo para ingresar el efectivo declarado

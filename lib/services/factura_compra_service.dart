@@ -6,6 +6,7 @@ import '../models/ingrediente.dart';
 import '../models/movimiento_inventario.dart';
 import 'producto_service.dart';
 import 'inventario_service.dart';
+import '../utils/logger.dart';
 
 class FacturaCompraService {
   final ApiConfig _apiConfig = ApiConfig.instance;
@@ -836,7 +837,7 @@ class FacturaCompraService {
         );
 
         if (productoCompleto == null) {
-          print('⚠️ Reversión: Producto no encontrado: ${item.ingredienteId}');
+          appLog('⚠️ Reversión: Producto no encontrado: ${item.ingredienteId}');
           continue;
         }
 
@@ -899,12 +900,12 @@ class FacturaCompraService {
         try {
           await inventarioService.registrarMovimiento(movimiento);
           movimientoExitoso = true;
-          print(
+          appLog(
             '📝 Reversión registrada: ${item.ingredienteNombre} - $destino: '
             '${(almacenActual + bodegaActual).toInt()} → ${(almacenNuevo + bodegaNuevo).toInt()}',
           );
         } catch (movError) {
-          print(
+          appLog(
             '⚠️ Error registrando movimiento de reversión: $movError - Se actualizará stock manualmente',
           );
         }
@@ -917,20 +918,20 @@ class FacturaCompraService {
           );
           try {
             await productoService.updateProducto(productoActualizado);
-            print(
+            appLog(
               '✅ Stock revertido manualmente: ${productoActualizado.nombre} - '
               'ALM: ${almacenActual.toInt()} → ${almacenNuevo.toInt()}, '
               'BOD: ${bodegaActual.toInt()} → ${bodegaNuevo.toInt()}',
             );
           } catch (updateError) {
-            print(
+            appLog(
               '❌ ERROR CRÍTICO revirtiendo stock: $updateError - '
               'Producto: ${productoCompleto.nombre}',
             );
           }
         }
       } catch (e) {
-        print(
+        appLog(
           '⚠️ Error revirtiendo inventario para ${item.ingredienteNombre}: $e',
         );
       }

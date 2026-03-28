@@ -1,3 +1,4 @@
+import '../utils/logger.dart';
 class ResumenCierreCompleto {
   final ResumenFinalCompleto resumenFinal;
   final MovimientosEfectivoCompleto movimientosEfectivo;
@@ -436,18 +437,18 @@ class CuadreInfoCompleto {
     final efectivoDeclarado = safeToDouble(json['efectivoDeclarado']);
 
     // DEBUG: Imprimir los valores que vienen del backend
-    print('🔍 CuadreInfoCompleto.fromJson - Datos del backend:');
-    print('   efectivoEsperado: $efectivoEsperado');
-    print('   efectivoDeclarado: $efectivoDeclarado');
-    print('   descuadre (json): ${json['descuadre']}');
+    appLog('🔍 CuadreInfoCompleto.fromJson - Datos del backend:');
+    appLog('   efectivoEsperado: $efectivoEsperado');
+    appLog('   efectivoDeclarado: $efectivoDeclarado');
+    appLog('   descuadre (json): ${json['descuadre']}');
 
     // Calcular descuadre si no viene del backend
     double descuadre = safeToDouble(json['descuadre']);
     if (descuadre == 0.0 && efectivoDeclarado > 0 && efectivoEsperado > 0) {
       descuadre = efectivoEsperado - efectivoDeclarado;
-      print('   ✅ Descuadre calculado: $descuadre');
+      appLog('   ✅ Descuadre calculado: $descuadre');
     } else {
-      print('   📦 Descuadre del backend: $descuadre');
+      appLog('   📦 Descuadre del backend: $descuadre');
     }
 
     return CuadreInfoCompleto(

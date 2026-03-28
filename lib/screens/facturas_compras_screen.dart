@@ -11,6 +11,9 @@ import '../services/inventario_service.dart';
 import '../providers/datos_cache_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/busqueda_productos_utils.dart';
+import '../utils/logger.dart';
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class FacturasComprasScreen extends StatefulWidget {
   const FacturasComprasScreen({super.key});
@@ -1438,12 +1441,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
         actions: [
           // Botón Compras en borrador
           TextButton(
-            onPressed: () {
-              // TODO: Navegar a compras en borrador
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Compras en borrador - Próximamente')),
-              );
-            },
+            onPressed: _verBorradores,
             style: TextButton.styleFrom(
               backgroundColor: AppTheme.primary,
               padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -4058,14 +4056,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
         OutlinedButton(
           onPressed: _guardandoFactura
               ? null
-              : () {
-                  // TODO: Implementar guardar como borrador
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Guardar como borrador - Próximamente'),
-                    ),
-                  );
-                },
+              : _guardarComoBorrador,
           style: OutlinedButton.styleFrom(
             side: BorderSide(color: AppTheme.primary),
             padding: EdgeInsets.symmetric(horizontal: 48, vertical: 16),
@@ -4296,6 +4287,177 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
     });
   }
 
+
+  // ─── Gestión de borradores ────────────────────────────────────────────────
+  static const String _kDraftKey = 'factura_compra_borradores';
+
+  /// Serializa el formulario actual como mapa JSON para guardar como borrador
+  Map<String, dynamic> _formularioAJson() {
+    return {
+      'timestamp': DateTime.now().toIso8601String(),
+      'numeroFactura': _numeroFactura,
+      'fechaFactura': _fechaFactura.toIso8601String(),
+      'proveedorId': _proveedorSeleccionado?.id,
+      'proveedorNombre': _proveedorSeleccionado?.nombre,
+      'items': _items.map((i) => i.toJson()).toList(),
+    };
+  }
+
+  /// Guarda el formulario actual como borrador en SharedPreferences
+  Future<void> _guardarComoBorrador() async {
+    if (_items.isEmpty && _proveedorSeleccionado == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('El formulario está vacío, no hay nada que guardar'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_kDraftKey);
+      final List<dynamic> borradores = raw != null ? jsonDecode(raw) : [];
+      borradores.add(_formularioAJson());
+      // Mantener máximo 10 borradores
+      if (borradores.length > 10) borradores.removeAt(0);
+      await prefs.setString(_kDraftKey, jsonEncode(borradores));
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Borrador guardado correctamente'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      appLog('Error guardando borrador: $e', level: LogLevel.error);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al guardar borrador: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  /// Muestra la lista de borradores guardados y permite cargar uno
+  Future<void> _verBorradores() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_kDraftKey);
+      if (raw == null || raw == '[]') {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('No hay borradores guardados')),
+          );
+        }
+        return;
+      }
+
+      final List<dynamic> borradores = jsonDecode(raw);
+      if (!mounted) return;
+
+      await showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: AppTheme.cardBg,
+          title: Text(
+            'Borradores guardados (${borradores.length})',
+            style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold),
+          ),
+          content: SizedBox(
+            width: 500,
+            height: 350,
+            child: ListView.separated(
+              itemCount: borradores.length,
+              separatorBuilder: (_, __) => Divider(height: 1, color: Colors.white12),
+              itemBuilder: (_, i) {
+                final b = borradores[borradores.length - 1 - i] as Map<String, dynamic>;
+                final fecha = DateTime.tryParse(b['timestamp'] ?? '')?.toLocal();
+                final fechaStr = fecha != null
+                    ? '${fecha.day}/${fecha.month}/${fecha.year} ${fecha.hour}:${fecha.minute.toString().padLeft(2, '0')}'
+                    : 'Fecha desconocida';
+                final proveedor = b['proveedorNombre'] ?? 'Sin proveedor';
+                final nItems = (b['items'] as List?)?.length ?? 0;
+
+                return ListTile(
+                  leading: Icon(Icons.description_outlined, color: AppTheme.primary),
+                  title: Text(proveedor, style: TextStyle(color: AppTheme.textPrimary)),
+                  subtitle: Text(
+                    '$fechaStr · $nItems ítem(s)',
+                    style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                  ),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextButton(
+                        child: const Text('Cargar', style: TextStyle(color: Colors.greenAccent)),
+                        onPressed: () => Navigator.pop(ctx, b),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
+                        tooltip: 'Eliminar borrador',
+                        onPressed: () async {
+                          borradores.removeAt(borradores.length - 1 - i);
+                          await prefs.setString(_kDraftKey, jsonEncode(borradores));
+                          if (ctx.mounted) Navigator.pop(ctx);
+                          _verBorradores(); // reabrir actualizado
+                        },
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text('Cerrar', style: TextStyle(color: AppTheme.textSecondary)),
+            ),
+          ],
+        ),
+      ).then((borrador) {
+        if (borrador is Map<String, dynamic>) {
+          _cargarBorrador(borrador);
+        }
+      });
+    } catch (e) {
+      appLog('Error cargando borradores: $e', level: LogLevel.error);
+    }
+  }
+
+  /// Carga un borrador en el formulario
+  void _cargarBorrador(Map<String, dynamic> b) {
+    setState(() {
+      _numeroFactura = b['numeroFactura'];
+      if (b['fechaFactura'] != null) {
+        _fechaFactura = DateTime.tryParse(b['fechaFactura']) ?? DateTime.now();
+      }
+      // Buscar proveedor por ID en la lista cargada
+      if (b['proveedorId'] != null) {
+        final prov = _proveedores.where((p) => p.id == b['proveedorId']).firstOrNull;
+        _proveedorSeleccionado = prov;
+      }
+      _items.clear();
+      if (b['items'] != null) {
+        for (final item in b['items'] as List) {
+          try {
+            _items.add(ItemFacturaCompra.fromJson(item as Map<String, dynamic>));
+          } catch (_) {}
+        }
+      }
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Borrador cargado correctamente'),
+        backgroundColor: Colors.green,
+      ),
+    );
+  }
+
   Future<void> _guardarFactura() async {
     if (!_formKey.currentState!.validate()) {
         
@@ -4514,9 +4676,9 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
           listen: false,
         );
         await cacheProvider.forceRefreshProductos();
-        print('✅ Cache de productos actualizado después de la compra');
+        appLog('✅ Cache de productos actualizado después de la compra');
       } catch (e) {
-        print('⚠️ Error refrescando cache (no crítico): $e');
+        appLog('⚠️ Error refrescando cache (no crítico): $e');
       }
 
       // �💰 Actualizar el costo del producto con el último precio de compra
@@ -4596,18 +4758,18 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
           );
 
           if (productoCompleto == null) {
-            print('⚠️ Producto no encontrado: ${item.ingredienteId}');
+            appLog('⚠️ Producto no encontrado: ${item.ingredienteId}');
             continue; // Saltar si no encuentra el producto
           }
 
           // 🔍 LOG: Ver producto obtenido del backend
-          print('📥 Producto obtenido: ${productoCompleto.nombre}');
-          print('   - ID: ${productoCompleto.id}');
-          print('   - Almacén actual: ${productoCompleto.almacen}');
-          print('   - Bodega actual: ${productoCompleto.bodega}');
-          print('   - Destino item: ${item.destino}');
-          print('   - cantidadAlmacen item: ${item.cantidadAlmacen}');
-          print('   - cantidadBodega item: ${item.cantidadBodega}');
+          appLog('📥 Producto obtenido: ${productoCompleto.nombre}');
+          appLog('   - ID: ${productoCompleto.id}');
+          appLog('   - Almacén actual: ${productoCompleto.almacen}');
+          appLog('   - Bodega actual: ${productoCompleto.bodega}');
+          appLog('   - Destino item: ${item.destino}');
+          appLog('   - cantidadAlmacen item: ${item.cantidadAlmacen}');
+          appLog('   - cantidadBodega item: ${item.cantidadBodega}');
 
           // 📍 Determinar el destino de la compra
           final destino = item.destino;
@@ -4641,7 +4803,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
             almacenActual = almacenAnterior + cantidadParaAlmacen;
             bodegaActual = bodegaAnterior + cantidadParaBodega;
             
-            print('📦 PARTE Y PARTE: ${item.ingredienteNombre} - Almacén: +$cantidadParaAlmacen, Bodega: +$cantidadParaBodega');
+            appLog('📦 PARTE Y PARTE: ${item.ingredienteNombre} - Almacén: +$cantidadParaAlmacen, Bodega: +$cantidadParaBodega');
 
             // Crear movimiento con información de PARTE Y PARTE
             final movimiento = MovimientoInventario(
@@ -4669,11 +4831,11 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
             try {
               await _inventarioService.registrarMovimiento(movimiento);
               movimientoParteExitoso = true;
-              print(
+              appLog(
                 '📝 Movimiento (PARTE Y PARTE) registrado: ${item.ingredienteNombre} - Stock actualizado por backend',
               );
             } catch (movError) {
-              print(
+              appLog(
                 '⚠️ Error registrando movimiento PARTE Y PARTE: $movError - Se actualizará stock manualmente',
               );
             }
@@ -4687,11 +4849,11 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
 
               try {
                 await _productoService.updateProducto(productoActualizado);
-                print(
+                appLog(
                   '✅ Stock actualizado manualmente (PARTE Y PARTE): ${productoActualizado.nombre} - ALM: ${almacenAnterior.toInt()} → ${almacenActual.toInt()}, BOD: ${bodegaAnterior.toInt()} → ${bodegaActual.toInt()}',
                 );
               } catch (updateError) {
-                print(
+                appLog(
                   '❌ ERROR CRÍTICO actualizando (PARTE Y PARTE): $updateError - Producto: ${productoActualizado.nombre}',
                 );
                 rethrow;
@@ -4731,11 +4893,11 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
           try {
             await _inventarioService.registrarMovimiento(movimiento);
             movimientoExitoso = true;
-            print(
+            appLog(
               '📝 Movimiento registrado: ${item.ingredienteNombre} - ${destino}: ${stockAnterior.toInt()} → ${nuevoStock.toInt()} (stock actualizado por backend)',
             );
           } catch (movError) {
-            print(
+            appLog(
               '⚠️ Error registrando movimiento: $movError - Se actualizará stock manualmente',
             );
           }
@@ -4747,17 +4909,17 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
               bodega: bodegaActual.toInt(),
             );
 
-            print(
+            appLog(
               '📤 Fallback - Enviando actualización compra: ${productoActualizado.nombre} - Almacén: ${almacenActual.toInt()}, Bodega: ${bodegaActual.toInt()}',
             );
 
             try {
               await _productoService.updateProducto(productoActualizado);
-              print(
+              appLog(
                 '✅ Stock actualizado manualmente: ${productoActualizado.nombre} - ${destino}: ${stockAnterior.toInt()} → ${nuevoStock.toInt()}',
               );
             } catch (updateError) {
-              print(
+              appLog(
                 '❌ ERROR CRÍTICO actualizando producto: $updateError - Producto: ${productoActualizado.nombre}',
               );
               rethrow;
@@ -4765,12 +4927,12 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
           }
         } catch (e) {
           // Continuar con el siguiente item aunque haya error
-          print('⚠️ Error registrando movimiento para ${item.ingredienteId}: $e');
+          appLog('⚠️ Error registrando movimiento para ${item.ingredienteId}: $e');
         }
       }
     } catch (e) {
       // No lanzar excepción para no interrumpir el flujo de la factura
-      print('⚠️ Error general en registro de movimientos: $e');
+      appLog('⚠️ Error general en registro de movimientos: $e');
     }
   }
 
@@ -4788,7 +4950,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
           }
 
           // Log del valor que se va a enviar
-          print(
+          appLog(
             '[ACTUALIZAR COSTO] Producto: "+item.ingredienteNombre+" (ID: ' +
                 item.ingredienteId +
                 ") - Costo a enviar: " +
@@ -4804,7 +4966,7 @@ class _CrearFacturaCompraScreenState extends State<CrearFacturaCompraScreen> {
                 precioActual: producto.precio,
               );
             } else {
-              print(
+              appLog(
                 '[ACTUALIZAR COSTO] ❌ No se actualiza porque el costo es <= 0',
               );
             }

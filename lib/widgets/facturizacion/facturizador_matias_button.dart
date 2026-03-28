@@ -3,16 +3,18 @@ import 'package:provider/provider.dart';
 import '../../services/matias_service.dart';
 import '../../providers/user_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../models/pedido.dart';
+import '../../utils/matias_mapper.dart';
 
 /// Widget botón para facturar un Pedido en Matias
 class FacturizarMatiasButton extends StatefulWidget {
-  final String pedidoId;
+  final Pedido pedido;
   final VoidCallback? onSuccess;
   final Function(String)? onError;
 
   const FacturizarMatiasButton({
     Key? key,
-    required this.pedidoId,
+    required this.pedido,
     this.onSuccess,
     this.onError,
   }) : super(key: key);
@@ -32,9 +34,13 @@ class _FacturizarMatiasButtonState extends State<FacturizarMatiasButton> {
       final userProvider = Provider.of<UserProvider>(context, listen: false);
       final token = userProvider.token;
 
+      // Generamos el payload para alivianar / facilitar la validación en el Backend Java
+      final payload = MatiasMapper.toMatiasPayload(widget.pedido);
+
       final resultado = await MatiasService.facturarPedido(
-        widget.pedidoId,
+        widget.pedido.id,
         token: token,
+        payload: payload,
       );
 
       if (!mounted) return;

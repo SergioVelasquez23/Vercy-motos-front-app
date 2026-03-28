@@ -23,6 +23,7 @@ import '../providers/facturacion_draft_provider.dart';
 import '../widgets/vercy_sidebar_layout.dart';
 import '../dialogs/dialogo_pago.dart';
 import '../utils/busqueda_productos_utils.dart';
+import '../utils/logger.dart';
 
 class FacturacionScreen extends StatefulWidget {
   final PedidoAsesor? pedidoAsesor;
@@ -162,7 +163,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     _productosChannel = html.BroadcastChannel('productos_actualizados');
     _productosChannel!.onMessage.listen((_) async {
       if (mounted) {
-        print(
+        appLog(
           '📡 Producto actualizado desde otra pestaña — recargando desde API',
         );
         // Forzar recarga desde API invalidando la caché
@@ -241,14 +242,14 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
               nombres: pedido.clienteNombre,
             ),
           );
-          print(
+          appLog(
             '✅ Cliente seleccionado: ${_clienteSeleccionado?.nombreCompleto}',
           );
         } catch (e) {
-          print('⚠️ Error buscando cliente: $e');
+          appLog('⚠️ Error buscando cliente: $e');
         }
       } else {
-        print(
+        appLog(
           '⚠️ No se pudo buscar cliente - clienteId: ${pedido.clienteId}, clientes disponibles: ${_clientesDisponibles.length}',
         );
       }
@@ -258,7 +259,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
 
       // 🔍 DEBUG: Verificar origen de cada item
       for (var item in _items) {
-        print('📦 Item: ${item.productoNombre} - Origen: ${item.origen}');
+        appLog('📦 Item: ${item.productoNombre} - Origen: ${item.origen}');
       }
 
       // Recalcular totales
@@ -282,14 +283,14 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
   }
 
   Future<void> _cargarProductos() async {
-    print('🔄 _cargarProductos() iniciado');
+    appLog('🔄 _cargarProductos() iniciado');
     // Obtener productos desde el provider en lugar de cargarlos nuevamente
     final cacheProvider = Provider.of<DatosCacheProvider>(
       context,
       listen: false,
     );
 
-    print('🔍 Cache provider productos: ${cacheProvider.productos?.length ?? 0}');
+    appLog('🔍 Cache provider productos: ${cacheProvider.productos?.length ?? 0}');
 
     if (cacheProvider.productos != null &&
         cacheProvider.productos!.isNotEmpty) {
@@ -301,12 +302,12 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       final conCodigo = _productosDisponibles
           .where((p) => p.codigo != null && p.codigo!.isNotEmpty)
           .length;
-      print(
+      appLog(
         '📦 Productos cargados desde cache: ${_productosDisponibles.length}, con código: $conCodigo',
       );
     } else {
       // Si no hay productos en cache, cargarlos
-      print('⚠️ No hay productos en cache, cargando desde API...');
+      appLog('⚠️ No hay productos en cache, cargando desde API...');
       try {
         final productos = await _productoService.getProductos();
         setState(() {
@@ -317,11 +318,11 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
         final conCodigo = _productosDisponibles
             .where((p) => p.codigo != null && p.codigo!.isNotEmpty)
             .length;
-        print(
+        appLog(
           '📦 Productos cargados desde API: ${_productosDisponibles.length}, con código: $conCodigo',
         );
       } catch (e) {
-        print('❌ Error cargando productos: $e');  
+        appLog('❌ Error cargando productos: $e');  
       }
     }
   }
@@ -359,7 +360,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
         );
         draftProvider.stopSync();
       } catch (e) {
-        print('⚠️ Error deteniendo sincronización: $e');
+        appLog('⚠️ Error deteniendo sincronización: $e');
       }
     }
     
@@ -408,11 +409,11 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
 
       // Solo restaurar si hay un borrador guardado
       if (!draftProvider.hasDraft) {
-        print('ℹ️  No hay borrador para restaurar');
+        appLog('ℹ️  No hay borrador para restaurar');
         return;
       }
 
-      print('📝 Restaurando borrador - ${draftProvider.itemsCount} items');
+      appLog('📝 Restaurando borrador - ${draftProvider.itemsCount} items');
 
       setState(() {
         // Restaurar items
@@ -478,9 +479,9 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
         ),
       );
 
-      print('✅ Borrador restaurado exitosamente');
+      appLog('✅ Borrador restaurado exitosamente');
     } catch (e) {
-      print('⚠️ Error restaurando borrador: $e');
+      appLog('⚠️ Error restaurando borrador: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('⚠️ Error restaurando borrador anterior'),
@@ -553,11 +554,11 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
         double.tryParse(_dctoGeneralController.text) ?? 0,
       );
 
-      print(
+      appLog(
         '💾 Estado completo guardado - ${_items.length} items, cliente: ${_clienteController.text}',
       );
     } catch (e) {
-      print('⚠️ Error guardando estado completo: $e');
+      appLog('⚠️ Error guardando estado completo: $e');
     }
   }
 
@@ -1937,7 +1938,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                             if (textEditingValue.text.length < 2) {
                               return const Iterable<Producto>.empty();
                             }
-                            print('🔍 Autocomplete nombre - _productosDisponibles.length: ${_productosDisponibles.length}');
+                            appLog('🔍 Autocomplete nombre - _productosDisponibles.length: ${_productosDisponibles.length}');
                             return filtrarYOrdenarProductos(
                               _productosDisponibles,
                               textEditingValue.text,
@@ -4229,7 +4230,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
           );
         }
       } catch (e) {
-        print('⚠️ Error al registrar deuda en background: $e');
+        appLog('⚠️ Error al registrar deuda en background: $e');
         if (mounted) {
           ScaffoldMessenger.of(context).hideCurrentSnackBar();
           ScaffoldMessenger.of(context).showSnackBar(
@@ -4351,7 +4352,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       if (clienteCapturado == null &&
           clienteTexto != 'CONSUMIDOR FINAL' &&
           clienteTexto.isNotEmpty) {
-        print(
+        appLog(
           '⚠️ Cliente no seleccionado del dropdown, buscando en API: "$clienteTexto"',
         );
         try {
@@ -4365,12 +4366,12 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
             clienteCapturado = exacto.isNotEmpty
                 ? exacto.first
                 : resultados.first;
-            print('✅ Cliente encontrado: ${clienteCapturado.nombreCompleto}');
+            appLog('✅ Cliente encontrado: ${clienteCapturado.nombreCompleto}');
           } else {
-            print('❌ No se encontró cliente con ese nombre');
+            appLog('❌ No se encontró cliente con ese nombre');
           }
         } catch (e) {
-          print('❌ Error buscando cliente: $e');
+          appLog('❌ Error buscando cliente: $e');
         }
       }
 
@@ -4478,12 +4479,12 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
           if (datosAdicionales != null &&
               pedidoPagado.datosAdicionales == null) {
             try {
-              print('⚠️ Actualizando pedido con datos del cliente...');
+              appLog('⚠️ Actualizando pedido con datos del cliente...');
               pedidoPagado.datosAdicionales = datosAdicionales;
               await _pedidoService.updatePedido(pedidoPagado);
-              print('✅ Datos del cliente guardados correctamente');
+              appLog('✅ Datos del cliente guardados correctamente');
             } catch (e) {
-              print('❌ Error al actualizar datos del cliente: $e');
+              appLog('❌ Error al actualizar datos del cliente: $e');
             }
           }
 
@@ -4527,7 +4528,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                 );
                 if (resultados.isNotEmpty) clienteCompleto = resultados.first;
               } catch (e) {
-                print('⚠️ Error buscando cliente para PDF: $e');
+                appLog('⚠️ Error buscando cliente para PDF: $e');
               }
             }
 
@@ -4747,7 +4748,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
             );
           }
         } catch (e) {
-          print('⚠️ Error en procesamiento background: $e');
+          appLog('⚠️ Error en procesamiento background: $e');
           if (mounted) {
             ScaffoldMessenger.of(context).hideCurrentSnackBar();
             ScaffoldMessenger.of(context).showSnackBar(
@@ -4787,7 +4788,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       // El backend puede no guardar/devolver el campo origen, así que usamos los originales
       final itemsParaProcesar = itemsOriginales ?? pedido.items;
       
-      print('📦 Procesando ${itemsParaProcesar.length} items para movimientos de inventario');
+      appLog('📦 Procesando ${itemsParaProcesar.length} items para movimientos de inventario');
 
       // ⚡ OPTIMIZACIÓN: Procesar todos los productos en paralelo
       await Future.wait(
@@ -4802,7 +4803,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
 
             // 📍 Determinar el origen de la venta (BODEGA o ALMACÉN)
             final origen = item.origen;
-            print(
+            appLog(
               '🏬 Procesando ${item.productoNombre}: Origen = "$origen" (B:${productoCompleto.bodega}, A:${productoCompleto.almacen})',
             );
 
@@ -4853,7 +4854,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
 
             // 📝 Intentar registrar movimiento (no bloqueante)
             _inventarioService.registrarMovimiento(movimiento).catchError((e) {
-              print('⚠️ Error movimiento: $e');
+              appLog('⚠️ Error movimiento: $e');
             });
 
             // 🔄 ACTUALIZAR STOCK EN EL PRODUCTO
@@ -4862,19 +4863,19 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
               bodega: bodegaActual.toInt(),
             );
 
-            print(
+            appLog(
               '💾 Guardando ${item.productoNombre}: B:${bodegaActual.toInt()}, A:${almacenActual.toInt()}',
             );
 
             // 💾 Guardar producto actualizado (CRÍTICO)
             await _productoService.updateProducto(productoActualizado);
           } catch (e) {
-            print('⚠️ Error item ${item.productoId}: $e');
+            appLog('⚠️ Error item ${item.productoId}: $e');
           }
         }),
       );
     } catch (e) {
-      print('⚠️ Error general movimientos: $e');
+      appLog('⚠️ Error general movimientos: $e');
     }
   }
 
@@ -4889,7 +4890,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
         final productoService = ProductoService();
         final itemsParaProcesar = itemsOriginales ?? pedido.items;
         
-        print('📦 [BG] Procesando ${itemsParaProcesar.length} items para inventario');
+        appLog('📦 [BG] Procesando ${itemsParaProcesar.length} items para inventario');
 
         // Procesar todos en paralelo sin bloquear
         await Future.wait(
@@ -4939,7 +4940,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
 
               // Registrar movimiento (no bloquear)
               _inventarioService.registrarMovimiento(movimiento).catchError((e) {
-                print('⚠️ [BG] Error mov: $e');
+                appLog('⚠️ [BG] Error mov: $e');
               });
 
               // Actualizar stock
@@ -4949,17 +4950,17 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
               );
 
               await _productoService.updateProducto(productoActualizado);
-              print('✅ [BG] ${item.productoNombre} actualizado');
+              appLog('✅ [BG] ${item.productoNombre} actualizado');
             } catch (e) {
-              print('⚠️ [BG] Error item: $e');
+              appLog('⚠️ [BG] Error item: $e');
             }
           }),
           eagerError: false, // No fallar si alguno falla
         );
         
-        print('✅ [BG] Inventario actualizado completamente');
+        appLog('✅ [BG] Inventario actualizado completamente');
       } catch (e) {
-        print('⚠️ [BG] Error general: $e');
+        appLog('⚠️ [BG] Error general: $e');
       }
     });
   }
@@ -5570,9 +5571,9 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
         listen: false,
       );
       draftProvider.clearDraft();
-      print('🗑️ Borrador limpiado del provider');
+      appLog('🗑️ Borrador limpiado del provider');
     } catch (e) {
-      print('⚠️ Error limpiando provider: $e');
+      appLog('⚠️ Error limpiando provider: $e');
     }
   }
 

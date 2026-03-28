@@ -12,6 +12,7 @@ import '../providers/user_provider.dart';
 import '../providers/datos_cache_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/busqueda_productos_utils.dart';
+import '../utils/logger.dart';
 
 class AsesorPedidosScreen extends StatefulWidget {
   const AsesorPedidosScreen({super.key});
@@ -158,11 +159,11 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
     final cantidad = int.tryParse(_cantidadController.text) ?? 1;
     
     // � DEBUG: Ver valores de stock del producto
-    print('🔍 DEBUG agregar al carrito:');
-    print('   - Producto: ${producto.nombre}');
-    print('   - Bodega: ${producto.bodega}');
-    print('   - Almacén: ${producto.almacen}');
-    print('   - TipoItem: ${producto.productoOServicio}');
+    appLog('🔍 DEBUG agregar al carrito:');
+    appLog('   - Producto: ${producto.nombre}');
+    appLog('   - Bodega: ${producto.bodega}');
+    appLog('   - Almacén: ${producto.almacen}');
+    appLog('   - TipoItem: ${producto.productoOServicio}');
 
     // ⚠️ VALIDACIÓN DE STOCK: No aplicar a servicios
     final esServicio = producto.productoOServicio?.toLowerCase() == 'servicio';
@@ -174,7 +175,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
 
       // Validación 1: Si no hay stock en ninguna ubicación, NO PERMITIR agregar
       if (stockTotal <= 0) {
-        print('   ❌ BLOQUEADO: No hay stock en ninguna ubicación');
+        appLog('   ❌ BLOQUEADO: No hay stock en ninguna ubicación');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -192,7 +193,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
 
       // Validación 2: Si la cantidad solicitada es mayor al stock total, NO PERMITIR
       if (cantidad > stockTotal) {
-        print(
+        appLog(
           '   ❌ BLOQUEADO: Cantidad solicitada ($cantidad) > stock total ($stockTotal)',
         );
         ScaffoldMessenger.of(context).showSnackBar(
@@ -210,9 +211,9 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
         return;
       }
 
-      print('   ✅ Validación pasada: Stock suficiente');
+      appLog('   ✅ Validación pasada: Stock suficiente');
     } else {
-      print('   ℹ️  Es servicio - sin validación de stock');
+      appLog('   ℹ️  Es servicio - sin validación de stock');
     }
     
     // 📦 Mostrar diálogo para elegir de dónde descontar
@@ -222,7 +223,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
       cantidad,
     );
     
-    print('   - Origen seleccionado: $origen');
+    appLog('   - Origen seleccionado: $origen');
 
     if (origen == null) return; // Usuario canceló
     
@@ -1497,16 +1498,16 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
     final almacenDisponible = producto.almacen ?? 0;
     
     // 🔍 DEBUG
-    print('🔍 _mostrarDialogoSeleccionarOrigen:');
-    print('   - bodegaDisponible: $bodegaDisponible');
-    print('   - almacenDisponible: $almacenDisponible');
+    appLog('🔍 _mostrarDialogoSeleccionarOrigen:');
+    appLog('   - bodegaDisponible: $bodegaDisponible');
+    appLog('   - almacenDisponible: $almacenDisponible');
 
     // ✅ VALIDACIÓN DE STOCK: Bloquear si no hay stock en ninguna ubicación
     final esServicio = producto.productoOServicio?.toLowerCase() == 'servicio';
 
     if (!esServicio) {
       if (bodegaDisponible <= 0 && almacenDisponible <= 0) {
-        print('   ❌ Sin stock en ninguna ubicación');
+        appLog('   ❌ Sin stock en ninguna ubicación');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('❌ Sin stock disponible en bodega ni almacén'),
@@ -1519,7 +1520,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
 
       // Si solo hay stock en una ubicación, seleccionar automáticamente
       if (bodegaDisponible > 0 && almacenDisponible <= 0) {
-        print('   ✅ Solo hay stock en BODEGA, seleccionando automáticamente');
+        appLog('   ✅ Solo hay stock en BODEGA, seleccionando automáticamente');
         if (cantidad > bodegaDisponible) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -1538,7 +1539,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
       }
 
       if (almacenDisponible > 0 && bodegaDisponible <= 0) {
-        print('   ✅ Solo hay stock en ALMACÉN, seleccionando automáticamente');
+        appLog('   ✅ Solo hay stock en ALMACÉN, seleccionando automáticamente');
         if (cantidad > almacenDisponible) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -1557,7 +1558,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
       }
     }
     
-    print(
+    appLog(
       '   📋 Hay stock en ambas ubicaciones o es servicio, mostrando diálogo',
     );
 

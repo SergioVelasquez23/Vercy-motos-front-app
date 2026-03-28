@@ -6,6 +6,7 @@ import '../services/proveedor_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/vercy_sidebar_layout.dart';
 import '../utils/format_utils.dart';
+import '../utils/pagination_mixin.dart';
 import 'facturas_compras_screen.dart';
 
 class ComprasListScreen extends StatefulWidget {
@@ -15,7 +16,8 @@ class ComprasListScreen extends StatefulWidget {
   _ComprasListScreenState createState() => _ComprasListScreenState();
 }
 
-class _ComprasListScreenState extends State<ComprasListScreen> {
+class _ComprasListScreenState extends State<ComprasListScreen>
+    with PaginacionMixin<ComprasListScreen> {
   final FacturaCompraService _facturaCompraService = FacturaCompraService();
   final ProveedorService _proveedorService = ProveedorService();
 

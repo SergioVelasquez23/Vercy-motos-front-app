@@ -2,6 +2,7 @@
 library;
 
 import '../models/producto.dart';
+import '../utils/logger.dart';
 
 /// Normaliza un texto removiendo acentos, convirtiendo a minúsculas
 String _normalizar(String texto) {
@@ -164,22 +165,22 @@ List<Producto> filtrarYOrdenarProductos(
     return [];
   }
 
-  print('🔍 [Filtro] Buscando: "$busqueda"');
-  print('   Total productos: ${productos.length}');
+  appLog('🔍 [Filtro] Buscando: "$busqueda"');
+  appLog('   Total productos: ${productos.length}');
   final conCodigo = productos
       .where((p) => p.codigo != null && p.codigo!.isNotEmpty)
       .length;
-  print('   Con código definido: $conCodigo');
+  appLog('   Con código definido: $conCodigo');
 
   // Mostrar algunos productos de ejemplo si es búsqueda corta
   if (busqueda.length <= 5 && conCodigo > 0) {
-    print('   📝 Ejemplos aleatorios de códigos:');
+    appLog('   📝 Ejemplos aleatorios de códigos:');
     final productosConCodigo = productos
         .where((p) => p.codigo != null && p.codigo!.isNotEmpty)
         .take(5)
         .toList();
     for (var p in productosConCodigo) {
-      print(
+      appLog(
         '     - [${p.codigo}] ${p.nombre.substring(0, p.nombre.length > 30 ? 30 : p.nombre.length)}...',
       );
     }
@@ -190,15 +191,15 @@ List<Producto> filtrarYOrdenarProductos(
       .where((producto) => busquedaInteligente(producto, busqueda))
       .toList();
 
-  print(
+  appLog(
     '   Productos filtrados (antes de ordenar): ${productosFiltrados.length}',
   );
 
   // Si es una búsqueda corta (posible código), mostrar algunos ejemplos
   if (busqueda.length <= 5) {
-    print('   Ejemplos de códigos en productos filtrados:');
+    appLog('   Ejemplos de códigos en productos filtrados:');
     for (var p in productosFiltrados.take(5)) {
-      print(
+      appLog(
         '     - [${p.codigo ?? "SIN"}] ${p.nombre.substring(0, p.nombre.length > 30 ? 30 : p.nombre.length)}',
       );
     }

@@ -7,6 +7,7 @@ import '../models/resumen_cartera.dart';
 import '../models/api_response.dart';
 import 'base_api_service.dart';
 import 'alertas_service.dart';
+import '../utils/logger.dart';
 
 /// Servicio para gestión de cartera (cuentas por cobrar, por pagar y gastos programados)
 class CarteraService {
@@ -291,14 +292,14 @@ class CarteraService {
       final String endpoint = '/cartera/cuentas-por-pagar/$cuentaId/pago';
       final String url = _baseApiService.buildUrl(endpoint);
 
-      print('\n💰 [SERVICIO] registrarPagoCuentaPorPagar()');
-      print('📤 Enviando request al backend:');
-      print('   🌐 URL: $url');
-      print('   🆔 cuentaId: $cuentaId');
-      print('   💵 montoPago: $montoPago');
-      print('   📝 observaciones: $observaciones');
-      print('   🏢 proveedor (si se pasó): $proveedorNombre');
-      print('   📄 numeroFactura (si se pasó): $numeroFactura');
+      appLog('\n💰 [SERVICIO] registrarPagoCuentaPorPagar()');
+      appLog('📤 Enviando request al backend:');
+      appLog('   🌐 URL: $url');
+      appLog('   🆔 cuentaId: $cuentaId');
+      appLog('   💵 montoPago: $montoPago');
+      appLog('   📝 observaciones: $observaciones');
+      appLog('   🏢 proveedor (si se pasó): $proveedorNombre');
+      appLog('   📄 numeroFactura (si se pasó): $numeroFactura');
 
       final Map<String, String> headers = await _baseApiService.getHeaders();
 
@@ -308,19 +309,19 @@ class CarteraService {
         'fecha_pago': DateTime.now().toIso8601String(),
       };
 
-      print('   📦 Body JSON: ${json.encode(body)}');
+      appLog('   📦 Body JSON: ${json.encode(body)}');
 
       final http.Response response = await _baseApiService.httpClient
           .post(Uri.parse(url), headers: headers, body: json.encode(body))
           .timeout(const Duration(seconds: 30));
 
-      print('\n📥 [SERVICIO] Respuesta del backend:');
-      print('   ✅ Status Code: ${response.statusCode}');
-      print('   📄 Response Body: ${response.body}');
+      appLog('\n📥 [SERVICIO] Respuesta del backend:');
+      appLog('   ✅ Status Code: ${response.statusCode}');
+      appLog('   📄 Response Body: ${response.body}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         try {
-          print(
+          appLog(
             '\n🔍 [AUTO-ALERTA] Analizando respuesta para enviar alerta automática...',
           );
 
@@ -330,8 +331,8 @@ class CarteraService {
               responseData['cuenta'] as Map<String, dynamic>?;
 
           if (cuenta != null) {
-            print('📊 [AUTO-ALERTA] Datos de la cuenta en respuesta:');
-            print('   ${json.encode(cuenta)}');
+            appLog('📊 [AUTO-ALERTA] Datos de la cuenta en respuesta:');
+            appLog('   ${json.encode(cuenta)}');
 
             final String? facturaBackend = cuenta['numeroFactura'] as String?;
             final String? proveedorBackend =
@@ -358,13 +359,13 @@ class CarteraService {
               
               if (esPagoCompleto) {
                 // Enviar alerta de cuenta pagada completamente
-                print(
+                appLog(
                   '📤 [AUTO-ALERTA] Enviando alerta de cuenta PAGADA COMPLETAMENTE:',
                 );
-                print('   🏢 Proveedor: $nomProveedor');
-                print('   📄 Número Factura: $numFactura');
-                print('   💰 Monto Total: $montoTotal');
-                print('   🆔 Proveedor ID: $proveedorIdBackend');
+                appLog('   🏢 Proveedor: $nomProveedor');
+                appLog('   📄 Número Factura: $numFactura');
+                appLog('   💰 Monto Total: $montoTotal');
+                appLog('   🆔 Proveedor ID: $proveedorIdBackend');
 
                 _alertasService.enviarAlertaCuentaPagada(
                   proveedor: nomProveedor,
@@ -374,12 +375,12 @@ class CarteraService {
                 );
               } else {
                 // Enviar alerta de abono parcial
-                print('📤 [AUTO-ALERTA] Enviando alerta de ABONO PARCIAL:');
-                print('   🏢 Proveedor: $nomProveedor');
-                print('   📄 Número Factura: $numFactura');
-                print('   💵 Monto Abono: $montoPago');
-                print('   💰 Saldo Pendiente: $saldoPendiente');
-                print('   🆔 Proveedor ID: $proveedorIdBackend');
+                appLog('📤 [AUTO-ALERTA] Enviando alerta de ABONO PARCIAL:');
+                appLog('   🏢 Proveedor: $nomProveedor');
+                appLog('   📄 Número Factura: $numFactura');
+                appLog('   💵 Monto Abono: $montoPago');
+                appLog('   💰 Saldo Pendiente: $saldoPendiente');
+                appLog('   🆔 Proveedor ID: $proveedorIdBackend');
 
                 _alertasService.enviarAlertaAbonoRealizado(
                   proveedor: nomProveedor,
@@ -389,21 +390,21 @@ class CarteraService {
                 );
               }
             } else {
-              print('⚠️ [AUTO-ALERTA] Datos incompletos para enviar alerta:');
-              print('   - Proveedor: ${nomProveedor ?? "NULL"}');
-              print('   - Número Factura: $numFactura');
-              print('   - Proveedor ID: ${proveedorIdBackend ?? "NULL"}');
-              print(
+              appLog('⚠️ [AUTO-ALERTA] Datos incompletos para enviar alerta:');
+              appLog('   - Proveedor: ${nomProveedor ?? "NULL"}');
+              appLog('   - Número Factura: $numFactura');
+              appLog('   - Proveedor ID: ${proveedorIdBackend ?? "NULL"}');
+              appLog(
                 '   ℹ️  La cuenta debe tener un proveedor válido para enviar alertas\n',
               );
             }
           } else {
-            print(
+            appLog(
               '⚠️ [AUTO-ALERTA] No hay datos de cuenta en la respuesta, no se envía alerta\n',
             );
           }
         } catch (e) {
-          print('❌ [AUTO-ALERTA] Error al procesar/enviar alerta: $e\n');
+          appLog('❌ [AUTO-ALERTA] Error al procesar/enviar alerta: $e\n');
         }
         
         return ApiResponse<String>(
@@ -421,7 +422,7 @@ class CarteraService {
         timestamp: DateTime.now().toIso8601String(),
       );
     } catch (e) {
-      print('❌ Error registrando pago: $e');
+      appLog('❌ Error registrando pago: $e');
       return ApiResponse<String>(
         success: false,
         data: null,
@@ -606,8 +607,8 @@ class CarteraService {
         '$_baseEndpoint/verificar-alertas',
       );
       
-      print('\n🔔 [ALERTAS] Verificando todas las alertas del sistema...');
-      print('🌐 URL: $url');
+      appLog('\n🔔 [ALERTAS] Verificando todas las alertas del sistema...');
+      appLog('🌐 URL: $url');
       
       final Map<String, String> headers = await _baseApiService.getHeaders();
 
@@ -615,11 +616,11 @@ class CarteraService {
           .post(Uri.parse(url), headers: headers)
           .timeout(const Duration(seconds: 30));
 
-      print('📨 Response status: ${response.statusCode}');
-      print('📦 Response body: ${response.body}');
+      appLog('📨 Response status: ${response.statusCode}');
+      appLog('📦 Response body: ${response.body}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        print('✅ [ALERTAS] Verificación completada exitosamente\n');
+        appLog('✅ [ALERTAS] Verificación completada exitosamente\n');
         return ApiResponse<String>(
           success: true,
           data: 'Alertas verificadas exitosamente',
@@ -628,7 +629,7 @@ class CarteraService {
         );
       }
 
-      print('❌ [ALERTAS] Error en verificación\n');
+      appLog('❌ [ALERTAS] Error en verificación\n');
       return ApiResponse<String>(
         success: false,
         data: null,
@@ -636,7 +637,7 @@ class CarteraService {
         timestamp: DateTime.now().toIso8601String(),
       );
     } catch (e) {
-      print('💥 [ALERTAS] Excepción en verificarAlertas: $e\n');
+      appLog('💥 [ALERTAS] Excepción en verificarAlertas: $e\n');
       return ApiResponse<String>(
         success: false,
         data: null,
@@ -816,27 +817,27 @@ class CarteraService {
         // }
       }
     } catch (e) {
-      print('Error verificando alertas CxP: $e');
+      appLog('Error verificando alertas CxP: $e');
     }
   }
 
   /// Envía alerta Telegram cuando una CxP está próxima a vencer
   Future<void> enviarAlertaCxPProximaVencer(CuentaPorPagar cuenta) async {
     try {
-      print('\n🔔 [SERVICIO] enviarAlertaCxPProximaVencer()');
-      print('📦 Validando datos de la cuenta:');
-      print('   📄 numeroFactura: ${cuenta.numeroFactura}');
-      print('   💰 monto: ${cuenta.montoTotal}');
-      print('   📅 diasRestantes: ${cuenta.diasRestantes}');
-      print('   🆔 cuentaId: ${cuenta.id}');
-      print('   🏢 proveedor: ${cuenta.proveedorNombre}');
-      print('   🆔 proveedorId: ${cuenta.proveedorId}');
+      appLog('\n🔔 [SERVICIO] enviarAlertaCxPProximaVencer()');
+      appLog('📦 Validando datos de la cuenta:');
+      appLog('   📄 numeroFactura: ${cuenta.numeroFactura}');
+      appLog('   💰 monto: ${cuenta.montoTotal}');
+      appLog('   📅 diasRestantes: ${cuenta.diasRestantes}');
+      appLog('   🆔 cuentaId: ${cuenta.id}');
+      appLog('   🏢 proveedor: ${cuenta.proveedorNombre}');
+      appLog('   🆔 proveedorId: ${cuenta.proveedorId}');
 
       // Validar que tenga proveedor válido
       if (cuenta.proveedorNombre == null ||
           cuenta.proveedorNombre.isEmpty ||
           (cuenta.proveedorId?.isEmpty ?? true)) {
-        print(
+        appLog(
           '⚠️ [SERVICIO] Cuenta sin proveedor válido, no se envía alerta\n',
         );
         return;
@@ -850,29 +851,29 @@ class CarteraService {
       //   cuentaId: cuenta.id,
       // );
 
-      print('ℹ️ [SERVICIO] Alertas deshabilitadas\n');
+      appLog('ℹ️ [SERVICIO] Alertas deshabilitadas\n');
     } catch (e) {
-      print('❌ [SERVICIO] Error al enviar alerta próxima vencer: $e\n');
+      appLog('❌ [SERVICIO] Error al enviar alerta próxima vencer: $e\n');
     }
   }
 
   /// Envía alerta Telegram cuando una CxP está vencida
   Future<void> enviarAlertaCxPVencida(CuentaPorPagar cuenta) async {
     try {
-      print('\n🚨 [SERVICIO] enviarAlertaCxPVencida()');
-      print('📦 Validando datos de la cuenta:');
-      print('   📄 numeroFactura: ${cuenta.numeroFactura}');
-      print('   💸 montoVencido: ${cuenta.saldoPendiente}');
-      print('   ⏰ diasVencida: ${cuenta.diasRestantes.abs()}');
-      print('   🆔 cuentaId: ${cuenta.id}');
-      print('   🏢 proveedor: ${cuenta.proveedorNombre}');
-      print('   🆔 proveedorId: ${cuenta.proveedorId}');
+      appLog('\n🚨 [SERVICIO] enviarAlertaCxPVencida()');
+      appLog('📦 Validando datos de la cuenta:');
+      appLog('   📄 numeroFactura: ${cuenta.numeroFactura}');
+      appLog('   💸 montoVencido: ${cuenta.saldoPendiente}');
+      appLog('   ⏰ diasVencida: ${cuenta.diasRestantes.abs()}');
+      appLog('   🆔 cuentaId: ${cuenta.id}');
+      appLog('   🏢 proveedor: ${cuenta.proveedorNombre}');
+      appLog('   🆔 proveedorId: ${cuenta.proveedorId}');
 
       // Validar que tenga proveedor válido
       if (cuenta.proveedorNombre == null ||
           cuenta.proveedorNombre.isEmpty ||
           (cuenta.proveedorId?.isEmpty ?? true)) {
-        print(
+        appLog(
           '⚠️ [SERVICIO] Cuenta sin proveedor válido, no se envía alerta\n',
         );
         return;
@@ -886,31 +887,31 @@ class CarteraService {
       //   cuentaId: cuenta.id,
       // );
 
-      print('ℹ️ [SERVICIO] Alertas deshabilitadas\n');
+      appLog('ℹ️ [SERVICIO] Alertas deshabilitadas\n');
     } catch (e) {
-      print('❌ [SERVICIO] Error al enviar alerta vencida: $e\n');
+      appLog('❌ [SERVICIO] Error al enviar alerta vencida: $e\n');
     }
   }
 
   /// Envía alerta Telegram cuando un descuento está próximo a perderse
   Future<void> enviarAlertaCxPDescuentoRiesgo(CuentaPorPagar cuenta) async {
     try {
-      print('\n💸 [SERVICIO] enviarAlertaCxPDescuentoRiesgo()');
-      print('📦 Validando datos de la cuenta:');
-      print('   📄 numeroFactura: ${cuenta.numeroFactura}');
-      print('   💰 montoSinDescuento: ${cuenta.montoTotal}');
-      print('   🎁 montoConDescuento: ${cuenta.montoConDescuento}');
-      print('   💵 ahorro: ${cuenta.montoDescuento}');
-      print('   ⏳ diasRestantes: ${cuenta.diasParaPerderDescuento}');
-      print('   🆔 cuentaId: ${cuenta.id}');
-      print('   🏢 proveedor: ${cuenta.proveedorNombre}');
-      print('   🆔 proveedorId: ${cuenta.proveedorId}');
+      appLog('\n💸 [SERVICIO] enviarAlertaCxPDescuentoRiesgo()');
+      appLog('📦 Validando datos de la cuenta:');
+      appLog('   📄 numeroFactura: ${cuenta.numeroFactura}');
+      appLog('   💰 montoSinDescuento: ${cuenta.montoTotal}');
+      appLog('   🎁 montoConDescuento: ${cuenta.montoConDescuento}');
+      appLog('   💵 ahorro: ${cuenta.montoDescuento}');
+      appLog('   ⏳ diasRestantes: ${cuenta.diasParaPerderDescuento}');
+      appLog('   🆔 cuentaId: ${cuenta.id}');
+      appLog('   🏢 proveedor: ${cuenta.proveedorNombre}');
+      appLog('   🆔 proveedorId: ${cuenta.proveedorId}');
 
       // Validar que tenga proveedor válido
       if (cuenta.proveedorNombre == null ||
           cuenta.proveedorNombre.isEmpty ||
           (cuenta.proveedorId?.isEmpty ?? true)) {
-        print(
+        appLog(
           '⚠️ [SERVICIO] Cuenta sin proveedor válido, no se envía alerta\n',
         );
         return;
@@ -926,9 +927,9 @@ class CarteraService {
       //   cuentaId: cuenta.id,
       // );
 
-      print('ℹ️ [SERVICIO] Alertas deshabilitadas\n');
+      appLog('ℹ️ [SERVICIO] Alertas deshabilitadas\n');
     } catch (e) {
-      print('❌ [SERVICIO] Error al enviar alerta descuento riesgo: $e\n');
+      appLog('❌ [SERVICIO] Error al enviar alerta descuento riesgo: $e\n');
     }
   }
 

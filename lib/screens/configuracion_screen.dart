@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'users_screen.dart';
 import 'negocio_info_screen.dart';
 import 'exportar_mensual_screen.dart';
-import 'configuracion_facturacion_screen.dart';
 import '../theme/app_theme.dart';
 
 class ConfiguracionScreen extends StatefulWidget {
@@ -19,7 +18,7 @@ class _ConfiguracionScreenState extends State<ConfiguracionScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
   }
 
   @override
@@ -63,7 +62,6 @@ class _ConfiguracionScreenState extends State<ConfiguracionScreen>
               tabs: const [
                 Tab(icon: Icon(Icons.people), text: 'Usuarios'),
                 Tab(icon: Icon(Icons.business), text: 'Negocio'),
-                Tab(icon: Icon(Icons.receipt_long), text: 'Facturación DIAN'),
               ],
             ),
           ),
@@ -73,7 +71,6 @@ class _ConfiguracionScreenState extends State<ConfiguracionScreen>
               children: [
                 UsersScreen(),
                 NegocioInfoScreen(),
-                const ConfiguracionFacturacionScreen(),
               ],
             ),
           ),

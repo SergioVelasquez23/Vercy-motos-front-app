@@ -178,7 +178,7 @@ class NetworkDiscoveryService {
     try {
       // Intentar endpoint de health check o login
       final testEndpoints = [
-        '$baseUrl/api/public/security/loginmed-no-auth',
+        '$baseUrl/api/public/security/login-no-auth',
         '$baseUrl/api/health',
         '$baseUrl/actuator/health',
         baseUrl,

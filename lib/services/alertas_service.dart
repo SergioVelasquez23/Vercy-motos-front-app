@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import '../models/alerta_notificacion.dart';
 import '../models/api_response.dart';
 import 'base_api_service.dart';
+import '../utils/logger.dart';
 
 /// Servicio para gestión de alertas y notificaciones
 class AlertasService {
@@ -581,7 +582,7 @@ class AlertasService {
     String? cuentaId,
   }) async {
     try {
-      print('\n📡 [ALERTAS API] enviarAlertaCxPProximaVencer()');
+      appLog('\n📡 [ALERTAS API] enviarAlertaCxPProximaVencer()');
 
       String baseUrl = _baseApiService.buildUrl(
         '/api/cuentas-por-pagar-bot/proxima-a-vencer',
@@ -591,7 +592,7 @@ class AlertasService {
         baseUrl += '?cuentaId=$cuentaId';
       }
 
-      print('🌐 URL: $baseUrl');
+      appLog('🌐 URL: $baseUrl');
 
       final Map<String, String> headers = await _baseApiService.getHeaders();
 
@@ -601,8 +602,8 @@ class AlertasService {
         'diasVencimiento': diasRestantes,
       };
 
-      print('📦 Body JSON que se envía al backend:');
-      print('   ${json.encode(alertData)}');
+      appLog('📦 Body JSON que se envía al backend:');
+      appLog('   ${json.encode(alertData)}');
 
       final http.Response response = await _baseApiService.httpClient
           .post(
@@ -612,12 +613,12 @@ class AlertasService {
           )
           .timeout(const Duration(seconds: 30));
 
-      print('📥 [ALERTAS API] Response status: ${response.statusCode}');
-      print('📥 [ALERTAS API] Response body: ${response.body}\n');
+      appLog('📥 [ALERTAS API] Response status: ${response.statusCode}');
+      appLog('📥 [ALERTAS API] Response body: ${response.body}\n');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body) as Map<String, dynamic>;
-        print('✅ [ALERTAS API] Alerta PRÓXIMA A VENCER enviada exitosamente\n');
+        appLog('✅ [ALERTAS API] Alerta PRÓXIMA A VENCER enviada exitosamente\n');
         return ApiResponse<Map<String, dynamic>>(
           success: true,
           data: data,
@@ -626,7 +627,7 @@ class AlertasService {
         );
       }
 
-      print('❌ [ALERTAS API] Error al enviar alerta\n');
+      appLog('❌ [ALERTAS API] Error al enviar alerta\n');
       return ApiResponse<Map<String, dynamic>>(
         success: false,
         data: null,
@@ -634,7 +635,7 @@ class AlertasService {
         timestamp: DateTime.now().toIso8601String(),
       );
     } catch (e) {
-      print('💥 [ALERTAS API] Excepción: $e\n');
+      appLog('💥 [ALERTAS API] Excepción: $e\n');
       return ApiResponse<Map<String, dynamic>>(
         success: false,
         data: null,
@@ -652,7 +653,7 @@ class AlertasService {
     String? cuentaId,
   }) async {
     try {
-      print('\n📡 [ALERTAS API] enviarAlertaCxPVencida()');
+      appLog('\n📡 [ALERTAS API] enviarAlertaCxPVencida()');
 
       String baseUrl = _baseApiService.buildUrl(
         '/api/cuentas-por-pagar-bot/cuenta-vencida',
@@ -662,7 +663,7 @@ class AlertasService {
         baseUrl += '?cuentaId=$cuentaId';
       }
 
-      print('🌐 URL: $baseUrl');
+      appLog('🌐 URL: $baseUrl');
 
       final Map<String, String> headers = await _baseApiService.getHeaders();
 
@@ -672,8 +673,8 @@ class AlertasService {
         'diasVencimiento': diasVencida,
       };
 
-      print('📦 Body JSON que se envía al backend:');
-      print('   ${json.encode(alertData)}');
+      appLog('📦 Body JSON que se envía al backend:');
+      appLog('   ${json.encode(alertData)}');
 
       final http.Response response = await _baseApiService.httpClient
           .post(
@@ -683,8 +684,8 @@ class AlertasService {
           )
           .timeout(const Duration(seconds: 30));
 
-      print('📥 [ALERTAS API] Response status: ${response.statusCode}');
-      print('📥 [ALERTAS API] Response body: ${response.body}\n');
+      appLog('📥 [ALERTAS API] Response status: ${response.statusCode}');
+      appLog('📥 [ALERTAS API] Response body: ${response.body}\n');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body) as Map<String, dynamic>;
@@ -696,7 +697,7 @@ class AlertasService {
         );
       }
 
-      print('❌ [ALERTAS API] Error al enviar alerta\n');
+      appLog('❌ [ALERTAS API] Error al enviar alerta\n');
       return ApiResponse<Map<String, dynamic>>(
         success: false,
         data: null,
@@ -704,7 +705,7 @@ class AlertasService {
         timestamp: DateTime.now().toIso8601String(),
       );
     } catch (e) {
-      print('💥 [ALERTAS API] Excepción: $e\n');
+      appLog('💥 [ALERTAS API] Excepción: $e\n');
       return ApiResponse<Map<String, dynamic>>(
         success: false,
         data: null,
@@ -724,7 +725,7 @@ class AlertasService {
     String? cuentaId,
   }) async {
     try {
-      print('\n📡 [ALERTAS API] enviarAlertaDescuentoProximoVencer()');
+      appLog('\n📡 [ALERTAS API] enviarAlertaDescuentoProximoVencer()');
 
       String baseUrl = _baseApiService.buildUrl(
         '/api/cuentas-por-pagar-bot/descuento-proximo-vencer',
@@ -735,7 +736,7 @@ class AlertasService {
         baseUrl += '?cuentaId=$cuentaId';
       }
 
-      print('🌐 URL Final: $baseUrl');
+      appLog('🌐 URL Final: $baseUrl');
 
       final Map<String, String> headers = await _baseApiService.getHeaders();
 
@@ -747,11 +748,11 @@ class AlertasService {
         if (diasRestantes != null) 'diasDescuento': diasRestantes,
       };
 
-      print('📦 Body JSON que se envía al backend:');
-      print('   ${json.encode(alertData)}');
-      print('   montoSinDescuento: $montoSinDescuento');
-      print('   montoConDescuento: $montoConDescuento');
-      print('   ahorro: $ahorro');
+      appLog('📦 Body JSON que se envía al backend:');
+      appLog('   ${json.encode(alertData)}');
+      appLog('   montoSinDescuento: $montoSinDescuento');
+      appLog('   montoConDescuento: $montoConDescuento');
+      appLog('   ahorro: $ahorro');
 
       final http.Response response = await _baseApiService.httpClient
           .post(
@@ -761,13 +762,13 @@ class AlertasService {
           )
           .timeout(const Duration(seconds: 30));
 
-      print('📨 Respuesta del backend:');
-      print('   Status: ${response.statusCode}');
-      print('   Body: ${response.body}');
+      appLog('📨 Respuesta del backend:');
+      appLog('   Status: ${response.statusCode}');
+      appLog('   Body: ${response.body}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final Map<String, dynamic> data = json.decode(response.body);
-        print(
+        appLog(
           '✅ [ALERTAS API] Alerta DESCUENTO EN RIESGO enviada exitosamente\n',
         );
         return ApiResponse<Map<String, dynamic>>(
@@ -778,7 +779,7 @@ class AlertasService {
         );
       }
 
-      print('❌ [ALERTAS API] Error al enviar alerta\n');
+      appLog('❌ [ALERTAS API] Error al enviar alerta\n');
       return ApiResponse<Map<String, dynamic>>(
         success: false,
         data: null,
@@ -786,7 +787,7 @@ class AlertasService {
         timestamp: DateTime.now().toIso8601String(),
       );
     } catch (e) {
-      print('💥 [ALERTAS API] Excepción: $e\n');
+      appLog('💥 [ALERTAS API] Excepción: $e\n');
       return ApiResponse<Map<String, dynamic>>(
         success: false,
         data: null,
@@ -904,13 +905,13 @@ class AlertasService {
     String? cuentaId,
   }) async {
     try {
-      print('\n📡 [ALERTAS API] enviarAlertaCuentaPagada()');
+      appLog('\n📡 [ALERTAS API] enviarAlertaCuentaPagada()');
 
       final String url = _baseApiService.buildUrl(
         '/api/cuentas-por-pagar-bot/cuenta-pagada',
       );
 
-      print('🌐 URL: $url');
+      appLog('🌐 URL: $url');
 
       final Map<String, String> headers = await _baseApiService.getHeaders();
 
@@ -921,20 +922,20 @@ class AlertasService {
         if (cuentaId != null && cuentaId.isNotEmpty) 'cuentaId': cuentaId,
       };
 
-      print('📦 Body JSON que se envía al backend:');
-      print('   ${json.encode(alertData)}');
+      appLog('📦 Body JSON que se envía al backend:');
+      appLog('   ${json.encode(alertData)}');
 
       final http.Response response = await _baseApiService.httpClient
           .post(Uri.parse(url), headers: headers, body: json.encode(alertData))
           .timeout(const Duration(seconds: 30));
 
-      print('📨 Respuesta del backend:');
-      print('   Status: ${response.statusCode}');
-      print('   Body: ${response.body}');
+      appLog('📨 Respuesta del backend:');
+      appLog('   Status: ${response.statusCode}');
+      appLog('   Body: ${response.body}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final Map<String, dynamic> data = json.decode(response.body);
-        print('✅ [ALERTAS API] Alerta CUENTA PAGADA enviada exitosamente\n');
+        appLog('✅ [ALERTAS API] Alerta CUENTA PAGADA enviada exitosamente\n');
         return ApiResponse<Map<String, dynamic>>(
           success: true,
           data: data,
@@ -943,7 +944,7 @@ class AlertasService {
         );
       }
 
-      print('❌ [ALERTAS API] Error al enviar alerta\n');
+      appLog('❌ [ALERTAS API] Error al enviar alerta\n');
       return ApiResponse<Map<String, dynamic>>(
         success: false,
         data: null,
@@ -951,7 +952,7 @@ class AlertasService {
         timestamp: DateTime.now().toIso8601String(),
       );
     } catch (e) {
-      print('💥 [ALERTAS API] Excepción: $e\n');
+      appLog('💥 [ALERTAS API] Excepción: $e\n');
       return ApiResponse<Map<String, dynamic>>(
         success: false,
         data: null,

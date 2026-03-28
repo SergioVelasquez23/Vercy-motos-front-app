@@ -4,6 +4,7 @@ import '../models/producto.dart';
 import '../models/categoria.dart';
 import '../models/ingrediente.dart';
 import '../services/producto_service.dart';
+import '../utils/logger.dart';
 
 class DatosCacheProvider extends ChangeNotifier {
   static final DatosCacheProvider _instance = DatosCacheProvider._internal();
@@ -281,9 +282,9 @@ class DatosCacheProvider extends ChangeNotifier {
       if (index >= 0) {
         _productos![index] = productoActualizado;
         notifyListeners();
-        print('✅ Producto actualizado en caché: ${productoActualizado.nombre}');
+        appLog('✅ Producto actualizado en caché: ${productoActualizado.nombre}');
       } else {
-        print(
+        appLog(
           '⚠️ Producto no encontrado en caché para actualizar: ${productoActualizado.id}',
         );
       }
@@ -298,9 +299,9 @@ class DatosCacheProvider extends ChangeNotifier {
         final nombreProducto = _productos![index].nombre;
         _productos!.removeAt(index);
         notifyListeners();
-        print('✅ Producto eliminado del caché: $nombreProducto');
+        appLog('✅ Producto eliminado del caché: $nombreProducto');
       } else {
-        print('⚠️ Producto no encontrado en caché para eliminar: $productoId');
+        appLog('⚠️ Producto no encontrado en caché para eliminar: $productoId');
       }
     }
   }

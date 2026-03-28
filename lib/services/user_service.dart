@@ -36,7 +36,7 @@ class UserService {
         throw Exception('Token no encontrado');
       }
       final response = await http.get(
-        Uri.parse('$baseUrl/api/usersroles/user2/$userId'),
+        Uri.parse('$baseUrl/api/usersroles/user/$userId'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',

@@ -13,6 +13,9 @@ class ApiConfig {
   /// Configuración del timeout para peticiones HTTP
   static const int requestTimeout = 15; // Timeout en segundos
 
+  /// Inicialización (no-op en esta versión, incluido por compatibilidad)
+  Future<void> initialize() async {}
+
   /// Determina si estamos en entorno de desarrollo (simplificado)
   bool get isDevelopment => true; // Por defecto desarrollo
 

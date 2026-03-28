@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import '../screens/dashboard_screen_v2.dart';
+import '../screens/dashboard_screen.dart';
 import 'dart:convert';
 import 'package:flutter/foundation.dart' show kIsWeb;
 // Importación condicional para no afectar builds móviles
