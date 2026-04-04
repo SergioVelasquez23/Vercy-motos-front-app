@@ -66,18 +66,18 @@ class _VercySidebarLayoutState extends State<VercySidebarLayout> {
                 ],
               ),
               child: Column(
-              children: [
-                // Logo y header
-                _buildHeader(context),
+                children: [
+                  // Logo y header
+                  _buildHeader(context),
 
-                // Menú de navegación
-                Expanded(child: _buildMenuItems(context, userProvider)),
+                  // Menú de navegación
+                  Expanded(child: _buildMenuItems(context, userProvider)),
 
-                // Usuario y logout
-                _buildFooter(context, userName),
-              ],
+                  // Usuario y logout
+                  _buildFooter(context, userName),
+                ],
+              ),
             ),
-          ),
 
           // Área de contenido principal
           Expanded(
@@ -368,6 +368,12 @@ class _VercySidebarLayoutState extends State<VercySidebarLayout> {
             route: '/facturas-lista',
             isAdmin: false,
           ),
+          _buildMenuItem(
+            icon: Icons.account_balance,
+            label: 'Facturas DIAN',
+            route: '/facturacion-electronica',
+            isAdmin: false,
+          ),
         ],
 
         // Menú para Admins y SuperAdmins (solo si NO es asesor)
@@ -400,6 +406,12 @@ class _VercySidebarLayoutState extends State<VercySidebarLayout> {
             icon: Icons.description,
             label: 'Documentos',
             route: '/facturas-lista',
+            isAdmin: true,
+          ),
+          _buildMenuItem(
+            icon: Icons.account_balance,
+            label: 'Facturas DIAN',
+            route: '/facturacion-electronica',
             isAdmin: true,
           ),
           _buildExpandableMenuItem(

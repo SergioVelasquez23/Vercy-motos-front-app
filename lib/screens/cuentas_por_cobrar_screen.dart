@@ -782,7 +782,7 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Pedido #${deuda.id.substring(0, 8)}',
+                        'Pedido #${deuda.id.length >= 8 ? deuda.id.substring(0, 8) : deuda.id}',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: AppTheme.textMuted,
                         ),
@@ -986,7 +986,10 @@ class _CuentasPorCobrarScreenState extends State<CuentasPorCobrarScreen> {
                 'Fecha:',
                 DateFormat('dd/MM/yyyy HH:mm').format(deuda.fecha),
               ),
-              _buildDetalleRow('Pedido:', '#${deuda.id.substring(0, 8)}'),
+              _buildDetalleRow(
+                'Pedido:',
+                '#${deuda.id.length >= 8 ? deuda.id.substring(0, 8) : deuda.id}',
+              ),
               const SizedBox(height: 12),
               const Divider(),
               const SizedBox(height: 12),

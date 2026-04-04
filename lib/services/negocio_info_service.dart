@@ -56,14 +56,16 @@ class NegocioInfoService {
         'Accept': 'application/json',
       });
 
-      // Actualizar fecha de modificación
+      // Actualizar fecha de actualización
       final negocioToSave = negocioInfo.copyWith(
         fechaActualizacion: DateTime.now(),
       );
 
-      request.body = json.encode(negocioToSave.toJson());
-
-        
+      final bodyJson = json.encode(negocioToSave.toJson());
+      print(
+        '=== DATOS ENVIADOS AL BACKEND ===\n$bodyJson\n=================================',
+      );
+      request.body = bodyJson;
 
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);

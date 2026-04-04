@@ -13,7 +13,7 @@ import '../services/pdf_service.dart';
 import '../services/negocio_info_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/vercy_sidebar_layout.dart';
-import '../widgets/facturizacion/facturizador_matias_button.dart';
+import '../widgets/facturizacion/facturacion_electronica_menu.dart';
 import '../utils/logger.dart';
 import '../utils/pagination_mixin.dart';
 
@@ -657,7 +657,10 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
       abono = isPagado ? total : 0;
       saldo = isPagado ? 0 : total - (documento.descuento ?? 0);
     } else if (documento is Pedido) {
-      numero = 'POS-${documento.id.substring(0, 8).toUpperCase()}';
+      final safeId = documento.id.length >= 8
+          ? documento.id.substring(0, 8).toUpperCase()
+          : documento.id.toUpperCase();
+      numero = 'POS-$safeId';
       clienteNombre = documento.cliente ?? 'CONSUMIDOR FINAL';
       fecha = documento.fechaPago ?? documento.fecha;
       total = documento.total;
@@ -798,21 +801,15 @@ class _FacturasListScreenState extends State<FacturasListScreen> with Paginacion
 
           // Acciones
           SizedBox(
-            width: 250,
+            width: 280,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                // Botón facturar (solo para pedidos pagados)
-                if (esPedido && isPagado)
-                  SizedBox(
-                    height: 40,
-                    child: FacturizarMatiasButton(
-                      pedido: documento as Pedido,
-                      onSuccess: () {
-                        _cargarDocumentos();
-                      },
-                    ),
-                  ),
+                // ── Menú Facturación Electrónica ──
+                FacturacionElectronicaMenu(
+                  documento: documento,
+                  onRefresh: _cargarDocumentos,
+                ),
                 SizedBox(width: 4),
                 // Botón ver PDF
                 IconButton(

@@ -34,6 +34,16 @@ class NegocioInfo {
   final bool? utilizoMesas;
   final bool? envioADomicilio;
 
+  // POS y Software DIAN
+  final String? resolutionNumber; // Número de resolución para documentos
+  final String? softwareOwnerName;
+  final String? softwareCompanyName;
+  final String? softwareName;
+  final String? posCashierName;
+  final String? posTerminalNumber;
+  final String? posCashierType;
+  final String? posSalesCode;
+
   NegocioInfo({
     this.id,
     required this.nombre,
@@ -68,11 +78,19 @@ class NegocioInfo {
     this.productosConIngredientes,
     this.utilizoMesas,
     this.envioADomicilio,
+    this.resolutionNumber,
+    this.softwareOwnerName,
+    this.softwareCompanyName,
+    this.softwareName,
+    this.posCashierName,
+    this.posTerminalNumber,
+    this.posCashierType,
+    this.posSalesCode,
   });
 
   factory NegocioInfo.fromJson(Map<String, dynamic> json) {
     return NegocioInfo(
-      id: json['id'],
+      id: json['_id'] ?? json['id'],
       nombre: json['nombre'] ?? '',
       nitDoc: json['nitDoc'] ?? '',
       contacto: json['contacto'] ?? '',
@@ -110,6 +128,14 @@ class NegocioInfo {
       productosConIngredientes: json['productosConIngredientes'],
       utilizoMesas: json['utilizoMesas'],
       envioADomicilio: json['envioADomicilio'],
+      resolutionNumber: json['numeroResolucion'] ?? json['resolutionNumber'],
+      softwareOwnerName: json['softwareOwnerName'],
+      softwareCompanyName: json['softwareCompanyName'],
+      softwareName: json['softwareName'],
+      posCashierName: json['posCashierName'],
+      posTerminalNumber: json['posTerminalNumber'],
+      posCashierType: json['posCashierType'],
+      posSalesCode: json['posSalesCode'],
     );
   }
 
@@ -148,6 +174,14 @@ class NegocioInfo {
       'productosConIngredientes': productosConIngredientes,
       'utilizoMesas': utilizoMesas,
       'envioADomicilio': envioADomicilio,
+      'numeroResolucion': resolutionNumber,
+      'softwareOwnerName': softwareOwnerName,
+      'softwareCompanyName': softwareCompanyName,
+      'softwareName': softwareName,
+      'posCashierName': posCashierName,
+      'posTerminalNumber': posTerminalNumber,
+      'posCashierType': posCashierType,
+      'posSalesCode': posSalesCode,
     };
   }
 
@@ -185,6 +219,14 @@ class NegocioInfo {
     bool? productosConIngredientes,
     bool? utilizoMesas,
     bool? envioADomicilio,
+    String? resolutionNumber,
+    String? softwareOwnerName,
+    String? softwareCompanyName,
+    String? softwareName,
+    String? posCashierName,
+    String? posTerminalNumber,
+    String? posCashierType,
+    String? posSalesCode,
   }) {
     return NegocioInfo(
       id: id ?? this.id,
@@ -222,6 +264,14 @@ class NegocioInfo {
       productosConIngredientes: productosConIngredientes ?? this.productosConIngredientes,
       utilizoMesas: utilizoMesas ?? this.utilizoMesas,
       envioADomicilio: envioADomicilio ?? this.envioADomicilio,
+      resolutionNumber: resolutionNumber ?? this.resolutionNumber,
+      softwareOwnerName: softwareOwnerName ?? this.softwareOwnerName,
+      softwareCompanyName: softwareCompanyName ?? this.softwareCompanyName,
+      softwareName: softwareName ?? this.softwareName,
+      posCashierName: posCashierName ?? this.posCashierName,
+      posTerminalNumber: posTerminalNumber ?? this.posTerminalNumber,
+      posCashierType: posCashierType ?? this.posCashierType,
+      posSalesCode: posSalesCode ?? this.posSalesCode,
     );
   }
 }

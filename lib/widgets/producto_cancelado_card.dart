@@ -128,7 +128,7 @@ class ProductoCanceladoCard extends StatelessWidget {
                             ),
                             SizedBox(width: 4),
                             Text(
-                              'Pedido: ${productoCancelado.pedidoId.substring(0, 8)}',
+                              'Pedido: ${productoCancelado.pedidoId.length >= 8 ? productoCancelado.pedidoId.substring(0, 8) : productoCancelado.pedidoId}',
                               style: TextStyle(
                                 color: AppTheme.textSecondary,
                                 fontSize: 14,

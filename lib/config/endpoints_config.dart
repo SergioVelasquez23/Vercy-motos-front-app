@@ -57,6 +57,10 @@ class EndpointsConfig {
 
   /// Endpoints para información del negocio
   NegocioEndpoints get negocio => NegocioEndpoints(currentBaseUrl);
+
+  /// Endpoints para facturación electrónica (documentos DIAN)
+  FacturaElectronicaEndpoints get facturacionElectronica =>
+      FacturaElectronicaEndpoints(currentBaseUrl);
 }
 
 /// Endpoints relacionados con autenticación y usuarios
@@ -378,4 +382,43 @@ class PedidosAsesorEndpoints {
 
   String get base => '$baseUrl/api/pedidos-asesor';
   String pedido(String id) => '$base/$id';
+}
+
+/// Endpoints para facturación electrónica DIAN
+class FacturaElectronicaEndpoints {
+  final String baseUrl;
+  FacturaElectronicaEndpoints(this.baseUrl);
+
+  String get base => '$baseUrl/api/facturas-electronicas';
+
+  /// Obtener TODOS los documentos de todos los estados (pendiente, aceptado, rechazado, enviado)
+  /// GET /api/facturas-electronicas/documentos
+  String get documentos => '$base/documentos';
+
+  /// Obtener documentos/tickets pendientes de facturación
+  /// GET /api/facturas-electronicas/documentos/pendientes
+  String get documentosPendientes => '$base/documentos/pendientes';
+
+  /// Obtener un documento por ID
+  /// GET /api/facturas-electronicas/documentos/{id}
+  String documento(String id) => '$base/documentos/$id';
+
+  /// Facturar un documento (enviar a DIAN)
+  /// POST /api/facturas-electronicas/documentos/{id}/facturar
+  String facturarDocumento(String id) => '$base/documentos/$id/facturar';
+
+  /// Emitir nota crédito sobre una factura
+  /// POST /api/facturas-electronicas/facturas/{facturaId}/nota-credito
+  String notaCredito(String facturaId) =>
+      '$base/facturas/$facturaId/nota-credito';
+
+  /// Emitir nota débito sobre una factura
+  /// POST /api/facturas-electronicas/facturas/{facturaId}/nota-debito
+  String notaDebito(String facturaId) =>
+      '$base/facturas/$facturaId/nota-debito';
+
+  /// Reenviar documento genérico
+  /// POST /api/matias/documents/{uuid}/resend
+  String reenviarDocumento(String uuid) =>
+      '$baseUrl/api/matias/documents/$uuid/resend';
 }

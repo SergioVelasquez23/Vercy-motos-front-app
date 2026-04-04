@@ -339,10 +339,13 @@ class PedidoService {
         
         
 
-      // Cargar productos para cada pedido
+      // Cargar productos para cada pedido se ha removido para evitar llamadas masivas
+      // El detalle del producto se obtendrá sólo cuando se desee imprimir o ver detalle.
+      /*
       for (var pedido in pedidos) {
         cargarProductosParaPedido(pedido);
       }
+      */
 
       return pedidos;
     } catch (e) {

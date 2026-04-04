@@ -2146,7 +2146,7 @@ class _FormularioCrearTrasladoState extends State<_FormularioCrearTraslado> {
                                               overflow: TextOverflow.ellipsis,
                                             ),
                                             Text(
-                                              'Cod: ${producto.codigo ?? producto.id.substring(0, 8)}',
+                                              'Cod: ${producto.codigo ?? (producto.id.length >= 8 ? producto.id.substring(0, 8) : producto.id)}',
                                               style: TextStyle(
                                                 color: AppTheme.textMuted,
                                                 fontSize: 10,

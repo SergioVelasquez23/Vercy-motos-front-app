@@ -58,16 +58,41 @@ class MatiasMapper {
     final time =
         "${pedido.fecha.hour.toString().padLeft(2, '0')}:${pedido.fecha.minute.toString().padLeft(2, '0')}:${pedido.fecha.second.toString().padLeft(2, '0')}";
 
-    // Generamos un consecutivo numérico falso basándonos en el timestamp si el backend no lo cambia
+    // Generamos un consecutivo numérico basándonos en el ID del pedido
     // (Mathías exige que document_number sea enteramente un número).
-    final int numericIdFallback = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    
+    // Intentar extraer número de diferentes fuentes
+    int docNum;
+
+    // 1. Intentar numeroFactura si existe
+    if (pedido.numeroFactura != null && pedido.numeroFactura!.isNotEmpty) {
+      final parsedNum = int.tryParse(
+        pedido.numeroFactura!.replaceAll(RegExp(r'[^0-9]'), ''),
+      );
+      if (parsedNum != null && parsedNum > 0) {
+        docNum = parsedNum;
+      } else {
+        // 2. Usar hash del ID si numeroFactura no es válido
+        docNum = pedido.id.hashCode.abs();
+      }
+    } else {
+      // 2. Usar hash del ID del pedido como documento único
+      docNum = pedido.id.hashCode.abs();
+    }
+
+    // Asegurar que es un número válido de 5+ dígitos
+    if (docNum < 10000) {
+      docNum = 100000 + (docNum % 900000);
+    }
 
     return {
       // Valores requeridos por Mathías
       "resolution_number":
-          pedido.id?.toString() ?? numericIdFallback.toString(),
+          datosAdd['resolutionNumber']?.toString() ??
+          datosAdd['resolucion']?.toString() ??
+          "",
       "prefix": datosAdd['prefijoDocumento']?.toString() ?? "LZT",
-      "document_number": numericIdFallback.toString(),
+      "document_number": docNum.toString(),
       "date": date, // Formato "2024-10-17"
       "time": time, // Formato "14:30:00"
       "notes": pedido.notas?.isNotEmpty == true
@@ -105,14 +130,12 @@ class MatiasMapper {
       taxAmountTotal += taxAmt;
 
       List<Map<String, dynamic>> taxTotalsItem = [];
-      if (taxAmt > 0) {
-        taxTotalsItem.add({
-          "tax_id": 1, // IVA
-          "percent": taxPercent.toInt(),
-          "tax_amount": taxAmt.toStringAsFixed(1),
-          "taxable_amount": lineExtension.toStringAsFixed(1),
-        });
-      }
+      taxTotalsItem.add({
+        "tax_id": 1, // IVA
+        "percent": taxAmt > 0 ? taxPercent.toInt() : 0,
+        "tax_amount": taxAmt.toStringAsFixed(1),
+        "taxable_amount": lineExtension.toStringAsFixed(1),
+      });
 
       double discountPercent = item.porcentajeDescuento ?? 0.0;
       double discountAmount = (lineExtension * discountPercent) / 100;
@@ -129,21 +152,19 @@ class MatiasMapper {
         "price_amount": basePrice.toStringAsFixed(1),
         "line_extension_amount": lineExtension.toStringAsFixed(1),
         "free_of_charge_indicator": false,
-        "discount_percent": discountPercent.toStringAsFixed(1),
-        "discount_amount": discountAmount.toStringAsFixed(1),
+        "discount_percent": discountPercent,
+        "discount_amount": discountAmount,
         "tax_totals": taxTotalsItem,
       });
     }
 
     List<Map<String, dynamic>> taxTotalsGlobal = [];
-    if (taxAmountTotal > 0) {
-      taxTotalsGlobal.add({
-        "tax_id": 1,
-        "percent": 19,
-        "tax_amount": taxAmountTotal.toStringAsFixed(1),
-        "taxable_amount": taxExclusiveAmount.toStringAsFixed(1),
-      });
-    }
+    taxTotalsGlobal.add({
+      "tax_id": 1,
+      "percent": taxAmountTotal > 0 ? 19 : 0, // Al menos el IVA es requerido
+      "tax_amount": taxAmountTotal.toStringAsFixed(1),
+      "taxable_amount": taxExclusiveAmount.toStringAsFixed(1),
+    });
 
     return {
       'lines': lines,
@@ -170,7 +191,8 @@ class MatiasMapper {
       {
         "payment_method_id": 1,
         "means_payment_id": meansPaymentId,
-        "value_paid": payableAmount.toStringAsFixed(2),
+        "value_paid": payableAmount.toStringAsFixed(1),
+        // "due_date": se añade si la factura tiene vencimiento
       },
     ];
   }

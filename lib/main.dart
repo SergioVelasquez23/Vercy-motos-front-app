@@ -37,6 +37,8 @@ import 'screens/alertas_screen.dart';
 import 'screens/autorizaciones_screen.dart';
 import 'screens/eliminar_pedidos_screen.dart';
 import 'screens/negocio_info_screen.dart';
+import 'screens/fe_documentos_screen.dart';
+import 'screens/documentos_pendientes_screen.dart';
 import 'models/cliente.dart';
 import 'models/cotizacion.dart';
 import 'providers/user_provider.dart';
@@ -193,6 +195,10 @@ class MyApp extends StatelessWidget {
             ReportesScreen(initialReportIndex: 4),
         // Ruta para informes de productos
         '/informes/productos': (context) => const InformesProductosScreen(),
+        // Rutas para facturación electrónica
+        '/facturacion-electronica': (context) => const FEDocumentosScreen(),
+        '/documentos-pendientes': (context) => const DocumentosPendientesScreen(),
+        '/facturas': (context) => FacturasListScreen(),
       },
     );
   }

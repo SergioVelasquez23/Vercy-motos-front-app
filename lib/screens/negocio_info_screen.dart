@@ -33,6 +33,16 @@ class _NegocioInfoScreenState extends State<NegocioInfoScreen> {
   final _nota1Controller = TextEditingController(); // Keep this
   final _nota2Controller = TextEditingController(); // Keep this
 
+  // Nuevos campos POS y DIAN
+  final _softwareOwnerNameController = TextEditingController();
+  final _softwareCompanyNameController = TextEditingController();
+  final _softwareNameController = TextEditingController();
+  final _resolutionNumberController = TextEditingController();
+  final _posCashierNameController = TextEditingController();
+  final _posTerminalNumberController = TextEditingController();
+  final _posCashierTypeController = TextEditingController();
+  final _posSalesCodeController = TextEditingController();
+
   // Variables de estado
   bool _isLoading = true;
   bool _isSaving = false;
@@ -78,6 +88,14 @@ class _NegocioInfoScreenState extends State<NegocioInfoScreen> {
     _nombreDocumentoController.dispose();
     _nota1Controller.dispose();
     _nota2Controller.dispose();
+    _softwareOwnerNameController.dispose();
+    _softwareCompanyNameController.dispose();
+    _softwareNameController.dispose();
+    _resolutionNumberController.dispose();
+    _posCashierNameController.dispose();
+    _posTerminalNumberController.dispose();
+    _posCashierTypeController.dispose();
+    _posSalesCodeController.dispose();
     super.dispose();
   }
 
@@ -133,6 +151,16 @@ class _NegocioInfoScreenState extends State<NegocioInfoScreen> {
     _nombreDocumentoController.text = info.nombreDocumento ?? '';
     _nota1Controller.text = info.nota1 ?? '';
     _nota2Controller.text = info.nota2 ?? '';
+
+    // Asignar los valores POS y DIAN
+    _softwareOwnerNameController.text = info.softwareOwnerName ?? '';
+    _softwareCompanyNameController.text = info.softwareCompanyName ?? '';
+    _softwareNameController.text = info.softwareName ?? '';
+    _resolutionNumberController.text = info.resolutionNumber ?? '';
+    _posCashierNameController.text = info.posCashierName ?? '';
+    _posTerminalNumberController.text = info.posTerminalNumber ?? '';
+    _posCashierTypeController.text = info.posCashierType ?? '';
+    _posSalesCodeController.text = info.posSalesCode ?? '';
 
     _selectedPais =
         paises.contains(info.pais) && (info.pais.isNotEmpty ?? false)
@@ -241,6 +269,31 @@ class _NegocioInfoScreenState extends State<NegocioInfoScreen> {
         nota2: _nota2Controller.text.trim().isEmpty
             ? null
             : _nota2Controller.text.trim(),
+        // Campos POS y Software
+        softwareOwnerName: _softwareOwnerNameController.text.trim().isEmpty
+            ? null
+            : _softwareOwnerNameController.text.trim(),
+        softwareCompanyName: _softwareCompanyNameController.text.trim().isEmpty
+            ? null
+            : _softwareCompanyNameController.text.trim(),
+        softwareName: _softwareNameController.text.trim().isEmpty
+            ? null
+            : _softwareNameController.text.trim(),
+        resolutionNumber: _resolutionNumberController.text.trim().isEmpty
+            ? null
+            : _resolutionNumberController.text.trim(),
+        posCashierName: _posCashierNameController.text.trim().isEmpty
+            ? null
+            : _posCashierNameController.text.trim(),
+        posTerminalNumber: _posTerminalNumberController.text.trim().isEmpty
+            ? null
+            : _posTerminalNumberController.text.trim(),
+        posCashierType: _posCashierTypeController.text.trim().isEmpty
+            ? null
+            : _posCashierTypeController.text.trim(),
+        posSalesCode: _posSalesCodeController.text.trim().isEmpty
+            ? null
+            : _posSalesCodeController.text.trim(),
         logoUrl: logoUrl,
         // Guardar en ambos campos para compatibilidad
         nit: _nitController.text.trim().isEmpty
@@ -360,6 +413,10 @@ class _NegocioInfoScreenState extends State<NegocioInfoScreen> {
             _buildSeccionCaracteristicas(),
             SizedBox(height: 24),
             _buildSeccionDocumentacion(),
+            SizedBox(height: 24),
+            _buildSeccionSoftware(),
+            SizedBox(height: 24),
+            _buildSeccionPOS(),
             SizedBox(height: 24),
             _buildSeccionNotas(),
             SizedBox(height: 32),
@@ -731,6 +788,108 @@ class _NegocioInfoScreenState extends State<NegocioInfoScreen> {
                 labelStyle: TextStyle(color: _textLight),
                 border: OutlineInputBorder(),
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSeccionSoftware() {
+    return Card(
+      color: _cardBg,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Información del Software (DIAN)',
+              style: TextStyle(
+                color: _primary,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: 16),
+            _buildCampoTexto(
+              controller: _softwareOwnerNameController,
+              label: 'Nombre del propietario del software',
+              hint: 'Ej: Mi Empresa SAS',
+              icon: Icons.business,
+            ),
+            SizedBox(height: 16),
+            _buildCampoTexto(
+              controller: _softwareCompanyNameController,
+              label: 'Nombre de la empresa desarrolladora',
+              hint: 'Ej: Tech Solutions',
+              icon: Icons.business_center,
+            ),
+            SizedBox(height: 16),
+            _buildCampoTexto(
+              controller: _softwareNameController,
+              label: 'Nombre del software',
+              hint: 'Ej: Mi Software POS',
+              icon: Icons.computer,
+            ),
+            SizedBox(height: 16),
+            _buildCampoTexto(
+              controller: _resolutionNumberController,
+              label: 'Número de Resolución DIAN',
+              hint: 'Ej: 18764074347312',
+              icon: Icons.assignment,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSeccionPOS() {
+    return Card(
+      color: _cardBg,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Información del Terminal POS',
+              style: TextStyle(
+                color: _primary,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: 16),
+            _buildCampoTexto(
+              controller: _posCashierNameController,
+              label: 'Nombre del Cajero POS',
+              hint: 'Ej: CJ-CAJA1',
+              icon: Icons.person,
+            ),
+            SizedBox(height: 16),
+            _buildCampoTexto(
+              controller: _posTerminalNumberController,
+              label: 'Número de terminal POS',
+              hint: 'Ej: 001',
+              icon: Icons.point_of_sale,
+            ),
+            SizedBox(height: 16),
+            _buildCampoTexto(
+              controller: _posCashierTypeController,
+              label: 'Tipo de cajero',
+              hint: 'Ej: Principal',
+              icon: Icons.category,
+            ),
+            SizedBox(height: 16),
+            _buildCampoTexto(
+              controller: _posSalesCodeController,
+              label: 'Código de ventas POS',
+              hint: 'Ej: VTA-01',
+              icon: Icons.receipt,
             ),
           ],
         ),
