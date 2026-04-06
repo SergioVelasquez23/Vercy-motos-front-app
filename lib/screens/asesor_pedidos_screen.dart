@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../models/pedido_asesor.dart';
 import '../models/item_pedido.dart';
 import '../models/producto.dart';
@@ -140,7 +143,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
           Producto(id: '', nombre: '', precio: 0, costo: 0, utilidad: 0),
     );
 
-    if (producto.id != null && producto.id!.isNotEmpty) {
+    if (producto.id.isNotEmpty) {
       _agregarAlCarrito(producto);
       _codigoBarrasController.clear();
     } else {
@@ -245,7 +248,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
         // Agregar nuevo item con el origen especificado
         _carrito.add(
           ItemPedido(
-            productoId: producto.id!,
+            productoId: producto.id,
             productoNombre: producto.nombre,
             cantidad: cantidad,
             precioUnitario: producto.precio,
@@ -290,7 +293,7 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
       // 📦 Validar stock del origen seleccionado
       final stockAlmacen = producto.almacen ?? 0;
       final stockBodega = producto.bodega ?? 0;
-      final origen = item.origen?.toUpperCase() ?? 'ALMACÉN';
+      final origen = item.origen.toUpperCase();
 
       int stockDisponible = 0;
       if (origen == 'BODEGA') {
@@ -557,29 +560,35 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
               // Código de barras
               Row(
                 children: [
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primary,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.qr_code_scanner,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                        SizedBox(width: 8),
-                        Text(
-                          'CÓDIGO',
-                          style: TextStyle(
+                  GestureDetector(
+                    onTap: _abrirScannerCodigos,
+                    child: Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primary,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.qr_code_scanner,
                             color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
+                            size: 20,
                           ),
-                        ),
-                      ],
+                          SizedBox(width: 8),
+                          Text(
+                            'CÓDIGO',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                   SizedBox(width: 12),
@@ -1474,6 +1483,43 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _abrirScannerCodigos() async {
+    // ❌ No soportado en Web
+    if (kIsWeb) {
+      _mostrarError(
+        '📱 El escáner de códigos de barras solo está disponible en dispositivos móviles (Android/iOS). '
+        'Por favor ingresa el código manualmente o usa la app móvil.',
+      );
+      return;
+    }
+
+    // 📷 Solicitar permisos de cámara
+    final status = await Permission.camera.request();
+
+    if (!status.isGranted) {
+      _mostrarError(
+        'Se requiere permiso de cámara para escanear códigos de barras',
+      );
+      return;
+    }
+
+    if (!mounted) return;
+
+    // 📱 Abrir pantalla de scanner
+    final codigoEscaneado = await Navigator.of(context).push<String?>(
+      MaterialPageRoute(
+        builder: (context) => _ScannerScreen(),
+        fullscreenDialog: true,
+      ),
+    );
+
+    // ✅ Si se capturó un código, buscarlo
+    if (codigoEscaneado != null && codigoEscaneado.isNotEmpty) {
+      _codigoBarrasController.text = codigoEscaneado;
+      _buscarProductoPorCodigo(codigoEscaneado);
+    }
   }
 
   void _mostrarError(String mensaje) {
@@ -2757,6 +2803,190 @@ class _AsesorPedidosScreenState extends State<AsesorPedidosScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// 📷 WIDGET PARA ESCANEAR CÓDIGOS DE BARRAS
+class _ScannerScreen extends StatefulWidget {
+  @override
+  State<_ScannerScreen> createState() => _ScannerScreenState();
+}
+
+class _ScannerScreenState extends State<_ScannerScreen> {
+  late MobileScannerController _controller;
+  bool _isFrontCamera = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = MobileScannerController(
+      facing: CameraFacing.back,
+      torchEnabled: false,
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _handleBarcode(BarcodeCapture barcodes) {
+    if (barcodes.barcodes.isNotEmpty) {
+      final barcode = barcodes.barcodes.first;
+      final codigo = barcode.rawValue;
+
+      if (codigo != null && codigo.isNotEmpty) {
+        // ✅ Regresar con el código capturado
+        Navigator.of(context).pop<String>(codigo);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // ❌ No soportado en Web
+    if (kIsWeb) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text('Escáner no disponible'),
+          backgroundColor: AppTheme.primary,
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.warning_rounded, size: 64, color: AppTheme.warning),
+              SizedBox(height: 24),
+              Text(
+                'Escáner no soportado en Web',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+              SizedBox(height: 12),
+              Text(
+                'Por favor, usa la versión móvil de la app o ingresa el código manualmente.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 14, color: AppTheme.textSecondary),
+              ),
+              SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text('Cerrar'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Escanear Código de Barras'),
+        backgroundColor: AppTheme.primary,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.close),
+          onPressed: () => Navigator.of(context).pop<String?>(null),
+        ),
+        actions: [
+          IconButton(
+            icon: Icon(
+              _controller.torchEnabled
+                  ? Icons.flashlight_on
+                  : Icons.flashlight_off,
+            ),
+            onPressed: () async {
+              await _controller.toggleTorch();
+            },
+          ),
+          IconButton(
+            icon: Icon(Icons.flip_camera_ios),
+            onPressed: () async {
+              _isFrontCamera = !_isFrontCamera;
+              await _controller.switchCamera();
+            },
+          ),
+        ],
+      ),
+      body: Stack(
+        children: [
+          MobileScanner(
+            controller: _controller,
+            onDetect: _handleBarcode,
+            errorBuilder: (context, error, child) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.error_outline, color: AppTheme.error, size: 48),
+                    SizedBox(height: 16),
+                    Text(
+                      'Error al acceder a la cámara',
+                      style: TextStyle(
+                        color: AppTheme.textPrimary,
+                        fontSize: 16,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      error.errorDetails?.message ?? 'Error desconocido',
+                      style: TextStyle(
+                        color: AppTheme.textSecondary,
+                        fontSize: 12,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+          // Overlay con indicaciones
+          Container(
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.green, width: 2),
+              borderRadius: BorderRadius.circular(12),
+              color: Colors.transparent,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.green.withOpacity(0.3),
+                  blurRadius: 10,
+                  spreadRadius: 5,
+                ),
+              ],
+            ),
+            margin: EdgeInsets.all(32),
+          ),
+          // Instrucciones en la parte inferior
+          Positioned(
+            bottom: 32,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.7),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  'Apunta el código de barras al centro',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

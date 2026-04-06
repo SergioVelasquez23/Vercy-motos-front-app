@@ -20,18 +20,56 @@ class _VercySidebarLayoutState extends State<VercySidebarLayout> {
   Set<String> _expandedMenus = {}; // Para controlar qué menús están expandidos
   bool _isSidebarVisible =
       true; // Variable para controlar la visibilidad del sidebar
+  late final GlobalKey<ScaffoldState> _scaffoldKey;
+
+  @override
+  void initState() {
+    super.initState();
+    _scaffoldKey = GlobalKey<ScaffoldState>();
+  }
 
   @override
   Widget build(BuildContext context) {
     final userProvider = Provider.of<UserProvider>(context);
     final userName = userProvider.userName?.toUpperCase() ?? 'USUARIO';
+    final isMobile = context.isMobile;
 
     return Scaffold(
+      key: _scaffoldKey,
       backgroundColor: AppTheme.backgroundDark,
+      // En móviles, usar Drawer automático en lugar de sidebar fijo
+      drawer: isMobile
+          ? Drawer(
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      AppTheme.primary.withOpacity(0.06),
+                      AppTheme.secondary.withOpacity(0.04),
+                      Colors.white,
+                    ],
+                    stops: [0.0, 0.5, 1.0],
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    // Logo y header
+                    _buildHeader(context),
+                    // Menú de navegación
+                    Expanded(child: _buildMenuItems(context, userProvider)),
+                    // Usuario y logout
+                    _buildFooter(context, userName),
+                  ],
+                ),
+              ),
+            )
+          : null,
       body: Row(
         children: [
-          // Sidebar (menú lateral) - Solo se muestra si _isSidebarVisible es true
-          if (_isSidebarVisible)
+          // Sidebar (menú lateral) - Solo en desktop, nunca en móvil
+          if (!isMobile && _isSidebarVisible)
             AnimatedContainer(
               duration: Duration(milliseconds: 300),
               width: 270,
@@ -79,12 +117,12 @@ class _VercySidebarLayoutState extends State<VercySidebarLayout> {
               ),
             ),
 
-          // Área de contenido principal
+          // Área de contenido principal (siempre expande)
           Expanded(
             child: Column(
               children: [
                 // Top bar con título, usuario e iconos
-                _buildTopBar(context, userName),
+                _buildTopBar(context, userName, isMobile),
 
                 // Contenido
                 Expanded(
@@ -154,7 +192,7 @@ class _VercySidebarLayoutState extends State<VercySidebarLayout> {
   }
 
   /// Top bar con título, usuario e iconos
-  Widget _buildTopBar(BuildContext context, String userName) {
+  Widget _buildTopBar(BuildContext context, String userName, bool isMobile) {
     return Container(
       height: 70,
       padding: EdgeInsets.symmetric(horizontal: 24, vertical: 10),
@@ -195,11 +233,19 @@ class _VercySidebarLayoutState extends State<VercySidebarLayout> {
             child: IconButton(
               icon: Icon(Icons.menu, color: Colors.white, size: 24),
               onPressed: () {
-                setState(() {
-                  _isSidebarVisible = !_isSidebarVisible;
-                });
+                if (isMobile) {
+                  // En móvil, abrir el drawer
+                  _scaffoldKey.currentState?.openDrawer();
+                } else {
+                  // En desktop, desplegar/retraer sidebar
+                  setState(() {
+                    _isSidebarVisible = !_isSidebarVisible;
+                  });
+                }
               },
-              tooltip: _isSidebarVisible ? 'Ocultar menú' : 'Mostrar menú',
+              tooltip: isMobile 
+                  ? 'Abrir menú'
+                  : (_isSidebarVisible ? 'Ocultar menú' : 'Mostrar menú'),
             ),
           ),
           SizedBox(width: 20),
@@ -232,7 +278,7 @@ class _VercySidebarLayoutState extends State<VercySidebarLayout> {
                 widget.title!,
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 20,
+                  fontSize: context.screenWidth < 600 ? 16 : 20,
                   fontWeight: FontWeight.w800,
                   letterSpacing: 0.5,
                   shadows: [
@@ -282,29 +328,33 @@ class _VercySidebarLayoutState extends State<VercySidebarLayout> {
                   child: Icon(Icons.person, color: Colors.white, size: 18),
                 ),
                 SizedBox(width: 10),
-                Text(
-                  userName,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.3,
+                if (!isMobile || context.screenWidth > 500)
+                  Text(
+                    userName,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.3,
+                    ),
                   ),
-                ),
               ],
             ),
           ),
 
-          SizedBox(width: 16),
+          if (!isMobile)
+            SizedBox(width: 16),
 
-          // Iconos con efectos mejorados
-          _buildTopBarIcon(Icons.help_outline, 'Ayuda', () {}),
-          SizedBox(width: 8),
-          _buildTopBarIcon(Icons.home, 'Inicio', () {
-            Navigator.pushReplacementNamed(context, '/dashboard');
-          }),
-          SizedBox(width: 8),
-          _buildTopBarIcon(Icons.settings, 'Configuración', () {}),
+          // Iconos con efectos mejorados (ocultar en móviles muy pequeños)
+          if (!isMobile || context.screenWidth > 500) ...[
+            _buildTopBarIcon(Icons.help_outline, 'Ayuda', () {}),
+            SizedBox(width: 8),
+            _buildTopBarIcon(Icons.home, 'Inicio', () {
+              Navigator.pushReplacementNamed(context, '/dashboard');
+            }),
+            SizedBox(width: 8),
+            _buildTopBarIcon(Icons.settings, 'Configuración', () {}),
+          ]
         ],
       ),
     );

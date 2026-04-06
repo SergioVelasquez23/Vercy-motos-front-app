@@ -885,23 +885,9 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
       child: VercySidebarLayout(
         title: '¡Hola! Bienvenido a Vercy Motos',
         child: Scaffold(
-          backgroundColor: Colors.transparent,
-          body: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Color(0xFFF5F7FA),
-                  Color(0xFFE8EAF6),
-                  Color(0xFFF5F7FA),
-                ],
-                stops: [0.0, 0.5, 1.0],
-              ),
-            ),
-            child: SafeArea(
-              child: Column(
-                children: [
+          backgroundColor: Color(0xFFFAFAFA),
+          body: Column(
+            children: [
                   // Indicador de precarga de datos
                   _buildPrecargaIndicator(),
                   Expanded(
@@ -1107,9 +1093,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
             ),
           ), // Cierra Scaffold
         ), // Cierra VercySidebarLayout
-      ), // Cierra AdminKeySequenceDetector
-      ),
-    );
+      ); // Cierra AdminKeySequenceDetector
   }
 
   Widget _buildTopBar() {
@@ -1199,23 +1183,8 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
     return Container(
       height: 60,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Colors.white, AppTheme.primary.withOpacity(0.02)],
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.primary.withOpacity(0.05),
-            blurRadius: 8,
-            offset: Offset(0, 2),
-          ),
-          BoxShadow(
-            color: Colors.white.withOpacity(0.5),
-            blurRadius: 4,
-            offset: Offset(0, -1),
-          ),
-        ],
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: Colors.grey[200]!, width: 1)),
       ),
       child: Scrollbar(
         scrollbarOrientation: ScrollbarOrientation.bottom,
@@ -1465,24 +1434,13 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         margin: EdgeInsets.symmetric(horizontal: 4),
         decoration: BoxDecoration(
-          gradient: isSelected
-              ? LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [AppTheme.primary, AppTheme.secondary],
-                )
-              : LinearGradient(
-                  colors: [
-                    Colors.white.withOpacity(0.6),
-                    Colors.white.withOpacity(0.3),
-                  ],
-                ),
+          color: isSelected ? AppTheme.primary.withOpacity(0.1) : Colors.white,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: isSelected
-                ? AppTheme.primary.withOpacity(0.3)
+                ? AppTheme.primary
                 : Colors.grey.withOpacity(0.2),
-            width: 1.5,
+            width: isSelected ? 1.5 : 1,
           ),
           boxShadow: isSelected
               ? [
@@ -1813,15 +1771,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         context.isMobile ? AppTheme.spacingMedium : AppTheme.spacingLarge,
       ),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.white,
-            AppTheme.primaryLight.withOpacity(0.03),
-            Colors.white,
-          ],
-        ),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
         border: Border.all(
           color: AppTheme.primaryLight.withOpacity(0.2),
@@ -1829,15 +1779,9 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         ),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.primaryLight.withOpacity(0.1),
-            blurRadius: 20,
-            offset: Offset(0, 10),
-            spreadRadius: 0,
-          ),
-          BoxShadow(
-            color: Colors.white.withOpacity(0.8),
+            color: Colors.grey.withOpacity(0.1),
             blurRadius: 8,
-            offset: Offset(-4, -4),
+            offset: Offset(0, 2),
             spreadRadius: 0,
           ),
         ],
@@ -1848,13 +1792,12 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
           Container(
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  AppTheme.primaryLight.withOpacity(0.15),
-                  AppTheme.primaryLight.withOpacity(0.05),
-                ],
-              ),
+              color: AppTheme.primaryLight.withOpacity(0.08),
               borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: AppTheme.primaryLight.withOpacity(0.15),
+                width: 0.5,
+              ),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -2027,15 +1970,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         context.isMobile ? AppTheme.spacingMedium : AppTheme.spacingLarge,
       ),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.white,
-            AppTheme.secondary.withOpacity(0.03),
-            Colors.white,
-          ],
-        ),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
         border: Border.all(
           color: AppTheme.secondary.withOpacity(0.2),
@@ -2043,15 +1978,9 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         ),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.secondary.withOpacity(0.1),
-            blurRadius: 20,
-            offset: Offset(0, 10),
-            spreadRadius: 0,
-          ),
-          BoxShadow(
-            color: Colors.white.withOpacity(0.8),
+            color: Colors.grey.withOpacity(0.1),
             blurRadius: 8,
-            offset: Offset(-4, -4),
+            offset: Offset(0, 2),
             spreadRadius: 0,
           ),
         ],
@@ -2062,13 +1991,12 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
           Container(
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  AppTheme.secondary.withOpacity(0.15),
-                  AppTheme.secondary.withOpacity(0.05),
-                ],
-              ),
+              color: AppTheme.secondary.withOpacity(0.08),
               borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: AppTheme.secondary.withOpacity(0.15),
+                width: 0.5,
+              ),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -2217,25 +2145,16 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         context.isMobile ? AppTheme.spacingMedium : AppTheme.spacingXLarge,
       ),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.white,
-            AppTheme.metal.withOpacity(0.03),
-            Colors.white,
-          ],
-          stops: [0.0, 0.5, 1.0],
-        ),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
         border: Border.all(color: AppTheme.metal.withOpacity(0.2), width: 1),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.metal.withOpacity(0.08),
-            blurRadius: 20,
-            offset: Offset(0, 4),
+            color: Colors.grey.withOpacity(0.1),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+            spreadRadius: 0,
           ),
-          BoxShadow(color: Colors.white, blurRadius: 8, offset: Offset(-4, -4)),
         ],
       ),
       child: Column(
@@ -2247,13 +2166,12 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
               vertical: AppTheme.spacingSmall,
             ),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  AppTheme.metal.withOpacity(0.1),
-                  AppTheme.metal.withOpacity(0.05),
-                ],
-              ),
+              color: AppTheme.metal.withOpacity(0.08),
               borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+              border: Border.all(
+                color: AppTheme.metal.withOpacity(0.15),
+                width: 0.5,
+              ),
             ),
             child: Row(
               children: [
@@ -2528,28 +2446,14 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         context.isMobile ? AppTheme.spacingMedium : AppTheme.spacingXLarge,
       ),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.white,
-            AppTheme.primary.withOpacity(0.03),
-            Colors.white,
-          ],
-        ),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
         border: Border.all(color: AppTheme.primary.withOpacity(0.2), width: 1),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.primary.withOpacity(0.1),
-            blurRadius: 20,
-            offset: Offset(0, 10),
-            spreadRadius: 0,
-          ),
-          BoxShadow(
-            color: Colors.white.withOpacity(0.8),
+            color: Colors.grey.withOpacity(0.1),
             blurRadius: 8,
-            offset: Offset(-4, -4),
+            offset: Offset(0, 2),
             spreadRadius: 0,
           ),
         ],
@@ -2560,13 +2464,12 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
           Container(
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  AppTheme.primary.withOpacity(0.15),
-                  AppTheme.primary.withOpacity(0.05),
-                ],
-              ),
+              color: AppTheme.primary.withOpacity(0.08),
               borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: AppTheme.primary.withOpacity(0.15),
+                width: 0.5,
+              ),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -2731,25 +2634,16 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         context.isMobile ? AppTheme.spacingMedium : AppTheme.spacingXLarge,
       ),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.white,
-            AppTheme.primary.withOpacity(0.03),
-            Colors.white,
-          ],
-          stops: [0.0, 0.5, 1.0],
-        ),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
         border: Border.all(color: AppTheme.primary.withOpacity(0.2), width: 1),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.primary.withOpacity(0.08),
-            blurRadius: 20,
-            offset: Offset(0, 4),
+            color: Colors.grey.withOpacity(0.1),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+            spreadRadius: 0,
           ),
-          BoxShadow(color: Colors.white, blurRadius: 8, offset: Offset(-4, -4)),
         ],
       ),
       child: Column(
@@ -2761,13 +2655,12 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
               vertical: AppTheme.spacingSmall,
             ),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  AppTheme.primary.withOpacity(0.1),
-                  AppTheme.primary.withOpacity(0.05),
-                ],
-              ),
+              color: AppTheme.primary.withOpacity(0.08),
               borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+              border: Border.all(
+                color: AppTheme.primary.withOpacity(0.15),
+                width: 0.5,
+              ),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -2921,16 +2814,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         context.isMobile ? AppTheme.spacingMedium : AppTheme.spacingXLarge,
       ),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.white,
-            AppTheme.secondary.withOpacity(0.03),
-            Colors.white,
-          ],
-          stops: [0.0, 0.5, 1.0],
-        ),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
         border: Border.all(
           color: AppTheme.secondary.withOpacity(0.2),
@@ -2938,11 +2822,11 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         ),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.secondary.withOpacity(0.08),
-            blurRadius: 20,
-            offset: Offset(0, 4),
+            color: Colors.grey.withOpacity(0.1),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+            spreadRadius: 0,
           ),
-          BoxShadow(color: Colors.white, blurRadius: 8, offset: Offset(-4, -4)),
         ],
       ),
       child: Column(
@@ -2954,13 +2838,12 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
               vertical: AppTheme.spacingSmall,
             ),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  AppTheme.secondary.withOpacity(0.1),
-                  AppTheme.secondary.withOpacity(0.05),
-                ],
-              ),
+              color: AppTheme.secondary.withOpacity(0.08),
               borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+              border: Border.all(
+                color: AppTheme.secondary.withOpacity(0.15),
+                width: 0.5,
+              ),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -3176,32 +3059,9 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         context.isMobile ? AppTheme.spacingMedium : AppTheme.spacingLarge,
       ),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            color.withOpacity(0.15),
-            color.withOpacity(0.05),
-            Colors.white.withOpacity(0.9),
-          ],
-          stops: [0.0, 0.4, 1.0],
-        ),
+        color: Colors.white,
+        border: Border.all(color: Colors.grey[200]!, width: 1),
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-        border: Border.all(color: color.withOpacity(0.3), width: 1.5),
-        boxShadow: [
-          BoxShadow(
-            color: color.withOpacity(0.2),
-            blurRadius: 20,
-            offset: Offset(0, 8),
-            spreadRadius: 0,
-          ),
-          BoxShadow(
-            color: Colors.white.withOpacity(0.8),
-            blurRadius: 8,
-            offset: Offset(-4, -4),
-            spreadRadius: 0,
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -3230,16 +3090,11 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                       child: Container(
                         padding: EdgeInsets.all(AppTheme.spacingXSmall),
                         decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              color.withOpacity(0.2),
-                              color.withOpacity(0.1),
-                            ],
-                          ),
+                          color: color.withOpacity(0.08),
+                          border: Border.all(color: color.withOpacity(0.3), width: 1),
                           borderRadius: BorderRadius.circular(
                             AppTheme.radiusSmall,
                           ),
-                          border: Border.all(color: color.withOpacity(0.3)),
                         ),
                         child: Icon(Icons.edit, size: 14, color: color),
                       ),
@@ -3250,22 +3105,8 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                       horizontal: 12, vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          color.withOpacity(0.9),
-                          color.withOpacity(0.7),
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
+                      color: color,
                       borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: color.withOpacity(0.4),
-                          blurRadius: 8,
-                          offset: Offset(0, 4),
-                        ),
-                      ],
                     ),
                     child: Text(
                       '$percentage%',
@@ -3313,11 +3154,10 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                       height: 8,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(4),
-                        gradient: LinearGradient(
-                          colors: [
-                            color.withOpacity(0.3),
-                            Colors.grey.withOpacity(0.2),
-                          ],
+                        color: color.withOpacity(0.15),
+                        border: Border.all(
+                          color: color.withOpacity(0.2),
+                          width: 0.5,
                         ),
                       ),
                       child: FractionallySizedBox(
@@ -3326,16 +3166,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                         child: Container(
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(4),
-                            gradient: LinearGradient(
-                              colors: [color, color.withOpacity(0.7)],
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: color.withOpacity(0.5),
-                                blurRadius: 8,
-                                spreadRadius: 1,
-                              ),
-                            ],
+                            color: color,
                           ),
                         ),
                       ),

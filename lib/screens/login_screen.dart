@@ -9,6 +9,15 @@ import '../theme/app_theme.dart';
 import '../services/producto_service.dart';
 import '../services/pedido_service.dart';
 
+// Extension para validación de email
+extension EmailValidator on String {
+  bool isValidEmail() {
+    return RegExp(
+      r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
+    ).hasMatch(this);
+  }
+}
+
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -16,7 +25,8 @@ class LoginScreen extends StatefulWidget {
   _LoginScreenState createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends State<LoginScreen>
+    with TickerProviderStateMixin {
   // Services and Controllers
   final AuthService authService = AuthService();
   final TextEditingController emailController = TextEditingController();
@@ -31,6 +41,12 @@ class _LoginScreenState extends State<LoginScreen> {
   bool showCodeField = false;
   String? errorMessage;
   bool rememberCredentials = false;
+  bool _showPassword = false; // Toggle para mostrar/ocultar contraseña
+  bool _isLoading = false; // Estado de carga del botón
+  late AnimationController _fadeController;
+  late AnimationController _slideController;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
   final _secureStorage = const FlutterSecureStorage();
   // Wake-up / retry timers
   Timer? _loginWatchdogTimer;
@@ -46,6 +62,36 @@ class _LoginScreenState extends State<LoginScreen> {
   void initState() {
     super.initState();
     _loadSavedCredentials();
+    
+    // Inicializar controladores de animación
+    _fadeController = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
+    _slideController = AnimationController(
+      duration: const Duration(milliseconds: 700),
+      vsync: this,
+    );
+    _fadeAnimation = Tween<double>(
+      begin: 0,
+      end: 1,
+    ).animate(CurvedAnimation(parent: _fadeController, curve: Curves.easeIn));
+    _slideAnimation = Tween<Offset>(
+      begin: Offset(0, 0.3),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _slideController, curve: Curves.easeOut));
+
+    // Iniciar animaciones
+    _fadeController.forward();
+    _slideController.forward();
+
+    // Listeners para inputs
+    emailController.addListener(() {
+      setState(() {});
+    });
+    passwordController.addListener(() {
+      setState(() {});
+    });
   }
 
   // ----- Wake-up sequence -----
@@ -248,12 +294,15 @@ class _LoginScreenState extends State<LoginScreen> {
     _loginWatchdogTimer?.cancel();
     _wakeupTicker?.cancel();
     _wakeupStepTimer?.cancel();
+    _fadeController.dispose();
+    _slideController.dispose();
     super.dispose();
   }
 
   void _login() async {
     setState(() {
       errorMessage = null;
+      _isLoading = true;
     });
 
     try {
@@ -281,10 +330,12 @@ class _LoginScreenState extends State<LoginScreen> {
         if (response['error'] != null) {
           setState(() {
             errorMessage = response['error'];
+            _isLoading = false;
           });
         } else if (response['requiresCode'] == true) {
           setState(() {
             showCodeField = true;
+            _isLoading = false;
           });
         } else if (response['token'] != null) {
           final token = response['token'];
@@ -306,35 +357,32 @@ class _LoginScreenState extends State<LoginScreen> {
             cacheProvider.warmupProductos();
 
             await Future.delayed(Duration(milliseconds: 100));
-            
-            // Debug: imprimir roles del usuario
-              
-              
 
             // Redirigir según el rol del usuario
             if (userProvider.isOnlyAsesor) {
               // Los asesores van directamente a su pantalla de pedidos
-                
               Navigator.pushReplacementNamed(context, '/asesor-pedidos');
             } else {
               // Admins y otros roles van al dashboard
-                
               Navigator.pushReplacementNamed(context, '/dashboard');
             }
           } catch (e) {
             setState(() {
               errorMessage = 'Error interno. Inténtalo de nuevo.';
+              _isLoading = false;
             });
           }
         }
       } else {
         setState(() {
           errorMessage = 'Error de conexión. Inténtalo de nuevo.';
+          _isLoading = false;
         });
       }
     } catch (e) {
       setState(() {
         errorMessage = 'Error inesperado: $e';
+        _isLoading = false;
       });
     }
   }
@@ -582,473 +630,102 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bool emailValid = emailController.text.isValidEmail();
+    final isMobile = context.screenWidth < 900;
+    
     return Scaffold(
-      backgroundColor: AppTheme.backgroundDark,
+      backgroundColor: Colors.white,
       body: Stack(
         children: [
-          SafeArea(
-            child: SingleChildScrollView(
-              child: Container(
-                width: double.infinity,
-                constraints: BoxConstraints(
-                  minHeight:
-                      MediaQuery.of(context).size.height -
-                      MediaQuery.of(context).padding.top,
-                ),
-                child: Center(
+          // Layout principal: dos columnas (desktop) o mobile
+          if (!isMobile)
+            Row(
+              children: [
+                // COLUMNA IZQUIERDA: Fondo con imagen de motos (70%)
+                Expanded(
+                  flex: 7,
                   child: Container(
-                    padding: EdgeInsets.all(context.responsivePadding),
-                    constraints: BoxConstraints(
-                      maxWidth: context.isMobile ? double.infinity : 520,
+                    decoration: BoxDecoration(
+                      image: DecorationImage(
+                        image: AssetImage('assets/images/fondologin.png'),
+                        fit: BoxFit.cover,
+                        onError: (exception, stackTrace) {},
+                      ),
                     ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                    child: Stack(
                       children: [
-                        // Logo elegante con sombra
+                        // Overlay oscuro para mejorar legibilidad del texto
                         Container(
-                          padding: EdgeInsets.all(AppTheme.spacingLarge),
                           decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(
-                              AppTheme.radiusXLarge,
-                            ),
-                            border: Border.all(
-                              color: AppTheme.primary.withOpacity(0.18),
-                              width: 2,
-                            ),
-                            // Fondo cristalino (glassmorphism)
-                            color: Colors.white.withOpacity(0.08),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.18),
-                                blurRadius: 24,
-                                offset: Offset(0, 8),
-                              ),
-                            ],
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(
-                              AppTheme.radiusXLarge - 2,
-                            ),
-                            child: Container(
-                              width: context.isMobile ? 260 : 340,
-                              height: context.isMobile ? 180 : 220,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(
-                                  AppTheme.radiusXLarge - 2,
-                                ),
-                              ),
-                              child: Image.asset(
-                                'assets/images/logo.png',
-                                fit: BoxFit.contain,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Container(
-                                    decoration: BoxDecoration(
-                                      color: AppTheme.primary.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(
-                                        AppTheme.radiusXLarge - 2,
-                                      ),
-                                    ),
-                                    child: Icon(
-                                      Icons.restaurant,
-                                      color: AppTheme.primary,
-                                      size: context.isMobile ? 80 : 100,
-                                    ),
-                                  );
-                                },
-                              ),
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.black.withOpacity(0.3),
+                                Colors.black.withOpacity(0.5),
+                              ],
                             ),
                           ),
                         ),
-
-                        SizedBox(height: AppTheme.spacingXLarge),
-
-                        // Tarjeta principal de login
-                        Container(
-                          padding: EdgeInsets.all(
-                            context.isMobile
-                                ? AppTheme.spacingLarge
-                                : AppTheme.spacingXLarge,
-                          ),
-                          decoration: AppTheme.elevatedCardDecoration,
-                          child: Column(
-                            children: [
-                              // Título elegante
-                              Text(
-                                'Bienvenido',
-                                style: AppTheme.headlineLarge.copyWith(
-                                  fontSize: context.isMobile ? 24 : 28,
-                                ),
+                        // Contenido
+                        Center(
+                          child: FadeTransition(
+                            opacity: _fadeAnimation,
+                            child: SlideTransition(
+                              position: _slideAnimation,
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    'Vercy Motos',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: context.screenWidth > 1400 ? 56 : 48,
+                                      fontWeight: FontWeight.bold,
+                                      shadows: [
+                                        Shadow(
+                                          color: Colors.black.withOpacity(0.6),
+                                          offset: Offset(0, 3),
+                                          blurRadius: 8,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  SizedBox(height: 16),
+                                  Text(
+                                    'Gestión inteligente de tu negocio',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: Colors.white.withOpacity(0.95),
+                                      fontSize: context.screenWidth > 1400 ? 20 : 18,
+                                      fontWeight: FontWeight.w400,
+                                      shadows: [
+                                        Shadow(
+                                          color: Colors.black.withOpacity(0.5),
+                                          offset: Offset(0, 2),
+                                          blurRadius: 6,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
                               ),
-                              SizedBox(height: AppTheme.spacingSmall),
-                              Text(
-                                'Ingresa a tu cuenta',
-                                style: AppTheme.bodyLarge.copyWith(
-                                  color: AppTheme.textSecondary,
-                                ),
-                              ),
-                              SizedBox(height: AppTheme.spacingXLarge),
-
-                              // Campo de email
-                              TextFormField(
-                                controller: emailController,
-                                keyboardType: TextInputType.emailAddress,
-                                style: AppTheme.bodyMedium,
-                                decoration: InputDecoration(
-                                  labelText: 'Correo electrónico',
-                                  labelStyle: AppTheme.labelMedium.copyWith(
-                                    color: AppTheme.textSecondary,
-                                  ),
-                                  prefixIcon: Icon(
-                                    Icons.email_outlined,
-                                    color: AppTheme.primary,
-                                  ),
-                                  filled: true,
-                                  fillColor: AppTheme.surfaceDark,
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(
-                                      AppTheme.radiusMedium,
-                                    ),
-                                    borderSide: BorderSide(
-                                      color: AppTheme.textMuted.withOpacity(
-                                        0.3,
-                                      ),
-                                    ),
-                                  ),
-                                  enabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(
-                                      AppTheme.radiusMedium,
-                                    ),
-                                    borderSide: BorderSide(
-                                      color: AppTheme.textMuted.withOpacity(
-                                        0.3,
-                                      ),
-                                    ),
-                                  ),
-                                  focusedBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(
-                                      AppTheme.radiusMedium,
-                                    ),
-                                    borderSide: BorderSide(
-                                      color: AppTheme.primary,
-                                      width: 2,
-                                    ),
-                                  ),
-                                ),
-                              ),
-
-                              SizedBox(height: AppTheme.spacingMedium),
-
-                              // Campo de contraseña
-                              TextFormField(
-                                controller: passwordController,
-                                obscureText: true,
-                                style: AppTheme.bodyMedium,
-                                decoration: InputDecoration(
-                                  labelText: 'Contraseña',
-                                  labelStyle: AppTheme.labelMedium.copyWith(
-                                    color: AppTheme.textSecondary,
-                                  ),
-                                  prefixIcon: Icon(
-                                    Icons.lock_outline,
-                                    color: AppTheme.primary,
-                                  ),
-                                  filled: true,
-                                  fillColor: AppTheme.surfaceDark,
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(
-                                      AppTheme.radiusMedium,
-                                    ),
-                                    borderSide: BorderSide(
-                                      color: AppTheme.textMuted.withOpacity(
-                                        0.3,
-                                      ),
-                                    ),
-                                  ),
-                                  enabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(
-                                      AppTheme.radiusMedium,
-                                    ),
-                                    borderSide: BorderSide(
-                                      color: AppTheme.textMuted.withOpacity(
-                                        0.3,
-                                      ),
-                                    ),
-                                  ),
-                                  focusedBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(
-                                      AppTheme.radiusMedium,
-                                    ),
-                                    borderSide: BorderSide(
-                                      color: AppTheme.primary,
-                                      width: 2,
-                                    ),
-                                  ),
-                                ),
-                              ),
-
-                              SizedBox(height: AppTheme.spacingMedium),
-
-                              // Checkbox para recordar credenciales
-                              Container(
-                                padding: EdgeInsets.symmetric(horizontal: 4),
-                                child: Row(
-                                  children: [
-                                    Checkbox(
-                                      value: rememberCredentials,
-                                      onChanged: (value) {
-                                        setState(() {
-                                          rememberCredentials = value ?? false;
-                                        });
-                                      },
-                                      activeColor: AppTheme.primary,
-                                      checkColor: Colors.white,
-                                      fillColor:
-                                          MaterialStateProperty.resolveWith((
-                                            states,
-                                          ) {
-                                            if (states.contains(
-                                              MaterialState.selected,
-                                            )) {
-                                              return AppTheme.primary;
-                                            }
-                                            return Colors.transparent;
-                                          }),
-                                      side: BorderSide(
-                                        color: AppTheme.textMuted.withOpacity(
-                                          0.5,
-                                        ),
-                                        width: 2,
-                                      ),
-                                    ),
-                                    SizedBox(width: AppTheme.spacingSmall),
-                                    Expanded(
-                                      child: GestureDetector(
-                                        onTap: () {
-                                          setState(() {
-                                            rememberCredentials =
-                                                !rememberCredentials;
-                                          });
-                                        },
-                                        child: Text(
-                                          'Recordar mis credenciales',
-                                          style: AppTheme.bodyMedium.copyWith(
-                                            color: AppTheme.textSecondary,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    // Icono de información
-                                    Tooltip(
-                                      message:
-                                          'Tus credenciales se guardarán de forma segura en este dispositivo para futuros inicios de sesión',
-                                      child: Icon(
-                                        Icons.info_outline,
-                                        size: 18,
-                                        color: AppTheme.textMuted,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-
-                              SizedBox(height: AppTheme.spacingLarge),
-
-                              // Botón de login elegante con mejor responsividad
-                              Container(
-                                width: double.infinity,
-                                margin: EdgeInsets.symmetric(
-                                  horizontal: 4,
-                                ), // Margen para evitar cortes
-                                child: SizedBox(
-                                  height: context.isMobile
-                                      ? 56
-                                      : 60, // Altura más generosa
-                                  child: ElevatedButton(
-                                    onPressed: _login,
-                                    style: AppTheme.primaryButtonStyle.copyWith(
-                                      elevation: MaterialStateProperty.all(4),
-                                      shape: MaterialStateProperty.all(
-                                        RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            AppTheme.radiusMedium,
-                                          ),
-                                        ),
-                                      ),
-                                      padding: MaterialStateProperty.all(
-                                        EdgeInsets.symmetric(
-                                          horizontal: context.isMobile
-                                              ? 24
-                                              : 28,
-                                          vertical: context.isMobile ? 16 : 18,
-                                        ),
-                                      ),
-                                    ),
-                                    child: FittedBox(
-                                      fit: BoxFit
-                                          .scaleDown, // Escala el texto si es necesario
-                                      child: Text(
-                                        'Iniciar Sesión',
-                                        style: AppTheme.labelLarge.copyWith(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: context.isMobile ? 18 : 20,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-
-                              SizedBox(height: AppTheme.spacingMedium),
-
-                              // Enlace de registro
-                              TextButton(
-                                onPressed: _showRegisterDialog,
-                                style: AppTheme.secondaryButtonStyle,
-                                child: RichText(
-                                  text: TextSpan(
-                                    text: '¿No tienes cuenta? ',
-                                    style: AppTheme.bodyMedium.copyWith(
-                                      color: AppTheme.textSecondary,
-                                    ),
-                                    children: [
-                                      TextSpan(
-                                        text: 'Regístrate',
-                                        style: AppTheme.bodyMedium.copyWith(
-                                          color: AppTheme.primary,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-
-                              // Campo de código de verificación (si es necesario)
-                              if (showCodeField) ...[
-                                SizedBox(height: AppTheme.spacingLarge),
-                                TextFormField(
-                                  controller: codeController,
-                                  keyboardType: TextInputType.number,
-                                  style: AppTheme.bodyMedium,
-                                  decoration: InputDecoration(
-                                    labelText: 'Código de verificación',
-                                    labelStyle: AppTheme.labelMedium.copyWith(
-                                      color: AppTheme.textSecondary,
-                                    ),
-                                    prefixIcon: Icon(
-                                      Icons.security,
-                                      color: AppTheme.warning,
-                                    ),
-                                    filled: true,
-                                    fillColor: AppTheme.surfaceDark,
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(
-                                        AppTheme.radiusMedium,
-                                      ),
-                                      borderSide: BorderSide(
-                                        color: AppTheme.warning.withOpacity(
-                                          0.3,
-                                        ),
-                                      ),
-                                    ),
-                                    enabledBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(
-                                        AppTheme.radiusMedium,
-                                      ),
-                                      borderSide: BorderSide(
-                                        color: AppTheme.warning.withOpacity(
-                                          0.3,
-                                        ),
-                                      ),
-                                    ),
-                                    focusedBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(
-                                        AppTheme.radiusMedium,
-                                      ),
-                                      borderSide: BorderSide(
-                                        color: AppTheme.warning,
-                                        width: 2,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                SizedBox(height: AppTheme.spacingMedium),
-                                SizedBox(
-                                  width: double.infinity,
-                                  height: 45,
-                                  child: ElevatedButton(
-                                    onPressed: _validateCode,
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: AppTheme.warning,
-                                      foregroundColor: Colors.black,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(
-                                          AppTheme.radiusMedium,
-                                        ),
-                                      ),
-                                      elevation: 2,
-                                    ),
-                                    child: Text(
-                                      'Validar Código',
-                                      style: AppTheme.labelMedium.copyWith(
-                                        color: Colors.black,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-
-                              // Mensaje de error elegante
-                              if (errorMessage != null) ...[
-                                SizedBox(height: AppTheme.spacingLarge),
-                                Container(
-                                  width: double.infinity,
-                                  padding: EdgeInsets.all(
-                                    AppTheme.spacingMedium,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.error.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(
-                                      AppTheme.radiusMedium,
-                                    ),
-                                    border: Border.all(
-                                      color: AppTheme.error.withOpacity(0.3),
-                                      width: 1,
-                                    ),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Icon(
-                                        Icons.error_outline,
-                                        color: AppTheme.error,
-                                        size: 20,
-                                      ),
-                                      SizedBox(width: AppTheme.spacingSmall),
-                                      Expanded(
-                                        child: Text(
-                                          errorMessage!,
-                                          style: AppTheme.bodySmall.copyWith(
-                                            color: AppTheme.error,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ],
+                            ),
                           ),
                         ),
                       ],
                     ),
                   ),
                 ),
-              ),
-            ),
-          ),
+                // COLUMNA DERECHA: Formulario de login (30%)
+                Expanded(flex: 3, child: _buildLoginForm(emailValid, context)),
+              ],
+            )
+          else
+            // En mobile: solo el formulario
+            _buildLoginForm(emailValid, context),
+
+          // Wake-up overlay
           if (_showWakeupOverlay)
             Positioned.fill(
               child: Container(
@@ -1084,7 +761,6 @@ class _LoginScreenState extends State<LoginScreen> {
                         children: [
                           ElevatedButton(
                             onPressed: () async {
-                              // Permitir al usuario cancelar la pantalla de wake-up
                               _stopWakeUpSequence();
                             },
                             style: ElevatedButton.styleFrom(
@@ -1095,7 +771,6 @@ class _LoginScreenState extends State<LoginScreen> {
                           SizedBox(width: AppTheme.spacingMedium),
                           ElevatedButton(
                             onPressed: () async {
-                              // Forzar un intento inmediato
                               await _performWakeupStep();
                             },
                             style: ElevatedButton.styleFrom(
@@ -1111,6 +786,362 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildLoginForm(bool emailValid, BuildContext context) {
+    return SafeArea(
+      child: SingleChildScrollView(
+        child: Container(
+          color: Colors.white,
+          padding: EdgeInsets.symmetric(
+            horizontal: context.isMobile ? 16 : context.isTablet ? 32 : 48,
+            vertical: context.isMobile ? 16 : 32,
+          ),
+          child: Center(
+            child: FadeTransition(
+              opacity: _fadeAnimation,
+              child: SlideTransition(
+                position: _slideAnimation,
+                child: Container(
+                  constraints: BoxConstraints(
+                    maxWidth: context.isMobile ? double.infinity : context.isTablet ? 450 : 400,
+                  ),
+                  padding: EdgeInsets.all(context.isMobile ? 20 : 32),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey[300]!, width: 1.5),
+                    borderRadius: BorderRadius.circular(16),
+                    color: Colors.white,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Título
+                      Text(
+                        'Bienvenido',
+                        style: TextStyle(
+                          fontSize: context.isMobile ? 28 : context.isTablet ? 32 : 36,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'Ingresa a tu cuenta',
+                        style: TextStyle(
+                          fontSize: context.isMobile ? 13 : 16,
+                          color: Colors.grey[600],
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                      SizedBox(height: context.isMobile ? 24 : 40),
+
+                      // Email input
+                      _buildInputField(
+                        controller: emailController,
+                        label: 'Correo electrónico',
+                        icon: Icons.email_outlined,
+                        keyboardType: TextInputType.emailAddress,
+                        onChanged: (_) => setState(() {}),
+                        suffixIcon: emailController.text.isNotEmpty
+                            ? Icon(
+                                emailValid
+                                    ? Icons.check_circle
+                                    : Icons.error_outline,
+                                color: emailValid
+                                    ? AppTheme.success
+                                    : AppTheme.error,
+                              )
+                            : null,
+                      ),
+                      SizedBox(height: context.isMobile ? 16 : 20),
+
+                      // Password input
+                      _buildInputField(
+                        controller: passwordController,
+                        label: 'Contraseña',
+                        icon: Icons.lock_outline,
+                        obscureText: !_showPassword,
+                        onChanged: (_) => setState(() {}),
+                        suffixIcon: passwordController.text.isNotEmpty
+                            ? IconButton(
+                                icon: Icon(
+                                  _showPassword
+                                      ? Icons.visibility_outlined
+                                      : Icons.visibility_off_outlined,
+                                  color: AppTheme.textSecondary,
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    _showPassword = !_showPassword;
+                                  });
+                                },
+                              )
+                            : null,
+                      ),
+                      SizedBox(height: context.isMobile ? 12 : 16),
+
+                      // Remember checkbox
+                      Row(
+                        children: [
+                          Checkbox(
+                            value: rememberCredentials,
+                            onChanged: (value) {
+                              setState(() {
+                                rememberCredentials = value ?? false;
+                              });
+                            },
+                            activeColor: AppTheme.primary,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            side: BorderSide(
+                              color: Colors.grey[400]!,
+                              width: 1.5,
+                            ),
+                          ),
+                          Expanded(
+                            child: Text(
+                              'Recordar mis credenciales',
+                              style: TextStyle(
+                                fontSize: context.isMobile ? 12 : 14,
+                                color: Colors.grey[700],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: context.isMobile ? 24 : 32),
+
+                      // Login button - prominente y rojo
+                      SizedBox(
+                        width: double.infinity,
+                        height: context.isMobile ? 48 : 52,
+                        child: ElevatedButton(
+                          onPressed: _isLoading ? null : _login,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Color(0xFF7C3AED), // Morado
+                            disabledBackgroundColor: Color(
+                              0xFF7C3AED,
+                            ).withOpacity(0.6),
+                            foregroundColor: Colors.white,
+                            elevation: _isLoading ? 2 : 4,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: _isLoading
+                              ? Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                              Colors.white,
+                                            ),
+                                      ),
+                                    ),
+                                    SizedBox(width: 12),
+                                    Text(
+                                      'Iniciando sesión...',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: context.isMobile ? 14 : 16,
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : Text(
+                                  'Iniciar Sesión',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: context.isMobile ? 14 : 16,
+                                  ),
+                                ),
+                        ),
+                      ),
+                      SizedBox(height: context.isMobile ? 16 : 20),
+
+                      // Divider con texto
+                      Row(
+                        children: [
+                          Expanded(child: Divider(color: Colors.grey[300])),
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 12),
+                            child: Text(
+                              'o',
+                              style: TextStyle(
+                                color: Colors.grey[500],
+                                fontSize: context.isMobile ? 12 : 14,
+                              ),
+                            ),
+                          ),
+                          Expanded(child: Divider(color: Colors.grey[300])),
+                        ],
+                      ),
+                      SizedBox(height: context.isMobile ? 16 : 20),
+
+                      // Sign up link
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            '¿No tienes cuenta? ',
+                            style: TextStyle(
+                              color: Colors.grey[600],
+                              fontSize: context.isMobile ? 12 : 14,
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: _isLoading ? null : _showRegisterDialog,
+                            child: Text(
+                              'Regístrate',
+                              style: TextStyle(
+                                color: AppTheme.primary,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      // Verificación 2FA
+                      if (showCodeField) ...[
+                        SizedBox(height: 32),
+                        Text(
+                          'Código de verificación',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        SizedBox(height: 12),
+                        _buildInputField(
+                          controller: codeController,
+                          label: 'Ingresa el código',
+                          icon: Icons.security,
+                          keyboardType: TextInputType.number,
+                        ),
+                        SizedBox(height: 20),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 48,
+                          child: ElevatedButton(
+                            onPressed: _validateCode,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.warning,
+                              foregroundColor: Colors.black,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: Text(
+                              'Validar Código',
+                              style: TextStyle(
+                                color: Colors.black,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+
+                      // Error message
+                      if (errorMessage != null) ...[
+                        SizedBox(height: 24),
+                        AnimatedContainer(
+                          duration: Duration(milliseconds: 300),
+                          width: double.infinity,
+                          padding: EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppTheme.error.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: AppTheme.error.withOpacity(0.3),
+                              width: 1,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.error_outline,
+                                color: AppTheme.error,
+                                size: 20,
+                              ),
+                              SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  errorMessage!,
+                                  style: TextStyle(
+                                    color: AppTheme.error,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInputField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    TextInputType keyboardType = TextInputType.text,
+    bool obscureText = false,
+    Widget? suffixIcon,
+    Function(String)? onChanged,
+  }) {
+    return Container(
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(10)),
+      child: TextFormField(
+        controller: controller,
+        keyboardType: keyboardType,
+        obscureText: obscureText,
+        onChanged: onChanged,
+        style: TextStyle(fontSize: 14, color: Colors.black87),
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
+          prefixIcon: Icon(icon, color: Colors.grey[400], size: 20),
+          suffixIcon: suffixIcon,
+          filled: true,
+          fillColor: Colors.grey[50],
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide(color: Colors.grey[200]!, width: 1),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide(color: Colors.grey[200]!, width: 1),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide(color: AppTheme.primary, width: 2),
+          ),
+          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14,
+          ),
+        ),
       ),
     );
   }

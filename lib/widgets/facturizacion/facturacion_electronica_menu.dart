@@ -7,7 +7,6 @@ import '../../services/matias_service.dart';
 import '../../services/documento_service.dart';
 import '../../services/negocio_info_service.dart';
 import '../../theme/app_theme.dart';
-import '../../utils/matias_mapper.dart';
 import 'nota_credito_debito_dialog.dart';
 import 'documento_soporte_dialog.dart';
 import 'confirmacion_dian_dialog.dart';
@@ -89,10 +88,9 @@ class _FacturacionElectronicaMenuState
     setState(() => _loading = true);
     try {
       final token = Provider.of<UserProvider>(context, listen: false).token;
-      final payload = MatiasMapper.toMatiasPayload(_pedido!);
-      // Forzar que sea FE (1 o 11 dependiendo de la API backend de Matias, o simplemente usar auto-increment)
+      // Enviar pedido directamente. El backend hace el mapeo a Mathías
       final resultado = await MatiasService.emitirFacturaElectronica(
-        payload,
+        _pedido!.toJson(),
         token: token,
       );
       if (!mounted) return;
@@ -141,9 +139,9 @@ class _FacturacionElectronicaMenuState
             negocioInfo.resolutionNumber;
       }
 
-      final payload = MatiasMapper.toMatiasPayload(pedido);
+      // Enviar pedido directamente. El backend hace el mapeo a Mathías
       final resultado = await MatiasService.emitirDocumentoPOS(
-        payload,
+        pedido.toJson(),
         token: token,
       );
       if (!mounted) return;
@@ -193,7 +191,8 @@ class _FacturacionElectronicaMenuState
             negocioInfo.resolutionNumber;
       }
 
-      final payload = MatiasMapper.toMatiasPayload(pedido);
+      // Enviar pedido directamente. El backend hace el mapeo a Mathías
+      final payload = pedido.toJson();
 
       // Enviar cliente como Consumidor Final explícito para no causar error 500
       payload['customer'] = {

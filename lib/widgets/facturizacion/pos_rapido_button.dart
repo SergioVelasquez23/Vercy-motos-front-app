@@ -6,7 +6,7 @@ import '../../services/negocio_info_service.dart';
 import '../../providers/user_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../models/pedido.dart';
-import '../../utils/matias_mapper.dart';
+
 import 'confirmacion_dian_dialog.dart';
 
 /// Botón "POS Rápido" — emite un documento POS electrónico SIN datos del cliente.
@@ -59,7 +59,8 @@ class _PosRapidoButtonState extends State<PosRapidoButton> {
       }
 
       // Construir payload SIN campo customer (POS rápido)
-      final payloadCompleto = MatiasMapper.toMatiasPayload(widget.pedido);
+      // El backend hace el mapeo a Mathías
+      final payloadCompleto = widget.pedido.toJson();
 
       // Remover customer para POS rápido
       payloadCompleto.remove('customer');

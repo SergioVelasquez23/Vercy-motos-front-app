@@ -70,7 +70,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
   // Variables para el estado de precarga
   bool _productosPrecargados = false;
   bool _ingredientesPrecargados = false;
-  
+
   // Variables para cálculos corregidos de dashboard
   bool _calculosCorregidos = false;
   Map<String, double> _totalesCorregidos = {};
@@ -92,8 +92,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
   /// Precarga los productos e ingredientes en segundo plano para mejorar
   /// la experiencia del usuario al navegar por la aplicación.
   Future<void> _precargarDatos() async {
-      
-
     try {
       // Actualizar la UI para marcar como completado
       if (mounted) {
@@ -102,11 +100,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
           _ingredientesPrecargados = true;
         });
       }
-
-        
     } catch (error) {
-        
-
       // Marcar como completado para que desaparezca el indicador
       if (mounted) {
         setState(() {
@@ -190,7 +184,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-    
+
     // ⛔ DESHABILITADO: No recargar automáticamente cuando la app vuelve al primer plano
     // Esto causaba que el dashboard se refrescara cada vez que el usuario hacía alt+tab
     // El dashboard ya tiene auto-refresh con timer y listeners de eventos
@@ -228,8 +222,8 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
       // Cargar datos en paralelo pero manejar errores individualmente
       final estadisticasFuture = _cargarEstadisticas(forceRefresh: forceRefresh)
           .catchError((e) {
-        return null;
-      });
+            return null;
+          });
       final ingresosFuture = _cargarIngresosVsEgresos().catchError((e) {
         return null;
       });
@@ -351,7 +345,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
             _dashboardData = dashboardData;
           });
         }
-        
+
         // Calcular totales corregidos después de cargar dashboard data
         await _calcularTotalesCorregidos();
       } else if (mounted) {
@@ -378,7 +372,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         });
       }
     } catch (e) {
-        
       // En caso de error, usar datos vacíos para evitar crashes
       if (mounted) {
         setState(() {
@@ -717,10 +710,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
 
       // Solo usar corrección si hay diferencia significativa (más de $100)
       if ((totalCorregido - totalBackend).abs() > 100) {
-          
-          
-          
-          
         return totalCorregido;
       }
     }
@@ -731,8 +720,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
   /// Calcula los totales corregidos consultando pedidos reales
   Future<void> _calcularTotalesCorregidos() async {
     try {
-        
-
       // Por ahora, mantener los valores del backend
       // En el futuro implementar lógica completa para obtener pedidos y recalcular
       // TODO: Obtener pedidos de hoy, 7 días, 30 días y año usando PedidoService
@@ -748,9 +735,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         };
         _calculosCorregidos = true;
       });
-
-             } catch (e) {
-        
+    } catch (e) {
       setState(() {
         _calculosCorregidos = false;
         _totalesCorregidos.clear();
@@ -808,7 +793,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
 
         // IMPORTANTE: Recargar datos del dashboard para obtener los objetivos actualizados
         await _cargarDatos();
-        
+
         // Calcular totales corregidos después de cargar datos
         await _calcularTotalesCorregidos();
       } else {
@@ -886,18 +871,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         child: Scaffold(
           backgroundColor: Colors.transparent,
           body: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Color(0xFFF5F7FA),
-                  Color(0xFFE8EAF6),
-                  Color(0xFFF5F7FA),
-                ],
-                stops: [0.0, 0.5, 1.0],
-              ),
-            ),
+            decoration: BoxDecoration(color: Color(0xFFFAFAFA)),
             child: SafeArea(
               child: Column(
                 children: [
@@ -941,172 +915,197 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                                     padding: EdgeInsets.all(
                                       context.responsivePadding,
                                     ),
-                                  child: Column(
-                                    children: [
-                                      // Solo mostrar datos de admin si es admin
-                                      if (userProvider.isAdmin || userProvider.isSuperAdmin) ...[
-                                        // Cards de estadísticas principales
-                                        _buildStatsCards(context),
-                                        SizedBox(height: AppTheme.spacingXLarge),
-
-                                        // Gráfico de ventas por día
-                                        _buildVentasPorDiaChart(context),
-                                        SizedBox(height: AppTheme.spacingXLarge),
-
-                                        // Gráficos en fila o columna según el dispositivo
-                                        context.isMobile
-                                            ? Column(
-                                                children: [
-                                                  _buildIngresosVsEgresosChart(
-                                                    context,
-                                                  ),
-                                                  SizedBox(
-                                                    height: AppTheme.spacingLarge,
-                                                  ),
-                                                  _buildTopProductosChart(
-                                                    context,
-                                                  ),
-                                                ],
-                                              )
-                                            : Row(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                children: [
-                                                Expanded(
-                                                  child:
-                                                      _buildIngresosVsEgresosChart(
-                                                        context,
-                                                      ),
-                                                ),
-                                                SizedBox(
-                                                  width: AppTheme.spacingXLarge,
-                                                ),
-                                                Expanded(
-                                                  child: _buildTopProductosChart(
-                                                  context,
-                                                ),
-                                              ),
-                                            ],
+                                    child: Column(
+                                      children: [
+                                        // Solo mostrar datos de admin si es admin
+                                        if (userProvider.isAdmin ||
+                                            userProvider.isSuperAdmin) ...[
+                                          // Cards de estadísticas principales
+                                          _buildStatsCards(context),
+                                          SizedBox(
+                                            height: AppTheme.spacingXLarge,
                                           ),
-                                    SizedBox(height: AppTheme.spacingXLarge),
 
-                                        // Gráficos de clientes en fila o columna según el dispositivo
-                                        context.isMobile
-                                            ? Column(
-                                                children: [
-                                                  _buildTopClientesChart(
-                                                    context,
-                                                  ),
-                                                ],
-                                              )
-                                            : Row(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                children: [
-                                                  Expanded(
-                                                    child:
-                                                        _buildTopClientesChart(
-                                                          context,
-                                                        ),
-                                                  ),
-                                                ],
-                                              ),
-                                        SizedBox(
-                                          height: AppTheme.spacingXLarge,
-                                        ),
-
-                                    // Últimos pedidos y vendedores responsivos
-                                    context.isMobile
-                                        ? Column(
-                                            children: [
-                                              _buildUltimosPedidos(context),
-                                              SizedBox(
-                                                height: AppTheme.spacingLarge,
-                                              ),
-                                              _buildVendedoresDelMes(context),
-                                            ],
-                                          )
-                                        : Row(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Expanded(
-                                                flex: 3,
-                                                child: _buildUltimosPedidos(
-                                                  context,
-                                                ),
-                                              ),
-                                              SizedBox(
-                                                width: AppTheme.spacingXLarge,
-                                              ),
-                                              Expanded(
-                                                flex: 2,
-                                                child: _buildVendedoresDelMes(
-                                                  context,
-                                                ),
-                                              ),
-                                            ],
+                                          // Gráfico de ventas por día
+                                          _buildVentasPorDiaChart(context),
+                                          SizedBox(
+                                            height: AppTheme.spacingXLarge,
                                           ),
-                                    SizedBox(height: AppTheme.spacingXLarge),
-                                  ],
-              ]),
-                              ),
-                            ))
-                    : Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.security, size: 64, color: Colors.grey),
-                            SizedBox(height: 16),
-                            Text(
-                              'Acceso Restringido',
-                              style: TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                            SizedBox(height: 8),
-                            Text(
-                              'No tienes permisos para acceder al dashboard.',
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Colors.grey,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                            SizedBox(height: 24),
-                            ElevatedButton(
-                              onPressed: () {
-                                Navigator.pushReplacementNamed(
-                                  context,
-                                  '/mesero',
-                                );
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppTheme.primary,
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: 32,
-                                  vertical: 16,
+
+                                          // Gráficos en fila o columna según el dispositivo
+                                          context.isMobile
+                                              ? Column(
+                                                  children: [
+                                                    _buildIngresosVsEgresosChart(
+                                                      context,
+                                                    ),
+                                                    SizedBox(
+                                                      height:
+                                                          AppTheme.spacingLarge,
+                                                    ),
+                                                    _buildTopProductosChart(
+                                                      context,
+                                                    ),
+                                                  ],
+                                                )
+                                              : Row(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Expanded(
+                                                      child:
+                                                          _buildIngresosVsEgresosChart(
+                                                            context,
+                                                          ),
+                                                    ),
+                                                    SizedBox(
+                                                      width: AppTheme
+                                                          .spacingXLarge,
+                                                    ),
+                                                    Expanded(
+                                                      child:
+                                                          _buildTopProductosChart(
+                                                            context,
+                                                          ),
+                                                    ),
+                                                  ],
+                                                ),
+                                          SizedBox(
+                                            height: AppTheme.spacingXLarge,
+                                          ),
+
+                                          // Gráficos de clientes en fila o columna según el dispositivo
+                                          context.isMobile
+                                              ? Column(
+                                                  children: [
+                                                    _buildTopClientesChart(
+                                                      context,
+                                                    ),
+                                                  ],
+                                                )
+                                              : Row(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Expanded(
+                                                      child:
+                                                          _buildTopClientesChart(
+                                                            context,
+                                                          ),
+                                                    ),
+                                                  ],
+                                                ),
+                                          SizedBox(
+                                            height: AppTheme.spacingXLarge,
+                                          ),
+
+                                          // Últimos pedidos y vendedores responsivos
+                                          context.isMobile
+                                              ? Column(
+                                                  children: [
+                                                    _buildUltimosPedidos(
+                                                      context,
+                                                    ),
+                                                    SizedBox(
+                                                      height:
+                                                          AppTheme.spacingLarge,
+                                                    ),
+                                                    _buildVendedoresDelMes(
+                                                      context,
+                                                    ),
+                                                  ],
+                                                )
+                                              : Row(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Expanded(
+                                                      flex: 3,
+                                                      child:
+                                                          _buildUltimosPedidos(
+                                                            context,
+                                                          ),
+                                                    ),
+                                                    SizedBox(
+                                                      width: AppTheme
+                                                          .spacingXLarge,
+                                                    ),
+                                                    Expanded(
+                                                      flex: 2,
+                                                      child:
+                                                          _buildVendedoresDelMes(
+                                                            context,
+                                                          ),
+                                                    ),
+                                                  ],
+                                                ),
+                                          SizedBox(
+                                            height: AppTheme.spacingXLarge,
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
+                                ))
+                        : Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.security,
+                                  size: 64,
+                                  color: Colors.grey,
                                 ),
-                              ),
-                              child: Text(
-                                'Ir al Panel de Mesero',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
+                                SizedBox(height: 16),
+                                Text(
+                                  'Acceso Restringido',
+                                  style: TextStyle(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
                                 ),
-                              ),
+                                SizedBox(height: 8),
+                                Text(
+                                  'No tienes permisos para acceder al dashboard.',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    color: Colors.grey,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                SizedBox(height: 24),
+                                ElevatedButton(
+                                  onPressed: () {
+                                    Navigator.pushReplacementNamed(
+                                      context,
+                                      '/mesero',
+                                    );
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppTheme.primary,
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 32,
+                                      vertical: 16,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    'Ir al Panel de Mesero',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                      ),
-                ),
-              ],
-            ),
-          ), // Cierra Scaffold
-        ), // Cierra VercySidebarLayout
-      ), // Cierra AdminKeySequenceDetector
+                          ),
+                  ),
+                ],
+              ),
+            ), // Cierra Scaffold
+          ), // Cierra VercySidebarLayout
+        ), // Cierra AdminKeySequenceDetector
       ),
     );
   }
@@ -1198,21 +1197,12 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
     return Container(
       height: 60,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Colors.white, AppTheme.primary.withOpacity(0.02)],
-        ),
+        color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: AppTheme.primary.withOpacity(0.05),
-            blurRadius: 8,
-            offset: Offset(0, 2),
-          ),
-          BoxShadow(
-            color: Colors.white.withOpacity(0.5),
+            color: Colors.grey.withOpacity(0.1),
             blurRadius: 4,
-            offset: Offset(0, -1),
+            offset: Offset(0, 1),
           ),
         ],
       ),
@@ -1259,60 +1249,52 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
 
       // 4. Inventario (dropdown)
       navItems.add(
-        _buildDropdownNavItem(
-          Icons.inventory_2_outlined,
-          'Inventario',
-          3,
-          [
-            PopupMenuItem<String>(
-              value: 'historial',
-              onTap: () {
-                Future.delayed(Duration.zero, () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => HistorialInventarioScreen(),
-                    ),
-                  );
-                });
-              },
-              child: Row(
-                children: [
-                  Icon(Icons.history, color: Colors.blue, size: 18),
-                  SizedBox(width: 8),
-                  Text(
-                    'Historial',
-                    style: TextStyle(color: AppTheme.textPrimary),
-                  ),
-                ],
-              ),
-            ),
+        _buildDropdownNavItem(Icons.inventory_2_outlined, 'Inventario', 3, [
           PopupMenuItem<String>(
-              value: 'proveedores',
-              onTap: () {
-                Future.delayed(Duration.zero, () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => ProveedoresScreen(),
-                    ),
-                  );
-                });
-              },
-              child: Row(
-                children: [
-                  Icon(Icons.local_shipping, color: Colors.purple, size: 18),
-                  SizedBox(width: 8),
-                  Text(
-                    'Proveedores',
-                    style: TextStyle(color: AppTheme.textPrimary),
+            value: 'historial',
+            onTap: () {
+              Future.delayed(Duration.zero, () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => HistorialInventarioScreen(),
                   ),
-                ],
-              ),
+                );
+              });
+            },
+            child: Row(
+              children: [
+                Icon(Icons.history, color: Colors.blue, size: 18),
+                SizedBox(width: 8),
+                Text(
+                  'Historial',
+                  style: TextStyle(color: AppTheme.textPrimary),
+                ),
+              ],
             ),
-          ],
-          tooltip: "Menú de Inventario",
-        ),
+          ),
+          PopupMenuItem<String>(
+            value: 'proveedores',
+            onTap: () {
+              Future.delayed(Duration.zero, () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => ProveedoresScreen()),
+                );
+              });
+            },
+            child: Row(
+              children: [
+                Icon(Icons.local_shipping, color: Colors.purple, size: 18),
+                SizedBox(width: 8),
+                Text(
+                  'Proveedores',
+                  style: TextStyle(color: AppTheme.textPrimary),
+                ),
+              ],
+            ),
+          ),
+        ], tooltip: "Menú de Inventario"),
       );
 
       // 5. Facturas Compras
@@ -1464,41 +1446,23 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         margin: EdgeInsets.symmetric(horizontal: 4),
         decoration: BoxDecoration(
-          gradient: isSelected
-              ? LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [AppTheme.primary, AppTheme.secondary],
-                )
-              : LinearGradient(
-                  colors: [
-                    Colors.white.withOpacity(0.6),
-                    Colors.white.withOpacity(0.3),
-                  ],
-                ),
+          color: isSelected ? AppTheme.primary.withOpacity(0.1) : Colors.white,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: isSelected
-                ? AppTheme.primary.withOpacity(0.3)
-                : Colors.grey.withOpacity(0.2),
-            width: 1.5,
+            color: isSelected ? AppTheme.primary : Colors.grey.withOpacity(0.2),
+            width: isSelected ? 1.5 : 1,
           ),
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: AppTheme.primary.withOpacity(0.4),
-                    blurRadius: 12,
-                    offset: Offset(0, 3),
-                  ),
-                  BoxShadow(
-                    color: AppTheme.secondary.withOpacity(0.2),
-                    blurRadius: 20,
-                    spreadRadius: 1,
+                    color: AppTheme.primary.withOpacity(0.3),
+                    blurRadius: 8,
+                    offset: Offset(0, 2),
                   ),
                 ]
               : [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.grey.withOpacity(0.1),
                     blurRadius: 4,
                     offset: Offset(0, 1),
                   ),
@@ -1812,15 +1776,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         context.isMobile ? AppTheme.spacingMedium : AppTheme.spacingLarge,
       ),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.white,
-            AppTheme.primaryLight.withOpacity(0.03),
-            Colors.white,
-          ],
-        ),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
         border: Border.all(
           color: AppTheme.primaryLight.withOpacity(0.2),
@@ -1828,15 +1784,9 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         ),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.primaryLight.withOpacity(0.1),
-            blurRadius: 20,
-            offset: Offset(0, 10),
-            spreadRadius: 0,
-          ),
-          BoxShadow(
-            color: Colors.white.withOpacity(0.8),
+            color: Colors.grey.withOpacity(0.1),
             blurRadius: 8,
-            offset: Offset(-4, -4),
+            offset: Offset(0, 2),
             spreadRadius: 0,
           ),
         ],
@@ -1847,13 +1797,12 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
           Container(
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  AppTheme.primaryLight.withOpacity(0.15),
-                  AppTheme.primaryLight.withOpacity(0.05),
-                ],
-              ),
+              color: AppTheme.primaryLight.withOpacity(0.08),
               borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: AppTheme.primaryLight.withOpacity(0.15),
+                width: 0.5,
+              ),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -2026,15 +1975,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         context.isMobile ? AppTheme.spacingMedium : AppTheme.spacingLarge,
       ),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.white,
-            AppTheme.secondary.withOpacity(0.03),
-            Colors.white,
-          ],
-        ),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
         border: Border.all(
           color: AppTheme.secondary.withOpacity(0.2),
@@ -2042,15 +1983,9 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         ),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.secondary.withOpacity(0.1),
-            blurRadius: 20,
-            offset: Offset(0, 10),
-            spreadRadius: 0,
-          ),
-          BoxShadow(
-            color: Colors.white.withOpacity(0.8),
+            color: Colors.grey.withOpacity(0.1),
             blurRadius: 8,
-            offset: Offset(-4, -4),
+            offset: Offset(0, 2),
             spreadRadius: 0,
           ),
         ],
@@ -2061,13 +1996,12 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
           Container(
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  AppTheme.secondary.withOpacity(0.15),
-                  AppTheme.secondary.withOpacity(0.05),
-                ],
-              ),
+              color: AppTheme.secondary.withOpacity(0.08),
               borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: AppTheme.secondary.withOpacity(0.15),
+                width: 0.5,
+              ),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -2216,25 +2150,16 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         context.isMobile ? AppTheme.spacingMedium : AppTheme.spacingXLarge,
       ),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.white,
-            AppTheme.metal.withOpacity(0.03),
-            Colors.white,
-          ],
-          stops: [0.0, 0.5, 1.0],
-        ),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
         border: Border.all(color: AppTheme.metal.withOpacity(0.2), width: 1),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.metal.withOpacity(0.08),
-            blurRadius: 20,
-            offset: Offset(0, 4),
+            color: Colors.grey.withOpacity(0.1),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+            spreadRadius: 0,
           ),
-          BoxShadow(color: Colors.white, blurRadius: 8, offset: Offset(-4, -4)),
         ],
       ),
       child: Column(
@@ -2246,13 +2171,12 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
               vertical: AppTheme.spacingSmall,
             ),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  AppTheme.metal.withOpacity(0.1),
-                  AppTheme.metal.withOpacity(0.05),
-                ],
-              ),
+              color: AppTheme.metal.withOpacity(0.08),
               borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+              border: Border.all(
+                color: AppTheme.metal.withOpacity(0.15),
+                width: 0.5,
+              ),
             ),
             child: Row(
               children: [
@@ -2527,28 +2451,14 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         context.isMobile ? AppTheme.spacingMedium : AppTheme.spacingXLarge,
       ),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.white,
-            AppTheme.primary.withOpacity(0.03),
-            Colors.white,
-          ],
-        ),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
         border: Border.all(color: AppTheme.primary.withOpacity(0.2), width: 1),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.primary.withOpacity(0.1),
-            blurRadius: 20,
-            offset: Offset(0, 10),
-            spreadRadius: 0,
-          ),
-          BoxShadow(
-            color: Colors.white.withOpacity(0.8),
+            color: Colors.grey.withOpacity(0.1),
             blurRadius: 8,
-            offset: Offset(-4, -4),
+            offset: Offset(0, 2),
             spreadRadius: 0,
           ),
         ],
@@ -2559,13 +2469,12 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
           Container(
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  AppTheme.primary.withOpacity(0.15),
-                  AppTheme.primary.withOpacity(0.05),
-                ],
-              ),
+              color: AppTheme.primary.withOpacity(0.08),
               borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: AppTheme.primary.withOpacity(0.15),
+                width: 0.5,
+              ),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -2730,25 +2639,16 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         context.isMobile ? AppTheme.spacingMedium : AppTheme.spacingXLarge,
       ),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.white,
-            AppTheme.primary.withOpacity(0.03),
-            Colors.white,
-          ],
-          stops: [0.0, 0.5, 1.0],
-        ),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
         border: Border.all(color: AppTheme.primary.withOpacity(0.2), width: 1),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.primary.withOpacity(0.08),
-            blurRadius: 20,
-            offset: Offset(0, 4),
+            color: Colors.grey.withOpacity(0.1),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+            spreadRadius: 0,
           ),
-          BoxShadow(color: Colors.white, blurRadius: 8, offset: Offset(-4, -4)),
         ],
       ),
       child: Column(
@@ -2760,13 +2660,12 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
               vertical: AppTheme.spacingSmall,
             ),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  AppTheme.primary.withOpacity(0.1),
-                  AppTheme.primary.withOpacity(0.05),
-                ],
-              ),
+              color: AppTheme.primary.withOpacity(0.08),
               borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+              border: Border.all(
+                color: AppTheme.primary.withOpacity(0.15),
+                width: 0.5,
+              ),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -2920,16 +2819,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         context.isMobile ? AppTheme.spacingMedium : AppTheme.spacingXLarge,
       ),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.white,
-            AppTheme.secondary.withOpacity(0.03),
-            Colors.white,
-          ],
-          stops: [0.0, 0.5, 1.0],
-        ),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
         border: Border.all(
           color: AppTheme.secondary.withOpacity(0.2),
@@ -2937,11 +2827,11 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         ),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.secondary.withOpacity(0.08),
-            blurRadius: 20,
-            offset: Offset(0, 4),
+            color: Colors.grey.withOpacity(0.1),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+            spreadRadius: 0,
           ),
-          BoxShadow(color: Colors.white, blurRadius: 8, offset: Offset(-4, -4)),
         ],
       ),
       child: Column(
@@ -2953,13 +2843,12 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
               vertical: AppTheme.spacingSmall,
             ),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  AppTheme.secondary.withOpacity(0.1),
-                  AppTheme.secondary.withOpacity(0.05),
-                ],
-              ),
+              color: AppTheme.secondary.withOpacity(0.08),
               borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+              border: Border.all(
+                color: AppTheme.secondary.withOpacity(0.15),
+                width: 0.5,
+              ),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -3156,7 +3045,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
 
       return fechaStr.length > 5 ? fechaStr.substring(0, 5) : fechaStr;
     } catch (e) {
-        
       return 'N/A';
     }
   }
@@ -3175,29 +3063,14 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         context.isMobile ? AppTheme.spacingMedium : AppTheme.spacingLarge,
       ),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            color.withOpacity(0.15),
-            color.withOpacity(0.05),
-            Colors.white.withOpacity(0.9),
-          ],
-          stops: [0.0, 0.4, 1.0],
-        ),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-        border: Border.all(color: color.withOpacity(0.3), width: 1.5),
+        border: Border.all(color: color.withOpacity(0.3), width: 1),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.2),
-            blurRadius: 20,
-            offset: Offset(0, 8),
-            spreadRadius: 0,
-          ),
-          BoxShadow(
-            color: Colors.white.withOpacity(0.8),
+            color: Colors.grey.withOpacity(0.1),
             blurRadius: 8,
-            offset: Offset(-4, -4),
+            offset: Offset(0, 2),
             spreadRadius: 0,
           ),
         ],
@@ -3229,40 +3102,29 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                       child: Container(
                         padding: EdgeInsets.all(AppTheme.spacingXSmall),
                         decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              color.withOpacity(0.2),
-                              color.withOpacity(0.1),
-                            ],
-                          ),
+                          color: color.withOpacity(0.08),
                           borderRadius: BorderRadius.circular(
                             AppTheme.radiusSmall,
                           ),
-                          border: Border.all(color: color.withOpacity(0.3)),
+                          border: Border.all(
+                            color: color.withOpacity(0.3),
+                            width: 1,
+                          ),
                         ),
                         child: Icon(Icons.edit, size: 14, color: color),
                       ),
                     ),
                   if (periodo != null) SizedBox(width: AppTheme.spacingSmall),
                   Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 6,
-                    ),
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          color.withOpacity(0.9),
-                          color.withOpacity(0.7),
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
+                      color: color,
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: color.withOpacity(0.4),
-                          blurRadius: 8,
-                          offset: Offset(0, 4),
+                          color: color.withOpacity(0.3),
+                          blurRadius: 4,
+                          offset: Offset(0, 1),
                         ),
                       ],
                     ),
@@ -3292,9 +3154,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
           SizedBox(height: AppTheme.spacingXSmall),
           Text(
             objective,
-            style: Theme.of(
-              context,
-            ).textTheme.labelSmall?.copyWith(
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
               color: AppTheme.textSecondary.withOpacity(0.7),
               fontSize: 12,
             ),
@@ -3312,11 +3172,10 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                       height: 8,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(4),
-                        gradient: LinearGradient(
-                          colors: [
-                            color.withOpacity(0.3),
-                            Colors.grey.withOpacity(0.2),
-                          ],
+                        color: color.withOpacity(0.15),
+                        border: Border.all(
+                          color: color.withOpacity(0.2),
+                          width: 0.5,
                         ),
                       ),
                       child: FractionallySizedBox(
@@ -3325,16 +3184,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                         child: Container(
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(4),
-                            gradient: LinearGradient(
-                              colors: [color, color.withOpacity(0.7)],
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: color.withOpacity(0.5),
-                                blurRadius: 8,
-                                spreadRadius: 1,
-                              ),
-                            ],
+                            color: color,
                           ),
                         ),
                       ),
@@ -3649,7 +3499,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
       final DateTime fechaDateTime = DateTime.parse(fecha);
       return '${fechaDateTime.day.toString().padLeft(2, '0')}/${fechaDateTime.month.toString().padLeft(2, '0')}';
     } catch (e) {
-        
       return fecha.length > 5 ? fecha.substring(fecha.length - 5) : fecha;
     }
   }
