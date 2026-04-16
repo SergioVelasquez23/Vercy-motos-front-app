@@ -39,6 +39,7 @@ import 'screens/eliminar_pedidos_screen.dart';
 import 'screens/negocio_info_screen.dart';
 import 'screens/fe_documentos_screen.dart';
 import 'screens/documentos_pendientes_screen.dart';
+import 'screens/matias_test_screen.dart';
 import 'models/cliente.dart';
 import 'models/cotizacion.dart';
 import 'providers/user_provider.dart';
@@ -199,6 +200,7 @@ class MyApp extends StatelessWidget {
         '/facturacion-electronica': (context) => const FEDocumentosScreen(),
         '/documentos-pendientes': (context) => const DocumentosPendientesScreen(),
         '/facturas': (context) => FacturasListScreen(),
+        '/matias-test': (context) => const MatiasTestScreen(),
       },
     );
   }

@@ -7,6 +7,7 @@ import '../../services/matias_service.dart';
 import '../../services/documento_service.dart';
 import '../../services/negocio_info_service.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/logger.dart';
 import 'nota_credito_debito_dialog.dart';
 import 'documento_soporte_dialog.dart';
 import 'confirmacion_dian_dialog.dart';
@@ -87,12 +88,23 @@ class _FacturacionElectronicaMenuState
     if (_pedido == null) return;
     setState(() => _loading = true);
     try {
+      appLog('📋 [FE] Enviando pedido a DIAN: ${_pedido!.id}');
       final token = Provider.of<UserProvider>(context, listen: false).token;
-      // Enviar pedido directamente. El backend hace el mapeo a Mathías
+      
+      // Enviar solo el pedidoId, el backend lo resuelve todo
+      final payload = {
+        'pedidoId': _pedido!.id,
+      };
+      
+      appLog('📋 [FE] Enviando payload: $payload');
+
       final resultado = await MatiasService.emitirFacturaElectronica(
-        _pedido!.toJson(),
+        payload,
         token: token,
       );
+      
+      appLog('📋 [FE] Resultado: success=${resultado.success}, message=${resultado.message}');
+      
       if (!mounted) return;
       if (resultado.success) {
         final facturacionResult = FacturacionResult(
@@ -124,26 +136,33 @@ class _FacturacionElectronicaMenuState
     if (_pedido == null) return;
     setState(() => _loading = true);
     try {
+      appLog('📋 [POS] Enviando pedido a DIAN: ${_pedido!.id}');
       final token = Provider.of<UserProvider>(context, listen: false).token;
 
       // Cargar información del negocio para obtener la resolución
       final negocioInfoService = NegocioInfoService();
       final negocioInfo = await negocioInfoService.getNegocioInfo();
 
-      // Agregar resolución a los datosAdicionales del pedido si existe
-      final pedido = _pedido!;
+      // Enviar solo el pedidoId, el backend lo resuelve todo
+      final payload = {
+        'pedidoId': _pedido!.id,
+      };
+
+      // Agregar resolución si existe
       if (negocioInfo?.resolutionNumber != null &&
           negocioInfo!.resolutionNumber!.isNotEmpty) {
-        pedido.datosAdicionales ??= {};
-        pedido.datosAdicionales!['resolutionNumber'] =
-            negocioInfo.resolutionNumber;
+        payload['resolutionNumber'] = negocioInfo!.resolutionNumber!;
       }
 
-      // Enviar pedido directamente. El backend hace el mapeo a Mathías
+      appLog('📋 [POS] Enviando payload: $payload');
+
       final resultado = await MatiasService.emitirDocumentoPOS(
-        pedido.toJson(),
+        payload,
         token: token,
       );
+      
+      appLog('📋 [POS] Resultado: success=${resultado.success}, message=${resultado.message}');
+      
       if (!mounted) return;
       if (resultado.success) {
         // Mostrar dialog de confirmación con QR + CUFE
@@ -176,46 +195,35 @@ class _FacturacionElectronicaMenuState
     if (_pedido == null) return;
     setState(() => _loading = true);
     try {
+      appLog('📋 [POS-RÁPIDO] Enviando pedido a DIAN: ${_pedido!.id}');
       final token = Provider.of<UserProvider>(context, listen: false).token;
 
       // Cargar información del negocio para obtener la resolución
       final negocioInfoService = NegocioInfoService();
       final negocioInfo = await negocioInfoService.getNegocioInfo();
 
-      // Agregar resolución a los datosAdicionales del pedido si existe
-      final pedido = _pedido!;
+      // Enviar solo el pedidoId, el backend lo resuelve todo
+      final payload = {
+        'pedidoId': _pedido!.id,
+        'type_document_id': 20, // POS
+        'send_email': 0,
+      };
+
+      // Agregar resolución si existe
       if (negocioInfo?.resolutionNumber != null &&
           negocioInfo!.resolutionNumber!.isNotEmpty) {
-        pedido.datosAdicionales ??= {};
-        pedido.datosAdicionales!['resolutionNumber'] =
-            negocioInfo.resolutionNumber;
+        payload['resolutionNumber'] = negocioInfo!.resolutionNumber!;
       }
 
-      // Enviar pedido directamente. El backend hace el mapeo a Mathías
-      final payload = pedido.toJson();
-
-      // Enviar cliente como Consumidor Final explícito para no causar error 500
-      payload['customer'] = {
-        "country_id": "45",
-        "city_id": "836",
-        "identity_document_id": "3", // cédula o consumidor final
-        "type_organization_id": 2, // 2 = Persona Natural
-        "tax_regime_id": 2,
-        "tax_level_id": 2,
-        "company_name": "CONSUMIDOR FINAL",
-        "dni": "222222222222",
-        "mobile": "0000000000",
-        "email": "factura@example.com",
-        "address": "Sin Direccion",
-        "postal_code": "000000",
-      };
-      payload['send_email'] = 0;
-      payload['type_document_id'] = 20; // 20 = POS en Matias u 11 si fuera FE
+      appLog('📋 [POS-RÁPIDO] Enviando payload: $payload');
 
       final resultado = await MatiasService.emitirDocumentoPOS(
         payload,
         token: token,
       );
+      
+      appLog('📋 [POS-RÁPIDO] Resultado: success=${resultado.success}, message=${resultado.message}');
+      
       if (!mounted) return;
       if (resultado.success) {
         final facturacionResult = FacturacionResult(

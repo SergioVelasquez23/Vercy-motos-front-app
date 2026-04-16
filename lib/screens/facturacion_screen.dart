@@ -14,6 +14,8 @@ import '../services/negocio_info_service.dart';
 import '../services/impresion_service.dart';
 import '../services/inventario_service.dart';
 import '../services/cliente_service.dart';
+import '../services/documento_service.dart';
+import '../services/matias_service.dart';
 import '../models/cliente.dart';
 import '../models/negocio_info.dart';
 import '../theme/app_theme.dart';
@@ -43,6 +45,8 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
   final ImpresionService _impresionService = ImpresionService();
   final InventarioService _inventarioService = InventarioService();
   final ClienteService _clienteService = ClienteService();
+  final DocumentoService _documentoService = DocumentoService();
+  final MatiasService _matiasService = MatiasService();
 
   // Controladores de formulario
   final TextEditingController _clienteController = TextEditingController(
@@ -4494,6 +4498,9 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
             itemsOriginales: itemsOriginales,
           );
 
+          // ✅ Verificar que el documento se creó correctamente en el backend
+          _verificarDocumentoCreado(pedidoPagado);
+
           // Si viene de pedido asesor, marcarlo como facturado
           if (pedidoAsesorId != null) {
             await _pedidoAsesorService.marcarComoFacturado(
@@ -4773,6 +4780,71 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
         ),
       );
     }
+  }
+
+  /// Verifica que el documento se creó correctamente en el backend
+  /// NOTA: Este es un flujo de VERIFICACIÓN solamente. 
+  /// El ENVÍO a DIAN se hace DESPUÉS desde la pantalla de Facturas List
+  void _verificarDocumentoCreado(Pedido pedido) {
+    Future.microtask(() async {
+      try {
+        appLog('📋 [BG] Verificando que documento se creó en backend...');
+
+        // 1️⃣ Obtener el Documento (puede tardar, reintentar hasta 3 veces)
+        int intentos = 3;
+        DocumentoFE? documento;
+
+        while (documento == null && intentos > 0) {
+          appLog('🔍 [BG] Obtener documento del pedido (intentos: $intentos)...');
+          documento = await _documentoService.getDocumentoPorPedidoId(pedido.id);
+
+          if (documento == null) {
+            intentos--;
+            if (intentos > 0) {
+              await Future.delayed(Duration(seconds: 1));
+            }
+          }
+        }
+
+        if (documento == null) {
+          appLog('❌ [BG] No se encontró documento para pedidoId: ${pedido.id}');
+          appLog('⚠️ [BG] El backend DEBERÍA crear Documento automáticamente cuando se paga el Pedido');
+          appLog('💡 [BG] Verifica: /api/pedidos/{id}/pagar endpoint crea Documento?');
+          return;
+        }
+
+        appLog('✅ [BG] Documento encontrado: ${documento.id}');
+        appLog('📊 [BG] Estado: ${documento.estado}');
+
+        // 2️⃣ Validar que tiene datos de cliente (requeridos para DIAN)
+        appLog('🔐 [BG] Validando datos de cliente...');
+
+        List<String> camposFaltantes = [];
+        if (documento.clienteNombre == null || documento.clienteNombre!.isEmpty) {
+          camposFaltantes.add('clienteNombre');
+        }
+        if (documento.clienteNit == null || documento.clienteNit!.isEmpty) {
+          camposFaltantes.add('clienteNit');
+        }
+
+        if (camposFaltantes.isNotEmpty) {
+          appLog('⚠️ [BG] Documento incompleto, falta: $camposFaltantes');
+          appLog('❌ [BG] NO se puede enviar a DIAN sin estos datos');
+          appLog('💡 [BG] Backend debe copiar datos desde Pedido.datosAdicionales');
+          return;
+        }
+
+        appLog('✅ [BG] Documento LISTO con todos los datos:');
+        appLog('👤 [BG]   Nombre: ${documento.clienteNombre}');
+        appLog('📋 [BG]   NIT: ${documento.clienteNit}');
+
+        appLog('✓ [BG] ===== DOCUMENTO VERIFICADO Y LISTO =====');
+        appLog('💡 [BG] Usuario puede ir a: Facturas -&gt; Facturar -&gt; Enviar a DIAN');
+
+      } catch (e) {
+        appLog('❌ [BG] Error verificando documento: $e');
+      }
+    });
   }
 
   // 📦 Registrar movimientos de inventario cuando se factura (venta)

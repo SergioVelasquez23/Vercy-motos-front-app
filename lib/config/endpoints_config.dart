@@ -384,38 +384,39 @@ class PedidosAsesorEndpoints {
   String pedido(String id) => '$base/$id';
 }
 
-/// Endpoints para facturación electrónica DIAN
+/// Endpoints para facturación electrónica DIAN (Matias API)
 class FacturaElectronicaEndpoints {
   final String baseUrl;
   FacturaElectronicaEndpoints(this.baseUrl);
 
-  String get base => '$baseUrl/api/facturas-electronicas';
+  /// Base actualizado a /api/matias según backend correcto
+  String get base => '$baseUrl/api/matias';
 
   /// Obtener TODOS los documentos de todos los estados (pendiente, aceptado, rechazado, enviado)
-  /// GET /api/facturas-electronicas/documentos
+  /// GET /api/matias/documentos
   String get documentos => '$base/documentos';
 
-  /// Obtener documentos/tickets pendientes de facturación
-  /// GET /api/facturas-electronicas/documentos/pendientes
-  String get documentosPendientes => '$base/documentos/pendientes';
+  /// Obtener documentos/tickets pendientes de facturación (alternativa)
+  /// GET /api/matias/documentos?estado=PENDIENTE
+  String get documentosPendientes => '$base/documentos?estado=PENDIENTE';
 
-  /// Obtener un documento por ID
-  /// GET /api/facturas-electronicas/documentos/{id}
-  String documento(String id) => '$base/documentos/$id';
+  /// Obtener un documento por ID (desde local)
+  /// GET /api/matias/local/documentos/{id}
+  String documento(String id) => '$base/local/documentos/$id';
 
   /// Facturar un documento (enviar a DIAN)
-  /// POST /api/facturas-electronicas/documentos/{id}/facturar
-  String facturarDocumento(String id) => '$base/documentos/$id/facturar';
+  /// POST /api/matias/documento-mesa/{id}/facturar
+  String facturarDocumento(String id) => '$base/documento-mesa/$id/facturar';
 
   /// Emitir nota crédito sobre una factura
-  /// POST /api/facturas-electronicas/facturas/{facturaId}/nota-credito
+  /// POST /api/matias/notas/{facturaId}/credito o similar según backend
   String notaCredito(String facturaId) =>
-      '$base/facturas/$facturaId/nota-credito';
+      '$base/notas/$facturaId/credito';
 
   /// Emitir nota débito sobre una factura
-  /// POST /api/facturas-electronicas/facturas/{facturaId}/nota-debito
+  /// POST /api/matias/notas/{facturaId}/debito o similar según backend
   String notaDebito(String facturaId) =>
-      '$base/facturas/$facturaId/nota-debito';
+      '$base/notas/$facturaId/debito';
 
   /// Reenviar documento genérico
   /// POST /api/matias/documents/{uuid}/resend

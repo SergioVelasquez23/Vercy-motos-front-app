@@ -168,20 +168,49 @@ class DocumentoService {
   /// GET /api/facturas-electronicas/documentos
   Future<List<DocumentoFE>> getDocumentos() async {
     try {
+      final url = _endpoints.facturacionElectronica.documentos;
+      appLog('🔍 [LISTA] GET: $url');
+      
       final headers = await _getHeaders();
       final response = await http.get(
-        Uri.parse(_endpoints.facturacionElectronica.documentos),
+        Uri.parse(url),
         headers: headers,
       );
 
-      appLog('📋 Todos los documentos: ${response.statusCode}');
+      appLog('📦 [LISTA] Status: ${response.statusCode}');
+      appLog('📦 [LISTA] Body: ${response.body.substring(0, (response.body.length > 500 ? 500 : response.body.length))}');
 
       if (response.statusCode == 200) {
-        final responseData = json.decode(response.body);
-        final List<dynamic> lista = responseData['data'] ?? responseData;
-        final docs = lista
-            .map((j) => DocumentoFE.fromJson(j as Map<String, dynamic>))
-            .toList();
+        dynamic responseData;
+        try {
+          responseData = json.decode(response.body);
+          appLog('✅ [LISTA] JSON parseado');
+        } catch (parseError) {
+          appLog('❌ [LISTA] Error JSON: $parseError');
+          return [];
+        }
+
+        dynamic lista = responseData['data'] ?? responseData;
+        appLog('📋 [LISTA] Type: ${lista.runtimeType}, es List: ${lista is List}');
+        
+        if (lista is! List) {
+          appLog('❌ [LISTA] No es List: $lista');
+          return [];
+        }
+
+        appLog('📋 [LISTA] ${lista.length} documentos');
+        
+        final docs = <DocumentoFE>[];
+        for (int i = 0; i < lista.length; i++) {
+          try {
+            final doc = DocumentoFE.fromJson(lista[i] as Map<String, dynamic>);
+            docs.add(doc);
+          } catch (parseError) {
+            appLog('⚠️ [LISTA] Error parseando elemento $i: $parseError');
+          }
+        }
+
+        appLog('✅ [LISTA] ${docs.length} documentos parseados exitosamente');
 
         // Ordenar: rechazados primero, luego pendientes, luego enviados, luego aceptados
         docs.sort((a, b) {
@@ -202,9 +231,12 @@ class DocumentoService {
 
         return docs;
       }
+      
+      appLog('❌ [LISTA] Status ${response.statusCode} != 200');
       return [];
-    } catch (e) {
-      appLog('❌ Error getDocumentos: $e');
+    } catch (e, stackTrace) {
+      appLog('❌ [LISTA] Error: $e');
+      appLog('❌ [LISTA] Stack: $stackTrace');
       return [];
     }
   }
@@ -213,20 +245,49 @@ class DocumentoService {
   /// GET /api/facturas-electronicas/documentos/pendientes
   Future<List<DocumentoFE>> getDocumentosPendientes() async {
     try {
+      final url = _endpoints.facturacionElectronica.documentosPendientes;
+      appLog('🔍 [PENDIENTES] GET: $url');
+      
       final headers = await _getHeaders();
       final response = await http.get(
-        Uri.parse(_endpoints.facturacionElectronica.documentosPendientes),
+        Uri.parse(url),
         headers: headers,
       );
 
-      appLog('📋 Documentos pendientes: ${response.statusCode}');
+      appLog('📦 [PENDIENTES] Status: ${response.statusCode}');
+      appLog('📦 [PENDIENTES] Body: ${response.body.substring(0, (response.body.length > 500 ? 500 : response.body.length))}');
 
       if (response.statusCode == 200) {
-        final responseData = json.decode(response.body);
-        final List<dynamic> lista = responseData['data'] ?? responseData;
-        final docs = lista
-            .map((j) => DocumentoFE.fromJson(j as Map<String, dynamic>))
-            .toList();
+        dynamic responseData;
+        try {
+          responseData = json.decode(response.body);
+          appLog('✅ [PENDIENTES] JSON parseado');
+        } catch (parseError) {
+          appLog('❌ [PENDIENTES] Error JSON: $parseError');
+          return [];
+        }
+
+        dynamic lista = responseData['data'] ?? responseData;
+        appLog('📋 [PENDIENTES] Type: ${lista.runtimeType}, es List: ${lista is List}');
+        
+        if (lista is! List) {
+          appLog('❌ [PENDIENTES] No es List: $lista');
+          return [];
+        }
+
+        appLog('📋 [PENDIENTES] ${lista.length} documentos');
+        
+        final docs = <DocumentoFE>[];
+        for (int i = 0; i < lista.length; i++) {
+          try {
+            final doc = DocumentoFE.fromJson(lista[i] as Map<String, dynamic>);
+            docs.add(doc);
+          } catch (parseError) {
+            appLog('⚠️ [PENDIENTES] Error parseando elemento $i: $parseError');
+          }
+        }
+
+        appLog('✅ [PENDIENTES] ${docs.length} documentos parseados');
 
         // Ordenar: rechazados primero, luego pendientes, luego enviados
         docs.sort((a, b) {
@@ -247,9 +308,12 @@ class DocumentoService {
 
         return docs;
       }
+      
+      appLog('❌ [PENDIENTES] Status ${response.statusCode} != 200');
       return [];
-    } catch (e) {
-      appLog('❌ Error getDocumentosPendientes: $e');
+    } catch (e, stackTrace) {
+      appLog('❌ [PENDIENTES] Error: $e');
+      appLog('❌ [PENDIENTES] Stack: $stackTrace');
       return [];
     }
   }
@@ -263,19 +327,164 @@ class DocumentoService {
   Future<DocumentoFE?> getDocumentoPorId(String id) async {
     try {
       final headers = await _getHeaders();
+      final url = _endpoints.facturacionElectronica.documento(id);
+      
+      appLog('🔍 [DOCUMENTO] GET: $url');
+      
       final response = await http.get(
-        Uri.parse(_endpoints.facturacionElectronica.documento(id)),
+        Uri.parse(url),
         headers: headers,
       );
 
+      appLog('📦 [DOCUMENTO] Status: ${response.statusCode}');
+      appLog('📦 [DOCUMENTO] Body: ${response.body.substring(0, (response.body.length > 500 ? 500 : response.body.length))}');
+
       if (response.statusCode == 200) {
-        final responseData = json.decode(response.body);
-        final data = responseData['data'] ?? responseData;
-        return DocumentoFE.fromJson(data as Map<String, dynamic>);
+        dynamic responseData;
+        try {
+          responseData = json.decode(response.body);
+          appLog('✅ [DOCUMENTO] JSON parseado');
+        } catch (parseError) {
+          appLog('❌ [DOCUMENTO] Error JSON: $parseError');
+          return null;
+        }
+
+        dynamic data = responseData['data'] ?? responseData;
+        appLog('📋 [DOCUMENTO] Type: ${data.runtimeType}');
+        
+        try {
+          final doc = DocumentoFE.fromJson(data as Map<String, dynamic>);
+          appLog('✅ [DOCUMENTO] Parseado: ${doc.id}');
+          return doc;
+        } catch (parseDocError) {
+          appLog('❌ [DOCUMENTO] Error parseando DocumentoFE: $parseDocError');
+          return null;
+        }
       }
+      
+      appLog('❌ [DOCUMENTO] Status ${response.statusCode} != 200');
       return null;
-    } catch (e) {
-      appLog('❌ Error getDocumentoPorId: $e');
+    } catch (e, stackTrace) {
+      appLog('❌ [DOCUMENTO] Error: $e');
+      appLog('❌ [DOCUMENTO] Stack: $stackTrace');
+      return null;
+    }
+  }
+
+  /// Obtiene un documento por su pedidoId.
+  /// GET /api/documentos?pedidoId=...
+  /// ⚠️ Este endpoint devuelve el documento creado automáticamente cuando se vende
+  Future<DocumentoFE?> getDocumentoPorPedidoId(String pedidoId) async {
+    try {
+      final headers = await _getHeaders();
+      final baseUrl = _endpoints.currentBaseUrl;
+      final url = '$baseUrl/api/documentos?pedidoId=$pedidoId';
+      
+      appLog('🔍 [DOCUMENTO] GET: $url');
+      
+      final response = await http.get(
+        Uri.parse(url),
+        headers: headers,
+      );
+
+      appLog('📦 [DOCUMENTO] Status: ${response.statusCode}');
+      appLog('📦 [DOCUMENTO] Body (primeros 500 chars): ${response.body.substring(0, (response.body.length > 500 ? 500 : response.body.length))}');
+
+      if (response.statusCode == 200) {
+        dynamic responseData;
+        try {
+          responseData = json.decode(response.body);
+          appLog('✅ [DOCUMENTO] JSON parseado exitosamente');
+        } catch (parseError) {
+          appLog('❌ [DOCUMENTO] Error al parsear JSON: $parseError');
+          appLog('📦 [DOCUMENTO] Body completo: ${response.body}');
+          return null;
+        }
+
+        appLog('📊 [DOCUMENTO] Response type: ${responseData.runtimeType}');
+        
+        // El servidor devuelve { "data": [...], "success": true, ... }
+        dynamic data = responseData;
+        
+        // Si hay un campo 'data', usarlo
+        if (responseData is Map && responseData.containsKey('data')) {
+          data = responseData['data'];
+          appLog('📋 [DOCUMENTO] Extrayendo campo "data"');
+        }
+
+        appLog('📋 [DOCUMENTO] Data final type: ${data.runtimeType}');
+        
+        if (data is List) {
+          appLog('📋 [DOCUMENTO] Es un List con ${data.length} elementos');
+          if (data.isEmpty) {
+            appLog('⚠️ [DOCUMENTO] Lista vacía - no hay documentos para este pedidoId');
+            return null;
+          }
+          
+          // 🔍 BUSCAR el documento que tiene este pedidoId en su array pedidosIds
+          appLog('🔍 [DOCUMENTO] Buscando documento que contenga pedidoId: $pedidoId');
+          
+          DocumentoFE? documentoEncontrado;
+          for (int i = 0; i < data.length; i++) {
+            try {
+              final docData = data[i] as Map<String, dynamic>;
+              final doc = DocumentoFE.fromJson(docData);
+              
+              // Verificar si este documento tiene el pedidoId buscado
+              final pedidosIds = docData['pedidosIds'];
+              if (pedidosIds is List && pedidosIds.contains(pedidoId)) {
+                appLog('✅ [DOCUMENTO] Encontrado en posición $i: ${doc.id}');
+                appLog('📄 [DOCUMENTO] Documento: numeroDocumento=${doc.numeroDocumento}, cliente=${doc.clienteNombre}');
+                documentoEncontrado = doc;
+                break;
+              }
+            } catch (parseDocError) {
+              appLog('⚠️ [DOCUMENTO] Error parseando elemento $i: $parseDocError');
+            }
+          }
+          
+          if (documentoEncontrado != null) {
+            appLog('✅ [DOCUMENTO] Documento final a enviar: ${documentoEncontrado.id}');
+            return documentoEncontrado;
+          } else {
+            appLog('❌ [DOCUMENTO] No se encontró documento con pedidoId: $pedidoId');
+            appLog('📋 [DOCUMENTO] Documentos disponibles:');
+            for (int i = 0; i < data.length; i++) {
+              try {
+                final docData = data[i] as Map<String, dynamic>;
+                final pedidosIds = docData['pedidosIds'];
+                appLog('  [$i] _id=${docData['_id']}, pedidosIds=$pedidosIds');
+              } catch (e) {
+                appLog('  [$i] Error leyendo: $e');
+              }
+            }
+            return null;
+          }
+        } else if (data is Map) {
+          appLog('📋 [DOCUMENTO] Es un Map (documento único)');
+          try {
+            appLog('✅ [DOCUMENTO] Parseando objeto directo');
+            final doc = DocumentoFE.fromJson(data as Map<String, dynamic>);
+            appLog('✅ [DOCUMENTO] Documento parseado: ${doc.id}');
+            return doc;
+          } catch (parseDocError) {
+            appLog('❌ [DOCUMENTO] Error parseando DocumentoFE: $parseDocError');
+            appLog('📦 [DOCUMENTO] Data: $data');
+            return null;
+          }
+        } else {
+          appLog('❌ [DOCUMENTO] Data no es List ni Map, es: ${data.runtimeType}');
+          appLog('📦 [DOCUMENTO] Value: $data');
+          return null;
+        }
+      } else {
+        appLog('❌ [DOCUMENTO] Status ${response.statusCode} != 200');
+        appLog('📦 [DOCUMENTO] Response: ${response.body}');
+        return null;
+      }
+    } catch (e, stackTrace) {
+      appLog('❌ [DOCUMENTO] Error general: $e');
+      appLog('❌ [DOCUMENTO] Stack: $stackTrace');
       return null;
     }
   }

@@ -49,6 +49,7 @@ class FacturacionDraftProvider extends ChangeNotifier {
   double _reteICA = 0;
   double _aiu = 0;
   double _dctoGeneral = 0;
+  String _tipoDescuentoGeneral = 'Valor'; // 'Valor' o 'Porcentaje'
 
   // 🔄 SINCRONIZACIÓN
   Timer? _syncTimer;
@@ -78,6 +79,7 @@ class FacturacionDraftProvider extends ChangeNotifier {
   double get reteICA => _reteICA;
   double get aiu => _aiu;
   double get dctoGeneral => _dctoGeneral;
+  String get tipoDescuentoGeneral => _tipoDescuentoGeneral;
 
   bool get hasDraft => _items.isNotEmpty || _clienteSeleccionado != null;
   int get itemsCount => _items.length;
@@ -182,6 +184,11 @@ class FacturacionDraftProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setTipoDescuentoGeneral(String tipo) {
+    _tipoDescuentoGeneral = tipo; // 'Valor' o 'Porcentaje'
+    notifyListeners();
+  }
+
   // 📦 GESTIÓN DE ITEMS
   void addItem(ItemPedido item) {
     _items.add(item);
@@ -277,6 +284,7 @@ class FacturacionDraftProvider extends ChangeNotifier {
     _reteICA = 0;
     _aiu = 0;
     _dctoGeneral = 0;
+    _tipoDescuentoGeneral = 'Valor'; // Resetear a valor por defecto
 
     notifyListeners();
     appLog('🗑️ Borrador limpiado completamente');

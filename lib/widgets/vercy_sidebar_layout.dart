@@ -392,6 +392,14 @@ class _VercySidebarLayoutState extends State<VercySidebarLayout> {
     return ListView(
       padding: EdgeInsets.symmetric(vertical: 8),
       children: [
+        // Dashboard - Visible para todos
+        _buildMenuItem(
+          icon: Icons.dashboard,
+          label: 'Dashboard',
+          route: '/dashboard',
+          isAdmin: false,
+        ),
+
         // Menú para Asesores (si tiene rol ASESOR, sin importar si también es ADMIN)
         if (userProvider.isAsesor) ...[
           _buildMenuItem(
@@ -428,6 +436,7 @@ class _VercySidebarLayoutState extends State<VercySidebarLayout> {
 
         // Menú para Admins y SuperAdmins (solo si NO es asesor)
         if (!userProvider.isAsesor) ...[
+          // Sección Ventas y Facturación
           _buildMenuItem(
             icon: Icons.receipt,
             label: 'Facturar',
@@ -440,6 +449,46 @@ class _VercySidebarLayoutState extends State<VercySidebarLayout> {
             route: '/admin-pedidos-asesor',
             isAdmin: true,
           ),
+          
+          // Pedidos (expandible)
+          _buildExpandableMenuItem(
+            icon: Icons.assignment,
+            label: 'Pedidos',
+            isAdmin: true,
+            subItems: [
+              _SubMenuItem(
+                icon: Icons.receipt_long,
+                label: 'Todos los Pedidos',
+                route: '/pedidos',
+              ),
+              _SubMenuItem(
+                icon: Icons.local_shipping,
+                label: 'Pedidos RT',
+                route: '/pedidos_rt',
+              ),
+              _SubMenuItem(
+                icon: Icons.block,
+                label: 'Cancelados',
+                route: '/pedidos_cancelados',
+              ),
+              _SubMenuItem(
+                icon: Icons.card_giftcard,
+                label: 'Cortesía',
+                route: '/pedidos_cortesia',
+              ),
+              _SubMenuItem(
+                icon: Icons.home_work,
+                label: 'Internos',
+                route: '/pedidos_internos',
+              ),
+              _SubMenuItem(
+                icon: Icons.delete_sweep,
+                label: 'Eliminar Pedidos',
+                route: '/eliminar-pedidos',
+              ),
+            ],
+          ),
+
           _buildMenuItem(
             icon: Icons.request_quote,
             label: 'Cotización',
@@ -464,6 +513,8 @@ class _VercySidebarLayoutState extends State<VercySidebarLayout> {
             route: '/facturacion-electronica',
             isAdmin: true,
           ),
+
+          // Compras y Gastos
           _buildExpandableMenuItem(
             icon: Icons.shopping_cart,
             label: 'Compras y Gastos',
@@ -495,12 +546,14 @@ class _VercySidebarLayoutState extends State<VercySidebarLayout> {
                 route: '/gastos',
               ),
               _SubMenuItem(
-                icon: Icons.money,
-                label: 'Ingresos Caja',
-                route: '/ingresos-caja',
+                icon: Icons.category,
+                label: 'Tipos de Gasto',
+                route: '/tipos-gasto',
               ),
             ],
           ),
+
+          // Cartera
           _buildExpandableMenuItem(
             icon: Icons.account_balance_wallet,
             label: 'Cartera',
@@ -528,6 +581,37 @@ class _VercySidebarLayoutState extends State<VercySidebarLayout> {
               ),
             ],
           ),
+
+          // Caja
+          _buildExpandableMenuItem(
+            icon: Icons.attach_money,
+            label: 'Caja',
+            isAdmin: true,
+            subItems: [
+              _SubMenuItem(
+                icon: Icons.check_circle,
+                label: 'Abrir Caja',
+                route: '/abrir_caja',
+              ),
+              _SubMenuItem(
+                icon: Icons.assignment_turned_in,
+                label: 'Cuadre Caja',
+                route: '/cuadre_caja',
+              ),
+              _SubMenuItem(
+                icon: Icons.close_fullscreen,
+                label: 'Cerrar Caja',
+                route: '/cerrar_caja',
+              ),
+              _SubMenuItem(
+                icon: Icons.money,
+                label: 'Ingresos Caja',
+                route: '/ingresos-caja',
+              ),
+            ],
+          ),
+
+          // Inventario
           _buildExpandableMenuItem(
             icon: Icons.inventory,
             label: 'Inventario',
@@ -538,43 +622,90 @@ class _VercySidebarLayoutState extends State<VercySidebarLayout> {
                 label: 'Lista Productos',
                 route: '/productos-lista',
               ),
+              _SubMenuItem(
+                icon: Icons.dashboard_customize,
+                label: 'Productos',
+                route: '/productos',
+              ),
+              _SubMenuItem(
+                icon: Icons.warehouse,
+                label: 'Bodegas',
+                route: '/bodegas',
+              ),
+              _SubMenuItem(
+                icon: Icons.local_shipping,
+                label: 'Traslados',
+                route: '/traslados',
+              ),
             ],
           ),
+
+          // Reportes y Análisis
           _buildExpandableMenuItem(
             icon: Icons.bar_chart,
-            label: 'Informes',
+            label: 'Reportes',
             isAdmin: true,
             subItems: [
               _SubMenuItem(
                 icon: Icons.assessment,
-                label: 'Ventas Productos',
+                label: 'Reportes Generales',
+                route: '/reportes',
+              ),
+              _SubMenuItem(
+                icon: Icons.trending_up,
+                label: 'Ventas',
+                route: '/reportes/ventas',
+              ),
+              _SubMenuItem(
+                icon: Icons.inventory_2,
+                label: 'Productos',
+                route: '/reportes/productos',
+              ),
+              _SubMenuItem(
+                icon: Icons.shopping_cart,
+                label: 'Pedidos',
+                route: '/reportes/pedidos',
+              ),
+              _SubMenuItem(
+                icon: Icons.people,
+                label: 'Clientes',
+                route: '/reportes/clientes',
+              ),
+              _SubMenuItem(
+                icon: Icons.analytics,
+                label: 'Análisis Ventas',
                 route: '/informes/productos',
               ),
             ],
           ),
-          // _buildMenuItem(
-          //   icon: Icons.local_shipping,
-          //   label: 'Traslados',
-          //   route: '/traslados',
-          //   isAdmin: true,
-          // ),
-          _buildMenuItem(
-            icon: Icons.attach_money,
-            label: 'Caja',
-            route: '/cuadre_caja',
+
+          // Administración
+          _buildExpandableMenuItem(
+            icon: Icons.admin_panel_settings,
+            label: 'Administración',
             isAdmin: true,
-          ),
-          _buildMenuItem(
-            icon: Icons.delete_sweep,
-            label: 'Eliminar Pedidos',
-            route: '/eliminar-pedidos',
-            isAdmin: true,
-          ),
-          _buildMenuItem(
-            icon: Icons.business,
-            label: 'Mi Negocio',
-            route: '/negocio-info',
-            isAdmin: false,
+            subItems: [
+              _SubMenuItem(
+                icon: Icons.business,
+                label: 'Mi Negocio',
+                route: '/negocio-info',
+              ),
+              _SubMenuItem(
+                icon: Icons.notifications_active,
+                label: 'Alertas',
+                route: '/alertas',
+              ),
+              _SubMenuItem(
+                icon: Icons.vpn_lock,
+                label: 'Autorizaciones',
+                route: '/autorizaciones',
+              ),
+              _SubMenuItem(
+                icon: Icons.bug_report,
+                label: '🧪 Testing Matias',
+                route: '/matias-test',
+              ),
+            ],
           ),
         ],
       ],
