@@ -199,7 +199,7 @@ class MyApp extends StatelessWidget {
         // Rutas para facturación electrónica
         '/facturacion-electronica': (context) => const FEDocumentosScreen(),
         '/documentos-pendientes': (context) => const DocumentosPendientesScreen(),
-        '/facturas': (context) => FacturasListScreen(),
+        '/facturas': (context) => FacturasListScreen(), // alias de /facturas-lista
         '/matias-test': (context) => const MatiasTestScreen(),
       },
     );

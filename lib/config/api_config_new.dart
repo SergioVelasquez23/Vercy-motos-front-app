@@ -122,7 +122,7 @@ class ApiConfig {
   String _getFallbackUrl([String? environmentName]) {
     // URLs fallback por ambiente - localhost en desarrollo
     final fallbackUrls = {
-      'development': 'http://localhost:8080',
+      'development': 'http://localhost:8081',
       'staging': 'https://vercy-motos-app-048m.onrender.com',
       'production': 'https://vercy-motos-app-048m.onrender.com',
     };

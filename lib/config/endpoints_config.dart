@@ -19,15 +19,11 @@ class EndpointsConfig {
   /// Establece una URL base personalizada
   void setCustomBaseUrl(String url) {
     _customBaseUrl = url;
-    if (url.isNotEmpty) {
-        
-    }
   }
 
   /// Elimina la URL base personalizada y vuelve a la URL por defecto
   void resetToDefaultBaseUrl() {
     _customBaseUrl = null;
-      
   }
 
   /// Verifica si se está usando una URL base personalizada

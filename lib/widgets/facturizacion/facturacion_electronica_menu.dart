@@ -123,10 +123,11 @@ class _FacturacionElectronicaMenuState
           ),
         );
       } else {
-        _snack('❌ ${resultado.message}', AppTheme.error);
+        // Mostrar dialog con el error detallado
+        _mostrarErrorDialog('Factura Electrónica', resultado.message);
       }
     } catch (e) {
-      _snack('❌ Error al emitir FE: $e', AppTheme.error);
+      _mostrarErrorDialog('Error', 'Error al emitir FE: $e');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -182,10 +183,10 @@ class _FacturacionElectronicaMenuState
           ),
         );
       } else {
-        _snack('❌ ${resultado.message}', AppTheme.error);
+        _mostrarErrorDialog('POS Electrónico', resultado.message);
       }
     } catch (e) {
-      _snack('❌ Error al emitir POS: $e', AppTheme.error);
+      _mostrarErrorDialog('Error', 'Error al emitir POS: $e');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -242,10 +243,10 @@ class _FacturacionElectronicaMenuState
           ),
         );
       } else {
-        _snack('❌ ${resultado.message}', AppTheme.error);
+        _mostrarErrorDialog('POS Rápido', resultado.message);
       }
     } catch (e) {
-      _snack('❌ $e', AppTheme.error);
+      _mostrarErrorDialog('Error', e.toString());
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -273,10 +274,10 @@ class _FacturacionElectronicaMenuState
         _snack('✅ Documento reenviado correctamente', AppTheme.success);
         widget.onRefresh?.call();
       } else {
-        _snack('❌ ${resultado.message}', AppTheme.error);
+        _mostrarErrorDialog('Reenviar Documento', resultado.message);
       }
     } catch (e) {
-      _snack('❌ $e', AppTheme.error);
+      _mostrarErrorDialog('Error', e.toString());
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -288,6 +289,34 @@ class _FacturacionElectronicaMenuState
         content: Text(msg),
         backgroundColor: color,
         duration: const Duration(seconds: 4),
+      ),
+    );
+  }
+
+  void _mostrarErrorDialog(String titulo, String mensaje) {
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text('❌ $titulo'),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                mensaje,
+                style: const TextStyle(fontSize: 13),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
       ),
     );
   }

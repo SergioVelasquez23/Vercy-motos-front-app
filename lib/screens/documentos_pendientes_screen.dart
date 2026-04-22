@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:typed_data';
+import '../../config/constants.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/vercy_sidebar_layout.dart';
 import '../../services/documento_service.dart';
@@ -45,9 +46,9 @@ class _DocumentosPendientesScreenState
   /// Configura la escucha de eventos WebSocket
   void _setupWebhookListener() async {
     try {
-      // URL de backend de Render (producción)
-      const String backendUrl =
-          'wss://vercy-motos-app-048m.onrender.com';
+      final String backendUrl = kDynamicBackendUrl
+          .replaceFirst('https://', 'wss://')
+          .replaceFirst('http://', 'ws://');
 
       await _webhookService.connect(
         baseUrl: backendUrl,
@@ -502,7 +503,7 @@ class _DocumentosPendientesScreenState
   @override
   Widget build(BuildContext context) {
     return VercySidebarLayout(
-      title: 'Documentos FE',
+      title: 'Documentos Electrónicos',
       child: Scaffold(
         backgroundColor: AppTheme.backgroundDark,
         body: Column(

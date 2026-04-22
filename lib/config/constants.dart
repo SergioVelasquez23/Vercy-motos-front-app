@@ -6,33 +6,14 @@ const String kBackendUrl =
     'https://vercy-motos-app-048m.onrender.com'; // URL del backend en producción (Render)
 
 // URL de desarrollo local
-const String kLocalBackendUrl = 'http://localhost:8080';
-
-// Cache para evitar logs repetitivos
-bool _urlYaLogueada = false;
+const String kLocalBackendUrl = 'http://localhost:8081';
 
 // URL dinámica que considera el entorno de desarrollo
 String get kDynamicBackendUrl {
-  // En flutter web, siempre usar el backend de producción para evitar problemas de CORS
-  if (kIsWeb) {
-    if (!_urlYaLogueada && kDebugMode) {
-      _urlYaLogueada = true;
-    }
-    return kBackendUrl;
-  }
-
   if (kDebugMode) {
-    if (!_urlYaLogueada) {
-      _urlYaLogueada = true;
-    }
-    return kLocalBackendUrl;
+    return kLocalBackendUrl; // Siempre local en debug
   }
-
-  if (!_urlYaLogueada) {
-     ;
-    _urlYaLogueada = true;
-  }
-  return kBackendUrl;
+  return kBackendUrl; // Producción en release
 }
 
 // Colores principales de la aplicación

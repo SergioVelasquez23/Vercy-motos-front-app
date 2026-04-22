@@ -192,11 +192,6 @@ class MatiasService {
   /// [facturaCufe]    CUFE de la factura
   /// [facturaFecha]   fecha de la factura (YYYY-MM-DD)
   /// [motivoId]       1=Anulación, 2=Devolución parcial, 3=Rebaja precio,
-  /// Emite una Nota Crédito sobre una factura existente.
-  /// [facturaNumero]  número de la factura (ej: "LZT836")
-  /// [facturaCufe]    CUFE de la factura
-  /// [facturaFecha]   fecha de la factura (YYYY-MM-DD)
-  /// [motivoId]       1=Anulación, 2=Devolución parcial, 3=Rebaja precio,
   ///                  4=Ajuste precio, 5=Otra
   /// [motivo]         descripción libre del motivo
   /// [invoicePayload] cuerpo completo de la nota crédito (líneas, totales, etc.)
@@ -386,7 +381,7 @@ class MatiasService {
       final baseUrl = EndpointsConfig().currentBaseUrl;
       final res = await http.get(
         Uri.parse('$baseUrl/api/facturas/$id/download-pdf'),
-        headers: await _headers(),
+        headers: _headers(),
       ).timeout(_timeout, onTimeout: () {
         throw TimeoutException('Timeout descargando PDF');
       });
@@ -412,7 +407,7 @@ class MatiasService {
       appLog('$TAG 🔍 Consultando status DIAN: $cufe');
       final res = await http.get(
         Uri.parse('$_base/documentos/status/$cufe'),
-        headers: await _headers(),
+        headers: _headers(),
       ).timeout(_timeout, onTimeout: () {
         throw TimeoutException('Timeout consultando status DIAN');
       });
@@ -445,7 +440,7 @@ class MatiasService {
       appLog('$TAG 🔲 Obteniendo QR: $cufe');
       final res = await http.get(
         Uri.parse('$_base/documentos/qr/$cufe'),
-        headers: await _headers(),
+        headers: _headers(),
       ).timeout(_timeout, onTimeout: () {
         throw TimeoutException('Timeout obteniendo QR');
       });
@@ -471,7 +466,7 @@ class MatiasService {
       appLog('$TAG 📄 Obteniendo XML: $cufe');
       final res = await http.get(
         Uri.parse('$_base/documentos/xml/$cufe'),
-        headers: await _headers(),
+        headers: _headers(),
       ).timeout(_timeout, onTimeout: () {
         throw TimeoutException('Timeout obteniendo XML');
       });
@@ -515,12 +510,16 @@ class MatiasService {
   }) async {
     try {
       appLog('$TAG 📤 POST: $url');
-      appLog('$TAG 📋 Body: ${jsonEncode(body).substring(0, 200)}...');
+      final bodyJson = jsonEncode(body);
+      final bodyPreview = bodyJson.length > 200 
+        ? '${bodyJson.substring(0, 200)}...' 
+        : bodyJson;
+      appLog('$TAG 📋 Body: $bodyPreview');
       
       final res = await http.post(
         Uri.parse(url),
         headers: _headers(token: token),
-        body: jsonEncode(body),
+        body: bodyJson,
       ).timeout(_timeout, onTimeout: () {
         throw TimeoutException('Timeout esperando respuesta de $url después de ${_timeout.inSeconds}s');
       });
@@ -533,7 +532,47 @@ class MatiasService {
 
       if (res.statusCode != 200 && res.statusCode != 201) {
         appLog('$TAG ❌ HTTP Error ${res.statusCode}');
-        return MatiasDocumentoResult.error('HTTP ${res.statusCode}: ${res.body}');
+        appLog('$TAG 📥 Response headers: ${res.headers}');
+        appLog('$TAG 📥 Response body length: ${res.body.length}');
+        
+        // Parsear mensaje de error — backend usa formato ApiResponse
+        String errorMessage = 'Error HTTP ${res.statusCode}';
+        try {
+          if (res.body.isEmpty) {
+            errorMessage = 'Error HTTP ${res.statusCode}: Respuesta vacía del servidor';
+          } else {
+            final errorJson = jsonDecode(res.body) as Map<String, dynamic>;
+            // ApiResponse: { success, code, message, data (detalles), timestamp }
+            errorMessage = errorJson['message']?.toString() ??
+                           errorJson['error']?.toString() ??
+                           'Error desconocido';
+
+            // Incluir código de error si está disponible
+            final code = errorJson['code']?.toString();
+            if (code != null && code.isNotEmpty) {
+              errorMessage = '[$code] $errorMessage';
+            }
+
+            // Incluir detalles de validación si data es un Map de errores
+            final data = errorJson['data'];
+            if (data is Map && data.isNotEmpty) {
+              final fieldErrors = data.entries
+                  .map((e) => '${e.key}: ${e.value}')
+                  .join(', ');
+              errorMessage = '$errorMessage\n$fieldErrors';
+            } else if (data is String && data.isNotEmpty) {
+              errorMessage = '$errorMessage\n$data';
+            }
+          }
+        } catch (e) {
+          final bodyPreview = res.body.length > 300
+              ? '${res.body.substring(0, 300)}...'
+              : res.body;
+          errorMessage = 'Error HTTP ${res.statusCode}: $bodyPreview';
+        }
+        
+        appLog('$TAG ❌ Error parseado: $errorMessage');
+        return MatiasDocumentoResult.error(errorMessage);
       }
 
       final j = jsonDecode(res.body) as Map<String, dynamic>;
@@ -661,7 +700,9 @@ class MatiasDocumentoResult {
   });
 
   factory MatiasDocumentoResult.fromJson(Map<String, dynamic> j) {
-    final data = j['data'] as Map<String, dynamic>? ?? {};
+    // data puede ser Map (éxito) o String/null (detalle de error del backend)
+    final rawData = j['data'];
+    final data = rawData is Map<String, dynamic> ? rawData : <String, dynamic>{};
     return MatiasDocumentoResult(
       success: j['success'] == true,
       message: j['message']?.toString() ?? '',

@@ -221,23 +221,33 @@ class PedidoService {
       List<dynamic> jsonList;
 
       if (responseData is Map<String, dynamic>) {
-        // Buscar posibles propiedades que contengan la lista de pedidos
-        if (responseData.containsKey('pedidos')) {
-          jsonList = responseData['pedidos'];
-        } else if (responseData.containsKey('data')) {
-          jsonList = responseData['data'];
-        } else if (responseData.containsKey('results')) {
-          jsonList = responseData['results'];
+        // Si el backend indica error explícito, salir limpiamente
+        if (responseData['success'] == false) return [];
+
+        // Extraer la lista desde el wrapper ApiResponse o directamente
+        dynamic rawList = responseData['pedidos'] ??
+                          responseData['data'] ??
+                          responseData['results'];
+
+        if (rawList == null) return [];
+
+        if (rawList is List) {
+          jsonList = rawList;
+        } else if (rawList is Map) {
+          // Formato anidado: data: {pedidos: [...], count: N}
+          final nested = rawList['pedidos'] ?? rawList['items'] ?? rawList['data'];
+          if (nested is List) {
+            jsonList = nested;
+          } else {
+            return [];
+          }
         } else {
-            
           return [];
         }
       } else if (responseData is List) {
         jsonList = responseData;
       } else {
-        throw Exception(
-          'Formato de respuesta inesperado: ${responseData.runtimeType}',
-        );
+        return [];
       }
 
       // Log detallado para depuración de reportes
@@ -1192,8 +1202,17 @@ class PedidoService {
       );
 
       if (response.statusCode == 200) {
-        final Map<String, dynamic> jsonData = json.decode(response.body);
-        return Map<String, int>.from(jsonData);
+        final jsonData = json.decode(response.body);
+        // Backend envuelve en ApiResponse: {success, data: {...}, message}
+        final raw = jsonData is Map && jsonData['success'] == true
+            ? (jsonData['data'] ?? jsonData)
+            : jsonData;
+        if (raw is Map) {
+          return Map<String, int>.from(
+            raw.map((k, v) => MapEntry(k.toString(), (v as num?)?.toInt() ?? 0)),
+          );
+        }
+        return {};
       } else {
         throw Exception(
           'Error al obtener estadísticas: ${response.statusCode}',

@@ -59,7 +59,7 @@ class DocumentoFE {
   factory DocumentoFE.fromJson(Map<String, dynamic> json) {
     DateTime? parseDate(dynamic v) {
       if (v == null) return null;
-      if (v is String) {
+      if (v is String && v.isNotEmpty) {
         try {
           return DateTime.parse(v);
         } catch (_) {
@@ -69,23 +69,57 @@ class DocumentoFE {
       return null;
     }
 
+    double parseTotal(dynamic v) {
+      if (v == null) return 0.0;
+      if (v is num) return v.toDouble();
+      if (v is String) return double.tryParse(v) ?? 0.0;
+      return 0.0;
+    }
+
+    // Derive estado from Matias API numeric/string flags when 'estado' field is absent
+    String deriveEstado() {
+      final estadoDirecto = json['estado']?.toString();
+      if (estadoDirecto != null && estadoDirecto.isNotEmpty) return estadoDirecto;
+      final valida = json['valida']?.toString();
+      final reenvio = json['reenvio_necesario']?.toString();
+      final isValid = json['is_valid'];
+      final resend = json['resend'];
+      final validaBool = valida == 'Sí' || isValid == 1 || isValid == true;
+      final reenvioNeeded = reenvio == 'Sí' || resend == 1 || resend == true;
+      if (validaBool && !reenvioNeeded) return 'ACEPTADO';
+      if (reenvioNeeded) return 'RECHAZADO';
+      return 'ENVIADO';
+    }
+
     return DocumentoFE(
-      id: json['_id']?.toString() ?? json['id']?.toString() ?? '',
-      pedidoId: json['pedidoId']?.toString(),
+      id: json['_id']?.toString() ??
+          json['id']?.toString() ??
+          json['uuid']?.toString() ??
+          '',
+      pedidoId: json['pedidoId']?.toString() ?? json['order_number']?.toString(),
       facturaId: json['facturaId']?.toString(),
-      estado: json['estado']?.toString() ?? 'PENDIENTE',
-      cufe: json['cufe']?.toString(),
+      estado: deriveEstado(),
+      cufe: json['cufe']?.toString() ?? json['XmlDocumentKey']?.toString(),
       qrCode: json['qrCode']?.toString(),
       qrUrl: json['qrUrl']?.toString(),
-      numero: json['numero']?.toString(),
+      numero: json['numero']?.toString() ?? json['document_number']?.toString(),
       numeroElectronico:
           json['numeroDocumentoElectronico']?.toString() ??
           json['numeroElectronico']?.toString(),
       clienteNombre: json['clienteNombre']?.toString(),
       clienteNit: json['clienteNit']?.toString(),
-      total: (json['total'] ?? 0).toDouble(),
-      fechaCreacion: parseDate(json['fechaCreacion']),
-      fechaEnvio: parseDate(json['fechaEnvio'] ?? json['fechaSolicitud']),
+      total: parseTotal(json['total'] ?? json['payable_amount']),
+      fechaCreacion: parseDate(
+        json['fechaCreacion'] ??
+        json['creada_en'] ??
+        json['fechaEmision'] ??
+        json['invoice_date'],
+      ),
+      fechaEnvio: parseDate(
+        json['fechaEnvio'] ??
+        json['fechaSolicitud'] ??
+        json['actualizada_en'],
+      ),
       motivoRechazo: json['motivoRechazo']?.toString(),
       pdfUrl: json['pdfUrl']?.toString(),
       xmlUrl: json['xmlUrl']?.toString(),
@@ -190,11 +224,21 @@ class DocumentoService {
           return [];
         }
 
-        dynamic lista = responseData['data'] ?? responseData;
+        // Backend returns {success:true, data:{documentos:[...], cantidad:N}}
+        dynamic lista = responseData['documentos'] ??
+                        responseData['data'] ??
+                        responseData;
+
+        // Unwrap one more level if data is a Map (e.g. data.documentos)
+        if (lista is Map) {
+          lista = lista['documentos'] ?? lista['data'] ?? lista;
+        }
+
         appLog('📋 [LISTA] Type: ${lista.runtimeType}, es List: ${lista is List}');
-        
+
         if (lista is! List) {
-          appLog('❌ [LISTA] No es List: $lista');
+          appLog('❌ [LISTA] No es List: ${lista.runtimeType}');
+          appLog('❌ [LISTA] Estructura recibida: $responseData');
           return [];
         }
 
@@ -267,11 +311,20 @@ class DocumentoService {
           return [];
         }
 
-        dynamic lista = responseData['data'] ?? responseData;
+        // Backend returns {success:true, data:{documentos:[...], cantidad:N}}
+        dynamic lista = responseData['documentos'] ??
+                        responseData['data'] ??
+                        responseData;
+
+        // Unwrap one more level if data is a Map (e.g. data.documentos)
+        if (lista is Map) {
+          lista = lista['documentos'] ?? lista['data'] ?? lista;
+        }
+
         appLog('📋 [PENDIENTES] Type: ${lista.runtimeType}, es List: ${lista is List}');
-        
+
         if (lista is! List) {
-          appLog('❌ [PENDIENTES] No es List: $lista');
+          appLog('❌ [PENDIENTES] No es List: ${lista.runtimeType}');
           return [];
         }
 
@@ -289,8 +342,14 @@ class DocumentoService {
 
         appLog('✅ [PENDIENTES] ${docs.length} documentos parseados');
 
+        // Backend ignores ?estado param — filter locally for pending/rejected
+        final docsFiltrados = docs
+            .where((d) => d.estado == 'PENDIENTE' || d.estado == 'RECHAZADO')
+            .toList();
+        appLog('📋 [PENDIENTES] Filtrados: ${docsFiltrados.length} (PENDIENTE/RECHAZADO)');
+
         // Ordenar: rechazados primero, luego pendientes, luego enviados
-        docs.sort((a, b) {
+        docsFiltrados.sort((a, b) {
           const prioridad = {
             'RECHAZADO': 0,
             'PENDIENTE': 1,
@@ -306,7 +365,7 @@ class DocumentoService {
           return fb.compareTo(fa);
         });
 
-        return docs;
+        return docsFiltrados;
       }
       
       appLog('❌ [PENDIENTES] Status ${response.statusCode} != 200');
@@ -429,12 +488,12 @@ class DocumentoService {
             try {
               final docData = data[i] as Map<String, dynamic>;
               final doc = DocumentoFE.fromJson(docData);
-              
+
               // Verificar si este documento tiene el pedidoId buscado
               final pedidosIds = docData['pedidosIds'];
               if (pedidosIds is List && pedidosIds.contains(pedidoId)) {
                 appLog('✅ [DOCUMENTO] Encontrado en posición $i: ${doc.id}');
-                appLog('📄 [DOCUMENTO] Documento: numeroDocumento=${doc.numeroDocumento}, cliente=${doc.clienteNombre}');
+                appLog('📄 [DOCUMENTO] Documento: numero=${doc.numero ?? doc.numeroElectronico}, cliente=${doc.clienteNombre}');
                 documentoEncontrado = doc;
                 break;
               }
