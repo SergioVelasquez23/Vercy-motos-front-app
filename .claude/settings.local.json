@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p /home/sergiovelasquez/Documentos/flutter_app_new/lib/widgets/facturacion && ls /home/sergiovelasquez/Documentos/flutter_app_new/lib/widgets/)",
+      "Read(//home/sergiovelasquez/snap/**)",
+      "Read(//home/sergiovelasquez/flutter/bin/**)",
+      "Read(//home/sergiovelasquez/**)",
+      "Bash(awk -F: '$2 >= 3528 && $2 <= 3700 {print}')",
+      "Bash(/home/sergiovelasquez/flutter/bin/dart analyze *)",
+      "Bash(python3)"
+    ],
+    "additionalDirectories": [
+      "/home/sergiovelasquez/Documentos/flutter_app_new/lib/widgets"
+    ]
+  }
+}

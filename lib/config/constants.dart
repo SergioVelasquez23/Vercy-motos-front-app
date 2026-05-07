@@ -60,3 +60,22 @@ const kTiposMovimiento = [
 
 // Nombre de la aplicación
 const kNombreApp = 'Vercy Motos';
+
+// Estados de documentos / facturas
+const kEstadoTodos = 'TODOS';
+const kEstadoPendiente = 'PENDIENTE';
+const kEstadoPagada = 'PAGADA';
+const kEstadoCancelada = 'CANCELADA';
+const kEstadoAnulada = 'ANULADA';
+const kEstadoAprobada = 'APROBADA';
+const kEstadoBorrador = 'BORRADOR';
+const kEstadoActivo = 'ACTIVO';
+const kEstadoInactivo = 'INACTIVO';
+
+// Tipos de descuento
+const kTipoDescuentoPorcentaje = 'Porcentaje';
+const kTipoDescuentoValor = 'Valor';
+
+// Listas de precios
+const kListaPrecioDetal = 'Detal';
+const kListaPrecioMayoreo = 'Mayoreo';

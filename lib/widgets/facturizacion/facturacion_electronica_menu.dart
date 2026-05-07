@@ -50,9 +50,10 @@ class _FacturacionElectronicaMenuState
   Factura? get _factura => _esFactura ? widget.documento as Factura : null;
   Pedido? get _pedido => _esPedido ? widget.documento as Pedido : null;
 
-  /// Si la factura tiene CUFE → ya fue emitida electrónicamente
+  /// La factura fue emitida electrónicamente si tiene CUFE o estadoDIAN == 'ACEPTADA'
   bool get _tieneEmisionElectronica =>
-      _factura?.cufe != null && _factura!.cufe!.isNotEmpty;
+      (_factura?.cufe != null && _factura!.cufe!.isNotEmpty) ||
+      _factura?.estadoDIAN == 'ACEPTADA';
 
   // ──────────────────────────────────────────────────────────────────────────
   //  Acciones
@@ -335,8 +336,36 @@ class _FacturacionElectronicaMenuState
       );
     }
 
-    // ── Pedido POS ──
+    // ── Pedido ──
     if (_esPedido) {
+      // LOCAL: solo documento interno, sin opciones FE
+      if (_pedido?.tipoFactura == 'LOCAL') {
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            color: AppTheme.surfaceDark,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.grey.shade300),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.receipt_outlined, color: AppTheme.textSecondary, size: 13),
+              const SizedBox(width: 5),
+              Text(
+                'Local',
+                style: TextStyle(
+                  color: AppTheme.textSecondary,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+
+      // POS y FACTURA ELECTRÓNICA: mostrar opciones FE
       return _BotonFE(
         label: 'Facturar',
         color: AppTheme.primary,

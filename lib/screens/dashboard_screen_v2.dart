@@ -20,7 +20,12 @@ import '../models/dashboard_data.dart';
 import '../providers/user_provider.dart';
 import '../widgets/admin_key_detector.dart';
 import '../widgets/vercy_sidebar_layout.dart';
+import '../widgets/dashboard/stat_card.dart';
+import '../widgets/dashboard/stats_cards_section.dart';
+import '../widgets/dashboard/legend_item.dart';
 import '../utils/payment_calculator.dart';
+import '../utils/snackbar_helper.dart';
+import '../utils/dialogs_helper.dart';
 
 class InfoCardItem {
   final String label;
@@ -381,12 +386,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
 
       // Mostrar mensaje de error al usuario
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error cargando datos de ingresos vs egresos'),
-            backgroundColor: Colors.orange,
-          ),
-        );
+        showWarningSnackBar(context, 'Error cargando datos de ingresos vs egresos');
       }
     }
   }
@@ -676,12 +676,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                   Navigator.of(context).pop(nuevoObjetivo);
                 } else {
                   if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Por favor ingrese un valor válido'),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
+                    showErrorSnackBar(context, 'Por favor ingrese un valor válido');
                   }
                 }
               },
@@ -809,12 +804,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
         _objetivosTemporales.remove(periodo);
       });
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al actualizar el objetivo: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        showErrorSnackBar(context, 'Error al actualizar el objetivo: ${e.toString()}');
       }
     }
   }
@@ -921,7 +911,64 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
                                         if (userProvider.isAdmin ||
                                             userProvider.isSuperAdmin) ...[
                                           // Cards de estadísticas principales
-                                          _buildStatsCards(context),
+                                          _dashboardData == null
+                                              ? SizedBox(
+                                                  height: 200,
+                                                  child: Center(
+                                                    child: Column(
+                                                      mainAxisAlignment: MainAxisAlignment.center,
+                                                      children: [
+                                                        CircularProgressIndicator(
+                                                          valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primary),
+                                                        ),
+                                                        SizedBox(height: AppTheme.spacingMedium),
+                                                        Text(
+                                                          'Cargando estadísticas del dashboard...',
+                                                          style: AppTheme.bodyMedium.copyWith(
+                                                            color: AppTheme.textSecondary,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                )
+                                              : StatsCardsSection(
+                                                  cards: [
+                                                    StatCardData(
+                                                      title: 'Facturado Hoy',
+                                                      value: '\$${_formatNumber(_obtenerTotalCorregido('hoy', _dashboardData!.ventasHoy.total))}',
+                                                      objective: 'Objetivo: \$${_formatNumber(_obtenerObjetivoActual('hoy'))}',
+                                                      percentage: (_obtenerTotalCorregido('hoy', _dashboardData!.ventasHoy.total) / _obtenerObjetivoActual('hoy') * 100).round(),
+                                                      color: AppTheme.primary,
+                                                      periodo: 'hoy',
+                                                    ),
+                                                    StatCardData(
+                                                      title: 'Últimos 7 días',
+                                                      value: '\$${_formatNumber(_obtenerTotalCorregido('semana', _dashboardData!.ventas7Dias.total))}',
+                                                      objective: 'Objetivo: \$${_formatNumber(_obtenerObjetivoActual('semana'))}',
+                                                      percentage: (_obtenerTotalCorregido('semana', _dashboardData!.ventas7Dias.total) / _obtenerObjetivoActual('semana') * 100).round(),
+                                                      color: AppTheme.secondary,
+                                                      periodo: 'semana',
+                                                    ),
+                                                    StatCardData(
+                                                      title: 'Últimos 30 días',
+                                                      value: '\$${_formatNumber(_obtenerTotalCorregido('mes', _dashboardData!.ventas30Dias.total))}',
+                                                      objective: 'Objetivo: \$${_formatNumber(_obtenerObjetivoActual('mes'))}',
+                                                      percentage: (_obtenerTotalCorregido('mes', _dashboardData!.ventas30Dias.total) / _obtenerObjetivoActual('mes') * 100).round(),
+                                                      color: AppTheme.secondary,
+                                                      periodo: 'mes',
+                                                    ),
+                                                    StatCardData(
+                                                      title: 'Año actual',
+                                                      value: '\$${_formatNumber(_obtenerTotalCorregido('año', _dashboardData!.ventasAnio.total))}',
+                                                      objective: 'Objetivo: \$${_formatNumber(_obtenerObjetivoActual('año'))}',
+                                                      percentage: (_obtenerTotalCorregido('año', _dashboardData!.ventasAnio.total) / _obtenerObjetivoActual('año') * 100).round(),
+                                                      color: AppTheme.info,
+                                                      periodo: 'año',
+                                                    ),
+                                                  ],
+                                                  onEditObjective: _mostrarDialogoEditarObjetivo,
+                                                ),
                                           SizedBox(
                                             height: AppTheme.spacingXLarge,
                                           ),
@@ -1959,9 +2006,9 @@ class _DashboardScreenV2State extends State<DashboardScreenV2>
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _buildLegendItem(AppTheme.primaryLight, 'Ingresos'),
+              LegendItem(color: AppTheme.primaryLight, label: 'Ingresos'),
               SizedBox(width: 24),
-              _buildLegendItem(AppTheme.error, 'Egresos'),
+              LegendItem(color: AppTheme.error, label: 'Egresos'),
             ],
           ),
         ],

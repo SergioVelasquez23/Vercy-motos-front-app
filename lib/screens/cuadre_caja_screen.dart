@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/user_provider.dart';
 import '../models/cuadre_caja.dart';
+import '../config/constants.dart';
 
 import '../services/cuadre_caja_service.dart';
 import '../services/resumen_cierre_service.dart';
@@ -70,7 +71,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
 
   // Services
   final CuadreCajaService _cuadreCajaService = CuadreCajaService();
-  final String baseUrl = 'https://vercy-motos-app-048m.onrender.com';
+  final String baseUrl = kBackendUrl;
 
   // Filtros
   String? _selectedCaja;

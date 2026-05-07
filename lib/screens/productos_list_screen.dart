@@ -14,10 +14,16 @@ import '../services/producto_service.dart';
 import '../providers/datos_cache_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/vercy_sidebar_layout.dart';
+import '../widgets/productos/tabs/tab_basico_producto.dart';
+import '../widgets/productos/tabs/tab_precios_producto.dart';
+import '../widgets/productos/tabs/tab_clasificacion_producto.dart';
+import '../widgets/productos/tabs/tab_inventario_producto.dart';
 import '../utils/format_utils.dart';
 import '../utils/file_download_helper.dart';
 import '../utils/logger.dart';
 import '../utils/pagination_mixin.dart';
+import '../utils/snackbar_helper.dart';
+import '../utils/dialogs_helper.dart';
 
 class ProductosListScreen extends StatefulWidget {
   const ProductosListScreen({super.key});
@@ -80,12 +86,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
         _aplicarFiltros();
       });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al cargar datos: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      showErrorSnackBar(context, 'Error al cargar datos: $e');
     } finally {
       setState(() => _isLoading = false);
     }
@@ -1016,19 +1017,12 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
             _mostrarFormularioProductoCompleto(producto: productoFinal);
           } else {
             ScaffoldMessenger.of(context).clearSnackBars();
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('No se pudo cargar el producto'),
-                backgroundColor: Colors.red,
-              ),
-            );
+            showErrorSnackBar(context, 'No se pudo cargar el producto');
           }
         })
         .catchError((e) {
           ScaffoldMessenger.of(context).clearSnackBars();
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-          );
+          showErrorSnackBar(context, 'Error: $e');
         });
   }
 
@@ -1181,48 +1175,54 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
                         child: TabBarView(
                           children: [
                             // Tab 1: Información Básica
-                            _buildTabBasico(
-                              nombreController,
-                              descripcionController,
-                              codigoController,
-                              codigoBarrasController,
-                              tipoSeleccionado[0],
-                              categoriaSeleccionada,
-                              setDialogState,
-                              tipoSeleccionado,
+                            TabBasicoProducto(
+                              nombreController: nombreController,
+                              descripcionController: descripcionController,
+                              codigoController: codigoController,
+                              codigoBarrasController: codigoBarrasController,
+                              tipoSeleccionado: tipoSeleccionado[0],
+                              categoriaSeleccionada: categoriaSeleccionada,
+                              setState: setDialogState,
+                              tipoSeleccionadoList: tipoSeleccionado,
+                              categorias: _categorias,
+                              onCategoriaChanged: (value) {
+                                setDialogState(() {
+                                  categoriaSeleccionada = value;
+                                });
+                              },
                             ),
                             // Tab 2: Precios
-                            _buildTabPrecios(
-                              precioController,
-                              costoController,
-                              porcentajeImpuestoController,
-                              precioVentaOpc1Controller,
-                              precioVentaOpc2Controller,
-                              precioVentaOpc3Controller,
+                            TabPreciosProducto(
+                              precioController: precioController,
+                              costoController: costoController,
+                              porcentajeImpuestoController: porcentajeImpuestoController,
+                              precioVentaOpc1Controller: precioVentaOpc1Controller,
+                              precioVentaOpc2Controller: precioVentaOpc2Controller,
+                              precioVentaOpc3Controller: precioVentaOpc3Controller,
                             ),
                             // Tab 3: Clasificación y Proveedor
-                            _buildTabClasificacion(
-                              marcaController,
-                              tipoProductoNombreController,
-                              lineaProductoNombreController,
-                              claseProductoNombreController,
-                              nombreProveedorController,
-                              nitProveedorController,
+                            TabClasificacionProducto(
+                              marcaController: marcaController,
+                              tipoProductoNombreController: tipoProductoNombreController,
+                              lineaProductoNombreController: lineaProductoNombreController,
+                              claseProductoNombreController: claseProductoNombreController,
+                              nombreProveedorController: nombreProveedorController,
+                              nitProveedorController: nitProveedorController,
                             ),
                             // Tab 4: Inventario y Ubicaciones
-                            _buildTabInventario(
-                              almacenController,
-                              bodegaController,
-                              inventarioBajoController,
-                              inventarioOptimoController,
-                              ubicacion1Controller,
-                              ubicacion2Controller,
-                              ubicacion3Controller,
-                              ubicacion4Controller,
-                              localizacionController,
-                              controlInventarioSeleccionado[0],
-                              setDialogState,
-                              controlInventarioSeleccionado,
+                            TabInventarioProducto(
+                              almacenController: almacenController,
+                              bodegaController: bodegaController,
+                              inventarioBajoController: inventarioBajoController,
+                              inventarioOptimoController: inventarioOptimoController,
+                              ubicacion1Controller: ubicacion1Controller,
+                              ubicacion2Controller: ubicacion2Controller,
+                              ubicacion3Controller: ubicacion3Controller,
+                              ubicacion4Controller: ubicacion4Controller,
+                              localizacionController: localizacionController,
+                              controlInventarioSeleccionado: controlInventarioSeleccionado[0],
+                              setState: setDialogState,
+                              controlInventarioSeleccionadoList: controlInventarioSeleccionado,
                             ),
                           ],
                         ),
@@ -1632,12 +1632,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
 
         await service.updateProducto(productoActualizado);
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Producto actualizado correctamente'),
-            backgroundColor: AppTheme.success,
-          ),
-        );
+        showSuccessSnackBar(context, 'Producto actualizado correctamente');
       } else {
         // Crear nuevo producto
         final nuevoProducto = Producto(
@@ -1659,22 +1654,12 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
 
         await service.addProducto(nuevoProducto);
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Producto creado correctamente'),
-            backgroundColor: AppTheme.success,
-          ),
-        );
+        showSuccessSnackBar(context, 'Producto creado correctamente');
       }
 
       _cargarDatos(); // Recargar la lista
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al guardar producto: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      showErrorSnackBar(context, 'Error al guardar producto: $e');
     }
   }
 
@@ -1761,21 +1746,11 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
       final service = ProductoService();
       await service.deleteProducto(producto.id!);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Producto eliminado correctamente'),
-          backgroundColor: AppTheme.success,
-        ),
-      );
+      showSuccessSnackBar(context, 'Producto eliminado correctamente');
 
       _cargarDatos(); // Recargar la lista
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al eliminar producto: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      showErrorSnackBar(context, 'Error al eliminar producto: $e');
     }
   }
 
@@ -1949,12 +1924,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al seleccionar archivo: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        showErrorSnackBar(context, 'Error al seleccionar archivo: $e');
       }
     }
   }
@@ -2459,12 +2429,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
           });
         }
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Producto actualizado correctamente'),
-            backgroundColor: AppTheme.success,
-          ),
-        );
+        showSuccessSnackBar(context, 'Producto actualizado correctamente');
       } else {
         // Crear nuevo producto
         final nuevoProducto = Producto(
@@ -2519,12 +2484,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
           // Si no hay ID válido, recargar toda la lista
           await _cargarDatos();
 
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Producto creado (recargando lista)'),
-              backgroundColor: Colors.orange,
-            ),
-          );
+          showWarningSnackBar(context, 'Producto creado (recargando lista)');
         } else {
           // ✅ ID válido: Agregar el producto a la lista local sin esperar recargar cache
           if (mounted) {
@@ -2547,12 +2507,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
             );
           }
 
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Producto creado correctamente'),
-              backgroundColor: AppTheme.success,
-            ),
-          );
+          showSuccessSnackBar(context, 'Producto creado correctamente');
         }
       }
 
@@ -2560,12 +2515,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
       return true; // ✅ Retornar éxito
     } catch (e) {
       appLog('❌ Error al guardar producto: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al guardar producto: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      showErrorSnackBar(context, 'Error al guardar producto: $e');
       return false; // ❌ Retornar error
     }
   }
@@ -3142,24 +3092,12 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
       await _mostrarOpcionesImpresion(pdf, producto);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('PDF generado correctamente'),
-            backgroundColor: AppTheme.success,
-            duration: Duration(seconds: 2),
-          ),
-        );
+        showSuccessSnackBar(context, 'PDF generado correctamente');
       }
     } catch (e) {
       appLog('Error al generar PDF: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al generar PDF: $e'),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 3),
-          ),
-        );
+        showErrorSnackBar(context, 'Error al generar PDF: $e');
       }
     }
   }
@@ -3523,13 +3461,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
 
       // Mostrar éxito
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Archivo descargado: $filename'),
-            backgroundColor: AppTheme.success,
-            duration: Duration(seconds: 3),
-          ),
-        );
+        showSuccessSnackBar(context, 'Archivo descargado: $filename');
       }
     } catch (e) {
       // Cerrar diálogo si está abierto
@@ -3541,13 +3473,7 @@ class _ProductosListScreenState extends State<ProductosListScreen> with Paginaci
 
       // Mostrar error
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error descargando productos: $e'),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 3),
-          ),
-        );
+        showErrorSnackBar(context, 'Error descargando productos: $e');
       }
     }
   }

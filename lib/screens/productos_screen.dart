@@ -2,6 +2,7 @@ import '../widgets/imagen_producto_widget.dart';
 import '../widgets/lazy_product_image_widget.dart';
 import '../widgets/optimized_loading_widget.dart';
 import '../config/performance_config.dart';
+import '../config/constants.dart';
 import 'package:barcode_widget/barcode_widget.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -27,6 +28,10 @@ import '../services/producto_service.dart';
 import '../services/image_loader_service.dart';
 import '../utils/format_utils.dart';
 import '../utils/logger.dart';
+import '../widgets/productos/producto_item_card.dart';
+import '../widgets/common/pagination_controls.dart';
+import '../utils/snackbar_helper.dart';
+import '../utils/dialogs_helper.dart';
 
 class ProductosScreen extends StatefulWidget {
   const ProductosScreen({super.key});
@@ -36,8 +41,7 @@ class ProductosScreen extends StatefulWidget {
 }
 
 class _ProductosScreenState extends State<ProductosScreen> {
-  static const String _backendBaseUrl =
-      "https://vercy-motos-app-048m.onrender.com";
+  static String get _backendBaseUrl => kBackendUrl;
   final ImageService _imageService = ImageService();
   final ProductoService _productoService = ProductoService();
   final ImageLoaderService _imageLoader = ImageLoaderService();
@@ -721,11 +725,47 @@ class _ProductosScreenState extends State<ProductosScreen> {
                         itemCount: _productosPaginados.length,
                         itemBuilder: (context, index) {
                           final producto = _productosPaginados[index];
-                          return _buildProductoItem(producto);
+                          return ProductoItemCard(
+                            producto: producto,
+                            onEdit: (p) async {
+                              showDialog(
+                                context: context,
+                                barrierDismissible: false,
+                                builder: (context) =>
+                                    Center(child: CircularProgressIndicator()),
+                              );
+                              try {
+                                final productoCompleto = await _productoService.getProducto(p.id);
+                                Navigator.pop(context);
+                                if (productoCompleto != null) {
+                                  _showProductoDialog(producto: productoCompleto);
+                                } else {
+                                  showErrorSnackBar(context, 'Error: No se pudo cargar el producto');
+                                }
+                              } catch (e) {
+                                Navigator.pop(context);
+                                showErrorSnackBar(context, 'Error al cargar producto: $e');
+                              }
+                            },
+                            onDelete: _showDeleteConfirmationDialog,
+                          );
                         },
                       ),
                     ),
-                    _buildPaginationControls(),
+                    PaginationControls(
+                      totalElementos: _productosFiltrados.length,
+                      paginaActual: _paginaActual,
+                      itemsPorPagina: _itemsPorPagina,
+                      onPaginaAnterior: _paginaAnterior,
+                      onSiguientePagina: _siguientePagina,
+                      onItemsPorPaginaChanged: (newValue) {
+                        setState(() {
+                          _itemsPorPagina = newValue;
+                          _paginaActual = 0;
+                          _aplicarFiltrosYPaginacion();
+                        });
+                      },
+                    ),
                   ],
                 );
               },
@@ -867,21 +907,11 @@ class _ProductosScreenState extends State<ProductosScreen> {
                   if (productoCompleto != null) {
                     _showProductoDialog(producto: productoCompleto);
                   } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Error: No se pudo cargar el producto'),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
+                    showErrorSnackBar(context, 'Error: No se pudo cargar el producto');
                   }
                 } catch (e) {
                   Navigator.pop(context); // Cerrar loading
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Error al cargar producto: $e'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
+                  showErrorSnackBar(context, 'Error al cargar producto: $e');
                 }
               },
             ),
@@ -963,13 +993,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
 
                         // ✅ SEGUNDO: Mostrar mensaje de éxito
                         if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('✅ Producto eliminado con éxito'),
-                              backgroundColor: Colors.green,
-                              duration: Duration(seconds: 2),
-                            ),
-                          );
+                          showSuccessSnackBar(context, '✅ Producto eliminado con éxito');
                         }
 
                         // ✅ TERCERO: Recargar datos
@@ -3199,12 +3223,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                             }
                           } catch (e) {
                             if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('Error: $e'),
-                                  backgroundColor: Colors.redAccent,
-                                ),
-                              );
+                              showErrorSnackBar(context, 'Error: $e');
                             }
                           } finally {
                             // 🚀 TIMEOUT: Resetear estado después de 2 segundos para evitar clics accidentales
@@ -3356,12 +3375,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                       setState(() {
                         isLoading = false;
                       });
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Error cargando ingredientes: $error'),
-                          backgroundColor: Colors.red,
-                        ),
-                      );
+                      showErrorSnackBar(context, 'Error cargando ingredientes: $error');
                     }
                   });
             }
@@ -3991,18 +4005,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
         
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: ${e.toString()}'),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 5),
-            action: SnackBarAction(
-              label: 'OK',
-              textColor: Colors.white,
-              onPressed: () => ScaffoldMessenger.of(context).hideCurrentSnackBar(),
-            ),
-          ),
-        );
+        showErrorSnackBar(context, 'Error: ${e.toString()}');
       }
     }
   }
@@ -4107,12 +4110,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
     if (result.files.isEmpty) {
         
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('No se seleccionó ningún archivo'),
-            backgroundColor: Colors.orange,
-          ),
-        );
+        showWarningSnackBar(context, 'No se seleccionó ningún archivo');
       }
       return;
     }
@@ -4183,13 +4181,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('✨ Bodega y Almacén actualizados exitosamente'),
-              backgroundColor: Colors.green,
-              duration: Duration(seconds: 3),
-            ),
-          );
+          showSuccessSnackBar(context, '✨ Bodega y Almacén actualizados exitosamente');
         }
 
         // Recargar los productos
@@ -4202,13 +4194,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
     } catch (e) {
         
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al cargar productos: $e'),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 5),
-          ),
-        );
+        showErrorSnackBar(context, 'Error al cargar productos: $e');
       }
     }
   }
@@ -4230,13 +4216,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('✨ Bodega y Almacén actualizados exitosamente'),
-              backgroundColor: Colors.green,
-              duration: Duration(seconds: 3),
-            ),
-          );
+          showSuccessSnackBar(context, '✨ Bodega y Almacén actualizados exitosamente');
         }
 
         // Recargar los productos
@@ -4249,13 +4229,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
     } catch (e) {
         
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al cargar productos: $e'),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 5),
-          ),
-        );
+        showErrorSnackBar(context, 'Error al cargar productos: $e');
       }
     }
   }
@@ -4797,22 +4771,12 @@ class _ProductosScreenState extends State<ProductosScreen> {
       );
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Código de barras generado correctamente'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        showSuccessSnackBar(context, 'Código de barras generado correctamente');
       }
     } catch (e) {
         
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al generar código de barras: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        showErrorSnackBar(context, 'Error al generar código de barras: $e');
       }
     }
   }

@@ -21,7 +21,7 @@ class FacturacionDraftProvider extends ChangeNotifier {
   Cliente? _clienteSeleccionado;
   String _clienteNombre = 'CONSUMIDOR FINAL';
   String _metodoPago = 'efectivo';
-  String _tipoFactura = 'POS';
+  String _tipoFactura = 'LOCAL';
   String _origenSeleccionado = 'ALMACÉN';
   DateTime _fechaFactura = DateTime.now();
   DateTime _fechaVencimiento = DateTime.now().add(Duration(days: 30));
@@ -259,7 +259,7 @@ class FacturacionDraftProvider extends ChangeNotifier {
     _clienteSeleccionado = null;
     _clienteNombre = 'CONSUMIDOR FINAL';
     _metodoPago = 'efectivo';
-    _tipoFactura = 'POS';
+    _tipoFactura = 'LOCAL';
     _origenSeleccionado = 'ALMACÉN';
     _fechaFactura = DateTime.now();
     _fechaVencimiento = DateTime.now().add(Duration(days: 30));

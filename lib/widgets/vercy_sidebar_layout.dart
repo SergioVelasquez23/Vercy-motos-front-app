@@ -462,26 +462,6 @@ class _VercySidebarLayoutState extends State<VercySidebarLayout> {
                 route: '/pedidos',
               ),
               _SubMenuItem(
-                icon: Icons.local_shipping,
-                label: 'Pedidos RT',
-                route: '/pedidos_rt',
-              ),
-              _SubMenuItem(
-                icon: Icons.block,
-                label: 'Cancelados',
-                route: '/pedidos_cancelados',
-              ),
-              _SubMenuItem(
-                icon: Icons.card_giftcard,
-                label: 'Cortesía',
-                route: '/pedidos_cortesia',
-              ),
-              _SubMenuItem(
-                icon: Icons.home_work,
-                label: 'Internos',
-                route: '/pedidos_internos',
-              ),
-              _SubMenuItem(
                 icon: Icons.delete_sweep,
                 label: 'Eliminar Pedidos',
                 route: '/eliminar-pedidos',
@@ -544,11 +524,6 @@ class _VercySidebarLayoutState extends State<VercySidebarLayout> {
                 icon: Icons.add_circle_outline,
                 label: 'Crear Gasto',
                 route: '/gastos',
-              ),
-              _SubMenuItem(
-                icon: Icons.category,
-                label: 'Tipos de Gasto',
-                route: '/tipos-gasto',
               ),
             ],
           ),
@@ -622,21 +597,6 @@ class _VercySidebarLayoutState extends State<VercySidebarLayout> {
                 label: 'Lista Productos',
                 route: '/productos-lista',
               ),
-              _SubMenuItem(
-                icon: Icons.dashboard_customize,
-                label: 'Productos',
-                route: '/productos',
-              ),
-              _SubMenuItem(
-                icon: Icons.warehouse,
-                label: 'Bodegas',
-                route: '/bodegas',
-              ),
-              _SubMenuItem(
-                icon: Icons.local_shipping,
-                label: 'Traslados',
-                route: '/traslados',
-              ),
             ],
           ),
 
@@ -646,31 +606,6 @@ class _VercySidebarLayoutState extends State<VercySidebarLayout> {
             label: 'Reportes',
             isAdmin: true,
             subItems: [
-              _SubMenuItem(
-                icon: Icons.assessment,
-                label: 'Reportes Generales',
-                route: '/reportes',
-              ),
-              _SubMenuItem(
-                icon: Icons.trending_up,
-                label: 'Ventas',
-                route: '/reportes/ventas',
-              ),
-              _SubMenuItem(
-                icon: Icons.inventory_2,
-                label: 'Productos',
-                route: '/reportes/productos',
-              ),
-              _SubMenuItem(
-                icon: Icons.shopping_cart,
-                label: 'Pedidos',
-                route: '/reportes/pedidos',
-              ),
-              _SubMenuItem(
-                icon: Icons.people,
-                label: 'Clientes',
-                route: '/reportes/clientes',
-              ),
               _SubMenuItem(
                 icon: Icons.analytics,
                 label: 'Análisis Ventas',
@@ -689,21 +624,6 @@ class _VercySidebarLayoutState extends State<VercySidebarLayout> {
                 icon: Icons.business,
                 label: 'Mi Negocio',
                 route: '/negocio-info',
-              ),
-              _SubMenuItem(
-                icon: Icons.notifications_active,
-                label: 'Alertas',
-                route: '/alertas',
-              ),
-              _SubMenuItem(
-                icon: Icons.vpn_lock,
-                label: 'Autorizaciones',
-                route: '/autorizaciones',
-              ),
-              _SubMenuItem(
-                icon: Icons.bug_report,
-                label: '🧪 Testing Matias',
-                route: '/matias-test',
               ),
             ],
           ),

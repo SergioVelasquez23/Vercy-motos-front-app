@@ -1,0 +1,114 @@
+import 'package:flutter/material.dart';
+import '../../models/item_pedido.dart';
+import '../../theme/app_theme.dart';
+
+class TotalesSection extends StatelessWidget {
+  final List<ItemPedido> items;
+  final TextEditingController retencionController;
+  final TextEditingController reteIVAController;
+  final TextEditingController reteICAController;
+  final TextEditingController aiuController;
+  final TextEditingController dctoGeneralController;
+
+  const TotalesSection({
+    super.key,
+    required this.items,
+    required this.retencionController,
+    required this.reteIVAController,
+    required this.reteICAController,
+    required this.aiuController,
+    required this.dctoGeneralController,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final subtotal = items.fold(0.0, (sum, item) => sum + item.subtotal);
+
+    // Calcular retenciones
+    final retencionPct = double.tryParse(retencionController.text) ?? 0;
+    final reteIVAPct = double.tryParse(reteIVAController.text) ?? 0;
+    final reteICAPct = double.tryParse(reteICAController.text) ?? 0;
+    final aiuPct = double.tryParse(aiuController.text) ?? 0;
+    final dctoGeneral = double.tryParse(dctoGeneralController.text) ?? 0;
+
+    final retencionValor = subtotal * (retencionPct / 100);
+    final reteIVAValor = subtotal * (reteIVAPct / 100);
+    final reteICAValor = subtotal * (reteICAPct / 100);
+    final aiuValor = subtotal * (aiuPct / 100);
+
+    final totalImpuestos = 0.0;
+    final totalDescuentos = dctoGeneral;
+    final totalRetenciones = retencionValor + reteIVAValor + reteICAValor;
+    final total =
+        subtotal +
+        totalImpuestos +
+        aiuValor -
+        totalDescuentos -
+        totalRetenciones;
+
+    return Container(
+      padding: EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: AppTheme.cardBg,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 2)),
+        ],
+      ),
+      child: Column(
+        children: [
+          _buildTotalRow('Subtotal', subtotal),
+          _buildTotalRow('Dcto Producto', 0),
+          _buildTotalRow('Impuesto', totalImpuestos),
+          _buildTotalRow('Dcto General', -totalDescuentos),
+          if (retencionValor > 0)
+            _buildTotalRow(
+              'Retención (${retencionPct.toStringAsFixed(1)}%)',
+              -retencionValor,
+            ),
+          if (reteIVAValor > 0)
+            _buildTotalRow(
+              'ReteIVA (${reteIVAPct.toStringAsFixed(1)}%)',
+              -reteIVAValor,
+            ),
+          if (reteICAValor > 0)
+            _buildTotalRow(
+              'ReteICA (${reteICAPct.toStringAsFixed(1)}%)',
+              -reteICAValor,
+            ),
+          if (aiuValor > 0)
+            _buildTotalRow('AIU (${aiuPct.toStringAsFixed(1)}%)', aiuValor),
+          Divider(thickness: 2, color: Colors.grey.shade700),
+          _buildTotalRow('TOTAL', total, isTotal: true),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTotalRow(String label, double valor, {bool isTotal = false}) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: isTotal ? 20 : 16,
+              fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
+              color: Colors.white,
+            ),
+          ),
+          Text(
+            '\$${valor.toStringAsFixed(0)}',
+            style: TextStyle(
+              fontSize: isTotal ? 20 : 16,
+              fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
+              color: isTotal ? AppTheme.primary : Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

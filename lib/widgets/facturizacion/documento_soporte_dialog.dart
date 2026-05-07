@@ -24,8 +24,17 @@ class DocumentoSoporteDialog extends StatefulWidget {
   final DocumentoSoporteRef? dsExistente;
   final VoidCallback? onSuccess;
 
-  const DocumentoSoporteDialog({Key? key, this.dsExistente, this.onSuccess})
-    : super(key: key);
+  /// Datos opcionales para pre-llenar desde una factura de compra existente.
+  final String? proveedorNombreInicial;
+  final String? proveedorNitInicial;
+
+  const DocumentoSoporteDialog({
+    Key? key,
+    this.dsExistente,
+    this.onSuccess,
+    this.proveedorNombreInicial,
+    this.proveedorNitInicial,
+  }) : super(key: key);
 
   @override
   State<DocumentoSoporteDialog> createState() => _DocumentoSoporteDialogState();
@@ -74,6 +83,17 @@ class _DocumentoSoporteDialogState extends State<DocumentoSoporteDialog> {
     (2, 'Corrección de valor'),
     (3, 'Corrección de cantidad'),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.proveedorNombreInicial != null) {
+      _proveedorNombreCtrl.text = widget.proveedorNombreInicial!;
+    }
+    if (widget.proveedorNitInicial != null) {
+      _proveedorNitCtrl.text = widget.proveedorNitInicial!;
+    }
+  }
 
   @override
   void dispose() {

@@ -23,9 +23,14 @@ import '../providers/user_provider.dart';
 import '../providers/datos_cache_provider.dart';
 import '../providers/facturacion_draft_provider.dart';
 import '../widgets/vercy_sidebar_layout.dart';
+import '../widgets/facturacion/observaciones_section.dart';
+import '../widgets/facturacion/totales_section.dart';
+import '../widgets/facturacion/botones_accion_facturacion.dart';
 import '../dialogs/dialogo_pago.dart';
 import '../utils/busqueda_productos_utils.dart';
 import '../utils/logger.dart';
+import '../utils/snackbar_helper.dart';
+import '../utils/dialogs_helper.dart';
 
 class FacturacionScreen extends StatefulWidget {
   final PedidoAsesor? pedidoAsesor;
@@ -81,7 +86,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
   TextEditingController? _codigoAutocompleteController;
 
   // Variables de estado
-  String _tipoFactura = 'POS';
+  String _tipoFactura = 'LOCAL';
   DateTime _fechaFactura = DateTime.now();
   DateTime _fechaVencimiento = DateTime.now().add(Duration(days: 30));
   String _tipoImpuesto = 'IVA';
@@ -271,12 +276,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     });
 
     // Mostrar notificación
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Pedido de ${pedido.asesorNombre} cargado correctamente'),
-        backgroundColor: Colors.green,
-      ),
-    );
+    showSuccessSnackBar(context, 'Pedido de ${pedido.asesorNombre} cargado correctamente');
   }
 
   void _calcularTotal() {
@@ -486,12 +486,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       appLog('✅ Borrador restaurado exitosamente');
     } catch (e) {
       appLog('⚠️ Error restaurando borrador: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('⚠️ Error restaurando borrador anterior'),
-          backgroundColor: Colors.orange,
-        ),
-      );
+      showWarningSnackBar(context, '⚠️ Error restaurando borrador anterior');
     }
   }
 
@@ -599,13 +594,28 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                         SizedBox(height: spacing),
                         _buildItemsList(),
                         SizedBox(height: spacing),
-                        _buildObservaciones(),
+                        ObservacionesSection(
+                          observacionesController: _observacionesController,
+                        ),
                         SizedBox(height: spacing),
                         _buildRetencionesYAIU(),
                         SizedBox(height: spacing),
-                        _buildTotales(),
+                        TotalesSection(
+                          items: _items,
+                          retencionController: _retencionController,
+                          reteIVAController: _reteIVAController,
+                          reteICAController: _reteICAController,
+                          aiuController: _aiuController,
+                          dctoGeneralController: _dctoGeneralController,
+                        ),
                         SizedBox(height: spacing),
-                        _buildBotonesAccion(),
+                        BotonesAccionFacturacion(
+                          items: _items,
+                          isLoading: _isLoading,
+                          onGuardarBorrador: _guardarComoBorrador,
+                          onGuardarYPagar: _guardarYPagar,
+                          onGuardarComoDeuda: _guardarComoDeuda,
+                        ),
                         SizedBox(height: 80),
                       ],
                     ),
@@ -814,19 +824,63 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
   }
 
   Widget _buildTipoDropdown() {
-    return DropdownButtonFormField<String>(
-      value: _tipoFactura,
-      decoration: InputDecoration(
-        border: OutlineInputBorder(),
-        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-        filled: true,
-        fillColor: AppTheme.surfaceDark,
-      ),
-      style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
-      items: ['POS', 'FACTURA']
-          .map((tipo) => DropdownMenuItem(value: tipo, child: Text(tipo)))
-          .toList(),
-      onChanged: (value) => setState(() => _tipoFactura = value!),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        DropdownButtonFormField<String>(
+          value: _tipoFactura,
+          decoration: InputDecoration(
+            border: OutlineInputBorder(),
+            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+            filled: true,
+            fillColor: AppTheme.surfaceDark,
+          ),
+          style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+          items: const [
+            DropdownMenuItem(
+              value: 'LOCAL',
+              child: Text(''),
+            ),
+            DropdownMenuItem(
+              value: 'POS',
+              child: Text('Documento POS'),
+            ),
+            DropdownMenuItem(
+              value: 'FACTURA',
+              child: Text('Factura Electrónica'),
+            ),
+          ],
+          onChanged: (value) => setState(() => _tipoFactura = value!),
+        ),
+        const SizedBox(height: 4),
+        if (_tipoFactura == 'LOCAL')
+          Text(
+            'Solo local · Sin envío a DIAN',
+            style: TextStyle(
+              fontSize: 11,
+              color: AppTheme.textSecondary,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        if (_tipoFactura == 'FACTURA')
+          Text(
+            'Se enviará a la DIAN como Factura Electrónica',
+            style: TextStyle(
+              fontSize: 11,
+              color: AppTheme.primary,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        if (_tipoFactura == 'POS')
+          Text(
+            'Se puede enviar a la DIAN como documento POS',
+            style: TextStyle(
+              fontSize: 11,
+              color: AppTheme.primary,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+      ],
     );
   }
 
@@ -2758,54 +2812,6 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     );
   }
 
-  Widget _buildObservaciones() {
-    return Container(
-      padding: EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: AppTheme.cardBg,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 2)),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.note_alt, color: AppTheme.primary, size: 24),
-              SizedBox(width: 12),
-              Text(
-                'Observaciones',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.textPrimary,
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 16),
-          TextField(
-            controller: _observacionesController,
-            maxLines: 3,
-            style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
-            decoration: InputDecoration(
-              hintText: 'Ej: Abonado \$50,000 - Paquete 1, etc...',
-              hintStyle: TextStyle(color: AppTheme.textSecondary),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              contentPadding: EdgeInsets.all(16),
-              filled: true,
-              fillColor: AppTheme.surfaceDark,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildRetencionesYAIU() {
     return Container(
       decoration: BoxDecoration(
@@ -2995,97 +3001,6 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     );
   }
 
-  Widget _buildTotales() {
-    final subtotal = _items.fold(0.0, (sum, item) => sum + item.subtotal);
-    
-    // Calcular retenciones
-    final retencionPct = double.tryParse(_retencionController.text) ?? 0;
-    final reteIVAPct = double.tryParse(_reteIVAController.text) ?? 0;
-    final reteICAPct = double.tryParse(_reteICAController.text) ?? 0;
-    final aiuPct = double.tryParse(_aiuController.text) ?? 0;
-    final dctoGeneral = double.tryParse(_dctoGeneralController.text) ?? 0;
-
-    final retencionValor = subtotal * (retencionPct / 100);
-    final reteIVAValor = subtotal * (reteIVAPct / 100);
-    final reteICAValor = subtotal * (reteICAPct / 100);
-    final aiuValor = subtotal * (aiuPct / 100);
-    
-    final totalImpuestos = 0.0;
-    final totalDescuentos = dctoGeneral;
-    final totalRetenciones = retencionValor + reteIVAValor + reteICAValor;
-    final total =
-        subtotal +
-        totalImpuestos +
-        aiuValor -
-        totalDescuentos -
-        totalRetenciones;
-
-    return Container(
-      padding: EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: AppTheme.cardBg,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 2)),
-        ],
-      ),
-      child: Column(
-        children: [
-          _buildTotalRow('Subtotal', subtotal),
-          _buildTotalRow('Dcto Producto', 0),
-          _buildTotalRow('Impuesto', totalImpuestos),
-          _buildTotalRow('Dcto General', -totalDescuentos),
-          if (retencionValor > 0)
-            _buildTotalRow(
-              'Retención (${retencionPct.toStringAsFixed(1)}%)',
-              -retencionValor,
-            ),
-          if (reteIVAValor > 0)
-            _buildTotalRow(
-              'ReteIVA (${reteIVAPct.toStringAsFixed(1)}%)',
-              -reteIVAValor,
-            ),
-          if (reteICAValor > 0)
-            _buildTotalRow(
-              'ReteICA (${reteICAPct.toStringAsFixed(1)}%)',
-              -reteICAValor,
-            ),
-          if (aiuValor > 0)
-            _buildTotalRow('AIU (${aiuPct.toStringAsFixed(1)}%)', aiuValor),
-          Divider(thickness: 2, color: Colors.grey.shade700),
-          _buildTotalRow('TOTAL', total, isTotal: true),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTotalRow(String label, double valor, {bool isTotal = false}) {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: isTotal ? 20 : 16,
-              fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
-              color: Colors.white,
-            ),
-          ),
-          Text(
-            '\$${valor.toStringAsFixed(0)}',
-            style: TextStyle(
-              fontSize: isTotal ? 20 : 16,
-              fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
-              color: isTotal ? AppTheme.primary : Colors.white,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   String _calcularValorTotal() {
     final cantidad = int.tryParse(_cantidadController.text) ?? 0;
     final valorUnit = double.tryParse(_valorUnitController.text) ?? 0;
@@ -3105,23 +3020,13 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
   void _agregarItem() {
     // ✅ VALIDACIÓN 1: Producto seleccionado
     if (_productoSeleccionado == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('❌ Debe seleccionar un producto'),
-          backgroundColor: Colors.orange,
-        ),
-      );
+      showWarningSnackBar(context, '❌ Debe seleccionar un producto');
       return;
     }
 
     // ✅ VALIDACIÓN 2: Valor unitario
     if (_valorUnitController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('❌ Complete el valor del producto'),
-          backgroundColor: Colors.orange,
-        ),
-      );
+      showWarningSnackBar(context, '❌ Complete el valor del producto');
       return;
     }
 
@@ -3203,13 +3108,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     _guardarEstadoCompleto();
     
     // ✅ Mensaje de confirmación
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('✅ Producto agregado desde $_origenSeleccionado'),
-        backgroundColor: Colors.green,
-        duration: Duration(seconds: 1),
-      ),
-    );
+    showSuccessSnackBar(context, '✅ Producto agregado desde $_origenSeleccionado');
   }
 
   void _eliminarItem(int index) {
@@ -3350,12 +3249,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
         _clientesDisponibles.add(resultado);
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Cliente creado exitosamente'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      showSuccessSnackBar(context, 'Cliente creado exitosamente');
     }
   }
 
@@ -3647,135 +3541,6 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
     );
   }
 
-  // Widget con botones de acción
-  Widget _buildBotonesAccion() {
-    final subtotal = _items.fold(0.0, (sum, item) => sum + item.subtotal);
-
-    return Container(
-      padding: EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppTheme.cardBg,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 2)),
-        ],
-      ),
-      child: Column(
-        children: [
-          // Resumen rápido
-          Container(
-            padding: EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: AppTheme.primaryGradient,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Total a Pagar:',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-                Text(
-                  '\$${subtotal.toStringAsFixed(0)}',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          SizedBox(height: 20),
-
-          // Botones de acción
-          Column(
-            children: [
-              // Primera fila: Borrador y Pagar
-              Row(
-                children: [
-                  // Guardar como borrador
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: _isLoading ? null : _guardarComoBorrador,
-                      icon: Icon(Icons.drafts),
-                      label: Text('Guardar Borrador'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppTheme.textPrimary,
-                        side: BorderSide(color: AppTheme.textMuted),
-                        padding: EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: 16),
-
-                  // Guardar y Pagar
-                  Expanded(
-                    flex: 2,
-                    child: ElevatedButton.icon(
-                      onPressed: _isLoading ? null : _guardarYPagar,
-                      icon: _isLoading
-                          ? SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : Icon(Icons.check_circle),
-                      label: Text(
-                        'Guardar y Pagar',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.success,
-                        foregroundColor: Colors.white,
-                        padding: EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 12),
-              // Segunda fila: Dejar como Deuda
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: _isLoading ? null : _guardarComoDeuda,
-                  icon: Icon(Icons.sticky_note_2_outlined, color: Colors.orange),
-                  label: Text(
-                    'Dejar como Deuda',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.orange,
-                    side: BorderSide(color: Colors.orange, width: 2),
-                    padding: EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
   // Cargar facturas en borrador
   Future<void> _mostrarBorradores() async {
     setState(() => _isLoading = true);
@@ -3866,36 +3631,12 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                         IconButton(
                           icon: Icon(Icons.delete, color: Colors.red),
                           onPressed: () async {
-                            final confirmar = await showDialog<bool>(
-                              context: context,
-                              builder: (context) => AlertDialog(
-                                backgroundColor: AppTheme.cardBg,
-                                title: Text(
-                                  '¿Eliminar borrador?',
-                                  style: TextStyle(color: AppTheme.textPrimary),
-                                ),
-                                content: Text(
-                                  '¿Está seguro de eliminar este borrador?',
-                                  style: TextStyle(
-                                    color: AppTheme.textSecondary,
-                                  ),
-                                ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () =>
-                                        Navigator.pop(context, false),
-                                    child: Text('Cancelar'),
-                                  ),
-                                  TextButton(
-                                    onPressed: () =>
-                                        Navigator.pop(context, true),
-                                    child: Text(
-                                      'Eliminar',
-                                      style: TextStyle(color: Colors.red),
-                                    ),
-                                  ),
-                                ],
-                              ),
+                            final confirmar = await showConfirmDialog(
+                              context,
+                              title: '¿Eliminar borrador?',
+                              content: '¿Está seguro de eliminar este borrador?',
+                              confirmText: 'Eliminar',
+                              isDangerous: true,
                             );
 
                             if (confirmar == true) {
@@ -3906,12 +3647,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
                                 Navigator.pop(context);
                                 _mostrarBorradores();
                               } catch (e) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('Error al eliminar: $e'),
-                                    backgroundColor: Colors.red,
-                                  ),
-                                );
+                                showErrorSnackBar(context, 'Error al eliminar: $e');
                               }
                             }
                           },
@@ -3934,12 +3670,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       );
     } catch (e) {
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al cargar borradores: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      showErrorSnackBar(context, 'Error al cargar borradores: $e');
     }
   }
 
@@ -4024,12 +3755,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       _limpiarFormulario();
     } catch (e) {
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al guardar: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      showErrorSnackBar(context, 'Error al guardar: $e');
     }
   }
 
@@ -4498,8 +4224,10 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
             itemsOriginales: itemsOriginales,
           );
 
-          // ✅ Verificar que el documento se creó correctamente en el backend
-          _verificarDocumentoCreado(pedidoPagado);
+          // Solo verificar documento FE para POS y Factura Electrónica, no para Local
+          if (tipoFacturaCapturado != 'LOCAL') {
+            _verificarDocumentoCreado(pedidoPagado);
+          }
 
           // Si viene de pedido asesor, marcarlo como facturado
           if (pedidoAsesorId != null) {
@@ -4772,13 +4500,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       });
     } catch (e) {
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: $e'),
-          backgroundColor: Colors.red,
-          duration: Duration(seconds: 5),
-        ),
-      );
+      showErrorSnackBar(context, 'Error: $e');
     }
   }
 
@@ -5321,20 +5043,10 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
         esFactura: true,
       );
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('PDF generado correctamente'),
-          backgroundColor: AppTheme.success,
-        ),
-      );
+      showSuccessSnackBar(context, 'PDF generado correctamente');
     } catch (e) {
       Navigator.of(context).pop(); // Cerrar indicador si está abierto
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error generando PDF: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      showErrorSnackBar(context, 'Error generando PDF: $e');
     }
   }
 
@@ -5400,20 +5112,10 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       // Mostrar diálogo de impresión
       await _pdfService.mostrarDialogoImpresion(resumen: resumen, esFactura: true);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Factura enviada a impresión'),
-          backgroundColor: AppTheme.success,
-        ),
-      );
+      showSuccessSnackBar(context, 'Factura enviada a impresión');
     } catch (e) {
       Navigator.of(context).pop(); // Cerrar indicador si está abierto
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al imprimir: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      showErrorSnackBar(context, 'Error al imprimir: $e');
     }
   }
 
@@ -5609,7 +5311,7 @@ class _FacturacionScreenState extends State<FacturacionScreen> {
       _fechaCompra = null;
       _fechaDctoPago = null;
       _listaPrecios = 'Detal';
-      _tipoFactura = 'POS';
+      _tipoFactura = 'LOCAL';
       _datosProductoExpanded = true;
       _datosExtrasExpanded = false;
       _retencionesExpanded = false;
