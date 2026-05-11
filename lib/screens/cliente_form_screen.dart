@@ -228,19 +228,36 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
         ),
         body: Form(
           key: _formKey,
-          child: SingleChildScrollView(
-            padding: EdgeInsets.all(24),
+          child: DefaultTabController(
+            length: 4,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildSeccionIdentificacion(),
-                SizedBox(height: 24),
-                _buildSeccionContacto(),
-                SizedBox(height: 24),
-                _buildSeccionTributario(),
-                SizedBox(height: 24),
-                _buildSeccionComercial(),
-                SizedBox(height: 100), // Espacio para el botón flotante
+                TabBar(
+                  indicatorColor: AppTheme.primary,
+                  labelColor: AppTheme.primary,
+                  unselectedLabelColor: Colors.grey.shade800,
+                  tabs: [
+                    Tab(text: 'Identificación'),
+                    Tab(text: 'Contacto'),
+                    Tab(text: 'Tributario'),
+                    Tab(text: 'Comercial'),
+                  ],
+                ),
+                Expanded(
+                  child: TabBarView(
+                    children: [
+                      // Tab 1: Identificación
+                      _buildTabIdentificacion(),
+                      // Tab 2: Contacto
+                      _buildTabContacto(),
+                      // Tab 3: Tributario
+                      _buildTabTributario(),
+                      // Tab 4: Comercial
+                      _buildTabComercial(),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
@@ -300,108 +317,116 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
     );
   }
 
-  Widget _buildSeccionIdentificacion() {
-    return _buildSeccionCard(
-      titulo: 'Identificación',
-      icono: Icons.badge,
-      children: [
-        DropdownButtonFormField<String>(
-          value:
-              _tipoPersonaController.text.isEmpty ||
-                  _tipoPersonaController.text == 'Persona Natural'
-              ? 'natural'
-              : (_tipoPersonaController.text == 'Persona Jurídica'
-                    ? 'juridica'
-                    : _tipoPersonaController.text),
-          decoration: InputDecoration(
-            labelText: 'Tipo de Persona *',
-            border: OutlineInputBorder(),
-          ),
-          items: [
-            DropdownMenuItem(value: 'natural', child: Text('Persona Natural')),
-            DropdownMenuItem(
-              value: 'juridica',
-              child: Text('Persona Jurídica'),
-            ),
-          ],
-          onChanged: (value) {
-            if (value != null) {
-              setState(() => _tipoPersonaController.text = value);
-            }
-          },
-          validator: (value) {
-            if (value == null || value.isEmpty) {
-              return 'Campo requerido';
-            }
-            return null;
-          },
-        ),
-        SizedBox(height: 16),
-        DropdownButtonFormField<String>(
-          value: _tipoIdentificacionController.text.isEmpty
-              ? 'CC'
-              : _tipoIdentificacionController.text,
-          decoration: InputDecoration(
-            labelText: 'Tipo de Identificación *',
-            border: OutlineInputBorder(),
-          ),
-          items: [
-            DropdownMenuItem(value: 'CC', child: Text('Cédula de Ciudadanía')),
-            DropdownMenuItem(value: 'CE', child: Text('Cédula de Extranjería')),
-            DropdownMenuItem(value: 'NIT', child: Text('NIT')),
-            DropdownMenuItem(value: 'TI', child: Text('Tarjeta de Identidad')),
-            DropdownMenuItem(value: 'PAS', child: Text('Pasaporte')),
-          ],
-          onChanged: (value) {
-            if (value != null) {
-              setState(() => _tipoIdentificacionController.text = value);
-            }
-          },
-          validator: (value) =>
-              value == null || value.isEmpty ? 'Campo requerido' : null,
-        ),
-        SizedBox(height: 16),
-        Row(
+  Widget _buildTabIdentificacion() {
+    return Padding(
+      padding: EdgeInsets.all(16),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              flex: 3,
-              child: TextFormField(
-                controller: _numeroIdentificacionController,
-                decoration: InputDecoration(
-                  labelText: 'Número de Identificación *',
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: TextInputType.number,
-                validator: (value) =>
-                    value?.isEmpty ?? true ? 'Campo requerido' : null,
+            Text('Datos de Identificación', style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, fontSize: 16)),
+            SizedBox(height: 16),
+            DropdownButtonFormField<String>(
+              value:
+                  _tipoPersonaController.text.isEmpty ||
+                      _tipoPersonaController.text == 'Persona Natural'
+                  ? 'natural'
+                  : (_tipoPersonaController.text == 'Persona Jurídica'
+                        ? 'juridica'
+                        : _tipoPersonaController.text),
+              decoration: InputDecoration(
+                labelText: 'Tipo de Persona *',
+                border: OutlineInputBorder(),
               ),
+              items: [
+                DropdownMenuItem(value: 'natural', child: Text('Persona Natural')),
+                DropdownMenuItem(
+                  value: 'juridica',
+                  child: Text('Persona Jurídica'),
+                ),
+              ],
+              onChanged: (value) {
+                if (value != null) {
+                  setState(() => _tipoPersonaController.text = value);
+                }
+              },
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Campo requerido';
+                }
+                return null;
+              },
             ),
-            SizedBox(width: 16),
-            Expanded(
-              flex: 1,
-              child: TextFormField(
-                controller: _digitoVerificacionController,
-                decoration: InputDecoration(
-                  labelText: 'DV',
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: TextInputType.number,
-                maxLength: 1,
+            SizedBox(height: 16),
+            DropdownButtonFormField<String>(
+              value: _tipoIdentificacionController.text.isEmpty
+                  ? 'CC'
+                  : _tipoIdentificacionController.text,
+              decoration: InputDecoration(
+                labelText: 'Tipo de Identificación *',
+                border: OutlineInputBorder(),
               ),
+              items: [
+                DropdownMenuItem(value: 'CC', child: Text('Cédula de Ciudadanía')),
+                DropdownMenuItem(value: 'CE', child: Text('Cédula de Extranjería')),
+                DropdownMenuItem(value: 'NIT', child: Text('NIT')),
+                DropdownMenuItem(value: 'TI', child: Text('Tarjeta de Identidad')),
+                DropdownMenuItem(value: 'PAS', child: Text('Pasaporte')),
+              ],
+              onChanged: (value) {
+                if (value != null) {
+                  setState(() => _tipoIdentificacionController.text = value);
+                }
+              },
+              validator: (value) =>
+                  value == null || value.isEmpty ? 'Campo requerido' : null,
+            ),
+            SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: TextFormField(
+                    controller: _numeroIdentificacionController,
+                    decoration: InputDecoration(
+                      labelText: 'Número de Identificación *',
+                      border: OutlineInputBorder(),
+                    ),
+                    keyboardType: TextInputType.number,
+                    validator: (value) =>
+                        value?.isEmpty ?? true ? 'Campo requerido' : null,
+                  ),
+                ),
+                SizedBox(width: 16),
+                Expanded(
+                  flex: 1,
+                  child: TextFormField(
+                    controller: _digitoVerificacionController,
+                    decoration: InputDecoration(
+                      labelText: 'DV',
+                      border: OutlineInputBorder(),
+                    ),
+                    keyboardType: TextInputType.number,
+                    maxLength: 1,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
-      ],
+      ),
     );
   }
 
-  Widget _buildSeccionContacto() {
+  Widget _buildTabContacto() {
     final esJuridica = _tipoPersonaController.text == 'juridica';
 
-    return _buildSeccionCard(
-      titulo: 'Contacto',
-      icono: Icons.contact_mail,
-      children: [
+    return Padding(
+      padding: EdgeInsets.all(16),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
         if (!esJuridica) ...[
           Row(
             children: [
@@ -492,7 +517,13 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
         SizedBox(height: 16),
         // Ciudad/Municipio - Dropdown con buscador
         _buildMunicipioDropdown(),
-      ],
+            SizedBox(height: 16),
+            _buildDepartamentoDropdown(),
+            SizedBox(height: 16),
+            _buildMunicipioDropdown(),
+          ],
+        ),
+      ),
     );
   }
 
@@ -749,11 +780,15 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
     );
   }
 
-  Widget _buildSeccionTributario() {
-    return _buildSeccionCard(
-      titulo: 'Tributario',
-      icono: Icons.account_balance,
-      children: [
+  Widget _buildTabTributario() {
+    return Padding(
+      padding: EdgeInsets.all(16),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Información Tributaria', style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, fontSize: 16)),
+            SizedBox(height: 16),
         Row(
           children: [
             Expanded(
@@ -808,15 +843,21 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
           ],
           onChanged: (value) => setState(() => _regimenTributario = value),
         ),
-      ],
+          ],
+        ),
+      ),
     );
   }
 
-  Widget _buildSeccionComercial() {
-    return _buildSeccionCard(
-      titulo: 'Comercial',
-      icono: Icons.credit_card,
-      children: [
+  Widget _buildTabComercial() {
+    return Padding(
+      padding: EdgeInsets.all(16),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Condiciones Comerciales', style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, fontSize: 16)),
+            SizedBox(height: 16),
         DropdownButtonFormField<String>(
           value: _condicionPago,
           decoration: InputDecoration(
@@ -859,7 +900,9 @@ class _ClienteFormScreenState extends State<ClienteFormScreen> {
             ),
           ],
         ),
-      ],
+          ],
+        ),
+      ),
     );
   }
 

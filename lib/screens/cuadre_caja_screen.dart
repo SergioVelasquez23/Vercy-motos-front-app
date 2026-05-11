@@ -71,7 +71,7 @@ class _CuadreCajaScreenState extends State<CuadreCajaScreen>
 
   // Services
   final CuadreCajaService _cuadreCajaService = CuadreCajaService();
-  final String baseUrl = kBackendUrl;
+  String get baseUrl => kDynamicBackendUrl;
 
   // Filtros
   String? _selectedCaja;

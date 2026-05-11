@@ -18,7 +18,7 @@ class DevelopmentConfig {
   /// URL de desarrollo
   static String getDevelopmentUrl() {
     // En desarrollo usar el backend local
-    return 'http://localhost:8080';
+    return 'http://localhost:8081';
   }
 
   /// Detecta si estamos en entorno de desarrollo local

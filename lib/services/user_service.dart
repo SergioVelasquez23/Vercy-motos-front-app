@@ -11,7 +11,7 @@ import 'dart:html'
     as html;
 
 class UserService {
-  static const String baseUrl = kBackendUrl;
+  static String get baseUrl => kDynamicBackendUrl;
   final storage = FlutterSecureStorage();
 
   // Obtener token del storage

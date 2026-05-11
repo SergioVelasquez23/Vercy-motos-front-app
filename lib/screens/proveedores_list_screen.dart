@@ -561,216 +561,315 @@ class _ProveedoresListScreenState extends State<ProveedoresListScreen>
           ),
           content: Container(
             width: 800,
-            constraints: BoxConstraints(maxHeight: 600),
-            child: SingleChildScrollView(
+            height: 500,
+            child: DefaultTabController(
+              length: 4,
               child: Column(
-                mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Fila 1: ID, dv, Nombres, Apellidos
-                  Row(
-                    children: [
-                      Expanded(
-                        flex: 2,
-                        child: _buildCampoDialogoClaro(
-                          'ID',
-                          documentoController,
-                        ),
-                      ),
-                      SizedBox(width: 12),
-                      Container(
-                        width: 80,
-                        child: _buildCampoDialogoClaro('dv', dvController),
-                      ),
-                      SizedBox(width: 12),
-                      Expanded(
-                        flex: 3,
-                        child: _buildCampoDialogoClaro(
-                          'Nombres *',
-                          nombresController,
-                        ),
-                      ),
-                      SizedBox(width: 12),
-                      Expanded(
-                        flex: 2,
-                        child: _buildCampoDialogoClaro(
-                          'Apellidos',
-                          apellidosController,
-                        ),
-                      ),
+                  TabBar(
+                    indicatorColor: AppTheme.primary,
+                    labelColor: AppTheme.primary,
+                    unselectedLabelColor: Colors.grey.shade800,
+                    tabs: [
+                      Tab(text: 'Identificación'),
+                      Tab(text: 'Contacto'),
+                      Tab(text: 'Tributario'),
+                      Tab(text: 'Bancario'),
                     ],
                   ),
-
-                  // Fila 2: Tipo, Tipo ID
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildDropdownClaro('Tipo', tipo, [
-                          'Persona Natural',
-                          'Persona Jurídica',
-                        ], (value) => setDialogState(() => tipo = value)),
-                      ),
-                      SizedBox(width: 12),
-                      Expanded(
-                        child: _buildDropdownClaro(
-                          'Tipo ID',
-                          tipoId,
-                          ['CC', 'NIT', 'Pasaporte', 'CE'],
-                          (value) => setDialogState(() => tipoId = value),
+                  Expanded(
+                    child: TabBarView(
+                      children: [
+                        // Tab 1: Identificación
+                        Padding(
+                          padding: EdgeInsets.all(16),
+                          child: SingleChildScrollView(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Identificación',
+                                  style: TextStyle(
+                                    color: AppTheme.primary,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                SizedBox(height: 12),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      flex: 2,
+                                      child: _buildCampoDialogoClaro(
+                                        'ID *',
+                                        documentoController,
+                                      ),
+                                    ),
+                                    SizedBox(width: 12),
+                                    Expanded(
+                                      child: _buildCampoDialogoClaro(
+                                        'DV',
+                                        dvController,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(height: 12),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      flex: 3,
+                                      child: _buildCampoDialogoClaro(
+                                        'Nombres *',
+                                        nombresController,
+                                      ),
+                                    ),
+                                    SizedBox(width: 12),
+                                    Expanded(
+                                      flex: 2,
+                                      child: _buildCampoDialogoClaro(
+                                        'Apellidos',
+                                        apellidosController,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(height: 12),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: _buildDropdownClaro(
+                                        'Tipo *',
+                                        tipo,
+                                        [
+                                          'Persona Natural',
+                                          'Persona Jurídica',
+                                        ],
+                                        (value) =>
+                                            setDialogState(() => tipo = value),
+                                      ),
+                                    ),
+                                    SizedBox(width: 12),
+                                    Expanded(
+                                      child: _buildDropdownClaro(
+                                        'Tipo ID *',
+                                        tipoId,
+                                        ['CC', 'NIT', 'Pasaporte', 'CE'],
+                                        (value) => setDialogState(
+                                          () => tipoId = value,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-
-                  // Fila 3: Departamento, Ciudad
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildDropdownClaro(
-                          'Departamento',
-                          departamento,
-                          [
-                            'Cundinamarca',
-                            'Antioquia',
-                            'Valle del Cauca',
-                            'Atlántico',
-                            'Santander',
-                          ],
-                          (value) => setDialogState(() => departamento = value),
+                        // Tab 2: Contacto
+                        Padding(
+                          padding: EdgeInsets.all(16),
+                          child: SingleChildScrollView(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Contacto',
+                                  style: TextStyle(
+                                    color: AppTheme.primary,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                SizedBox(height: 12),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: _buildCampoDialogoClaro(
+                                        'Teléfono',
+                                        telefonoController,
+                                      ),
+                                    ),
+                                    SizedBox(width: 12),
+                                    Expanded(
+                                      child: _buildCampoDialogoClaro(
+                                        'Correo',
+                                        correoController,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(height: 12),
+                                _buildCampoDialogoClaro(
+                                  'Dirección',
+                                  direccionController,
+                                ),
+                                SizedBox(height: 12),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: _buildDropdownClaro(
+                                        'Departamento',
+                                        departamento,
+                                        [
+                                          'Cundinamarca',
+                                          'Antioquia',
+                                          'Valle del Cauca',
+                                          'Atlántico',
+                                          'Santander',
+                                        ],
+                                        (value) => setDialogState(
+                                          () => departamento = value,
+                                        ),
+                                      ),
+                                    ),
+                                    SizedBox(width: 12),
+                                    Expanded(
+                                      child: _buildDropdownClaro(
+                                        'Ciudad',
+                                        ciudad,
+                                        [
+                                          'Bogotá',
+                                          'Medellín',
+                                          'Cali',
+                                          'Barranquilla',
+                                          'Bucaramanga',
+                                        ],
+                                        (value) =>
+                                            setDialogState(() => ciudad = value),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(height: 12),
+                                _buildCampoDialogoClaro(
+                                  'Actividad Económica',
+                                  actividadEconomicaController,
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
-                      ),
-                      SizedBox(width: 12),
-                      Expanded(
-                        child: _buildDropdownClaro(
-                          'Ciudad',
-                          ciudad,
-                          [
-                            'Bogotá',
-                            'Medellín',
-                            'Cali',
-                            'Barranquilla',
-                            'Bucaramanga',
-                          ],
-                          (value) => setDialogState(() => ciudad = value),
+                        // Tab 3: Tributario
+                        Padding(
+                          padding: EdgeInsets.all(16),
+                          child: SingleChildScrollView(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Tributario',
+                                  style: TextStyle(
+                                    color: AppTheme.primary,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                SizedBox(height: 12),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: _buildDropdownClaro(
+                                        'Responsable de IVA',
+                                        responsableIVA,
+                                        ['SI', 'NO'],
+                                        (value) => setDialogState(
+                                          () => responsableIVA = value,
+                                        ),
+                                      ),
+                                    ),
+                                    SizedBox(width: 12),
+                                    Expanded(
+                                      child: _buildDropdownClaro(
+                                        'Agente Retenedor',
+                                        calidadRetenedor,
+                                        ['Agente de retención', 'No aplica'],
+                                        (value) => setDialogState(
+                                          () => calidadRetenedor = value,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-
-                  // Fila 4: Teléfono, Dirección
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildCampoDialogoClaro(
-                          'Teléfono',
-                          telefonoController,
+                        // Tab 4: Bancario
+                        Padding(
+                          padding: EdgeInsets.all(16),
+                          child: SingleChildScrollView(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Bancario',
+                                  style: TextStyle(
+                                    color: AppTheme.primary,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                SizedBox(height: 12),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: _buildDropdownClaro(
+                                        'Banco',
+                                        banco,
+                                        [
+                                          'Bancolombia',
+                                          'Davivienda',
+                                          'BBVA',
+                                          'Banco de Bogotá',
+                                          'Nequi',
+                                        ],
+                                        (value) =>
+                                            setDialogState(() => banco = value),
+                                      ),
+                                    ),
+                                    SizedBox(width: 12),
+                                    Expanded(
+                                      child: _buildDropdownClaro(
+                                        'Tipo cuenta',
+                                        tipoCuenta,
+                                        ['Ahorros', 'Corriente'],
+                                        (value) => setDialogState(
+                                          () => tipoCuenta = value,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(height: 12),
+                                _buildCampoDialogoClaro(
+                                  'Número de cuenta',
+                                  numeroCuentaController,
+                                ),
+                                SizedBox(height: 12),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: _buildCampoDialogoClaro(
+                                        'Cuentas por pagar',
+                                        cuentasPorPagarController,
+                                      ),
+                                    ),
+                                    SizedBox(width: 12),
+                                    Expanded(
+                                      child: _buildCampoDialogoClaro(
+                                        'Cuentas de devolución',
+                                        cuentasDevolucionController,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
-                      ),
-                      SizedBox(width: 12),
-                      Expanded(
-                        child: _buildCampoDialogoClaro(
-                          'Dirección',
-                          direccionController,
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  // Fila 5: Correo, Actividad Económica
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildCampoDialogoClaro(
-                          'Correo',
-                          correoController,
-                        ),
-                      ),
-                      SizedBox(width: 12),
-                      Expanded(
-                        child: _buildCampoDialogoClaro(
-                          'Act. Económica',
-                          actividadEconomicaController,
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  // Fila 6: Responsable de IVA, Calidad de agente retenedor
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildDropdownClaro(
-                          'Responsable de IVA',
-                          responsableIVA,
-                          ['SI', 'NO'],
-                          (value) =>
-                              setDialogState(() => responsableIVA = value),
-                        ),
-                      ),
-                      SizedBox(width: 12),
-                      Expanded(
-                        child: _buildDropdownClaro(
-                          'Calidad de agente retenedor de impuestos',
-                          calidadRetenedor,
-                          ['Agente de retención', 'No aplica'],
-                          (value) =>
-                              setDialogState(() => calidadRetenedor = value),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  // Fila 7: Banco, Tipo cuenta
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildDropdownClaro(
-                          'Banco',
-                          banco,
-                          [
-                            'Bancolombia',
-                            'Davivienda',
-                            'BBVA',
-                            'Banco de Bogotá',
-                            'Nequi',
-                          ],
-                          (value) => setDialogState(() => banco = value),
-                        ),
-                      ),
-                      SizedBox(width: 12),
-                      Expanded(
-                        child: _buildDropdownClaro(
-                          'Tipo cuenta',
-                          tipoCuenta,
-                          ['Ahorros', 'Corriente'],
-                          (value) => setDialogState(() => tipoCuenta = value),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  // Fila 8: Número cuenta
-                  _buildCampoDialogoClaro(
-                    'Numero cuenta',
-                    numeroCuentaController,
-                  ),
-
-                  // Fila 9: Cuentas por pagar, Cuentas de devolución
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildCampoDialogoClaro(
-                          'Cuentas por pagar',
-                          cuentasPorPagarController,
-                        ),
-                      ),
-                      SizedBox(width: 12),
-                      Expanded(
-                        child: _buildCampoDialogoClaro(
-                          'Cuentas de devolución',
-                          cuentasDevolucionController,
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ],
               ),
